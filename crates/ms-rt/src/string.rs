@@ -1146,15 +1146,9 @@ unsafe fn replace_limited(
     old: *const StrVal,
     new: *const StrVal,
     n: i64,
-    op: &str,
 ) -> StrVal {
     // SAFETY: caller passes live strings.
     unsafe {
-        if n < 0 {
-            fault::fault_fmt(format_args!(
-                "{op}: max_replacements must be nonnegative, found {n}"
-            ));
-        }
         let (text, o) = (bytes(s), bytes(old));
         let bound = if o.is_empty() {
             utf8::count(text) as i64 + 1
@@ -1226,101 +1220,33 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     s: *const StrVal,
     old: *const StrVal,
     new: *const StrVal,
-    has_max: u8,
-    max: i64,
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_replace_first_val(s, old, new, has_max, max)).write_to(out) }
+    unsafe { replace_limited(s, old, new, 1).write_to(out) }
 }
 
-#[inline(always)]
-unsafe fn msrt_string_replace_first_val(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    has_max: u8,
-    max: i64,
-) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { replace_limited(s, old, new, if has_max != 0 { max } else { 1 }, "replace") }
-}
-
+/// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_replace(
     s: *const StrVal,
     old: *const StrVal,
     new: *const StrVal,
-    has_max: u8,
-    max: i64,
     out: *mut StrVal,
 ) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_replace_val(s, old, new, has_max, max)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_replace_val(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    has_max: u8,
-    max: i64,
-) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { msrt_string_replace_first_val(s, old, new, has_max, max) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_replace_n(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    max: i64,
-    out: *mut StrVal,
-) {
-    // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { (msrt_string_replace_n_val(s, old, new, max)).write_to(out) }
-}
-
-#[inline(always)]
-unsafe fn msrt_string_replace_n_val(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    max: i64,
-) -> StrVal {
-    // SAFETY: forwarded contract.
-    unsafe { replace_limited(s, old, new, max, "replace") }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_string_replace_all(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    has_max: u8,
-    max: i64,
-    out: *mut StrVal,
-) -> u8 {
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
-        if limit < 0 {
-            return STATUS_INVALID_INPUT;
-        }
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
-        // Size check before building.
         let count = if o.is_empty() {
             utf8::count(text) + 1
         } else {
             count_matches(text, o)
         };
         let total = text.len() as i128 + count as i128 * (n.len() as i128 - o.len() as i128);
-        if total > limit as i128 || total > MAX_BYTES as i128 {
-            return STATUS_LIMIT_EXCEEDED;
+        if total > MAX_BYTES as i128 {
+            fault::fault(b"string: limit exceeded");
         }
-        *out = if count == 0 {
+        let r = if count == 0 {
             // Nothing to replace: share the unchanged input.
             cloned(&*s)
         } else if o.is_empty() {
@@ -1328,7 +1254,7 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_all(
         } else {
             fill_replaced(text, o, n, count)
         };
-        STATUS_OK
+        r.write_to(out)
     }
 }
 
@@ -2450,11 +2376,11 @@ mod tests {
             msrt_string_split(st("héy"), st(""), 0, 0, &mut v);
             assert_eq!(list(v), ["h", "é", "y"]);
             assert_eq!(
-                ret(|o| msrt_string_replace_n(st("aaa"), st("a"), st("b"), 2, o)),
-                "bba"
+                ret(|o| msrt_string_replace_first(st("aaa"), st("a"), st("b"), o)),
+                "baa"
             );
             assert_eq!(
-                ret(|o| msrt_string_replace_n(st("ab"), st(""), st("-"), 5, o)),
+                ret(|o| msrt_string_replace(st("ab"), st(""), st("-"), o)),
                 "-a-b-"
             );
             assert_eq!(ret(|o| msrt_string_trim(st("  \t x y \n"), o)), "x y");
@@ -2469,16 +2395,14 @@ mod tests {
             );
             assert_eq!(ret(|o| msrt_string_trim_end(st(" x\u{3000} "), o)), " x");
             assert_eq!(ret(|o| msrt_string_trim(st("   "), o)), "");
-            let mut o = NO_STR;
             assert_eq!(
-                msrt_string_replace_all(st("abc"), st("b"), st("xyz"), 1, 4, &mut o),
-                STATUS_LIMIT_EXCEEDED
+                ret(|o| msrt_string_replace(st("abab"), st("b"), st("xy"), o)),
+                "axyaxy"
             );
             assert_eq!(
-                msrt_string_replace_all(st("abc"), st("b"), st("xy"), 1, 4, &mut o),
-                STATUS_OK
+                ret(|o| msrt_string_replace(st("aaa"), st("aa"), st("b"), o)),
+                "ba"
             );
-            assert_eq!(txt(&o), "axyc");
         }
     }
 

@@ -417,7 +417,7 @@ def decimal_digits(text: String) -> Bool:
 def decimal_part(text: String) -> Bool:
     if not decimal_digits(text): return False
 
-    let clean = text.replace("_", "", text.byte_length())
+    let clean = text.replace("_", "")
     return clean == "0" or not clean.starts_with("0")
 
 def date_number(text: String, minimum: Int, maximum: Int) -> Bool:
@@ -532,7 +532,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 clean
                 .slice(2, clean.scalar_length())
                 .get("")
-                .replace("_", "", text.byte_length())
+                .replace("_", "")
             ),
             radix
         ): return ok(Node.Leaf(TomlValue.IntValue(value)))
@@ -584,7 +584,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
 
         if clean == "nan": return ok(Node.Leaf(TomlValue.FloatValue(sqrt((-1.0)))))
 
-        let number = text.replace("_", "", text.byte_length())
+        let number = text.replace("_", "")
         if let value = parse_float(number): return ok(
             Node.Leaf(TomlValue.FloatValue(value))
         )
@@ -592,7 +592,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         return error(invalid(reader, "float out of range"))
 
     if not decimal_part(clean): return error(invalid(reader, "invalid value"))
-    if let value = parse_int(text.replace("_", "", text.byte_length()), 10): return ok(
+    if let value = parse_int(text.replace("_", ""), 10): return ok(
         Node.Leaf(TomlValue.IntValue(value))
     )
 
@@ -750,7 +750,7 @@ export def parse(
 
     # TOML permits CR only as part of CRLF. Report the first offending scalar
     # at its own line and column.
-    let normalized = text.replace("\r\n", "\n", text.byte_length())
+    let normalized = text.replace("\r\n", "\n")
     var scan_line = 1
     var scan_column = 1
 

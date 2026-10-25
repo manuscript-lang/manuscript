@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "test \"legacy negative\":\n    \"a\".replace(\"a\", \"b\", -1)\n\ntest \"required negative\":\n    \"a\".replace_n(\"a\", \"b\", -1)\n\ntest \"bound negative\":\n    let replace = \"a\".replace_n\n    replace(\"a\", \"b\", -1)\n\ntest \"empty negative\":\n    \"\".replace_n(\"\", \"b\", -1)\n\ntest \"continues\":\n    let _unchanged = \"a\".replace_n(\"a\", \"b\", 0)\n"
-  }
-}

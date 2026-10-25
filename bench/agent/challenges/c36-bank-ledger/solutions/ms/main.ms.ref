@@ -14,7 +14,7 @@ type Ledger:
     fees: Int
 
 def fields(line: String) -> List[String]:
-    let spaced = line.replace_all(old: "\t", new: " ").get()
+    let spaced = line.replace(old: "\t", new: " ")
     return (
         spaced
         .split(" ")

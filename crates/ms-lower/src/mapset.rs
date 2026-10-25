@@ -838,14 +838,10 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.build()`: a copy of the accumulated value; freezing again yields the same.
-    fn build_builder(
-        &mut self,
-        old: Value,
-        result_ty: MTy,
-    ) -> Result<(Value, Option<Val>), Error> {
+    /// `builder.build()`: a copy of the accumulated value; building again yields the same.
+    fn build_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
         if result_ty == MTy::STR {
-            // The runtime consumes the buffer it freezes: freeze a copy.
+            // The runtime consumes the buffer it builds from: build from a copy.
             let copy = self.owned(Val { v: old, own: false });
             let slot = self.put_slot(copy);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;
