@@ -50,6 +50,7 @@ msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
 msrt_cleanup_discard(handle: usize)
+msrt_unwind_drops() -> u8
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal, ) -> u8
 msrt_io_write_stdout(s: *const StrVal)

@@ -188,6 +188,11 @@ crate::isolate_static! {
     static FAULTING: bool = false;
 }
 crate::isolate_static! {
+    /// Set while a cancellation unwinds a guarded task: its frames are abandoned, so drop
+    /// cleanups registered by generated code release what the frames own.
+    static UNWIND_DROPS: bool = false;
+}
+crate::isolate_static! {
     static SECONDARY: Vec<Vec<u8>> = Vec::new();
 }
 crate::isolate_static! {
@@ -1101,10 +1106,39 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     }
 }
 
+/// Whether the cleanup stack is running because a cancellation leaves a guarded task. Generated
+/// drop cleanups act only then: a fault ends the process and process exit needs no frees.
+#[unsafe(no_mangle)]
+pub extern "C" fn msrt_unwind_drops() -> u8 {
+    // SAFETY: single threaded access.
+    u8::from(unsafe { *UNWIND_DROPS.ptr() })
+}
+
+/// Runs `cleanup` if cancellation or a fault leaves `body` by a jump (which skips Rust
+/// destructors); discards it when `body` returns. Use it around a park that holds a borrow, a
+/// busy flag or another guard that later tasks need.
+pub fn with_cleanup<R>(cleanup: &mut dyn FnMut(), body: impl FnOnce() -> R) -> R {
+    unsafe extern "C-unwind" fn run(arg: *mut u8) {
+        // SAFETY: `arg` points at the `&mut dyn FnMut()` below, live until the handle is discarded.
+        unsafe { (*arg.cast::<&mut dyn FnMut()>())() }
+    }
+    let mut cleanup = cleanup;
+    // SAFETY: the entry is discarded before `cleanup` goes out of scope.
+    let handle = unsafe { msrt_cleanup_push(run, (&raw mut cleanup).cast()) };
+    let r = body();
+    msrt_cleanup_discard(handle);
+    r
+}
+
 /// Unwinds on a stop request: runs cleanups and exits 130/143.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_cancelled() -> ! {
     let sig = crate::isolate::pending_cancel();
+    #[cfg(not(test))]
+    // SAFETY: single threaded access.
+    unsafe {
+        *UNWIND_DROPS.ptr() = guard_active();
+    }
     while run_one_cleanup() {}
     #[cfg(test)]
     {
@@ -1178,6 +1212,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             .pop()
             .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
+        *UNWIND_DROPS.ptr() = false;
         (*cur_hdr()).limit = f.limit;
         SHIELD.set(f.shield);
         cancel_flag().store(
@@ -1752,6 +1787,23 @@ mod tests {
             msrt_cleanup_run(h1);
             assert_eq!(*LOG_N.ptr(), 2);
         }
+    }
+
+    #[test]
+    fn with_cleanup_runs_when_the_body_leaves_by_a_jump_and_not_after_a_return() {
+        let _g = lock();
+        reset_for_tests();
+        let mut ran = 0;
+        let kept = with_cleanup(&mut || ran += 1, || 7);
+        assert_eq!((kept, ran), (7, 0));
+        // SAFETY: test-only access to the cleanup stack.
+        assert!(unsafe { (*CLEANUPS.ptr()).is_empty() });
+        let mut ran = 0;
+        let left = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            with_cleanup(&mut || ran += 1, || -> i32 { msrt_cancelled() })
+        }));
+        assert!(left.is_err());
+        assert_eq!(ran, 1);
     }
 
     #[test]
