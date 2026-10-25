@@ -1,7 +1,8 @@
 //! Starting and reaping children with `std::process::Command`, on every platform.
 //!
 //! Each standard stream of the child is a given pipe end (std duplicates it), the parent's own
-//! stream, or the null device. The child leads its own process group on Unix; on Windows it starts
+//! stream, or the null device. The child leads its own process group on Unix, unless this process
+//! is itself a `ProcessGroup` child: then it joins ours, so the kill of our group reaches it; on Windows it starts
 //! suspended and runs only once it is in a job object, so a kill reaches its whole process tree,
 //! including anything it starts right away.
 use crate::ipc::ChildEnd;
@@ -23,6 +24,10 @@ pub struct Child {
     /// before 5.3), a kqueue watching the pid on Apple platforms.
     #[cfg(unix)]
     exit: i32,
+    /// The child shares our process group (we are a `ProcessGroup` child), so it is signalled by
+    /// pid: its group is ours.
+    #[cfg(unix)]
+    shared: bool,
 }
 
 #[cfg(unix)]
@@ -138,9 +143,18 @@ pub fn start(
         }
     }
     #[cfg(unix)]
+    let shared = crate::ipc::started_by_group();
+    #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        cmd.process_group(0);
+        // A group child's own children stay in its group, which its parent kills as a whole.
+        let group = if shared {
+            // SAFETY: plain call.
+            unsafe { libc::getpgrp() }
+        } else {
+            0
+        };
+        cmd.process_group(group);
     }
     #[cfg(windows)]
     {
@@ -165,7 +179,11 @@ pub fn start(
         let _ = end.end.inherit(false);
     }
     match spawned {
-        Ok(inner) => Ok(Child::new(inner)),
+        Ok(inner) => Ok(Child::new(
+            inner,
+            #[cfg(unix)]
+            shared,
+        )),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
     }
@@ -248,7 +266,7 @@ fn exit_code(status: std::process::ExitStatus) -> i64 {
 }
 
 impl Child {
-    fn new(inner: std::process::Child) -> Child {
+    fn new(inner: std::process::Child, #[cfg(unix)] shared: bool) -> Child {
         #[cfg(windows)]
         {
             use std::os::windows::io::AsRawHandle;
@@ -276,6 +294,7 @@ impl Child {
                 inner,
                 code: None,
                 exit,
+                shared,
             }
         }
     }
@@ -344,12 +363,13 @@ impl Child {
         #[cfg(unix)]
         {
             let pid = self.inner.id() as libc::pid_t;
-            // SAFETY: plain system calls on this child's group.
+            let target = self.target(pid);
+            // SAFETY: plain system calls on this child's group, or on the child alone.
             unsafe {
-                if !force && libc::kill(-pid, libc::SIGTERM) == 0 {
+                if !force && libc::kill(target, libc::SIGTERM) == 0 {
                     return;
                 }
-                libc::kill(-pid, libc::SIGKILL);
+                libc::kill(target, libc::SIGKILL);
             }
         }
         #[cfg(windows)]
@@ -359,13 +379,19 @@ impl Child {
         }
     }
 
+    /// What to signal: the child's group, or only the child when it shares ours.
+    #[cfg(unix)]
+    fn target(&self, pid: libc::pid_t) -> libc::pid_t {
+        if self.shared { pid } else { -pid }
+    }
+
     /// Kills whatever is left of the child's process group (job on Windows).
     pub fn kill_group(&mut self) {
         #[cfg(unix)]
         {
             let pid = self.inner.id() as libc::pid_t;
             // SAFETY: plain system call.
-            unsafe { libc::kill(-pid, libc::SIGKILL) };
+            unsafe { libc::kill(self.target(pid), libc::SIGKILL) };
         }
         #[cfg(windows)]
         {
