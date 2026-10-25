@@ -302,6 +302,25 @@ impl Checker {
                 );
             }
         }
+        let t = i.t();
+        let in_test = self.test_function != 0 && self.function == self.test_function;
+        if in_test
+            && t.is_std("Result")
+            && !matches!(
+                &value.kind,
+                ExprKind::Unary {
+                    op: UnaryOp::Try,
+                    ..
+                }
+            )
+        {
+            self.type_error(
+                value.pos,
+                format!(
+                    "this statement discards {t}, so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purpose"
+                ),
+            );
+        }
         (!i.no_return, i.breaks)
     }
 

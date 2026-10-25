@@ -30,4 +30,4 @@ test "selected=a=b":
     try write_line("selected")
 
 test "unselected":
-    write_line("unselected")
+    try write_line("unselected")

@@ -31,21 +31,26 @@
         },
         {
           "index": 4,
+          "name": "processes_tasks.ms::cancelling a task inside Subprocess.wait stops a child the task was handed",
+          "status": "passed"
+        },
+        {
+          "index": 5,
           "name": "processes_tasks.ms::the liveness check sees a live child",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 5,
-        "selected": 5,
-        "passed": 5,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN processes_tasks.ms::result waits while another task receives from the same child\nPASS processes_tasks.ms::result waits while another task receives from the same child\nRUN processes_tasks.ms::a task cancelled in a channel read releases the link\nPASS processes_tasks.ms::a task cancelled in a channel read releases the link\nRUN processes_tasks.ms::cancelling a task inside commands().run kills the child\nPASS processes_tasks.ms::cancelling a task inside commands().run kills the child\nRUN processes_tasks.ms::cancelling a task inside Subprocess.wait kills the child\nPASS processes_tasks.ms::cancelling a task inside Subprocess.wait kills the child\nRUN processes_tasks.ms::the liveness check sees a live child\nPASS processes_tasks.ms::the liveness check sees a live child\n5 tests, 0 failed\n",
+      "stdout": "RUN processes_tasks.ms::result waits while another task receives from the same child\nPASS processes_tasks.ms::result waits while another task receives from the same child\nRUN processes_tasks.ms::a task cancelled in a channel read releases the link\nPASS processes_tasks.ms::a task cancelled in a channel read releases the link\nRUN processes_tasks.ms::cancelling a task inside commands().run kills the child\nPASS processes_tasks.ms::cancelling a task inside commands().run kills the child\nRUN processes_tasks.ms::cancelling a task inside Subprocess.wait kills the child\nPASS processes_tasks.ms::cancelling a task inside Subprocess.wait kills the child\nRUN processes_tasks.ms::cancelling a task inside Subprocess.wait stops a child the task was handed\nPASS processes_tasks.ms::cancelling a task inside Subprocess.wait stops a child the task was handed\nRUN processes_tasks.ms::the liveness check sees a live child\nPASS processes_tasks.ms::the liveness check sees a live child\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
