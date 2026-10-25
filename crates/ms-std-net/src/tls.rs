@@ -4,7 +4,7 @@
 //! so that the same inputs are accepted and rejected. Roots always come from
 //! the supplied PEM, or from the system store when none is supplied.
 
-use crate::conn::{Io, Step, TlsDetails};
+use crate::conn::{Io, OwnedSock, Step, TlsDetails};
 use crate::error::{NetErr, TlsErr, describe_io_error};
 use crate::sys::{AsSock, Borrowed};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
@@ -744,7 +744,7 @@ pub fn verify_certificates(
 
 /// A TLS stream over a nonblocking socket.
 pub struct TlsIo {
-    sock: socket2::Socket,
+    sock: OwnedSock,
     state: RefCell<rustls::Connection>,
     verified: bool,
 }
@@ -782,7 +782,7 @@ impl TlsIo {
     /// Wraps a connected nonblocking socket; call `drive_handshake` until done.
     pub fn new(sock: socket2::Socket, conn: rustls::Connection, verified: bool) -> TlsIo {
         TlsIo {
-            sock,
+            sock: OwnedSock::new(sock),
             state: RefCell::new(conn),
             verified,
         }
@@ -862,7 +862,7 @@ impl TlsIo {
     fn write_pending(&self) -> io::Result<bool> {
         let mut c = self.state.borrow_mut();
         while c.wants_write() {
-            match c.write_tls(&mut &self.sock) {
+            match c.write_tls(&mut &*self.sock) {
                 Ok(_) => {}
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(false),
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
@@ -875,7 +875,7 @@ impl TlsIo {
     /// Reads and processes records; `Ok(false)` when nothing is available.
     fn read_records(&self) -> Result<bool, HandshakeFail> {
         let mut c = self.state.borrow_mut();
-        match c.read_tls(&mut &self.sock) {
+        match c.read_tls(&mut &*self.sock) {
             Ok(0) => {
                 return Err(HandshakeFail::Io(io::Error::from(
                     io::ErrorKind::UnexpectedEof,
@@ -964,6 +964,10 @@ impl Io for TlsIo {
         self.state.borrow_mut().send_close_notify();
         let _ = self.write_pending();
         let _ = self.sock.shutdown(std::net::Shutdown::Both);
+    }
+
+    fn release(&self) {
+        self.sock.release();
     }
 
     fn tls_details(&self) -> Option<TlsDetails> {

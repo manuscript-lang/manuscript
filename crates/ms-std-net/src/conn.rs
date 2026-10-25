@@ -6,10 +6,12 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use ms_rt::fault::with_cleanup;
 use socket2::Socket;
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, UdpSocket};
+use std::ops::Deref;
 
 use std::rc::Rc;
 use std::sync::Arc;
@@ -47,8 +49,12 @@ pub trait Io {
         Step::Done(0)
     }
     fn shutdown_write(&self) -> Result<(), NetErr>;
-    /// Stops all traffic; the descriptor stays open until the value is dropped.
+    /// Stops all traffic; the descriptor stays open until `release` or the value is dropped.
     fn shutdown_both(&self);
+    /// Closes the descriptor now. Only a closed connection with no operation parked on it may
+    /// call this; the stream is unusable afterwards. A stream shared with another owner keeps
+    /// it.
+    fn release(&self) {}
     fn tls_details(&self) -> Option<TlsDetails> {
         None
     }
@@ -59,14 +65,42 @@ pub trait Io {
     }
 }
 
+/// A socket that can be closed before its owner is dropped, so a closed connection frees its
+/// descriptor even while handles to it are alive (or a cancelled task never drops them).
+pub struct OwnedSock(UnsafeCell<Option<Socket>>);
+
+impl OwnedSock {
+    pub fn new(sock: Socket) -> OwnedSock {
+        OwnedSock(UnsafeCell::new(Some(sock)))
+    }
+
+    /// Closes the descriptor. The caller guarantees nothing is using it.
+    pub fn release(&self) {
+        // SAFETY: tasks share one thread and no reference to the socket outlives an operation;
+        // `Connection` and `Listener` release only with no operation parked and refuse new ones.
+        drop(unsafe { (*self.0.get()).take() });
+    }
+}
+
+impl Deref for OwnedSock {
+    type Target = Socket;
+
+    fn deref(&self) -> &Socket {
+        // SAFETY: see `release`.
+        unsafe { (*self.0.get()).as_ref() }.expect("socket used after it was released")
+    }
+}
+
 /// An unencrypted socket.
 pub struct Plain {
-    sock: Socket,
+    sock: OwnedSock,
 }
 
 impl Plain {
     pub fn new(sock: Socket) -> Plain {
-        Plain { sock }
+        Plain {
+            sock: OwnedSock::new(sock),
+        }
     }
 
     pub fn socket(&self) -> &Socket {
@@ -91,7 +125,7 @@ impl Io for Plain {
 
     fn read(&self, buf: &mut [u8]) -> Step {
         loop {
-            return match (&self.sock).read(buf) {
+            return match (&*self.sock).read(buf) {
                 Ok(0) if !buf.is_empty() => Step::Eof,
                 Ok(n) => Step::Done(n),
                 Err(e) if would_block(&e) => Step::WantRead,
@@ -103,7 +137,7 @@ impl Io for Plain {
 
     fn write(&self, data: &[u8]) -> Step {
         loop {
-            return match (&self.sock).write(data) {
+            return match (&*self.sock).write(data) {
                 Ok(n) => Step::Done(n),
                 Err(e) if would_block(&e) => Step::WantWrite,
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
@@ -120,6 +154,10 @@ impl Io for Plain {
 
     fn shutdown_both(&self) {
         let _ = self.sock.shutdown(std::net::Shutdown::Both);
+    }
+
+    fn release(&self) {
+        self.sock.release();
     }
 }
 
@@ -210,6 +248,8 @@ pub struct Connection {
     owner: Rc<Network>,
     io: Box<dyn Io>,
     closed: Cell<bool>,
+    /// Operations parked on `io`; the descriptor is released once a closed connection has none.
+    busy: Cell<u32>,
     local: String,
     peer: String,
 }
@@ -226,6 +266,7 @@ impl Connection {
             owner,
             io,
             closed: Cell::new(false),
+            busy: Cell::new(0),
             local,
             peer,
         }
@@ -247,11 +288,32 @@ impl Connection {
         self.closed.get()
     }
 
-    /// Closes the socket; later reads and writes report `Closed`. Idempotent.
+    /// Closes the socket; later reads and writes report `Closed`. Idempotent. The descriptor is
+    /// freed now, or when the last parked operation leaves.
     pub fn close(&self) {
         if !self.closed.replace(true) {
             self.io.shutdown_both();
+            self.release_if_idle();
         }
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.io.release();
+        }
+    }
+
+    /// Runs `body`, which may park on `io`. A cancellation that leaves it still counts it out,
+    /// so the `close` of an enclosing `with` can free the descriptor.
+    fn parked<T>(&self, body: impl FnOnce() -> T) -> T {
+        self.busy.set(self.busy.get() + 1);
+        let leave = || {
+            self.busy.set(self.busy.get() - 1);
+            self.release_if_idle();
+        };
+        let r = with_cleanup(&mut { leave }, body);
+        leave();
+        r
     }
 
     fn failure(&self, e: DriveError) -> IoErr {
@@ -302,7 +364,7 @@ impl Connection {
         if self.closed.get() {
             return Err(IoErr::Closed);
         }
-        let r = drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0);
+        let r = self.parked(|| drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0));
         match r {
             Ok(count) => Ok(count),
             Err(e) => {
@@ -357,7 +419,7 @@ impl Connection {
         let mut rest = data;
         while !rest.is_empty() {
             rt::check_cancel();
-            let r = drive(&*self.io, deadline, || self.io.write(rest), |n| n, || 0);
+            let r = self.parked(|| drive(&*self.io, deadline, || self.io.write(rest), |n| n, || 0));
             match r {
                 Ok(0) => return Err(IoErr::failed("short write")),
                 Ok(n) => rest = &rest[n..],
@@ -368,7 +430,7 @@ impl Connection {
             }
         }
         // TLS buffers records; push them out.
-        let r = drive(&*self.io, deadline, || self.io.flush(), |n| n, || 0);
+        let r = self.parked(|| drive(&*self.io, deadline, || self.io.flush(), |n| n, || 0));
         match r {
             Ok(_) => Ok(()),
             Err(e) => Err(self.failure(e)),
@@ -397,8 +459,10 @@ pub type Upgrade = Box<dyn Fn(Socket, Deadline) -> Result<Box<dyn Io>, NetErr>>;
 /// A listening socket.
 pub struct Listener {
     owner: Rc<Network>,
-    sock: Socket,
+    sock: OwnedSock,
     closed: Cell<bool>,
+    /// Accepts parked on `sock`; see `Connection::busy`.
+    busy: Cell<u32>,
     address: String,
     unix_path: Option<String>,
     upgrade: Option<Upgrade>,
@@ -431,8 +495,9 @@ impl Listener {
         };
         Listener {
             owner,
-            sock,
+            sock: OwnedSock::new(sock),
             closed: Cell::new(false),
+            busy: Cell::new(0),
             address,
             unix_path,
             upgrade,
@@ -457,6 +522,27 @@ impl Listener {
         if let Some(p) = &self.unix_path {
             let _ = std::fs::remove_file(p);
         }
+        self.release_if_idle();
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.sock.release();
+        }
+    }
+
+    /// Waits for the listener to become readable; see `Connection::parked`.
+    fn parked_wait(&self, deadline: Deadline) -> Wait {
+        self.busy.set(self.busy.get() + 1);
+        let leave = || {
+            self.busy.set(self.busy.get() - 1);
+            self.release_if_idle();
+        };
+        let r = with_cleanup(&mut { leave }, || {
+            wait_fd(self.sock.as_sock(), Interest::Read, deadline)
+        });
+        leave();
+        r
     }
 
     pub fn raw(&self) -> &Socket {
@@ -522,7 +608,7 @@ impl Listener {
                     return Ok(conn);
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                    if self.parked_wait(deadline) == Wait::TimedOut {
                         rt::check_cancel();
                         return Err(if self.closed.get() {
                             NetErr::Closed
