@@ -10,7 +10,7 @@
 
 use crate::ir::{
     Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
-    Mode, Module, Op, Scope, Target, Term, Value,
+    Mode, Module, Op, Param, Scope, Target, Term, Value,
 };
 use crate::types::Ty;
 use std::collections::{HashMap, HashSet};
@@ -25,11 +25,18 @@ pub const CONST_ARG_BONUS: usize = 5;
 pub const GROWTH_FACTOR: usize = 4;
 /// Fixed growth allowance per caller.
 pub const GROWTH_SLACK: usize = 200;
+/// Largest callee copied by closure-argument specialization.
+pub const SPECIALIZE_MAX_SIZE: usize = 400;
+/// Instructions the whole module may gain from closure-argument specialization.
+pub const SPECIALIZE_BUDGET: usize = 2000;
+/// Rounds of specialization (a clone that forwards its closure to another call needs one more).
+const SPECIALIZE_ROUNDS: usize = 4;
 
 /// Runs the pass over the whole module; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = specialize_sort_thunks(m);
     changed |= super::sortgen::run(m);
+    changed |= specialize_closure_args(m);
     changed |= inline_calls(m);
     changed |= inline_closures(m);
     changed |= strip_depth(m);
@@ -456,16 +463,13 @@ fn inline_closures_in(m: &mut Module, fi: usize) -> bool {
     let mut grown = 0usize;
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
-    let mut known: HashMap<Value, (FuncId, Vec<Value>)> = HashMap::new();
-    for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
-        if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
-            && inst.args.iter().all(|a| !m.needs_drop(m.funcs[fi].ty(*a)))
-        {
-            known.insert(r, (g, inst.args.clone()));
-        }
-    }
-    if known.is_empty() {
+    let roots = known_closures(m, fi);
+    if roots.is_empty() {
         return false;
+    }
+    let mut known: HashMap<Value, (FuncId, Vec<Value>)> = HashMap::new();
+    for (v, root) in closure_aliases(&m.funcs[fi], &roots) {
+        known.insert(v, roots[&root].clone());
     }
     while let Some(bi) = work.pop() {
         for ii in 0..m.funcs[fi].blocks[bi].insts.len() {
@@ -500,9 +504,7 @@ fn inline_closures_in(m: &mut Module, fi: usize) -> bool {
             break;
         }
     }
-    if changed {
-        delete_unused_closures(m, fi, &known);
-    }
+    changed |= delete_unused_closures(m, fi);
     changed
 }
 
@@ -553,30 +555,329 @@ fn closure_body(f: &Func) -> Option<Func> {
     Some(c)
 }
 
-/// Deletes the `closure.new` of each known closure whose only remaining uses are drops.
-fn delete_unused_closures(m: &mut Module, fi: usize, known: &HashMap<Value, (FuncId, Vec<Value>)>) {
-    let f = &mut m.funcs[fi];
-    let mut used: HashSet<Value> = HashSet::new();
-    for b in &f.blocks {
-        for i in b.insts.iter().filter(|i| i.op != Op::Drop) {
-            used.extend(i.args.iter().copied());
+/// The closures built in function `fi` by `closure.new` whose captures are all plain data, as
+/// result value -> (closure code, captured values).
+fn known_closures(m: &Module, fi: usize) -> HashMap<Value, (FuncId, Vec<Value>)> {
+    let f = &m.funcs[fi];
+    let mut known = HashMap::new();
+    for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
+        if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
+            && inst.args.iter().all(|a| !m.needs_drop(f.ty(*a)))
+        {
+            known.insert(r, (g, inst.args.clone()));
         }
-        b.term.for_each_use(|v| {
-            used.insert(v);
+    }
+    known
+}
+
+/// Maps every value that always holds the same known closure to that closure's `closure.new`
+/// result: the result itself, `copy` of such a value, and a block parameter each of whose
+/// incoming arguments is such a value (or the parameter itself, on a loop back edge).
+fn closure_aliases(
+    f: &Func,
+    roots: &HashMap<Value, (FuncId, Vec<Value>)>,
+) -> HashMap<Value, Value> {
+    let mut alias: HashMap<Value, Value> = roots.keys().map(|v| (*v, *v)).collect();
+    let mut incoming: HashMap<(usize, usize), Vec<Value>> = HashMap::new();
+    for b in &f.blocks {
+        b.term.for_each_target(|t| {
+            for (j, a) in t.args.iter().enumerate() {
+                incoming.entry((t.block.index(), j)).or_default().push(*a);
+            }
         });
     }
-    let dead: HashSet<Value> = known
-        .keys()
-        .filter(|v| !used.contains(v))
-        .copied()
-        .collect();
+    loop {
+        let mut grew = false;
+        for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
+            if let (Op::Copy, Some(r)) = (inst.op, inst.res)
+                && !alias.contains_key(&r)
+                && let Some(&root) = alias.get(&inst.args[0])
+            {
+                alias.insert(r, root);
+                grew = true;
+            }
+        }
+        for (bi, b) in f.blocks.iter().enumerate().skip(1) {
+            for (j, p) in b.params.iter().enumerate() {
+                if alias.contains_key(&p.value) {
+                    continue;
+                }
+                let mut root = None;
+                let ok = incoming.get(&(bi, j)).is_some_and(|args| {
+                    args.iter().all(|a| {
+                        if *a == p.value {
+                            return true;
+                        }
+                        let Some(&r) = alias.get(a) else {
+                            return false;
+                        };
+                        *root.get_or_insert(r) == r
+                    })
+                });
+                if let (true, Some(r)) = (ok, root) {
+                    alias.insert(p.value, r);
+                    grew = true;
+                }
+            }
+        }
+        if !grew {
+            return alias;
+        }
+    }
+}
+
+/// Deletes each known closure whose aliases are only copied, dropped and carried through block
+/// parameters, together with those copies, drops and parameters (and the arguments feeding
+/// them). A plain-data environment owns nothing, so ownership stays linear. Returns whether
+/// anything was deleted.
+fn delete_unused_closures(m: &mut Module, fi: usize) -> bool {
+    let roots = known_closures(m, fi);
+    if roots.is_empty() {
+        return false;
+    }
+    let f = &mut m.funcs[fi];
+    let alias = closure_aliases(f, &roots);
+    let mut live: HashSet<Value> = HashSet::new();
+    let note = |v: Value, live: &mut HashSet<Value>| {
+        if let Some(r) = alias.get(&v) {
+            live.insert(*r);
+        }
+    };
+    for b in &f.blocks {
+        for i in &b.insts {
+            let class_only = match i.op {
+                Op::Drop => true,
+                Op::Copy => i.res.is_some_and(|r| alias.contains_key(&r)),
+                _ => false,
+            };
+            if !class_only {
+                i.args.iter().for_each(|a| note(*a, &mut live));
+            }
+        }
+        match &b.term {
+            Term::CondBr { cond, .. } => note(*cond, &mut live),
+            Term::Switch { value, .. } => note(*value, &mut live),
+            Term::Ret(Some(v)) => note(*v, &mut live),
+            _ => {}
+        }
+        // An argument into a block parameter outside the class keeps the closure alive.
+        let mut targets: Vec<(usize, usize, Value)> = Vec::new();
+        b.term.for_each_target(|t| {
+            for (j, a) in t.args.iter().enumerate() {
+                targets.push((t.block.index(), j, *a));
+            }
+        });
+        for (bk, j, a) in targets {
+            if !alias.contains_key(&f.blocks[bk].params[j].value) {
+                note(a, &mut live);
+            }
+        }
+    }
+    let dead = |v: &Value| alias.get(v).is_some_and(|r| !live.contains(r));
+    let mut dead_params: HashSet<(usize, usize)> = HashSet::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (j, p) in b.params.iter().enumerate() {
+            if bi > 0 && dead(&p.value) {
+                dead_params.insert((bi, j));
+            }
+        }
+    }
+    let mut changed = !dead_params.is_empty();
     for b in &mut f.blocks {
-        b.insts.retain(|i| {
-            let new = i.op == Op::ClosureNew && i.res.is_some_and(|r| dead.contains(&r));
-            let drop = i.op == Op::Drop && dead.contains(&i.args[0]);
-            !(new || drop)
+        let before = b.insts.len();
+        b.insts.retain(|i| match i.op {
+            Op::ClosureNew | Op::Copy => !i.res.is_some_and(|r| dead(&r)),
+            Op::Drop => !dead(&i.args[0]),
+            _ => true,
+        });
+        changed |= b.insts.len() != before;
+        b.term.for_each_target_mut(|t| {
+            let mut j = 0;
+            t.args.retain(|_| {
+                j += 1;
+                !dead_params.contains(&(t.block.index(), j - 1))
+            });
         });
     }
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut j = 0;
+        b.params.retain(|_| {
+            j += 1;
+            !dead_params.contains(&(bi, j - 1))
+        });
+    }
+    changed
+}
+
+/// Gives each call that passes a closure built in the caller (plain-data captures, borrowed
+/// parameter) a private copy of the callee in which that parameter is replaced by a
+/// `closure.new` of the same code over captures taken as parameters. The closure inliner then
+/// resolves the callee's indirect calls (see [`inline_closures`]) and deletes the closure.
+fn specialize_closure_args(m: &mut Module) -> bool {
+    let mut changed = false;
+    let mut made: HashMap<(FuncId, FuncId, usize), FuncId> = HashMap::new();
+    let mut spent = 0usize;
+    for _ in 0..SPECIALIZE_ROUNDS {
+        let cyc = cyclic(&direct_graph(m));
+        let mut round = false;
+        for fi in 0..m.funcs.len() {
+            round |= specialize_in(m, fi, &cyc, &mut made, &mut spent);
+        }
+        changed |= round;
+        if !round {
+            break;
+        }
+    }
+    changed
+}
+
+fn specialize_in(
+    m: &mut Module,
+    fi: usize,
+    cyc: &[bool],
+    made: &mut HashMap<(FuncId, FuncId, usize), FuncId>,
+    spent: &mut usize,
+) -> bool {
+    let known = known_closures(m, fi);
+    if known.is_empty() {
+        return false;
+    }
+    let mut changed = false;
+    for bi in 0..m.funcs[fi].blocks.len() {
+        for ii in 0..m.funcs[fi].blocks[bi].insts.len() {
+            let inst = &m.funcs[fi].blocks[bi].insts[ii];
+            let (Op::Call, Imm::Func(c)) = (inst.op, inst.imm) else {
+                continue;
+            };
+            let ci = c.index();
+            let callee = &m.funcs[ci];
+            if ci == fi
+                || cyc.get(ci).copied().unwrap_or(false)
+                || !matches!(callee.kind, FuncKind::Normal)
+                || callee.inline == InlineHint::Never
+                || callee.inst_count() > SPECIALIZE_MAX_SIZE
+                || !callee
+                    .blocks
+                    .iter()
+                    .flat_map(|b| b.insts.iter())
+                    .any(|i| i.op == Op::CallInd)
+            {
+                continue;
+            }
+            let pick = inst.args.iter().enumerate().find_map(|(i, a)| {
+                let (g, _) = known.get(a)?;
+                let code = &m.funcs[g.index()];
+                let ok = callee.params[i].mode == Mode::Borrow
+                    && code.inline != InlineHint::Never
+                    && code.inst_count() <= BASE_THRESHOLD
+                    && closure_body(code).is_some();
+                ok.then_some((i, *g, known[a].1.clone()))
+            });
+            let Some((i, g, caps)) = pick else {
+                continue;
+            };
+            let spec = match made.get(&(c, g, i)) {
+                Some(s) => *s,
+                None => {
+                    let clone = specialized_callee(m, c, g, i);
+                    if *spent + clone.inst_count() > SPECIALIZE_BUDGET {
+                        continue;
+                    }
+                    *spent += clone.inst_count();
+                    let s = m.add_func(clone);
+                    made.insert((c, g, i), s);
+                    s
+                }
+            };
+            let call = &mut m.funcs[fi].blocks[bi].insts[ii];
+            call.imm = Imm::Func(spec);
+            call.args.splice(i..=i, caps);
+            changed = true;
+        }
+    }
+    if changed {
+        delete_unused_closures(m, fi);
+    }
+    changed
+}
+
+/// `callee` with parameter `i` (a borrowed closure) replaced by the captures of closure code
+/// `g` and a `closure.new` of `g` over them at the top of the entry block, dropped before
+/// every `ret`.
+fn specialized_callee(m: &Module, callee: FuncId, g: FuncId, i: usize) -> Func {
+    let FuncKind::Closure { captures } = &m.funcs[g.index()].kind else {
+        unreachable!("specialization picks closure code");
+    };
+    let mut f = m.funcs[callee.index()].clone();
+    f.name = format!("{}.{}", f.name, m.funcs[g.index()].name);
+    let old = f.blocks[0].params[i].value;
+    let ty = f.ty(old);
+    let loc = f.loc;
+    f.params.remove(i);
+    f.blocks[0].params.remove(i);
+    f.noalias = f
+        .noalias
+        .iter()
+        .filter(|p| **p as usize != i)
+        .map(|p| {
+            if *p as usize > i {
+                *p - 1 + captures.len() as u32
+            } else {
+                *p
+            }
+        })
+        .collect();
+    let cap_values: Vec<Value> = captures.iter().map(|t| f.new_value(*t)).collect();
+    for (k, (t, v)) in captures.iter().zip(&cap_values).enumerate() {
+        f.params.insert(
+            i + k,
+            Param {
+                ty: *t,
+                mode: Mode::Borrow,
+            },
+        );
+        f.blocks[0].params.insert(
+            i + k,
+            BlockParam {
+                value: *v,
+                mode: Mode::Borrow,
+            },
+        );
+    }
+    let k = f.new_value(ty);
+    for b in &mut f.blocks {
+        for inst in &mut b.insts {
+            inst.args
+                .iter_mut()
+                .filter(|a| **a == old)
+                .for_each(|a| *a = k);
+        }
+        b.term.for_each_use_mut(|v| {
+            if *v == old {
+                *v = k;
+            }
+        });
+        if matches!(b.term, Term::Ret(_)) {
+            b.insts.push(Inst {
+                op: Op::Drop,
+                args: vec![k],
+                imm: Imm::None,
+                res: None,
+                loc: b.term_loc,
+            });
+        }
+    }
+    f.blocks[0].insts.insert(
+        0,
+        Inst {
+            op: Op::ClosureNew,
+            args: cap_values,
+            imm: Imm::Func(g),
+            res: Some(k),
+            loc,
+        },
+    );
+    f
 }
 
 /// Removes depth accounting from functions that cannot be part of a recursive cycle.

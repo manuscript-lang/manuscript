@@ -1,7 +1,50 @@
 from "@std/collections.ms" import range
 from "./harness.ms" import bench, ints, Point
 
+# Index of the greatest key; `key` is a known lambda at every call site (see proposals/specialize-closure-args.md).
+def best_index(points: List[Point], key: Callable[[Point], Int]) -> Int:
+    var best = 0
+    var best_key = key(points.get(0, default: Point(x: 0, y: 0)))
+
+    for i in range(1, points.length()):
+        let k = key(points.get(i, default: Point(x: 0, y: 0)))
+
+        if k > best_key:
+            best_key = k
+            best = i
+
+    return best
+
+def best_index_loop(points: List[Point], scale: Int) -> Int:
+    var best = 0
+    var best_key = points.get(0, default: Point(x: 0, y: 0)).y * scale
+
+    for i in range(1, points.length()):
+        let k = points.get(i, default: Point(x: 0, y: 0)).y * scale
+
+        if k > best_key:
+            best_key = k
+            best = i
+
+    return best
+
 export def bench_list() -> Unit:
+    var points: List[Point] = []
+    for i in range(0, 100000):
+        points.append(Point(x: i, y: (i * 7919) % 10007))
+
+    let scale = 3
+    bench(
+        "list.callable_key",
+        100000,
+        lambda () -> Int:
+            return best_index(points, lambda (p: Point) -> Int: p.y * scale)
+    )
+    bench(
+        "list.callable_key_loop", 100000,
+        lambda () -> Int: return best_index_loop(points, scale)
+    )
+
     let data = ints(100000)
 
     bench(
