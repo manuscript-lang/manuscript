@@ -131,7 +131,7 @@ def invalid_bytes() -> Bytes:
     builder.concat("data: ".to_bytes())
     builder.append(255)
     builder.concat("\n\n".to_bytes())
-    return builder.freeze()
+    return builder.build()
 
 def is_case(result: Result[List[SseEvent], SseError], want: SseError) -> Bool:
     if not result.is_error(): return False

@@ -79,9 +79,9 @@ test "all builders keep Unit mutation function types":
     let append_list: Callable[[Int], Unit] = list.append
     append_list(1)
 
-    var list_result = list.freeze()
+    var list_result = list.build()
     list_result.append(2)
-    try expect_equal(list.freeze(), [1, 2])
+    try expect_equal(list.build(), [1, 2])
 
     let map = MapBuilder[String, Int]()
     let map_alias = map
@@ -95,10 +95,10 @@ test "all builders keep Unit mutation function types":
     add_view("b", 2)
     legacy_map("a", 3)
 
-    var map_result = map.freeze()
+    var map_result = map.build()
     try expect_false(map_result.keys() != ["a", "b"] or map_result.values() != [3, 2])
     map_result.add("c", 4)
-    try expect_equal(map_alias.freeze().keys(), ["a", "b", "c"])
+    try expect_equal(map_alias.build().keys(), ["a", "b", "c"])
 
     let set = SetBuilder[Int]()
     let add_set: Callable[[Int], Unit] = set.add
@@ -107,10 +107,10 @@ test "all builders keep Unit mutation function types":
     set.add(1)
     legacy_set(2)
 
-    var set_result = set.freeze()
+    var set_result = set.build()
     try expect_equal(set_result.values(), [2, 1])
     set_result.add(3)
-    try expect_equal(set.freeze().values(), [2, 1, 3])
+    try expect_equal(set.build().values(), [2, 1, 3])
 
     var bytes = BytesBuilder()
     let append_byte: Callable[[Int], Unit] = bytes.append
@@ -118,13 +118,13 @@ test "all builders keep Unit mutation function types":
     append_byte(65)
     concat_bytes("B".to_bytes())
     try expect_false(
-        (bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes())
+        (bytes.build() != "AB".to_bytes() or bytes.build() != "AB".to_bytes())
     )
 
     var text = StringBuilder()
     let append_text: Callable[[String], Unit] = text.append
     append_text("ab")
-    try expect_false(text.freeze() != "ab" or text.freeze() != "ab")
+    try expect_false(text.build() != "ab" or text.build() != "ab")
 
 test "copy names preserve Bytes and collection storage":
     let bytes = Bytes([1, 2, 3])

@@ -2003,6 +2003,7 @@ def text_error(message: String) -> TextError: TextError(message)
 resolution	2	45	147	module does not export TextError; unknown standard module @std/errors.ms
 resolution	2	56	158	module does not export category; unknown standard module @std/errors.ms
 resolution	6	36	323	unknown type TextError; add: from "@std/core.ms" import TextError
+resolution	5	46	279	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
 resolution	6	47	334	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 def get() -> Other: OutOfRange
@@ -5248,12 +5249,14 @@ resolution	2	45	93	unknown type MissingValue; use the prelude MissingValue decla
 def count() -> Int: List[Int]().length()
 resolution	1	35	34	redundant prelude import List; remove List from this import and use its prelude declaration directlyfrom "@std/collections.ms" import ListBuilder, List
 def count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	48	47	redundant prelude import List; remove List from this import and use its prelude declaration directlyfrom "@std/collections.ms" import (
+resolution	1	48	47	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	2	40	91	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, buildfrom "@std/collections.ms" import (
     List, # keep
     ListBuilder,
 )
 def count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	2	5	40	redundant prelude import List; remove List from this import and use its prelude declaration directlydef first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()
+resolution	2	5	40	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	5	40	111	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, builddef first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()
 fn bad() Unit:
    unit
 import {ListBuilder, List} from "@std/collections.ms"
@@ -5829,8 +5832,7 @@ def probe() -> String:
         b.append("x")
         i += 1
     return b.freeze()
-type	6	9	135	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change it
-type	8	12	175	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change itfn probe() Int:
+resolution	8	14	177	unknown or ambiguous member freeze on StringBuilder; available: append, buildfn probe() Int:
     let values = [parse	2	19	34	unterminated delimiter '[' opened at line 2:18; add the matching ']' before the end of the file
    type queryFaultContext struct {context.Context}
    func (queryFaultContext) Err() error {rt.Raise("query fault");return nil}
@@ -6791,6 +6793,7 @@ resolution	4	30	150	module does not export Queue; unknown standard module @std/q
 resolution	14	6	365	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	19	5	526	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
 resolution	20	16	581	unknown binding panic; add: from "@std/core.ms" import panic
+resolution	28	26	827	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
 resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
 resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queuefrom "@std/fs.ms" import filesystem
 from "@std/testing.ms" import expect_true, fail

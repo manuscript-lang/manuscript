@@ -288,7 +288,7 @@ fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
 fn collection_builders_are_shared_handles() {
     let mir = lower(
         "shared-builders",
-        "from \"@std/collections.ms\" import ListBuilder\n\nexport def main() -> Int:\n    var b = ListBuilder[Int]()\n    b.append(1)\n    b.append(2)\n    return b.freeze().length()\n",
+        "from \"@std/collections.ms\" import ListBuilder\n\nexport def main() -> Int:\n    var b = ListBuilder[Int]()\n    b.append(1)\n    b.append(2)\n    return b.build().length()\n",
     );
     assert!(mir.contains("shared.new"));
     assert!(mir.contains("shared.addr"));

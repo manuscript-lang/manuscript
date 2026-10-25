@@ -44,24 +44,24 @@ test "builder":
     let append = sb.append
     append("a")
     append("é")
-    (sb.freeze() == "aé") | try expect_true
+    (sb.build() == "aé") | try expect_true
 
 test "sealed builder":
     var sb = StringBuilder()
-    sb.freeze()
+    sb.build()
 
     let message = try expect_fault(lambda: sb.append(""))
     message | try expect_contains("builder is sealed")
 
 test "sealed map and set builders fault on every add":
     var map_builder = MapBuilder[String, Int]()
-    let map_sealed = map_builder.freeze()
+    let map_sealed = map_builder.build()
     (try expect_fault(lambda: map_builder.add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
 
     var set_builder = SetBuilder[Int]()
-    let set_sealed = set_builder.freeze()
+    let set_sealed = set_builder.build()
     (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
         "builder is sealed"
     )
@@ -70,7 +70,7 @@ test "unsealed set builder continues":
     var builder = SetBuilder[Int]()
     builder.add(1)
 
-    let frozen = builder.freeze()
+    let frozen = builder.build()
     (frozen.length() == 1) | try expect_true
 
 test "abs of the minimum overflows":

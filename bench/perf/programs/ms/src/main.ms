@@ -69,7 +69,7 @@ def bench_string() -> Int:
         sb.append("x")
         i += 1
 
-    let built = sb.freeze()
+    let built = sb.build()
     report("string_append_50k", 50000, t)
     return built.byte_length()
 

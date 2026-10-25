@@ -719,8 +719,8 @@ impl<'a> FnLower<'a> {
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
-        if name == "freeze" {
-            return self.freeze_builder(old, result_ty);
+        if name == "build" {
+            return self.build_builder(old, result_ty);
         }
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
@@ -838,8 +838,8 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.freeze()`: a copy of the accumulated value; freezing again yields the same.
-    fn freeze_builder(
+    /// `builder.build()`: a copy of the accumulated value; freezing again yields the same.
+    fn build_builder(
         &mut self,
         old: Value,
         result_ty: MTy,

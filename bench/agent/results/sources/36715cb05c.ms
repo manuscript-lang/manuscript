@@ -1059,7 +1059,7 @@ export def main() -> Int:
     if vm.last != -1 and vm.last != 10:
         vm.outbuf.append(10)
 
-    let body = vm.outbuf.freeze()
+    let body = vm.outbuf.build()
     stdout().write_bytes(body)
 
     let rv = vm.regs

@@ -7,6 +7,6 @@ from "@std/bytes.ms" import Bytes
 
 def bytes() -> Bytes: Bytes([1])
 
-def build() -> List[Int]: ListBuilder[Int]().freeze()
+def build() -> List[Int]: ListBuilder[Int]().build()
 
 def text_error(message: String) -> TextError: TextError(message)

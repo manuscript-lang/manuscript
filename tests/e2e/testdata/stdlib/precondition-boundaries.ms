@@ -18,7 +18,7 @@ test "byte updates retain relative bounds and immutable storage":
     var builder = BytesBuilder()
     builder.append(0)
     builder.append(255)
-    try expect_equal(builder.freeze(), bytes)
+    try expect_equal(builder.build(), bytes)
 
 test "list boundaries retain mutation truncation and empty ranges":
     var list = [1, 2]
