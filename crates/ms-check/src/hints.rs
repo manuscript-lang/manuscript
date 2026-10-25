@@ -627,6 +627,19 @@ impl Checker {
                 "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f\"{{value}}\").join(separator: \",\")"
             );
         }
+        if receiver.is_std("List") && matches!(name.as_str(), "sum" | "min" | "max") {
+            let element = receiver
+                .args
+                .first()
+                .map(|t| t.to_string())
+                .unwrap_or_default();
+            let need = if name == "sum" {
+                "Int, Float, Int8, Int16, Int32 or Float32 elements"
+            } else {
+                "Comparable elements"
+            };
+            return format!("{message}; {name} needs {need}, and {element} is not one");
+        }
         let hint = synonym_hint(name.as_str(), &available);
         if !hint.is_empty() {
             return format!("{message}{hint}");

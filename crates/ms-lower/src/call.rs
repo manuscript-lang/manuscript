@@ -18,6 +18,9 @@ pub(crate) struct Args {
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
+        if let Some(desugared) = self.hir.info(e).desugared {
+            return self.call_expr(&desugared);
+        }
         let saved = self.scope_override;
         self.scope_override = self.call_evidence(e);
         let out = self.call_expr_in_scope(e);

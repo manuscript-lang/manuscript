@@ -1,7 +1,7 @@
 //! `@std/math` natives. Symbols are `msstd_math_<name>`; every function takes and returns
 //! scalars by value (`Float` = `f64`, `Int` = `i64`, `Bool` = `u8`), so the ABI is plain C.
 //!
-//! The generic `max`, `min`, `max_of` and `min_of` are not natives: they are lowered by the
+//! The generic `max` and `min` are not natives: they are lowered by the
 //! compiler through the element comparison.
 #![no_std]
 
