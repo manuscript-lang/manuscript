@@ -574,7 +574,14 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Record;
-                    self.format_value(x)?
+                    if self.ety(e).is_std("Duration") {
+                        let n = self.borrow(x);
+                        let v =
+                            self.call_runtime("msstd_time_duration_to_string", &[n], MTy::STR)?;
+                        Val { v, own: true }
+                    } else {
+                        self.format_value(x)?
+                    }
                 }
             };
             acc = Some(match acc {

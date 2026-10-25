@@ -78,6 +78,14 @@ fn duration_arithmetic_and_faults() {
     assert_eq!(msstd_time_duration_add(2, 3), 5);
     assert_eq!(msstd_time_duration_to_milliseconds(2_500_000), 2);
     assert_eq!(msstd_time_duration_to_seconds(1_500_000_000), 1.5);
+    assert_eq!(
+        ret(|o| unsafe { msstd_time_duration_to_string(90_500_000_000, o) }),
+        "1m30.5s"
+    );
+    assert_eq!(
+        ret(|o| unsafe { msstd_time_duration_to_string(-1_500, o) }),
+        "-1.5µs"
+    );
     assert_fault(
         "Duration.add: overflow; found value (nanoseconds) 9223372036854775807 and other (nanoseconds) 1; result nanoseconds must be between -9223372036854775808 and 9223372036854775807",
         || msstd_time_duration_add(i64::MAX, 1),
