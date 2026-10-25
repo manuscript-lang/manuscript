@@ -1879,7 +1879,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 48 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 50 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2139,7 +2139,7 @@ def wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or_else(cause)
 type	2	63	103	String does not satisfy Error; pass a type that already implements it
 type	2	74	114	expected Callable[[], String], found Callable[[Int], String] (in argument 'create' of value.ok_or_else)
 type	2	1	41	String does not satisfy Error; use a type that implements itdef check(value: Int, key: String) -> Bool: True
-def wrong(value: Map[String, Int]) -> Bool: value.every(check)type	2	57	105	expected Callable[[String, Int], Bool], found Callable[[Int, String], Bool] (in argument 'predicate' of value.every); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)type Optional[T]:
+def wrong(value: Map[String, Int]) -> Bool: value.every(check)resolution	2	51	99	unknown or ambiguous member every on Map[String, Int]; every(predicate) is now all(predicate)type Optional[T]:
     case some(value: T)
     case none
 def wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or("missing")resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
@@ -2331,9 +2331,9 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 48 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 50 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export interface Read[T]:
     def get() -> T
 export type Box[T]:
     value: T
@@ -6454,15 +6454,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...export def main() -> Int:
+resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export def main() -> Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...export def main() -> Int:
+resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export def main() -> Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: append, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, pop, prepend, remove, reverse_in_place, reversed, set, ...from "@std/faults.ms" import panic
+resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...from "@std/faults.ms" import panic
 
 def run() -> Int:
     let boom = lambda (value: Int) -> Int: panic(message: "closure failed")
