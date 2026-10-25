@@ -35,16 +35,25 @@ pub fn empty() -> MapVal {
     }
 }
 
-/// `copy_nonoverlapping` with the 8-byte case (Int/Float/pointer slots) inline. A byte copy keeps
-/// the provenance of pointer slots, which an integer load and store would drop.
+/// `copy_nonoverlapping` with the common slot sizes (a word up to ten) inline, so a small slot
+/// is a few moves instead of a `memcpy` call. A byte copy keeps the provenance of pointer slots,
+/// which an integer load and store would drop.
 #[inline(always)]
 unsafe fn copy_slot(src: *const u8, dst: *mut u8, n: usize) {
     // SAFETY: caller contract of `copy_nonoverlapping`.
     unsafe {
-        if n == 8 {
-            core::ptr::copy_nonoverlapping(src, dst, 8);
-        } else {
-            core::ptr::copy_nonoverlapping(src, dst, n);
+        match n {
+            8 => core::ptr::copy_nonoverlapping(src, dst, 8),
+            16 => core::ptr::copy_nonoverlapping(src, dst, 16),
+            24 => core::ptr::copy_nonoverlapping(src, dst, 24),
+            32 => core::ptr::copy_nonoverlapping(src, dst, 32),
+            40 => core::ptr::copy_nonoverlapping(src, dst, 40),
+            48 => core::ptr::copy_nonoverlapping(src, dst, 48),
+            56 => core::ptr::copy_nonoverlapping(src, dst, 56),
+            64 => core::ptr::copy_nonoverlapping(src, dst, 64),
+            72 => core::ptr::copy_nonoverlapping(src, dst, 72),
+            80 => core::ptr::copy_nonoverlapping(src, dst, 80),
+            _ => core::ptr::copy_nonoverlapping(src, dst, n),
         }
     }
 }
@@ -460,10 +469,16 @@ pub unsafe fn drop_map(m: *mut MapVal, kd: &TypeDesc, vd: Option<&TypeDesc>) {
         let l = layout(kd, vd);
         let plain = crate::desc::needs_no_drop(kd) && vd.is_none_or(crate::desc::needs_no_drop);
         if !plain {
+            // String keys are the common case: release them without descriptor dispatch.
+            let strings = kd.kind == KIND_STRING;
             for i in 0..m.used {
                 let p = slot(m, &l, i);
                 if slot_hash_of(p) & LIVE != 0 {
-                    slot_drop(kd, p.add(l.koff));
+                    if strings {
+                        crate::string::release(&*(p.add(l.koff) as *const StrVal));
+                    } else {
+                        slot_drop(kd, p.add(l.koff));
+                    }
                     if let Some(vd) = vd {
                         slot_drop(vd, p.add(l.voff));
                     }

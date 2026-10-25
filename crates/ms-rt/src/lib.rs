@@ -43,6 +43,7 @@ pub mod obj;
 pub mod poller;
 pub mod process;
 pub mod profile;
+pub mod scan;
 pub mod scope;
 pub mod start;
 pub mod string;
@@ -57,6 +58,7 @@ pub mod trap;
 #[cfg(windows)]
 #[path = "trap_windows.rs"]
 pub mod trap;
+pub mod tree;
 pub mod utf8;
 pub mod vec;
 

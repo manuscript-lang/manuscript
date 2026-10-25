@@ -204,3 +204,19 @@ Decided: `ProcessGroup.spawn` passes `lambda: serve(entry)` to `msstd_process_fo
 Apply when: changing closure layout, `ProcessGroup.spawn`, the runner, or the JSON handling of `Unit`.
 Evidence: [start hook](../crates/ms-rt/src/start.rs), [fork natives](../crates/ms-std-process/src/fork.rs), [processes module](../stdlib/processes.ms), [fixture](../tests/conformance/fixtures/e2e/stdlib/processes.ms), [reject fixture](../tests/conformance/fixtures/e2e/reject/process-entry-lambda.ms).
 Verify: the processes fixture passes under `ms test`; a lambda entry is rejected by `ms check`.
+
+### A runtime builder makes compiler-laid-out values through a thunk, not a copy of the layout
+
+Decided: an untyped `parse` builds `JsonValue` in `ms_rt::tree::TreeBuilder` while the scanner runs, with no document. The runtime never learns the alternative's layout: the compiler passes the type descriptor (value size, drop) and one generated thunk, `ctor(kind, payload, out)`, that moves a `Bool` byte, `String`, list or `String`-keyed map payload into a value of that case. Completed values wait on one stack of `size` bytes each; closing a container moves its children into a list or builds the map with the ordinary map insert, which also rejects repeated keys. A failed parse drops what the stack still holds. The typed decoders still read the document.
+
+Apply when: adding another recursive alternative to build natively, or changing the `JsonValue` cases (the thunk looks them up by name) or the map/list slot layout.
+Evidence: [builder](../crates/ms-rt/src/tree.rs), [thunk and call](../crates/ms-lower/src/json.rs) (`json_tree_ctor`), [scanner](../crates/ms-std-json/src/lib.rs) (`parse_tree`), [fixture](../tests/e2e/testdata/stdlib/json.ms) ("releases partial trees on failure").
+Verify: `sh bench/perf/json/run.sh`; the json fixtures pass; a failing document leaves no leak (`make leak-check`).
+
+### Small map slots are copied inline, not by `memcpy`
+
+Verified: the map insert copied a 72-byte `JsonValue` slot through a `memcpy` call per entry; sizes up to ten words now copy inline (`copy_slot`). Check the slot size of a new element type before assuming it is covered.
+
+Apply when: a map or list of records shows `memcpy` in a profile.
+Evidence: [map slots](../crates/ms-rt/src/map.rs).
+Verify: callgrind on `bench/perf/json` (`ms build bench/perf/json/ms.toml -o /tmp/jb`, then `valgrind --tool=callgrind /tmp/jb quick twitter:parse`).
