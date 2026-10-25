@@ -71,9 +71,9 @@
         }
       ],
       "summary": {
-        "available": 11,
-        "selected": 11,
-        "passed": 11,
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
