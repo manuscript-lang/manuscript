@@ -5,7 +5,7 @@ weight = 2
 
 # Start here
 
-Run a program, learn the language, then build something useful. You only need the `ms` download.
+Run a program, learn the language, then build something useful. Start with the compiler setup and an Internet connection for its first build.
 
 ## New to Manuscript?
 
@@ -14,7 +14,7 @@ Run a program, learn the language, then build something useful. You only need th
 1. **[Run your first program](getting-started.md).** Install `ms` and build an executable.
 2. **[Take the language tour](tour.md).** Bindings, collections, functions, types, errors, modules.
 3. **[Test your code](testing.md).** Write tests and run the cases you want.
-4. **[Write idiomatic Manuscript](best-practices.md).** Control flow, errors, shared data, resources.
+4. **[Write idiomatic Manuscript](best-practices.md).** Control flow, errors, ownership, resources.
 
 Read in order with **Next**. Local statements in examples belong inside a function or test.
 
@@ -30,4 +30,4 @@ Read in order with **Next**. Local statements in examples belong inside a functi
 
 ## Working with a coding agent?
 
-Point it at `ms guide` and `ms search_symbol <name or words>`. It can verify with `ms check`, `ms fmt`, and `ms test`. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).
+Point it at `ms guide` and `ms search_symbol <name or words>`. Use `ms verify` for check, formatting, lint, and tests together; `ms check --json` gives structured diagnostics, and `ms check --fix` applies available mechanical fixes. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents).

@@ -7,7 +7,7 @@
       <a class="home-button home-button-primary" href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Try Manuscript <span aria-hidden="true">→</span></a>
       <a class="home-explore" href="{{ with .Site.GetPage "learn/tour" }}{{ .RelPermalink }}{{ end }}">Explore the language</a>
     </div>
-    <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One download</p>
+    <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> See platform setup in the quickstart</p>
   </div>
   <div class="home-example" aria-label="A complete Manuscript program">
     {{ .Page.RenderString (dict "display" "block") .Inner }}
@@ -16,18 +16,14 @@
 </section>
 <section class="home-benefits" aria-labelledby="benefits-title">
   <h2 id="benefits-title">Why Manuscript</h2>
-  <p class="home-benefits-lead">Agents write most of the code. Manuscript is built so they get it right quickly and you can see what they did.</p>
+  <p class="home-benefits-lead">The ambition is the ideal language for agentic development. Agent behavior, token use, human readability, and program analysis shape the design together.</p>
   <ul class="home-benefit-grid">
-    <li><strong>Small enough to get right</strong><span>Statically typed, with no implicit conversions or truthiness. Fewer concepts means fewer first-draft mistakes and less to review.</span></li>
-    <li><strong>Errors you can handle in the open</strong><span><code>Optional</code> and <code>Result</code> are values, <code>try</code> propagates them, and <code>match</code> is exhaustive. No hidden exceptions.</span></li>
-    <li><strong>API first, no async syntax</strong><span>Files, networking, HTTP, and JSON are imported <code>@std</code> APIs, called like any function.</span></li>
-    <li><strong>Feedback built for agents</strong><span><code>--json</code> diagnostics, <code>ms search_symbol</code> for exact APIs, <code>ms guide</code> for the cheat sheet, and one <code>ms verify</code> to check, format, lint, and test.</span></li>
-    <li><strong>Reads top to bottom</strong><span><code>|</code> pipe flows, <code>try</code> inside a flow, <code>+=</code>, <code>range</code>, and bounds-proven <code>[]</code> indexing keep code flat and short.</span></li>
-    <li><strong>Typed data in one call</strong><span><code>json.parse[T]</code> reads JSON straight into your records. Nominal types, generics, and explicit <code>impl</code> blocks keep boundaries clear.</span></li>
-    <li><strong>Inspect what was built</strong><span><code>ms review</code> shows where a change matters and <code>ms diagram</code> draws call graphs from the checked source, deterministically.</span></li>
-    <li><strong>One binary, native result</strong><span>Compiles to a standalone native executable. Nothing else to install.</span></li>
-    <li><strong>Cleanup that stays correct</strong><span><code>with</code> closes files and connections at block end, even on errors and cancellation.</span></li>
-    <li><strong>Debug and profile on source</strong><span>An editor language server, a VS Code extension, a source-level debugger, and CPU, heap, and trace profiling, all on <code>.ms</code> lines.</span></li>
+    <li><strong>Shaped by agent behavior</strong><span>We watch agents build programs, measure outcomes, tokens, and repair attempts, then use what we learn to improve syntax, APIs, and compiler feedback.</span></li>
+    <li><strong>Make every token count</strong><span>A compact syntax, inferred types, and a small, regular core aim to use context efficiently while keeping intent clear to people and tools.</span></li>
+    <li><strong>Keep reasoning local</strong><span>Explicit types at boundaries, visible mutation, and errors represented as values help agents make focused changes and people understand their effect.</span></li>
+    <li><strong>Built to be analyzed</strong><span>Static checking, source-based diagrams, and program inspection turn code into evidence that agents and reviewers can examine together.</span></li>
+    <li><strong>Feedback that moves work forward</strong><span>Structured diagnostics explain repairs. <code>ms search_symbol</code> finds exact APIs. <code>ms verify</code> brings type, formatting, lint, and test checks together.</span></li>
+    <li><strong>Native code, measured performance</strong><span>Source is checked, compiled to machine code, and linked with the runtime. Debug builds use Cranelift; optimized builds use LLVM when available. Benchmarks guide performance work. <a href="{{ with .Site.GetPage "developer-tooling/how-it-works" }}{{ .RelPermalink }}{{ end }}">How compilation works</a>.</span></li>
   </ul>
-  <p class="home-status">Version 0.1: the compiler, runtime, standard library, and tooling work today and are still evolving.</p>
+  <p class="home-status">Manuscript is in alpha. This book follows the repository; release archives may lag behind. The first link downloads build tools into a local cache; platform requirements differ. <a href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Start with the setup guide.</a></p>
 </section>

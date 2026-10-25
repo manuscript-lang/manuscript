@@ -173,7 +173,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .home-eyebrow > span { width: 6px; height: 6px; background: var(--docs-prose-link); border-radius: 50%; box-shadow: 0 0 0 4px rgba(234, 88, 12, .12); }
 .markdown .home-hero h1 { font-size: clamp(3rem, 6.6vw, 6rem); font-weight: 650; line-height: 1.02; letter-spacing: -.065em; margin: 0 0 1.5rem; }
 .home-hero h1 span { color: var(--docs-prose-link); }
-.markdown .home-description { margin: 0 auto; font-size: clamp(.95rem, 1.7vw, 1.15rem); line-height: 1.65; color: var(--docs-muted); }
+.markdown .home-description { max-width: 38rem; margin: 0 auto; font-size: clamp(.95rem, 1.7vw, 1.15rem); line-height: 1.65; color: var(--docs-muted); }
 .home-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1.75rem; margin-top: 1.75rem; }
 .markdown .home-button[href] { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 1.5rem; border-radius: 7px; padding: .8rem 1.4rem; font-size: .88rem; font-weight: 600; text-decoration: none; }
 .markdown a.home-button-primary[href],
@@ -194,7 +194,7 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
 .home-benefits { padding: 3rem 0 1.5rem; text-align: center; }
 .markdown .home-benefits h2 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); font-weight: 650; letter-spacing: -.04em; margin: 0 0 .75rem; border: 0; }
 .markdown .home-benefits-lead { max-width: 36rem; margin: 0 auto; color: var(--docs-muted); line-height: 1.65; }
-.markdown .home-benefit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; list-style: none; margin: 2rem 0 0; padding: 0; text-align: left; }
+.markdown .home-benefit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; list-style: none; margin: 2rem 0 0; padding: 0; text-align: left; }
 .markdown .home-benefit-grid li { display: grid; align-content: start; gap: .4rem; margin: 0; padding: 1.1rem 1.25rem; border: 1px solid var(--gray-200); border-radius: 10px; }
 .home-benefit-grid strong { font-size: .88rem; font-weight: 600; color: var(--docs-heading); }
 .home-benefit-grid li > span { font-size: .78rem; line-height: 1.6; color: var(--docs-muted); }
@@ -205,12 +205,13 @@ pre, code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospac
   .home-hero::before { inset-inline: 0; }
   .markdown .home-eyebrow { font-size: .68rem; margin-bottom: 1.25rem; }
   .markdown .home-hero h1 { font-size: clamp(2.45rem, 10.8vw, 4rem); }
-  .home-description { max-width: 19rem; }
+  .markdown .home-description { max-width: 19rem; }
   .home-actions { gap: 1.25rem; }
   .home-example { margin-top: 2rem; }
   .home-example .docs-code pre { font-size: .63rem; padding: 1rem; }
   .home-output { padding: .85rem 1rem; font-size: .68rem; }
   .home-run-status { display: none; }
+  .markdown .home-benefit-grid { grid-template-columns: 1fr; }
 }
 .search-shortcut { position: absolute; right: .55rem; top: .6rem; border: 1px solid var(--gray-200); border-radius: 3px; padding: .05rem .35rem; color: var(--docs-muted); font: .7rem "Geist", sans-serif; pointer-events: none; }
 .book-search input { padding-right: 2rem; }
