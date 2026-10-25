@@ -1944,14 +1944,11 @@ mod tests {
 
     /// Runs `f` as a shielded cleanup action would: cancellation is off until it returns.
     fn shielded_call<R>(f: impl FnOnce() -> R) -> R {
-        // SAFETY: tests hold the global lock and run on the task that owns the live globals.
-        unsafe {
-            *fault::SHIELD.ptr() += 1;
-            cancel_flag().store(0, Ordering::Relaxed);
-            let r = f();
-            *fault::SHIELD.ptr() -= 1;
-            r
-        }
+        fault::SHIELD.set(fault::SHIELD.get() + 1);
+        cancel_flag().store(0, Ordering::Relaxed);
+        let r = f();
+        fault::SHIELD.set(fault::SHIELD.get() - 1);
+        r
     }
 
     unsafe extern "C-unwind" fn shielded_sleeper(_: *mut u8) {
