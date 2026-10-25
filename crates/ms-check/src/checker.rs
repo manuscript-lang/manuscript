@@ -191,6 +191,8 @@ pub struct Checker {
     pub(crate) return_inference: Option<CallbackReturns>,
     pub(crate) inference_variables: VarSet,
     pub(crate) checked_arguments: Option<HashMap<NodeId, CheckedArgument>>,
+    /// The member expression that is a call's callee, with the call's argument count.
+    pub(crate) call_arity: Option<(NodeId, usize)>,
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
@@ -228,6 +230,7 @@ impl Checker {
             return_inference: None,
             inference_variables: VarSet::new(),
             checked_arguments: None,
+            call_arity: None,
             function: 0,
             serial: 0,
             loops: 0,
