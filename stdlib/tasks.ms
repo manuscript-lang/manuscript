@@ -224,8 +224,11 @@ def group_end[In, Out](
 
 # What a group keeps of a task until it is collected: enough to wait for it and close its channel.
 export type Entry[T, In, Out]:
+    # Internal state: the runtime handle of the task.
     handle: Int
+    # Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
+    # Internal state: the group's end of the task's channel.
     channel: Channel[In, Out]
 
 # Drops the entry of the collected task `handle`, so the group holds nothing for it.
@@ -254,8 +257,9 @@ def collect[T](scope: Int, handle: Int, values: Shared[List[T]]) -> Result[T, Ta
 
 # A started task that returns a `T`, with the group's end of its channel.
 export type Task[T, In = Unit, Out = Unit]:
-    # Internal state: the runtime scope and handle of the task.
+    # Internal state: the runtime scope of the task.
     scope: Int
+    # Internal state: the runtime handle of the task.
     handle: Int
     # Internal state: the group's list of uncollected tasks.
     registry: Shared[List[Entry[T, In, Out]]]

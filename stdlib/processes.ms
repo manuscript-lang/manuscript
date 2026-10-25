@@ -296,9 +296,13 @@ def wait_result[T](
 
 # What a group keeps of a process until it is closed: enough to close its channel and stop the child.
 export type Open:
+    # Internal state: the process's number in its group.
     id: Int
+    # Internal state: the running child.
     native: NativeProcess
+    # Internal state: the parent's end of the IPC pipe.
     link: NativeLink
+    # Internal state: what the parent's end has read.
     inbox: Shared[Inbox]
 
 # Closes the channel, then stops and joins the child.
@@ -317,8 +321,9 @@ export type Process[T, In = Unit, Out = Unit]:
     inbox: Shared[Inbox]
     # The parent's end of the channel: sends `In` to the child and receives the `Out` it sends.
     channel: Channel[In, Out]
-    # Internal state: the group's list of open processes, which `close` leaves.
+    # Internal state: the process's number in its group.
     id: Int
+    # Internal state: the group's list of open processes, which `close` leaves.
     registry: Shared[List[Open]]
 
 impl Process[T, In, Out]:
