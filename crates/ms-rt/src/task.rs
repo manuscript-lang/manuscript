@@ -67,7 +67,7 @@ const MIN_STACK: usize = 128 << 10;
 const GUARD: usize = 64 << 10;
 #[cfg(unix)]
 const HDR_PAGE: usize = 4096;
-const STACK_POOL: usize = 32;
+const STACK_POOL: usize = 512;
 /// Address space reserved for a task a group starts (committed lazily).
 const TASK_GROUP_STACK: usize = 16 << 20;
 const NO_DEADLINE: i64 = i64::MAX;
@@ -114,6 +114,8 @@ struct Task {
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
     timed_out: bool,
+    /// The scope that frees the task's record when it ends (`spawn_native`), or 0.
+    scope: i64,
 }
 
 #[derive(Clone, Copy)]
@@ -488,6 +490,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             kill_at: NO_DEADLINE,
             started_by: Vec::new(),
             timed_out: false,
+            scope: 0,
         });
     }
     s.live += 1;
@@ -912,7 +915,22 @@ extern "C" fn task_main() -> ! {
         (*t).state = State::Done;
         s.zombie_stack = ((*t).stack as usize, (*t).stack_len);
         (*t).stack = null_mut();
-        if (*t).detached {
+        if (*t).scope != 0 {
+            // A scope task nobody joins frees itself; one being joined is freed by its joiner.
+            crate::scope::task_ended((*t).scope, (*t).handle);
+            if (*t).joiner != 0 {
+                let j = lookup((*t).joiner);
+                if !j.is_null() {
+                    wake(j, 0);
+                }
+            } else {
+                crate::string::release_opt(&core::mem::replace(
+                    &mut (*t).msg,
+                    crate::string::NO_STR,
+                ));
+                s.zombie_task = t;
+            }
+        } else if (*t).detached {
             s.zombie_task = t;
         } else if (*t).joiner != 0 {
             let j = lookup((*t).joiner);
@@ -1304,6 +1322,49 @@ pub(crate) unsafe fn unwind_if_cancelled() {
     }
 }
 
+/// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
+unsafe fn arm_kill(h: u64, limit_ns: i64) {
+    // SAFETY: single threaded scheduler; `h` is a live task.
+    unsafe {
+        if limit_ns < 0 {
+            return;
+        }
+        let t = lookup(h);
+        let at = clock_ns().saturating_add(limit_ns);
+        (*t).kill_at = at;
+        let mut s = sched();
+        s.kills.push(Reverse((at, h)));
+        if s.kills.len() > s.kill_limit {
+            // Completed tasks leave future deadlines behind. Compact geometrically so
+            // repeated short tasks with long limits retain space proportional to live work.
+            let sched = &mut *s;
+            let slots = &sched.slots;
+            sched.kills.retain(|&Reverse((deadline, handle))| {
+                let t = lookup_in(slots, handle);
+                !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline
+            });
+            s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
+        }
+    }
+}
+
+/// Starts `entry(arg)` as a task of `scope` on a default (pooled) stack. A fault in it is the
+/// entry's to contain. It leaves the scope and frees its own record when it ends unless
+/// something is joining it, so a server can start one per request. With a non-negative
+/// `limit_ns` it is cancelled once it has run that long. Returns the handle.
+///
+/// # Safety
+/// `arg` must be valid for `entry`, which owns it.
+pub(crate) unsafe fn spawn_scoped(entry: Entry, arg: *mut u8, limit_ns: i64, scope: i64) -> u64 {
+    // SAFETY: single threaded scheduler.
+    unsafe {
+        let h = msrt_task_spawn(entry, arg, 0, 0);
+        (*lookup(h)).scope = scope;
+        arm_kill(h, limit_ns);
+        h
+    }
+}
+
 /// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
 /// when it ends, by return, cancellation, or fault. A fault in the task ends the process. With a
 /// non-negative `limit_ns` the task is cancelled once it has run that long. Returns the handle.
@@ -1320,23 +1381,7 @@ pub(crate) unsafe fn spawn_closure(
         let t = lookup(h);
         (*t).owned = closure.cast();
         (*t).started_by = fault::capture_frames();
-        if limit_ns >= 0 {
-            let at = clock_ns().saturating_add(limit_ns);
-            (*t).kill_at = at;
-            let mut s = sched();
-            s.kills.push(Reverse((at, h)));
-            if s.kills.len() > s.kill_limit {
-                // Completed tasks leave future deadlines behind. Compact geometrically so
-                // repeated short tasks with long limits retain space proportional to live work.
-                let sched = &mut *s;
-                let slots = &sched.slots;
-                sched.kills.retain(|&Reverse((deadline, handle))| {
-                    let t = lookup_in(slots, handle);
-                    !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline
-                });
-                s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
-            }
-        }
+        arm_kill(h, limit_ns);
         h
     }
 }
