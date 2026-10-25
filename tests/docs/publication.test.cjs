@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
 const book = process.env.MANUSCRIPT_BOOK_DIR || path.join(root, '.artifacts/book');
@@ -10,6 +11,57 @@ function attribute(tag, name) {
   const match = tag.match(new RegExp(`\\b${name}=(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`));
   return match && (match[1] ?? match[2] ?? match[3]);
 }
+
+test('the published browser bundle highlights the landing example and current syntax without changing text', () => {
+  const html = fs.readFileSync(path.join(book, 'index.html'), 'utf8');
+  const script = [...html.matchAll(/<script\b[^>]*>/g)].map(match => attribute(match[0], 'src'))
+    .find(src => src && /\/docs\.min\.[^/]+\.js$/.test(src));
+  assert.ok(script, 'Load the fingerprinted documentation bundle');
+  const entities = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", '#34': '"', '#39': "'" };
+  const source = html.match(/<pre\b[^>]*><code\b[^>]*>([\s\S]*?)<\/code><\/pre>/)[1]
+    .replace(/&(amp|lt|gt|quot|apos|#34|#39);/g, (_, entity) => entities[entity]);
+  const sources = [source, fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8')];
+  const classes = sources.map(() => new Set());
+  const output = [];
+  const codes = sources.map((textContent, index) => ({
+    textContent,
+    classList: { add: name => classes[index].add(name) },
+    replaceChildren: fragment => { output[index] = fragment.children; },
+  }));
+  const document = {
+    documentElement: { dataset: {} },
+    querySelector: () => null,
+    querySelectorAll: selector => selector.includes('[data-language=') ? codes : [],
+    addEventListener() {},
+    createDocumentFragment: () => ({ children: [], append(node) { this.children.push(node); } }),
+    createElement: () => ({}),
+    createTextNode: textContent => ({ textContent }),
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(book, path.basename(script)), 'utf8'), {
+    document,
+    window: { matchMedia: () => ({ matches: false, addEventListener() {} }) },
+    localStorage: { getItem: () => null },
+  });
+  for (const [index, source] of sources.entries()) {
+    assert.ok(classes[index].has('chroma'));
+    assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
+  }
+  const [rendered, syntax] = output;
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === 'f"Hello, '),
+    'The f-string opener must receive string styling');
+  assert.ok(rendered.some(node => node.className === 'se' && node.textContent === '\\n'),
+    'The shared escape rule must run inside the f-string');
+  assert.equal(rendered.filter(node => node.className === 'si').map(node => node.textContent).join(''), '{}',
+    'The shared interpolation rules must delimit the expression');
+  assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
+    'Both returns after the f-string must retain keyword styling');
+  for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
+    assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
+  }
+  for (const literal of ['0xFF_FF', '0b1010_0101', '1_000_000', '3.141_592e-2', '1_000.50_25E+2d']) {
+    assert.ok(syntax.some(node => node.className === 'mi' && node.textContent === literal), literal);
+  }
+});
 
 test('published API downloads match the current generated reference', () => {
   for (const file of ['stdlib.json', 'stdlib.md']) {
