@@ -595,7 +595,20 @@ impl Visitor for BindingWalker<'_> {
                 ..
             } => self.pattern(pattern),
             StmtKind::For { .. } | StmtKind::With { .. } => {
-                if let Some(binding) = loop_binding {
+                let expanded = self.module.facts().stmts.get(&s.id).and_then(|f| {
+                    let StmtKind::While { body, .. } = &f.expansion.as_ref()?.last()?.kind else {
+                        return None;
+                    };
+                    let StmtKind::If {
+                        binding: Some(pattern),
+                        ..
+                    } = &body.first()?.kind
+                    else {
+                        return None;
+                    };
+                    self.module.facts().patterns.get(&pattern.id).cloned()
+                });
+                if let Some(binding) = loop_binding.or(expanded) {
                     let at = self.b.header(
                         self.lexical,
                         self.module.file,
