@@ -86,7 +86,7 @@ recorded here before it is committed.)_
     `msrt_map_get_ptr` returns a borrowed value pointer or null, `msrt_map_get` copies; set algebra builds fresh sets in left-operand order.
     A set is a map with a null value descriptor and null value slot pointers.
   - `msrt_start(main_fn, tables, argc, argv)`: `main_fn` is `extern "C-unwind" fn() -> i64` (same machine ABI as `"C"`); runs on a 1 GiB mmap stack with a
-    guard page; SIGINT/SIGTERM set the cancel flag; second request or 30 s later prints `incomplete cleanup: ...` and exits 70.
+    guard page; SIGINT/SIGTERM set the cancel flag; second request or 30 s later prints `incomplete cleanup: ...` and exits 67.
   - Profiler as in section 9 (`MS_PROFILE`, `MS_PROFILE_HZ`, `MS_PERF_MAP`); function tables resolve names, frames outside the table collapse to `[runtime]`.
   - `msrt_fault_destructure(names, elements)` raises the destructuring length mismatch fault.
   - The static library is built with `panic = "abort"`; it still exports a stub `rust_eh_personality` so `C-unwind` symbols link.
@@ -287,7 +287,7 @@ stdout, writes to stderr
 cleanup fault: <message>                (one per secondary fault)
 ```
 
-and exits 70. Generated code must keep frame pointers (rbp / x29 chains) and must
+and exits 67. Generated code must keep frame pointers (rbp / x29 chains) and must
 not tail-call away frames; the runtime is built with `-C force-frame-pointers=yes`
 (`.cargo/config.toml`). Frames outside `FuncTable` are skipped.
 
@@ -299,7 +299,7 @@ cleanups can run. **Cancellation.** The byte at offset 8, `cancel: u8`, becomes 
 number after SIGINT/SIGTERM (unless shielded). Loops and calls poll it (relaxed load)
 and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 143
 (SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
-and exits 70.
+and exits 67.
 
 **Cleanup stack (`with`).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
 returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and any
@@ -319,7 +319,7 @@ Guards nest: a fault leaves only the innermost one. Cleanups registered before e
 are untouched. Not unwound: values owned by the abandoned frames are only released
 through cleanup actions, so a fault leaks anything not under `with`; the HTTP server's handler thunk registers its request
 with the cleanup stack for this reason. Faults still exit
-70 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
+67 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
 and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
 generated code needs no landing pads). Single threaded like the rest of the runtime.
 
@@ -347,7 +347,7 @@ msrt_task_count() -> usize
 `set_prepark` installs a hook every task runs just before it parks in `wait_fd` or `sleep`; the HTTP server uses it to hand the reactor role on from a handler that waits.
 
 `spawn` queues the task; it first runs when the caller parks or yields. `flags & 1` makes it
-detached: nobody joins it and a fault in it ends the process (exit 70, like any unguarded
+detached: nobody joins it and a fault in it ends the process (exit 67, like any unguarded
 fault); wrap handler bodies in `msrt_guard_call` for per-request isolation. A joinable task runs
 under a guard, and `join` returns 0 (returned), 1 (fault, report in `*msg_out`) or 2
 (cancelled). Each joinable task is joined once, which also frees it. `stack_bytes` 0 means the

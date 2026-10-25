@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "",
     "stderr": "Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type\n  at sized-abs-fault-run.ms:8 in main\n"
   }

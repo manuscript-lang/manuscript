@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "s1 = [42]\ni2 = 0\nfib(52) = 32951280099\nf3 = 0.00040272355160421566\nf4 = 18.25\nf5 = 0.00040272355160421566\ni7 = 0\ni8 = 26\nb9 = false\nacc10 = 0\nb11 = false\nb12 = false\nf13 = 4e+21\nfib(26) = 121393\nf14 = 18.25\nb15 = true\n",
     "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0333.ms:76 in main\n"
   }
