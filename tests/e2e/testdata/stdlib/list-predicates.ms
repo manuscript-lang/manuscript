@@ -73,3 +73,18 @@ test "max_by supports owned String keys":
     try expect_equal(
         words.min_by(lambda (w: String) -> String: w.clone()), some("banana")
     )
+
+test "max_by and min_by with extreme Int and Float keys":
+    let ints = [3, -9223372036854775807 - 1, 3]
+    try expect_equal(ints.max_by(lambda (x: Int) -> Int: x), some(3))
+    try expect_equal(
+        ints.min_by(lambda (x: Int) -> Int: x), some(-9223372036854775807 - 1)
+    )
+
+    let floats = [1.5, -2.5, 1.5]
+    try expect_equal(floats.max_by(lambda (x: Float) -> Float: x), some(1.5))
+    try expect_equal(floats.min_by(lambda (x: Float) -> Float: x), some(-2.5))
+
+    let ties = ["b", "a", "c"]
+    try expect_equal(ties.max_by(lambda (w: String) -> Int: 0), some("b"))
+    try expect_equal(ties.min_by(lambda (w: String) -> Int: 0), some("b"))

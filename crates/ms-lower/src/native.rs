@@ -2801,13 +2801,23 @@ impl<'a> FnLower<'a> {
                 let best = self.b.declare_var(MTy::INT, Mode::Borrow);
                 let zero = self.b.iconst(0);
                 self.b.def_var(best, zero);
-                let scalar = self.b.m.types.is_int(key_ty) || self.b.m.types.is_float(key_ty);
+                let scalar = (self.b.m.types.is_int(key_ty)
+                    && self.b.m.types.int_bits(key_ty) == Some(64))
+                    || self.b.m.types.is_float(key_ty);
                 let keys = if scalar {
-                    // Scalar keys need no storage: carry the best key in a variable.
+                    // Scalar keys need no storage: carry the best key in a variable. The seed is
+                    // the worst possible key, so the first element is never replaced by an equal
+                    // key and index 0 stays the answer for ties.
                     let seed = if self.b.m.types.is_int(key_ty) {
-                        self.b.iconst_ty(0, key_ty)
+                        self.b
+                            .iconst_ty(if max { i64::MIN } else { i64::MAX }, key_ty)
                     } else {
-                        self.b.fconst_ty(0.0, key_ty)
+                        let worst = if max {
+                            f64::NEG_INFINITY
+                        } else {
+                            f64::INFINITY
+                        };
+                        self.b.fconst_ty(worst, key_ty)
                     };
                     let best_key = self.b.declare_var(key_ty, Mode::Borrow);
                     self.b.def_var(best_key, seed);
@@ -2819,14 +2829,16 @@ impl<'a> FnLower<'a> {
                         let held = s.b.use_var(best_key);
                         let (above, below) = if max { (k, held) } else { (held, k) };
                         let beats = s.strictly_above(above, below)?;
-                        let zero = s.b.iconst(0);
-                        let first = s.b.icmp(ms_mir::ir::Cc::Eq, i, zero);
-                        let replace = s.b.binop(ms_mir::ir::Op::Or, first, beats);
-                        let at = s.b.use_var(best);
-                        let next = s.b.select(replace, i, at);
-                        s.b.def_var(best, next);
-                        let next_key = s.b.select(replace, k, held);
-                        s.b.def_var(best_key, next_key);
+                        // A branch, not selects: new extremes are rare, so it predicts well.
+                        let (take, skip) = (s.b.new_block(), s.b.new_block());
+                        s.b.br_if(beats, take, &[], skip, &[]);
+                        s.b.seal_block(take);
+                        s.b.seal_block(skip);
+                        s.b.switch_to(take);
+                        s.b.def_var(best, i);
+                        s.b.def_var(best_key, k);
+                        s.b.br(skip, &[]);
+                        s.b.switch_to(skip);
                         Ok(None)
                     })?;
                     None
