@@ -46,10 +46,10 @@ test "builder":
     let sb = StringBuilder()
     var alias = sb
     let append = alias.append
-    let freeze = sb.freeze
+    let build = sb.build
     append("a")
     append("é")
-    (freeze() == "aé") | try expect_true
+    (build() == "aé") | try expect_true
     (alias.build() == "aé") | try expect_true
 
 test "sealed builder":
