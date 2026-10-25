@@ -64,7 +64,9 @@ export def bench_list() -> Unit:
                 .length()
             )
     )
-    bench("list.sorted_natural", 100000, lambda () -> Int: return data.sorted().length())
+    bench(
+        "list.sorted_natural", 100000, lambda () -> Int: return data.sorted().length()
+    )
     bench("list.sum", 100000, lambda () -> Int: return data.sum())
     bench("list.max", 100000, lambda () -> Int: return data.max().get())
 

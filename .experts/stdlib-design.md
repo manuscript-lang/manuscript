@@ -49,3 +49,12 @@ Verified: public modules have a fixture in `tests/e2e/testdata/stdlib/*.ms`, and
 Apply when: adding a module or public member.
 Evidence: [development checks](../documentation/contributing/development.md), [runtime conventions](../documentation/contributing/runtime-conventions.md), [bindings](../stdlib/bindings.json), [docgen](../crates/ms-tooling/src/guide/src/docgen.rs).
 Verify: `make docs-check` (add `make docs-coverage` for doc-comment coverage) and `make conform`.
+
+### Natural order is a comparator, not a second sort path
+
+Decision: `List.sorted()` and `sort()` without `compare` order by the element's `Comparable.compare`; the checker rewrites the call to pass `lambda a, b: a.compare(b)` (the rewrite is recorded as `Info.desugared` and lowered in place of the written call), so user, generic and built-in element types share the comparator path and `sortgen` still reduces plain Int order to `msrt_list_sort_ints`. `sum`, `min` and `max` are native List members with receiver requirements in `bindings.json` (numeric, Comparable); `math.max_of`/`min_of` were removed. `Float.compare` must treat NaN as equal to itself and above every value, or float sorts are inconsistent.
+
+Apply when: adding a List operation that depends on an element contract, or changing `sortgen`'s recognized comparator shapes.
+Evidence: [collections.ms](../stdlib/collections.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
+Verify: `make stdlib-bench BENCHFILTER=list.sort` shows `sorted_natural` within noise of `sorted`.
+

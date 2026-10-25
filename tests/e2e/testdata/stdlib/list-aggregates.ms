@@ -25,6 +25,7 @@ test "sorted orders Int, Float and String ascending without a comparator":
     try expect_equal([2.5, -1.0, 0.0].sorted(), [-1.0, 0.0, 2.5])
     try expect_equal(["pear", "apple", "fig"].sorted(), ["apple", "fig", "pear"])
     try expect_equal(List[Int]().sorted(), List[Int]())
+
     let small: List[Int8] = [3, 1, 2]
     let expected: List[Int8] = [1, 2, 3]
     try expect_equal(small.sorted(), expected)
@@ -54,9 +55,11 @@ test "sort orders the list in place":
     try expect_equal(numbers, [1, 2, 3])
     numbers.sort(lambda a, b: b - a)
     try expect_equal(numbers, [3, 2, 1])
+
     var versions = [Version(2, "b"), Version(1, "x"), Version(2, "a")]
     versions.sort()
     try expect_equal(versions.map(lambda v: v.label.clone()), ["x", "b", "a"])
+
     var words = ["b", "c", "a"]
     words.sort()
     try expect_equal(words, ["a", "b", "c"])
@@ -66,9 +69,11 @@ test "sum adds Int, Float and sized numerics":
     try expect_equal(List[Int]().sum(), 0)
     try expect_equal([0.5, 1.5].sum(), 2.0)
     try expect_equal(List[Float]().sum(), 0.0)
+
     let small: List[Int8] = [100, 20, -3]
     let total: Int8 = 117
     try expect_equal(small.sum(), total)
+
     let narrow: List[Float32] = [1.5, 2.5]
     let narrow_total: Float32 = 4.0
     try expect_equal(narrow.sum(), narrow_total)
