@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok
 from "./support/http.ms" import http_result
-from "@std/http.ms" import headers, HttpMethod
+from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
 from "@std/net.ms" import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions
 from "@std/http.ms" import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions
@@ -81,7 +81,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
     )
 
     with let server = (
-        net.serve_stream(
+        net.serve(
             address: "127.0.0.1:0", handler: hello, options: server_options
         ) | try expect_ok
     ):
@@ -138,7 +138,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
     )
 
     with let server = (
-        net.serve_stream(
+        net.serve(
             address: "127.0.0.1:0", handler: report_protocol, options: server_options
         ) | try expect_ok
     ):

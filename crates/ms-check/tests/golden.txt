@@ -27,7 +27,8 @@ def use() -> Unit:
         return panic("unreached")
     )
 resolution	3	30	103	module does not export panic; unknown standard module @std/faults.ms
-resolution	8	16	314	unknown binding panic; add: from "@std/core.ms" import panic# Doubles a number.
+resolution	8	16	314	unknown binding panic; add: from "@std/core.ms" import panic
+type	6	68	228	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpExchange], HttpResponse] (in argument 'handler' of serve)# Doubles a number.
 export def double(value: Int) -> Int:
     return value * 2
 
@@ -6870,7 +6871,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-export def helper() -> Unit:
+type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve); the function's parameter is named request but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(request: _0)export def helper() -> Unit:
     return
 test "interruptible":
     println("READY")

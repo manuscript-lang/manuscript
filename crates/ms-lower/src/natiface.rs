@@ -253,11 +253,10 @@ const METHODS: &[MethodRow] = &[
         "msrt_net_network_request_bytes",
         &[],
     ),
-    ("net", "Network", "serve", "msrt_net_network_serve", &[]),
     (
         "net",
         "Network",
-        "serve_stream",
+        "serve",
         "msrt_net_network_serve_stream",
         &[],
     ),
@@ -348,6 +347,13 @@ const METHODS: &[MethodRow] = &[
         "HttpExchange",
         "read",
         "msrt_http_exchange_read",
+        &[],
+    ),
+    (
+        "http",
+        "HttpExchange",
+        "send",
+        "msrt_http_exchange_send",
         &[],
     ),
     (

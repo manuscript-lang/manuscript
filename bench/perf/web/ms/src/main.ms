@@ -1,7 +1,7 @@
 # Benchmark server: main <port> <data-dir>. The Go server in ../go answers the same requests.
 from "@std/bytes.ms" import Bytes
 from "@std/fs.ms" import filesystem
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
 from "@std/net.ms" import network
 from "@std/process.ms" import arguments
 
@@ -98,6 +98,7 @@ export def main() -> Int:
         i += 1
 
     let payload = text.to_bytes()
+    let dir_copy = dir.clone()
 
     let handler = lambda (request: HttpRequest) -> HttpResponse:
         if request.path == "/health":
@@ -105,14 +106,14 @@ export def main() -> Int:
         if request.path == "/top":
             return top_reply(request.query)
         if request.path == "/io":
-            return io_reply(dir, request.query, payload)
+            return io_reply(dir_copy, request.query, payload)
         if request.path.starts_with("/user/"):
             return user_reply(request.path)
 
         return reply(404, "not found\n")
 
     if let acquired = network().serve(
-        address: f"127.0.0.1:{args.get(0)}", handler: handler
+        address: f"127.0.0.1:{args.get(0)}", handler: buffered(handler)
     ):
         with let server = acquired:
             let _ignored = server.wait()

@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: timeout=30
 # Closing a server lets a response in progress finish, and returns as soon as it has.
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/process.ms" import control
@@ -13,7 +13,7 @@ def handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export def main() -> Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: handle):
+    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
         with let server = acquired:
             if let conn = network().connect(server.address()):
                 let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")

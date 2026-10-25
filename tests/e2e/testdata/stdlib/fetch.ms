@@ -1,6 +1,6 @@
 from "@std/testing.ms" import expect_equal
 from "@std/fetch.ms" import FetchBody, FetchOptions, FetcherOptions, check_status, read_json, fetch, fetcher, json_body
-from "@std/http.ms" import HttpError, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, headers
+from "@std/http.ms" import HttpError, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, headers, buffered
 from "@std/net.ms" import network
 from "@std/time.ms" import milliseconds, sleep
 from "@std/bytes.ms" import BytesBuilder
@@ -45,13 +45,13 @@ def try_append(fields: HttpHeaders, name: String, value: String) -> Unit:
     let _ignored = fields.append(name, value.to_bytes())
 
 test "fetch returns a buffered text response":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let response = try fetch(f"http://{server.address()}/echo")
         try expect_equal(response.ok(), True)
         try expect_equal(try response.text(), "GET||")
 
 test "fetch posts text and JSON bodies with default content types":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/echo"
         let text = try fetch(
             url,
@@ -72,7 +72,7 @@ test "fetch posts text and JSON bodies with default content types":
         )
 
 test "fetch decodes JSON":
-    with let server = try network().serve("127.0.0.1:0", json_route):
+    with let server = try network().serve("127.0.0.1:0", buffered(json_route)):
         let response = try fetch(f"http://{server.address()}/")
         let greeting = try read_json[Greeting](response)
         try expect_equal(greeting.name, "ada")
@@ -83,7 +83,7 @@ def json_route(request: HttpRequest) -> HttpResponse:
     )
 
 test "fetch follows redirects unless max_redirects is 0":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/old"
         let followed = try fetch(url)
         try expect_equal(followed.head.status, 200)
@@ -93,13 +93,13 @@ test "fetch follows redirects unless max_redirects is 0":
             try expect_equal(stopped.head.status, 302)
 
 test "error statuses are ordinary responses and check_status rejects them":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let response = try fetch(f"http://{server.address()}/missing")
         try expect_equal(response.ok(), False)
         try expect_equal(check_status(response).is_error(), True)
 
 test "fetch enforces max_response_bytes":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/big"
         let small = fetch(url, some(FetchOptions(max_response_bytes: some(4))))
         try expect_equal(small.is_error(), True)
@@ -108,14 +108,14 @@ test "fetch enforces max_response_bytes":
         try expect_equal(whole.body.length(), 10)
 
 test "fetch times out a slow response":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/slow"
         let slow = fetch(url, some(FetchOptions(timeout: some(milliseconds(200)))))
         try expect_equal(slow.is_error(), True)
         try expect_equal(slow.err().message(), "HTTP: operation timed out")
 
 test "Fetcher.stream returns the body incrementally and reuses the client":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         with let client = try fetcher():
             let url = f"http://{server.address()}/big"
 
@@ -137,7 +137,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
             try expect_equal(again.body.length(), 10)
 
 test "a closed Fetcher returns Closed":
-    with let server = try network().serve("127.0.0.1:0", route):
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let client = try fetcher()
         client.close()
 

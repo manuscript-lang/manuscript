@@ -582,6 +582,7 @@ msrt_http_exchange_path(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_protocol(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_query(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_read( x: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
+msrt_http_exchange_send( x: *const Obj, status: i64, headers: *const Obj, body: *const VecVal, err: *mut StrVal, ) -> u8
 msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write( x: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write_bytes( x: *const Obj, data: *const VecVal, err: *mut StrVal, ) -> u8

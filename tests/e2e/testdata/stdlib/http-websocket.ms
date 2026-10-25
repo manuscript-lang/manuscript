@@ -1,6 +1,6 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "./support/http.ms" import http_result
-from "@std/http.ms" import headers, HttpMethod
+from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
 from "@std/net.ms" import network
 from "@std/http.ms" import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions
@@ -48,7 +48,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
     )
 
     with let server = (
-        net.serve_stream(
+        net.serve(
             address: "127.0.0.1:0", handler: echo, options: options
         ) | try expect_ok
     ):
@@ -111,7 +111,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
     with let server = (
-        net.serve_stream(
+        net.serve(
             address: "127.0.0.1:0", handler: echo, options: options
         ) | try expect_ok
     ):
@@ -146,7 +146,7 @@ test "HTTP streaming handlers see the Host request header":
     )
 
     with let server = (
-        net.serve_stream(
+        net.serve(
             address: "127.0.0.1:0", handler: report_host, options: options
         ) | try expect_ok
     ):

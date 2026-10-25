@@ -1,5 +1,6 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/http.ms" import (
+    buffered,
     headers,
     HttpHeaders,
     HttpMethod,
@@ -48,7 +49,8 @@ def handle_headers(request: HttpRequest) -> HttpResponse:
 test "one header type preserves repeated values through buffered requests":
     with let server = (
         network().serve(
-            address: "127.0.0.1:0", handler: handle_headers, max_requests: 2
+            address: "127.0.0.1:0", handler: buffered(handle_headers),
+            options: HttpServerOptions(max_requests: 2)
         ) | try expect_ok
     ):
         let response = (
@@ -105,7 +107,7 @@ def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
 
 test "streaming proxy uses the same byte-valued header type":
     with let server = (
-        network().serve_stream(
+        network().serve(
             address: "127.0.0.1:0", handler: echo_headers,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok
@@ -165,7 +167,7 @@ test "empty options and an omitted request body use checked defaults":
     (client_options.decompress or client_options.cookies) | try expect_false
     (HttpServerOptions().tls.is_none()) | try expect_true
     with let server = (
-        network().serve_stream(
+        network().serve(
             address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
         ) | try expect_ok
     ):
