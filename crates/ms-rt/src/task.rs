@@ -38,6 +38,10 @@ pub const SPAWN_FATAL: u32 = 2;
 /// `msrt_token_new` flag: another thread will post the token, so while it is unposted the
 /// scheduler waits for it instead of reporting a deadlock.
 pub const TOKEN_REMOTE: u32 = 1;
+/// `msrt_token_new` flag, with `TOKEN_REMOTE`: the post comes from code running in another
+/// isolate, not from a thread that finishes on its own. When every isolate waits only on such
+/// tokens, nothing can wake any of them, which is a deadlock.
+pub const TOKEN_PEER: u32 = 2;
 
 /// Unix task stacks are slots of this size, aligned to it: the stack pointer's high bits name
 /// the slot, whose first page holds the task's `fault::Hdr` (see `stack::create`).
@@ -124,6 +128,8 @@ struct Token {
     live: bool,
     /// Expects a post from another thread that has not been delivered yet.
     remote: bool,
+    /// The pending post comes from another isolate (`TOKEN_PEER`).
+    peer: bool,
     /// Handle of the task parked on the token, or 0.
     waiter: u64,
     /// The value of a delivered post that the waiter has not taken yet.
@@ -155,6 +161,8 @@ struct Sched {
     free_tokens: Vec<usize>,
     /// Live tokens still expecting a post from another thread.
     remote_tokens: usize,
+    /// Those of `remote_tokens` that another isolate will post.
+    peer_tokens: usize,
 }
 
 /// Token generations are 20 bits: the id's high 12 bits name the owning isolate (see `isolate`).
@@ -181,6 +189,7 @@ crate::isolate_static! {
     tokens: Vec::new(),
     free_tokens: Vec::new(),
     remote_tokens: 0,
+    peer_tokens: 0,
 };
 }
 
@@ -723,6 +732,29 @@ unsafe fn poll_ready(timeout_ms: i32) {
     }
 }
 
+/// Ends the wait of the task whose park the scheduler is about to fault out of, so its cleanup
+/// can park again without a later post to the old token waking the new wait.
+unsafe fn abandon_wait() {
+    let mut s = sched();
+    // SAFETY: `cur` is the task that is parking.
+    unsafe {
+        let cur = s.cur;
+        if cur.is_null() || (*cur).state != State::Waiting {
+            return;
+        }
+        if (*cur).wait_token != 0 {
+            if let Some(k) = token_mut(&mut s, (*cur).wait_token) {
+                k.waiter = 0;
+            }
+            (*cur).wait_token = 0;
+        }
+        (*cur).deadline = NO_DEADLINE;
+        (*cur).state = State::Running;
+    }
+}
+
+const CROSS_ISOLATE_DEADLOCK: &[u8] = b"deadlock: every isolate is waiting on another (a worker channel or worker result) and nothing can wake them";
+
 /// Blocks until at least one task is runnable.
 unsafe fn reactor_wait() {
     let mut s = sched();
@@ -765,10 +797,23 @@ unsafe fn reactor_wait() {
                 };
                 break;
             }
-            if timeout_ms < 0 && s.fd_waiting == 0 && s.remote_tokens == 0 {
-                fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
+            let mut parked = false;
+            if timeout_ms < 0 && s.fd_waiting == 0 {
+                if s.remote_tokens == 0 {
+                    fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
+                }
+                // Waiting only on other isolates: stuck if they all wait like this.
+                parked = s.remote_tokens == s.peer_tokens;
+            }
+            if parked && crate::isolate::enter_idle() {
+                abandon_wait();
+                fault::fault(CROSS_ISOLATE_DEADLOCK);
             }
             poll_ready(timeout_ms);
+            if parked && crate::isolate::leave_idle() {
+                abandon_wait();
+                fault::fault(CROSS_ISOLATE_DEADLOCK);
+            }
         }
     }
 }
@@ -1339,7 +1384,9 @@ unsafe fn post(id: u64, value: u64, remote: bool) {
     };
     if remote && k.remote {
         k.remote = false;
+        let peer = core::mem::take(&mut k.peer);
         s.remote_tokens -= 1;
+        s.peer_tokens -= usize::from(peer);
     }
     let k = token_mut(&mut s, id).unwrap_or_else(|| fault::fatal(b"runtime invariant: token"));
     if k.posted.is_some() {
@@ -1386,6 +1433,7 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
                     gen_: 0,
                     live: false,
                     remote: false,
+                    peer: false,
                     waiter: 0,
                     posted: None,
                 });
@@ -1399,12 +1447,14 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
         }
         k.live = true;
         k.remote = remote;
+        k.peer = remote && flags & TOKEN_PEER != 0;
         k.waiter = 0;
         k.posted = None;
         let id =
             (isolate::id() as u64) << isolate::ID_SHIFT | (k.gen_ as u64) << 32 | (idx as u64 + 1);
         if remote {
             s.remote_tokens += 1;
+            s.peer_tokens += usize::from(flags & TOKEN_PEER != 0);
         }
         id
     }
@@ -1505,8 +1555,10 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
         k.live = false;
         k.posted = None;
         let remote = std::mem::replace(&mut k.remote, false);
+        let peer = core::mem::take(&mut k.peer);
         if remote {
             s.remote_tokens -= 1;
+            s.peer_tokens -= usize::from(peer);
         }
         s.free_tokens.push((id & 0xffff_ffff) as usize - 1);
     }
@@ -1552,6 +1604,7 @@ pub fn teardown() {
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;
+        s.peer_tokens = 0;
         isolate::clear_posts();
     }
 }
@@ -1737,6 +1790,29 @@ mod tests {
             assert_eq!(msrt_task_join(spinner, null_mut()), 0);
             msrt_token_free(token);
             assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+        }
+        teardown();
+    }
+
+    /// A wait for a plain thread (a blocking-pool job, a helper) is not a deadlock even while a
+    /// token that only another isolate could post is also pending.
+    #[test]
+    fn a_thread_post_is_not_a_deadlock_beside_a_pending_peer_token() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; the test thread plays the main isolate.
+        unsafe {
+            let peer = msrt_token_new(TOKEN_REMOTE | TOKEN_PEER);
+            let plain = msrt_token_new(TOKEN_REMOTE);
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                msrt_token_post_remote(plain, 7);
+            });
+            let mut value = 0;
+            assert_eq!(msrt_token_park(plain, -1, &mut value), 0);
+            assert_eq!(value, 7);
+            msrt_token_free(plain);
+            msrt_token_free(peer);
         }
         teardown();
     }
