@@ -1346,14 +1346,35 @@ impl FnLower<'_> {
             .find(|a| a.name.as_str() == "limits")
             .map(|a| a.val);
         let flat = self.jlimits(limits)?;
+        // An untyped parse is built by the runtime while scanning, without a document.
+        let tree = t.is_std("JsonValue");
         let doc_ty = self.jdoc_ty();
-        let doc_slot = self.jslot(doc_ty);
-        let root_slot = self.jslot(MTy::INT);
         let mut vals = vec![text];
         vals.extend(flat);
-        vals.push(doc_slot);
-        vals.push(root_slot);
-        let code = self.status_code("msrt_json_parse", &vals)?;
+        let (doc_slot, root_slot) = if tree {
+            let mt = self.jmty(t)?;
+            let ctor = self.json_tree_ctor(t, mt)?;
+            let ctor = self
+                .b
+                .emit(Op::FuncAddr, &[], Imm::Func(ctor), Some(MTy::PTR))
+                .expect("func.addr");
+            let desc = self.type_desc(mt);
+            let slot = self.jslot(mt);
+            vals.extend([desc, ctor, slot]);
+            (slot, slot)
+        } else {
+            let doc_slot = self.jslot(doc_ty);
+            let root_slot = self.jslot(MTy::INT);
+            vals.push(doc_slot);
+            vals.push(root_slot);
+            (doc_slot, root_slot)
+        };
+        let sym = if tree {
+            "msrt_json_parse_tree"
+        } else {
+            "msrt_json_parse"
+        };
+        let code = self.status_code(sym, &vals)?;
         let zero = self.b.iconst(0);
         let good = self.b.icmp(Cc::Eq, code, zero);
         let TyKind::Alt(ra) = self.b.m.types.kind(rty).clone() else {
@@ -1369,6 +1390,11 @@ impl FnLower<'_> {
             good,
             rty,
             &mut |s| {
+                if tree {
+                    let mt = s.jmty(t)?;
+                    let x = s.take_slot(doc_slot, mt);
+                    return Ok(Some(s.b.alt_new(ra, ok as u32, &[x])));
+                }
                 let doc = s.take_slot(doc_slot, doc_ty);
                 let raw = s.take_slot(root_slot, MTy::INT);
                 let m = s.b.iconst(0xffff_ffff);
@@ -1404,6 +1430,87 @@ impl FnLower<'_> {
                 Ok(Some(s.b.alt_new(ra, err as u32, &[e])))
             },
         )
+    }
+
+    /// The thunk the runtime calls to make a `JsonValue` of a case from its payload:
+    /// `ctor(kind, payload, out)` moves the payload (`Bool` byte, `String`, list or map) into a
+    /// new value of the case of that node kind written at `out`.
+    fn json_tree_ctor(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
+        let key = format!("json-tree:{}", ct::type_key(t));
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return Ok(*f);
+        }
+        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("JsonValue is an alternative"));
+        };
+        let cases = ct::cases(t);
+        let case = |name: &str| {
+            cases
+                .iter()
+                .position(|c| c.name.as_str() == name)
+                .ok_or_else(|| Error::new("JsonValue lacks a case"))
+        };
+        let order = [
+            "Null",
+            "BoolValue",
+            "NumberValue",
+            "StringValue",
+            "ArrayValue",
+            "ObjectValue",
+        ]
+        .map(case);
+        let mut index = [0usize; 6];
+        for (slot, found) in index.iter_mut().zip(order) {
+            *slot = found?;
+        }
+        let payload_tys = [
+            None,
+            Some(MTy::BOOL),
+            Some(MTy::STR),
+            Some(MTy::STR),
+            Some(self.jmty(&cases[index[4]].fields[0].ty)?),
+            Some(self.jmty(&cases[index[5]].fields[0].ty)?),
+        ];
+        let mut tb = FuncBuilder::new(
+            self.b.m,
+            "json_tree_ctor",
+            vec![borrowed(MTy::INT), borrowed(MTy::PTR), borrowed(MTy::PTR)],
+            MTy::INT,
+        );
+        tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = tb.params();
+        let (kind, payload, out) = (args[0], args[1], args[2]);
+        let blocks: Vec<_> = (0..6).map(|_| tb.new_block()).collect();
+        let other = tb.new_block();
+        let arms: Vec<(i64, _)> = blocks
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (i as i64, *b))
+            .collect();
+        tb.switch(kind, &arms, other);
+        tb.seal_block(other);
+        tb.switch_to(other);
+        let zero = tb.iconst(0);
+        tb.ret(Some(zero));
+        for (k, block) in blocks.iter().enumerate() {
+            tb.seal_block(*block);
+            tb.switch_to(*block);
+            let fields: Vec<Value> = payload_tys[k]
+                .map(|ty| {
+                    tb.emit(Op::Take, &[payload], Imm::Ty(ty), Some(ty))
+                        .expect("take")
+                })
+                .into_iter()
+                .collect();
+            let v = tb.alt_new(a, index[k] as u32, &fields);
+            tb.emit(Op::Put, &[out, v], Imm::None, None);
+            let zero = tb.iconst(0);
+            tb.ret(Some(zero));
+        }
+        let thunk = tb.into_func();
+        let id = self.b.m.add_func(thunk);
+        self.cx.helpers.insert(key, id);
+        Ok(id)
     }
 
     /// `error(JsonError.<case>)`.

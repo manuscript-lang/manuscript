@@ -440,6 +440,7 @@ msstd_io_flush(h: *mut Host) -> u8
 msstd_io_close(h: *mut Host)
 msstd_io_is_closed(h: *const Host) -> u8
 msrt_json_parse( text: *const StrVal, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, out: *mut *mut DocObj, root: *mut u32, ) -> u8
+msrt_json_parse_tree( text: *const StrVal, has_max_bytes: u8, max_bytes: i64, has_max_depth: u8, max_depth: i64, has_max_values: u8, max_values: i64, desc: *const TypeDesc, ctor: TreeCtorFn, out: *mut u8, ) -> u8
 msrt_json_kind(d: *const DocObj, id: u32) -> u8
 msrt_json_bool(d: *const DocObj, id: u32) -> u8
 msrt_json_text(d: *const DocObj, id: u32, out: *mut StrVal)

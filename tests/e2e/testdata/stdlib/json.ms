@@ -30,6 +30,38 @@ test "JSON independently enforces byte depth and value budgets":
     let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidInput)
     try expect_equal(parse("null", JsonLimits(-1)), invalid)
 
+test "JSON untyped parse keeps document shape and releases partial trees on failure":
+    let long = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    let text = (
+        "[{\""
+        + long
+        + "\":[1,\""
+        + long
+        + "\",{}],\"k\\n\":null},[],true,-1.5e3,\"\\u00e9\"]"
+    )
+    let parsed = try parse(text)
+    try expect_equal(try stringify(parsed), text.replace("\\u00e9", "é"))
+
+    var wide = "{"
+    for i in range(0, 40):
+        wide += (
+            "\"k"
+            + i.to_string()
+            + "\":[\""
+            + long
+            + i.to_string()
+            + "\",{\"n\":"
+            + i.to_string()
+            + "}],"
+        )
+
+    let invalid: Result[JsonValue, JsonError] = error(JsonError.InvalidData)
+    try expect_equal(parse(wide + "\"k7\":0}"), invalid)
+    try expect_equal(parse(wide + "\"k40\":["), invalid)
+
+    let fine = try parse(wide + "\"k40\":0}")
+    try expect_equal(try stringify(fine), wide + "\"k40\":0}")
+
 test "JSON stringify rejects number text with trailing whitespace":
     let padded: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(JsonValue.NumberValue("1\n")), padded)

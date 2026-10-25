@@ -9,7 +9,8 @@
 //!
 //! A [`Doc`] allocates a handful of vectors however large the document is: strings and numbers
 //! are [`Span`]s into one text buffer (the parsed source, followed by decoded escapes), and
-//! parsed containers are ranges of two shared pools.
+//! parsed containers are ranges of two shared pools. An untyped parse skips the document:
+//! [`parse_tree`] builds the `JsonValue` through a [`TreeBuilder`] while scanning.
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.
@@ -23,6 +24,7 @@ pub mod ffi;
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::Fail;
+use ms_rt::tree::TreeBuilder;
 
 /// The deepest container nesting `parse` accepts.
 pub const DEPTH_CEILING: usize = 100_000;
@@ -328,30 +330,7 @@ fn unicode_valid(s: &[u8]) -> bool {
 const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
-/// The index of the first byte at or after `i` that a JSON string must escape (`"`, `\` or a
-/// control character), eight bytes at a time.
-fn find_special(b: &[u8], mut i: usize) -> Option<usize> {
-    while let Some(chunk) = b.get(i..i + 8) {
-        let w = u64::from_le_bytes([
-            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-        ]);
-        let zero = |x: u64| x.wrapping_sub(ONES) & !x & HIGHS;
-        let m = zero(w ^ (ONES * 0x22))
-            | zero(w ^ (ONES * 0x5c))
-            | (w.wrapping_sub(ONES * 0x20) & !w & HIGHS);
-        if m != 0 {
-            return Some(i + (m.trailing_zeros() / 8) as usize);
-        }
-        i += 8;
-    }
-    while let Some(&c) = b.get(i) {
-        if c == b'"' || c == b'\\' || c < 0x20 {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
-}
+use ms_rt::scan::{json_special as find_special, skip_spaces};
 
 enum Frame {
     /// An array whose items so far are `vals[start..]`.
@@ -382,6 +361,8 @@ struct Scanner<'a> {
     max_depth: usize,
     max_values: usize,
     limit_hit: bool,
+    /// Whether the last string was decoded into `doc.text` rather than read from `src`.
+    decoded: bool,
     doc: Doc,
     /// Open-addressing scratch table for [`Scanner::has_duplicate`].
     table: Vec<u32>,
@@ -396,16 +377,7 @@ impl Scanner<'_> {
             if c > b' ' || !matches!(c, b' ' | b'\t' | b'\n' | b'\r') {
                 break;
             }
-            p += 1;
-            while let Some(chunk) = b.get(p..p + 8) {
-                let w = u64::from_le_bytes([
-                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-                ]);
-                if w != ONES * 0x20 {
-                    break;
-                }
-                p += 8;
-            }
+            p = skip_spaces(b, p + 1);
         }
         self.pos = p;
     }
@@ -482,6 +454,7 @@ impl Scanner<'_> {
         let end = find_special(self.text, start)?;
         if self.text[end] == b'"' {
             self.pos = end + 1;
+            self.decoded = false;
             return Some(Span {
                 off: start as u32,
                 len: (end - start) as u32,
@@ -492,6 +465,7 @@ impl Scanner<'_> {
 
     /// The rest of a string whose first escape or control character is at `at`.
     fn escaped_string(&mut self, start: usize, mut at: usize) -> Option<Span> {
+        self.decoded = true;
         let off = self.doc.text.len();
         // `src` is valid UTF-8 and runs end at ASCII bytes, so they are character boundaries.
         self.doc.text.push_str(self.src.get(start..at)?);
@@ -592,6 +566,124 @@ impl Scanner<'_> {
             }
         }
         false
+    }
+
+    /// The text of the string `s` just read.
+    fn text_of(&self, s: Span) -> &str {
+        let (off, len) = (s.off as usize, s.len as usize);
+        if self.decoded {
+            &self.doc.text[off..off + len]
+        } else {
+            &self.src[off..off + len]
+        }
+    }
+
+    /// Reads a string value and hands its text to `put`.
+    fn string_into(&mut self, put: impl FnOnce(&str)) -> Option<()> {
+        let s = self.string()?;
+        put(self.text_of(s));
+        // Decoded text is scratch: the next string reuses it.
+        self.doc.text.clear();
+        Some(())
+    }
+
+    /// Like [`Scanner::parse`], building values with `b` instead of a document.
+    fn parse_tree(&mut self, b: &mut TreeBuilder<'_>) -> Option<()> {
+        let mut stack: Vec<u8> = Vec::new();
+        'value: loop {
+            self.count += 1;
+            if self.count > self.max_values {
+                self.limit_hit = true;
+                return None;
+            }
+            self.skip_space();
+            let c = *self.text.get(self.pos)?;
+            match c {
+                b'n' => {
+                    self.literal(b"null").then_some(())?;
+                    b.null();
+                }
+                b't' => {
+                    self.literal(b"true").then_some(())?;
+                    b.boolean(true);
+                }
+                b'f' => {
+                    self.literal(b"false").then_some(())?;
+                    b.boolean(false);
+                }
+                b'"' => self.string_into(|t| b.string(t))?,
+                b'-' | b'0'..=b'9' => {
+                    let start = self.pos;
+                    if !self.number() {
+                        return None;
+                    }
+                    b.number(&self.src[start..self.pos]);
+                }
+                b'[' | b'{' => {
+                    if stack.len() + 1 > self.max_depth {
+                        self.limit_hit = true;
+                        return None;
+                    }
+                    self.pos += 1;
+                    self.skip_space();
+                    let close = if c == b'[' { b']' } else { b'}' };
+                    let array = c == b'[';
+                    if array {
+                        b.begin_array();
+                    } else {
+                        b.begin_object();
+                    }
+                    if self.text.get(self.pos) == Some(&close) {
+                        self.pos += 1;
+                        if array {
+                            b.end_array();
+                        } else {
+                            b.end_object().then_some(())?;
+                        }
+                    } else {
+                        if !array {
+                            self.member_key_into(b)?;
+                        }
+                        stack.push(c);
+                        continue 'value;
+                    }
+                }
+                _ => return None,
+            }
+            // The value on top of `b` is complete: close the containers it ends.
+            loop {
+                let Some(&open) = stack.last() else {
+                    return Some(());
+                };
+                let closer = if open == b'[' { b']' } else { b'}' };
+                self.skip_space();
+                let sep = *self.text.get(self.pos)?;
+                self.pos += 1;
+                if sep == closer {
+                    stack.pop();
+                    if open == b'[' {
+                        b.end_array();
+                    } else {
+                        b.end_object().then_some(())?;
+                    }
+                    continue;
+                }
+                if sep != b',' {
+                    return None;
+                }
+                if open == b'{' {
+                    self.member_key_into(b)?;
+                }
+                continue 'value;
+            }
+        }
+    }
+
+    fn member_key_into(&mut self, b: &mut TreeBuilder<'_>) -> Option<()> {
+        let key = self.member_key()?;
+        b.key(self.text_of(key));
+        self.doc.text.clear();
+        Some(())
     }
 
     fn parse(&mut self) -> Option<NodeId> {
@@ -716,8 +808,9 @@ impl Scanner<'_> {
     }
 }
 
-/// Parses one JSON value, returning the document and the root node.
-pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
+/// The depth and value budgets of a parse of `text` under `limits`; fails when the text is over
+/// its byte budget.
+fn budgets(text: &str, limits: Limits) -> Result<(usize, usize), Fail> {
     let (max_bytes, max_depth, max_values) = (
         budget(limits.max_bytes)?,
         budget(limits.max_depth)?,
@@ -730,6 +823,39 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
     if u32::try_from(text.len()).is_err() {
         return Err(Fail::LimitExceeded);
     }
+    Ok((max_depth.min(DEPTH_CEILING), max_values))
+}
+
+fn scanner(text: &str, max_depth: usize, max_values: usize, doc: Doc) -> Scanner<'_> {
+    Scanner {
+        src: text,
+        text: text.as_bytes(),
+        pos: 0,
+        count: 0,
+        max_depth,
+        max_values,
+        limit_hit: false,
+        decoded: false,
+        doc,
+        table: Vec::new(),
+    }
+}
+
+/// The failure of a parse that did not succeed.
+fn failure(text: &str, limit_hit: bool) -> Fail {
+    // Go's decoder would replace what the escape scan rejects, which outranks a limit.
+    if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) {
+        Fail::InvalidData
+    } else if limit_hit {
+        Fail::LimitExceeded
+    } else {
+        Fail::InvalidData
+    }
+}
+
+/// Parses one JSON value, returning the document and the root node.
+pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
+    let (max_depth, max_values) = budgets(text, limits)?;
     let mut doc = Doc::default();
     doc.text.reserve(text.len() + text.len() / 16);
     doc.text.push_str(text);
@@ -737,17 +863,7 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
     doc.nodes.reserve(text.len() / 8);
     doc.items.reserve(text.len() / 16);
     doc.members.reserve(text.len() / 32);
-    let mut p = Scanner {
-        src: text,
-        text: text.as_bytes(),
-        pos: 0,
-        count: 0,
-        max_depth: max_depth.min(DEPTH_CEILING),
-        max_values,
-        limit_hit: false,
-        doc,
-        table: Vec::new(),
-    };
+    let mut p = scanner(text, max_depth, max_values, doc);
     let root = p.parse();
     let ok = root.is_some_and(|_| {
         p.skip_space();
@@ -757,12 +873,23 @@ pub fn parse(text: &str, limits: Limits) -> Result<(Doc, NodeId), Fail> {
         // Decoded escapes grew the text past what a span can address.
         (true, Some(_)) if u32::try_from(p.doc.text.len()).is_err() => Err(Fail::LimitExceeded),
         (true, Some(root)) => Ok((p.doc, root)),
-        // Go's decoder would replace what the escape scan rejects, which outranks a limit.
-        _ if text.as_bytes().contains(&b'\\') && !unicode_valid(text.as_bytes()) => {
-            Err(Fail::InvalidData)
-        }
-        _ if p.limit_hit => Err(Fail::LimitExceeded),
-        _ => Err(Fail::InvalidData),
+        _ => Err(failure(text, p.limit_hit)),
+    }
+}
+
+/// Parses one JSON value into `b`, which holds the root afterwards; on failure `b` is left to be
+/// dropped.
+pub fn parse_tree(text: &str, limits: Limits, b: &mut TreeBuilder<'_>) -> Result<(), Fail> {
+    let (max_depth, max_values) = budgets(text, limits)?;
+    let mut p = scanner(text, max_depth, max_values, Doc::default());
+    let ok = p.parse_tree(b).is_some() && {
+        p.skip_space();
+        p.pos == text.len()
+    };
+    if ok {
+        Ok(())
+    } else {
+        Err(failure(text, p.limit_hit))
     }
 }
 
@@ -771,17 +898,7 @@ pub fn number_text_valid(s: &str) -> bool {
     if s.is_empty() {
         return false;
     }
-    let mut p = Scanner {
-        src: s,
-        text: s.as_bytes(),
-        pos: 0,
-        count: 0,
-        max_depth: 0,
-        max_values: 0,
-        limit_hit: false,
-        doc: Doc::default(),
-        table: Vec::new(),
-    };
+    let mut p = scanner(s, 0, 0, Doc::default());
     p.number() && p.pos == s.len()
 }
 

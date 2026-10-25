@@ -8,6 +8,7 @@ use crate::{Doc, Limits, Node, Writer};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
+use ms_rt::tree::{TreeBuilder, TreeCtor, ValueDesc, ValueOut};
 
 abi_handle!(Doc);
 abi_handle!(Writer);
@@ -49,6 +50,31 @@ native! {
         let (d, id) = crate::parse(text, limits)?;
         out.write(Object(d));
         root.write(id);
+        Ok(())
+    }
+
+    /// Parses `text` straight into a value of the alternative described by `desc`, built by `ctor`
+    /// (see `ms_rt::tree`), written to `out` on success.
+    fn msrt_json_parse_tree(
+        text: &str,
+        has_max_bytes: bool,
+        max_bytes: i64,
+        has_max_depth: bool,
+        max_depth: i64,
+        has_max_values: bool,
+        max_values: i64,
+        desc: ValueDesc,
+        ctor: TreeCtor,
+        out: ValueOut,
+    ) -> Result<(), Fail> {
+        let limits = Limits {
+            max_bytes: has_max_bytes.then_some(max_bytes),
+            max_depth: has_max_depth.then_some(max_depth),
+            max_values: has_max_values.then_some(max_values),
+        };
+        let mut b = TreeBuilder::new(desc, ctor, 64);
+        crate::parse_tree(text, limits, &mut b)?;
+        b.finish(out);
         Ok(())
     }
 
