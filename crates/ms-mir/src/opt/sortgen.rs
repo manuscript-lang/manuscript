@@ -215,6 +215,9 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
         enum V {
             Arg(i64),
             Num(i64),
+            // An argument boxed into a `Comparable` value, and the pointer to its payload.
+            Boxed(i64),
+            Payload(i64),
         }
         let mut env: HashMap<Value, V> = HashMap::new();
         env.insert(a, V::Arg(x));
@@ -252,7 +255,20 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
                         };
                         (inst.res?, V::Num(if c != 0 { t } else { e }))
                     }
-                    (Op::DepthEnter | Op::DepthLeave, _) => continue,
+                    // `a.compare(b)` on a generic element passes `b` as a boxed `Comparable`.
+                    (Op::IfaceNew, _) => match env.get(inst.args.first()?)? {
+                        V::Arg(x) => (inst.res?, V::Boxed(*x)),
+                        _ => return None,
+                    },
+                    (Op::IfaceData, _) => match env.get(inst.args.first()?)? {
+                        V::Boxed(x) => (inst.res?, V::Payload(*x)),
+                        _ => return None,
+                    },
+                    (Op::Load, _) => match env.get(inst.args.first()?)? {
+                        V::Payload(x) => (inst.res?, V::Arg(*x)),
+                        _ => return None,
+                    },
+                    (Op::DepthEnter | Op::DepthLeave | Op::Drop, _) => continue,
                     _ => return None,
                 };
                 env.insert(res, v);
@@ -261,14 +277,14 @@ fn plain_int_order(m: &Module, g: FuncId) -> Option<bool> {
                 Term::Ret(Some(v)) => {
                     return match env.get(v)? {
                         V::Num(c) => Some(*c < 0),
-                        V::Arg(_) => None,
+                        _ => None,
                     };
                 }
                 Term::Br(t) => t,
                 Term::CondBr { cond, then, els } => match env.get(cond)? {
                     V::Num(c) if *c != 0 => then,
                     V::Num(_) => els,
-                    V::Arg(_) => return None,
+                    _ => return None,
                 },
                 _ => return None,
             };

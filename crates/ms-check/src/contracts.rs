@@ -178,10 +178,13 @@ impl Checker {
             .as_ref()
             .is_some_and(|s| !s.native.as_str().is_empty())
             && !self.standard_declarations
-            && !own_extern;
+            && !own_extern
+            && !self.m().is_standard();
         if nominal.is_none()
             || foreign_native
-            || !(own_extern || matches!(receiver.kind, Kind::Record | Kind::Alternative))
+            || !(own_extern
+                || matches!(receiver.kind, Kind::Record | Kind::Alternative)
+                || (self.m().is_standard() && receiver.kind == Kind::Native))
         {
             if receiver.id != "<invalid>" {
                 self.type_error(
@@ -287,7 +290,11 @@ impl Checker {
                 .def
                 .as_ref()
                 .and_then(|d| d.symbol())
-                .is_some_and(|s| s.module != this.current_file())
+                .is_some_and(|s| {
+                    // A bundled module's methods on a native standard type apply wherever it is used.
+                    let extends_native = this.m().is_standard() && !s.native.as_str().is_empty();
+                    s.module != this.current_file() && !extends_native
+                })
         };
         for (index, method) in imp.methods.iter().enumerate() {
             if !seen.insert(method.func.name) {
@@ -630,6 +637,28 @@ impl Checker {
         false
     }
 
+    /// Implemented methods named `name` that apply to `receiver` and are visible here.
+    pub(crate) fn implemented_methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
+        let mut result: Vec<MethodRef> = Vec::new();
+        for m in &self.p.methods {
+            if !self.method_visible(m) || m.name() != Some(name) {
+                continue;
+            }
+            let mut s = Subst::new();
+            if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut s)
+                && self.bounds_satisfied(&m.variables, &s)
+            {
+                let mut r = (**m).clone();
+                r.ty = sub(&m.ty, &s);
+                r.contract = m.contract.as_ref().map(|c| sub(c, &s));
+                r.receiver = receiver.clone();
+                r.variables = Vec::new(); // Implementation variables are fixed by the receiver.
+                result.push(Rc::new(r));
+            }
+        }
+        result
+    }
+
     /// Methods named `name` available on `receiver`.
     pub(crate) fn methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
         if let Some(m) = native_method(receiver, name)
@@ -669,23 +698,7 @@ impl Checker {
             }
             return result;
         }
-        let mut result: Vec<MethodRef> = Vec::new();
-        for m in &self.p.methods {
-            if !self.method_visible(m) || m.name() != Some(name) {
-                continue;
-            }
-            let mut s = Subst::new();
-            if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut s)
-                && self.bounds_satisfied(&m.variables, &s)
-            {
-                let mut r = (**m).clone();
-                r.ty = sub(&m.ty, &s);
-                r.contract = m.contract.as_ref().map(|c| sub(c, &s));
-                r.receiver = receiver.clone();
-                r.variables = Vec::new(); // Implementation variables are fixed by the receiver.
-                result.push(Rc::new(r));
-            }
-        }
+        let result = self.implemented_methods(receiver, name);
         if result.is_empty() && (name == "equals" || name == "hash") {
             let property = if name == "hash" { "Hashable" } else { "Equal" };
             if self.property(receiver, property, None) {

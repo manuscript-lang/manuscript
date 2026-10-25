@@ -1367,22 +1367,6 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v, own: true })
             }
-            (TyKind::List(_), "sum" | "min" | "max") => {
-                let out = self.emty(e)?;
-                let element = self
-                    .ety(recv_expr)
-                    .args
-                    .first()
-                    .cloned()
-                    .ok_or_else(|| Error::new("sum, min and max take a list"))?;
-                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
-                let r = match name {
-                    "sum" => self.list_sum(lv, &element, out),
-                    _ => self.list_extreme(lv, &element, out, name == "max"),
-                };
-                self.release_source(lv, hidden);
-                r
-            }
             (TyKind::List(elem), "sorted") => {
                 let f = args
                     .into_iter()

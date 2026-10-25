@@ -18,9 +18,6 @@ pub(crate) struct Args {
 
 impl<'a> FnLower<'a> {
     pub fn call_expr(&mut self, e: &Expr) -> Result<Val, Error> {
-        if let Some(desugared) = self.hir.info(e).desugared {
-            return self.call_expr(&desugared);
-        }
         let saved = self.scope_override;
         self.scope_override = self.call_evidence(e);
         let out = self.call_expr_in_scope(e);
@@ -470,6 +467,9 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.map_get_lent(e, view, recv_expr, &method)? {
             return Ok(v);
         }
+        if let Some(v) = self.list_end_lent(e, recv_expr, &method)? {
+            return Ok(v);
+        }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
             return Ok(v);
         }
@@ -490,6 +490,50 @@ impl<'a> FnLower<'a> {
             return Ok(self.trim_view(sym, recv));
         }
         self.native_method(e, view, m, recv_expr, recv)
+    }
+
+    /// `xs.first()` or `xs.last()` lent by a `ref` function: a view of the element, not a copy.
+    fn list_end_lent(
+        &mut self,
+        e: &Expr,
+        recv_expr: &Expr,
+        name: &str,
+    ) -> Result<Option<Val>, Error> {
+        if !matches!(name, "first" | "last")
+            || !self.lent_return
+            || self.lent_expr != Some(e as *const Expr as usize)
+            || !self.ety(recv_expr).is_std("List")
+        {
+            return Ok(None);
+        }
+        let opt_ty = self.emty(e)?;
+        let lv = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(Some(lv));
+        }
+        let lv = self.borrow(lv);
+        let len = self.b.list_len(lv);
+        let zero = self.b.iconst(0);
+        let empty = self.b.icmp(ms_mir::ir::Cc::Eq, len, zero);
+        let out = self.b.declare_var(opt_ty, ms_mir::ir::Mode::Borrow);
+        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(empty, absent, &[], present, &[]);
+        self.b.seal_block(absent);
+        self.b.seal_block(present);
+        self.enter(absent);
+        let none = self.b.opt_none(opt_ty);
+        self.b.def_var(out, none);
+        self.b.br(join, &[]);
+        self.enter(present);
+        let at = self.b.iconst(if name == "first" { 0 } else { -1 });
+        let elem = self.b.list_get(lv, at);
+        let some = self.b.opt_view(elem);
+        self.b.def_var(out, some);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.enter(join);
+        let v = self.b.use_var(out);
+        Ok(Some(Val { v, own: false }))
     }
 
     /// `text.trim()` (or `trim_start`, `trim_end`) on a string that stays where it is: a view into it, nothing allocated. The

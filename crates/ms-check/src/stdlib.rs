@@ -144,6 +144,9 @@ fn read_bindings() -> Result<Bindings, String> {
 
 // -------------------------------------------------------------------- queries
 
+/// The bundled source module whose List operations apply to every program.
+const LISTS_MODULE: &str = "@std/lists.ms";
+
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
     let state = world(|w| w.state);
@@ -427,6 +430,11 @@ pub fn ensure_source(module: &ModRef) -> Rc<StdResult> {
             }
         }
     }
+    if let Some(lists) = standard_source_module(n(LISTS_MODULE))
+        && !group.iter().any(|m| m.file == lists.file)
+    {
+        ensure_source(&lists);
+    }
     let mut checker = Checker::new(&CheckOptions {
         bundled: Some(module.file),
         ..CheckOptions::default()
@@ -535,6 +543,10 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         }
         state.insert(module.file, 2);
         ordered.push(module.clone());
+    }
+    // The List operations written in Manuscript apply to every program.
+    if let Some(lists) = standard_source_module(n(LISTS_MODULE)) {
+        visit(&lists, &mut state, &mut ordered, &mut diagnostics);
     }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);

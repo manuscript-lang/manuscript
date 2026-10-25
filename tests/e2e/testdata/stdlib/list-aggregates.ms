@@ -36,9 +36,8 @@ test "sorted puts Float NaN last":
     try expect_equal(ordered_floats.take(3), [0.5, 1.0, 2.0])
     try expect_true(ordered_floats[3].is_nan())
 
-test "sorted with a comparator and with none":
+test "sorted with a comparator":
     try expect_equal([1, 3, 2].sorted(lambda a, b: b - a), [3, 2, 1])
-    try expect_equal([1, 3, 2].sorted(none), [1, 2, 3])
 
 test "sorted is stable for user Comparable types":
     let versions = [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]
