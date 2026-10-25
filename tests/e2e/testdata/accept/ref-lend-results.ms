@@ -120,3 +120,9 @@ test "user ref functions chain borrows and copy interface results":
 test "a result over a temporary argument is an owned copy":
     let s = shelf()
     try expect_equal(from_temporary(s), ["temporary"])
+
+test "a method value of a ref operation returns an owned copy":
+    let n: Names = Shelf(names: ["ada", "grace"], ages: {}, spare: [])
+    let names = n.names
+    let copy = names()
+    try expect_equal(copy, ["ada", "grace"])

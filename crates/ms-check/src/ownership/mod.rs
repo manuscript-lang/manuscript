@@ -201,7 +201,6 @@ impl Hir<'_> {
         modules: &HashMap<Name, ModuleHir>,
         callables: &[Callable],
         summaries: &Summaries,
-        classes: &Classifier,
     ) -> Vec<Diagnostic> {
         let diag = |file: Name, pos: ms_syntax::Pos, message: String| Diagnostic {
             file: std::sync::Arc::from(file.as_str()),
@@ -270,11 +269,12 @@ impl Hir<'_> {
                 .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
             let Some(declared) = declared else { continue };
             // An implementation follows the operation's contract: it lends exactly when the
-            // operation is declared `ref`. A `Copy` result is the same either way.
-            let copy = modules[&m.module]
+            // operation is declared `ref`. A scalar result is the same either way; a `Copy`
+            // handle such as `Shared` still holds a reference, so it must be lent too.
+            let scalar = modules[&m.module]
                 .type_ref(f.result.id)
-                .is_some_and(|t| classes.class(&t) == Class::Copy);
-            if declared && !f.result_ref && !copy {
+                .is_some_and(|t| scalar(&t));
+            if declared && !f.result_ref && !scalar {
                 out.push(insert_ref(
                     diag(
                         m.module,
@@ -353,7 +353,7 @@ impl Hir<'_> {
             }
         }
         let mut facts = HashMap::new();
-        let mut diagnostics = self.ref_results(&modules, &callables, &summaries, &classes);
+        let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut borrows = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
@@ -384,5 +384,13 @@ impl Hir<'_> {
             getters,
             lenders,
         }
+    }
+}
+
+/// A value that holds no reference: a number, `Bool`, `Unit`, or an optional of one.
+fn scalar(t: &Type) -> bool {
+    match t.kind {
+        Kind::Primitive => t.id.as_str() != "String",
+        _ => t.is_std("Optional") && t.args.first().is_some_and(|a| scalar(a)),
     }
 }

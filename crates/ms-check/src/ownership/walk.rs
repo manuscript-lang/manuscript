@@ -319,8 +319,10 @@ impl Walker<'_> {
             None => self.expr(e, Demand::Consume),
         }
         // A call whose result is an owned copy (an interface call, or a lending call over a
-        // temporary) hands back a value of its own, not a part of a parameter.
-        if self.ret_hit && self.lends_owned(lent.unwrap_or(e)) {
+        // temporary), or a part converted to an interface, hands back a value of its own, not a
+        // part of a parameter.
+        let back = lent.unwrap_or(e);
+        if self.ret_hit && (self.lends_owned(back) || self.converted(back)) {
             self.lends.truncate(mark);
             self.ret_hit = false;
         }

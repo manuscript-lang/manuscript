@@ -335,12 +335,22 @@ fn native_method_modes(
         })
         .collect();
     let result = method.ty.result_ty();
-    // A native lends exactly when its standard-library declaration says so (`ref`).
+    // A native lends exactly when its standard-library declaration says so (`ref`), unless the
+    // call gives a fallback (`o.get(default)`): the result is then an owned copy of either.
     let accessor = method
         .decl
         .as_ref()
         .and_then(|d| d.func())
-        .is_some_and(|f| f.result_ref);
+        .is_some_and(|f| {
+            f.result_ref
+                && !(0..count).any(|i| {
+                    label(i).is_some_and(|l| {
+                        f.params
+                            .iter()
+                            .any(|p| p.default.is_some() && p.name.as_str() == l.as_str())
+                    })
+                })
+        });
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
