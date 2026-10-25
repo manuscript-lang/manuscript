@@ -96,29 +96,23 @@ impl ListExtremes[T] for List[T]:
     # Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].min()` is `some(1)`; `List[Int]().min()` is `none`.
     def min() -> Optional[T]:
-        var best: Optional[T] = none
+        if self.length() == 0:
+            return none
 
-        for x in self:
-            match best:
-                case some(b):
-                    if x.compare(b) < 0:
-                        best = some(x.clone())
-                case none:
-                    best = some(x.clone())
-
-        return best
+        var at = 0
+        for i in 1..self.length():
+            if self [i].compare(self [at]) < 0:
+                at = i
+        return some(self [at].clone())
 
     # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].max()` is `some(3)`.
     def max() -> Optional[T]:
-        var best: Optional[T] = none
+        if self.length() == 0:
+            return none
 
-        for x in self:
-            match best:
-                case some(b):
-                    if x.compare(b) > 0:
-                        best = some(x.clone())
-                case none:
-                    best = some(x.clone())
-
-        return best
+        var at = 0
+        for i in 1..self.length():
+            if self [i].compare(self [at]) > 0:
+                at = i
+        return some(self [at].clone())
