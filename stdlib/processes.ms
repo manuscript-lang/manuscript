@@ -284,6 +284,51 @@ def nanos(limit: Optional[Duration]) -> Int:
 
     return -1
 
+# Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
+def wait_result[T](
+    native: NativeProcess,
+    link: NativeLink,
+    inbox: Shared[Inbox]
+) -> Result[T, ProcessError]:
+    while True:
+        if let body = inbox.get().result.clone():
+            match decode[T](body):
+                case ok(value): return ok(value)
+                case error(e): return error(ProcessError.Broken(e.message()))
+
+        match next_frame(link, inbox):
+            case ok(next):
+                if next.is_none():
+                    let code = msstd_process_forked_wait(native, -1).get(-1)
+                    return error(ProcessError.Exited(code))
+
+                let frame = next.get(Frame(kind: -1, body: ""))
+
+                if frame.kind == RESULT:
+                    finish(inbox, some(frame.body.clone()))
+                elif frame.kind == CLOSE:
+                    finish(inbox, none)
+            case error(e):
+                return error(ProcessError.Broken(e.message()))
+
+    return error(ProcessError.Exited(-1))
+
+# What a group keeps of a process until it is closed: enough to close its channel and stop the child.
+export type Open:
+    # Internal state: the process's number in its group.
+    id: Int
+    # Internal state: the running child.
+    native: NativeProcess
+    # Internal state: the parent's end of the IPC pipe.
+    link: NativeLink
+    # Internal state: what the parent's end has read.
+    inbox: Shared[Inbox]
+
+# Closes the channel, then stops and joins the child.
+def stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) -> Unit:
+    close_end(link, inbox, False)
+    msstd_process_forked_close(native)
+
 # A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
 # end of its channel.
 export type Process[T, In = Unit, Out = Unit]:
@@ -295,34 +340,17 @@ export type Process[T, In = Unit, Out = Unit]:
     inbox: Shared[Inbox]
     # The parent's end of the channel: sends `In` to the child and receives the `Out` it sends.
     channel: Channel[In, Out]
+    # Internal state: the process's number in its group.
+    id: Int
+    # Internal state: the group's list of open processes, which `close` leaves.
+    registry: Shared[List[Open]]
 
 impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
     # that ended first. Another task may receive from the channel meanwhile; one task reads the
     # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
     def result() -> Result[T, ProcessError]:
-        while True:
-            if let body = self.inbox.get().result.clone():
-                match decode[T](body):
-                    case ok(value): return ok(value)
-                    case error(e): return error(ProcessError.Broken(e.message()))
-
-            match next_frame(self.link, self.inbox):
-                case ok(next):
-                    if next.is_none():
-                        let code = msstd_process_forked_wait(self.native, -1).get(-1)
-                        return error(ProcessError.Exited(code))
-
-                    let frame = next.get(Frame(kind: -1, body: ""))
-
-                    if frame.kind == RESULT:
-                        finish(self.inbox, some(frame.body.clone()))
-                    elif frame.kind == CLOSE:
-                        finish(self.inbox, none)
-                case error(e):
-                    return error(ProcessError.Broken(e.message()))
-
-        return error(ProcessError.Exited(-1))
+        return wait_result[T](self.native, self.link, self.inbox)
 
     # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
     # so writes return `Closed`. Closing it delivers end of input to the child.
@@ -355,8 +383,13 @@ impl Process[T, In, Out]:
 impl Closeable for Process[T, In, Out]:
     # Closes the channel, then stops and joins the child. Call `result` first to keep it. Safe to call again.
     var def close() -> Unit:
-        close_end(self.link, self.inbox, False)
-        msstd_process_forked_close(self.native)
+        stop_child(self.link, self.inbox, self.native)
+
+        with var all = lock(self.registry):
+            for index in range(0, all.value.length()):
+                if all.value[index].id == self.id:
+                    all.value.remove(index)
+                    break
 
 # A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
 # two-way channel to the group: the child sends `Out` values and receives `In` values, both
@@ -364,16 +397,18 @@ impl Closeable for Process[T, In, Out]:
 # `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
 # strings and numbers.
 export type ProcessGroup[T, In = Unit, Out = Unit]:
-    # Internal state: the processes in start order, changed through the shared handle so the
+    # Internal state: the open processes in start order, changed through the shared handle so the
     # group works as a `with` binding.
-    processes: Shared[List[Process[T, In, Out]]] = share([])
+    processes: Shared[List[Open]] = share([])
+    # Internal state: the number of the next process.
+    started: Shared[Int] = share(0)
 
 impl ProcessGroup[T, In, Out]:
     # Starts this executable again in a new process at `entry`, a top-level `def`, and returns the
     # process. The child gets its end of a new channel, and the process's `channel` is the
     # group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
     # default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
-    # reaches.
+    # reaches. Closing the process makes the group forget it.
     def spawn(
         entry: Callable[[Channel[Out, In]], T],
         stdin: Stdio = Stdio.Inherit,
@@ -384,18 +419,14 @@ impl ProcessGroup[T, In, Out]:
         let native = try msstd_process_fork(runner, stdin, stdout, stderr)
         let link = msstd_process_forked_link(native)
         let inbox: Shared[Inbox] = share(Inbox())
-        let started = Process[T, In, Out](
-            native: native,
-            link: link,
-            inbox: inbox,
-            channel: Channel[In, Out](
-                transport: ProcessTransport[In, Out](
-                    link: link, inbox: inbox
-                )
-            )
-        )
+        var id = 0
+
+        with var next = lock(self.started):
+            id = next.value
+            next.value = id + 1
+
         with var all = lock(self.processes):
-            all.value.append(started)
+            all.value.append(Open(id, native, link, inbox))
         return ok(
             Process[T, In, Out](
                 native: native,
@@ -405,21 +436,30 @@ impl ProcessGroup[T, In, Out]:
                     transport: ProcessTransport[In, Out](
                         link: link, inbox: inbox
                     )
-                )
+                ),
+                id: id,
+                registry: self.processes
             )
         )
 
-    # Waits for every process's result in start order, or returns the first error.
+    # Waits for every open process's result in start order, or returns the first error.
+    # Closed processes are not included.
     def results() -> Result[List[T], ProcessError]:
         let count = self.processes.get().length()
         var values = List[T]()
+
         for index in range(0, count):
-            values.append(try self.processes.get().get(index).result())
+            let open = self.processes.get().get(index)
+            values.append(try wait_result[T](open.native, open.link, open.inbox))
+
         return ok(values)
 
 impl Closeable for ProcessGroup[T, In, Out]:
-    # Closes every process: its channel, then the child, which is stopped and joined. Safe to call again.
+    # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var def close() -> Unit:
         with var all = lock(self.processes):
             for index in range(0, all.value.length()):
-                all.value[index].close()
+                stop_child(
+                    all.value[index].link, all.value[index].inbox,
+                    all.value[index].native
+                )

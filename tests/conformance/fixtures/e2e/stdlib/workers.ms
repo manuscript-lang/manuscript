@@ -4,6 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/io.ms" import stdin
+from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
 from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
@@ -174,3 +175,39 @@ test "standard input stays with the main thread":
         let outcome = worker.join()
         expect_error(outcome)
         expect_true(outcome.err().message().contains("main thread"))
+
+def quick() -> Unit:
+    var ch = worker_channel[Int, Int]()
+
+test "cancelling a joined worker's handle leaves a later worker alone":
+    with let group = WorkerGroup[Int, Int]():
+        var a = group.spawn(quick).get(none)
+        expect_ok(a.join())
+        var b = group.spawn(naps).get(none)
+        a.cancel()
+        expect_equal(b.channel.receive(), ok(some(1)))
+        expect_ok(b.join())
+
+def sends_one() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    ch.send(1)
+
+test "a finished worker's channel ends with none instead of an error":
+    with let group = WorkerGroup[Int, Int]():
+        var worker = group.spawn(sends_one).get(none)
+        expect_equal(worker.channel.receive(), ok(some(1)))
+        expect_equal(worker.channel.receive(), ok(none))
+        expect_ok(worker.join())
+
+def runs_faulting_task() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    with let tasks = TaskGroup[Int]():
+        let t = tasks.spawn(lambda c: panic("task inside worker faults"))
+        t.result()
+
+test "a fault in a task a worker started is the worker's fault":
+    with let group = WorkerGroup[Int, Int]():
+        var worker = group.spawn(runs_faulting_task).get(none)
+        let outcome = worker.join()
+        expect_error(outcome)
+        expect_true(outcome.err().message().contains("task inside worker faults"))

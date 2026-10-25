@@ -15,7 +15,7 @@ use ms_std_fs::stream::Stream;
 
 /// One end of an IPC pipe. The halves are separate so a reading task and a writing task can use
 /// the end at the same time. A second reader waits for the first (see [`IpcLink::wait_reader`]);
-/// a second writer at once faults.
+/// a second writer waits for the first the same way.
 ///
 /// A task parked in a read or write can be cancelled, which leaves its frame with a jump and
 /// skips destructors, so the halves are guarded by `busy` flags that a runtime cleanup entry
@@ -27,6 +27,8 @@ pub struct IpcLink {
     writing: Cell<bool>,
     /// Tokens of tasks waiting for the current reader to finish.
     waiting: RefCell<Vec<i64>>,
+    /// Tokens of tasks waiting for the current writer to finish.
+    writers: RefCell<Vec<i64>>,
 }
 
 impl IpcLink {
@@ -38,7 +40,15 @@ impl IpcLink {
             reading: Cell::new(false),
             writing: Cell::new(false),
             waiting: RefCell::new(Vec::new()),
+            writers: RefCell::new(Vec::new()),
         })
+    }
+
+    fn end_write(&self) {
+        self.writing.set(false);
+        for token in self.writers.take() {
+            ms_rt::channel::msrt_channel_post(token);
+        }
     }
 
     fn end_read(&self) {
@@ -62,9 +72,7 @@ impl IpcLink {
 
     #[allow(unsafe_code)]
     fn read(&self, max: i64) -> Vec<u8> {
-        if self.reading.get() {
-            ms_rt::ffi::fault("another task is already reading this process channel");
-        }
+        while self.wait_reader() {}
         self.reading.set(true);
         // SAFETY: `reading` admits one task, so nothing else holds the half; no borrow is kept
         // across the park.
@@ -82,16 +90,18 @@ impl IpcLink {
 
     #[allow(unsafe_code)]
     fn write(&self, data: &[u8]) -> bool {
-        if self.writing.get() {
-            ms_rt::ffi::fault("another task is already writing this process channel");
+        while self.writing.get() {
+            let token = ms_rt::channel::msrt_channel_token();
+            self.writers.borrow_mut().push(token);
+            ms_rt::channel::msrt_channel_park(token);
         }
         self.writing.set(true);
         // SAFETY: as `read`.
         let writer = unsafe { &mut *self.writer.as_ptr() };
-        let ok = writer.as_mut().is_some_and(|w| {
-            with_cleanup(&mut || self.writing.set(false), || w.write(data).is_ok())
-        });
-        self.writing.set(false);
+        let ok = writer
+            .as_mut()
+            .is_some_and(|w| with_cleanup(&mut || self.end_write(), || w.write(data).is_ok()));
+        self.end_write();
         ok
     }
 

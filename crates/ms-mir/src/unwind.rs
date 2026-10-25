@@ -206,6 +206,14 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let holes = hole_states(f);
+    // Values an existing cleanup entry (a `with` close) uses: it must see them undropped.
+    let closed_by_with: BTreeSet<u32> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == Op::CleanupPush)
+        .filter_map(|i| i.args.first().map(|v| v.0))
+        .collect();
     let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
     // Per block: instruction index -> values to register before it.
     let mut plans: Vec<Vec<(usize, Vec<Value>)>> = vec![Vec::new(); f.blocks.len()];
@@ -236,7 +244,14 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 live.remove(c);
             }
             if open == 0 && !live.is_empty() && parks_at(m, cx, inst) {
-                plans[bi].push((k, live.iter().map(|v| Value(*v)).collect()));
+                let drops: Vec<Value> = live
+                    .iter()
+                    .filter(|v| !closed_by_with.contains(v))
+                    .map(|v| Value(*v))
+                    .collect();
+                if !drops.is_empty() {
+                    plans[bi].push((k, drops));
+                }
             }
             open = hole_step(open, inst.op);
             if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {

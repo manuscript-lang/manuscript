@@ -40,7 +40,7 @@ extern def msrt_worker_cancel(handle: Int) -> Unit
 
 extern def msrt_worker_wait(handle: Int) -> String
 
-# Why a read from the pipe gave no message. The native side numbers these cases from 1.
+# Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:
     # This end is closed.
     case Closed
@@ -143,6 +143,7 @@ impl Worker[In, Out]:
             if held.value.length() > 0:
                 return held.value[0].clone()
 
+            # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
             self.channel.close()
 
             let report = msrt_worker_wait(self.handle)

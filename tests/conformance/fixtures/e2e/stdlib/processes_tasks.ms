@@ -98,6 +98,18 @@ test "cancelling a task inside commands().run kills the child":
     sleep(duration(200000000))
     try expect_equal(long_alive(), False)
 
+def wait_long() -> Int:
+    let child = commands().spawn(long_program(), long_args()).get()
+    return child.wait().get(-1)
+
+test "cancelling a task inside Subprocess.wait kills the child":
+    with let group = TaskGroup[Int](timeout: some(duration(200000000))):
+        let t = group.spawn(lambda ch: wait_long())
+        try expect_equal(t.result().is_ok(), False)
+
+    sleep(duration(200000000))
+    try expect_equal(long_alive(), False)
+
 test "the liveness check sees a live child":
     with let child = try commands().spawn(long_program(), long_args()):
         try expect_equal(long_alive(), True)
