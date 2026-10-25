@@ -102,7 +102,11 @@ impl Checker {
         // Argument checks belong to this call only. Nested calls own
         // their own evidence; callback reuse also requires the same final context.
         let previous = self.checked_arguments.replace(HashMap::new());
+        let outer_arity = self.call_arity.take();
+        self.call_arity =
+            matches!(callee.kind, ExprKind::Member { .. }).then_some((callee.id, args.len()));
         let info = self.call_checked(e, callee, args, const_use, expected);
+        self.call_arity = outer_arity;
         self.checked_arguments = previous;
         info
     }
@@ -340,9 +344,6 @@ impl Checker {
                     self.expression(&arg.value, None);
                 }
                 return c;
-            }
-            if let Some(done) = self.natural_order_call(e, callee, args, &c, expected) {
-                return done;
             }
             c = self.specialize_native_call(e, callee, args, c, expected);
             i.method = c.method.clone();

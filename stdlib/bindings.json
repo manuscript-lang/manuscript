@@ -44,15 +44,6 @@
     "@std/collections.ms/List/last_index_of": {
       "T": "Equal"
     },
-    "@std/collections.ms/List/max": {
-      "T": "Comparable"
-    },
-    "@std/collections.ms/List/min": {
-      "T": "Comparable"
-    },
-    "@std/collections.ms/List/sum": {
-      "T": "Int|Float|Int8|Int16|Int32|Float32"
-    },
     "@std/collections.ms/List/to_set": {
       "T": "Hashable"
     }
