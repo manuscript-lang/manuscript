@@ -158,7 +158,7 @@ When the repair is mechanical, the JSON diagnostic carries it and `ms check --fi
  "fix": {"position": {"line": 7, "column": 22}, "end": {"line": 7, "column": 28}, "replacement": "double"}}
 ```
 
-A fault at runtime is data too. `ms run program.ms --json` on an out-of-range index exits 70 with a `fault` object: `"kind": "index_out_of_range"`, the message with its remedy (`pass a default: get(index:, default: ...)`), the position, the trace, and whether `with` cleanups ran.
+A fault at runtime is data too. `ms run program.ms --json` on an out-of-range index exits with the fault status and a `fault` object: `"kind": "index_out_of_range"`, the message with its remedy (`pass a default: get(index:, default: ...)`), the position, the trace, and whether `with` cleanups ran.
 
 The rest of the agent surface is four commands, chosen after an MCP server was tried and judged worse than a shell:
 
