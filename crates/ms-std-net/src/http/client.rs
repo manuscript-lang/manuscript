@@ -1215,7 +1215,8 @@ fn is_domain_or_subdomain(sub: &str, parent: &str) -> bool {
         && sub.as_bytes()[sub.len() - parent.len() - 1] == b'.'
 }
 
-/// `Referer` for a redirected request; none when leaving HTTPS for HTTP.
+/// `Referer` for a redirected request; none when leaving HTTPS for HTTP or
+/// crossing origins, since the previous URL's query can carry secrets.
 fn referer_for(last: &Url, next: &Url, initial: &[(String, Vec<u8>)]) -> Option<String> {
     if last.is_https() && !next.is_https() {
         return None;
@@ -1224,6 +1225,9 @@ fn referer_for(last: &Url, next: &Url, initial: &[(String, Vec<u8>)]) -> Option<
         && !explicit.is_empty()
     {
         return Some(String::from_utf8_lossy(explicit).into_owned());
+    }
+    if !last.same_origin(next) {
+        return None;
     }
     Some(last.text())
 }
@@ -1676,6 +1680,18 @@ mod tests {
     use std::io::Read;
     use std::net::{TcpListener, TcpStream};
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn referer_is_dropped_across_origins() {
+        let last = url::parse("http://a.example/p?token=1").unwrap();
+        let same = url::parse("http://a.example/q").unwrap();
+        let other = url::parse("http://b.example/q").unwrap();
+        assert_eq!(
+            referer_for(&last, &same, &[]).as_deref(),
+            Some("http://a.example/p?token=1")
+        );
+        assert_eq!(referer_for(&last, &other, &[]), None);
+    }
 
     /// Reads one request (head plus Content-Length or chunked body) as text.
     fn read_request(s: &mut TcpStream) -> Option<String> {
