@@ -336,6 +336,9 @@ impl Subprocess {
             return;
         }
         self.closed = true;
+        // A child sharing our group has its own children in it that a group kill cannot tell
+        // from ours.
+        self.child.kill_tree();
         self.child.signal(true);
         self.child.wait();
         self.child.kill_group();

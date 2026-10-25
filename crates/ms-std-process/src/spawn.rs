@@ -379,6 +379,18 @@ impl Child {
         }
     }
 
+    /// For a child sharing our process group: freezes it and everything below it, then kills
+    /// them all, so nothing it started outlives it whatever it is doing. A no-op for any other
+    /// child, whose whole group the kill reaches.
+    pub fn kill_tree(&mut self) {
+        #[cfg(unix)]
+        {
+            if self.shared && !self.poll() {
+                tree::kill(self.inner.id() as libc::pid_t);
+            }
+        }
+    }
+
     /// What to signal: the child's group, or only the child when it shares ours.
     #[cfg(unix)]
     fn target(&self, pid: libc::pid_t) -> libc::pid_t {
@@ -419,6 +431,102 @@ impl Drop for Child {
     fn drop(&mut self) {
         if self.exit >= 0 {
             let _ = sys::close(self.exit);
+        }
+    }
+}
+
+/// Killing a process and all its descendants on Unix, for children that share their parent's
+/// group and so cannot be reached through a group of their own.
+#[cfg(unix)]
+mod tree {
+    use alloc::vec::Vec;
+
+    /// Every process below `root`, or empty when they cannot be listed.
+    #[cfg(target_os = "linux")]
+    fn descendants(root: libc::pid_t) -> Vec<libc::pid_t> {
+        let mut edges: Vec<(libc::pid_t, libc::pid_t)> = Vec::new();
+        let Ok(dir) = std::fs::read_dir("/proc") else {
+            return Vec::new();
+        };
+        for entry in dir.flatten() {
+            let Some(pid) = entry.file_name().to_str().and_then(|n| n.parse().ok()) else {
+                continue;
+            };
+            let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) else {
+                continue;
+            };
+            // `pid (comm) state ppid ...`; comm may hold spaces and parentheses.
+            let after = stat.rsplit_once(')').map_or("", |(_, rest)| rest);
+            if let Some(ppid) = after.split_whitespace().nth(1).and_then(|p| p.parse().ok()) {
+                edges.push((pid, ppid));
+            }
+        }
+        let mut found = alloc::vec![root];
+        let mut next = 0;
+        while next < found.len() {
+            let parent = found[next];
+            next += 1;
+            for &(pid, ppid) in &edges {
+                if ppid == parent && !found.contains(&pid) {
+                    found.push(pid);
+                }
+            }
+        }
+        found.remove(0);
+        found
+    }
+
+    #[cfg(all(unix, not(target_os = "linux")))]
+    fn descendants(root: libc::pid_t) -> Vec<libc::pid_t> {
+        let mut found = alloc::vec![root];
+        let mut next = 0;
+        while next < found.len() {
+            let parent = found[next];
+            next += 1;
+            let mut buf = [0 as libc::pid_t; 1024];
+            // SAFETY: `buf` is writable for the byte size passed.
+            let bytes = unsafe {
+                libc::proc_listchildpids(
+                    parent,
+                    buf.as_mut_ptr().cast(),
+                    core::mem::size_of_val(&buf) as libc::c_int,
+                )
+            };
+            let count =
+                (bytes.max(0) as usize / core::mem::size_of::<libc::pid_t>()).min(buf.len());
+            for &pid in &buf[..count] {
+                if !found.contains(&pid) {
+                    found.push(pid);
+                }
+            }
+        }
+        found.remove(0);
+        found
+    }
+
+    /// Stops `root` and its descendants until no new one appears (a stopped process cannot fork),
+    /// then kills them all.
+    pub fn kill(root: libc::pid_t) {
+        let mut frozen = alloc::vec![root];
+        // SAFETY: plain system call.
+        unsafe { libc::kill(root, libc::SIGSTOP) };
+        loop {
+            let fresh: Vec<libc::pid_t> = descendants(root)
+                .into_iter()
+                .filter(|p| !frozen.contains(p))
+                .collect();
+            if fresh.is_empty() {
+                break;
+            }
+            for &pid in &fresh {
+                // SAFETY: plain system call.
+                unsafe { libc::kill(pid, libc::SIGSTOP) };
+            }
+            frozen.extend(fresh);
+        }
+        for pid in frozen {
+            // SAFETY: plain system call.
+            unsafe { libc::kill(pid, libc::SIGKILL) };
         }
     }
 }
