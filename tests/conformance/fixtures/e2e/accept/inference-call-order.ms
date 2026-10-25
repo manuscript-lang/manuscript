@@ -9,7 +9,7 @@ def first[T](left: T, right: T) -> T: left
 
 def optional[T](value: Optional[T], fallback: T) -> ref T: value.get(fallback)
 
-def describe[T](value: T, cause: Error) -> ref String: cause.message()
+def describe[T](value: T, cause: Error) -> String: cause.message()
 
 type Events:
     values: List[Int]

@@ -3,12 +3,12 @@ type Row:
 
 def total(rows: List[Row]) -> Int:
     var n = 0
-    for ref r in rows:
+    for r in rows:
         n += r.name.length()
     return n
 
 def first_name(r: Optional[Row]) -> Int:
-    match ref r:
+    match r:
         case some(row):
             return row.name.length()
         case none:

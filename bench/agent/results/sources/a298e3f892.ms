@@ -103,6 +103,6 @@ export def main() -> Int:
         out.append(category + ": " + format_cents(totals.get(category).get()) + "\n")
     if skipped > 0:
         out.append(f"skipped: {skipped}\n")
-    stdout().write(out.freeze()).get()
+    stdout().write(out.build()).get()
     stdout().flush().get()
     return 0

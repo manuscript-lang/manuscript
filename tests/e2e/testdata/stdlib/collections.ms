@@ -165,17 +165,17 @@ test "collection builders freeze all accumulated values":
     var list = ListBuilder[Int]()
     list.append(1)
     list.append(2)
-    try expect_false(list.freeze() != [1, 2] or list.freeze() != [1, 2])
+    try expect_false(list.build() != [1, 2] or list.build() != [1, 2])
 
     var map = MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
-    try expect_equal(map.freeze().get("a"), some(2))
+    try expect_equal(map.build().get("a"), some(2))
 
     var set = SetBuilder[Int]()
     set.add(1)
     set.add(1)
-    try expect_equal(set.freeze().values(), [1])
+    try expect_equal(set.build().values(), [1])
 
 test "imported map add interoperates with with_entry":
     var values = Map[String, Int]()

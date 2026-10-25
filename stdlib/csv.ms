@@ -233,7 +233,7 @@ export def stringify(
         used += size
         out.append(line)
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 def needs_quotes(field: String, delimiter: Int) -> Bool:
     let scalars = field.scalar_values()
@@ -248,9 +248,7 @@ def needs_quotes(field: String, delimiter: Int) -> Bool:
     return scalars.length() == 2 and first == 92 and scalars[1] == 46
 
 def replaced(text: String, old: String, new: String) -> String:
-    if let result = text.replace_all(old, new): return result
-
-    return text.clone()
+    return text.replace(old, new)
 
 def encode_field(field: String, delimiter: Int, crlf: Bool) -> String:
     if not needs_quotes(field, delimiter): return field.clone()

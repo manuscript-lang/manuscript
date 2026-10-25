@@ -34,6 +34,9 @@ pub struct ResultOrigin {
     pub slots: Vec<Slot>,
     /// Every return is this one path of fields below a single parameter.
     pub plain: Option<(Slot, Vec<Name>)>,
+    /// Some return gives back an owned value (an interface call, a closure call, or a call of
+    /// a function that does): the result cannot be handed back as a borrow without a copy.
+    pub owned: bool,
 }
 
 /// The modes of a source callable.
@@ -249,13 +252,17 @@ fn method_modes(
                     returns_receiver: false,
                     callbacks_borrowed: false,
                     // The union over the implementations of what each hands back.
-                    origin: method
-                        .contract
-                        .as_ref()
-                        .zip(method.name())
-                        .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
-                        .cloned()
-                        .unwrap_or_default(),
+                    // A call through the interface returns an owned copy.
+                    origin: ResultOrigin {
+                        owned: true,
+                        ..method
+                            .contract
+                            .as_ref()
+                            .zip(method.name())
+                            .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
+                            .cloned()
+                            .unwrap_or_default()
+                    },
                 }
             }
             None => native_unknown(count),

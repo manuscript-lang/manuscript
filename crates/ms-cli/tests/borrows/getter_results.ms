@@ -15,7 +15,7 @@ impl Box:
         if first:
             return self.items
 
-        return [9]
+        return self.items
 
 impl Outer:
     def inside() -> ref Box:

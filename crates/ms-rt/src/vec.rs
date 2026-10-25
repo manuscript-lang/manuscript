@@ -733,6 +733,47 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
     }
 }
 
+/// `chunks(size)` and `windows(size)`: lists of copies of `size` consecutive elements, starting
+/// every `step` elements. `short_last` keeps a final shorter piece (chunks); otherwise only full
+/// pieces are produced (windows). `od` describes the outer list's element (a list).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_pieces(
+    v: *const VecVal,
+    d: *const TypeDesc,
+    od: *const TypeDesc,
+    size: i64,
+    step: i64,
+    short_last: u8,
+    out: *mut VecVal,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        if size <= 0 {
+            fault::fault_fmt(format_args!(
+                "List.{}: size must be positive, found {size}",
+                if short_last != 0 { "chunks" } else { "windows" }
+            ));
+        }
+        let (src, d, od) = (&*v, &*d, &*od);
+        let (size, step) = (size as usize, step.max(1) as usize);
+        let mut res = EMPTY;
+        let mut start = 0usize;
+        while start < src.len && (short_last != 0 || src.len - start >= size) {
+            let n = size.min(src.len - start);
+            let view = VecVal {
+                ptr: elem(src, d, start),
+                len: n,
+                cap: n,
+            };
+            reserve(&mut res, od, 1);
+            copy_list(&view, d, elem(&res, od, res.len) as *mut VecVal);
+            res.len += 1;
+            start += step;
+        }
+        *out = res;
+    }
+}
+
 /// `drop(count)` (named `drop_n` because `msrt_list_drop` releases a value).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_drop_n(
@@ -1599,7 +1640,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
     }
 }
 
-/// `BytesBuilder.concat(values)`: borrowed `values`.
+/// `BytesBuilder.append_bytes(values)`: borrowed `values`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) {
     // SAFETY: caller contract.
@@ -1612,6 +1653,115 @@ pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const
         }
         v.len += data.len();
     }
+}
+
+// ---- Bytes fixed-width codecs ----
+
+/// The `N` bytes at `at`, when they exist.
+unsafe fn codec_chunk<const N: usize>(b: *const VecVal, at: i64) -> Option<[u8; N]> {
+    // SAFETY: caller contract.
+    let s = unsafe { bslice(b) };
+    let start = usize::try_from(at).ok()?;
+    s.get(start..start.checked_add(N)?)?.try_into().ok()
+}
+
+/// Bytes read (`Bytes.int32_le(at)` and siblings): `STATUS_OUT_OF_RANGE` when the bytes are not all there.
+macro_rules! bytes_reads {
+    ($($name:ident, $out:ty, $prim:ty, $n:literal, $from:ident;)*) => {$(
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C-unwind" fn $name(b: *const VecVal, at: i64, out: *mut $out) -> u8 {
+            // SAFETY: caller contract.
+            unsafe {
+                let Some(raw) = codec_chunk::<$n>(b, at) else {
+                    return STATUS_OUT_OF_RANGE;
+                };
+                out.write(<$prim>::$from(raw) as $out);
+                STATUS_OK
+            }
+        }
+    )*};
+}
+
+bytes_reads! {
+    msrt_bytes_int8, i8, i8, 1, from_le_bytes;
+    msrt_bytes_uint8, i64, u8, 1, from_le_bytes;
+    msrt_bytes_int16_le, i16, i16, 2, from_le_bytes;
+    msrt_bytes_uint16_le, i64, u16, 2, from_le_bytes;
+    msrt_bytes_int16_be, i16, i16, 2, from_be_bytes;
+    msrt_bytes_uint16_be, i64, u16, 2, from_be_bytes;
+    msrt_bytes_int32_le, i32, i32, 4, from_le_bytes;
+    msrt_bytes_uint32_le, i64, u32, 4, from_le_bytes;
+    msrt_bytes_int32_be, i32, i32, 4, from_be_bytes;
+    msrt_bytes_uint32_be, i64, u32, 4, from_be_bytes;
+    msrt_bytes_int64_le, i64, i64, 8, from_le_bytes;
+    msrt_bytes_int64_be, i64, i64, 8, from_be_bytes;
+    msrt_bytes_float32_le, f32, f32, 4, from_le_bytes;
+    msrt_bytes_float32_be, f32, f32, 4, from_be_bytes;
+    msrt_bytes_float64_le, f64, f64, 8, from_le_bytes;
+    msrt_bytes_float64_be, f64, f64, 8, from_be_bytes;
+}
+
+/// Bytes writes (`BytesBuilder.append_int32_le(value)` and siblings).
+macro_rules! bytes_appends {
+    ($($name:ident, $arg:ty, $prim:ty, $to:ident;)*) => {$(
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C-unwind" fn $name(b: *mut VecVal, value: $arg) {
+            let value = match <$prim>::try_from(value) {
+                Ok(value) => value,
+                Err(_) => fault::fault_fmt(format_args!(
+                    "BytesBuilder.{}: value {value} does not fit {}",
+                    &stringify!($name)["msrt_bytes_".len()..],
+                    stringify!($prim)
+                )),
+            };
+            let raw = value.$to();
+            // SAFETY: caller contract.
+            unsafe {
+                let v = &mut *b;
+                reserve(v, &desc::msrt_desc_bool, raw.len());
+                core::ptr::copy_nonoverlapping(raw.as_ptr(), v.ptr.add(v.len), raw.len());
+                v.len += raw.len();
+            }
+        }
+    )*};
+}
+
+bytes_appends! {
+    msrt_bytes_append_int8, i64, i8, to_le_bytes;
+    msrt_bytes_append_int16_le, i64, i16, to_le_bytes;
+    msrt_bytes_append_uint16_le, i64, u16, to_le_bytes;
+    msrt_bytes_append_int16_be, i64, i16, to_be_bytes;
+    msrt_bytes_append_uint16_be, i64, u16, to_be_bytes;
+    msrt_bytes_append_int32_le, i64, i32, to_le_bytes;
+    msrt_bytes_append_uint32_le, i64, u32, to_le_bytes;
+    msrt_bytes_append_int32_be, i64, i32, to_be_bytes;
+    msrt_bytes_append_uint32_be, i64, u32, to_be_bytes;
+    msrt_bytes_append_int64_le, i64, i64, to_le_bytes;
+    msrt_bytes_append_int64_be, i64, i64, to_be_bytes;
+}
+
+/// A `Float32` crosses in a register as the `f64` holding its exact value.
+macro_rules! bytes_append_floats {
+    ($($name:ident, $arg:ty, $to:ident;)*) => {$(
+        #[unsafe(no_mangle)]
+        pub unsafe extern "C-unwind" fn $name(b: *mut VecVal, value: f64) {
+            let raw = (value as $arg).$to();
+            // SAFETY: caller contract.
+            unsafe {
+                let v = &mut *b;
+                reserve(v, &desc::msrt_desc_bool, raw.len());
+                core::ptr::copy_nonoverlapping(raw.as_ptr(), v.ptr.add(v.len), raw.len());
+                v.len += raw.len();
+            }
+        }
+    )*};
+}
+
+bytes_append_floats! {
+    msrt_bytes_append_float32_le, f32, to_le_bytes;
+    msrt_bytes_append_float32_be, f32, to_be_bytes;
+    msrt_bytes_append_float64_le, f64, to_le_bytes;
+    msrt_bytes_append_float64_be, f64, to_be_bytes;
 }
 
 // ---- StringBuilder (bytes) ----

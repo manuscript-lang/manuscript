@@ -5,17 +5,17 @@ type Shape:
 
 impl Shape:
     def text() -> ref Optional[String]:
-        match ref self:
+        match self:
             case Label(text): return some(text)
             case _: return none
 
     def names() -> ref Optional[List[String]]:
-        match ref self:
+        match self:
             case Names(items): return some(items)
             case _: return none
 
     def first() -> ref Optional[String]:
-        match ref self:
+        match self:
             case Names(items): return some(items.get(0))
             case _: return none
 

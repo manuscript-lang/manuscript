@@ -254,8 +254,11 @@ mod imp {
         views: HashMap<usize, TcpStream>,
         /// Adopted named pipes, by handle; registered until dropped.
         pipes: HashMap<usize, NamedPipe>,
-        /// Thread-pool waits on kernel objects (a child process), by object handle.
-        objects: HashMap<usize, usize>,
+        /// Thread-pool waits on kernel objects (a child process), by object handle: the wait and
+        /// the context its callback was given.
+        objects: HashMap<usize, (usize, usize)>,
+        /// Where the callbacks of this isolate's waits report.
+        signals: Arc<Signals>,
         /// Pipes whose readiness wakes the task waiting on another key instead, by handle.
         groups: HashMap<usize, usize>,
     }
@@ -264,8 +267,19 @@ mod imp {
         static STATE: Option<State> = None;
     }
     static WAKER: Mutex<Option<Arc<Waker>>> = Mutex::new(None);
-    /// Watched objects that became signalled, filled by thread-pool callbacks.
-    static SIGNALLED: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+
+    /// Watched objects of one isolate that became signalled, filled by thread-pool callbacks,
+    /// and the waker of that isolate's poller: a worker's wait is not the main isolate's.
+    struct Signals {
+        ready: Mutex<Vec<usize>>,
+        waker: Arc<Waker>,
+    }
+
+    /// What a wait callback receives: where to report, and which object.
+    struct Signalled {
+        signals: Arc<Signals>,
+        object: usize,
+    }
 
     fn state() -> &'static mut State {
         // SAFETY: only the scheduler thread reaches the poller state.
@@ -279,8 +293,13 @@ mod imp {
         let open = || -> std::io::Result<(State, Arc<Waker>)> {
             let poll = Poll::new()?;
             let waker = Arc::new(Waker::new(poll.registry(), WAKE_TOKEN)?);
+            let signals = Arc::new(Signals {
+                ready: Mutex::new(Vec::new()),
+                waker: waker.clone(),
+            });
             let state = State {
                 poll,
+                signals,
                 // Half the 64 ready slots: a pipe event can wake a reader and a writer.
                 events: Events::with_capacity(32),
                 views: HashMap::new(),
@@ -427,12 +446,16 @@ mod imp {
         }
     }
 
-    unsafe extern "system" fn signalled(object: *mut core::ffi::c_void, _: u8) {
-        SIGNALLED
+    unsafe extern "system" fn signalled(context: *mut core::ffi::c_void, _: u8) {
+        // SAFETY: the context is the box `object_watch` made, freed only after the wait is
+        // unregistered, which waits for this callback.
+        let done = unsafe { &*(context as *const Signalled) };
+        done.signals
+            .ready
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .push(object as usize);
-        kick();
+            .push(done.object);
+        let _ = done.signals.waker.wake();
     }
 
     /// Watches the waitable kernel object `handle` (a process): a task waiting on it for
@@ -445,13 +468,20 @@ mod imp {
         if s.objects.contains_key(&handle) {
             return true;
         }
-        // SAFETY: the caller keeps `handle` open until `object_drop`.
+        let context = Box::into_raw(Box::new(Signalled {
+            signals: s.signals.clone(),
+            object: handle,
+        }));
+        // SAFETY: the caller keeps `handle` open until `object_drop`, which frees the context
+        // after the wait is unregistered.
         let wait =
-            unsafe { crate::sys::register_wait(handle as *mut _, signalled, handle as *mut _) };
+            unsafe { crate::sys::register_wait(handle as *mut _, signalled, context.cast()) };
         if wait.is_null() {
+            // SAFETY: never handed to a wait.
+            drop(unsafe { Box::from_raw(context) });
             return false;
         }
-        s.objects.insert(handle, wait as usize);
+        s.objects.insert(handle, (wait as usize, context as usize));
         true
     }
 
@@ -461,12 +491,17 @@ mod imp {
         let Some(s) = (unsafe { &mut *STATE.ptr() }) else {
             return;
         };
-        let Some(wait) = s.objects.remove(&handle) else {
+        let Some((wait, context)) = s.objects.remove(&handle) else {
             return;
         };
-        // SAFETY: registered by `object_watch` and removed from the map, so unregistered once.
-        unsafe { crate::sys::unregister_wait(wait as *mut _) };
-        SIGNALLED
+        // SAFETY: registered by `object_watch` and removed from the map, so unregistered once;
+        // that returns after a running callback, so the context is no longer used.
+        unsafe {
+            crate::sys::unregister_wait(wait as *mut _);
+            drop(Box::from_raw(context as *mut Signalled));
+        }
+        s.signals
+            .ready
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .retain(|&h| h != handle);
@@ -510,7 +545,8 @@ mod imp {
             out[count] = Ready { fd: sock, bits };
             count += 1;
         }
-        let mut objects = SIGNALLED.lock().unwrap_or_else(|e| e.into_inner());
+        let signals = s.signals.clone();
+        let mut objects = signals.ready.lock().unwrap_or_else(|e| e.into_inner());
         while count < out.len() {
             let Some(handle) = objects.pop() else { break };
             if s.objects.contains_key(&handle) {
@@ -523,7 +559,7 @@ mod imp {
         }
         if !objects.is_empty() {
             // No room this round: the next wait returns at once for the rest.
-            kick();
+            let _ = signals.waker.wake();
         }
         Some(count)
     }

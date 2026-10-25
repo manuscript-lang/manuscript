@@ -1410,7 +1410,7 @@ def f() -> Int:
 resolution	2	19	34	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?def f() -> Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
+resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
     return [1.5].join(separator: ",")
 resolution	2	18	36	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f"{value}").join(separator: ",")def double(n: Int) -> Int:
     return n * 2
@@ -1879,7 +1879,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': clone, concat, contains, copy_within, count; 50 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 54 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2003,6 +2003,7 @@ def text_error(message: String) -> TextError: TextError(message)
 resolution	2	45	147	module does not export TextError; unknown standard module @std/errors.ms
 resolution	2	56	158	module does not export category; unknown standard module @std/errors.ms
 resolution	6	36	323	unknown type TextError; add: from "@std/core.ms" import TextError
+resolution	5	46	279	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
 resolution	6	47	334	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 def get() -> Other: OutOfRange
@@ -2331,9 +2332,9 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 50 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 54 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
     def get() -> T
 export type Box[T]:
     value: T
@@ -3093,9 +3094,9 @@ def value() -> Int:
     return 03
 parse	2	13	28	leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042fn value() Int:
     return 0xff
-parse	2	12	27	invalid number 0xff; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFFfn value() Int:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn value() Int:
     return 1_000
-parse	2	12	27	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn value() Float:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn value() Float:
     return 1e+
 parse	2	15	32	an exponent requires digits; write e.g. 1e3 or 2.5e-4fn value() Unit:
     other(value: [1)
@@ -3495,7 +3496,7 @@ test "bad":
         return panic(message: "check failed")
 parse	4	21	68	invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)fn f() Int:
     return 1_000
-parse	2	12	23	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn f() Int:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Int:
     return values[0, 1]
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Unit:
     for [key, value] in entries:
@@ -5107,8 +5108,7 @@ def message(value: Reader) -> String:
     return value.read()
 def make() -> Box:
     return Box(label: "value")
-type	6	19	110	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
-type	8	31	174	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`def answer() -> Int:
+type	6	19	110	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`def answer() -> Int:
     let number = 42
     return number
 def later() -> Int:
@@ -5248,12 +5248,14 @@ resolution	2	45	93	unknown type MissingValue; use the prelude MissingValue decla
 def count() -> Int: List[Int]().length()
 resolution	1	35	34	redundant prelude import List; remove List from this import and use its prelude declaration directlyfrom "@std/collections.ms" import ListBuilder, List
 def count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	48	47	redundant prelude import List; remove List from this import and use its prelude declaration directlyfrom "@std/collections.ms" import (
+resolution	1	48	47	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	2	40	91	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, buildfrom "@std/collections.ms" import (
     List, # keep
     ListBuilder,
 )
 def count() -> Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	2	5	40	redundant prelude import List; remove List from this import and use its prelude declaration directlydef first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()
+resolution	2	5	40	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	5	40	111	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, builddef first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()
 fn bad() Unit:
    unit
 import {ListBuilder, List} from "@std/collections.ms"
@@ -5829,8 +5831,7 @@ def probe() -> String:
         b.append("x")
         i += 1
     return b.freeze()
-type	6	9	135	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change it
-type	8	12	175	cannot change `b`: `b` is declared with let, which is immutable including its contents; declare it `var b` to change itfn probe() Int:
+resolution	8	14	177	unknown or ambiguous member freeze on StringBuilder; available: append, buildfn probe() Int:
     let values = [parse	2	19	34	unterminated delimiter '[' opened at line 2:18; add the matching ']' before the end of the file
    type queryFaultContext struct {context.Context}
    func (queryFaultContext) Err() error {rt.Raise("query fault");return nil}
@@ -6454,15 +6455,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export def main() -> Int:
+resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export def main() -> Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...export def main() -> Int:
+resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export def main() -> Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, pop, prepend, remove, ...from "@std/faults.ms" import panic
+resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...from "@std/faults.ms" import panic
 
 def run() -> Int:
     let boom = lambda (value: Int) -> Int: panic(message: "closure failed")
@@ -6700,7 +6701,10 @@ test "bound replace":
     first("a", "b", -1)
 test "continues":
     let result = [1].set(0, 2).remove(0)
-resolution	25	32	564	unknown or ambiguous member remove on Unit; this type has no fields or operationsfrom "@std/faults.ms" import panic
+type	18	27	375	too many positional arguments; every parameter is already supplied, so remove this argument
+type	20	33	431	too many positional arguments; every parameter is already supplied, so remove this argument
+type	23	21	511	too many positional arguments; every parameter is already supplied, so remove this argument
+resolution	25	32	564	unknown or ambiguous member remove on Unit; this type has no fields or operationsfrom "@std/faults.ms" import panic
 
 export def main() -> Int:
     return panic("check must not execute main")
@@ -6738,7 +6742,11 @@ test "empty negative":
     "".replace_n("", "b", -1)
 test "continues":
     let _unchanged = "a".replace_n("a", "b", 0)
-from "@std/faults.ms" import panic
+type	2	27	50	too many positional arguments; every parameter is already supplied, so remove this argument
+resolution	4	9	88	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
+resolution	6	23	157	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
+resolution	9	8	223	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
+resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?from "@std/faults.ms" import panic
 from "@std/cleanup.ms" import Closeable
 from "@std/collections.ms" import ListBuilder
 from "@std/queues.ms" import Queue
@@ -6791,8 +6799,10 @@ resolution	4	30	150	module does not export Queue; unknown standard module @std/q
 resolution	14	6	365	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	19	5	526	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
 resolution	20	16	581	unknown binding panic; add: from "@std/core.ms" import panic
+resolution	28	26	827	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
 resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
-resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queuefrom "@std/fs.ms" import filesystem
+resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queue
+type	44	56	1301	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
 from "@std/testing.ms" import expect_true, fail
 
 test "fixture next to the manifest":

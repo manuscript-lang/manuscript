@@ -7,7 +7,7 @@ def toml_doc(count: Int) -> String:
     var sb = StringBuilder()
     for i in range(0, count):
         sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
-    return sb.freeze()
+    return sb.build()
 
 export def bench_toml() -> Unit:
     let toml = toml_doc(2000)

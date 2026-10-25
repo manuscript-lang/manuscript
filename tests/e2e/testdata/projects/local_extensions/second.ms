@@ -66,7 +66,7 @@ export def second_resource(resource: Resource) -> Closeable:
 test "second local cleanup":
     var events = ListBuilder[Int]()
     leave(Resource(events))
-    events.freeze().get(index: 0) | try expect_equal(20)
+    events.build().get(index: 0) | try expect_equal(20)
 
 from "./first.ms" import mixed
 

@@ -12,7 +12,7 @@ export def bench_string() -> Unit:
             var sb = StringBuilder()
             for i in range(0, 100000):
                 sb.append("x")
-            return sb.freeze().byte_length()
+            return sb.build().byte_length()
     )
 
     bench(
@@ -36,12 +36,12 @@ export def bench_string() -> Unit:
     )
 
     bench(
-        "string.replace_all",
+        "string.replace",
         200,
         lambda () -> Int:
             var n = 0
             for i in range(0, 200):
-                n = (n + text.replace_all("word", "w").get("").length())
+                n = (n + text.replace("word", "w").length())
             return n
     )
 

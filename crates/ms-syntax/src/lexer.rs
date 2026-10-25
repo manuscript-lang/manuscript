@@ -606,22 +606,64 @@ impl Scanner<'_> {
         Ok(())
     }
 
+    /// Consumes digits accepted by `ok`, allowing `_` only between two digits. `after_digit` says
+    /// whether a digit was just consumed, so a separator may follow immediately.
+    fn scan_digits(&mut self, ok: fn(u8) -> bool, mut after_digit: bool) -> PResult<()> {
+        let n = self.src.len();
+        while self.offset < n {
+            let b = self.src[self.offset];
+            if ok(b) {
+                after_digit = true;
+            } else if b == b'_' {
+                let next_ok = self.offset + 1 < n && ok(self.src[self.offset + 1]);
+                if !after_digit || !next_ok {
+                    return self.fail("a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF");
+                }
+                after_digit = false;
+            } else {
+                break;
+            }
+            self.advance();
+        }
+        Ok(())
+    }
+
     fn scan_number(&mut self, p: Pos) -> PResult<()> {
         let n = self.src.len();
         let start = self.offset;
         self.advance();
-        if self.src[start] == b'0' && self.offset < n && digit(self.src[self.offset]) {
+        if self.src[start] == b'0' && self.offset < n {
+            let radix: Option<fn(u8) -> bool> = match self.src[self.offset] {
+                b'x' => Some(|b: u8| b.is_ascii_hexdigit()),
+                b'b' => Some(|b: u8| b == b'0' || b == b'1'),
+                _ => None,
+            };
+            if let Some(ok) = radix {
+                self.advance();
+                if self.offset == n || !ok(self.src[self.offset]) {
+                    return self.fail("a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010");
+                }
+                self.scan_digits(ok, false)?;
+                if self.offset < n
+                    && (letter(self.src[self.offset]) || digit(self.src[self.offset]))
+                {
+                    return self.fail("invalid digit in a hexadecimal or binary literal; 0x takes 0-9 and a-f, 0b takes 0 and 1");
+                }
+                self.emit(Tok::Number, start, self.offset, p);
+                return Ok(());
+            }
+        }
+        if self.src[start] == b'0'
+            && self.offset < n
+            && (digit(self.src[self.offset]) || self.src[self.offset] == b'_')
+        {
             return self.fail("leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042");
         }
-        while self.offset < n && digit(self.src[self.offset]) {
-            self.advance();
-        }
+        self.scan_digits(digit, true)?;
         if self.offset + 1 < n && self.src[self.offset] == b'.' && digit(self.src[self.offset + 1])
         {
             self.advance();
-            while self.offset < n && digit(self.src[self.offset]) {
-                self.advance();
-            }
+            self.scan_digits(digit, false)?;
         }
         if self.offset < n && (self.src[self.offset] == b'e' || self.src[self.offset] == b'E') {
             self.advance();
@@ -644,15 +686,19 @@ impl Scanner<'_> {
                 self.advance();
             }
             let word = &self.text[start..self.offset];
-            let message = if word.len() > 1
-                && matches!(&word[..2], "0x" | "0X" | "0b" | "0B" | "0o" | "0O")
-            {
+            let message = if word.len() > 1 && matches!(&word[..2], "0X" | "0B") {
                 format!(
-                    "invalid number {word}; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFF"
+                    "invalid number {word}; the prefix is lowercase, so write {}{}",
+                    word[..2].to_lowercase(),
+                    &word[2..]
+                )
+            } else if word.len() > 1 && matches!(&word[..2], "0o" | "0O") {
+                format!(
+                    "invalid number {word}; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)"
                 )
             } else if word.contains('_') {
                 format!(
-                    "invalid number {word}; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000"
+                    "invalid number {word}; a digit separator goes between two digits of the integer or fraction part, e.g. 1_000_000"
                 )
             } else {
                 format!(

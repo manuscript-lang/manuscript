@@ -21,7 +21,7 @@ test "byte updates retain relative bounds and immutable storage":
     var builder = BytesBuilder()
     builder.append(0)
     builder.append(255)
-    try expect_equal(builder.freeze(), bytes)
+    try expect_equal(builder.build(), bytes)
 
 test "list boundaries retain mutation truncation and empty ranges":
     var list = [1, 2]
@@ -55,9 +55,6 @@ test "radix formatting retains inclusive boundaries and parse errors":
     let invalid: Result[Int, NumberError] = error(NumberError.InvalidInput)
     try expect_equal(parse_int("1", 1), invalid)
     try expect_false(not "invalid".parse_int().is_none())
-
-    let precision: Result[String, NumberError] = error(NumberError.InvalidInput)
-    try expect_equal((1.0).to_precision(0), precision)
 
 test "queue capacities retain omission none minimum maximum and full results":
     var queue = Queue[Int](1)

@@ -66,6 +66,23 @@ An expected type propagates into inner literals. Without one, elements must agre
 
 Maps and sets iterate in insertion order, with a [for loop](../control-flow/loops.md).
 
+### Walking two lists, or a list with its index
+
+`xs.entries()` pairs each element with its index, and `a.zip(b)` pairs two lists by position. Neither needs a nested index loop:
+
+```ms
+from "@std/io.ms" import stdout
+
+export def main() -> Int:
+    let names = ["ann", "bo", "cy"]
+    let scores = [90, 72]
+    for pair in names.zip(scores):
+        stdout().write(f"{pair.first}: {pair.second}\n")
+    for part in [1, 2, 3, 4, 5].chunks(2):
+        stdout().write(f"{part.length()}\n")
+    return 0
+```
+
 ## Mutation and copies
 
 Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
@@ -110,12 +127,13 @@ These removed spellings looked like copies but mutated. Labels and return types 
 | MapBuilder | `with_entry` | `add` | Unit |
 | SetBuilder | `with_value` | `add` | Unit |
 | Bytes | `reverse` | `reversed` | Copy of byte storage |
+| StringBuilder, BytesBuilder, ListBuilder, MapBuilder, SetBuilder | `freeze` | `build` | The sealed value |
 
 `List.shift` is removed. Use `Queue` from `@std/queue.ms` (`enqueue`, `dequeue`, `peek`) for first-in, first-out work; like `Deque` and `List` it is an owned value, so a copy is independent (declare it with `var` to mutate). `dequeue` is O(1), where `shift` cost O(n) per call. Use `Deque` when values are pushed or popped at both ends.
 
 Map `add_default` evaluates its argument and inserts only when absent; `add_default_from` calls `create(key:)` once, only when absent. Neither replaces an existing value or position. Copy first with `map.clone().add_default(...)`.
 
-Builder mutations return Unit; `freeze` returns the sealed result.
+Builder mutations return Unit; `build` returns the sealed result.
 
 ## Other collections
 
@@ -187,6 +205,9 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
+| List `zip(other)` | A new list of `Pair[T, U]` records (`first` from the receiver, `second` from `other`), as long as the shorter list. |
+| List `chunks(size)`, `windows(size)` | Lists of copies of `size` consecutive elements: `chunks` splits (the last may be shorter), `windows` overlaps (a list shorter than `size` gives none). A `size` of zero or less is a fault. |
+| List `partition(predicate)` | A `Partition[T]` record whose `matching` and `rest` lists keep the original order; the predicate runs once per element. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
 | Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |

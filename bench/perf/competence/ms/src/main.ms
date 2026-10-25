@@ -104,7 +104,7 @@ def text_build_parse(n: Int) -> Int:
         b.append(f"{i * 31 % 1000},")
         i += 1
 
-    let parts = b.freeze().split(",")
+    let parts = b.build().split(",")
     var total = 0
     for p in parts:
         total += p.parse_int().get(0)

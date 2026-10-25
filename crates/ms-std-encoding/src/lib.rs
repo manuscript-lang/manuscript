@@ -9,7 +9,6 @@ use ms_rt as _;
 
 extern crate alloc;
 
-pub mod binary;
 pub mod ffi;
 
 use alloc::string::String;
