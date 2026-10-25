@@ -90,6 +90,9 @@ pub struct Output {
     pub stderr: Vec<u8>,
 }
 
+/// How long a child that shares our process group gets to stop its own children.
+const GRACE_NS: i64 = 2_000_000_000;
+
 /// Kills the child's group and reaps it unless it was already collected.
 struct Reaper(Child);
 
@@ -336,6 +339,9 @@ impl Subprocess {
             return;
         }
         self.closed = true;
+        // A child sharing our group has its own children in it, and only it can stop them: ask
+        // it to leave its `with` blocks before the kill.
+        self.child.stop_gracefully(GRACE_NS);
         self.child.signal(true);
         self.child.wait();
         self.child.kill_group();

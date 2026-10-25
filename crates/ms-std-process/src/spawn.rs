@@ -379,6 +379,25 @@ impl Child {
         }
     }
 
+    /// For a child sharing our process group: SIGTERM, then waits up to `grace_ns` for it to
+    /// exit, so its cleanup stops the children it started. A no-op for any other child.
+    pub fn stop_gracefully(&mut self, grace_ns: i64) {
+        #[cfg(unix)]
+        {
+            if !self.shared || self.poll() {
+                return;
+            }
+            self.signal(false);
+            let deadline =
+                std::time::Instant::now() + std::time::Duration::from_nanos(grace_ns as u64);
+            while !self.poll() && std::time::Instant::now() < deadline {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+        }
+        #[cfg(windows)]
+        let _ = grace_ns;
+    }
+
     /// What to signal: the child's group, or only the child when it shares ours.
     #[cfg(unix)]
     fn target(&self, pid: libc::pid_t) -> libc::pid_t {
