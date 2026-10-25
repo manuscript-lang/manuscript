@@ -136,7 +136,7 @@ pub struct DiagramRequest {
     pub output: String,
     /// `ascii` (default when empty) or `mermaid`.
     pub format: String,
-    /// One of `calls effects errors modules flow scope`, or empty.
+    /// One of `calls effects errors modules flow scope tasks`, or empty.
     pub view: String,
     pub entity: String,
     /// Zero means the default (3).
