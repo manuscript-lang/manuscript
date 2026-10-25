@@ -65,7 +65,16 @@ pub unsafe fn slot_drop(d: &TypeDesc, slot: *mut u8) {
         return;
     }
     // SAFETY: per the contract of each kind.
-    unsafe { slot_drop_owned(d, slot) }
+    unsafe {
+        // Records and alternatives drop through their compiled glue: call it without the dispatch.
+        if d.kind == KIND_CUSTOM {
+            if let Some(f) = d.drop {
+                f(slot)
+            }
+            return;
+        }
+        slot_drop_owned(d, slot)
+    }
 }
 
 #[inline(never)]
