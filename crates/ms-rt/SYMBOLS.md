@@ -878,6 +878,8 @@ msrt_string_scalar_at_byte(s: *const StrVal, at: i64) -> i64
 msrt_task_forget_fd(fd: i32)
 msrt_scope_new() -> i64
 msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_limit_ns: i64, ) -> i64
+msrt_scope_contain(scope: i64)
+msrt_scope_fault_message(out: *mut StrVal)
 msrt_scope_started()
 msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64
 msrt_scope_wait(scope: i64) -> i64
