@@ -326,6 +326,9 @@ impl Walker<'_> {
             self.lends.truncate(mark);
             self.ret_hit = false;
         }
+        if !self.ret_hit && self.pending_lender(back) {
+            self.ret_hit = true;
+        }
         if !self.ret_hit {
             self.owned_return = true;
             if !self.is_none(e) {
@@ -345,6 +348,15 @@ impl Walker<'_> {
     /// interface value holding a copy, a temporary of the call.
     fn converted(&self, a: &Expr) -> bool {
         self.cx.m.info(a).error_source.is_some()
+    }
+
+    /// Whether `e` calls a `ref` function whose summary the first pass has not computed yet: it
+    /// lends, so the path is not owned; the next pass names what it lends from.
+    fn pending_lender(&self, e: &Expr) -> bool {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return false;
+        };
+        call_modes(self.cx.m, e, args, self.cx.summaries).pending
     }
 
     /// Whether `e` is the `none` literal.
@@ -375,7 +387,8 @@ impl Walker<'_> {
     }
 
     /// Whether `e` is a lending call whose lent argument is a temporary of the call (a
-    /// non-place value, a default, or another lending call over one) or a `Copy` handle.
+    /// non-place value, a default, or another lending call over one) or a `Copy` handle. A
+    /// scalar argument never counts.
     fn lends_temporary(&self, e: &Expr) -> bool {
         let ExprKind::Call { callee, args } = &e.kind else {
             return false;
@@ -386,6 +399,10 @@ impl Walker<'_> {
                 // A default argument is a temporary of the call.
                 return matches!(slot, Slot::Param(_));
             };
+            // A scalar holds no storage, so a borrow of a temporary one cannot dangle.
+            if super::scalar(&self.cx.m.ty(a)) {
+                return false;
+            }
             self.copy_handle(a)
                 || self.converted(a)
                 || !self.is_place(a)

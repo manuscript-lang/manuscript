@@ -56,8 +56,8 @@ Interface operations and function values (same rule):
 
 - A `ref` operation is implemented only by a `ref` function or a native declared `ref`. Vtable thunks call the lent instance; `CallMethod` yields a borrow.
 - `Error.message` becomes owning.
-- `Callable[[T], ref R]`: a lambda or function value of that type lends from its **parameters only**. An escaping closure owns its captures, so a borrow of a capture could outlive the call.
-- `and_then` with a `ref` callback returns a borrow of its receiver, so the receiver must be a borrowed place, not an owned temporary. `map` wraps its result in a new value and cannot lend.
+- Deferred (Stage 5 decision): `Callable[[T], ref R]`, a lambda or function value of that type lending from its **parameters only**. An escaping closure owns its captures, so a borrow of a capture could outlive the call.
+- Deferred with it: `and_then` with a `ref` callback returning a borrow of its receiver, so the receiver must be a borrowed place, not an owned temporary. `map` wraps its result in a new value and cannot lend.
 
 Checker facts for lowering:
 
@@ -107,8 +107,23 @@ Each stage lands green on its own (`cargo test --workspace`, `make conform`, cli
 2. Every path of a `ref` function lends. Delete `lenders` and the `@std/` special case. Add reject cases for an owning path in a `ref` function and an e2e case for `return f(x)` where `f` takes an interface parameter, since an interface conversion makes a temporary copy.
 3. One binding-kind fact, plus `plain` exported per callable instead of `getters`. Lowering reads facts, not shapes.
 4. Interface operations follow the rule. `Error.message` becomes owning.
-5. `ref` in function types and `and_then`, then drop the `.clone()` note in `json.ms`. Gate: `json.navigate` does not regress.
+5. `JsonValue.get_in` replaces the `and_then` lambda in the `json.ms` note; `ref` in function types is deferred (see Stage 5 decision).
+
+## Stage 5 decision
+
+`ref` in function types is deferred. A skeptical review found it to be the largest stage: types, the parser, the formatter, the LSP, MIR, the verifier and the docs, plus five new soundness rules. Examples of those rules:
+- a closure capture must count as owned in the verifier;
+- `Result.and_then` cannot lend;
+- a lambda default cannot lend.
+
+The one program it unlocks still needed `lambda (u: JsonValue) -> ref Optional[JsonValue]: u.get("name")`, which is no shorter than `if let`. None of the 26 `and_then` uses in the repository needed it.
+
+The user chose a stdlib accessor instead (2026-10-25). `JsonValue.get_in(keys) -> ref Optional[JsonValue]` lends a member chain with stages 1 to 4. Function values keep owning their results, which the model's rule permits.
+
+Two false rejections found on the way are fixed:
+- A recursive `ref` call counts as lending before its summary is known (`CallModes.pending`), and the verifier's `lent_mask` grows from no parameters to a fixpoint.
+- A scalar temporary argument never makes a lending call owned.
 
 ## Open questions
 
-- Stage 5, `and_then`: one declaration whose result is a borrow when the argument lends and owned otherwise (decided per call site, since `and_then` lowers inline), or two names. Recommend one declaration.
+- `ref` callables (`Callable[[T], ref R]`, `-> ref` lambdas) are deferred to a follow-up issue; see Stage 5 decision.

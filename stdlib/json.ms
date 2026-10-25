@@ -44,8 +44,9 @@ export type JsonLimits:
 #         return name.as_string().get("")
 # ```
 #
-# A borrow cannot be returned from a lambda, so `and_then(lambda u: u.get("name"))` does not
-# check; read the levels with `if let`, or take a copy with `.clone()`.
+# `get_in` reads a chain of object members in one call and lends the same way:
+# `doc.get_in(["user", "name"])`. A lambda owns its result, so `and_then(lambda u: u.get("name"))`
+# does not check; use `get_in`, read the levels with `if let`, or take a copy with `.clone()`.
 export type JsonValue:
     # JSON null, represented without a payload value.
     case Null
@@ -81,6 +82,12 @@ impl JsonValue:
         match self:
             case ObjectValue(values): return values.get(key)
             case _: return none
+
+    # Returns the value reached by reading each object member of `keys` in turn, or `none` when a
+    # member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
+    # from the receiver.
+    def get_in(keys: List[String]) -> ref Optional[JsonValue]:
+        return member_path(self, keys, 0)
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
     # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
@@ -258,3 +265,16 @@ impl Error for JsonError:
             case InvalidInput: return "JSON: invalid input"
             case InvalidData: return "JSON: invalid data"
             case LimitExceeded: return "JSON: limit exceeded"
+
+# The member of `value` at `keys[from:]`, read one object level at a time.
+def member_path(
+    value: JsonValue,
+    keys: List[String],
+    from: Int
+) -> ref Optional[JsonValue]:
+    if from >= keys.length(): return none
+    if from == keys.length() - 1: return value.get(keys[from])
+    if let next = value.get(keys[from]):
+        return member_path(next, keys, from + 1)
+
+    return none

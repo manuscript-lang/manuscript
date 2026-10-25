@@ -1486,7 +1486,8 @@ fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u12
 }
 
 /// The parameters a lending function's result can come from, as source bits: every parameter
-/// for a function without a body, or while its own analysis is still running (recursion).
+/// for a function without a body. A recursive call first counts as lending from nothing, and the
+/// mask grows until it is stable (results computed under a smaller guess are dropped each round).
 fn lent_mask(m: &Module, g: usize, memo: &mut std::collections::HashMap<usize, u128>) -> u128 {
     if let Some(mask) = memo.get(&g) {
         return *mask;
@@ -1495,15 +1496,22 @@ fn lent_mask(m: &Module, g: usize, memo: &mut std::collections::HashMap<usize, u
     if f.blocks.is_empty() {
         return EVERY_PARAM;
     }
-    memo.insert(g, EVERY_PARAM);
-    let src = sources(m, f, memo);
-    let mut mask = 0;
-    for b in &f.blocks {
-        if let Term::Ret(Some(v)) = &b.term {
-            mask |= src[v.index()];
+    let mut guess = 0;
+    loop {
+        let before: std::collections::HashSet<usize> = memo.keys().copied().collect();
+        memo.insert(g, guess);
+        let src = sources(m, f, memo);
+        let mut mask = 0;
+        for b in &f.blocks {
+            if let Term::Ret(Some(v)) = &b.term {
+                mask |= src[v.index()];
+            }
         }
+        let mask = (mask & EVERY_PARAM) | guess;
+        if mask == guess {
+            return mask;
+        }
+        memo.retain(|k, _| before.contains(k));
+        guess = mask;
     }
-    let mask = mask & EVERY_PARAM;
-    memo.insert(g, mask);
-    mask
 }

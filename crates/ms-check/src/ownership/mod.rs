@@ -388,7 +388,7 @@ impl Hir<'_> {
 }
 
 /// A value that holds no reference: a number, `Bool`, `Unit`, or an optional of one.
-fn scalar(t: &Type) -> bool {
+pub(crate) fn scalar(t: &Type) -> bool {
     match t.kind {
         Kind::Primitive => t.id.as_str() != "String",
         _ => t.is_std("Optional") && t.args.first().is_some_and(|a| scalar(a)),
