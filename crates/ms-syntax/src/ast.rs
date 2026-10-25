@@ -644,8 +644,6 @@ pub enum StmtKind {
     Bind {
         /// `var` rather than `let`.
         mutable: bool,
-        /// Written `let ref` / `var ref`: borrows the place instead of copying it.
-        by_ref: bool,
         /// Bound pattern.
         pattern: Pattern,
         /// Annotation (only for a plain name pattern).
@@ -695,8 +693,6 @@ pub enum StmtKind {
     },
     /// `for name in iter:`
     For {
-        /// Written `for ref name`: the variable borrows each element (the default for a loop).
-        by_ref: bool,
         /// Loop variable.
         name: Symbol,
         /// Iterated value.

@@ -78,14 +78,14 @@ export type JsonValue:
 impl JsonValue:
     # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
     def get(key: String) -> ref Optional[JsonValue]:
-        match ref self:
+        match self:
             case ObjectValue(values): return values.get(key)
             case _: return none
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
     # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
     def at(index: Int) -> ref Optional[JsonValue]:
-        match ref self:
+        match self:
             case ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
 
@@ -94,44 +94,44 @@ impl JsonValue:
 
     # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
     def as_string() -> ref Optional[String]:
-        match ref self:
+        match self:
             case StringValue(value): return some(value)
             case _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
     # fraction, an exponent, or digits that do not fit in Int.
     def as_int() -> Optional[Int]:
-        match ref self:
+        match self:
             case NumberValue(text): return text.parse_int()
             case _: return none
 
     # Returns a number value as a Float, or `none` when the value is not a number or its text is not finite.
     def as_float() -> Optional[Float]:
-        match ref self:
+        match self:
             case NumberValue(text): return parse_float(text).to_optional()
             case _: return none
 
     # Returns a boolean value, or `none` for any other value.
     def as_bool() -> Optional[Bool]:
-        match ref self:
+        match self:
             case BoolValue(value): return some(value)
             case _: return none
 
     # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
     def as_list() -> ref Optional[List[JsonValue]]:
-        match ref self:
+        match self:
             case ArrayValue(values): return some(values)
             case _: return none
 
     # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
     def as_map() -> ref Optional[Map[String, JsonValue]]:
-        match ref self:
+        match self:
             case ObjectValue(values): return some(values)
             case _: return none
 
     # Returns True only for the Null case; a missing key or any other value returns False.
     def is_null() -> Bool:
-        match ref self:
+        match self:
             case Null: return True
             case _: return False
 

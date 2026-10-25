@@ -161,7 +161,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
-                let f: f64 = text
+                let f: f64 = ms_syntax::number::canonical(text)
                     .parse()
                     .map_err(|_| Error::new(format!("bad float literal {text}")))?;
                 let f = if negate { -f } else { f };
@@ -175,7 +175,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             "@std/Decimal" => {
-                let dec = ms_std_decimal::Dec::parse(text)
+                let dec = ms_std_decimal::Dec::parse(&ms_syntax::number::canonical(text))
                     .ok_or_else(|| Error::new(format!("invalid Decimal literal {text}")))?;
                 let dec = if negate { dec.negate() } else { dec };
                 let ty = self.emty(e)?;
@@ -686,14 +686,5 @@ impl<'a> FnLower<'a> {
 
 /// Parses an integer literal spelling.
 fn parse_int(text: &str) -> Option<i128> {
-    if let Some(h) = text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
-        return i128::from_str_radix(h, 16).ok();
-    }
-    if let Some(b) = text.strip_prefix("0b").or_else(|| text.strip_prefix("0B")) {
-        return i128::from_str_radix(b, 2).ok();
-    }
-    if let Some(o) = text.strip_prefix("0o").or_else(|| text.strip_prefix("0O")) {
-        return i128::from_str_radix(o, 8).ok();
-    }
-    text.parse().ok()
+    ms_syntax::number::canonical(text).parse().ok()
 }

@@ -1,6 +1,7 @@
 type Box:
     name: String
     items: List[Int]
+    spare: List[Int]
 
 impl Box:
     def list() -> ref List[Int]:
@@ -10,7 +11,7 @@ impl Box:
         if first:
             return self.items
 
-        return [1]
+        return self.spare
 
 def borrow_it(var b: Box) -> Int:
     var xs = b.list()

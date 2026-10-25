@@ -934,7 +934,7 @@ def replace_all(re: Regex, text: Bytes, repl: Bytes) -> Result[Bytes, PatError]:
 
     for j in range(last, text.length()):
         out.append(text.get(j))
-    return ok(out.freeze())
+    return ok(out.build())
 
 # Decodes the escapes of a subject or replacement field.
 def unescape(raw: Bytes) -> Result[Bytes, PatError]:
@@ -973,7 +973,7 @@ def unescape(raw: Bytes) -> Result[Bytes, PatError]:
             else:
                 return error(PatError(msg: "bad command"))
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 # Runs one input line and returns its output, or the error to print.
 def process(line: Bytes) -> Result[Bytes, PatError]:
@@ -1005,7 +1005,7 @@ def process(line: Bytes) -> Result[Bytes, PatError]:
         var out = BytesBuilder()
         put_quoted(var out, replaced.clone(), 0, replaced.length())
         put(var out, "\n")
-        return ok(out.freeze())
+        return ok(out.build())
 
     var c = Ctx(re: re, text: text)
     var out = BytesBuilder()
@@ -1044,7 +1044,7 @@ def process(line: Bytes) -> Result[Bytes, PatError]:
         put_quoted(var out, c.text.clone(), last, c.text.length())
         put(var out, f"\n({pieces} pieces)\n")
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 export def main() -> Int:
     let data = read_all(stdin()).get()
@@ -1059,5 +1059,5 @@ export def main() -> Int:
             else:
                 out.concat(result.get())
 
-    stdout().write_bytes(out.freeze()).get()
+    stdout().write_bytes(out.build()).get()
     return 0

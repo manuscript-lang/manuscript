@@ -78,6 +78,7 @@ fn is_higher_order(name: &str) -> bool {
         "map"
             | "filter"
             | "flat_map"
+            | "partition"
             | "group_by"
             | "count"
             | "some"
@@ -1070,35 +1071,6 @@ impl<'a> FnLower<'a> {
             name
         };
         match (self.b.m.types.kind(rty).clone(), name) {
-            (TyKind::Str, "replace" | "replace_first") => {
-                let sym = if name == "replace" {
-                    "msrt_string_replace"
-                } else {
-                    "msrt_string_replace_first"
-                };
-                let mut vals = vec![self.borrow(recv)];
-                let mut max = None;
-                for a in args {
-                    if a.name.as_str() == "max_replacements" {
-                        max = Some(a);
-                    } else {
-                        vals.push(self.borrow(a.val));
-                    }
-                }
-                let (has, n) = self.optional_int(max)?;
-                vals.push(has);
-                vals.push(n);
-                let out = self.call_runtime(sym, &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
-            (TyKind::Str, "replace_n") => {
-                let mut vals = vec![self.borrow(recv)];
-                for a in args {
-                    vals.push(self.borrow(a.val));
-                }
-                let out = self.call_runtime("msrt_string_replace_n", &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
             (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
                 let r = self.borrow(recv);
                 let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
@@ -1167,6 +1139,58 @@ impl<'a> FnLower<'a> {
                 let r = self.borrow(recv);
                 let n = self.borrow(args[0].val);
                 let out = self.call_runtime(sym, &[r, d, n], rty)?;
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(_), "list_zip") => {
+                let result = self.emty(e)?;
+                let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
+                    return Err(Error::new("zip without a list result"));
+                };
+                let TyKind::Rec(rid) = self.b.m.types.kind(pair).clone() else {
+                    return Err(Error::new("zip without a record element"));
+                };
+                let other = self.borrow(args[0].val);
+                let other_len = self.b.list_len(other);
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                let acc = self.fresh_var(result);
+                let first = self.b.list_new(pair, other_len);
+                self.b.def_var(acc, first);
+                self.each_element(lv, &mut |s, i, x| {
+                    let inside = s.b.icmp(ms_mir::ir::Cc::Lt, i, other_len);
+                    let (take, skip) = (s.b.new_block(), s.b.new_block());
+                    s.b.br_if(inside, take, &[], skip, &[]);
+                    s.b.seal_block(take);
+                    s.b.seal_block(skip);
+                    s.b.switch_to(take);
+                    let y = s.b.list_get(other, i);
+                    let xo = s.owned(Val { v: x, own: false });
+                    let yo = s.owned(Val { v: y, own: false });
+                    let rec = s.b.rec_new(rid, &[xo, yo]);
+                    let cur = s.b.use_var(acc);
+                    let next = s.b.list_push(cur, rec);
+                    s.b.def_var(acc, next);
+                    s.b.br(skip, &[]);
+                    s.b.switch_to(skip);
+                    Ok(None)
+                })?;
+                self.release_source(lv, hidden);
+                let out = self.b.use_var(acc);
+                Ok(Val { v: out, own: true })
+            }
+            (TyKind::List(elem), "list_chunks" | "list_windows") => {
+                let chunks = name == "list_chunks";
+                let result = self.emty(e)?;
+                let TyKind::List(inner) = self.b.m.types.kind(result).clone() else {
+                    return Err(Error::new("pieces without a list result"));
+                };
+                let d = self.type_desc(elem);
+                let od = self.type_desc(inner);
+                let r = self.borrow(recv);
+                let size = self.borrow(args[0].val);
+                let step = if chunks { size } else { self.b.iconst(1) };
+                let short = self.b.bconst(chunks);
+                let out =
+                    self.call_runtime("msrt_list_pieces", &[r, d, od, size, step, short], result)?;
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "get") => {
@@ -2620,6 +2644,42 @@ impl<'a> FnLower<'a> {
                 let r = self.b.use_var(acc);
                 Ok(Val { v: r, own: true })
             }
+            "partition" => {
+                let TyKind::Rec(rid) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("partition without a record result"));
+                };
+                let lt = self.b.m.records[rid.index()].fields[0].1;
+                let zero = self.b.iconst(0);
+                let (yes, no) = (self.fresh_var(lt), self.fresh_var(lt));
+                for v in [yes, no] {
+                    let first = self.b.list_new(elem, zero);
+                    self.b.def_var(v, first);
+                }
+                self.each_element(lv, &mut |s, _, x| {
+                    let r = {
+                        let f = s.b.use_var(fvar);
+                        s.b.call_ind(f, &[x])
+                    };
+                    let (hit, miss, join) = (s.b.new_block(), s.b.new_block(), s.b.new_block());
+                    s.b.br_if(r, hit, &[], miss, &[]);
+                    s.b.seal_block(hit);
+                    s.b.seal_block(miss);
+                    for (blk, acc) in [(hit, yes), (miss, no)] {
+                        s.b.switch_to(blk);
+                        let xo = s.owned(Val { v: x, own: false });
+                        let cur = s.b.use_var(acc);
+                        let next = s.b.list_push(cur, xo);
+                        s.b.def_var(acc, next);
+                        s.b.br(join, &[]);
+                    }
+                    s.b.seal_block(join);
+                    s.b.switch_to(join);
+                    Ok(None)
+                })?;
+                let (a, b) = (self.b.use_var(yes), self.b.use_var(no));
+                let rec = self.b.rec_new(rid, &[a, b]);
+                Ok(Val { v: rec, own: true })
+            }
             "flat_map" => {
                 let TyKind::List(res_elem) = self.b.m.types.kind(out).clone() else {
                     return Err(Error::new("flat_map without list result"));
@@ -2843,14 +2903,15 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => match t.as_str().parse::<i64>()
-                {
-                    Ok(n) => Ok(Val {
-                        v: self.b.iconst(n),
-                        own: false,
-                    }),
-                    Err(_) => continue,
-                },
+                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => {
+                    match ms_syntax::number::canonical(t.as_str()).parse::<i64>() {
+                        Ok(n) => Ok(Val {
+                            v: self.b.iconst(n),
+                            own: false,
+                        }),
+                        Err(_) => continue,
+                    }
+                }
                 ExprKind::Text(parts) if parts.iter().all(|t| matches!(t, TextPart::Lit(_))) => {
                     let text: String = parts
                         .iter()

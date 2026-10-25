@@ -183,6 +183,8 @@ const MEMBER_SYNONYMS: &[(&str, &[&str])] = &[
     ("trimStart", &["trim_start"]),
     ("trimEnd", &["trim_end"]),
     ("to_int", &["parse_int", "truncate_to_int"]),
+    ("replace_all", &["replace"]),
+    ("replace_n", &["replace", "replace_first"]),
 ];
 
 /// `fooBar` -> `foo_bar`, or "" when `name` has no uppercase letter.

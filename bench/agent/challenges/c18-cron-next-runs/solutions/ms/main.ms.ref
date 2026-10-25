@@ -176,7 +176,7 @@ def run() -> Result[Unit, Error]:
         n = n + 1
 
         let l = next.get()
-        if l.replace_all(old: " ", new: "").get().is_empty():
+        if l.replace(old: " ", new: "").is_empty():
             continue
 
         let pre = f"line {n}:"

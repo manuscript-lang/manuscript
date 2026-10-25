@@ -346,15 +346,10 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
-        // A `ref` function hands back a borrow of its argument instead of a copy. Only the
-        // standard library does so far: a user function declared `ref` may return the result of
-        // an interface call, which is always an owned copy.
-        let lent = c
-            .func
-            .func()
-            .is_some_and(|f| f.result_ref && !f.body.is_empty())
-            && (c.module.file.as_str().starts_with("@std/")
-                || self.cx.lenders.contains(&(c.module.file, c.id())));
+        // A `ref` function the checker proved lends on every path hands back a borrow of its
+        // argument instead of a copy.
+        let lent = self.cx.lenders.contains(&(c.module.file, c.id()))
+            && c.func.func().is_some_and(|f| !f.body.is_empty());
         let fid = if lent {
             let scope = self.evidence();
             self.cx.function_lent(self.b.m, c, subst, scope)?
@@ -953,11 +948,12 @@ impl<'a> FnLower<'a> {
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
-            ExprKind::Number(n) if t.id.as_str() == "Int" => n
-                .as_str()
-                .parse::<i64>()
-                .ok()
-                .map(|n| val(self.b.iconst(n))),
+            ExprKind::Number(n) if t.id.as_str() == "Int" => {
+                ms_syntax::number::canonical(n.as_str())
+                    .parse::<i64>()
+                    .ok()
+                    .map(|n| val(self.b.iconst(n)))
+            }
             ExprKind::Text(parts) if parts.iter().all(|p| matches!(p, TextPart::Lit(_))) => {
                 let text: String = parts
                     .iter()

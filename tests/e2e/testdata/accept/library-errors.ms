@@ -68,7 +68,7 @@ def propagate_generic() -> Result[Unit, Error]:
     let completed = try decode_generically()
     return ok(())
 
-def describe_error(cause: Error) -> ref String:
+def describe_error(cause: Error) -> String:
     match cause:
         case JsonError(json): return describe_json_error(json)
         case IoError(io): return describe_io_error(io)
@@ -86,12 +86,12 @@ def describe_io_error(cause: IoError) -> String:
         case Failed(message): return f"I/O: {message}"
         case _: return cause.message()
 
-def tagged_detail(cause: Error) -> ref String:
+def tagged_detail(cause: Error) -> String:
     match cause:
         case TaggedError[Int](item):
             return f"integer {item.detail}"
         case TaggedError[String](item):
-            return item.detail
+            return item.detail.clone()
         case _:
             return cause.message()
 
@@ -215,7 +215,7 @@ def generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
     let completed = try generic_failure(cause)
     return ok(())
 
-def describe_direct(cause: Error) -> ref String:
+def describe_direct(cause: Error) -> String:
     return cause.message()
 
 test "specific errors pass directly into Error boundaries":
@@ -321,10 +321,10 @@ impl Label[String] for Labelled[String]:
     def label() -> ref String:
         return self.value
 
-def match_label(view: Label[String]) -> ref String:
+def match_label(view: Label[String]) -> String:
     match view:
         case Labelled[String](receiver):
-            return receiver.value
+            return receiver.value.clone()
         case _:
             return view.label()
 

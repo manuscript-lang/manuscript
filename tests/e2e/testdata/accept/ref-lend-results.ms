@@ -30,12 +30,12 @@ impl Shelf:
 
 impl Item:
     def text() -> ref Optional[String]:
-        match ref self:
+        match self:
             case Named(text, _): return some(text)
             case _: return none
 
     def tags() -> ref Optional[List[String]]:
-        match ref self:
+        match self:
             case Named(_, tags): return some(tags)
             case _: return none
 
@@ -56,7 +56,7 @@ impl Holder:
         return self.inner.pick(True)
 
     # An interface call result is owned, so this one is returned as a copy.
-    def listed() -> ref List[String]:
+    def listed() -> List[String]:
         return self.source.names()
 
     def maybe(flag: Bool) -> ref Optional[List[String]]:
@@ -64,6 +64,17 @@ impl Holder:
             return some(self.inner.names)
 
         return none
+
+# The second argument is a temporary freed at return, so the result is an owned copy and the
+# function cannot be `ref`.
+def either(a: Shelf, b: Shelf, flag: Bool) -> ref List[String]:
+    if flag:
+        return a.names
+
+    return b.names
+
+def from_temporary(s: Shelf) -> List[String]:
+    return either(s, Shelf(names: ["temporary"], ages: {}, spare: []), False)
 
 def shelf() -> Shelf:
     return Shelf(names: ["ada", "grace"], ages: {"ada": "36"}, spare: ["x"])
@@ -105,3 +116,7 @@ test "user ref functions chain borrows and copy interface results":
         try expect_equal(names.length(), 2)
     try expect_true(h.maybe(False).is_none())
     try expect_equal(h.shelved(), ["ada", "grace"])
+
+test "a result over a temporary argument is an owned copy":
+    let s = shelf()
+    try expect_equal(from_temporary(s), ["temporary"])

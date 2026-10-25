@@ -4,7 +4,7 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "exit_code": 67,
-    "stdout": "f1 = Infinity\ni2 = 17\ni3 = 1496\nf4 = 289.473\nl5 = [8] len 1\ns6 = [mslphams]\nl7 = [8, 8] len 2\ni8 = -349125036\nfib(0) = 0\ns9 = [gamma]\ni10 = -349122059\ns11 = [kaerb\nenilnaïve]\nb12 = false\n-1 867963922584 true sum 867963922583\nf13 = 0.000006851459999999999\nl14 = [8, 8] len 2\n12917626334 15 false sum 12917626349\nf15 = NaN\n",
+    "stdout": "f1 = Infinity\ni2 = 17\ni3 = 1496\nf4 = 289.473\nl5 = [8] len 1\ns6 = [mslphmsms]\nl7 = [8, 8] len 2\ni8 = -349125036\nfib(0) = 0\ns9 = [gamma]\ni10 = -349122059\ns11 = [kaerb\nenilnaïve]\nb12 = false\n-1 867963922584 true sum 867963922583\nf13 = 0.000006851459999999999\nl14 = [8, 8] len 2\n12917626334 15 false sum 12917626349\nf15 = NaN\n",
     "stderr": "index 2 out of range for length 1; pass a default: get(index:, default: ...)\n  at seed-0105.ms:76 in main\n"
   }
 }

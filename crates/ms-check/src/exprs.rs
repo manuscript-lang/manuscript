@@ -276,7 +276,13 @@ impl Checker {
         let mut i = Info::default();
         match &e.kind {
             ExprKind::Number(text) => {
-                return self.infer_number(e, text.as_str(), expected, false, i);
+                return self.infer_number(
+                    e,
+                    &ms_syntax::number::canonical(text.as_str()),
+                    expected,
+                    false,
+                    i,
+                );
             }
             ExprKind::Bool(_) => i.ty = Some(bool_()),
             ExprKind::Unit => i.ty = Some(unit()),
@@ -867,7 +873,7 @@ impl Checker {
     ) -> Info {
         if op == UnaryOp::Neg
             && let ExprKind::Number(t) = &operand.kind
-            && t == "9223372036854775808"
+            && ms_syntax::number::canonical(t.as_str()) == "9223372036854775808"
         {
             i.ty = Some(int());
             self.set_info(
@@ -884,7 +890,13 @@ impl Checker {
             && let ExprKind::Number(t) = &operand.kind
             && !t.ends_with('d')
         {
-            let literal = self.infer_number(operand, t.as_str(), expected, true, Info::default());
+            let literal = self.infer_number(
+                operand,
+                &ms_syntax::number::canonical(t.as_str()),
+                expected,
+                true,
+                Info::default(),
+            );
             self.set_info(operand, literal.clone());
             i.ty = literal.ty.clone();
             return finish_info(i);

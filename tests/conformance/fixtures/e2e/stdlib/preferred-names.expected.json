@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "preferred-names.ms::replace_first preserves first default explicit caps and scalar boundaries",
+          "name": "preferred-names.ms::replace_first changes one match and scalar boundaries",
           "status": "passed"
         },
         {
@@ -60,7 +60,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN preferred-names.ms::list names mutate in place and retain shallow copies\nPASS preferred-names.ms::list names mutate in place and retain shallow copies\nRUN preferred-names.ms::set names mutate in place keep order and no-op membership\nPASS preferred-names.ms::set names mutate in place keep order and no-op membership\nRUN preferred-names.ms::explicit views and bound views preserve native mutation\nPASS preferred-names.ms::explicit views and bound views preserve native mutation\nRUN preferred-names.ms::replace_first preserves first default explicit caps and scalar boundaries\nPASS preferred-names.ms::replace_first preserves first default explicit caps and scalar boundaries\nRUN preferred-names.ms::regex replace_all preserves literal text and exact output budgets\nPASS preferred-names.ms::regex replace_all preserves literal text and exact output budgets\nRUN preferred-names.ms::new direct keyed calls evaluate arguments after the receiver is chosen\nPASS preferred-names.ms::new direct keyed calls evaluate arguments after the receiver is chosen\nRUN preferred-names.ms::list reversal names distinguish receiver mutation and shallow copies\nPASS preferred-names.ms::list reversal names distinguish receiver mutation and shallow copies\nRUN preferred-names.ms::byte reversal names copy across direct bound and view calls\nPASS preferred-names.ms::byte reversal names copy across direct bound and view calls\n8 tests, 0 failed\n",
+      "stdout": "RUN preferred-names.ms::list names mutate in place and retain shallow copies\nPASS preferred-names.ms::list names mutate in place and retain shallow copies\nRUN preferred-names.ms::set names mutate in place keep order and no-op membership\nPASS preferred-names.ms::set names mutate in place keep order and no-op membership\nRUN preferred-names.ms::explicit views and bound views preserve native mutation\nPASS preferred-names.ms::explicit views and bound views preserve native mutation\nRUN preferred-names.ms::replace_first changes one match and scalar boundaries\nPASS preferred-names.ms::replace_first changes one match and scalar boundaries\nRUN preferred-names.ms::regex replace_all preserves literal text and exact output budgets\nPASS preferred-names.ms::regex replace_all preserves literal text and exact output budgets\nRUN preferred-names.ms::new direct keyed calls evaluate arguments after the receiver is chosen\nPASS preferred-names.ms::new direct keyed calls evaluate arguments after the receiver is chosen\nRUN preferred-names.ms::list reversal names distinguish receiver mutation and shallow copies\nPASS preferred-names.ms::list reversal names distinguish receiver mutation and shallow copies\nRUN preferred-names.ms::byte reversal names copy across direct bound and view calls\nPASS preferred-names.ms::byte reversal names copy across direct bound and view calls\n8 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

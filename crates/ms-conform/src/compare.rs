@@ -33,6 +33,25 @@ fn flatten(value: &Json, path: &str, out: &mut Vec<String>) {
     }
 }
 
+/// The lines of `lines` with no counterpart in `other`, matching equal lines one to one.
+fn unmatched(lines: &[String], other: &[String]) -> Vec<String> {
+    let mut spare: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for line in other {
+        *spare.entry(line).or_default() += 1;
+    }
+    lines
+        .iter()
+        .filter(|line| match spare.get_mut(line.as_str()) {
+            Some(n) if *n > 0 => {
+                *n -= 1;
+                false
+            }
+            _ => true,
+        })
+        .cloned()
+        .collect()
+}
+
 /// `None` when equal, otherwise a diff excerpt of at most `max_lines` lines per side.
 pub fn diff(expected: &Json, actual: &Json, max_lines: usize) -> Option<String> {
     if expected == actual {
@@ -48,7 +67,10 @@ pub fn diff(expected: &Json, actual: &Json, max_lines: usize) -> Option<String> 
         .zip(b[prefix..].iter().rev())
         .take_while(|(x, y)| x == y)
         .count();
+    // Lines both sides still hold, in another position (a failing test shifts every report
+    // line after it), are not what differs: show only the lines one side lacks.
     let (ea, eb) = (&a[prefix..a.len() - suffix], &b[prefix..b.len() - suffix]);
+    let (ea, eb) = (unmatched(ea, eb), unmatched(eb, ea));
     let mut text = String::new();
     let show = |label: char, lines: &[String], text: &mut String| {
         for line in lines.iter().take(max_lines) {
@@ -59,8 +81,8 @@ pub fn diff(expected: &Json, actual: &Json, max_lines: usize) -> Option<String> 
             text.push_str(&format!("{label} ... {} more\n", lines.len() - max_lines));
         }
     };
-    show('-', ea, &mut text);
-    show('+', eb, &mut text);
+    show('-', &ea, &mut text);
+    show('+', &eb, &mut text);
     Some(text)
 }
 
@@ -81,6 +103,17 @@ mod tests {
         let b = parse(r#"{"exit_code":0,"stdout":"a\nX\nc\n"}"#).unwrap();
         let d = diff(&a, &b, 5).unwrap();
         assert_eq!(d, "- stdout:2| b\n+ stdout:2| X\n");
+    }
+
+    #[test]
+    fn unchanged_lines_between_differences_are_hidden() {
+        let a = parse(r#"{"code":0,"t":[{"s":"passed"},{"s":"passed"}]}"#).unwrap();
+        let b = parse(r#"{"code":1,"t":[{"s":"passed"},{"s":"failed"}]}"#).unwrap();
+        let d = diff(&a, &b, 5).unwrap();
+        assert_eq!(
+            d,
+            "- code: 0\n- t[1].s: \"passed\"\n+ code: 1\n+ t[1].s: \"failed\"\n"
+        );
     }
 
     #[test]

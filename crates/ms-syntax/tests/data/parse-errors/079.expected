@@ -1,0 +1,1 @@
+error parse 2:9:40 "`ref` is written only before a result type; a binding of a place already borrows it, so drop `ref`"

@@ -14,7 +14,7 @@ def json_doc(count: Int) -> String:
         )
 
     sb.append("]")
-    return sb.freeze()
+    return sb.build()
 
 def encoded_length(value: JsonValue) -> Int:
     if let text = stringify(value):

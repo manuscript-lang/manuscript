@@ -2,7 +2,7 @@ from "@std/io.ms" import stdin, stdout, read_line
 from "@std/string.ms" import StringBuilder
 
 def fields(line: String) -> List[String]:
-    let spaced = line.replace_all(old: "\t", new: " ").get()
+    let spaced = line.replace(old: "\t", new: " ")
     return (
         spaced
         .split(" ")
@@ -192,7 +192,7 @@ def run() -> Result[Unit, Error]:
 
         idx = idx + 1
 
-    try stdout().write(out.freeze())
+    try stdout().write(out.build())
     return stdout().flush()
 
 export def main() -> Int:

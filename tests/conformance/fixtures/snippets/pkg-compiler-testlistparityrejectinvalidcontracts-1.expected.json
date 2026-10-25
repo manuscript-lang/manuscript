@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 47 members in total",
+        "message": "unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 51 members in total",
         "position": {
           "file": "pkg-compiler-testlistparityrejectinvalidcontracts-1.ms",
           "line": 6,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testlistparityrejectinvalidcontracts-1.ms:6:19: resolution: unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 47 members in total\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testlistparityrejectinvalidcontracts-1.ms:6:19: resolution: unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 51 members in total\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
