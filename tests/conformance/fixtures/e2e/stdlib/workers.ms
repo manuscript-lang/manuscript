@@ -8,7 +8,7 @@ from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
-from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
+from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_channel
 
 type Job:
     id: Int
@@ -279,3 +279,32 @@ test "a worker that uses the network ends cleanly":
         var worker = group.spawn(touches_network).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_ok(worker.join())
+
+
+def joined_ok(w: Worker[Int, Int]) -> Int:
+    var held = w
+    if held.join().is_ok():
+        return 1
+
+    return 0
+
+test "tasks joining clones of one worker all see its outcome":
+    with WorkerGroup[Int, Int]() as workers:
+        let worker = workers.spawn(naps).get(none)
+        let first_copy = worker.clone()
+        let second_copy = worker.clone()
+        with TaskGroup[Int]() as tasks:
+            let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
+            let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))
+            first.result() | try expect_ok | try expect_equal(1)
+            second.result() | try expect_ok | try expect_equal(1)
+
+test "leaving the group while a task joins a worker does not fault":
+    with TaskGroup[Int]() as tasks:
+        with WorkerGroup[Int, Int]() as workers:
+            let worker = workers.spawn(wait_forever).get(none)
+            let copy = worker.clone()
+            tasks.spawn(lambda c: joined_ok(copy.clone()))
+            sleep(duration(nanoseconds: 20000000))
+
+        try expect_equal(1, 1)
