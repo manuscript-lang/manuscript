@@ -41,7 +41,10 @@ export type TaskError:
     # The task's group was closed, or its result was already collected.
     case Closed
     # The task faulted in a group that contains faults. Carries the fault report.
-    case Faulted(message: String)
+    case Faulted(
+        # The fault report from the task: its message and stack.
+        message: String
+    )
 
 impl Error for TaskError:
     # Returns the fixed diagnostic `task: <reason>`.
