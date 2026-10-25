@@ -27,6 +27,8 @@ pub(super) struct ExSt {
     /// Decoded body bytes not yet handed to the handler.
     pub decoded: Vec<u8>,
     pub remaining_read: usize,
+    /// A read ran past the body limit; a handler failing with no response out answers 413.
+    pub body_over_limit: bool,
     pub remaining_write: usize,
     pub expect_continue: bool,
     pub minor: u8,
@@ -93,6 +95,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
             decoder,
             decoded: Vec::new(),
             remaining_read: server.limits.body,
+            body_over_limit: false,
             remaining_write: server.limits.response,
             expect_continue,
             minor: head.minor,
@@ -247,6 +250,7 @@ impl Exchange {
                     let n = st.decoded.len().min(want);
                     let chunk: Vec<u8> = st.decoded.drain(..n).collect();
                     if chunk.len() > st.remaining_read {
+                        st.body_over_limit = true;
                         return Err(IoErr::failed("request body limit exceeded"));
                     }
                     st.remaining_read -= chunk.len();
@@ -335,12 +339,24 @@ impl Exchange {
         if body.len() > remaining {
             return Err(HttpErr::LimitExceeded);
         }
-        // The head alone is written when the handler returns.
+        // The head alone is written when the handler returns; a HEAD answer still names the
+        // length and type the body would have had.
         if body.is_empty() || bodyless {
+            let mut st = self.st.borrow_mut();
+            if st.is_head && server::body_allowed(st.status) && !body.is_empty() {
+                st.staged
+                    .set("Content-Length", body.len().to_string().into_bytes());
+                if st.staged.first("Content-Type").is_none() {
+                    st.staged
+                        .set("Content-Type", sniff::detect(body).as_bytes().to_vec());
+                }
+            }
+            drop(st);
             return Ok(());
         }
-        let result = if self.h2_id().is_some() {
-            self.write(body)
+        let result = if let Some(id) = self.h2_id() {
+            self.send_head_h2(id, body, Some(body.len()), false)
+                .and_then(|()| self.write(body))
         } else {
             let sent = self.write_head(body, Some(body.len()), self.deadline());
             if sent.is_err() {
@@ -596,8 +612,19 @@ impl Exchange {
             close = true;
         } else if failed {
             if !sent {
-                let status = if late || cancelled { 504 } else { 500 };
-                server::error_bytes(&mut out, reactor, status, "request failed", false);
+                let over = self.st.borrow().body_over_limit;
+                if over && !(late || cancelled) {
+                    server::error_bytes(
+                        &mut out,
+                        reactor,
+                        413,
+                        "invalid or oversized request body",
+                        false,
+                    );
+                } else {
+                    let status = if late || cancelled { 504 } else { 500 };
+                    server::error_bytes(&mut out, reactor, status, "request failed", false);
+                }
             } else {
                 // Part of the response is out: abort the connection.
                 server.close_conn(conn, reactor);
@@ -698,17 +725,13 @@ fn unix_now() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::server::tests::{exchange as raw, with_client};
-    use super::server::{Dispatch, Limits, Options, Outcome, Reply, Request, Server};
+    use super::server::{Dispatch, Limits, Options, Outcome, Server};
     use super::*;
     use crate::net::Network;
 
     struct Streamer;
 
     impl Dispatch for Streamer {
-        fn buffered(&self, _: Request) -> Outcome<Reply> {
-            Outcome::Cancelled
-        }
-
         fn streaming(&self, ex: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
             let result = (|| {
                 match ex.path().as_str() {
@@ -774,11 +797,7 @@ mod tests {
 
     fn start(limits: Limits) -> (Rc<Network>, Rc<Server>) {
         let net = Network::new_root();
-        let options = Options {
-            limits,
-            streaming: true,
-            tls: None,
-        };
+        let options = Options { limits, tls: None };
         let server = Server::start(&net, "127.0.0.1:0", Box::new(Streamer), options).unwrap();
         (net, server)
     }
@@ -840,11 +859,11 @@ mod tests {
         });
         let addr = server.address().to_string();
         let a = addr.clone();
-        // The handler fails on a body over the limit, answering 500 through its error.
+        // A declared length over the limit is refused before the handler runs.
         let over = with_client(move || {
             raw(&a, b"POST /x HTTP/1.1\r\nHost: t\r\nContent-Length: 9\r\nConnection: close\r\n\r\n123456789")
         });
-        assert!(over.starts_with("HTTP/1.1 500"), "{over}");
+        assert!(over.starts_with("HTTP/1.1 413"), "{over}");
         let a = addr.clone();
         let two = with_client(move || {
             raw(&a, b"POST /x HTTP/1.1\r\nHost: t\r\nContent-Length: 2\r\n\r\nabGET /nobody HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")

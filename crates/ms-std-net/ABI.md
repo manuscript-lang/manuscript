@@ -148,9 +148,7 @@ Wire structs (`#[repr(C)]`, `ffi/http.rs`): `OptWire { present: u8, value: i64 }
 `HttpClientOptionsWire { max_redirects, max_idle_connections, max_header_bytes,
 idle_timeout: OptWire, decompress: u8, cookies: u8, tls: TlsOptionsWire }`;
 `HttpServerOptionsWire { max_requests, max_body_bytes, max_response_bytes,
-max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `RequestWire
-{ method, path, query, protocol, headers, body }` and `ResponseWire { status, headers,
-body }` (all fields owned, +1); `ClientResponseWire { status, headers, protocol, body }`;
+max_header_bytes, timeout, grace: OptWire, tls_present: u8, tls }`; `ClientResponseWire { status, headers, protocol, body }`;
 `MetadataWire { status, headers, protocol }`; `request_stream` takes a `src`
 closure (compiler generated, borrowed for the call) wrapping the `ReadStream`; its code word
 follows the `Connection.read` convention: `read(env, has_max, max, out, present, err) -> status`.
@@ -160,8 +158,7 @@ msrt_net_network_http_client(net, opts, out, err) -> u8
 msrt_http_client_request[_bytes|_stream](c, method, address, headers, body, has_max, max, has_timeout, timeout, out, err) -> u8
 msrt_net_network_request[_bytes](net, method, address, headers, body, has_max, max, has_timeout, timeout, out: *mut ClientResponseWire, err) -> u8
 msrt_http_body_{read,metadata,close}
-msrt_net_network_serve(net, address, env, limits..., out, err) -> u8
-msrt_net_network_serve_stream(net, address, env, opts, out, err) -> u8
+msrt_net_network_serve(net, address, env, opts, out, err) -> u8
 msrt_http_server_{address,close,wait}
 msrt_http_exchange_{headers,method,path,protocol,query,read,send_headers,send,write,write_bytes,close,upgrade}
 ```

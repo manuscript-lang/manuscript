@@ -1,8 +1,7 @@
 //! HTTP handlers and methods across the runtime boundary (`ms-std-net/ABI.md`, "http").
 //!
-//! `serve` and `serve_stream` take the handler as one closure object whose code word the
-//! server calls: `code(closure, request, response)` for a buffered handler and
-//! `code(closure, exchange, err) -> status` for a streaming one. The wrapper closure built
+//! `serve` takes the handler as one closure object whose code word the server calls:
+//! `code(closure, exchange, err) -> status`. The wrapper closure built
 //! here captures the user's handler and converts between the wire records and the language
 //! values. `HttpMethod` crosses as its token text.
 
@@ -22,30 +21,6 @@ fn pointer(mode: Mode) -> Param {
 }
 
 impl FnLower<'_> {
-    /// The function the cleanup stack calls to release `ty` when a fault abandons the frame
-    /// that owns it.
-    fn drop_thunk(&mut self, ty: MTy) -> ms_mir::ir::FuncId {
-        let key = format!("drop:{}", ty.index());
-        if let Some(f) = self.cx.helpers.get(&key) {
-            return *f;
-        }
-        let ps = vec![Param {
-            ty,
-            mode: Mode::Own,
-        }];
-        let mut b = FuncBuilder::new(self.b.m, "drop", ps, MTy::UNIT);
-        b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
-        b.func_mut().kind = FuncKind::Normal;
-        let v = b.params()[0];
-        b.emit(Op::Drop, &[v], Imm::None, None);
-        let u = b.unit();
-        b.ret(Some(u));
-        let f = b.into_func();
-        let id = self.b.m.add_func(f);
-        self.cx.helpers.insert(key, id);
-        id
-    }
-
     /// The token text of an `HttpMethod` value.
     pub(crate) fn method_text(&mut self, method: Val) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(method.v)).clone() else {
@@ -116,35 +91,23 @@ impl FnLower<'_> {
 
     /// The handler closure the server calls, wrapping the user's `handler`; an owned
     /// temporary released at the end of the statement.
-    pub(crate) fn handler_env(
-        &mut self,
-        streaming: bool,
-        handler: Val,
-    ) -> Result<ms_mir::ir::Value, Error> {
+    pub(crate) fn handler_env(&mut self, handler: Val) -> Result<ms_mir::ir::Value, Error> {
         let user_ty = self.ty_of(handler.v);
         let TyKind::Fn(params, result) = self.b.m.types.kind(user_ty).clone() else {
             return Err(Error::new("a server handler is not a function"));
         };
-        let key = format!("serve-thunk:{streaming}:{}", user_ty.0);
+        let key = format!("serve-thunk:{}", user_ty.0);
         let thunk = match self.cx.helpers.get(&key) {
             Some(t) => *t,
             None => {
-                let f = if streaming {
-                    self.stream_thunk(user_ty, params[0], result)?
-                } else {
-                    self.buffered_thunk(user_ty, params[0])?
-                };
+                let f = self.stream_thunk(user_ty, params[0], result)?;
                 let id = self.b.m.add_func(f);
                 self.cx.helpers.insert(key, id);
                 id
             }
         };
-        let fty = if streaming {
-            let ht = crate::natiface::handle_ty(self.b.m);
-            self.b.m.types.func(vec![ht, MTy::PTR], MTy::INT)
-        } else {
-            self.b.m.types.func(vec![MTy::PTR, MTy::PTR], MTy::UNIT)
-        };
+        let ht = crate::natiface::handle_ty(self.b.m);
+        let fty = self.b.m.types.func(vec![ht, MTy::PTR], MTy::INT);
         let user = self.owned(handler);
         let closure = self
             .b
@@ -152,102 +115,6 @@ impl FnLower<'_> {
             .expect("closure");
         self.temps.push(closure);
         Ok(closure)
-    }
-
-    /// `code(closure, request, response)`: reads a `RequestWire`, calls the handler and
-    /// moves its `HttpResponse` into the `ResponseWire`.
-    fn buffered_thunk(&mut self, user_ty: MTy, request: MTy) -> Result<ms_mir::ir::Func, Error> {
-        let TyKind::Rec(rid) = self.b.m.types.kind(request).clone() else {
-            return Err(Error::new("a request is not a record"));
-        };
-        let fields = self.b.m.records[rid.index()].fields.clone();
-        // `RequestWire`: method, path, query, protocol, headers, body.
-        let by_name = |n: &str| {
-            fields
-                .iter()
-                .position(|f| f.0 == n)
-                .ok_or_else(|| Error::new(format!("a request without {n}")))
-        };
-        let wire: Vec<(String, MTy)> = [
-            ("method", MTy::STR),
-            ("path", MTy::STR),
-            ("query", MTy::STR),
-            ("protocol", MTy::STR),
-            ("headers", fields[by_name("headers")?].1),
-            ("body", MTy::BYTES),
-        ]
-        .iter()
-        .map(|(n, t)| (n.to_string(), *t))
-        .collect();
-        let (wire_id, wire_ty) = self.b.m.add_record("RequestWire", wire);
-        let TyKind::Alt(method_alt) = self.b.m.types.kind(fields[by_name("method")?].1).clone()
-        else {
-            return Err(Error::new("a request method is not an alternative"));
-        };
-        let order: Vec<usize> = fields
-            .iter()
-            .map(|f| match f.0.as_str() {
-                "method" => 0,
-                "path" => 1,
-                "query" => 2,
-                "protocol" => 3,
-                "headers" => 4,
-                _ => 5,
-            })
-            .collect();
-        let hir = self.hir.clone();
-        let b = FuncBuilder::new(
-            self.b.m,
-            "serve.buffered",
-            vec![
-                pointer(Mode::Borrow),
-                pointer(Mode::Borrow),
-                pointer(Mode::Borrow),
-            ],
-            MTy::UNIT,
-        );
-        let mut fl = FnLower::new(self.cx, b, hir, Default::default(), 0, MTy::UNIT);
-        fl.b.func_mut().kind = FuncKind::Closure {
-            captures: vec![user_ty],
-        };
-        let p = fl.b.params();
-        let handler =
-            fl.b.emit(Op::ClosureCap, &[p[0]], Imm::Idx(0), Some(user_ty))
-                .expect("capture");
-        let loaded =
-            fl.b.emit(Op::Take, &[p[1]], Imm::Ty(wire_ty), Some(wire_ty))
-                .expect("take");
-        let mut values = Vec::new();
-        for (k, source) in order.iter().enumerate() {
-            let field = fl.b.rec_get(wire_id, *source as u32, loaded);
-            let v = if k == 0 {
-                fl.method_from_text(method_alt, field, 0)?
-            } else {
-                fl.owned(Val {
-                    v: field,
-                    own: false,
-                })
-            };
-            values.push(v);
-        }
-        let req = fl.b.rec_new(rid, &values);
-        fl.drop_value(loaded);
-        // A fault in the handler abandons this frame; the cleanup stack releases the request.
-        let rec_ty = fl.ty_of(req);
-        let thunk = fl.drop_thunk(rec_ty);
-        let handle =
-            fl.b.emit(Op::CleanupPush, &[req], Imm::Func(thunk), Some(MTy::INT))
-                .expect("handle");
-        let response = fl.b.call_ind(handler, &[req]);
-        let _ = fl.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
-        fl.drop_value(req);
-        fl.b.emit(Op::Put, &[p[2], response], Imm::None, None);
-        let unit = fl.b.unit();
-        fl.emit_return(Some(Val {
-            v: unit,
-            own: false,
-        }));
-        Ok(fl.b.into_func())
     }
 
     /// `code(closure, exchange, err) -> status`: wraps the exchange handle in its

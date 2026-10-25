@@ -2,9 +2,9 @@
 //! HTTP server, with the handler in Rust. Measures the transport's ceiling.
 extern crate ms_rt;
 use ms_std_net::http::headers::Headers;
-use ms_std_net::http::server::{Dispatch, Limits, Options, Outcome, Reply, Request, Server};
+use ms_std_net::http::server::buffered::{Buffered, Handle, Reply, Request};
+use ms_std_net::http::server::{Limits, Options, Outcome, Server};
 use ms_std_net::net::Network;
-use std::rc::Rc;
 
 fn score(id: i64) -> i64 {
     id * 7919 % 1000
@@ -48,8 +48,8 @@ fn reply(status: i64, text: String) -> Outcome<Reply> {
 
 struct App;
 
-impl Dispatch for App {
-    fn buffered(&self, r: Request) -> Outcome<Reply> {
+impl Handle for App {
+    fn handle(&self, r: Request) -> Outcome<Reply> {
         if r.path == "/health" {
             return reply(200, "ok\n".into());
         }
@@ -76,13 +76,6 @@ impl Dispatch for App {
         }
         reply(404, "not found\n".into())
     }
-
-    fn streaming(
-        &self,
-        _: Rc<ms_std_net::http::exchange::Exchange>,
-    ) -> Outcome<Result<(), ms_std_net::error::HttpErr>> {
-        Outcome::Done(Ok(()))
-    }
 }
 
 fn main() {
@@ -90,9 +83,8 @@ fn main() {
     let net = Network::new_root();
     let options = Options {
         limits: Limits::default(),
-        streaming: false,
         tls: None,
     };
-    let server = Server::start(&net, &address, Box::new(App), options).expect("listen");
+    let server = Server::start(&net, &address, Box::new(Buffered(App)), options).expect("listen");
     server.wait();
 }

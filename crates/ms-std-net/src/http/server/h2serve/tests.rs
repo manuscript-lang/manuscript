@@ -4,6 +4,7 @@
 use super::*;
 use crate::error::HttpErr;
 use crate::h2::{Connection, Event, Settings};
+use crate::http::server::buffered::{Buffered, Handle, Reply, Request};
 use crate::http::server::tests::with_client;
 use crate::net::Network;
 use crate::tls::{self, TlsOptions};
@@ -39,8 +40,8 @@ fn client_tls(alpn: &[&str]) -> Arc<rustls::ClientConfig> {
 /// Buffered handler.
 struct App;
 
-impl Dispatch for App {
-    fn buffered(&self, r: Request) -> Outcome<Reply> {
+impl Handle for App {
+    fn handle(&self, r: Request) -> Outcome<Reply> {
         let mut headers = Headers::new();
         let body = match r.path.as_str() {
             "/fault" => return Outcome::Fault("boom".into()),
@@ -70,20 +71,12 @@ impl Dispatch for App {
             body,
         })
     }
-
-    fn streaming(&self, _: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
-        Outcome::Cancelled
-    }
 }
 
 /// Streaming handler.
 struct Streamer;
 
 impl Dispatch for Streamer {
-    fn buffered(&self, _: Request) -> Outcome<Reply> {
-        Outcome::Cancelled
-    }
-
     fn streaming(&self, ex: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
         let result = (|| {
             match ex.path().as_str() {
@@ -123,15 +116,10 @@ impl Dispatch for Streamer {
     }
 }
 
-fn start(
-    dispatch: Box<dyn Dispatch>,
-    streaming: bool,
-    limits: Limits,
-) -> (Rc<Network>, Rc<Server>) {
+fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Rc<Network>, Rc<Server>) {
     let net = Network::new_root();
     let options = Options {
         limits,
-        streaming,
         tls: Some(server_tls()),
     };
     let server = Server::start(&net, "127.0.0.1:0", dispatch, options).unwrap();
@@ -324,7 +312,7 @@ fn big_window() -> Settings {
 
 #[test]
 fn serves_get_and_reports_the_protocol() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let (r, head) = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -349,7 +337,7 @@ fn serves_get_and_reports_the_protocol() {
 
 #[test]
 fn response_headers_are_lowercase_and_not_connection_specific() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let (html, empty) = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -371,7 +359,7 @@ fn response_headers_are_lowercase_and_not_connection_specific() {
 
 #[test]
 fn request_fields_are_assembled() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let r = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -390,7 +378,7 @@ fn request_fields_are_assembled() {
 
 #[test]
 fn large_upload_honors_flow_control() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let body = vec![7u8; 300_000];
     let r = with_client(move || {
@@ -404,7 +392,7 @@ fn large_upload_honors_flow_control() {
 
 #[test]
 fn large_response_waits_for_window_updates() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let (first, total) = with_client(move || {
         let mut c = Client::connect(&addr, Settings::default());
@@ -463,7 +451,7 @@ fn large_response_waits_for_window_updates() {
 
 #[test]
 fn streamed_response_larger_than_the_window() {
-    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let (_net, server) = start(Box::new(Streamer), limits());
     let addr = server.address().to_string();
     let r = with_client(move || {
         let mut c = Client::connect(&addr, Settings::default());
@@ -479,7 +467,7 @@ fn streamed_response_larger_than_the_window() {
 #[test]
 fn two_streams_wait_on_one_connection() {
     // Both handlers outrun the default 64 KiB windows and wait at once.
-    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let (_net, server) = start(Box::new(Streamer), limits());
     let addr = server.address().to_string();
     let bodies = with_client(move || {
         let mut c = Client::connect(&addr, Settings::default());
@@ -518,7 +506,7 @@ fn two_streams_wait_on_one_connection() {
 
 #[test]
 fn streaming_upload_and_protocol() {
-    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let (_net, server) = start(Box::new(Streamer), limits());
     let addr = server.address().to_string();
     let body = vec![1u8; 500_000];
     let (up, plain, none) = with_client(move || {
@@ -537,7 +525,7 @@ fn streaming_upload_and_protocol() {
 
 #[test]
 fn concurrent_streams_complete() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let (a, b, c3) = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -553,7 +541,7 @@ fn concurrent_streams_complete() {
 
 #[test]
 fn faults_and_cancellations_answer_per_stream() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let (fault, cancel, after) = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -569,7 +557,7 @@ fn faults_and_cancellations_answer_per_stream() {
     // The connection survives.
     assert_eq!(after.status, "200");
 
-    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let (_net, server) = start(Box::new(Streamer), limits());
     let addr = server.address().to_string();
     let r = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -581,7 +569,7 @@ fn faults_and_cancellations_answer_per_stream() {
 
 #[test]
 fn reset_flood_does_not_wedge_the_server() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let after = with_client(move || {
         // Open a stream and reset it at once, many times over: the server may throttle or drop
@@ -604,8 +592,7 @@ fn reset_flood_does_not_wedge_the_server() {
 #[test]
 fn body_limit_is_enforced() {
     let (_net, server) = start(
-        Box::new(App),
-        false,
+        Box::new(Buffered(App)),
         Limits {
             body: 1000,
             ..limits()
@@ -639,8 +626,7 @@ fn body_limit_is_enforced() {
 #[test]
 fn admission_limit_answers_503() {
     let (_net, server) = start(
-        Box::new(App),
-        false,
+        Box::new(Buffered(App)),
         Limits {
             admission: 0,
             ..limits()
@@ -657,7 +643,7 @@ fn admission_limit_answers_503() {
 
 #[test]
 fn upgrade_is_not_available_over_http2() {
-    let (_net, server) = start(Box::new(Streamer), true, limits());
+    let (_net, server) = start(Box::new(Streamer), limits());
     let addr = server.address().to_string();
     let r = with_client(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -669,7 +655,7 @@ fn upgrade_is_not_available_over_http2() {
 
 #[test]
 fn http1_clients_share_the_listener() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let text = with_client(move || {
         let mut tls = tls_connect(&addr, &["http/1.1"]);
@@ -686,7 +672,7 @@ fn http1_clients_share_the_listener() {
 
 #[test]
 fn close_sends_goaway_and_finishes_streams() {
-    let (net, server) = start(Box::new(App), false, limits());
+    let (net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let handle = std::thread::spawn(move || {
         let mut c = Client::connect(&addr, big_window());
@@ -717,7 +703,7 @@ fn close_sends_goaway_and_finishes_streams() {
 
 #[test]
 fn drops_a_peer_that_floods_pings_without_reading() {
-    let (_net, server) = start(Box::new(App), false, limits());
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
     let addr = server.address().to_string();
     let closed_after = with_client(move || {
         let mut c = Client::connect(&addr, big_window());

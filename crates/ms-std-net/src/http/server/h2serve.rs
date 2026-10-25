@@ -476,9 +476,7 @@ impl Server {
                 s.head = Some(head);
             }
         });
-        if self.streaming || end_stream {
-            self.h2_queue(conn, reactor, id);
-        }
+        self.h2_queue(conn, reactor, id);
     }
 
     /// Turns a validated header block into the request head.
@@ -509,14 +507,14 @@ impl Server {
         if let Some(host) = target.host.or(authority).or(host) {
             fields.push(("Host".into(), host.into_bytes()));
         }
-        if self.streaming && !Headers::from_received(fields.iter().cloned()).is_text() {
+        if !Headers::from_received(fields.iter().cloned()).is_text() {
             return Err((400, "invalid UTF-8 request"));
         }
         let declared = fields
             .iter()
             .find(|(n, _)| n == "content-length")
             .and_then(|(_, v)| std::str::from_utf8(v).ok()?.trim().parse::<u64>().ok());
-        if !self.streaming && declared.is_some_and(|n| n > self.limits.body as u64) {
+        if declared.is_some_and(|n| n > self.limits.body as u64) {
             return Err((413, "invalid or oversized request body"));
         }
         let expect_continue = h1::has_token(&fields, "expect", "100-continue");
@@ -577,48 +575,21 @@ impl Server {
         }
     }
 
-    fn h2_data(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32, data: Vec<u8>, end: bool) {
-        enum Next {
-            Nothing,
-            Queue,
-            TooBig,
-        }
-        let limit = self.limits.body;
-        let streaming = self.streaming;
-        let next = with_h2(conn, |h| {
+    fn h2_data(&self, conn: &Rc<Conn>, _reactor: &Reactor, id: u32, data: Vec<u8>, end: bool) {
+        with_h2(conn, |h| {
             let n = data.len();
             let Some(s) = h.streams.get_mut(&id) else {
                 h.core.release(id, n);
-                return Next::Nothing;
+                return;
             };
             s.remote_done |= end;
-            let collecting = s.stage == Stage::Collecting && !streaming;
-            let streamed = streaming && matches!(s.stage, Stage::Queued | Stage::Running);
-            if streamed {
+            if matches!(s.stage, Stage::Queued | Stage::Running) {
                 // The handler returns the credit as it reads.
                 s.body.extend_from_slice(&data);
-                return Next::Nothing;
+            } else {
+                h.core.release(id, n);
             }
-            h.core.release(id, n);
-            if !collecting {
-                return Next::Nothing;
-            }
-            s.body.extend_from_slice(&data);
-            if s.body.len() > limit {
-                return Next::TooBig;
-            }
-            if end { Next::Queue } else { Next::Nothing }
-        })
-        .unwrap_or(Next::Nothing);
-        match next {
-            Next::Nothing => {}
-            Next::Queue => self.h2_queue(conn, reactor, id),
-            Next::TooBig => {
-                with_h2(conn, |h| {
-                    h.error_response(reactor, id, 413, "invalid or oversized request body");
-                });
-            }
-        }
+        });
     }
 
     fn h2_reset(&self, conn: &Rc<Conn>, id: u32) {
@@ -649,87 +620,16 @@ impl Server {
         let Some((id, head, started)) = with_h2(conn, H2Conn::take_next).flatten() else {
             return;
         };
-        if self.streaming {
-            run_streaming(self, conn, reactor, id, head, started);
-        } else {
-            self.h2_buffered(conn, reactor, id, head, started);
-        }
+        run_streaming(self, conn, reactor, id, head, started);
         {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
         }
         self.h2_pump_out(conn, reactor);
     }
-
-    fn h2_buffered(
-        &self,
-        conn: &Rc<Conn>,
-        reactor: &Reactor,
-        id: u32,
-        head: Head,
-        started: Instant,
-    ) {
-        let body = with_h2(conn, |h| {
-            h.streams.get_mut(&id).map(|s| std::mem::take(&mut s.body))
-        })
-        .flatten();
-        let Some(body) = body else { return };
-        let is_head = head.method == "HEAD";
-        let request = Request {
-            method: head.method,
-            path: head.path,
-            query: head.query,
-            headers: Headers::from_received(head.fields),
-            body,
-            protocol: "HTTP/2.0",
-        };
-        self.enter_handler(reactor);
-        let outcome = self.dispatch.buffered(request);
-        self.leave_handler(reactor);
-        let late = self.limits.timeout.is_some_and(|t| started.elapsed() > t);
-        let result = match outcome {
-            Outcome::Cancelled => Err((504, "request cancelled")),
-            Outcome::Fault(message) => {
-                eprintln!("HTTP handler fault: {message}");
-                Err((500, "handler fault"))
-            }
-            Outcome::Done(_) if late => Err((504, "request cancelled")),
-            Outcome::Done(reply) => self.h2_validate(reply),
-        };
-        with_h2(conn, |h| match result {
-            Ok(reply) => h.reply(reactor, id, reply, is_head),
-            Err((status, message)) => h.error_response(reactor, id, status, message),
-        });
-    }
-
-    fn h2_validate(&self, reply: Reply) -> Result<Reply, (u16, &'static str)> {
-        if !(200..=599).contains(&reply.status) || reply.body.len() > self.limits.response {
-            return Err((500, "invalid response"));
-        }
-        check_response_headers(&reply.headers).map_err(|m| (500, m))?;
-        Ok(reply)
-    }
 }
 
-impl H2Conn {
-    fn reply(&mut self, reactor: &Reactor, id: u32, reply: Reply, is_head: bool) {
-        let allowed = body_allowed(reply.status);
-        let length = allowed.then_some(reply.body.len());
-        let headers = response_head(
-            reactor,
-            reply.status as u16,
-            &reply.headers,
-            length,
-            &reply.body,
-        );
-        let body = if allowed && !is_head {
-            reply.body
-        } else {
-            Vec::new()
-        };
-        self.respond(id, headers, body);
-    }
-}
+impl H2Conn {}
 
 /// The response header block: handler headers lowercased and sorted without
 /// the connection-specific ones, then `date`, `content-length` and the sniffed
@@ -796,6 +696,7 @@ fn run_streaming(
             decoder: h1::BodyDecoder::new(h1::Framing::None),
             decoded: Vec::new(),
             remaining_read: server.limits.body,
+            body_over_limit: false,
             remaining_write: server.limits.response,
             expect_continue: head.expect_continue,
             minor: 1,
@@ -871,6 +772,7 @@ impl Exchange {
                 Got::Data(chunk) => {
                     let mut st = self.st.borrow_mut();
                     if chunk.len() > st.remaining_read {
+                        st.body_over_limit = true;
                         return Err(IoErr::failed("request body limit exceeded"));
                     }
                     st.remaining_read -= chunk.len();
@@ -890,7 +792,7 @@ impl Exchange {
     }
 
     /// Sends the response head of a streaming exchange.
-    fn send_head_h2(
+    pub(in crate::http) fn send_head_h2(
         &self,
         id: u32,
         first: &[u8],
@@ -977,8 +879,12 @@ impl Exchange {
                 h.core.send_rst(id, error_code::INTERNAL_ERROR);
                 h.streams.remove(&id);
             } else if failed {
-                let code = if late || cancelled { 504 } else { 500 };
-                h.error_response(reactor, id, code, "request failed");
+                if self.st.borrow().body_over_limit && !(late || cancelled) {
+                    h.error_response(reactor, id, 413, "invalid or oversized request body");
+                } else {
+                    let code = if late || cancelled { 504 } else { 500 };
+                    h.error_response(reactor, id, code, "request failed");
+                }
             } else if !sent {
                 let headers = vec![hv(":status", "204"), hv("date", reactor.date_text())];
                 h.respond(id, headers, Vec::new());
