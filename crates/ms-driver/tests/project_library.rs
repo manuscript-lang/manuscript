@@ -83,7 +83,7 @@ fn alias_validation_is_sorted_and_confined() {
     write(root, "src/value.ms", "");
     let outside_dir = TempDir::new();
     let outside = write(outside_dir.path(), "value.ms", "");
-    let rel = ms_driver::project::gopath::rel(root, &outside).unwrap();
+    let rel = ms_driver::project::pathops::rel(root, &outside).unwrap();
     let prefix = "[project]\nname = \"library\"\nsource = \"src\"\n[aliases]\n";
     let source = format!("{prefix}\"@z\" = \"missing\"\n  \"@a\" = \"{rel}\"\n");
     for _ in 0..20 {

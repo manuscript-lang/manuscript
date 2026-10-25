@@ -4,7 +4,7 @@
 
 use std::collections::BTreeSet;
 
-use ms_driver::project::{ProjectError, gopath, source_path};
+use ms_driver::project::{ProjectError, pathops, source_path};
 
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::util::{file_error, format_cwd, format_display};
@@ -51,13 +51,13 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
             return;
         }
         let resolve = || -> Result<String, ProjectError> {
-            let absolute = gopath::abs(path)?;
-            let mut canonical = gopath::eval_symlinks(&absolute)?;
-            if gopath::base(path) == "ms.toml" {
+            let absolute = pathops::abs(path)?;
+            let mut canonical = pathops::eval_symlinks(&absolute)?;
+            if pathops::base(path) == "ms.toml" {
                 // Manifest configuration paths belong to its containing directory,
                 // even if the manifest itself is a file symlink.
-                let parent = gopath::eval_symlinks(&gopath::dir(&absolute))?;
-                canonical = gopath::join(&[&parent, "ms.toml"]);
+                let parent = pathops::eval_symlinks(&pathops::dir(&absolute))?;
+                canonical = pathops::join(&[&parent, "ms.toml"]);
             }
             Ok(canonical)
         };
@@ -81,14 +81,15 @@ pub fn select_analysis_inputs(targets: &[String]) -> Result<AnalysisSelection, P
             add(&mut selection, &mut seen, &cwd, target);
             continue;
         }
-        let manifest = gopath::join(&[target, "ms.toml"]);
+        let manifest = pathops::join(&[target, "ms.toml"]);
         if !matches!(std::fs::metadata(&manifest), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
         {
             add(&mut selection, &mut seen, &cwd, &manifest);
             continue;
         }
         selection.collection = true;
-        let root = match gopath::abs(target).and_then(|absolute| gopath::eval_symlinks(&absolute)) {
+        let root = match pathops::abs(target).and_then(|absolute| pathops::eval_symlinks(&absolute))
+        {
             Ok(root) => root,
             Err(error) => {
                 report(&mut selection, &cwd, target, &error);
@@ -134,24 +135,24 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
     }
     entries.sort();
     for (name, is_dir) in entries {
-        let path = gopath::join(&[directory, &name]);
+        let path = pathops::join(&[directory, &name]);
         if is_dir {
             if name.starts_with('.') || name == "vendor" || name == "node_modules" {
                 continue;
             }
-            match std::fs::metadata(gopath::join(&[&path, "ms.toml"])) {
+            match std::fs::metadata(pathops::join(&[&path, "ms.toml"])) {
                 Ok(_) => continue,
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
                 Err(e) => {
                     return Err(ProjectError::path(
                         "stat",
-                        &gopath::join(&[&path, "ms.toml"]),
+                        &pathops::join(&[&path, "ms.toml"]),
                         &e,
                     ));
                 }
             }
             walk(&path, files)?;
-        } else if gopath::ext(&name) == ".ms" {
+        } else if pathops::ext(&name) == ".ms" {
             files.push(path);
         }
     }
@@ -165,8 +166,8 @@ impl AnalysisSelection {
             return position.clone();
         }
         let mut position = position.clone();
-        if !root.is_empty() && !gopath::is_abs(&position.file) {
-            position.file = gopath::join(&[root, &position.file]);
+        if !root.is_empty() && !pathops::is_abs(&position.file) {
+            position.file = pathops::join(&[root, &position.file]);
         }
         position.file = format_display(&self.cwd, &position.file);
         position

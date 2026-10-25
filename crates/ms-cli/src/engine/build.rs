@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use ms_build::Lower;
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 
 use super::{Engine, Failure, compile};
 use crate::backend::{BackendResult, BuildRequest, Io};
@@ -44,7 +44,7 @@ pub(super) fn build<L: Lower>(
         &request.output
     };
     let structured = request.json;
-    let (output, path_error) = match gopath::abs(display) {
+    let (output, path_error) = match pathops::abs(display) {
         Ok(absolute) => (absolute, None),
         Err(error) => (display.to_string(), Some(error.to_string())),
     };
@@ -98,7 +98,7 @@ pub(super) fn build<L: Lower>(
         let _ = writeln!(
             io.stderr,
             "-o {display} is a directory; pass a file path (e.g. -o {})",
-            gopath::join(&[display, "program"])
+            pathops::join(&[display, "program"])
         );
         return Ok(2);
     }
@@ -161,18 +161,18 @@ fn report_failure(failure: &Failure, structured: bool, document: &DocumentFn, io
 pub(super) fn protected_output(output: &str, input: &str, project_root: &str) -> Option<String> {
     let mut candidates = vec![input.to_string()];
     if !project_root.is_empty() {
-        candidates.push(gopath::join(&[project_root, "ms.toml"]));
+        candidates.push(pathops::join(&[project_root, "ms.toml"]));
     }
     if let Ok(info) = std::fs::metadata(output) {
         for candidate in &candidates {
             if let Ok(other) = std::fs::metadata(candidate)
                 && same_file(&info, &other, output, candidate)
             {
-                return Some(gopath::base(candidate));
+                return Some(pathops::base(candidate));
             }
         }
     }
-    let base = gopath::base(output);
+    let base = pathops::base(output);
     (base.ends_with(".ms") || base == "ms.toml").then_some(base)
 }
 

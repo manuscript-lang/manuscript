@@ -3,9 +3,9 @@
 use std::collections::BTreeSet;
 
 use crate::project::error::ProjectError;
-use crate::project::gopath;
 use crate::project::manifest::Project;
 use crate::project::overlay::Overlay;
+use crate::project::pathops;
 
 fn skipped_name(name: &str) -> bool {
     name.starts_with('.') || name == "vendor" || name == "node_modules"
@@ -20,7 +20,7 @@ fn is_test_name(name: &str) -> bool {
 fn walk(root: &str, visit: &mut dyn FnMut(&str, &str, bool) -> bool) -> Result<(), ProjectError> {
     let meta =
         std::fs::symlink_metadata(root).map_err(|e| ProjectError::path("lstat", root, &e))?;
-    walk_entry(root, &gopath::base(root), meta.is_dir(), visit)
+    walk_entry(root, &pathops::base(root), meta.is_dir(), visit)
 }
 
 fn walk_entry(
@@ -47,7 +47,7 @@ fn walk_entry(
     }
     entries.sort();
     for (child, child_is_dir) in entries {
-        walk_entry(&gopath::join(&[path, &child]), &child, child_is_dir, visit)?;
+        walk_entry(&pathops::join(&[path, &child]), &child, child_is_dir, visit)?;
     }
     Ok(())
 }
@@ -71,7 +71,7 @@ pub fn discover_modules(
                 }
                 return !(path != root && skipped_name(name));
             }
-            if (all && gopath::ext(name) == ".ms") || is_test_name(name) {
+            if (all && pathops::ext(name) == ".ms") || is_test_name(name) {
                 files.insert(path.to_string());
             }
             true
@@ -97,9 +97,9 @@ pub fn discover_modules_with_overlay(
     }
     let mut seen: BTreeSet<String> = files.into_iter().collect();
     for file in overlay.keys() {
-        let name = gopath::base(file);
+        let name = pathops::base(file);
         if (include_source
-            && gopath::ext(&name) == ".ms"
+            && pathops::ext(&name) == ".ms"
             && discovered_below(&project.source, file))
             || (is_test_name(&name) && discovered_below(&project.root, file))
         {
@@ -110,13 +110,13 @@ pub fn discover_modules_with_overlay(
 }
 
 fn discovered_below(root: &str, file: &str) -> bool {
-    let Ok(rel) = gopath::rel(root, file) else {
+    let Ok(rel) = pathops::rel(root, file) else {
         return false;
     };
-    if gopath::escapes(&rel) || gopath::is_abs(&rel) {
+    if pathops::escapes(&rel) || pathops::is_abs(&rel) {
         return false;
     }
-    gopath::dir(&rel)
+    pathops::dir(&rel)
         .split('/')
         .all(|dir| dir == "." || !skipped_name(dir))
 }

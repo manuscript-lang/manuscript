@@ -22,7 +22,7 @@ impl TempDir {
         std::fs::create_dir_all(&dir).unwrap();
         // The project's own spelling: on Windows `canonicalize` yields a verbatim `\\?\` path, which
         // rejects the `/` and `.` components these tests join onto it.
-        let dir = ms_driver::project::gopath::eval_symlinks(dir.to_str().unwrap()).unwrap();
+        let dir = ms_driver::project::pathops::eval_symlinks(dir.to_str().unwrap()).unwrap();
         TempDir(PathBuf::from(dir))
     }
     pub fn path(&self) -> &str {
@@ -53,7 +53,7 @@ pub fn write(root: &str, name: &str, source: &str) -> String {
 }
 
 pub fn join(a: &str, b: &str) -> String {
-    ms_driver::project::gopath::join(&[a, b])
+    ms_driver::project::pathops::join(&[a, b])
 }
 
 pub fn fixture(source: &str) -> (TempDir, Project) {

@@ -1,6 +1,6 @@
 //! Helpers shared by the command implementations.
 
-use ms_driver::project::{ProjectError, gopath};
+use ms_driver::project::{ProjectError, pathops};
 
 use crate::backend::Io;
 use crate::json::Json;
@@ -66,7 +66,7 @@ pub fn write_output(io: &mut Io, filename: &str, data: &[u8]) -> i32 {
 /// A directory argument selects the `ms.toml` inside it.
 pub fn resolve_input(command: &str, filename: &str) -> Result<String, String> {
     if std::fs::metadata(filename).is_ok_and(|m| m.is_dir()) {
-        let manifest = gopath::join(&[filename, "ms.toml"]);
+        let manifest = pathops::join(&[filename, "ms.toml"]);
         if std::fs::metadata(&manifest).is_err() {
             return Err(format!(
                 "ms {command}: {filename} is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms {command} ms.toml"
@@ -80,20 +80,20 @@ pub fn resolve_input(command: &str, filename: &str) -> Result<String, String> {
 /// The working directory with symlinks resolved.
 pub fn format_cwd() -> Result<String, ProjectError> {
     let cwd = std::env::current_dir().map_err(|e| ProjectError::path("getwd", "", &e))?;
-    gopath::eval_symlinks(&cwd.to_string_lossy())
+    pathops::eval_symlinks(&cwd.to_string_lossy())
 }
 
 /// Display uses physical identity for both explicit and discovered targets.
 /// Outside the invocation directory it stays absolute.
 pub fn format_display(cwd: &str, path: &str) -> String {
-    let Ok(mut absolute) = gopath::abs(path) else {
-        return gopath::clean(path);
+    let Ok(mut absolute) = pathops::abs(path) else {
+        return pathops::clean(path);
     };
-    if let Ok(physical) = gopath::eval_symlinks(&absolute) {
+    if let Ok(physical) = pathops::eval_symlinks(&absolute) {
         absolute = physical;
     }
-    if let Ok(relative) = gopath::rel(cwd, &absolute)
-        && !gopath::escapes(&relative)
+    if let Ok(relative) = pathops::rel(cwd, &absolute)
+        && !pathops::escapes(&relative)
     {
         if relative.starts_with('-') {
             return format!("./{relative}");

@@ -5,7 +5,7 @@
 use crate::backend::{BuildType, Io};
 use crate::regexp;
 use crate::util::{required_value, resolve_input, split_value_option, usage_error};
-use ms_driver::project::strconv::quote;
+use ms_driver::project::quoting::quote;
 
 /// Long options that take a value (also accepted as `--flag=value`).
 pub const VALUE_OPTIONS: &[&str] = &[

@@ -2,7 +2,7 @@
 //!
 //! This crate owns project manifests, module paths and diagnostics. It has
 //! no dependency on parsing, checking or code generation. Paths are `String`s
-//! using Go's `path/filepath` lexical rules (see [`gopath`]), with native Windows
+//! using Go's `path/filepath` lexical rules (see [`pathops`]), with native Windows
 //! volumes and separators. Unix error values render in the established
 //! wording, so existing diagnostics do not change.
 //!
@@ -21,11 +21,11 @@
 
 pub mod discovery;
 pub mod error;
-pub mod gopath;
 pub mod manifest;
 pub mod overlay;
+pub mod pathops;
 pub mod paths;
-pub mod strconv;
+pub mod quoting;
 
 pub use discovery::{discover_modules, discover_modules_with_overlay};
 pub use error::{Location, ManifestError, PathError, ProjectError};

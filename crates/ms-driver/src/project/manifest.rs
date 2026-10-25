@@ -5,10 +5,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::project::error::{Location, ProjectError};
-use crate::project::gopath;
 use crate::project::overlay::Overlay;
+use crate::project::pathops;
 use crate::project::paths::source_path;
-use crate::project::strconv;
+use crate::project::quoting;
 
 /// The longest manifest line `bufio.Scanner` accepts (`MaxScanTokenSize - 1`).
 const MAX_LINE: usize = 65535;
@@ -37,13 +37,13 @@ pub struct Project {
 /// The nearest containing manifest, even if it is invalid. A nested project's
 /// errors must not silently select a parent's configuration.
 pub fn find_manifest(filename: &str) -> Option<String> {
-    let mut directory = gopath::dir(filename);
+    let mut directory = pathops::dir(filename);
     loop {
-        let manifest = gopath::join(&[&directory, "ms.toml"]);
+        let manifest = pathops::join(&[&directory, "ms.toml"]);
         if std::fs::metadata(&manifest).is_ok() {
             return Some(manifest);
         }
-        let parent = gopath::dir(&directory);
+        let parent = pathops::dir(&directory);
         if parent == directory {
             return None;
         }
@@ -77,9 +77,9 @@ impl Failure {
 }
 
 fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
-    let absolute = gopath::abs(filename)?;
-    let root = gopath::eval_symlinks(&gopath::dir(&absolute))?;
-    let file_name = gopath::base(&absolute);
+    let absolute = pathops::abs(filename)?;
+    let root = pathops::eval_symlinks(&pathops::dir(&absolute))?;
+    let file_name = pathops::base(&absolute);
     p.root = root.clone();
     p.location = Location {
         file: file_name.clone(),
@@ -177,7 +177,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             let Some((quoted, rest)) = quoted_prefix(line) else {
                 return Err(fail.at(&location, "unterminated quoted key; close the key's double quote, e.g. \"name\" = \"value\""));
             };
-            let Some(unquoted) = strconv::unquote(quoted) else {
+            let Some(unquoted) = quoting::unquote(quoted) else {
                 return Err(fail.at(
                     &location,
                     format!("invalid quoted key {quoted}: invalid syntax; escape backslashes and quotes inside the key"),
@@ -217,7 +217,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
                 ),
             ));
         }
-        let Some(value) = strconv::unquote(value) else {
+        let Some(value) = quoting::unquote(value) else {
             return Err(fail.at(
                 &location,
                 "manifest values must be quoted strings: invalid syntax; escape backslashes and quotes inside the value",
@@ -296,7 +296,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
             &location,
             format!(
                 "project source must be an existing directory; {} does not exist or is not a directory, so create it or fix source in [project]",
-                strconv::quote(&p.source)
+                quoting::quote(&p.source)
             ),
         ));
     }
@@ -310,7 +310,7 @@ fn read_into(filename: &str, p: &mut Project) -> Result<(), ProjectError> {
         }
         p.entry = source_path(&root, &p.entry, &no_overlay)
             .map_err(|e| ProjectError::manifest(location.clone(), e))?;
-        if gopath::ext(&p.entry) != ".ms" {
+        if pathops::ext(&p.entry) != ".ms" {
             return Err(fail.at(
                 &location,
                 "entry requires .ms extension; set entry to a .ms file such as \"src/main.ms\"",
