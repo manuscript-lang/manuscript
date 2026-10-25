@@ -44,3 +44,30 @@ export def bench_json() -> Unit:
 
             return 0
     )
+
+    if let tree = parse(doc):
+        bench(
+            "json.navigate",
+            100000,
+            lambda () -> Int:
+                var total = 0
+
+                for i in range(0, 100000):
+                    let row = tree.at(i % 5000)
+                    let id = (
+                        row
+                        .and_then(lambda r: r.get("id"))
+                        .and_then(lambda n: n.as_int())
+                        .get(0)
+                    )
+                    let tag = (
+                        row
+                        .and_then(lambda r: r.get("tags"))
+                        .and_then(lambda t: t.at(-1))
+                        .and_then(lambda n: n.as_string())
+                        .get("")
+                    )
+                    total += id + tag.length()
+
+                return total
+        )
