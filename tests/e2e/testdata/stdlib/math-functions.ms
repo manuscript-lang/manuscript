@@ -16,8 +16,6 @@ from "@std/math.ms" import (
     remainder,
     max,
     min,
-    max_of,
-    min_of,
     acosh,
     asinh,
     atanh,
@@ -94,12 +92,12 @@ test "extrema use comparator signs without negating Int minimum":
     try expect_equal(max(low.clone(), high.clone()).rank, 2)
 
     for values in [[high.clone(), low.clone()], [low.clone(), high.clone()]]:
-        try expect_equal(min_of(values.clone()).get().rank, 1)
-        try expect_equal(max_of(values.clone()).get().rank, 2)
+        try expect_equal(values.min().get().rank, 1)
+        try expect_equal(values.max().get().rank, 2)
 
     let values = [high.clone(), low.clone(), Ranked(1), Ranked(2)]
-    var minimum = min_of(values.clone()).get().clone()
-    var maximum = max_of(values.clone()).get().clone()
+    var minimum = values.min().get().clone()
+    var maximum = values.max().get().clone()
     minimum.rank = 0
     maximum.rank = 3
     try expect_false(values[1].rank != 1 or values[2].rank != 1)

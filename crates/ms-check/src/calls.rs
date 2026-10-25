@@ -341,6 +341,9 @@ impl Checker {
                 }
                 return c;
             }
+            if let Some(done) = self.natural_order_call(e, callee, args, &c, expected) {
+                return done;
+            }
             c = self.specialize_native_call(e, callee, args, c, expected);
             i.method = c.method.clone();
             if c.native_str() != "index" {
