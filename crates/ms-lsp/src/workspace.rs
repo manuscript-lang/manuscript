@@ -7,7 +7,7 @@ use crate::json::{Json, obj};
 use crate::nav::{self, go_location_order};
 use crate::text::Position;
 use crate::uri;
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
@@ -29,10 +29,10 @@ fn canceled(check: Option<CancelCheck>) -> Result<(), Canceled> {
 /// The directory a document's workspace scan covers, and whether to descend.
 pub fn workspace_scope(d: &Document, recursive: bool) -> (String, bool) {
     let path = d.path();
-    let mut root = gopath::dir(&path);
+    let mut root = pathops::dir(&path);
     let mut recursive = recursive;
     if let Some(manifest) = ms_driver::project::find_manifest(&path) {
-        root = gopath::dir(&manifest);
+        root = pathops::dir(&manifest);
         recursive = true;
     }
     (root, recursive)
@@ -68,7 +68,7 @@ pub fn workspace_documents(
     for open in docs.values() {
         canceled(cancel)?;
         let name = open.path();
-        if let Ok(relative) = gopath::rel(&root, &name)
+        if let Ok(relative) = pathops::rel(&root, &name)
             && relative != ".."
             && !relative.starts_with("../")
         {
@@ -252,7 +252,7 @@ pub(crate) fn workspace_symbols_matching(
             return None;
         }
         let dummy = Document::new(
-            uri::file_uri(&gopath::join(&[root, "__workspace_index.ms"])),
+            uri::file_uri(&pathops::join(&[root, "__workspace_index.ms"])),
             "",
         );
         match discover(&dummy, true) {

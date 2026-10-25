@@ -41,7 +41,7 @@ On escalation the host:
 2. writes retained primary and secondary fault diagnostics;
 3. terminates without further cleanup.
 
-The CLI exits 70, labeled incomplete cleanup. The native runtime (`crates/ms-rt/src/start.rs`) implements the grace period and second-request rule but today writes one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
+The CLI exits 67, labeled incomplete cleanup. The native runtime (`crates/ms-rt/src/start.rs`) implements the grace period and second-request rule but today writes one `incomplete cleanup: <reason>` line, and the grace period is not configurable. Conformance treats an escalated exit as program failure. See [cleanup faults](../core-language/cleanup/cleanup-faults.md).
 
 ## Verifying
 

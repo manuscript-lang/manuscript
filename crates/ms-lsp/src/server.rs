@@ -565,7 +565,7 @@ impl Server<'_> {
                         let path =
                             uri::filename(change.get("uri").and_then(|u| u.as_str()).unwrap_or(""));
                         path.ends_with(".ms")
-                            || ms_driver::project::gopath::base(&path) == "ms.toml"
+                            || ms_driver::project::pathops::base(&path) == "ms.toml"
                     });
                     if !relevant {
                         return Ok(ok(Json::Null));
@@ -951,11 +951,11 @@ fn compile_snapshot(
     let mut identity = target.to_string();
     // The nearest manifest has already been selected, including invalid nested
     // manifests. Only then canonicalize an existing target for reuse.
-    if ms_driver::project::gopath::base(target) == "ms.toml"
+    if ms_driver::project::pathops::base(target) == "ms.toml"
         && let Ok(root) =
-            ms_driver::project::gopath::eval_symlinks(&ms_driver::project::gopath::dir(target))
+            ms_driver::project::pathops::eval_symlinks(&ms_driver::project::pathops::dir(target))
     {
-        identity = ms_driver::project::gopath::join(&[&root, "ms.toml"]);
+        identity = ms_driver::project::pathops::join(&[&root, "ms.toml"]);
     }
     let key = (identity, options.module.clone());
     if let Some(result) = analyses.get(&key) {

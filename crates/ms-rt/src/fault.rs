@@ -898,7 +898,7 @@ fn run_one_cleanup() -> bool {
     }
 }
 
-/// The full fault path: trace, cleanups LIFO, report, exit 70.
+/// The full fault path: trace, cleanups LIFO, report, exit 67.
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {

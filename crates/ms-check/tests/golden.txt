@@ -521,7 +521,7 @@ def call(x: Optional[Int]) -> Int:
             break
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(xs: List[Int]) -> Int: return xs["0"]
 type	1	40	39	expected Int, found Stringdef f() -> Int: return 1[0]
-type	1	24	23	indexing requires List[T]; use the receiver's lookup method for other typesdef f() -> Unit: let xs = List()
+type	1	24	23	indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other typesdef f() -> Unit: let xs = List()
 type	1	27	26	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the bindingdef f() -> Unit: let xs = List[Int](1)
 type	1	37	36	too many positional arguments; every parameter is already supplied, so remove this argumentdef f() -> String: return "a" + 1
 type	1	31	30	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)def f() -> String: return "a" - "b"
@@ -1410,7 +1410,7 @@ def f() -> Int:
 resolution	2	19	34	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?def f() -> Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
+resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_all, replace_first, replace_n, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
     return [1.5].join(separator: ",")
 resolution	2	18	36	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f"{value}").join(separator: ",")def double(n: Int) -> Int:
     return n * 2
@@ -2605,7 +2605,7 @@ def call() -> Unit: f(4)
     return value.get()
 type	2	18	67	expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchdef wrong(value: Result[Int, String]) -> Bool:
     return value.is_some()
-resolution	2	18	64	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, is_error, is_ok, map, or_else, to_optional
+resolution	2	18	64	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional
 type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
     case some(value: T)
     case none

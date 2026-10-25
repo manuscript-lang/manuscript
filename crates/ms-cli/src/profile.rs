@@ -72,7 +72,7 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::process::{Command, Stdio};
 
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 
 use crate::backend::{BackendResult, BuildRequest, BuildType, Io, finish};
 use crate::diagnostic::{CommandDiagnostic, Position};
@@ -370,7 +370,7 @@ pub fn run_profile(
     };
     let top = if inv.top == 0 { DEFAULT_TOP } else { inv.top };
     let structured = inv.structured;
-    let output = match gopath::abs(&display_output) {
+    let output = match pathops::abs(&display_output) {
         Ok(path) => path,
         Err(error) => {
             return fail(
@@ -385,8 +385,8 @@ pub fn run_profile(
             );
         }
     };
-    let program = gopath::join(&[&output, "program"]);
-    let folded_path = gopath::join(&[&output, "profile.folded"]);
+    let program = pathops::join(&[&output, "program"]);
+    let folded_path = pathops::join(&[&output, "profile.folded"]);
 
     if let Err(error) = std::fs::create_dir(&output) {
         let cause = ms_driver::project::error::errno_message(error.raw_os_error().unwrap_or(0));
@@ -528,9 +528,9 @@ pub fn run_profile(
                 }
             }
             Ok(profile) => {
-                let pprof_path = gopath::join(&[&output, "profile.pb"]);
-                let top_path = gopath::join(&[&output, "top.txt"]);
-                let manifest_path = gopath::join(&[&output, "manifest.json"]);
+                let pprof_path = pathops::join(&[&output, "profile.pb"]);
+                let top_path = pathops::join(&[&output, "top.txt"]);
+                let manifest_path = pathops::join(&[&output, "manifest.json"]);
                 report = render_top(&profile, top);
                 let manifest = Json::object()
                     .with("format", Json::int(1))
@@ -653,11 +653,11 @@ pub fn run_profile(
             let _ = writeln!(
                 io.stdout,
                 "  {:<28} {what}",
-                gopath::join(&[&display_output, file])
+                pathops::join(&[&display_output, file])
             );
         }
         let _ = writeln!(io.stdout);
-        let shown_program = gopath::join(&[&display_output, "program"]);
+        let shown_program = pathops::join(&[&display_output, "program"]);
         let _ = write!(io.stdout, "{}", perf_help(&shown_program, &inv.arguments));
     }
     final_status

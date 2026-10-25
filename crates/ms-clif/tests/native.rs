@@ -52,8 +52,8 @@ pub fn run_interp(src: &str) -> Outcome {
     let r = it.run_entry();
     let code = match r {
         Ok(v) if (0..=125).contains(&v) => v as i32,
-        Ok(_) => 70,
-        Err(_) => 70,
+        Ok(_) => 67,
+        Err(_) => 67,
     };
     Outcome {
         stdout: it.stdout().to_string(),
@@ -266,7 +266,7 @@ b0:
 }
 "#;
     let (o, err) = run_native_full(src, &Options::default(), "trace");
-    assert_eq!(o.code, 70);
+    assert_eq!(o.code, 67);
     assert!(err.contains("at inner t.ms:12"), "{err}");
     assert!(err.contains("at main t.ms:21"), "{err}");
 }
@@ -818,7 +818,7 @@ b0:
             );
             assert_eq!(err, original_err);
             if line != 0 {
-                assert_eq!(actual.code, 70);
+                assert_eq!(actual.code, 67);
                 assert_eq!(actual.stdout, "2\n1\n");
                 assert!(
                     err.contains(&format!("at choose predicated.ms:{line}")),
@@ -874,7 +874,7 @@ b0:
     let exe = d.join("inline-flags");
     link_all(&objp, &[real_runtime()], &exe).unwrap();
     let out = Command::new(exe).output().unwrap();
-    assert_eq!(out.status.code(), Some(70));
+    assert_eq!(out.status.code(), Some(67));
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(
         err.contains("choose") && err.contains("inline_flags.ms:10"),
@@ -913,7 +913,7 @@ b0:
             ..Options::default()
         };
         let (out, err) = run_native_full(src, &options, &format!("callback-{opt_level}"));
-        assert_eq!(out.code, 70, "{err}");
+        assert_eq!(out.code, 67, "{err}");
         assert!(err.contains("callback callback.ms:12"), "{err}");
         if cfg!(windows) {
             assert!(!err.contains("main callback.ms:"), "{err}");
@@ -935,7 +935,7 @@ b0:
         let exe = d.join(format!("real-callback-{opt_level}"));
         ms_clif::link::link_all(&obj, &[&shim, real_runtime()], &exe).unwrap();
         let out = Command::new(exe).output().unwrap();
-        assert_eq!(out.status.code(), Some(70));
+        assert_eq!(out.status.code(), Some(67));
         let err = String::from_utf8_lossy(&out.stderr);
         assert!(err.contains("callback.ms:12 in callback"), "{err}");
         if cfg!(windows) {
@@ -955,7 +955,7 @@ fn saved_list_lengths_keep_bounds_faults_after_optimization() {
         include_str!("../../ms-mir/tests/fixtures-opt/list_saved_length_shrink.mir"),
         "saved-list-length-shrink",
     );
-    assert_eq!(shrunk.code, 70);
+    assert_eq!(shrunk.code, 67);
 }
 
 #[test]

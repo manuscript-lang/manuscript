@@ -4,8 +4,6 @@
 from "@std/testing.ms" import expect_equal, expect_false
 from "@std/decimal.ms" import Decimal
 from "@std/math.ms" import (
-    abs,
-    abs_int,
     ceil,
     floor,
     round,
@@ -29,7 +27,7 @@ test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(123.to_decimal(), 123d)
 
 test "math rounding signs and exact identities":
-    try expect_false(abs(-2.5) != 2.5 or abs_int(-3) != 3)
+    try expect_false((-2.5).abs() != 2.5 or (-3).abs() != 3)
     try expect_false(ceil(-1.5) != -1.0 or floor(-1.5) != -2.0)
     try expect_false(round(2.5) != 3.0 or truncate(-1.9) != -1.0)
     try expect_false(sqrt(9.0) != 3.0 or hypot(3.0, 4.0) != 5.0)

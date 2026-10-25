@@ -59,7 +59,15 @@ type MethodBuilder<'b> = dyn FnMut(&mut ms_mir::ir::Module, &str, &[MTy], MTy) -
 fn opt_method(name: &str) -> bool {
     matches!(
         name,
-        "is_some" | "is_none" | "get" | "map" | "and_then" | "or_else" | "ok_or" | "ok_or_else"
+        "is_some"
+            | "is_none"
+            | "get"
+            | "get_or_else"
+            | "map"
+            | "and_then"
+            | "or_else"
+            | "ok_or"
+            | "ok_or_else"
     )
 }
 
@@ -109,6 +117,15 @@ pub(crate) struct NArg {
     pub wrapped: bool,
 }
 
+/// The native identity of `@std/json.ms`'s typed calls, which its source module declares as externs.
+pub(crate) fn json_native(native: &str) -> &str {
+    match native {
+        "extern:msrt_json_parse" => "json/parse",
+        "extern:msrt_json_stringify" => "json/stringify",
+        other => other,
+    }
+}
+
 impl<'a> FnLower<'a> {
     pub fn native_function(
         &mut self,
@@ -118,6 +135,7 @@ impl<'a> FnLower<'a> {
         params: &[ct::Param],
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
+        let native = json_native(native);
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
@@ -1096,10 +1114,6 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
             }
-            (TyKind::Obj(n, _), "entries") if n == "Set" => {
-                let result = self.emty(e)?;
-                self.set_entries(recv, result)
-            }
             (TyKind::List(_), "list_keys") => {
                 let result = self.emty(e)?;
                 let r = self.borrow(recv);
@@ -1288,7 +1302,11 @@ impl<'a> FnLower<'a> {
                 let out = self.emty(e)?;
                 self.optional_method(out, e.pos, name, recv, inner, args)
             }
-            (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") => {
+            (
+                TyKind::Alt(a),
+                "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
+                | "to_optional",
+            ) => {
                 let out = self.emty(e)?;
                 self.result_method(out, name, recv, a, args)
             }
@@ -1516,8 +1534,11 @@ impl<'a> FnLower<'a> {
         {
             return self.result_state(&name, recv, a);
         }
-        if let (TyKind::Alt(a), "get" | "err" | "or_else" | "map" | "and_then" | "to_optional") =
-            (self.b.m.types.kind(rty).clone(), name.as_str())
+        if let (
+            TyKind::Alt(a),
+            "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
+            | "to_optional",
+        ) = (self.b.m.types.kind(rty).clone(), name.as_str())
         {
             return self.result_method(result, &name, recv, a, args.to_vec());
         }
@@ -1960,6 +1981,29 @@ impl<'a> FnLower<'a> {
                     },
                 )
             }
+            "get_or_else" => {
+                let f = args
+                    .first()
+                    .copied()
+                    .ok_or_else(|| Error::new("missing function"))?;
+                self.two_ways(
+                    some,
+                    inner,
+                    &mut |s| {
+                        let p = s.b.opt_get(r);
+                        let o = s.owned(Val { v: p, own: false });
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(o))
+                    },
+                    &mut |s| {
+                        let v = s.b.call_ind(f.val.v, &[]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                )
+            }
             "map" | "and_then" | "or_else" => {
                 let f = args
                     .first()
@@ -2136,6 +2180,59 @@ impl<'a> FnLower<'a> {
                 },
             ),
             "or_else" => {
+                let f = f.ok_or_else(|| Error::new("missing function"))?;
+                self.two_ways(
+                    is_ok,
+                    out,
+                    &mut |s| {
+                        let o = s.owned(Val { v: r, own: false });
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(o))
+                    },
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, err, 0, r);
+                        let v = s.b.call_ind(f.val.v, &[p]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                )
+            }
+            "map_error" => {
+                let f = f.ok_or_else(|| Error::new("missing function"))?;
+                let TyKind::Alt(oa) = self.b.m.types.kind(out).clone() else {
+                    return Err(Error::new("map_error without Result result"));
+                };
+                let (out_ok, out_err) = {
+                    let cs = &self.b.m.alts[oa.index()].cases;
+                    (
+                        cs.iter().position(|c| c.name == "ok").unwrap_or(0) as u32,
+                        cs.iter().position(|c| c.name == "error").unwrap_or(1) as u32,
+                    )
+                };
+                self.two_ways(
+                    is_ok,
+                    out,
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, ok, 0, r);
+                        let po = s.owned(Val { v: p, own: false });
+                        let v = s.b.alt_new(oa, out_ok, &[po]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                    &mut |s| {
+                        let p = s.b.alt_get(alt, err, 0, r);
+                        let y = s.b.call_ind(f.val.v, &[p]);
+                        let v = s.b.alt_new(oa, out_err, &[y]);
+                        s.finish(recv);
+                        s.finish(f.val);
+                        Ok(Some(v))
+                    },
+                )
+            }
+            "get_or_else" => {
                 let f = f.ok_or_else(|| Error::new("missing function"))?;
                 self.two_ways(
                     is_ok,

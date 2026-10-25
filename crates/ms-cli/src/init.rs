@@ -1,7 +1,7 @@
 //! `ms init [directory]`: create a runnable project. Fully implemented here;
 //! it needs no engine.
 
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 
 use crate::backend::Io;
 
@@ -30,35 +30,35 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
         directory = arg.clone();
         given = true;
     }
-    let absolute = match gopath::abs(&directory) {
+    let absolute = match pathops::abs(&directory) {
         Ok(path) => path,
         Err(error) => return fail_plain(io, &error.to_string()),
     };
     let manifest = format!(
         "[project]\nname = {}\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
-        ms_driver::project::strconv::quote(&project_name(&absolute))
+        ms_driver::project::quoting::quote(&project_name(&absolute))
     );
     let files = [
         ("ms.toml".to_string(), manifest),
-        (gopath::join(&["src", "main.ms"]), MAIN.to_string()),
+        (pathops::join(&["src", "main.ms"]), MAIN.to_string()),
         ("test.ms".to_string(), TEST.to_string()),
     ];
     for (name, _) in &files {
-        if std::fs::symlink_metadata(gopath::join(&[&absolute, name])).is_ok() {
+        if std::fs::symlink_metadata(pathops::join(&[&absolute, name])).is_ok() {
             let _ = writeln!(
                 io.stderr,
                 "ms init: {} already exists; run it in an empty directory or remove the file first",
-                gopath::join(&[&directory, name])
+                pathops::join(&[&directory, name])
             );
             return 1;
         }
     }
     let create = || -> std::io::Result<()> {
-        std::fs::create_dir_all(gopath::join(&[&absolute, "src"]))?;
+        std::fs::create_dir_all(pathops::join(&[&absolute, "src"]))?;
         for (name, content) in &files {
-            std::fs::write(gopath::join(&[&absolute, name]), content)?;
+            std::fs::write(pathops::join(&[&absolute, name]), content)?;
         }
-        ignore_build_cache(&gopath::join(&[&absolute, ".gitignore"]))
+        ignore_build_cache(&pathops::join(&[&absolute, ".gitignore"]))
     };
     if let Err(error) = create() {
         let message = ms_driver::project::error::errno_message(error.raw_os_error().unwrap_or(0));
@@ -72,7 +72,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let _ = writeln!(
         io.stdout,
         "Next: ms run {} -- first second",
-        shell_quote(&gopath::join(&[&directory, "ms.toml"]))
+        shell_quote(&pathops::join(&[&directory, "ms.toml"]))
     );
     0
 }
@@ -109,7 +109,10 @@ fn ignore_build_cache(path: &str) -> std::io::Result<()> {
 /// falling back to `app`.
 fn project_name(directory: &str) -> String {
     let mut name = String::new();
-    for c in gopath::base(directory).chars().flat_map(char::to_lowercase) {
+    for c in pathops::base(directory)
+        .chars()
+        .flat_map(char::to_lowercase)
+    {
         match c {
             'a'..='z' | '0'..='9' | '-' | '_' => name.push(c),
             ' ' | '.' => name.push('-'),

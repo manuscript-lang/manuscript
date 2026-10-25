@@ -15,7 +15,7 @@ use ms_check::editor::{MemberKind, members, prelude_type_names, standard_export_
 use ms_check::stdlib::is_prelude_symbol;
 use ms_check::syntax::{DeclRef, FuncRef};
 use ms_check::types::{Kind, Name, SymKind, SymRef, Ty, cases, constructor_signature, n};
-use ms_driver::project::gopath;
+use ms_driver::project::pathops;
 use ms_syntax::ast::DeclKind;
 use std::collections::{HashMap, HashSet};
 
@@ -228,7 +228,7 @@ impl Completer<'_> {
                 Range::at(Position::default()),
                 &format!(
                     "from {} import {}\n",
-                    ms_driver::project::strconv::quote(path),
+                    ms_driver::project::quoting::quote(path),
                     s.name
                 ),
             )];
@@ -560,7 +560,7 @@ impl Completer<'_> {
             let (Some(module), Some(program)) = (checked.module(&file), &checked.program) else {
                 continue;
             };
-            let Ok(relative) = gopath::rel(&gopath::dir(&self.d.path()), &file.path()) else {
+            let Ok(relative) = pathops::rel(&pathops::dir(&self.d.path()), &file.path()) else {
                 continue;
             };
             let mut path = relative;
@@ -775,23 +775,23 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         {
             {
                 let directory_prefix = &prefix[..=slash];
-                let mut directory = gopath::join(&[&gopath::dir(&d.path()), directory_prefix]);
+                let mut directory = pathops::join(&[&pathops::dir(&d.path()), directory_prefix]);
                 if prefix.starts_with('@') {
                     let trimmed = directory_prefix.trim_end_matches('/');
                     let (alias, remainder) = trimmed.split_once('/').unwrap_or((trimmed, ""));
                     directory = match aliases.get(alias).filter(|b| !b.is_empty()) {
-                        Some(base) => gopath::join(&[base, remainder]),
+                        Some(base) => pathops::join(&[base, remainder]),
                         None => String::new(),
                     };
                 }
                 if !directory.is_empty()
-                    && let Ok(canonical) = gopath::eval_symlinks(&directory)
+                    && let Ok(canonical) = pathops::eval_symlinks(&directory)
                 {
                     let root = project
                         .as_ref()
-                        .map_or_else(|| gopath::dir(&d.path()), |p| p.root.clone());
-                    let inside = gopath::rel(&root, &canonical)
-                        .map(|r| !gopath::escapes(&r))
+                        .map_or_else(|| pathops::dir(&d.path()), |p| p.root.clone());
+                    let inside = pathops::rel(&root, &canonical)
+                        .map(|r| !pathops::escapes(&r))
                         .unwrap_or(false);
                     if inside && let Ok(entries) = std::fs::read_dir(&canonical) {
                         let mut entries: Vec<_> = entries.flatten().collect();
@@ -820,7 +820,7 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
     // Symbol completion in `from "..." import Name` uses only exported declarations.
     let path = import_end
         .and(quote_text)
-        .and_then(|t| ms_driver::project::strconv::unquote(&t));
+        .and_then(|t| ms_driver::project::quoting::unquote(&t));
     let range = Range {
         start: text::position(&d.text, c.start),
         end: text::position(&d.text, c.end),
@@ -832,14 +832,14 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         if exports.is_empty()
             && (path.starts_with('.') || (path.starts_with('@') && !path.starts_with("@std/")))
         {
-            let mut file = gopath::clean(&gopath::join(&[&gopath::dir(&d.path()), &path]));
+            let mut file = pathops::clean(&pathops::join(&[&pathops::dir(&d.path()), &path]));
             if path.starts_with('@') {
                 let (alias, remainder) = path.split_once('/').unwrap_or((&path, ""));
                 file = match editor_project(d)
                     .and_then(|p| p.aliases.get(alias).cloned())
                     .filter(|b| !b.is_empty())
                 {
-                    Some(base) => gopath::join(&[&base, remainder]),
+                    Some(base) => pathops::join(&[&base, remainder]),
                     None => String::new(),
                 };
             }

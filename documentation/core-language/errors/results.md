@@ -53,7 +53,9 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
 | `get(default: Optional[T] = none) -> T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
 | `err() -> E` | Return the error payload; fault on success |
-| `or_else(create: Callable[[E], T]) -> T` | Call `create` once with the original error only on failure |
+| `get_or_else(create: Callable[[E], T]) -> T` | Return the successful payload, or call `create` once with the original error on failure |
+| `or_else(create: Callable[[E], Result[T, E]]) -> Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
+| `map_error[F: Error](transform: Callable[[E], F]) -> Result[T, F]` | Transform an error once; preserve a success unchanged |
 | `map[U](transform: Callable[[T], U]) -> Result[U, E]` | Transform success once; preserve an error unchanged |
 | `and_then[U](transform: Callable[[T], Result[U, E]]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 

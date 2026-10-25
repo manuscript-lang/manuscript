@@ -182,7 +182,7 @@ fn import_forms_and_confinement() {
     }
     let outside_dir = TempDir::new();
     let outside = write(outside_dir.path(), "outside.ms", "");
-    let rel = ms_driver::project::gopath::rel(&p.source, &outside).unwrap();
+    let rel = ms_driver::project::pathops::rel(&p.source, &outside).unwrap();
     let error = resolve_import(&p, &p.entry, &rel, &Overlay::new())
         .unwrap_err()
         .to_string();

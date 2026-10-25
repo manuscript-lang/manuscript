@@ -36,7 +36,7 @@ pub fn search_symbols(
         .to_string_lossy()
         .into_owned();
     if let Some(manifest) = ms_driver::project::find_manifest(&format!("{root}/x.ms")) {
-        root = ms_driver::project::gopath::dir(&manifest);
+        root = ms_driver::project::pathops::dir(&manifest);
     }
     let symbols = workspace_symbols_matching(
         &Documents::new(),

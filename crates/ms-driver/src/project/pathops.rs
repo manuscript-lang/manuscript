@@ -1,4 +1,4 @@
-//! Lexical path operations with Go's `path/filepath` rules. Windows volumes and
+//! Lexical path operations following Go's `path/filepath` rules. Windows volumes and
 //! native separators normalize to the resolver's forward-slash path spelling;
 //! Unix symlink errors retain Go's exact behavior.
 

@@ -341,7 +341,9 @@ impl<'a> FnLower<'a> {
     }
 
     fn index(&mut self, e: &Expr, left: &Expr, index: &Expr) -> Result<Val, Error> {
-        let _ = e;
+        if self.ety(left).is_std("Map") {
+            return self.map_index(e, left, index);
+        }
         let l = self.expr(left)?;
         if self.dead {
             return Ok(l);
@@ -371,6 +373,17 @@ impl<'a> FnLower<'a> {
                         v: o,
                         own: self.needs_drop(self.ty_of(o)),
                     });
+                }
+                Ok(Val { v: got, own: false })
+            }
+            TyKind::Bytes => {
+                let no_default = self.b.bconst(false);
+                let zero = self.b.iconst(0);
+                self.at(e.pos);
+                let got =
+                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::INT)?;
+                if l.own {
+                    self.drop_value(l.v);
                 }
                 Ok(Val { v: got, own: false })
             }
