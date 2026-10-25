@@ -253,13 +253,7 @@ const METHODS: &[MethodRow] = &[
         "msrt_net_network_request_bytes",
         &[],
     ),
-    (
-        "net",
-        "Network",
-        "serve",
-        "msrt_net_network_serve_stream",
-        &[],
-    ),
+    ("net", "Network", "serve", "msrt_net_network_serve", &[]),
     ("net", "HttpClient", "close", "msrt_http_client_close", &[]),
     (
         "net",

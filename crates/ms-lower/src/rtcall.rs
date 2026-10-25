@@ -375,7 +375,7 @@ impl FnLower<'_> {
                     let handler = input
                         .val
                         .ok_or_else(|| Error::new(format!("{sym}: missing handler")))?;
-                    let env = self.handler_env(sym.contains("serve_stream"), handler)?;
+                    let env = self.handler_env(handler)?;
                     vals.push(env);
                 }
                 _ => {
