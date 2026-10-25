@@ -1,4 +1,4 @@
-from "@std/bytes.ms" import Bytes
+from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/net.ms" import Connection
 from "@std/net.ms" import DatagramSocket
 from "@std/net.ms" import DnsRecord
@@ -309,6 +309,66 @@ export interface ResponseBody:
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+
+# Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
+export def from_io(error: IoError) -> HttpError:
+    match error:
+        case Closed: return HttpError.Closed
+        case InvalidInput: return HttpError.InvalidInput
+        case InvalidData: return HttpError.InvalidData
+        case LimitExceeded: return HttpError.LimitExceeded
+        case Unavailable: return HttpError.Failed("HTTP: unavailable")
+        case Failed(message): return HttpError.Failed(message.clone())
+
+# Reads the rest of the request body into one value.
+# A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
+export def read_body(
+    exchange: HttpExchange,
+    limit: Optional[Int] = none
+) -> Result[Bytes, HttpError]:
+    var out = BytesBuilder()
+    var total = 0
+
+    while True:
+        let chunk = try exchange.read().map_error(from_io)
+
+        if let bytes = chunk:
+            total += bytes.length()
+            if let max = limit:
+                if total > max: return error(HttpError.LimitExceeded)
+            out.append_bytes(bytes)
+        else:
+            return ok(out.build())
+
+# Sends `response` whole: its status and headers, then its body.
+export def reply(
+    exchange: HttpExchange,
+    response: HttpResponse
+) -> Result[Unit, HttpError]:
+    try exchange.send_headers(response.status, response.headers)
+    return exchange.write_bytes(response.body).map_error(from_io)
+
+# Builds a response with a UTF-8 text body and no headers.
+export def text(status: Int, body: String) -> HttpResponse:
+    return HttpResponse(status: status, headers: headers(), body: body.to_bytes())
+
+# Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
+# The request body is read in full first.
+export def buffered(
+    handler: Callable[[HttpRequest], HttpResponse]
+) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
+    return lambda exchange: serve_buffered(handler, exchange)
+
+def serve_buffered(
+    handler: Callable[[HttpRequest], HttpResponse],
+    exchange: HttpExchange
+) -> Result[Unit, HttpError]:
+    let body = try read_body(exchange)
+    let request = HttpRequest(
+        method: exchange.method(), path: exchange.path(), query: exchange.query(),
+        headers: exchange.headers(), body: body, protocol: exchange.protocol()
+    )
+    return reply(exchange, handler(request))
 
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.
