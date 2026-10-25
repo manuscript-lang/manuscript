@@ -89,6 +89,13 @@ pub unsafe extern "C-unwind" fn msrt_scope_fault_message(out: *mut ms_rt_abi::St
     unsafe { *out = crate::string::from_bytes(&report) };
 }
 
+/// Whether the running task was cancelled (its group closed, its time limit passed, or the program
+/// was asked to stop). Unlike the cancel flag, it stays true inside cleanups.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_task_cancel_requested() -> i64 {
+    i64::from(crate::fault::unshielded_cancel_flag() != 0)
+}
+
 /// Starts `closure` as a task of `scope`. A negative limit means none. `task_limit_ns` counts from
 /// now and `scope_limit_ns` from the scope's creation; the task ends at the earlier one.
 /// Returns the task handle, or -1 when the scope is closed.

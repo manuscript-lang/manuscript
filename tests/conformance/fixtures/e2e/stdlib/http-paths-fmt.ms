@@ -4,7 +4,7 @@
 from "@std/testing.ms" import expect_ok
 from "./support/http.ms" import http_result
 from "@std/core.ms" import TextError
-from "@std/http.ms" import headers, HttpMethod
+from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
 from "@std/http.ms" import (
     HttpRequest,
@@ -93,12 +93,16 @@ def check_paths(base: String) -> Result[Unit, Error]:
     return ok(())
 
 test "buffered routes validate original input and decode once":
-    with let server = (network().serve(address: "127.0.0.1:0", handler: route) | try expect_ok):
+    with let server = (
+        network().serve(
+            address: "127.0.0.1:0", handler: buffered(route)
+        ) | try expect_ok
+    ):
         (try check_paths(f"http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
     with let server = (
-        network().serve_stream(
+        network().serve(
             address: "127.0.0.1:0", handler: stream_route,
             options: HttpServerOptions(tls: none)
         ) | try expect_ok

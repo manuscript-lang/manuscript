@@ -582,6 +582,7 @@ msrt_http_exchange_path(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_protocol(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_query(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_read( x: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
+msrt_http_exchange_send( x: *const Obj, status: i64, headers: *const Obj, body: *const VecVal, err: *mut StrVal, ) -> u8
 msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write( x: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write_bytes( x: *const Obj, data: *const VecVal, err: *mut StrVal, ) -> u8
@@ -860,6 +861,7 @@ msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_l
 msrt_scope_contain(scope: i64)
 msrt_scope_fault_message(out: *mut StrVal)
 msrt_scope_started()
+msrt_task_cancel_requested() -> i64
 msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64
 msrt_scope_wait(scope: i64) -> i64
 msrt_scope_close(scope: i64)

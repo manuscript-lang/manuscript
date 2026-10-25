@@ -194,31 +194,6 @@ pub fn is_vetted(file: Name) -> bool {
 }
 
 impl Hir<'_> {
-    /// Records, for each interface operation, what its implementations may hand back.
-    /// Returns whether anything changed.
-    fn join_contracts(&self, summaries: &mut Summaries) -> bool {
-        let mut joined: HashMap<(Name, Name), modes::ResultOrigin> = HashMap::new();
-        for m in &self.program().methods {
-            let (Some(c), Some(f)) = (&m.contract, &m.decl) else {
-                continue;
-            };
-            let Some(s) = summaries.get(&(m.module, f.id())) else {
-                continue;
-            };
-            let entry = joined.entry((c.id, f.name())).or_default();
-            for slot in &s.result.slots {
-                if !entry.slots.contains(slot) {
-                    entry.slots.push(*slot);
-                }
-            }
-        }
-        if joined == summaries.contracts {
-            return false;
-        }
-        summaries.contracts = joined;
-        true
-    }
-
     /// Checks the `ref` written in result types: a `ref` result must lend from a parameter or the
     /// receiver, and an implementation agrees with the interface operation it implements.
     fn ref_results(
@@ -226,7 +201,6 @@ impl Hir<'_> {
         modules: &HashMap<Name, ModuleHir>,
         callables: &[Callable],
         summaries: &Summaries,
-        classes: &Classifier,
     ) -> Vec<Diagnostic> {
         let diag = |file: Name, pos: ms_syntax::Pos, message: String| Diagnostic {
             file: std::sync::Arc::from(file.as_str()),
@@ -295,11 +269,12 @@ impl Hir<'_> {
                 .and_then(|o| o.decl.as_ref().and_then(|d| d.func().map(|f| f.result_ref)));
             let Some(declared) = declared else { continue };
             // An implementation follows the operation's contract: it lends exactly when the
-            // operation is declared `ref`. A `Copy` result is the same either way.
-            let copy = modules[&m.module]
+            // operation is declared `ref`. A scalar result is the same either way; a `Copy`
+            // handle such as `Shared` still holds a reference, so it must be lent too.
+            let scalar = modules[&m.module]
                 .type_ref(f.result.id)
-                .is_some_and(|t| classes.class(&t) == Class::Copy);
-            if declared && !f.result_ref && !copy {
+                .is_some_and(|t| scalar(&t));
+            if declared && !f.result_ref && !scalar {
                 out.push(insert_ref(
                     diag(
                         m.module,
@@ -373,15 +348,12 @@ impl Hir<'_> {
                 }
                 outcomes.push(out);
             }
-            if self.join_contracts(&mut summaries) {
-                changed = true;
-            }
             if !changed {
                 break;
             }
         }
         let mut facts = HashMap::new();
-        let mut diagnostics = self.ref_results(&modules, &callables, &summaries, &classes);
+        let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut borrows = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
@@ -412,5 +384,13 @@ impl Hir<'_> {
             getters,
             lenders,
         }
+    }
+}
+
+/// A value that holds no reference: a number, `Bool`, `Unit`, or an optional of one.
+fn scalar(t: &Type) -> bool {
+    match t.kind {
+        Kind::Primitive => t.id.as_str() != "String",
+        _ => t.is_std("Optional") && t.args.first().is_some_and(|a| scalar(a)),
     }
 }

@@ -27,7 +27,7 @@ abi_record! {
     }
 }
 
-/// Request header block cap for `Network.serve`, which has no option for it.
+/// Request header block cap when `max_header_bytes` is none.
 const SERVE_MAX_HEADER_BYTES: i64 = 1 << 20;
 
 fn server_limits(
@@ -43,7 +43,7 @@ fn server_limits(
         Ok(limit(v)?.map_or(unlimited, |n| n.min(unlimited as u64) as usize))
     };
     let admission = size(admission)?;
-    let header = size(header)?;
+    let header = size(header.or(Some(SERVE_MAX_HEADER_BYTES)))?;
     if admission == 0 || header == 0 {
         return Err(());
     }
@@ -227,6 +227,18 @@ native! {
     ) -> Result<(), StatusCode> {
         let h = headers.borrow().clone();
         report(x.send_headers(status, &h), &err)
+    }
+
+    /// `HttpExchange.send(status, headers, body)`.
+    fn msrt_http_exchange_send(
+        x: ObjRef<ExchH>,
+        status: i64,
+        headers: ObjRef<HeadersH>,
+        body: &[u8],
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        let h = headers.borrow().clone();
+        report(x.send_response(status, &h, body), &err)
     }
 
     /// `HttpExchange.write(data)`.

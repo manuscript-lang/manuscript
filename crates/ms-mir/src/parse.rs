@@ -392,8 +392,10 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         params.push(parse_ty(&mut c, &mut m)?);
                         c.eat_p(',');
                     }
+                    let mut ret_borrowed = false;
                     let ret = if c.peek() == Some(&Tok::Arrow) {
                         c.next();
+                        ret_borrowed = c.eat_ident("ref");
                         parse_ty(&mut c, &mut m)?
                     } else {
                         Ty::UNIT
@@ -402,6 +404,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         name: mname,
                         params,
                         ret,
+                        ret_borrowed,
                     });
                     c.eat_p(',');
                 }

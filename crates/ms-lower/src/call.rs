@@ -780,7 +780,8 @@ impl<'a> FnLower<'a> {
         let r = self.borrow(recv);
         self.at(e.pos);
         let v = self.b.call_method(iface, k as u32, r, &args);
-        Ok(self.val(v, true))
+        // A `ref` operation lends: the result is a borrow of the receiver or an argument.
+        Ok(self.val(v, !sig.ret_borrowed))
     }
 
     /// The contract operation an implementation method fulfils: its parameters without a
@@ -988,13 +989,16 @@ impl<'a> FnLower<'a> {
         Ok(self.owned(x))
     }
 
-    /// A default written as a literal, an empty list or a constructor call of literals in a
+    /// A default written as a literal, `none`, an empty list or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
     pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
+            ExprKind::Name(n) if n.as_str() == "none" && t.is_std("Optional") => {
+                Some(val(self.b.opt_none(mt)))
+            }
             ExprKind::Number(n) if t.id.as_str() == "Int" => {
                 ms_syntax::number::canonical(n.as_str())
                     .parse::<i64>()

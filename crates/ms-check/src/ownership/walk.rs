@@ -319,8 +319,10 @@ impl Walker<'_> {
             None => self.expr(e, Demand::Consume),
         }
         // A call whose result is an owned copy (an interface call, or a lending call over a
-        // temporary) hands back a value of its own, not a part of a parameter.
-        if self.ret_hit && self.lends_owned(lent.unwrap_or(e)) {
+        // temporary), or a part converted to an interface, hands back a value of its own, not a
+        // part of a parameter.
+        let back = lent.unwrap_or(e);
+        if self.ret_hit && (self.lends_owned(back) || self.converted(back)) {
             self.lends.truncate(mark);
             self.ret_hit = false;
         }
@@ -337,6 +339,12 @@ impl Walker<'_> {
     /// and another copy of the handle can change that storage, so what it lends is a copy.
     fn copy_handle(&self, e: &Expr) -> bool {
         self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
+    }
+
+    /// Whether `a` is converted to an interface where it is used: the use receives a new
+    /// interface value holding a copy, a temporary of the call.
+    fn converted(&self, a: &Expr) -> bool {
+        self.cx.m.info(a).error_source.is_some()
     }
 
     /// Whether `e` is the `none` literal.
@@ -379,6 +387,7 @@ impl Walker<'_> {
                 return matches!(slot, Slot::Param(_));
             };
             self.copy_handle(a)
+                || self.converted(a)
                 || !self.is_place(a)
                     && (self.pure_origins(a).is_none_or(|o| o.is_empty()) || self.lends_owned(a))
         })

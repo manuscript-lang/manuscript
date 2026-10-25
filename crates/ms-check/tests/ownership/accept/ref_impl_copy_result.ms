@@ -4,7 +4,7 @@ interface Read[V]:
 type Count:
     n: Int
 
-# A `Copy` result is the same lent or owned, so an implementation may compute it.
+# A scalar result is the same lent or owned, so an implementation may compute it.
 impl Read[Int] for Count:
     def get() -> Int:
         return self.n + 1

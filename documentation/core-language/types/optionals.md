@@ -63,7 +63,7 @@ Receiver methods:
 Fallback for routine absence:
 
 ```manuscript
-def display_name(name: Optional[String]) -> ref String:
+def display_name(name: Optional[String]) -> String:
     return name.get("Anonymous")
 ```
 
@@ -95,7 +95,7 @@ def first_number(text: Optional[String]) -> Optional[Int]:
 [`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
 ```manuscript
-def display_name(name: Optional[String]) -> ref String:
+def display_name(name: Optional[String]) -> String:
     if let value = name:
         return value
     return "Anonymous"

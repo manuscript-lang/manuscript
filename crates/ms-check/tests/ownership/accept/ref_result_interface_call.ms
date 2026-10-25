@@ -5,5 +5,5 @@ type Holder:
     source: Names
 
 impl Holder:
-    def listed() -> ref List[String]:  # error: no `return` gives back part
+    def listed() -> ref List[String]:
         return self.source.names()

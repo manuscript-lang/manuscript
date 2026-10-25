@@ -403,6 +403,22 @@ impl<'m> FuncBuilder<'m> {
         all.extend_from_slice(args);
         self.val(Op::CallMethod, &all, Imm::Method(iface, method), ret)
     }
+    /// `call.method` whose result the caller owns: a lent result is copied.
+    pub fn call_method_owned(
+        &mut self,
+        iface: IfaceId,
+        method: u32,
+        recv: Value,
+        args: &[Value],
+    ) -> Value {
+        let r = self.call_method(iface, method, recv, args);
+        let sig = &self.m.ifaces[iface.index()].methods[method as usize];
+        if !sig.ret_borrowed || !self.m.needs_drop(sig.ret) {
+            return r;
+        }
+        let ret = sig.ret;
+        self.val(Op::Copy, &[r], Imm::None, ret)
+    }
     /// `poll`.
     pub fn poll(&mut self) {
         self.emit(Op::Poll, &[], Imm::None, None);

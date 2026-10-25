@@ -1,5 +1,5 @@
 from "@std/testing.ms" import expect_ok, expect_equal
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
 from "@std/core.ms" import TextError
 from "@std/net.ms" import network, Connection
 from "@std/bytes.ms" import Bytes
@@ -18,7 +18,8 @@ test "serve ends a connection that trickles its request head":
 
     with let server = (
         net.serve(
-            address: "127.0.0.1:0", handler: ok_route, timeout: 400.milliseconds
+            address: "127.0.0.1:0", handler: buffered(ok_route),
+            options: HttpServerOptions(timeout: 400.milliseconds)
         ) | try expect_ok
     ):
         with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
@@ -54,7 +55,8 @@ test "close cancels a handler that outlives the grace period":
 
     with let server = (
         net.serve(
-            address: "127.0.0.1:0", handler: slow_route, grace: 200.milliseconds
+            address: "127.0.0.1:0", handler: buffered(slow_route),
+            options: HttpServerOptions(grace: 200.milliseconds)
         ) | try expect_ok
     ):
         with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
@@ -100,7 +102,9 @@ test "serve answers requests while handlers read and write files":
         return HttpResponse(200, headers(), f"{read.get().length()}".to_bytes())
 
     with let server = (
-        net.serve(address: "127.0.0.1:0", handler: io_route) | try expect_ok
+        net.serve(
+            address: "127.0.0.1:0", handler: buffered(io_route)
+        ) | try expect_ok
     ):
         with let a = (net.connect(server.address(), 2.seconds) | try expect_ok):
             with let b = (net.connect(server.address(), 2.seconds) | try expect_ok):

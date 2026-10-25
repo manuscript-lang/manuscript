@@ -1,4 +1,4 @@
-from "@std/bytes.ms" import Bytes
+from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/net.ms" import Connection
 from "@std/net.ms" import DatagramSocket
 from "@std/net.ms" import DnsRecord
@@ -229,6 +229,9 @@ export interface HttpExchange:
     # Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past `max_body_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    # Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
+    # The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
+    def send(status: Int, headers: HttpHeaders, body: Bytes) -> Result[Unit, HttpError]
     # Sends the status line and headers once, before any body is written.
     # The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns InvalidInput and a closed exchange returns Closed.
     def send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]
@@ -289,7 +292,7 @@ export type HttpServerOptions:
     max_body_bytes: Optional[Int] = none
     # Most response body bytes a handler may write, in bytes. Must be nonnegative; none sets no cap.
     max_response_bytes: Optional[Int] = none
-    # Largest accepted request header block and largest response header block, in bytes. Must be positive; none sets no cap.
+    # Largest accepted request header block and largest response header block, in bytes. Must be positive; none uses the default of 1 MiB.
     max_header_bytes: Optional[Int] = none
     # Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. none sets no deadline.
     timeout: Optional[Duration] = none
@@ -309,6 +312,105 @@ export interface ResponseBody:
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+
+# Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
+export def from_io(error: IoError) -> HttpError:
+    match error:
+        case Closed: return HttpError.Closed
+        case InvalidInput: return HttpError.InvalidInput
+        case InvalidData: return HttpError.InvalidData
+        case LimitExceeded: return HttpError.LimitExceeded
+        case Unavailable: return HttpError.Failed("HTTP: unavailable")
+        case Failed(message): return HttpError.Failed(message.clone())
+
+# Reads the rest of the request body into one value.
+# A body over `max_body_bytes` of the server's options returns LimitExceeded; `limit` also bounds it when given.
+export def read_body(
+    exchange: HttpExchange,
+    limit: Optional[Int] = none
+) -> Result[Bytes, HttpError]:
+    let first = try exchange.read().map_error(from_io)
+    if let head = first:
+        return read_rest(exchange, head, limit)
+
+    return ok("".to_bytes())
+
+# Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
+def read_rest(
+    exchange: HttpExchange,
+    head: Bytes,
+    limit: Optional[Int]
+) -> Result[Bytes, HttpError]:
+    var total = head.length()
+    if over_limit(total, limit): return error(HttpError.LimitExceeded)
+
+    let second = try exchange.read().map_error(from_io)
+
+    if let next = second:
+        var out = BytesBuilder()
+        out.append_bytes(head)
+        total += next.length()
+        if over_limit(total, limit): return error(HttpError.LimitExceeded)
+
+        out.append_bytes(next)
+        return read_more(exchange, out, total, limit)
+
+    return ok(head)
+
+def read_more(
+    exchange: HttpExchange,
+    out: BytesBuilder,
+    total: Int,
+    limit: Optional[Int]
+) -> Result[Bytes, HttpError]:
+    var rest = out
+    var size = total
+
+    while True:
+        let chunk = try exchange.read().map_error(from_io)
+
+        if let bytes = chunk:
+            size += bytes.length()
+            if over_limit(size, limit): return error(HttpError.LimitExceeded)
+
+            rest.append_bytes(bytes)
+        else:
+            return ok(rest.build())
+
+def over_limit(total: Int, limit: Optional[Int]) -> Bool:
+    if let max = limit:
+        return total > max
+
+    return False
+
+# Sends `response` whole: its status and headers, then its body.
+export def reply(
+    exchange: HttpExchange,
+    response: HttpResponse
+) -> Result[Unit, HttpError]:
+    return exchange.send(response.status, response.headers, response.body)
+
+# Builds a response with a UTF-8 text body and no headers.
+export def text(status: Int, body: String) -> HttpResponse:
+    return HttpResponse(status: status, headers: headers(), body: body.to_bytes())
+
+# Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
+# The request body is read in full first.
+export def buffered(
+    handler: Callable[[HttpRequest], HttpResponse]
+) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
+    return lambda exchange: serve_buffered(handler, exchange)
+
+def serve_buffered(
+    handler: Callable[[HttpRequest], HttpResponse],
+    exchange: HttpExchange
+) -> Result[Unit, HttpError]:
+    let body = try read_body(exchange)
+    let request = HttpRequest(
+        method: exchange.method(), path: exchange.path(), query: exchange.query(),
+        headers: exchange.headers(), body: body, protocol: exchange.protocol()
+    )
+    return reply(exchange, handler(request))
 
 impl Error for HttpError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `HTTP: <reason>`.

@@ -96,8 +96,6 @@ pub type Key = (Name, NodeId);
 #[derive(Default)]
 pub struct Summaries {
     pub decls: HashMap<Key, Summary>,
-    /// By interface id and operation name: the union over the implementations.
-    pub contracts: HashMap<(Name, Name), ResultOrigin>,
 }
 
 impl std::ops::Deref for Summaries {
@@ -222,6 +220,24 @@ fn from_summary(
     }
 }
 
+/// What a call through an interface hands back: a `ref` operation lends, as every
+/// implementation does, from the receiver or any argument (the implementations may name their
+/// parameters differently); any other operation returns an owned value.
+fn contract_origin(declared: &Summary, func: &FuncRef) -> ResultOrigin {
+    if !func.func().is_some_and(|f| f.result_ref) {
+        return ResultOrigin {
+            owned: true,
+            ..ResultOrigin::default()
+        };
+    }
+    let mut slots = vec![Slot::Receiver];
+    slots.extend(declared.params.iter().map(|(name, _)| Slot::Param(*name)));
+    ResultOrigin {
+        slots,
+        ..ResultOrigin::default()
+    }
+}
+
 fn method_modes(
     summaries: &Summaries,
     method: &MethodRef,
@@ -251,18 +267,7 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
-                    // The union over the implementations of what each hands back.
-                    // A call through the interface returns an owned copy.
-                    origin: ResultOrigin {
-                        owned: true,
-                        ..method
-                            .contract
-                            .as_ref()
-                            .zip(method.name())
-                            .and_then(|(c, op)| summaries.contracts.get(&(c.id, op)))
-                            .cloned()
-                            .unwrap_or_default()
-                    },
+                    origin: contract_origin(&declared, func),
                 }
             }
             None => native_unknown(count),
@@ -330,12 +335,22 @@ fn native_method_modes(
         })
         .collect();
     let result = method.ty.result_ty();
-    // A native lends exactly when its standard-library declaration says so (`ref`).
+    // A native lends exactly when its standard-library declaration says so (`ref`), unless the
+    // call gives a fallback (`o.get(default)`): the result is then an owned copy of either.
     let accessor = method
         .decl
         .as_ref()
         .and_then(|d| d.func())
-        .is_some_and(|f| f.result_ref);
+        .is_some_and(|f| {
+            f.result_ref
+                && !(0..count).any(|i| {
+                    label(i).is_some_and(|l| {
+                        f.params
+                            .iter()
+                            .any(|p| p.default.is_some() && p.name.as_str() == l.as_str())
+                    })
+                })
+        });
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate

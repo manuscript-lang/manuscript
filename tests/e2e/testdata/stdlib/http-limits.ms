@@ -1,5 +1,5 @@
 from "@std/testing.ms" import expect_ok
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
 from "@std/core.ms" import TextError
 from "@std/net.ms" import network
 from "@std/bytes.ms" import Bytes
@@ -11,7 +11,9 @@ test "serve caps the request header block":
     let net = network()
 
     with let server = (
-        net.serve(address: "127.0.0.1:0", handler: ok_route) | try expect_ok
+        net.serve(
+            address: "127.0.0.1:0", handler: buffered(ok_route)
+        ) | try expect_ok
     ):
         with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
             let filler = ("a".repeat(2000000) | try expect_ok)
@@ -33,7 +35,8 @@ test "serve timeout closes idle connections":
 
     with let server = (
         net.serve(
-            address: "127.0.0.1:0", handler: handler, timeout: 300.milliseconds
+            address: "127.0.0.1:0", handler: buffered(handler),
+            options: HttpServerOptions(timeout: 300.milliseconds)
         ) | try expect_ok
     ):
         with let silent = (net.connect(server.address(), 2.seconds) | try expect_ok):

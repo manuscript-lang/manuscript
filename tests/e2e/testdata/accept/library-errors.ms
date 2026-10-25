@@ -326,7 +326,7 @@ def match_label(view: Label[String]) -> String:
         case Labelled[String](receiver):
             return receiver.value.clone()
         case _:
-            return view.label()
+            return view.label().clone()
 
 type Count:
     value: Int
