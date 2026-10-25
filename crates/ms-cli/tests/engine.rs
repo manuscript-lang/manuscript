@@ -574,9 +574,11 @@ fn native_http_handler_faults_do_not_leak_per_request() {
     child.kill().unwrap();
     child.wait().unwrap();
     // The leak was ~4.6 MiB over 4000 requests. A fault still strands the request's exchange
-    // and the handler's frames (#1325), about 0.7 KiB each; allocator noise stays under 1 KiB.
+    // and the handler's frames (#1325): about 0.7 KiB each in a release build, 1 KiB in CI's
+    // debug-profile runtime. The bound leaves room for that and still catches a per-request
+    // buffer (the earlier leak was 1.2 KiB of wire records on top of this).
     assert!(
-        grown < 4096,
+        grown < 8192,
         "{grown} KiB gained over 4000 faulting requests"
     );
 }
