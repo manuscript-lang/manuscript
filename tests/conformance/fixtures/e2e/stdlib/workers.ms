@@ -177,17 +177,23 @@ test "standard input stays with the main thread":
         expect_error(outcome)
         expect_true(outcome.err().message().contains("main thread"))
 
+def delayed_send() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    sleep(duration(nanoseconds: 150000000))
+    ch.send(1)
+
 def quick() -> Unit:
     var ch = worker_channel[Int, Int]()
 
 test "cancelling a joined worker's handle leaves a later worker alone":
     with WorkerGroup[Int, Int]() as group:
         var a = group.spawn(quick).get(none)
-        expect_ok(a.join())
-        var b = group.spawn(naps).get(none)
+        try expect_ok(a.join())
+        var b = group.spawn(delayed_send).get(none)
+        sleep(duration(nanoseconds: 30000000))
         a.cancel()
-        expect_equal(b.channel.receive(), ok(some(1)))
-        expect_ok(b.join())
+        try expect_equal(b.channel.receive(), ok(some(1)))
+        try expect_ok(b.join())
 
 def sends_one() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -196,9 +202,9 @@ def sends_one() -> Unit:
 test "a finished worker's channel ends with none instead of an error":
     with WorkerGroup[Int, Int]() as group:
         var worker = group.spawn(sends_one).get(none)
-        expect_equal(worker.channel.receive(), ok(some(1)))
-        expect_equal(worker.channel.receive(), ok(none))
-        expect_ok(worker.join())
+        try expect_equal(worker.channel.receive(), ok(some(1)))
+        try expect_equal(worker.channel.receive(), ok(none))
+        try expect_ok(worker.join())
 
 def runs_faulting_task() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -210,8 +216,27 @@ test "a fault in a task a worker started is the worker's fault":
     with WorkerGroup[Int, Int]() as group:
         var worker = group.spawn(runs_faulting_task).get(none)
         let outcome = worker.join()
-        expect_error(outcome)
-        expect_true(outcome.err().message().contains("task inside worker faults"))
+        let cause = try expect_error(outcome)
+        try expect_true(cause.message().contains("task inside worker faults"))
+
+def sleeps_long() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    sleep(duration(nanoseconds: 30000000000))
+
+def joins_nested() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    with WorkerGroup[Int, Int]() as inner:
+        var worker = inner.spawn(sleeps_long).get(none)
+        let outcome = worker.join()
+
+test "cancelling a worker that is joining another ends it as cancelled":
+    with WorkerGroup[Int, Int]() as group:
+        var outer = group.spawn(joins_nested).get(none)
+        sleep(duration(nanoseconds: 50000000))
+        outer.cancel()
+        let outcome = outer.join()
+        let cause = try expect_error(outcome)
+        try expect_equal(cause.message(), "worker: cancelled")
 
 def touches_network() -> Unit:
     var ch = worker_channel[Int, Int]()

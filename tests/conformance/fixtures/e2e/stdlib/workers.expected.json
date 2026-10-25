@@ -81,21 +81,26 @@
         },
         {
           "index": 14,
+          "name": "workers.ms::cancelling a worker that is joining another ends it as cancelled",
+          "status": "passed"
+        },
+        {
+          "index": 15,
           "name": "workers.ms::a worker that uses the network ends cleanly",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 15,
-        "selected": 15,
-        "passed": 15,
+        "available": 16,
+        "selected": 16,
+        "passed": 16,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN workers.ms::a worker answers a message\nPASS workers.ms::a worker answers a message\nRUN workers.ms::a worker answers each message in order\nPASS workers.ms::a worker answers each message in order\nRUN workers.ms::records cross as JSON\nPASS workers.ms::records cross as JSON\nRUN workers.ms::many messages wait for room\nPASS workers.ms::many messages wait for room\nRUN workers.ms::workers run side by side with memory of their own\nPASS workers.ms::workers run side by side with memory of their own\nRUN workers.ms::a fault in a worker is a result, not the end of the program\nPASS workers.ms::a fault in a worker is a result, not the end of the program\nRUN workers.ms::cancelling a worker stops it\nPASS workers.ms::cancelling a worker stops it\nRUN workers.ms::leaving the group stops workers that are still running\nPASS workers.ms::leaving the group stops workers that are still running\nRUN workers.ms::sends after the worker ended report the channel closed\nPASS workers.ms::sends after the worker ended report the channel closed\nRUN workers.ms::a worker sleeps without blocking its starter\nPASS workers.ms::a worker sleeps without blocking its starter\nRUN workers.ms::standard input stays with the main thread\nPASS workers.ms::standard input stays with the main thread\nRUN workers.ms::cancelling a joined worker's handle leaves a later worker alone\nPASS workers.ms::cancelling a joined worker's handle leaves a later worker alone\nRUN workers.ms::a finished worker's channel ends with none instead of an error\nPASS workers.ms::a finished worker's channel ends with none instead of an error\nRUN workers.ms::a fault in a task a worker started is the worker's fault\nPASS workers.ms::a fault in a task a worker started is the worker's fault\nRUN workers.ms::a worker that uses the network ends cleanly\nPASS workers.ms::a worker that uses the network ends cleanly\n15 tests, 0 failed\n",
+      "stdout": "RUN workers.ms::a worker answers a message\nPASS workers.ms::a worker answers a message\nRUN workers.ms::a worker answers each message in order\nPASS workers.ms::a worker answers each message in order\nRUN workers.ms::records cross as JSON\nPASS workers.ms::records cross as JSON\nRUN workers.ms::many messages wait for room\nPASS workers.ms::many messages wait for room\nRUN workers.ms::workers run side by side with memory of their own\nPASS workers.ms::workers run side by side with memory of their own\nRUN workers.ms::a fault in a worker is a result, not the end of the program\nPASS workers.ms::a fault in a worker is a result, not the end of the program\nRUN workers.ms::cancelling a worker stops it\nPASS workers.ms::cancelling a worker stops it\nRUN workers.ms::leaving the group stops workers that are still running\nPASS workers.ms::leaving the group stops workers that are still running\nRUN workers.ms::sends after the worker ended report the channel closed\nPASS workers.ms::sends after the worker ended report the channel closed\nRUN workers.ms::a worker sleeps without blocking its starter\nPASS workers.ms::a worker sleeps without blocking its starter\nRUN workers.ms::standard input stays with the main thread\nPASS workers.ms::standard input stays with the main thread\nRUN workers.ms::cancelling a joined worker's handle leaves a later worker alone\nPASS workers.ms::cancelling a joined worker's handle leaves a later worker alone\nRUN workers.ms::a finished worker's channel ends with none instead of an error\nPASS workers.ms::a finished worker's channel ends with none instead of an error\nRUN workers.ms::a fault in a task a worker started is the worker's fault\nPASS workers.ms::a fault in a task a worker started is the worker's fault\nRUN workers.ms::cancelling a worker that is joining another ends it as cancelled\nPASS workers.ms::cancelling a worker that is joining another ends it as cancelled\nRUN workers.ms::a worker that uses the network ends cleanly\nPASS workers.ms::a worker that uses the network ends cleanly\n16 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
