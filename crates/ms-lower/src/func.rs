@@ -70,6 +70,12 @@ pub(crate) struct FnLower<'a> {
     pub ret_ty: MTy,
     /// The body is bracketed by `depth.enter` / `depth.leave` (the optimizer removes it for non-recursive functions).
     pub counts_depth: bool,
+    /// This instance lends its result: a returned borrow is handed back without a copy.
+    pub lent_return: bool,
+    /// The `return` expression being lowered in a lent instance.
+    pub lent_expr: Option<usize>,
+    /// A lent instance returned an owned value, which its caller would not free.
+    pub lent_violation: bool,
     /// Record to build on return and the binding uids of the `var` parameters it carries.
     pub var_slots: Vec<VarSlot>,
     /// The expression statement being lowered, whose value nothing reads (by address).
@@ -137,7 +143,23 @@ fn instance_key(c: &Callable, subst: &Subst) -> String {
     key
 }
 
+/// The substitution entry marking an instance that lends its `ref` result.
+pub(crate) const LENT: &str = "$lent";
+
 impl Cx {
+    /// The instance of `c` that returns its `ref` result as a borrow instead of a copy.
+    pub(crate) fn function_lent(
+        &mut self,
+        m: &mut Module,
+        c: &Rc<Callable>,
+        subst: &Subst,
+        scope: ct::Name,
+    ) -> Result<FuncId, Error> {
+        let mut lent = subst.clone();
+        lent.insert(ct::n(LENT), ct::primitive("lent"));
+        self.function_in(m, c, &lent, scope)
+    }
+
     /// The checked result type of a callable (generic-open).
     pub(crate) fn callable_result(&self, c: &Callable) -> Result<ct::Ty, Error> {
         let hir = self.module(c.module.file)?;
@@ -194,6 +216,7 @@ impl Cx {
             c.name.to_string()
         };
         let mut f = ms_mir::ir::Func::new(&name, params, ret);
+        f.ret_borrowed = subst.contains_key(&ct::n(LENT));
         // The checker keeps a `var` argument from overlapping any other argument.
         f.noalias = vars.iter().map(|&i| i as u32).collect();
         let id = m.add_func(f);
@@ -314,8 +337,16 @@ fn lower_job(cx: &mut Cx, m: &mut Module, job: Job) -> Result<(), Error> {
     let b = FuncBuilder::new(m, &proto.name, proto.params.clone(), proto.ret);
     let mut fl = FnLower::new(cx, b, hir, jsubst, file, proto.ret);
     let result = fl.lower_callable(&c);
+    let violated = fl.lent_violation;
     let mut func = fl.b.into_func();
+    func.ret_borrowed = proto.ret_borrowed;
     result?;
+    if violated {
+        return Err(Error::new(format!(
+            "`{}` returns `ref` but some path returns an owned value; return a part of a parameter on every path",
+            c.name
+        )));
+    }
     func.noalias = proto.noalias;
     func.compact_blocks();
     m.funcs[job.func.index()] = func;
@@ -345,6 +376,9 @@ impl<'a> FnLower<'a> {
             dead: false,
             ret_ty,
             counts_depth: false,
+            lent_return: false,
+            lent_expr: None,
+            lent_violation: false,
             var_slots: Vec::new(),
             slotted: HashSet::new(),
             views: HashSet::new(),
@@ -523,6 +557,33 @@ impl<'a> FnLower<'a> {
                     self.b.defining_op(x.v),
                     Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet)
                 ));
+        // A pattern variable the checker proved a read-only borrow of its scrutinee stays where it
+        // is: a lending function can hand it back, and a reader skips the copy.
+        let lent = lent
+            || (self.cx.read_borrows.contains(&binding.uid)
+                && self.ownership_checked()
+                && !x.own
+                && !binding.mutable
+                && !self.slotted.contains(&binding.uid)
+                && self.temps.is_empty()
+                && self.needs_drop(ty)
+                && matches!(
+                    self.b.defining_op(x.v),
+                    Some(
+                        Op::AltGet
+                            | Op::OptGet
+                            | Op::RecGet
+                            | Op::ListGet
+                            | Op::ListGetNn
+                            | Op::ListGetU
+                    )
+                )
+                // Its parent must outlive the binding: an owned scrutinee is dropped as soon as
+                // its payload has been copied out.
+                && self
+                    .b
+                    .defining_operand(x.v)
+                    .is_some_and(|parent| self.b.is_borrowed(parent)));
         if lent {
             self.bind_lent(binding, x.v);
             return;
@@ -714,7 +775,16 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return;
         }
-        let v = value.map(|x| self.owned(x));
+        let v = value.map(|x| {
+            if !self.lent_return {
+                return self.owned(x);
+            }
+            // A lent result is a borrow the caller never frees, so an owned value cannot be one.
+            if x.own && self.needs_drop(self.ty_of(x.v)) {
+                self.lent_violation = true;
+            }
+            x.v
+        });
         for slot in self.var_slots.clone() {
             let l = self.locals[&slot.uid];
             let x = self.local_take(&l);
@@ -737,6 +807,7 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- bodies
 
     fn lower_callable(&mut self, c: &Rc<Callable>) -> Result<(), Error> {
+        self.lent_return = self.subst.contains_key(&ct::n(LENT));
         // Inline/default frames must return to this declaration's file, even
         // when every surviving instruction originates in another module.
         self.b.func_mut().loc = self.loc(c.func.decl.decl().pos);
