@@ -2605,7 +2605,7 @@ def call() -> Unit: f(4)
     return value.get()
 type	2	18	67	expected Int, found Optional[Int] (in the return value); Optional[Int] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or matchdef wrong(value: Result[Int, String]) -> Bool:
     return value.is_some()
-resolution	2	18	64	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, is_error, is_ok, map, or_else, to_optional
+resolution	2	18	64	unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional
 type	1	1	0	String does not satisfy Error; use a type that implements ittype Optional[T]:
     case some(value: T)
     case none

@@ -1231,14 +1231,14 @@
 {"id":1230,"jsonrpc":"2.0","result":null}
 {"id":1231,"jsonrpc":"2.0","result":[]}
 {"id":1232,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":31,"line":50},"start":{"character":25,"line":50}}}}
-{"id":1233,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":102},"start":{"character":12,"line":102}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1233,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":105},"start":{"character":12,"line":105}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":1235,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":102},"start":{"character":7,"line":102}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1235,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":105},"start":{"character":7,"line":105}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1236,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":31,"line":50},"start":{"character":25,"line":50}}}]}
 {"id":1237,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":31,"line":50},"start":{"character":25,"line":50}}}}
-{"id":1238,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":102},"start":{"character":12,"line":102}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1238,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":105},"start":{"character":12,"line":105}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":1240,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":102},"start":{"character":7,"line":102}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1240,"jsonrpc":"2.0","result":[{"range":{"end":{"character":7,"line":105},"start":{"character":7,"line":105}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1241,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":31,"line":50},"start":{"character":25,"line":50}}}]}
 {"id":1242,"jsonrpc":"2.0","result":null}
 {"id":1243,"jsonrpc":"2.0","result":null}
