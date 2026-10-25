@@ -122,8 +122,8 @@ pub struct CallModes {
     pub callbacks_borrowed: bool,
     /// The source callee returns a part of these read-only arguments.
     pub origin: ResultOrigin,
-    /// The callee is a `ref` function whose summary is not known yet (a recursive call in the
-    /// first pass): it lends, from arguments the next pass names.
+    /// The callee is a `ref` function whose summary names no slot yet (a recursive call before
+    /// its summary converges): it lends, from arguments a later pass names.
     pub pending: bool,
 }
 
@@ -205,7 +205,12 @@ fn from_summary(
     receiver: Option<()>,
 ) -> CallModes {
     let known = summaries.get(&(module, func.id())).cloned();
-    let pending = known.is_none() && func.func().is_some_and(|f| f.result_ref);
+    // A `ref` callee lends on every path, so one that names no slot and returns nothing owned has
+    // only reached calls of others still pending (or returns only `none`): it lends too.
+    let pending = func.func().is_some_and(|f| f.result_ref)
+        && known
+            .as_ref()
+            .is_none_or(|s| s.result.slots.is_empty() && !s.result.owned);
     let summary = known.unwrap_or_else(|| Summary::declared(func));
     CallModes {
         receiver: receiver.map(|()| summary.receiver),

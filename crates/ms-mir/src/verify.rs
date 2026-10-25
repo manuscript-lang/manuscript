@@ -1396,8 +1396,8 @@ pub fn dominators(f: &Func, rpo: &[Block], preds: &[Vec<Block>]) -> Vec<usize> {
 /// instruction result or an owned block parameter. A lent result must not, since the owner is
 /// dropped before the caller reads it.
 fn borrows_from_owned(m: &Module, f: &Func) -> Vec<bool> {
-    let mut memo = std::collections::HashMap::new();
-    sources(m, f, &mut memo)
+    let masks = lent_masks(m, f);
+    sources(m, f, &masks)
         .into_iter()
         .map(|s| s & OWNED != 0)
         .collect()
@@ -1413,7 +1413,7 @@ fn param_bit(i: usize) -> u128 {
 }
 
 /// What the storage of each value of `f` comes from, as source bits.
-fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u128>) -> Vec<u128> {
+fn sources(m: &Module, f: &Func, masks: &std::collections::HashMap<usize, u128>) -> Vec<u128> {
     let rc = |v: Value| m.needs_drop(f.ty(v));
     let mut src = vec![0u128; f.values.len()];
     for (bi, b) in f.blocks.iter().enumerate() {
@@ -1437,7 +1437,7 @@ fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u12
                     Some(Mode::Borrow) => match (i.op, i.imm) {
                         // A lending call's result comes from the arguments its callee lends from.
                         (Op::Call, Imm::Func(g)) => {
-                            let mask = lent_mask(m, g.index(), memo);
+                            let mask = masks.get(&g.index()).copied().unwrap_or(EVERY_PARAM);
                             i.args
                                 .iter()
                                 .enumerate()
@@ -1485,33 +1485,60 @@ fn sources(m: &Module, f: &Func, memo: &mut std::collections::HashMap<usize, u12
     }
 }
 
-/// The parameters a lending function's result can come from, as source bits: every parameter
-/// for a function without a body. A recursive call first counts as lending from nothing, and the
-/// mask grows until it is stable (results computed under a smaller guess are dropped each round).
-fn lent_mask(m: &Module, g: usize, memo: &mut std::collections::HashMap<usize, u128>) -> u128 {
-    if let Some(mask) = memo.get(&g) {
-        return *mask;
-    }
-    let f = &m.funcs[g];
-    if f.blocks.is_empty() {
-        return EVERY_PARAM;
-    }
-    let mut guess = 0;
-    loop {
-        let before: std::collections::HashSet<usize> = memo.keys().copied().collect();
-        memo.insert(g, guess);
-        let src = sources(m, f, memo);
-        let mut mask = 0;
-        for b in &f.blocks {
-            if let Term::Ret(Some(v)) = &b.term {
-                mask |= src[v.index()];
+/// The parameters each lending function that `f` reaches can return storage from, as source
+/// bits: every parameter for a function without a body. Masks start at no parameters and grow
+/// together until stable, so recursion gets the least mask its paths support.
+fn lent_masks(m: &Module, f: &Func) -> std::collections::HashMap<usize, u128> {
+    let lending = |func: &Func| {
+        let mut out = Vec::new();
+        for b in &func.blocks {
+            for i in &b.insts {
+                if let (Op::Call, Imm::Func(g), Some(Mode::Borrow)) =
+                    (i.op, i.imm, m.result_mode(func, i))
+                {
+                    out.push(g.index());
+                }
             }
         }
-        let mask = (mask & EVERY_PARAM) | guess;
-        if mask == guess {
-            return mask;
+        out
+    };
+    let mut masks = std::collections::HashMap::new();
+    let mut work = lending(f);
+    while let Some(g) = work.pop() {
+        if masks.contains_key(&g) {
+            continue;
         }
-        memo.retain(|k, _| before.contains(k));
-        guess = mask;
+        let callee = &m.funcs[g];
+        if callee.blocks.is_empty() {
+            masks.insert(g, EVERY_PARAM);
+            continue;
+        }
+        masks.insert(g, 0);
+        work.extend(lending(callee));
+    }
+    let bodies: Vec<usize> = masks
+        .keys()
+        .copied()
+        .filter(|g| !m.funcs[*g].blocks.is_empty())
+        .collect();
+    loop {
+        let mut changed = false;
+        for &g in &bodies {
+            let callee = &m.funcs[g];
+            let src = sources(m, callee, &masks);
+            let mut mask = masks[&g];
+            for b in &callee.blocks {
+                if let Term::Ret(Some(v)) = &b.term {
+                    mask |= src[v.index()] & EVERY_PARAM;
+                }
+            }
+            if mask != masks[&g] {
+                masks.insert(g, mask);
+                changed = true;
+            }
+        }
+        if !changed {
+            return masks;
+        }
     }
 }
