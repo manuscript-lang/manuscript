@@ -376,11 +376,13 @@ mod tests {
         let _g = crate::testutil::lock();
         let a = msrt_pipe_new();
         let b = msrt_pipe_peer(a);
+        // The sending thread plays a worker isolate, which the process counts from its spawn.
+        crate::isolate::count_worker();
         let sender = std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_millis(20));
-            // The sending thread plays a worker isolate: it has no scheduler state of its own
-            // to wait on, and the pipe has room.
+            // It has no scheduler state of its own to wait on, and the pipe has room.
             assert_eq!(send(a, "hi"), OK);
+            crate::isolate::retire_worker();
         });
         assert_eq!(receive(b), Ok("hi".into()));
         sender.join().unwrap();
