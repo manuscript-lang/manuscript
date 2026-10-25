@@ -60,6 +60,14 @@ impl Checker {
             return None;
         }
         let methods = self.methods(&rt, *name);
+        // A source operation of the same name that takes this many arguments is resolved as a member.
+        if let Some((callee, count)) = self.call_arity
+            && callee == member.id
+            && methods.len() == 1
+            && !crate::exprs::accepts_arguments(&methods[0].ty, count)
+        {
+            return None;
+        }
         // Implementations have already specialized their receiver variables. They
         // dispatch through the contract, rather than native receiver operations.
         if methods.len() != 1
@@ -78,100 +86,6 @@ impl Checker {
             ..Info::default()
         };
         self.set_info(member, info.clone());
-        Some(info)
-    }
-
-    /// `xs.sorted()` and `xs.sort()` without a comparator order by the element's own `compare`.
-    /// The call is checked, and lowered, as the same call passing `lambda a, b: a.compare(b)`,
-    /// so every Comparable element type, including generic ones, takes the comparator path.
-    pub(crate) fn natural_order_call(
-        &mut self,
-        e: &Expr,
-        callee: &Expr,
-        args: &[Argument],
-        found: &Info,
-        expected: Option<&Ty>,
-    ) -> Option<Info> {
-        let method = found.method.as_ref()?;
-        let native = found.native_str();
-        if !matches!(native, "collections/sorted" | "collections/sort") {
-            return None;
-        }
-        // `sorted(none)` is `sorted()`.
-        let omitted = match args {
-            [] => true,
-            [only] => matches!(&only.value.kind, ExprKind::Name(n) if n.as_str() == "none"),
-            _ => false,
-        };
-        if !omitted {
-            return None;
-        }
-        let element = method.receiver.args.first()?.clone();
-        let comparable = self
-            .sym(n("Comparable"))
-            .filter(|s| s.kind == SymKind::Type)?
-            .ty();
-        if !self.satisfies(&element, &comparable) {
-            let name = native.trim_start_matches("collections/");
-            self.type_error(
-                e.pos,
-                format!("{name}() needs a Comparable element type; pass compare: lambda a, b: ..."),
-            );
-            return Some(Info::of(invalid()));
-        }
-        let at = e.pos;
-        let module = self.m();
-        let synthetic_id = || module.facts_mut().fresh_id();
-        let node = |kind| Expr {
-            id: synthetic_id(),
-            pos: at,
-            kind,
-        };
-        let name = |text: &str| node(ExprKind::Name(n(text)));
-        let param = |text: &str| ms_syntax::ast::Param {
-            id: synthetic_id(),
-            pos: at,
-            name: n(text),
-            ty: None,
-            default: None,
-            mutable: false,
-        };
-        let order = node(ExprKind::Call {
-            callee: Box::new(node(ExprKind::Member {
-                left: Box::new(name("a")),
-                name: n("compare"),
-            })),
-            args: vec![Argument {
-                pos: at,
-                name: None,
-                value: name("b"),
-                mutable: false,
-            }],
-        });
-        let lambda = node(ExprKind::Lambda(Lambda {
-            params: vec![param("a"), param("b")],
-            result: None,
-            body: vec![Stmt {
-                id: synthetic_id(),
-                pos: at,
-                kind: StmtKind::Return(Some(order)),
-            }],
-        }));
-        let call = Expr {
-            id: synthetic_id(),
-            pos: e.pos,
-            kind: ExprKind::Call {
-                callee: Box::new(callee.clone()),
-                args: vec![Argument {
-                    pos: at,
-                    name: None,
-                    value: lambda,
-                    mutable: false,
-                }],
-            },
-        };
-        let mut info = self.expression(&call, expected);
-        info.desugared = Some(Rc::new(call));
         Some(info)
     }
 

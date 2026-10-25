@@ -7,7 +7,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::hir::CallView;
 use ms_check::types as ct;
-use ms_mir::ir::{Cc, Imm, Mode, Op, Value};
+use ms_mir::ir::{Cc, Imm, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 impl FnLower<'_> {
@@ -127,87 +127,5 @@ impl FnLower<'_> {
             &mut |s| Ok(Some(s.owned(Val { v: l, own: false }))),
             &mut |s| Ok(Some(s.owned(Val { v: r, own: false }))),
         )
-    }
-
-    /// `list.min()` or `list.max()` over the list in `lvar`: a copy of the first of the extreme
-    /// elements, or none.
-    pub(crate) fn list_extreme(
-        &mut self,
-        lvar: ms_mir::builder::Var,
-        element: &ct::Ty,
-        out: MTy,
-        greater: bool,
-    ) -> Result<Val, Error> {
-        let list = self.b.use_var(lvar);
-        let TyKind::List(elem) = self.b.m.types.kind(self.ty_of(list)).clone() else {
-            return Err(Error::new("min and max take a list"));
-        };
-        let n = self.b.list_len(list);
-        let zero = self.b.iconst(0);
-        let empty = self.b.icmp(Cc::Eq, n, zero);
-        self.two_ways(empty, out, &mut |s| Ok(Some(s.none_owned(out))), &mut |s| {
-            let l = s.b.use_var(lvar);
-            let first = s.b.list_get(l, zero);
-            let first = s.owned(Val {
-                v: first,
-                own: false,
-            });
-            let best = s.fresh_var(elem);
-            s.b.def_var(best, first);
-            s.each_element(lvar, &mut |s, _, x| {
-                let cur = s.b.use_var(best);
-                let c = s.order(elem, element, x, cur)?;
-                let z = s.b.iconst(0);
-                let better = s.b.icmp(if greater { Cc::Gt } else { Cc::Lt }, c, z);
-                let (take, skip) = (s.b.new_block(), s.b.new_block());
-                s.b.br_if(better, take, &[], skip, &[]);
-                s.b.seal_block(take);
-                s.b.seal_block(skip);
-                s.enter(take);
-                let next = s.owned(Val { v: x, own: false });
-                let old = s.b.use_var(best);
-                s.drop_value(old);
-                s.b.def_var(best, next);
-                s.b.br(skip, &[]);
-                s.enter(skip);
-                Ok(None)
-            })?;
-            let v = s.b.use_var(best);
-            Ok(Some(s.b.opt_some(v)))
-        })
-    }
-
-    /// `list.sum()` over the list in `lvar`: the elements added left to right with `+`.
-    pub(crate) fn list_sum(
-        &mut self,
-        lvar: ms_mir::builder::Var,
-        element: &ct::Ty,
-        out: MTy,
-    ) -> Result<Val, Error> {
-        let list = self.b.use_var(lvar);
-        let n = self.b.list_len(list);
-        let acc = self.b.declare_var(out, Mode::Borrow);
-        let float = self.b.m.types.is_float(out);
-        let zero = if float {
-            self.b.fconst_ty(0.0, out)
-        } else {
-            self.b.iconst_ty(0, out)
-        };
-        self.b.def_var(acc, zero);
-        let first = self.b.iconst(0);
-        self.counted_loop(first, n, &mut |s, i| {
-            let l = s.b.use_var(lvar);
-            let x = s.b.list_get(l, i);
-            let cur = s.b.use_var(acc);
-            let add = if float { Op::FAdd } else { Op::IAddChk };
-            let next = s.b.binop(add, cur, x);
-            let next = s.narrow(next, element);
-            s.b.def_var(acc, next);
-            Ok(())
-        })?;
-        Ok(Val {
-            v: self.b.use_var(acc),
-            own: false,
-        })
     }
 }

@@ -1538,7 +1538,7 @@ fn with_alias_origins(
             let Some(binding) = self.fl.hir.pattern_binding(pattern) else {
                 return;
             };
-            if self.fl.cx.exclusive.contains(&binding.uid)
+            if self.fl.cx.exclusive(binding.uid)
                 && let Some(root) = alias_origin(self.fl, value)
             {
                 self.roots.insert(binding.uid, root);

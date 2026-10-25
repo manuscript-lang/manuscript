@@ -59,12 +59,12 @@ Apply when: adding List methods that return records or nested lists.
 Evidence: `tests/e2e/testdata/stdlib/list-structural-ops.ms`, `snippets/list-{chunks,windows}-zero-fault`.
 Verify: `ms test tests/e2e/testdata/stdlib/list-structural-ops.ms`; `make stdlib-bench BENCHFILTER=list.` shows zip 2, chunks 7, windows 70, partition 9 ns per element.
 
-### Natural order is a comparator, not a second sort path
+### List operations that need an element bound are written in Manuscript
 
-Decision: `List.sorted()` and `sort()` without `compare` order by the element's `Comparable.compare`; the checker rewrites the call to pass `lambda a, b: a.compare(b)` (the rewrite is recorded as `Info.desugared` and lowered in place of the written call), so user, generic and built-in element types share the comparator path and `sortgen` still reduces plain Int order to `msrt_list_sort_ints`. `sum`, `min` and `max` are native List members with receiver requirements in `bindings.json` (numeric, Comparable); `math.max_of`/`min_of` were removed. `Float.compare` must treat NaN as equal to itself and above every value, or float sorts are inconsistent.
+Decision: `sum`, `min`, `max` and the comparator-less `sorted()`/`sort()` live in [lists.ms](../stdlib/lists.ms), a bundled source module every program loads. Each group is a bounded interface (`ListOrder[T: Comparable]`, `ListExtremes[T: Comparable & Clonable]`, one `sum` interface per numeric element type) with `impl ... for List[T]`; a bundled module may extend a native standard type this way, and its methods apply without an import. A `List[T]` has the operations only when `T` meets the bound. Native `sorted`/`sort` keep a required `compare`; when a native and a source operation share a name, the call's argument count picks one. `Float.compare` must treat NaN as equal to itself and above every value, or float sorts are inconsistent. A body in `collections.ms` itself is not possible: any body turns the whole module into a source module (#1285).
 
 Apply when: adding a List operation that depends on an element contract, or changing `sortgen`'s recognized comparator shapes.
-Evidence: [collections.ms](../stdlib/collections.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
+Evidence: [lists.ms](../stdlib/lists.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
 Verify: `make stdlib-bench BENCHFILTER=list.sort` shows `sorted_natural` within noise of `sorted`.
 
 

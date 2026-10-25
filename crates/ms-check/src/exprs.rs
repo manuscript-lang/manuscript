@@ -571,6 +571,10 @@ impl Checker {
             i.ty = Some(invalid());
             return i;
         }
+        let arity = self
+            .call_arity
+            .filter(|(callee, _)| *callee == e.id)
+            .map(|(_, count)| count);
         let receiver = self.expression(left, None);
         i.no_return = receiver.no_return;
         let rt = receiver.t();
@@ -595,7 +599,29 @@ impl Checker {
             true => n("set"),
             false => name,
         };
-        let methods = self.methods(&rt, name);
+        let mut methods = self.methods(&rt, name);
+        // Operations that share a name are told apart by how many arguments the call passes.
+        if let Some(count) = arity {
+            let fitting = |candidates: &[MethodRef]| -> Vec<MethodRef> {
+                candidates
+                    .iter()
+                    .filter(|m| accepts_arguments(&m.ty, count))
+                    .cloned()
+                    .collect()
+            };
+            if methods.len() > 1 {
+                let found = fitting(&methods);
+                if found.len() == 1 {
+                    methods = found;
+                }
+            } else if methods.len() == 1 && fitting(&methods).is_empty() {
+                // A native operation does not take this many arguments: a source operation of the same name may.
+                let found = fitting(&self.implemented_methods(&rt, name));
+                if found.len() == 1 {
+                    methods = found;
+                }
+            }
+        }
         if index_set && methods.is_empty() {
             self.type_error(
                 e.pos,
@@ -1126,4 +1152,11 @@ pub(crate) fn callee_name(e: &Expr) -> String {
 
 fn is_none_name(e: &Expr) -> bool {
     matches!(&e.kind, ExprKind::Name(n) if n.as_str() == "none")
+}
+
+/// Whether a call with `count` arguments can fill the parameters of `callable`, leaving out only omittable ones.
+pub(crate) fn accepts_arguments(callable: &Ty, count: usize) -> bool {
+    let omittable = callable.defaults.as_ref().map_or(0, |d| d.len());
+    let total = callable.params.len();
+    total.saturating_sub(omittable) <= count && count <= total
 }
