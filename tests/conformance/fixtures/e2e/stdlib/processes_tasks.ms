@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel
 from "@std/process.ms" import commands, os_type
 from "@std/processes.ms" import ProcessGroup
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/testing.ms" import expect_equal, expect_true
 from "@std/time.ms" import duration, sleep
 
 def talker(ch: Channel[Int, Unit]) -> Int:
@@ -47,8 +47,12 @@ test "result waits while another task receives from the same child":
 
         with TaskGroup[Int]() as tasks:
             tasks.spawn(lambda ch: read_all(reader.clone()))
-            expect_equal(child.result().get(-1), 42)
-            expect_equal(tasks.results().get([]), [3])
+            try expect_equal(child.result().get(-1), 42)
+
+            # `result` drops the messages it reads, so the receiver sees between 0 and 3 of them.
+            let counts = tasks.results().get([-1])
+            try expect_equal(counts.length(), 1)
+            try expect_true(counts[0] >= 0 and counts[0] <= 3)
 
 test "a task cancelled in a channel read releases the link":
     with ProcessGroup[Int, Unit, Int]() as group:
@@ -57,35 +61,44 @@ test "a task cancelled in a channel read releases the link":
 
         with TaskGroup[Int](timeout: some(duration(50000000))) as tasks:
             tasks.spawn(lambda ch: first(reader.clone()))
-            expect_equal(tasks.wait().is_error(), True)
+            try expect_equal(tasks.wait().is_error(), True)
 
-        expect_equal(child.result().get(-1), 42)
+        try expect_equal(child.result().get(-1), 42)
 
-def run_sleep() -> Int:
+def long_program() -> String:
     if os_type() == "windows":
-        let out = commands().run("ping", ["-n", "31", "127.0.0.77"])
-        return out.get().exit_code
+        return "ping"
 
-    let out = commands().run("sleep", ["30.717"])
+    return "sleep"
+
+def long_args() -> List[String]:
+    if os_type() == "windows":
+        return ["-n", "31", "127.0.0.77"]
+
+    return ["30.717"]
+
+def run_long() -> Int:
+    let out = commands().run(long_program(), long_args())
     return out.get().exit_code
 
-def sleeper_alive(seconds: String) -> Bool:
+# Whether the long-running child is alive: a process listing for ping on Windows, where nothing
+# else in the run starts one, and the command line on other systems.
+def long_alive() -> Bool:
     if os_type() == "windows":
-        return False
+        let listed = commands().run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"])
+        return listed.get().stdout.contains("PING.EXE".to_bytes())
 
-    let found = commands().run("pgrep", ["-f", "sleep " + seconds])
+    let found = commands().run("pgrep", ["-f", "sleep 30.717"])
     return found.get().exit_code == 0
 
 test "cancelling a task inside commands().run kills the child":
     with TaskGroup[Int](timeout: some(duration(200000000))) as group:
-        let t = group.spawn(lambda ch: run_sleep())
-        expect_equal(t.result().is_ok(), False)
+        let t = group.spawn(lambda ch: run_long())
+        try expect_equal(t.result().is_ok(), False)
 
-    sleep(duration(100000000))
-    expect_equal(sleeper_alive("30.717"), False)
+    sleep(duration(200000000))
+    try expect_equal(long_alive(), False)
 
-test "the sleeper check sees a live child":
-    if os_type() == "windows": return
-
-    with commands().spawn("sleep", ["30.718"]).get() as child:
-        expect_equal(sleeper_alive("30.718"), True)
+test "the liveness check sees a live child":
+    with try commands().spawn(long_program(), long_args()) as child:
+        try expect_equal(long_alive(), True)

@@ -26,7 +26,7 @@
         },
         {
           "index": 3,
-          "name": "processes_tasks.ms::the sleeper check sees a live child",
+          "name": "processes_tasks.ms::the liveness check sees a live child",
           "status": "passed"
         }
       ],
@@ -40,7 +40,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN processes_tasks.ms::result waits while another task receives from the same child\nPASS processes_tasks.ms::result waits while another task receives from the same child\nRUN processes_tasks.ms::a task cancelled in a channel read releases the link\nPASS processes_tasks.ms::a task cancelled in a channel read releases the link\nRUN processes_tasks.ms::cancelling a task inside commands().run kills the child\nPASS processes_tasks.ms::cancelling a task inside commands().run kills the child\nRUN processes_tasks.ms::the sleeper check sees a live child\nPASS processes_tasks.ms::the sleeper check sees a live child\n4 tests, 0 failed\n",
+      "stdout": "RUN processes_tasks.ms::result waits while another task receives from the same child\nPASS processes_tasks.ms::result waits while another task receives from the same child\nRUN processes_tasks.ms::a task cancelled in a channel read releases the link\nPASS processes_tasks.ms::a task cancelled in a channel read releases the link\nRUN processes_tasks.ms::cancelling a task inside commands().run kills the child\nPASS processes_tasks.ms::cancelling a task inside commands().run kills the child\nRUN processes_tasks.ms::the liveness check sees a live child\nPASS processes_tasks.ms::the liveness check sees a live child\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
