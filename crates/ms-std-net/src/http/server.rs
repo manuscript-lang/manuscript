@@ -7,10 +7,11 @@
 //! hop, no locks. One handler runs at a time. While it blocks, other
 //! connections keep being read and parsed, and their requests queue up.
 
+pub mod buffered;
 mod h2serve;
 
 use super::exchange::Exchange;
-use super::h1::{self, BodyDecoder, Decoded, Framing, Parsed, RequestHead};
+use super::h1::{self, BodyDecoder, Framing, Parsed, RequestHead};
 use super::headers::{self, Headers};
 use super::sniff;
 use super::target;
@@ -73,25 +74,6 @@ impl Default for Limits {
     }
 }
 
-/// A fully buffered request.
-#[derive(Debug)]
-pub struct Request {
-    pub method: String,
-    pub path: String,
-    pub query: String,
-    pub headers: Headers,
-    pub body: Vec<u8>,
-    pub protocol: &'static str,
-}
-
-/// A buffered response.
-#[derive(Debug)]
-pub struct Reply {
-    pub status: i64,
-    pub headers: Headers,
-    pub body: Vec<u8>,
-}
-
 /// How a handler call ended.
 pub enum Outcome<T> {
     Done(T),
@@ -103,14 +85,12 @@ pub enum Outcome<T> {
 
 /// The program's handler, called on the ms thread.
 pub trait Dispatch {
-    fn buffered(&self, request: Request) -> Outcome<Reply>;
     fn streaming(&self, exchange: Rc<Exchange>) -> Outcome<Result<(), HttpErr>>;
 }
 
 /// Server construction options.
 pub struct Options {
     pub limits: Limits,
-    pub streaming: bool,
     pub tls: Option<Arc<rustls::ServerConfig>>,
 }
 
@@ -133,7 +113,6 @@ pub(super) struct Pending {
     pub head: RequestHead,
     pub target: target::Target,
     pub decoder: BodyDecoder,
-    pub body: Vec<u8>,
     pub keep_alive: bool,
     pub expect_continue: bool,
     pub started: Instant,
@@ -615,7 +594,6 @@ pub struct Server {
     listener: RefCell<Option<socket2::Socket>>,
     address: String,
     pub(super) limits: Limits,
-    streaming: bool,
     tls: Option<Arc<rustls::ServerConfig>>,
     pub(super) dispatch: Box<dyn Dispatch>,
     st: RefCell<ServerSt>,
@@ -684,7 +662,6 @@ impl Server {
             listener: RefCell::new(Some(listener)),
             address: local,
             limits: options.limits,
-            streaming: options.streaming,
             tls: options.tls,
             dispatch,
             st: RefCell::new(ServerSt {
@@ -1334,13 +1311,12 @@ impl Server {
         }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
-        if self.streaming && !Headers::from_received(head.fields.iter().cloned()).is_text() {
+        if !Headers::from_received(head.fields.iter().cloned()).is_text() {
             return Err((400, "invalid UTF-8 request"));
         }
         let expect = h1::has_token(&head.fields, "Expect", "100-continue");
         let keep_alive = h1::keep_alive(head.minor, &head.fields);
         if let Framing::Length(n) = framing
-            && !self.streaming
             && n > self.limits.body as u64
         {
             return Err((413, "invalid or oversized request body"));
@@ -1349,7 +1325,6 @@ impl Server {
             decoder: BodyDecoder::new(framing),
             head,
             target,
-            body: Vec::new(),
             keep_alive,
             expect_continue: expect,
             started: Instant::now(),
@@ -1359,65 +1334,12 @@ impl Server {
     /// Returns whether the body phase finished (so parsing may continue).
     fn advance_body(&self, conn: &Rc<Conn>, reactor: &Reactor) -> bool {
         let mut st = conn.st.borrow_mut();
-        let Phase::Body(mut pending) = std::mem::replace(&mut st.phase, Phase::Head) else {
+        let Phase::Body(pending) = std::mem::replace(&mut st.phase, Phase::Head) else {
             return false;
         };
-        if self.streaming {
-            // The handler reads the body itself.
-            drop(st);
-            return self.queue(conn, reactor, pending);
-        }
-        if pending.expect_continue && !pending.decoder.is_done() {
-            pending.expect_continue = false;
-            st.outbuf
-                .extend_from_slice(b"HTTP/1.1 100 Continue\r\n\r\n");
-            drop(st);
-            self.flush_best_effort(conn, reactor);
-            st = conn.st.borrow_mut();
-        }
-        let unread_len = st.unread().len();
-        let mut body = std::mem::take(&mut pending.body);
-        let fed = {
-            let input = &st.inbuf[st.pos..];
-            pending.decoder.feed(input, &mut body)
-        };
-        pending.body = body;
-        match fed {
-            Err(_) => {
-                drop(st);
-                self.respond_error(conn, reactor, 400, "Bad Request", true);
-                false
-            }
-            Ok((used, state)) => {
-                st.consume(used);
-                let _ = unread_len;
-                if pending.body.len() > self.limits.body {
-                    drop(st);
-                    self.respond_error(
-                        conn,
-                        reactor,
-                        413,
-                        "invalid or oversized request body",
-                        true,
-                    );
-                    return false;
-                }
-                match state {
-                    Decoded::Done => {
-                        drop(st);
-                        self.queue(conn, reactor, pending)
-                    }
-                    Decoded::More => {
-                        if st.deadline.is_none() {
-                            st.deadline = self.limits.timeout.map(|t| Instant::now() + t);
-                            reactor.note_deadline(st.deadline);
-                        }
-                        st.phase = Phase::Body(pending);
-                        false
-                    }
-                }
-            }
-        }
+        // The handler reads the body itself.
+        drop(st);
+        self.queue(conn, reactor, pending)
     }
 
     /// Admits a complete request for the handler.
@@ -1473,24 +1395,6 @@ impl Server {
             st.deadline = None;
         }
         self.write_out(conn, reactor);
-    }
-
-    fn flush_best_effort(&self, conn: &Rc<Conn>, reactor: &Reactor) {
-        let _ = reactor;
-        let mut st = conn.st.borrow_mut();
-        let st = &mut *st;
-        while st.out_pos < st.outbuf.len() {
-            let Some(io) = &st.io else { return };
-            match io.write(&st.outbuf[st.out_pos..]) {
-                Step::Done(n) => st.out_pos += n,
-                _ => return,
-            }
-        }
-        if let Some(io) = &st.io {
-            let _ = io.flush();
-        }
-        st.outbuf.clear();
-        st.out_pos = 0;
     }
 
     /// Writes pending output; on completion continues with the next request.
@@ -1584,11 +1488,7 @@ impl Server {
             }
         };
         self.detach(conn, reactor);
-        if self.streaming {
-            super::exchange::run(self, conn, reactor, pending);
-        } else {
-            self.run_buffered(conn, reactor, *pending);
-        }
+        super::exchange::run(self, conn, reactor, pending);
         {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
@@ -1611,72 +1511,6 @@ impl Server {
         {
             handlers.remove(at);
         }
-    }
-
-    fn run_buffered(&self, conn: &Rc<Conn>, reactor: &Reactor, pending: Pending) {
-        let Pending {
-            head,
-            target,
-            body,
-            keep_alive,
-            started,
-            ..
-        } = pending;
-        let is_head = head.method == "HEAD";
-        let mut fields = head.fields;
-        fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Transfer-Encoding"));
-        if let Some(host) = &target.host {
-            fields.retain(|(n, _)| !n.eq_ignore_ascii_case("Host"));
-            fields.push(("Host".into(), host.clone().into_bytes()));
-        }
-        let request = Request {
-            method: head.method,
-            path: target.path,
-            query: target.query,
-            headers: Headers::from_received(fields),
-            body,
-            protocol: if head.minor == 1 {
-                "HTTP/1.1"
-            } else {
-                "HTTP/1.0"
-            },
-        };
-        self.enter_handler(reactor);
-        let outcome = self.dispatch.buffered(request);
-        self.leave_handler(reactor);
-        let late = self.limits.timeout.is_some_and(|t| started.elapsed() > t);
-        let mut out = Vec::with_capacity(512);
-        let mut close = !keep_alive || self.st.borrow().closing;
-        match outcome {
-            Outcome::Cancelled => {
-                close |= error_bytes(&mut out, reactor, 504, "request cancelled", close)
-            }
-            Outcome::Fault(message) => {
-                eprintln!("HTTP handler fault: {message}");
-                close |= error_bytes(&mut out, reactor, 500, "handler fault", close);
-            }
-            Outcome::Done(_) if late => {
-                close |= error_bytes(&mut out, reactor, 504, "request cancelled", close)
-            }
-            Outcome::Done(reply) => {
-                match build_response(
-                    &mut out,
-                    reactor,
-                    &reply,
-                    &self.limits,
-                    is_head,
-                    head.minor,
-                    close,
-                ) {
-                    Ok(()) => {}
-                    Err(message) => {
-                        out.clear();
-                        close |= error_bytes(&mut out, reactor, 500, message, close);
-                    }
-                }
-            }
-        }
-        self.queue_output(conn, reactor, out, close);
     }
 }
 
@@ -1709,30 +1543,9 @@ pub(super) fn error_bytes(
     false
 }
 
-/// Bodies up to this size get a `Content-Length`; larger ones are chunked.
-const CONTENT_LENGTH_LIMIT: usize = 2048;
-
 /// Whether a response to `status` may carry a body.
 pub(super) fn body_allowed(status: i64) -> bool {
     !((100..200).contains(&status) || status == 204 || status == 304)
-}
-
-/// Validates handler-supplied headers; `Err` carries the 500 message.
-pub(super) fn check_response_headers(headers: &Headers) -> Result<(), &'static str> {
-    for entry in headers.entries() {
-        let name = entry.name.as_str();
-        if !headers::valid_name(name)
-            || name.eq_ignore_ascii_case("Content-Length")
-            || name.eq_ignore_ascii_case("Transfer-Encoding")
-            || name.eq_ignore_ascii_case("Connection")
-        {
-            return Err("invalid response header");
-        }
-        if entry.values.iter().any(|v| !headers::valid_value(v)) {
-            return Err("invalid response header");
-        }
-    }
-    Ok(())
 }
 
 /// Appends handler headers with canonical names, sorted.
@@ -1754,61 +1567,9 @@ pub(super) fn append_handler_headers(out: &mut Vec<u8>, headers: &Headers) -> (b
     (has_type, has_date)
 }
 
-fn build_response(
-    out: &mut Vec<u8>,
-    reactor: &Reactor,
-    reply: &Reply,
-    limits: &Limits,
-    is_head: bool,
-    minor: u8,
-    close: bool,
-) -> Result<(), &'static str> {
-    if !(200..=599).contains(&reply.status) || reply.body.len() > limits.response {
-        return Err("invalid response");
-    }
-    check_response_headers(&reply.headers)?;
-    let status = reply.status as u16;
-    h1::status_line(out, status);
-    let (has_type, has_date) = append_handler_headers(out, &reply.headers);
-    if !has_date {
-        h1::header_line(out, "Date", reactor.date_text().as_bytes());
-    }
-    let allowed = body_allowed(reply.status);
-    let mut chunked = false;
-    if allowed {
-        if reply.body.len() <= CONTENT_LENGTH_LIMIT || minor == 0 {
-            h1::header_line(
-                out,
-                "Content-Length",
-                reply.body.len().to_string().as_bytes(),
-            );
-        } else {
-            chunked = true;
-        }
-        if !has_type && !reply.body.is_empty() {
-            h1::header_line(out, "Content-Type", sniff::detect(&reply.body).as_bytes());
-        }
-    }
-    if close {
-        h1::header_line(out, "Connection", b"close");
-    }
-    if chunked {
-        h1::header_line(out, "Transfer-Encoding", b"chunked");
-    }
-    out.extend_from_slice(b"\r\n");
-    if allowed && !is_head {
-        if chunked {
-            h1::chunk(out, &reply.body);
-            out.extend_from_slice(h1::LAST_CHUNK);
-        } else {
-            out.extend_from_slice(&reply.body);
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::buffered::{Buffered, Handle, Reply, Request};
     use super::*;
     use std::io::{Read, Write};
     use std::net::TcpStream;
@@ -1841,8 +1602,8 @@ pub(crate) mod tests {
 
     struct App;
 
-    impl Dispatch for App {
-        fn buffered(&self, r: Request) -> Outcome<Reply> {
+    impl Handle for App {
+        fn handle(&self, r: Request) -> Outcome<Reply> {
             let mut headers = Headers::new();
             match r.path.as_str() {
                 "/fault" => return Outcome::Fault("boom".into()),
@@ -1875,24 +1636,16 @@ pub(crate) mod tests {
                 body,
             })
         }
-
-        fn streaming(&self, _: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
-            Outcome::Done(Ok(()))
-        }
     }
 
     pub fn start(options: Options) -> (Rc<Network>, Rc<Server>) {
         let net = Network::new_root();
-        let server = Server::start(&net, "127.0.0.1:0", Box::new(App), options).unwrap();
+        let server = Server::start(&net, "127.0.0.1:0", Box::new(Buffered(App)), options).unwrap();
         (net, server)
     }
 
     pub fn opts(limits: Limits) -> Options {
-        Options {
-            limits,
-            streaming: false,
-            tls: None,
-        }
+        Options { limits, tls: None }
     }
 
     fn get(path: &str) -> Vec<u8> {
@@ -1965,9 +1718,8 @@ pub(crate) mod tests {
         });
         assert!(sized.ends_with("abc"));
         let big = with_client(move || exchange(&addr, &get("/big")));
-        assert!(big.contains("Transfer-Encoding: chunked\r\n"), "{big}");
-        assert!(!big.contains("Content-Length"));
-        assert!(big.ends_with("0\r\n\r\n"));
+        assert!(big.contains("Content-Length: 5000\r\n"), "{big}");
+        assert!(!big.contains("Transfer-Encoding"));
     }
 
     #[test]
@@ -2004,11 +1756,11 @@ pub(crate) mod tests {
         );
         assert!(
             run(b"GET /badheader HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
-                .contains("invalid response header")
+                .starts_with("HTTP/1.1 500")
         );
         assert!(
             run(b"GET /badstatus HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
-                .contains("invalid response")
+                .starts_with("HTTP/1.1 500")
         );
     }
 

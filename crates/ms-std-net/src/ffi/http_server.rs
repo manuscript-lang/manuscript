@@ -4,7 +4,7 @@ use super::handler::Program;
 use super::http_client::{chunk, limit};
 use super::tls::TlsOptionsWire;
 use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
-use crate::error::{HttpErr, IoErr, NetErr};
+use crate::error::HttpErr;
 use crate::http::server::{CloseError, Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
@@ -60,57 +60,9 @@ fn server_limits(
 native! {
     // -------------------------------------------------------------------- server
 
-    /// `Network.serve(address, handler, ...) -> Result[HttpServer, IoError]`; the server takes a
+    /// `Network.serve(address, handler, options) -> Result[HttpServer, HttpError]`; the server takes a
     /// reference to the handler closure and releases it when dropped.
     fn msrt_net_network_serve(
-        net: ObjRef<NetH>,
-        address: &str,
-        env: Handler,
-        has_max_requests: bool,
-        max_requests: i64,
-        has_max_body: bool,
-        max_body: i64,
-        has_max_response: bool,
-        max_response: i64,
-        has_timeout: bool,
-        timeout: i64,
-        has_grace: bool,
-        grace: i64,
-        out: Out<Object<ServerH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let program = Program::buffered(&env);
-        let limits = server_limits(
-            opt(has_max_requests, max_requests),
-            opt(has_max_body, max_body),
-            opt(has_max_response, max_response),
-            Some(SERVE_MAX_HEADER_BYTES),
-            opt(has_timeout, timeout),
-            opt(has_grace, grace),
-        );
-        let result = match limits {
-            Err(()) => Err(IoErr::InvalidInput),
-            Ok(limits) => Server::start(
-                &net,
-                address,
-                program,
-                Options {
-                    limits,
-                    streaming: false,
-                    tls: None,
-                },
-            )
-            .map_err(|e| match e {
-                NetErr::Closed => IoErr::Closed,
-                _ => IoErr::Unavailable,
-            }),
-        };
-        out.write(Object(ServerH(report(result, &err)?)));
-        Ok(())
-    }
-
-    /// `Network.serve_stream(address, handler, options) -> Result[HttpServer, HttpError]`.
-    fn msrt_net_network_serve_stream(
         net: ObjRef<NetH>,
         address: &str,
         env: Handler,
@@ -147,7 +99,6 @@ native! {
                 program,
                 Options {
                     limits,
-                    streaming: true,
                     tls,
                 },
             )

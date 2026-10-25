@@ -1,98 +1,33 @@
-//! The compiled-handler side of `@std/http.ms` servers: wire records for the buffered handler
-//! thunk, the fault-isolating guard, and the dispatcher that calls into compiled code.
+//! The compiled-handler side of `@std/http.ms` servers: the fault-isolating guard and the
+//! dispatcher that calls into compiled code.
 
+use super::ExchH;
 use super::http_client::http_from_code;
-use super::{ExchH, HeadersH};
 use crate::error::HttpErr;
 use crate::http::exchange::Exchange;
-use crate::http::headers::Headers;
-use crate::http::server::{Dispatch, Outcome, Reply, Request as ServerRequest};
-use ms_rt::ffi::{
-    FromAbi, Handler, IntoAbi, ObjRef, Object, bytes_ref, new_string, str_ref, str_release,
-    write_bytes,
-};
-use ms_rt_abi::{Obj, StrVal, VecVal};
-use std::cell::RefCell;
+use crate::http::server::{Dispatch, Outcome};
+use ms_rt::ffi::{Handler, IntoAbi, Object, str_ref, str_release};
+use ms_rt_abi::{Obj, StrVal};
 use std::rc::Rc;
 
 use ms_rt::fault::msrt_guard_call;
-use ms_rt::obj::{msrt_free, msrt_release};
+use ms_rt::obj::msrt_release;
 
 /// A string slot no one has written: the null string a thunk leaves when it reports no message.
 const NO_MESSAGE: StrVal = StrVal::literal(std::ptr::null_mut(), 0);
 
-// ------------------------------------------------------------------ wire types
-
-/// Request handed to a buffered handler thunk; every field is owned (+1) by the
-/// thunk.
-#[repr(C)]
-pub struct RequestWire {
-    pub method: StrVal,
-    pub path: StrVal,
-    pub query: StrVal,
-    pub protocol: StrVal,
-    /// `HttpHeaders` handle.
-    pub headers: *mut Obj,
-    /// `Bytes`.
-    pub body: VecVal,
-}
-
-/// Response a buffered handler thunk fills in; the native takes ownership.
-#[repr(C)]
-pub struct ResponseWire {
-    pub status: i64,
-    /// `HttpHeaders` handle.
-    pub headers: *mut Obj,
-    /// `Bytes`.
-    pub body: VecVal,
-}
-
-/// Buffered handler: `fn(request: HttpRequest) HttpResponse` called through a
-/// compiler-generated thunk with the closure as `env`.
-pub type BufferedThunk =
-    unsafe extern "C" fn(env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire);
-
-/// Streaming handler: `fn(exchange: HttpExchange) Result[Unit, HttpError]`. The
+/// Exchange handler: `fn(exchange: HttpExchange) Result[Unit, HttpError]`. The
 /// exchange handle is +1 for the thunk; the result is an `HttpError` status
 /// (`Failed` text through `err`).
 pub type StreamThunk =
     unsafe extern "C" fn(env: *mut Obj, exchange: *mut Obj, err: *mut StrVal) -> u8;
-
-// --------------------------------------------------------------------- helpers
-
-/// Moves a `Bytes` value into a `Vec`, freeing its buffer.
-///
-/// # Safety
-/// `v` is an owned `Bytes` value that is not used afterwards.
-unsafe fn take_bytes(v: &VecVal) -> Vec<u8> {
-    // SAFETY: caller contract; the buffer came from `msrt_alloc`.
-    unsafe {
-        let data = bytes_ref(v).to_vec();
-        if !v.ptr.is_null() {
-            msrt_free(v.ptr);
-        }
-        data
-    }
-}
-
-fn headers_handle(h: Headers) -> *mut Obj {
-    Object(HeadersH(Rc::new(RefCell::new(h)))).into_raw().cast()
-}
-
-/// # Safety
-/// `o` is a live `HttpHeaders` handle.
-unsafe fn shared<'a>(o: *const Obj) -> ObjRef<'a, HeadersH> {
-    // SAFETY: caller contract.
-    unsafe { <ObjRef<HeadersH> as FromAbi>::from_raw(o.cast()) }
-}
 
 // ---------------------------------------------------------------------- server
 
 /// The program's handler behind the server.
 pub struct Program {
     env: *mut Obj,
-    buffered: Option<BufferedThunk>,
-    streaming: Option<StreamThunk>,
+    streaming: StreamThunk,
 }
 
 impl Drop for Program {
@@ -135,54 +70,8 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
 }
 
 impl Dispatch for Program {
-    fn buffered(&self, request: ServerRequest) -> Outcome<Reply> {
-        let Some(thunk) = self.buffered else {
-            return Outcome::Fault("no handler".into());
-        };
-        let mut body = std::mem::MaybeUninit::<VecVal>::uninit();
-        // SAFETY: each wire field is initialised before the thunk runs and owned by it
-        // afterwards; the response is read back and released below.
-        unsafe {
-            write_bytes(body.as_mut_ptr(), &request.body);
-            let mut req = RequestWire {
-                method: new_string(&request.method),
-                path: new_string(&request.path),
-                query: new_string(&request.query),
-                protocol: new_string(request.protocol),
-                headers: headers_handle(request.headers),
-                body: body.assume_init(),
-            };
-            let mut resp = ResponseWire {
-                status: 0,
-                headers: std::ptr::null_mut(),
-                body: VecVal {
-                    ptr: std::ptr::null_mut(),
-                    len: 0,
-                    cap: 0,
-                },
-            };
-            if let Some(stop) = guarded(|| thunk(self.env, &mut req, &mut resp)) {
-                return stop;
-            }
-            let headers = if resp.headers.is_null() {
-                Headers::new()
-            } else {
-                let h = shared(resp.headers).borrow().clone();
-                msrt_release(resp.headers);
-                h
-            };
-            Outcome::Done(Reply {
-                status: resp.status,
-                headers,
-                body: take_bytes(&resp.body),
-            })
-        }
-    }
-
     fn streaming(&self, exchange: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
-        let Some(thunk) = self.streaming else {
-            return Outcome::Fault("no handler".into());
-        };
+        let thunk = self.streaming;
         let mut message = NO_MESSAGE;
         // SAFETY: the thunk borrows the exchange handle (it takes its own reference for the
         // handler); the status and optional message string come back owned.
@@ -214,20 +103,6 @@ impl Dispatch for Program {
 }
 
 impl Program {
-    /// A program that answers each request with the buffered handler `env` (a reference is taken).
-    pub fn buffered(env: &Handler) -> Box<Program> {
-        let env = env.as_ptr();
-        // SAFETY: the compiler built `env` as a `fn(HttpRequest) HttpResponse` closure, whose
-        // code word is a `BufferedThunk`; `env` is live for the call.
-        unsafe {
-            Box::new(Program {
-                env: retained(env),
-                buffered: Some(closure_code(env)),
-                streaming: None,
-            })
-        }
-    }
-
     /// A program that hands each exchange to the streaming handler `env` (a reference is taken).
     pub fn streaming(env: &Handler) -> Box<Program> {
         let env = env.as_ptr();
@@ -236,8 +111,7 @@ impl Program {
         unsafe {
             Box::new(Program {
                 env: retained(env),
-                buffered: None,
-                streaming: Some(closure_code(env)),
+                streaming: closure_code(env),
             })
         }
     }
@@ -272,39 +146,14 @@ mod tests {
 
     use ms_rt::fault::msrt_fault;
 
-    unsafe extern "C" fn thunk(_env: *mut Obj, req: *mut RequestWire, resp: *mut ResponseWire) {
-        // SAFETY: the dispatcher passes live wires; the path string is owned by us.
-        unsafe {
-            if str_ref(&(*req).path) == "/boom" {
-                msrt_fault(b"boom".as_ptr(), 4);
-            }
-            (*resp).status = 204;
-        }
-    }
-
-    fn request(path: &str) -> ServerRequest {
-        ServerRequest {
-            method: "GET".into(),
-            path: path.into(),
-            query: String::new(),
-            headers: Headers::new(),
-            body: Vec::new(),
-            protocol: "HTTP/1.1",
-        }
-    }
-
     #[test]
     fn a_faulting_handler_is_isolated() {
-        let program = Program {
-            env: std::ptr::null_mut(),
-            buffered: Some(thunk),
-            streaming: None,
-        };
-        let faulted = program.buffered(request("/boom"));
-        assert!(matches!(faulted, Outcome::Fault(m) if m.contains("boom")));
-        // The guard is reusable and later requests still run.
-        let ok = program.buffered(request("/ok"));
-        assert!(matches!(ok, Outcome::Done(r) if r.status == 204));
-        std::mem::forget(program);
+        let faulted = guarded::<()>(|| {
+            // SAFETY: a fault with a static message; the guard catches it.
+            unsafe { msrt_fault(b"boom".as_ptr(), 4) }
+        });
+        assert!(matches!(faulted, Some(Outcome::Fault(m)) if m.contains("boom")));
+        // The guard is reusable and later calls still run.
+        assert!(guarded::<()>(|| {}).is_none());
     }
 }
