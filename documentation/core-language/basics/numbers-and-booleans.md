@@ -115,6 +115,16 @@ let discounted = price * (1d - percent / 100d)
 
 Validate expected bad input with [expected failures](../errors/results.md); see [programming faults](../errors/faults.md) for invariants.
 
+### BigInt
+
+`BigInt` (from `@std/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
+
+```manuscript
+from "@std/math.ms" import from_int
+
+let big = from_int(2) * from_int(3) + from_int(1)
+```
+
 #### Scale rounding and fixed places
 
 `round(places:)` yields a Decimal at a chosen scale; `to_fixed(digits:)` yields text with stable trailing zeros (`25.50d` shows as `"25.50"`). Both return `Result[..., NumberError]` (from `@std/math.ms`) and work on the exact value. Negative places round to tens, hundreds, and so on.
