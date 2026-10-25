@@ -3,7 +3,6 @@ from "@std/math.ms" import from_int
 from "@std/string.ms" import compile
 from "@std/collections.ms" import filled, range_by, map_from_entries
 from "@std/bytes.ms" import Bytes
-from "@std/math.ms" import NumberError
 from "@std/string.ms" import StringError
 
 def positive(value: Int) -> Bool:
@@ -65,24 +64,8 @@ def checked_expansion() -> Result[Unit, Error]:
             ) == [3, 2, 1, 0]
         )
     ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "x".pad_start(
-                    target_length: 4, padding: "é🙂", max_bytes: 9
-                )
-            ) == "é🙂éx"
-        )
-    ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "x".pad_end(
-                    target_length: 4, padding: "é🙂", max_bytes: 9
-                )
-            ) == "xé🙂é"
-        )
-    ) | try expect_false
+    "x".pad_start(target_length: 4, padding: "é🙂") | try expect_equal("é🙂éx")
+    "x".pad_end(target_length: 4, padding: "é🙂") | try expect_equal("xé🙂é")
     (not ("aba".replace(old: "a", new: "é") == "ébé")) | try expect_false
     (not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | try expect_false
     (try common_result(result: "é🙂".slice_scalars(start: 0, end: 1))) | try expect_equal(
@@ -352,29 +335,9 @@ test "bytes have analogous immutable operations":
     (not 1.5.is_nan()) | try expect_true
 
 test "growth limits and invalid inputs return values":
-    let too_large: Result[String, StringError] = error(StringError.LimitExceeded)
-    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    "x".pad_start(target_length: 4, padding: "é🙂", max_bytes: 8) | try expect_equal(
-        too_large
-    )
-    (
-        not (
-            "x".pad_end(
-                target_length: 9223372036854775807, padding: "é", max_bytes: 8
-            ) == too_large
-        )
-    ) | try expect_false
-    "abc".pad_start(target_length: 1, padding: "", max_bytes: 2) | try expect_equal(
-        too_large
-    )
-    "x".pad_start(target_length: -1, padding: " ", max_bytes: 8) | try expect_equal(
-        invalid
-    )
-
-    let unchanged: Result[String, StringError] = ok("x")
-    "x".pad_end(target_length: 4, padding: "", max_bytes: 1) | try expect_equal(
-        unchanged
-    )
+    "abc".pad_start(target_length: 1, padding: "") | try expect_equal("abc")
+    "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
+    "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
     let list_limit: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
@@ -447,23 +410,11 @@ def verify_text_and_numbers() -> Result[Unit, Error]:
             ) == "fi"
         )
     )
-    (try common_result(result: 1.5.to_fixed(digits: 3))) | try expect_equal("1.500")
-    (try common_result(result: 1.5.to_exponential(digits: 3))) | try expect_equal(
-        "1.500e+0"
-    )
-    (try common_result(result: 1.5.to_precision(precision: 4))) | try expect_equal(
-        "1.500"
-    )
-    (try common_result(result: 12345.0.to_precision(precision: 3))) | try expect_equal(
-        "1.23e+4"
-    )
-    (
-        not (
-            try common_result(
-                result: 0.000001.to_precision(precision: 2)
-            ) == "0.0000010"
-        )
-    ) | try expect_false
+    1.5.to_fixed(digits: 3) | try expect_equal("1.500")
+    1.5.to_exponential(digits: 3) | try expect_equal("1.500e+0")
+    1.5.to_precision(precision: 4) | try expect_equal("1.500")
+    12345.0.to_precision(precision: 3) | try expect_equal("1.23e+4")
+    0.000001.to_precision(precision: 2) | try expect_equal("0.0000010")
     return ok(())
 
 test "normalization, empty separators, and precision formatting":
@@ -482,12 +433,9 @@ test "normalization, empty separators, and precision formatting":
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    let invalid_number: Result[String, NumberError] = error(NumberError.InvalidInput)
     let limit: Result[String, StringError] = error(StringError.LimitExceeded)
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
-    1.0.to_fixed(digits: 101) | try expect_equal(invalid_number)
-    1.0.to_precision(precision: 0) | try expect_equal(invalid_number)
 
 def verify_bigint_and_regex() -> Result[Unit, Error]:
     let a = from_int(value: 12)

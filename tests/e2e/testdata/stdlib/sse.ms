@@ -125,9 +125,9 @@ test "multi-byte scalars survive every chunk split":
 
 def invalid_bytes() -> Bytes:
     var builder = BytesBuilder()
-    builder.concat("data: ".to_bytes())
+    builder.append_bytes("data: ".to_bytes())
     builder.append(255)
-    builder.concat("\n\n".to_bytes())
+    builder.append_bytes("\n\n".to_bytes())
     return builder.build()
 
 def is_case(result: Result[List[SseEvent], SseError], want: SseError) -> Bool:

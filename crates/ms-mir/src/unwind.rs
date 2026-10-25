@@ -56,7 +56,6 @@ const LEAF_PREFIXES: &[&str] = &[
     "msrt_url_",
     "msrt_html_",
     "msrt_encoding_",
-    "msrt_binary_",
     "msrt_regex_",
     "msrt_numbers_",
     "msstd_math_",

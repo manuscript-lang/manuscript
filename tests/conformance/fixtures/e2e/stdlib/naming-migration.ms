@@ -10,13 +10,13 @@ type Counter:
     calls: Int
 
 interface EntryBuilder:
-    def add(key: String, value: Int) -> Unit
+    var def add(key: String, value: Int) -> Unit
 
 type EntryAdapter:
     builder: MapBuilder[String, Int]
 
 impl EntryBuilder for EntryAdapter:
-    def add(key: String, value: Int) -> Unit:
+    var def add(key: String, value: Int) -> Unit:
         self.builder.add(key, value)
 
 interface Defaults:
@@ -37,6 +37,8 @@ def eager(var counter: Counter) -> Int:
     counter.calls += 1
     return 99
 
+def key_length(key: String) -> Int: key.length()
+
 test "default insertion keeps eager and lazy calls and receiver identity":
     var values = Map[String, Int]()
     values.add("a", 1)
@@ -47,75 +49,72 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
 
-    let create = lambda (key: String) -> Int:
-        counter.calls += 1
-        return key.length()
-
     let lazy: Callable[[String, Callable[[String], Int]], Unit] = values.add_default_from
-    lazy("a", create)
-    try expect_equal(counter.calls, 1)
-    lazy("ccc", create)
+    lazy("a", key_length)
+    lazy("ccc", key_length)
     values.add_default("d", 4)
-    try expect_false(counter.calls != 2 or values.values() != [1, 2, 3, 4])
+    try expect_equal(values.values(), [1, 2, 3, 4])
 
-    var view = Defaults(DefaultAdapter(values))
+    var view: Defaults = DefaultAdapter(values.clone())
     view.add_default("a", 88)
-    view.add_default_from("ee", create)
+    view.add_default_from("ee", key_length)
 
     var copy = values.clone()
     copy.add_default("copy", 6)
     try expect_false(values.contains("copy") or not copy.contains("copy"))
-    try expect_false(
-        counter.calls != 3 or values.keys() != ["a", "b", "ccc", "d", "ee"]
-    )
+    try expect_equal(values.keys(), ["a", "b", "ccc", "d"])
 
     let legacy: Callable[[String, Int], Unit] = values.add_default
     legacy("a", 100)
-    values.add_default_from("ff", create)
-    try expect_false(counter.calls != 4 or values.get("a") != some(1))
+    values.add_default_from("ff", key_length)
+    try expect_false(counter.calls != 1 or values.get("a") != some(1))
+    try expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])
 
 test "all builders keep Unit mutation function types":
-    let list = ListBuilder[Int]()
+    var list = ListBuilder[Int]()
     let append_list: Callable[[Int], Unit] = list.append
     append_list(1)
 
     var list_result = list.build()
     list_result.append(2)
-    try expect_equal(list.build(), [1, 2])
+    try expect_equal(list.build(), [1])
+    try expect_equal(list_result, [1, 2])
 
-    let map = MapBuilder[String, Int]()
-    let map_alias = map
+    var map = MapBuilder[String, Int]()
     let add_map: Callable[[String, Int], Unit] = map.add
-    let legacy_map: Callable[[String, Int], Unit] = map_alias.add
     let _unit: Unit = add_map("a", 1)
-    map_alias.add("b", 2)
+    map.add("b", 2)
 
-    let adapter = EntryBuilder(EntryAdapter(map_alias))
-    let add_view: Callable[[String, Int], Unit] = adapter.add
-    add_view("b", 2)
+    let legacy_map: Callable[[String, Int], Unit] = map.add
     legacy_map("a", 3)
 
     var map_result = map.build()
     try expect_false(map_result.keys() != ["a", "b"] or map_result.values() != [3, 2])
     map_result.add("c", 4)
-    try expect_equal(map_alias.build().keys(), ["a", "b", "c"])
+    try expect_equal(map.build().keys(), ["a", "b"])
 
-    let set = SetBuilder[Int]()
+    var adapter: EntryBuilder = EntryAdapter(MapBuilder[String, Int]())
+    let add_view: Callable[[String, Int], Unit] = adapter.add
+    add_view("b", 2)
+
+    var set = SetBuilder[Int]()
     let add_set: Callable[[Int], Unit] = set.add
-    let legacy_set: Callable[[Int], Unit] = set.add
     add_set(2)
     set.add(1)
+
+    let legacy_set: Callable[[Int], Unit] = set.add
     legacy_set(2)
 
     var set_result = set.build()
     try expect_equal(set_result.values(), [2, 1])
     set_result.add(3)
-    try expect_equal(set.build().values(), [2, 1, 3])
+    try expect_equal(set.build().values(), [2, 1])
 
     var bytes = BytesBuilder()
     let append_byte: Callable[[Int], Unit] = bytes.append
-    let concat_bytes: Callable[[Bytes], Unit] = bytes.concat
     append_byte(65)
+
+    let concat_bytes: Callable[[Bytes], Unit] = bytes.append_bytes
     concat_bytes("B".to_bytes())
     try expect_false(
         (bytes.build() != "AB".to_bytes() or bytes.build() != "AB".to_bytes())

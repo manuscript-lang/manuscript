@@ -111,7 +111,7 @@ test "all builders keep Unit mutation function types":
     let append_byte: Callable[[Int], Unit] = bytes.append
     append_byte(65)
 
-    let concat_bytes: Callable[[Bytes], Unit] = bytes.concat
+    let concat_bytes: Callable[[Bytes], Unit] = bytes.append_bytes
     concat_bytes("B".to_bytes())
     try expect_false(
         (bytes.build() != "AB".to_bytes() or bytes.build() != "AB".to_bytes())

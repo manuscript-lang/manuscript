@@ -67,3 +67,11 @@ Apply when: adding a List operation that depends on an element contract, or chan
 Evidence: [collections.ms](../stdlib/collections.ms), [list-aggregates fixture](../tests/e2e/testdata/stdlib/list-aggregates.ms), `list.sorted` and `list.sorted_natural` in `bench/perf/stdlib/src/lists.ms`.
 Verify: `make stdlib-bench BENCHFILTER=list.sort` shows `sorted_natural` within noise of `sorted`.
 
+
+### Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods
+
+Decision: `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`. Their only failures were a negative budget or a digit count outside 0..100, always a literal in the caller, so every table printed `.get()`. A short target or empty padding returns the text unchanged, there is no byte budget (`repeat` keeps one because it multiplies), output beyond the string limit faults like `concat`, and a digit count out of range faults. Binary data reads and writes are methods: `Bytes.int32_le(at)` and siblings return `Result[T, BinaryError]` (only `OutOfRange`), `BytesBuilder.append_int32_le(value)` and siblings return `Unit`, and `BytesBuilder.concat` became `append_bytes` so `append` means one byte. `read_integer`/`write_integer`/`read_float`/`write_float` were removed: the one stdlib use (`processes.ms` frames) is fixed width. Bodies could not be written in Manuscript: `Bytes` is a native type, so its methods are `msrt_bytes_*` natives. A `Float32` argument reaches a native as the `f64` holding its value and sized-integer arguments as `i64`; only out slots use the packed width.
+
+Apply when: giving a native a `Result` whose error comes only from a constant argument, or adding a sized-number codec.
+Evidence: [text-padding fixture](../tests/e2e/testdata/stdlib/text-padding.ms), [binary fixture](../tests/e2e/testdata/stdlib/binary.ms), `bytes.read_int32_le` and `bytes.append_int32_le` in `bench/perf/stdlib/src/binarybench.ms`.
+Verify: `ms test tests/e2e/testdata/stdlib/binary.ms tests/e2e/testdata/stdlib/text-padding.ms`; `make stdlib-bench BENCHFILTER=bytes.`.
