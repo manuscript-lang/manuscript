@@ -27,20 +27,25 @@ var while with
 - `#` starts a comment through the end of the line.
 - Tabs in code are rejected (allowed in comments). Control characters in text are rejected; use [text escapes](text-and-bytes.md#string-literals). Semicolons and backslash continuation are rejected.
 
-Numeric tokens use decimal digits only:
+Numeric tokens:
 
 ```ebnf
 Digit         = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 NonzeroDigit  = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
-Whole         = "0" | NonzeroDigit, { Digit } ;
-Fraction      = ".", Digit, { Digit } ;
+Digits        = Digit, { [ "_" ], Digit } ;
+Whole         = "0" | NonzeroDigit, { [ "_" ], Digit } ;
+Fraction      = ".", Digits ;
 Exponent      = ("e" | "E"), [ "+" | "-" ], Digit, { Digit } ;
-IntLiteral    = Whole ;
+HexLiteral    = "0x", HexDigit, { [ "_" ], HexDigit } ;
+BinLiteral    = "0b", ( "0" | "1" ), { [ "_" ], ( "0" | "1" ) } ;
+IntLiteral    = Whole | HexLiteral | BinLiteral ;
 FloatLiteral  = Whole, (Fraction, [ Exponent ] | Exponent) ;
 DecimalLiteral = Whole, [ Fraction ], [ Exponent ], "d" ;
 ```
 
-No identifier character may follow a numeric token except the `d` suffix. Leading zeros, digit separators, hex/binary notation, `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds` is an Int, a dot, and a member.
+`HexDigit` is `0`-`9`, `a`-`f` or `A`-`F`. `_` sits between two digits of an integer or of a fraction, never leading, trailing, doubled or beside the prefix, `.`, `e` or `d`; the exponent takes none.
+
+No identifier character may follow a numeric token except the `d` suffix. Leading zeros, octal (`0o`), uppercase prefixes (`0X`, `0B`), `.5`, and `1.` are rejected. `1e3` is a Float. A sign is an operator, not part of the token ([range checking](numbers-and-booleans.md)). A dot starts a fraction only before a digit, so `2.seconds` is an Int, a dot, and a member.
 
 ## Layout tokens
 

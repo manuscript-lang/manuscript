@@ -956,11 +956,12 @@ impl<'a> FnLower<'a> {
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
-            ExprKind::Number(n) if t.id.as_str() == "Int" => n
-                .as_str()
-                .parse::<i64>()
-                .ok()
-                .map(|n| val(self.b.iconst(n))),
+            ExprKind::Number(n) if t.id.as_str() == "Int" => {
+                ms_syntax::number::canonical(n.as_str())
+                    .parse::<i64>()
+                    .ok()
+                    .map(|n| val(self.b.iconst(n)))
+            }
             ExprKind::Text(parts) if parts.iter().all(|p| matches!(p, TextPart::Lit(_))) => {
                 let text: String = parts
                     .iter()

@@ -2919,14 +2919,15 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => match t.as_str().parse::<i64>()
-                {
-                    Ok(n) => Ok(Val {
-                        v: self.b.iconst(n),
-                        own: false,
-                    }),
-                    Err(_) => continue,
-                },
+                ExprKind::Number(t) if p.ty.id.as_str() == "Int" => {
+                    match ms_syntax::number::canonical(t.as_str()).parse::<i64>() {
+                        Ok(n) => Ok(Val {
+                            v: self.b.iconst(n),
+                            own: false,
+                        }),
+                        Err(_) => continue,
+                    }
+                }
                 ExprKind::Text(parts) if parts.iter().all(|t| matches!(t, TextPart::Lit(_))) => {
                     let text: String = parts
                         .iter()
