@@ -1160,10 +1160,6 @@ impl<'a> FnLower<'a> {
                 let result = self.emty(e)?;
                 self.map_entries(recv_expr, recv, result)
             }
-            (TyKind::Obj(n, _), "entries") if n == "Set" => {
-                let result = self.emty(e)?;
-                self.set_entries(recv, result)
-            }
             (TyKind::List(_), "list_keys") => {
                 let result = self.emty(e)?;
                 let r = self.borrow(recv);

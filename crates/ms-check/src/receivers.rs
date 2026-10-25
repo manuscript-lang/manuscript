@@ -126,7 +126,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("is_disjoint_from", "collections/is_disjoint_from"),
             ("clear", "collections/set_clear"),
             ("values", "collections/set_values"),
-            ("entries", "collections/set_entries"),
             ("for_each", "collections/set_for_each"),
         ],
     ),
