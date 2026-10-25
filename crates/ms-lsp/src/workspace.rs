@@ -8,8 +8,9 @@ use crate::nav::{self, go_location_order};
 use crate::text::Position;
 use crate::uri;
 use ms_driver::project::gopath;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
+use std::sync::Arc;
 
 /// A request the client canceled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +152,18 @@ pub fn workspace_references(
     if is_binding {
         return nav::references_with_index(analysis, index, d, p, include);
     }
+    // A private module function (or constant) cannot be imported elsewhere.
+    // Its complete set of uses is already in the selected checked graph.
+    if selected
+        .info
+        .as_ref()
+        .and_then(|info| info.symbol.as_ref())
+        .is_some_and(|symbol| symbol.kind == ms_check::types::SymKind::Fn && !symbol.export)
+    {
+        let mut locations = nav::references_with_index(analysis, index, d, p, include);
+        locations.sort_by_cached_key(go_location_order);
+        return locations;
+    }
     let documents = match workspace_documents(d, docs, false, cancel) {
         Ok(documents) => documents,
         Err(ScanError::Canceled) => return Vec::new(),
@@ -196,6 +209,23 @@ pub fn workspace_symbols(
     query: &str,
     cancel: Option<CancelCheck>,
 ) -> Option<Vec<Json>> {
+    let lowered = query.to_lowercase();
+    workspace_symbols_matching(
+        docs,
+        roots,
+        &|name| name.to_lowercase().contains(&lowered),
+        cancel,
+    )
+}
+
+/// Share discovery and checked symbol identities with CLI fuzzy lookup, while
+/// rejecting sources without matching identifiers before running the checker.
+pub(crate) fn workspace_symbols_matching(
+    docs: &Documents,
+    roots: &[String],
+    matches: &dyn Fn(&str) -> bool,
+    cancel: Option<CancelCheck>,
+) -> Option<Vec<Json>> {
     let mut documents: Vec<Document> = Vec::new();
     let mut walked: HashSet<(String, bool)> = HashSet::new();
     let mut discover = |d: &Document, recursive: bool| -> Result<Vec<Document>, ScanError> {
@@ -231,8 +261,8 @@ pub fn workspace_symbols(
             Err(ScanError::Io(_)) => {}
         }
     }
-    let lowered = query.to_lowercase();
     let mut analyzed: HashSet<String> = HashSet::new();
+    let mut names = HashMap::new();
     let mut seen: HashSet<String> = HashSet::new();
     let mut result: Vec<(String, Json)> = Vec::new();
     for d in &documents {
@@ -242,11 +272,14 @@ pub fn workspace_symbols(
         if !analyzed.insert(d.uri.clone()) {
             continue;
         }
+        if !may_contain_symbol(d, matches, &mut names) {
+            continue;
+        }
         let checked = workspace_analysis(d, docs);
         if canceled(cancel).is_err() {
             return None;
         }
-        for entry in source_index(&checked) {
+        for entry in checked.index() {
             if canceled(cancel).is_err() {
                 return None;
             }
@@ -254,11 +287,11 @@ pub fn workspace_symbols(
             if entry.file.as_str().starts_with("@std/")
                 || !entry.declaration
                 || (info.symbol.is_none() && info.method.is_none())
-                || !entry.name.to_lowercase().contains(&lowered)
+                || !matches(&entry.name)
             {
                 continue;
             }
-            let Some(location) = nav::occurrence_location(&checked, &entry) else {
+            let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
             let id = go_location_order(&location);
@@ -284,4 +317,47 @@ pub fn workspace_symbols(
     }
     result.sort_by(|a, b| a.0.cmp(&b.0));
     Some(result.into_iter().map(|(_, v)| v).collect())
+}
+
+/// This is only a conservative filter: imports and uses can also match. The
+/// checker and occurrence index remain the authority for returned declarations.
+/// If lexing fails, keep the file so loading/recovery behaves as before.
+fn may_contain_symbol(
+    d: &Document,
+    matches: &dyn Fn(&str) -> bool,
+    names: &mut HashMap<String, bool>,
+) -> bool {
+    let file: Arc<str> = Arc::from(d.path());
+    let Ok(lexed) = ms_syntax::lexer::lex(&file, &d.text) else {
+        return true;
+    };
+    lexed.tokens.iter().enumerate().any(|(i, token)| {
+        if token.kind == ms_syntax::token::Tok::Import {
+            // Local imports can contribute declarations not written here,
+            // including modules outside discovery's scan scope. Only the
+            // ordinary, unescaped standard path spelling proves otherwise;
+            // unusual strings or malformed imports conservatively stay in.
+            let standard = i
+                .checked_sub(1)
+                .and_then(|i| lexed.tokens.get(i))
+                .is_some_and(|path| {
+                    let text = &lexed.source[path.lo as usize..path.hi as usize];
+                    path.kind == ms_syntax::token::Tok::String
+                        && (text.starts_with("\"@std/") || text.starts_with("'@std/"))
+                });
+            if !standard {
+                return true;
+            }
+        }
+        if token.kind != ms_syntax::token::Tok::Name {
+            return false;
+        }
+        let name = &lexed.source[token.lo as usize..token.hi as usize];
+        if let Some(found) = names.get(name) {
+            return *found;
+        }
+        let found = matches(name);
+        names.insert(name.to_string(), found);
+        found
+    })
 }

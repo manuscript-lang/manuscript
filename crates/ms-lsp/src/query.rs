@@ -6,7 +6,7 @@ use crate::json::Json;
 use crate::nav::{self, Navigate};
 use crate::text::{Position, utf16_length};
 use crate::uri;
-use crate::workspace::{workspace_references, workspace_symbols};
+use crate::workspace::{workspace_references, workspace_symbols_matching};
 
 /// One project declaration found by name.
 #[derive(Clone, Debug)]
@@ -38,7 +38,13 @@ pub fn search_symbols(
     if let Some(manifest) = ms_driver::project::find_manifest(&format!("{root}/x.ms")) {
         root = ms_driver::project::gopath::dir(&manifest);
     }
-    let symbols = workspace_symbols(&Documents::new(), &[root], "", None).unwrap_or_default();
+    let symbols = workspace_symbols_matching(
+        &Documents::new(),
+        &[root],
+        &|name| name_rank(name, query) >= 0,
+        None,
+    )
+    .unwrap_or_default();
     let mut found: Vec<(i32, String, &'static str, String)> = Vec::new();
     for symbol in &symbols {
         let (Some(name), Some(location)) = (
