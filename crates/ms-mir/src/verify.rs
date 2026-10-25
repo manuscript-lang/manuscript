@@ -1168,6 +1168,11 @@ impl Verifier<'_> {
                 }
             }
         }
+        let from_owned = if f.ret_borrowed {
+            borrows_from_owned(m, f)
+        } else {
+            Vec::new()
+        };
         let mut entry_state: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
         for &b in rpo {
             let bi = b.index();
@@ -1243,6 +1248,14 @@ impl Verifier<'_> {
                                 Some(bi),
                                 format!(
                                     "ret: %{} is owned; a function that lends returns a borrow",
+                                    v.0
+                                ),
+                            );
+                        } else if from_owned[v.index()] {
+                            self.err(
+                                Some(bi),
+                                format!(
+                                    "ret: %{} borrows from a value this function owns; a function that lends returns part of a parameter",
                                     v.0
                                 ),
                             );
@@ -1372,4 +1385,61 @@ pub fn dominators(f: &Func, rpo: &[Block], preds: &[Vec<Block>]) -> Vec<usize> {
         }
     }
     idom
+}
+
+/// For each value of `f`, whether it is, or borrows from, a value `f` owns: an owned
+/// instruction result or an owned block parameter. A lent result must not, since the owner is
+/// dropped before the caller reads it.
+fn borrows_from_owned(m: &Module, f: &Func) -> Vec<bool> {
+    let rc = |v: Value| m.needs_drop(f.ty(v));
+    let mut from = vec![false; f.values.len()];
+    for b in &f.blocks {
+        for p in &b.params {
+            // An owned parameter (one the function consumes) is dropped at return, like a local.
+            from[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
+        }
+    }
+    loop {
+        let mut changed = false;
+        for b in &f.blocks {
+            for i in &b.insts {
+                let Some(r) = i.res else { continue };
+                let x = match m.result_mode(f, i) {
+                    None | Some(Mode::Var) => false,
+                    Some(Mode::Own) => true,
+                    Some(Mode::Borrow) => match i.op {
+                        Op::Call => i.args.iter().any(|a| rc(*a) && from[a.index()]),
+                        Op::RecGet
+                        | Op::AltGet
+                        | Op::ListGet
+                        | Op::ListGetNn
+                        | Op::ListGetU
+                        | Op::OptGet
+                        | Op::OptView => i.args.first().is_some_and(|a| from[a.index()]),
+                        _ => false,
+                    },
+                };
+                if x && !from[r.index()] {
+                    from[r.index()] = true;
+                    changed = true;
+                }
+            }
+            b.term.for_each_target(|t| {
+                let params = &f.blocks[t.block.index()].params;
+                for (p, a) in params.iter().zip(&t.args) {
+                    if p.mode == Mode::Borrow
+                        && rc(p.value)
+                        && from[a.index()]
+                        && !from[p.value.index()]
+                    {
+                        from[p.value.index()] = true;
+                        changed = true;
+                    }
+                }
+            });
+        }
+        if !changed {
+            return from;
+        }
+    }
 }

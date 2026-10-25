@@ -350,21 +350,31 @@ impl Walker<'_> {
             ExprKind::Member { left, .. } | ExprKind::Index { left, .. } if !self.is_place(e) => {
                 self.lends_owned(left)
             }
-            ExprKind::Call { callee, args } => {
-                let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
-                if modes.origin.owned {
-                    return true;
-                }
-                modes.origin.slots.iter().any(|slot| {
-                    self.slot_arg(*slot, e, callee, args).is_some_and(|a| {
-                        !self.is_place(a)
-                            && (self.pure_origins(a).is_none_or(|o| o.is_empty())
-                                || self.lends_owned(a))
-                    })
-                })
+            ExprKind::Call { args, .. } => {
+                call_modes(self.cx.m, e, args, self.cx.summaries)
+                    .origin
+                    .owned
+                    || self.lends_temporary(e)
             }
             _ => false,
         }
+    }
+
+    /// Whether `e` is a lending call whose lent argument is a temporary of the call: a
+    /// non-place value, a default, or another lending call over one.
+    fn lends_temporary(&self, e: &Expr) -> bool {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return false;
+        };
+        let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+        modes.origin.slots.iter().any(|slot| {
+            let Some(a) = self.slot_arg(*slot, e, callee, args) else {
+                // A default argument is a temporary of the call.
+                return matches!(slot, Slot::Param(_));
+            };
+            !self.is_place(a)
+                && (self.pure_origins(a).is_none_or(|o| o.is_empty()) || self.lends_owned(a))
+        })
     }
 
     /// The argument of `some(argument)` when `e` is that call returned from a function whose
@@ -522,6 +532,10 @@ impl Walker<'_> {
         let ExprKind::Call { callee, args } = &e.kind else {
             return Vec::new();
         };
+        // A result over a temporary is an owned copy, not a borrow of the other arguments.
+        if self.lends_temporary(e) {
+            return Vec::new();
+        }
         let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
         let mut out = Vec::new();
         for slot in &modes.origin.slots {

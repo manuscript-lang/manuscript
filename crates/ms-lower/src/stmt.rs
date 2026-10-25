@@ -226,6 +226,15 @@ impl<'a> FnLower<'a> {
             return Ok(());
         }
         let mark = self.temps.len();
+        if self.lent_return
+            && let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && self.cx.shared(b.uid)
+        {
+            // A `let` borrow in a lending function takes the lent form of an accessor, so the
+            // function can hand it back.
+            self.lent_expr = Some(value as *const Expr as usize);
+        }
         let x = self.expr(value)?;
         if self.dead {
             return Ok(());
@@ -237,10 +246,6 @@ impl<'a> FnLower<'a> {
             && self.ownership_checked()
             && !self.slotted.contains(&b.uid)
             && self.needs_drop(self.ty_of(x.v))
-            && (matches!(
-                self.b.defining_op(x.v),
-                Some(Op::ListGet | Op::ListGetNn | Op::ListGetU | Op::RecGet | Op::OptGet)
-            ) || self.stable_reads.contains(&x.v))
         {
             // A lexical borrow (the checker rejects changing its source while it lives): the
             // temporaries it points into live as long as the binding does.
@@ -1181,9 +1186,12 @@ impl<'a> FnLower<'a> {
                 let TyKind::List(_) = self.b.m.types.kind(ity).clone() else {
                     return Err(Error::new("for over this type is not supported yet"));
                 };
-                let var = if self.iterates_untouched_local(iter, body) && !it.own {
-                    // The body never names the list, so it cannot change or release it:
-                    // walk the local in place instead of copying it.
+                let var = if !it.own
+                    && (self.ownership_checked() || self.iterates_untouched_local(iter, body))
+                {
+                    // The checker keeps the list unchanged while the loop walks it (or the body
+                    // never names it): walk it in place instead of copying it, so a lending
+                    // function can hand back its elements.
                     let ty = self.ty_of(it.v);
                     let var = self.b.declare_var(ty, ms_mir::ir::Mode::Borrow);
                     self.b.def_var(var, it.v);
