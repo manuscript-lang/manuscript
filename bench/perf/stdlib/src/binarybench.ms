@@ -54,6 +54,16 @@ export def bench_binary() -> Unit:
     )
 
     bench(
+        "bytes.read_uint32_le",
+        25000,
+        lambda () -> Int:
+            var sum = 0
+            for j in range(0, 25000):
+                sum += packed.uint32_le(j * 4).get(0)
+            return sum
+    )
+
+    bench(
         "bytes.append_int32_le",
         100000,
         lambda () -> Int:
