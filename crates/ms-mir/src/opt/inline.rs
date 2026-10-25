@@ -102,7 +102,10 @@ fn specialize_sort_thunks(m: &mut Module) -> bool {
 /// call replaced by a direct call (inlined when small) of closure code `g`.
 fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
     let code = &m.funcs[g.index()];
-    if !matches!(code.kind, FuncKind::Closure { .. }) || code.inline == InlineHint::Never {
+    let FuncKind::Closure { captures } = &code.kind else {
+        return None;
+    };
+    if code.inline == InlineHint::Never {
         return None;
     }
     let mut t = m.funcs[thunk.index()].clone();
@@ -119,7 +122,9 @@ fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
     let call = &mut t.blocks[bi].insts[ii];
     call.op = Op::Call;
     call.imm = Imm::Func(g);
-    if code.inst_count() <= BASE_THRESHOLD {
+    // A `closure.cap` reads the environment through the function's own capture layout, which
+    // the thunk does not have: code that captures is called, not inlined.
+    if code.inst_count() <= BASE_THRESHOLD && captures.is_empty() {
         let ret_own = m.needs_drop(code.ret);
         inline_at(&mut t, bi, ii, code, ret_own);
     }
