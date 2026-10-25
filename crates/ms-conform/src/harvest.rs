@@ -51,6 +51,7 @@ const HOSTILE_IMPORTS: &[&str] = &[
     "tls",
     "websocket",
     "sse",
+    "fetch",
     "process",
     "terminal",
     "system",
