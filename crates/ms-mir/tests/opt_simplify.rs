@@ -532,6 +532,34 @@ b0:
     assert!(func_text(&m, "main").contains("list.get"));
 }
 
+const LEND: &str = r#"module "t"
+file 0 "t.ms"
+entry @main
+
+fn @main() -> int export {
+b0:
+  %s: str = str "abc"
+  %o: opt<str> = opt.view %s
+  %p: bool = opt.is_some %o
+  %v: str = opt.get %o
+  %n: int = str.len %v
+  %b: int = b2i %p
+  %r: int = iadd %n, %b
+  ret %r
+}
+"#;
+
+/// `opt.view` of a borrow folds like `opt.some`: its presence is known and `opt.get` of it is
+/// the lent payload itself, which stays a borrow.
+#[test]
+fn a_lent_optional_folds_to_its_payload() {
+    let m = check(LEND);
+    let text = print_module(&m);
+    assert!(!text.contains("opt.is_some"), "{text}");
+    assert!(!text.contains("opt.get"), "{text}");
+    assert!(!text.contains("drop"), "{text}");
+}
+
 #[test]
 fn merges_a_long_chain_of_blocks_in_one_sweep() {
     let n = 10000;
@@ -554,32 +582,4 @@ fn merges_a_long_chain_of_blocks_in_one_sweep() {
         "chain merge took {:?}",
         start.elapsed()
     );
-}
-
-const LEND: &str = r#"module "t"
-file 0 "t.ms"
-entry @main
-
-fn @main() -> int export {
-b0:
-  %s: str = str "abc"
-  %o: opt<str> = opt.lend %s
-  %p: bool = opt.is_some %o
-  %v: str = opt.get %o
-  %n: int = str.len %v
-  %b: int = b2i %p
-  %r: int = iadd %n, %b
-  ret %r
-}
-"#;
-
-/// `opt.lend` of a borrow folds like `opt.some`: its presence is known and `opt.get` of it is
-/// the lent payload itself, which stays a borrow.
-#[test]
-fn a_lent_optional_folds_to_its_payload() {
-    let m = check(LEND);
-    let text = print_module(&m);
-    assert!(!text.contains("opt.is_some"), "{text}");
-    assert!(!text.contains("opt.get"), "{text}");
-    assert!(!text.contains("drop"), "{text}");
 }

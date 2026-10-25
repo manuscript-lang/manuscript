@@ -3,7 +3,7 @@
 //! The ownership checker holds `let x = m.get(k)` and `if let x = xs.first()` as lexical borrows
 //! of the container (`crates/ms-check/OWNERSHIP.md`, "Borrowed results"), so the entry can be
 //! read in place: a pointer or an index, a presence test and a load. An `Optional` built this way
-//! is `opt.lend`, a borrow that is never dropped.
+//! is `opt.view`, a borrow that is never dropped.
 
 use crate::Error;
 use crate::func::{FnLower, Val};
@@ -41,7 +41,7 @@ impl Entry {
 impl<'a> FnLower<'a> {
     /// Whether `e` is a container read whose result can be lent: `m.get(k)` on a `Map` with a key
     /// of the map's key type, or `xs.first()` / `xs.last()` on a `List`, in a function the
-    /// ownership checker vetted, with a payload `opt.lend` can hold (not a boxed optional).
+    /// ownership checker vetted, with a payload `opt.view` can hold (not a boxed optional).
     /// Emits nothing.
     pub(crate) fn lent_shape(&mut self, e: &Expr) -> Result<Option<Shape>, Error> {
         if !self.ownership_checked() {
@@ -162,7 +162,7 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The read as a lent `Optional`: `opt.lend` of the entry where present, else `opt.none`.
+    /// The read as a lent `Optional`: `opt.view` of the entry where present, else `opt.none`.
     pub(crate) fn lent_optional(&mut self, present: Value, entry: &Entry) -> Result<Val, Error> {
         let ty = entry.ty();
         let opt_ty = self.b.m.types.opt(ty);
@@ -174,12 +174,28 @@ impl<'a> FnLower<'a> {
             &mut |s| {
                 let p = s.lent_payload(entry);
                 Ok(Some(if lend {
-                    s.b.opt_lend(p)
+                    s.b.opt_view(p)
                 } else {
                     s.b.opt_some(p)
                 }))
             },
             &mut |s| Ok(Some(s.b.opt_none(opt_ty))),
         )
+    }
+
+    /// `return m.get(key)`, `return xs.first()` or `return xs.last()` of a lending function: the
+    /// entry itself, as an optional that borrows it. `None` when `e` is not that.
+    pub(crate) fn lent_result(&mut self, e: &Expr) -> Result<Option<Val>, Error> {
+        if !self.lent_return || self.lent_expr != Some(e as *const Expr as usize) {
+            return Ok(None);
+        }
+        let Some(shape) = self.lent_shape(e)? else {
+            return Ok(None);
+        };
+        let Some((present, entry)) = self.lent_read(shape, e)? else {
+            let v = self.b.unit();
+            return Ok(Some(Val { v, own: false }));
+        };
+        Ok(Some(self.lent_optional(present, &entry)?))
     }
 }

@@ -142,6 +142,10 @@ extern def msstd_bigint_remainder(
     other: BigInt
 ) -> Result[BigInt, BigIntError]
 
+extern def msstd_bigint_quotient(value: BigInt, other: BigInt) -> BigInt
+
+extern def msstd_bigint_modulo(value: BigInt, other: BigInt) -> BigInt
+
 extern def msstd_bigint_compare(value: BigInt, other: BigInt) -> Int
 
 extern def msstd_bigint_bit_and(value: BigInt, other: BigInt) -> BigInt
@@ -253,32 +257,6 @@ export def min[T: Comparable](left: T, right: T) -> T:
         return right
 
     return left
-
-# Returns the greatest of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def max_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) > 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
-
-# Returns the least of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def min_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) < 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
 
 # Returns π, the ratio of a circle's circumference to its diameter.
 export def pi() -> Float:
@@ -506,7 +484,9 @@ export type BigIntError:
     # The text exceeds `max_digits` after excluding at most one leading sign; this check precedes syntax validation.
     case LimitExceeded
 
-# An arbitrary-precision signed integer with explicit arithmetic operations.
+# An arbitrary-precision signed integer. Use the operators + - * / % and unary - for arithmetic and < <= > >= == != for comparison;
+# both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
+# divide and remainder return a Result for callers that want an error value instead of a fault.
 export extern type BigInt
 
 impl BigInt:

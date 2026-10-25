@@ -1,0 +1,72 @@
+from "@std/testing.ms" import expect_equal, expect_true
+
+type Shelf:
+    names: List[String]
+    ages: Map[String, String]
+    spare: List[String]
+
+type Item:
+    case Plain
+    case Named(text: String, tags: List[String])
+
+impl Shelf:
+    def pick(flag: Bool) -> ref List[String]:
+        if flag:
+            return self.names
+
+        return self.spare
+
+    def age(name: String) -> ref Optional[String]:
+        if name == "":
+            return none
+
+        return self.ages.get(name)
+
+    def name(index: Int) -> ref Optional[String]:
+        if index < 0 or index >= self.names.length():
+            return none
+
+        return some(self.names.get(index))
+
+impl Item:
+    def text() -> ref Optional[String]:
+        match ref self:
+            case Named(text, _): return some(text)
+            case _: return none
+
+    def tags() -> ref Optional[List[String]]:
+        match ref self:
+            case Named(_, tags): return some(tags)
+            case _: return none
+
+def shelf() -> Shelf:
+    return Shelf(names: ["ada", "grace"], ages: {"ada": "36"}, spare: ["x"])
+
+test "ref functions hand back the argument's own storage":
+    let s = shelf()
+    try expect_equal(s.pick(True).length(), 2)
+    try expect_equal(s.pick(False).length(), 1)
+    try expect_equal(s.pick(True), ["ada", "grace"])
+
+test "ref Optional results borrow map entries and list elements":
+    let s = shelf()
+    if let age = s.age("ada"):
+        try expect_equal(age, "36")
+    try expect_true(s.age("grace").is_none())
+    try expect_true(s.age("").is_none())
+    if let name = s.name(1):
+        try expect_equal(name, "grace")
+    try expect_true(s.name(2).is_none())
+    try expect_true(s.name(-1).is_none())
+
+test "ref Optional results borrow alternative payloads":
+    let item = Item.Named("title", ["a", "b"])
+    if let text = item.text():
+        try expect_equal(text, "title")
+    if let tags = item.tags():
+        try expect_equal(tags.length(), 2)
+    try expect_true(Item.Plain.text().is_none())
+    try expect_true(Item.Plain.tags().is_none())
+
+    # The receiver is unchanged after reading through the borrow.
+    try expect_equal(item, Item.Named("title", ["a", "b"]))

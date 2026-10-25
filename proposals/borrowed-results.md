@@ -4,12 +4,14 @@
 
 - The checker already treats the result of a lending accessor (`m.get(k)`, `xs.first()`, `xs.last()`, `m.get_or(k, d)`) and of a user function declared `-> ref T` as a lexical borrow of its origin. Lowering ignores most of that and deep-copies the value out of the container.
 - Change: lower a `let` binding or an `if let` scrutinee of a lending accessor to a pointer into the container (`msrt_map_get_ptr`, `list.get`) and a new borrowed optional, so no copy, no allocation and no drop. Stage 2 gives `ref` functions a borrowed result mode in MIR so their callers receive a borrow too.
-- Cost: one MIR op (`opt.lend`), a result mode on MIR functions (stage 2), lowering changes in `crates/ms-lower`, no language or standard-library change.
+- Cost: one MIR op (`opt.view`), `Func.ret_borrowed` on MIR functions (stage 2, #1292), lowering changes in `crates/ms-lower`, no language or standard-library change.
 - Decision requested: none on the language. The owner asked for this ("we're not applying ref properly, that would cause a copy from containers", 2026-10-25).
 
 ## Status
 
-Stage 1 implemented, 2026-10-25, on `0d405aac`. Direction quoted above; the checker rules it relies on are in `crates/ms-check/OWNERSHIP.md` ("Borrows are lexical", "Borrowed results"). Skeptical review (2026-10-25): build with changes. Applied: `simplify` aliases only `opt.get` of `opt.lend` (`opt.unwrap` owns its result); the verifier rejects `opt.lend` of a boxed optional; a `lastuse` test pins that `drop map` stays after the lent load; `two_ways_mode` joins borrows. Open for stage 2: who copies when a lending `ref` implementation is reached through an interface vtable (the method thunk, or a second body).
+Stage 1 implemented, 2026-10-25, on `0d405aac`. Direction quoted above; the checker rules it relies on are in `crates/ms-check/OWNERSHIP.md` ("Borrows are lexical", "Borrowed results"). Skeptical review (2026-10-25): build with changes. Applied: `simplify` aliases only `opt.get` of `opt.view` (`opt.unwrap` owns its result); the verifier rejects `opt.view` of a boxed optional; a `lastuse` test pins that `drop map` stays after the lent load; `two_ways_mode` joins borrows.
+
+Stage 2 for the standard library landed independently in #1292 (same day): `Func.ret_borrowed` marks a lending function, `opt.view` is the borrowed optional (the stage 1 branch had introduced the same op as `opt.lend`; the two were folded into `opt.view` when the branches met), `return some(part)` and returned `match` payloads lend, and `JsonValue.get/at/as_*` borrow. Remaining: user-declared `ref` functions still copy at return, because an interface-call result is owned; the open question is who copies when a lending implementation is reached through a vtable (the method thunk, or a second body). A lambda cannot return a borrow of its parameter, so `opt.and_then(lambda a: a.get(k))` over a lending `get` is rejected; read levels with `if let`.
 
 ## Problem
 
@@ -46,9 +48,9 @@ def first_sku(o: Order) -> ref String:
     return o.items[0].sku           # returned as a borrow of o (stage 2)
 ```
 
-- **Borrowed optional (MIR).** New op `opt.lend %payload -> opt<T>`: wraps a borrowed payload into an `Optional` that is itself a borrow. Operand mode `Borrow`, result mode `Borrow` (`arg_modes`, `Module::result_mode` in `crates/ms-mir`). Codegen is identical to `opt.some`. The verifier's linear ownership is unchanged: a borrowed optional is never dropped and never passed to a consuming position. `simplify` folds `opt.is_some` and `opt.get` over it as over `opt.some`.
-- **Boxed optionals.** `Optional[T]` where `T` contains `Optional[T]` by value is a heap box (`ms-clif/src/layout.rs`, `opt_is_boxed`); `opt.lend` on such a type would allocate without an owner. Lowering keeps the copying path for those. The boxing test moves to `ms_mir::Module` so lowering and layout share one definition.
-- **`let x = accessor` (immutable name, function vetted by the ownership checker, binding not captured by a closure slot).** Lowering recognizes `Map.get(k)` (exact key type), `List.first()`, `List.last()` and emits the entry pointer or index, a presence test, and `opt.lend` of the loaded payload joined with `opt.none` through a borrow-mode block parameter. The binding is `bind_lent`; temporaries the pointer depends on live as long as the binding (existing `bind_hidden` rule).
+- **Borrowed optional (MIR).** New op `opt.view %payload -> opt<T>`: wraps a borrowed payload into an `Optional` that is itself a borrow. Operand mode `Borrow`, result mode `Borrow` (`arg_modes`, `Module::result_mode` in `crates/ms-mir`). Codegen is identical to `opt.some`. The verifier's linear ownership is unchanged: a borrowed optional is never dropped and never passed to a consuming position. `simplify` folds `opt.is_some` and `opt.get` over it as over `opt.some`.
+- **Boxed optionals.** `Optional[T]` where `T` contains `Optional[T]` by value is a heap box (`ms-clif/src/layout.rs`, `opt_is_boxed`); `opt.view` on such a type would allocate without an owner. Lowering keeps the copying path for those. The boxing test moves to `ms_mir::Module` so lowering and layout share one definition.
+- **`let x = accessor` (immutable name, function vetted by the ownership checker, binding not captured by a closure slot).** Lowering recognizes `Map.get(k)` (exact key type), `List.first()`, `List.last()` and emits the entry pointer or index, a presence test, and `opt.view` of the loaded payload joined with `opt.none` through a borrow-mode block parameter. The binding is `bind_lent`; temporaries the pointer depends on live as long as the binding (existing `bind_hidden` rule).
 - **`if let x = accessor` (same conditions).** No `Optional` at all: the test is the presence test and `x` is the loaded payload, lent. This is the `let` path of `alias_accessor` (`crates/ms-lower/src/alias.rs`) without the write-through alias.
 - **`if let x = opt` payloads.** Lend the payload under the same rule `let` uses (`opt.get`/`alt.get` of a scrutinee that is itself not owned); an owned scrutinee (`if let x = parse(s)`) still copies, because the scrutinee is dropped at the end of the branch.
 - **Chain reads.** `let o = m.get(k).get()` lends whenever the function is vetted, not only for read-only parameters: the checker rejects changing or reassigning `m` while `o` lives.
@@ -61,19 +63,19 @@ def first_sku(o: Order) -> ref String:
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-mir` (`ir.rs`, `verify.rs`, `builder.rs`, `interp.rs`, `opt/simplify.rs`, `opt/optparam.rs`) | `Op::OptLend`; `Module::opt_is_boxed`; stage 2: `Func.ret_mode` | `opt_simplify` unit test for `opt.lend`; verifier test that `opt.lend` of a borrow is accepted and a drop of it rejected |
-| `crates/ms-clif` (`lower.rs`, `layout.rs`) | `OptLend` codegen shares `OptSome`; layout uses the module boxing test | existing e2e |
+| `crates/ms-mir` (`ir.rs`, `verify.rs`, `builder.rs`, `interp.rs`, `opt/simplify.rs`, `opt/optparam.rs`) | `Op::OptView`; `Module::opt_is_boxed`; stage 2: `Func.ret_mode` | `opt_simplify` unit test for `opt.view`; verifier test that `opt.view` of a borrow is accepted and a drop of it rejected |
+| `crates/ms-clif` (`lower.rs`, `layout.rs`) | `OptView` codegen shares `OptSome`; layout uses the module boxing test | existing e2e |
 | `crates/ms-lower` (`stmt.rs`, `mapset.rs`, `alias.rs`, `func.rs`) | lent lowering of `let`/`if let` accessor reads, `if let` payloads, chain reads, `get_or`; stage 2 `emit_return` | new `tests/e2e/testdata/accept/borrowed-results.ms`; MIR shape test: no `msrt_map_get` in the probe |
 | `crates/ms-check` | unchanged (rules already exist) | existing conformance `ownership` fixtures |
 | `stdlib/*.ms`, `bindings.json`, `ms-rt` | unchanged | |
 | `bench/perf/stdlib` | cases `map.get_let`, `map.get_if_let`, `map.get_chain`, `map.get_or` as the gate: `let` and `if let` within 1.2x of the chain shape (measured 26, 24, 29, 28 ns/op) | `make stdlib-bench BENCHFILTER=map.get` |
-| Docs | `crates/DESIGN.md` MIR section notes `opt.lend` and the result mode | `make repo-check` |
+| Docs | `crates/DESIGN.md` MIR section notes `opt.view` and the result mode | `make repo-check` |
 
 ## Alternatives
 
 - **Do nothing.** Agent programs keep paying a deep copy per lookup, and `-> ref T` on a user function has no runtime effect, which contradicts the documented contract.
 - **Teach programmers the chain shape.** `m.get(k).get()` already lends, but the owner wants the natural shape fast; the checker already proves the natural shape safe.
-- **Pointer-shaped locals (no MIR op).** Represent a lent optional local as a nullable pointer and rewrite each use. Rejected: every use site of the local (`is_some`, `get`, `if let`, `match`, passing to a function) needs its own rewrite; `opt.lend` reuses all existing `Optional` lowering.
+- **Pointer-shaped locals (no MIR op).** Represent a lent optional local as a nullable pointer and rewrite each use. Rejected: every use site of the local (`is_some`, `get`, `if let`, `match`, passing to a function) needs its own rewrite; `opt.view` reuses all existing `Optional` lowering.
 - **Make `opt.some` accept a borrowed operand.** Rejected: its result mode is `Own` by op, and `optparam`/`lastuse` reason about moves into `opt.some`.
 - **Checker changes.** None needed; the lowering catches up with rules already enforced.
 
@@ -81,7 +83,7 @@ Drawback: lowering has two paths for one source shape (vetted lends, unvetted co
 
 ## Staging and verification
 
-1. Stage 1: `opt.lend`, lent `let`/`if let` accessor reads, lent `if let` payloads, chain reads, `get_or`. Gate: `make verify`, `make conform`, e2e fixture, probe within 1.2x of the chain shape, workloads `bench/perf/workloads/run.sh` not slower.
+1. Stage 1: `opt.view`, lent `let`/`if let` accessor reads, lent `if let` payloads, chain reads, `get_or`. Gate: `make verify`, `make conform`, e2e fixture, probe within 1.2x of the chain shape, workloads `bench/perf/workloads/run.sh` not slower.
 2. Stage 2: MIR result mode and `ref` function results. Gate: same, plus a fixture where a `ref` getter is called in a loop and callgrind shows no `msrt_str_dup`/copy per call.
 
 ## Open questions

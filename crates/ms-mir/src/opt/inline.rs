@@ -125,7 +125,7 @@ fn specialized_thunk(m: &Module, thunk: FuncId, g: FuncId) -> Option<Func> {
     // A `closure.cap` reads the environment through the function's own capture layout, which
     // the thunk does not have: code that captures is called, not inlined.
     if code.inst_count() <= BASE_THRESHOLD && captures.is_empty() {
-        let ret_own = m.needs_drop(code.ret);
+        let ret_own = m.needs_drop(code.ret) && !code.ret_borrowed;
         inline_at(&mut t, bi, ii, code, ret_own);
     }
     Some(t)
@@ -307,7 +307,7 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
             }
             grown += size;
             let callee = m.funcs[gi].clone();
-            let ret_own = m.needs_drop(callee.ret);
+            let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
             // the tail moves. Fresh callee definitions follow the continuation block.
@@ -494,7 +494,7 @@ fn inline_closures_in(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             grown += size;
-            let ret_own = m.needs_drop(body.ret);
+            let ret_own = m.needs_drop(body.ret) && !body.ret_borrowed;
             let call = &mut m.funcs[fi].blocks[bi].insts[ii];
             call.op = Op::Call;
             call.imm = Imm::Func(g);

@@ -61,7 +61,7 @@ pub(crate) fn integer(t: &Ty) -> bool {
 
 /// Whether a type is an integer or float of any width, or Decimal.
 pub(crate) fn numeric(t: &Ty) -> bool {
-    integer(t) || float_bits(t).is_some() || t.is_std("Decimal")
+    integer(t) || float_bits(t).is_some() || t.is_std("Decimal") || t.is_std("BigInt")
 }
 
 /// An unsuffixed number literal, possibly negated.
@@ -883,7 +883,7 @@ impl Checker {
                 if !numeric(&vt) {
                     self.type_error(
                         e.pos,
-                        format!("numeric sign requires an independently known numeric operand, found {vt}; apply + or - to Int, Float, or Decimal"),
+                        format!("numeric sign requires an independently known numeric operand, found {vt}; apply + or - to Int, Float, Decimal, or BigInt"),
                     );
                 }
                 i.ty = Some(vt);
@@ -1057,7 +1057,7 @@ impl Checker {
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
-                if op == BinaryOp::Rem && !integer(&common) {
+                if op == BinaryOp::Rem && !integer(&common) && !common.is_std("BigInt") {
                     self.type_error(
                         e.pos,
                         format!("remainder requires integer operands, found {common}; convert to Int or use math functions"),

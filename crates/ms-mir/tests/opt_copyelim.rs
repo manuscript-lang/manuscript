@@ -475,3 +475,30 @@ fn a_long_literal_is_optimized_in_linear_time() {
     // Only the collection's own slot is left; every entry's roundtrip through a slot is gone.
     assert_eq!(count(&m, "main", Op::Slot), 1);
 }
+
+fn many_moves(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nalt List { Nil, More(next: List) }\nentry @main\n\nfn @main() -> int export {\nb0:\n",
+    );
+    for i in 0..n {
+        s.push_str(&format!(
+            "  %a{i}: List = alt.new List.Nil\n  %c{i}: List = copy %a{i}\n  drop %a{i}\n"
+        ));
+    }
+    for i in 0..n {
+        s.push_str(&format!("  drop %c{i}\n"));
+    }
+    s.push_str("  %z: int = iconst 0\n  ret %z\n}\n");
+    s
+}
+
+#[test]
+fn a_long_run_of_copy_then_drop_pairs_becomes_moves_in_linear_time() {
+    let n = 6000;
+    let mut m = parse_module(&many_moves(n)).unwrap_or_else(|e| panic!("{e}"));
+    let start = std::time::Instant::now();
+    assert!(opt::copyelim::run(&mut m));
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::Drop), n);
+}

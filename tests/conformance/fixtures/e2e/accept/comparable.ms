@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/comparable.ms
 from "@std/testing.ms" import expect_true
-from "@std/math.ms" import max, max_of, min, min_of
+from "@std/math.ms" import max, min
 from "@std/decimal.ms" import Decimal
 
 type Version:
@@ -38,9 +38,9 @@ test "compare through an explicit view":
     try expect_true((left.compare(2) < 0))
     try expect_true(((Version(3).compare(Version(3)) == 0)))
 
-test "max_of and min_of over a list":
+test "max and min over a list":
     let numbers = [3, 9, 2]
     let empty: List[Int] = []
-    try expect_true((max_of(numbers) == some(9) and min_of(numbers) == some(2)))
-    try expect_true((max_of(empty).is_none() and min_of(empty).is_none()))
-    try expect_true((max_of([Version(4), Version(8)]) == some(Version(8))))
+    try expect_true((numbers.max() == some(9) and numbers.min() == some(2)))
+    try expect_true((empty.max().is_none() and empty.min().is_none()))
+    try expect_true(([Version(4), Version(8)].max() == some(Version(8))))

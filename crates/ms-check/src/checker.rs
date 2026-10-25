@@ -118,6 +118,9 @@ pub struct Program {
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `exclusive_borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
+    /// Pattern and match-arm bindings that only borrow a part of a non-`Copy` scrutinee, for
+    /// lowering. Filled together with `exclusive_borrows`.
+    pub read_borrows: Rc<HashSet<usize>>,
 }
 
 /// A body-check result retained from an inference probe.

@@ -86,6 +86,30 @@ impl<'m> FuncBuilder<'m> {
         insts.iter().rev().find(|i| i.res == Some(v)).map(|i| i.op)
     }
 
+    /// Whether `v` is a borrow: defined by an operation whose result borrows, or a borrowed
+    /// parameter. Searches every block; an undefined value is not.
+    pub fn is_borrowed(&self, v: Value) -> bool {
+        for b in &self.f.blocks {
+            if let Some(p) = b.params.iter().find(|p| p.value == v) {
+                return p.mode == crate::ir::Mode::Borrow;
+            }
+            if let Some(i) = b.insts.iter().find(|i| i.res == Some(v)) {
+                return self.m.result_mode(&self.f, i) != Some(crate::ir::Mode::Own);
+            }
+        }
+        false
+    }
+
+    /// The first operand of the instruction that defined `v` in the current block.
+    pub fn defining_operand(&self, v: Value) -> Option<Value> {
+        let insts = &self.f.blocks[self.cur.index()].insts;
+        insts
+            .iter()
+            .rev()
+            .find(|i| i.res == Some(v))
+            .and_then(|i| i.args.first().copied())
+    }
+
     /// Sets the source location attached to subsequently emitted instructions.
     pub fn set_loc(&mut self, loc: Loc) {
         self.loc = loc;
@@ -321,11 +345,10 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(self.ty(v));
         self.val(Op::OptSome, &[v], Imm::None, t)
     }
-    /// `opt.lend`: an optional that borrows its payload, so it is itself a borrow and is never
-    /// dropped.
-    pub fn opt_lend(&mut self, v: Value) -> Value {
+    /// `opt.view`: an optional holding the borrowed `v` itself, which is neither retained nor released.
+    pub fn opt_view(&mut self, v: Value) -> Value {
         let t = self.m.types.opt(self.ty(v));
-        self.val(Op::OptLend, &[v], Imm::None, t)
+        self.val(Op::OptView, &[v], Imm::None, t)
     }
     /// `opt.none` of the given optional type.
     pub fn opt_none(&mut self, opt_ty: Ty) -> Value {

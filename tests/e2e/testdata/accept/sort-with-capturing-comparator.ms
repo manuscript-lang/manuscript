@@ -22,14 +22,14 @@ test "a lambda that captures a map orders by the looked-up counts":
             - freq.get(a).get()
         )
     )
-    expect_equal(words, ["the", "dog", "fox"])
+    try expect_equal(words, ["the", "dog", "fox"])
 
 test "a nested function that captures a scalar sorts strings":
     let direction = -1
     def by_len(a: String, b: String) -> Int:
         return (a.length() - b.length()) * direction
     let words = ["a", "ccc", "bb"].sorted(compare: by_len)
-    expect_equal(words, ["ccc", "bb", "a"])
+    try expect_equal(words, ["ccc", "bb", "a"])
 
 test "a captured weight orders records and integers":
     let weight = 10
@@ -39,7 +39,7 @@ test "a captured weight orders records and integers":
             - y.priority * weight
         )
     )
-    expect_equal(tasks.get(0).name, "a")
+    try expect_equal(tasks.get(0).name, "a")
 
     let offset = 100
     let ints = [3, 1, 2].sorted(
@@ -48,12 +48,12 @@ test "a captured weight orders records and integers":
             - (x + offset)
         )
     )
-    expect_equal(ints, [3, 2, 1])
+    try expect_equal(ints, [3, 2, 1])
 
 test "a capture-free comparator still sorts":
-    expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])
+    try expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])
 
     let plain = ["b", "a"].sorted(
         compare: lambda (a: String, b: String) -> Int: return a.compare(b)
     )
-    expect_equal(plain, ["a", "b"])
+    try expect_equal(plain, ["a", "b"])
