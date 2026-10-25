@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel
 from "@std/process.ms" import commands, os_type
 from "@std/processes.ms" import ProcessGroup
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/testing.ms" import expect_equal
 from "@std/time.ms" import duration, sleep
 
 def talker(ch: Channel[Int, Unit]) -> Int:
@@ -47,12 +47,11 @@ test "result waits while another task receives from the same child":
 
         with TaskGroup[Int]() as tasks:
             tasks.spawn(lambda ch: read_all(reader.clone()))
-            try expect_equal(child.result().get(-1), 42)
 
-            # `result` drops the messages it reads, so the receiver sees between 0 and 3 of them.
-            let counts = tasks.results().get([-1])
-            try expect_equal(counts.length(), 1)
-            try expect_true(counts[0] >= 0 and counts[0] <= 3)
+            # The receiver is the one reading the pipe by now, so `result` waits for it.
+            sleep(duration(150000000))
+            try expect_equal(child.result().get(-1), 42)
+            try expect_equal(tasks.results().get([]), [3])
 
 test "a task cancelled in a channel read releases the link":
     with ProcessGroup[Int, Unit, Int]() as group:
