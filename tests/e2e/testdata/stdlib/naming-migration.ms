@@ -72,9 +72,9 @@ test "all builders keep Unit mutation function types":
     let append_list: Callable[[Int], Unit] = list.append
     append_list(1)
 
-    var list_result = list.freeze()
+    var list_result = list.build()
     list_result.append(2)
-    try expect_equal(list.freeze(), [1])
+    try expect_equal(list.build(), [1])
     try expect_equal(list_result, [1, 2])
 
     var map = MapBuilder[String, Int]()
@@ -85,10 +85,10 @@ test "all builders keep Unit mutation function types":
     let legacy_map: Callable[[String, Int], Unit] = map.add
     legacy_map("a", 3)
 
-    var map_result = map.freeze()
+    var map_result = map.build()
     try expect_false(map_result.keys() != ["a", "b"] or map_result.values() != [3, 2])
     map_result.add("c", 4)
-    try expect_equal(map.freeze().keys(), ["a", "b"])
+    try expect_equal(map.build().keys(), ["a", "b"])
 
     var adapter: EntryBuilder = EntryAdapter(MapBuilder[String, Int]())
     let add_view: Callable[[String, Int], Unit] = adapter.add
@@ -102,10 +102,10 @@ test "all builders keep Unit mutation function types":
     let legacy_set: Callable[[Int], Unit] = set.add
     legacy_set(2)
 
-    var set_result = set.freeze()
+    var set_result = set.build()
     try expect_equal(set_result.values(), [2, 1])
     set_result.add(3)
-    try expect_equal(set.freeze().values(), [2, 1])
+    try expect_equal(set.build().values(), [2, 1])
 
     var bytes = BytesBuilder()
     let append_byte: Callable[[Int], Unit] = bytes.append
@@ -114,13 +114,13 @@ test "all builders keep Unit mutation function types":
     let concat_bytes: Callable[[Bytes], Unit] = bytes.concat
     concat_bytes("B".to_bytes())
     try expect_false(
-        (bytes.freeze() != "AB".to_bytes() or bytes.freeze() != "AB".to_bytes())
+        (bytes.build() != "AB".to_bytes() or bytes.build() != "AB".to_bytes())
     )
 
     var text = StringBuilder()
     let append_text: Callable[[String], Unit] = text.append
     append_text("ab")
-    try expect_false(text.freeze() != "ab" or text.freeze() != "ab")
+    try expect_false(text.build() != "ab" or text.build() != "ab")
 
 test "copy names preserve Bytes and collection storage":
     let bytes = Bytes([1, 2, 3])

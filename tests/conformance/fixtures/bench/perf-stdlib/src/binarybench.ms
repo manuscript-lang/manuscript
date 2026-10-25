@@ -38,5 +38,5 @@ export def bench_binary() -> Unit:
             var bb = BytesBuilder()
             for j in range(0, 100000):
                 bb.append(j % 256)
-            return bb.freeze().length()
+            return bb.build().length()
     )

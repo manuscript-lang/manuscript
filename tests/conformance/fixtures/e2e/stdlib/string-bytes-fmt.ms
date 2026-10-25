@@ -101,12 +101,12 @@ test "string and bytes builders freeze":
     var text = StringBuilder()
     text.append("é")
     text.append("🙂")
-    try expect_equal(text.freeze(), "é🙂")
+    try expect_equal(text.build(), "é🙂")
 
     var bytes = BytesBuilder()
     bytes.append(0)
     bytes.concat(Bytes([255, 1]))
-    try expect_equal(bytes.freeze(), Bytes([0, 255, 1]))
+    try expect_equal(bytes.build(), Bytes([0, 255, 1]))
 
 test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("".split(","), [""])

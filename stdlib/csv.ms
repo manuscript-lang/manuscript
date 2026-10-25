@@ -233,7 +233,7 @@ export def stringify(
         used += size
         out.append(line)
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 def needs_quotes(field: String, delimiter: Int) -> Bool:
     let scalars = field.scalar_values()

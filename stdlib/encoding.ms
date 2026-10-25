@@ -64,7 +64,7 @@ export def base64_decode(
         if pad < 2: out.append(value / 256 % 256)
         if pad < 1: out.append(value % 256)
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 # Value of a Base64 digit in the chosen alphabet, or -1.
 def base64_digit(byte: Int, url_safe: Bool) -> Int:
@@ -122,7 +122,7 @@ export def base64_encode(data: Bytes, url_safe: Bool = False) -> String:
 
         index += 3
 
-    return out.freeze()
+    return out.build()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export def hex_decode(
@@ -146,7 +146,7 @@ export def hex_decode(
 
         out.append(high * 16 + low)
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 # Value of a hexadecimal digit of either case, or -1.
 def hex_digit(byte: Int) -> Int:
@@ -165,7 +165,7 @@ export def hex_encode(data: Bytes) -> String:
         out.append(digits[byte / 16])
         out.append(digits[byte % 16])
 
-    return out.freeze()
+    return out.build()
 
 impl Error for EncodingError:
     # Returns an encoding-prefixed diagnostic without echoing the encoded input.
@@ -188,7 +188,7 @@ export def utf16_encode(text: String, little_endian: Bool = True) -> Bytes:
             append_unit(var out, 55296 + offset / 1024, little_endian)
             append_unit(var out, 56320 + offset % 1024, little_endian)
 
-    return out.freeze()
+    return out.build()
 
 def append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) -> Unit:
     if little_endian:
@@ -268,7 +268,7 @@ def narrow(text: String, maximum: Int) -> Result[Bytes, EncodingError]:
 
         out.append(scalar)
 
-    return ok(out.freeze())
+    return ok(out.build())
 
 # Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
 export def latin1_decode(data: Bytes) -> String:

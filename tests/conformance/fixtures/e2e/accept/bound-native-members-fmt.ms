@@ -46,16 +46,16 @@ test "builder":
     let sb = StringBuilder()
     var alias = sb
     let append = alias.append
-    let freeze = sb.freeze
+    let build = sb.build
     append("a")
     append("é")
-    (freeze() == "aé") | try expect_true
-    (alias.freeze() == "aé") | try expect_true
+    (build() == "aé") | try expect_true
+    (alias.build() == "aé") | try expect_true
 
 test "sealed builder":
     var sb = StringBuilder()
     let append = sb.append
-    sb.freeze()
+    sb.build()
 
     let message = try expect_fault(lambda: append(""))
     message | try expect_contains("builder is sealed")
@@ -63,7 +63,7 @@ test "sealed builder":
 test "sealed map and set builders fault through every spelling":
     let map_builder = MapBuilder[String, Int]()
     let map_add = map_builder.add
-    let map_sealed = map_builder.freeze()
+    let map_sealed = map_builder.build()
     (try expect_fault(lambda: map_add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
@@ -73,7 +73,7 @@ test "sealed map and set builders fault through every spelling":
 
     let set_builder = SetBuilder[Int]()
     let alias = set_builder
-    let set_sealed = set_builder.freeze()
+    let set_sealed = set_builder.build()
     (try expect_fault(lambda: alias.add(1))) | try expect_contains("builder is sealed")
     (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
         "builder is sealed"
@@ -83,7 +83,7 @@ test "unsealed set builder continues":
     let builder = SetBuilder[Int]()
     builder.add(1)
 
-    let frozen = builder.freeze()
+    let frozen = builder.build()
     (frozen.length() == 1) | try expect_true
 
 test "abs of the minimum overflows":

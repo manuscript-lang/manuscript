@@ -202,7 +202,7 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
         if c == "": return error(invalid(reader, "unterminated string"))
 
         if c == quote:
-            if not multiline: return ok(result.freeze())
+            if not multiline: return ok(result.build())
 
             if peek(reader) == quote and ahead(reader, 1) == quote:
                 advance(var reader)
@@ -214,7 +214,7 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
                     result.append(advance(var reader))
                     extra += 1
 
-                return ok(result.freeze())
+                return ok(result.build())
 
             result.append(c)
             continue
@@ -887,7 +887,7 @@ def quote_text(text: String) -> String:
         else: result.append(c)
 
     result.append("\"")
-    return result.freeze()
+    return result.build()
 
 def format_key(key: String) -> String:
     var bare = key != ""
@@ -1041,7 +1041,7 @@ export def stringify(
     var writer = Writer(StringBuilder(), started: False)
     emit_table(var writer, [], root)
 
-    let text = writer.out.freeze()
+    let text = writer.out.build()
     if not within(text.byte_length(), max_bytes): return error(TomlError.LimitExceeded)
 
     return ok(text)

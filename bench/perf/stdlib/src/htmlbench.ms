@@ -9,7 +9,7 @@ def html_doc(count: Int) -> String:
     for i in range(0, count):
         sb.append(f"<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")
     sb.append("</div>")
-    return sb.freeze()
+    return sb.build()
 
 export def bench_html() -> Unit:
     let html = html_doc(2000)

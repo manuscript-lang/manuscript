@@ -303,13 +303,13 @@ def ascii_case(s: String, to_upper: Bool) -> String:
             c = c + 32
         out.append(c)
 
-    return bytes_to_string(out.freeze())
+    return bytes_to_string(out.build())
 
 def substring(s: String, start: Int, len: Int) -> String:
     let src = s.to_bytes()
     var out = BytesBuilder()
     if len <= 0:
-        return bytes_to_string(out.freeze())
+        return bytes_to_string(out.build())
 
     var first = start
     if first < 1:
@@ -320,7 +320,7 @@ def substring(s: String, start: Int, len: Int) -> String:
         last = src.length()
     for k in range(first, last + 1):
         out.append(src.get(k - 1))
-    return bytes_to_string(out.freeze())
+    return bytes_to_string(out.build())
 
 # ---------------------------------------------------------------- functions
 def is_aggregate(name: String) -> Bool:
@@ -920,7 +920,7 @@ def lex(src: List[Int], start: Int, stop: Int) -> Result[List[Token], SqlError]:
                 word.append(src[i])
                 i += 1
 
-            let text = bytes_to_string(word.freeze())
+            let text = bytes_to_string(word.build())
             let upper = text.upper()
 
             if is_keyword(upper):
@@ -962,7 +962,7 @@ def lex(src: List[Int], start: Int, stop: Int) -> Result[List[Token], SqlError]:
 
             toks.append(
                 Token(
-                    kind: "str", text: "", num: 0, data: bytes_to_string(text.freeze())
+                    kind: "str", text: "", num: 0, data: bytes_to_string(text.build())
                 )
             )
         else:
@@ -2240,7 +2240,7 @@ def run_script(data: Bytes) -> Bytes:
         if r.is_error():
             emit(var out, f"error: {r.err().message()}")
 
-    return out.freeze()
+    return out.build()
 
 export def main() -> Int:
     if let data = read_all(stdin()):

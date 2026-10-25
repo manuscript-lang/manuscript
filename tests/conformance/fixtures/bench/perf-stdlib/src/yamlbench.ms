@@ -7,7 +7,7 @@ def yaml_doc(count: Int) -> String:
     var sb = StringBuilder()
     for i in range(0, count):
         sb.append(f"- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
-    return sb.freeze()
+    return sb.build()
 
 def yaml_length(value: YamlValue) -> Int:
     if let text = stringify(value):

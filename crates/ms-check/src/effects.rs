@@ -15,16 +15,16 @@ pub fn collection_mutation(method: &Method) -> bool {
     let receiver = &method.receiver;
     let name = method.name().map(|n| n.as_str()).unwrap_or_default();
     if receiver.is_std("StringBuilder") {
-        return matches!(name, "append" | "freeze");
+        return matches!(name, "append" | "build");
     }
     if receiver.is_std("BytesBuilder") {
-        return matches!(name, "append" | "concat" | "freeze");
+        return matches!(name, "append" | "concat" | "build");
     }
     if receiver.is_std("ListBuilder") {
-        return matches!(name, "append" | "freeze");
+        return matches!(name, "append" | "build");
     }
     if receiver.is_std("MapBuilder") || receiver.is_std("SetBuilder") {
-        return matches!(name, "add" | "freeze");
+        return matches!(name, "add" | "build");
     }
     (receiver.is_std("List") || receiver.is_std("Map") || receiver.is_std("Set"))
         && method

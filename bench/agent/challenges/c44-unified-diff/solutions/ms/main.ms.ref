@@ -192,7 +192,7 @@ def run() -> Result[Unit, Error]:
 
         idx = idx + 1
 
-    try stdout().write(out.freeze())
+    try stdout().write(out.build())
     return stdout().flush()
 
 export def main() -> Int:
