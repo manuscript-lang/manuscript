@@ -413,6 +413,11 @@ impl<'a> FnLower<'a> {
                     return Ok(x);
                 }
                 let t = self.ty_of(x.v);
+                if self.is_bigint(t) {
+                    let a = self.borrow(x);
+                    let v = self.call_runtime("msstd_bigint_negate", &[a], t)?;
+                    return Ok(Val { v, own: true });
+                }
                 if self.is_decimal(t) {
                     let a = self.borrow(x);
                     let v = self.call_runtime("msstd_decimal_negate", &[a], t)?;
@@ -534,6 +539,17 @@ impl<'a> FnLower<'a> {
             let (a, b) = (self.borrow(l), self.borrow(r));
             return self.call_runtime(sym, &[a, b], t);
         }
+        if self.is_bigint(t) {
+            let sym = match op {
+                BinaryOp::Add => "msstd_bigint_add",
+                BinaryOp::Sub => "msstd_bigint_subtract",
+                BinaryOp::Mul => "msstd_bigint_multiply",
+                BinaryOp::Div => "msstd_bigint_quotient",
+                _ => "msstd_bigint_modulo",
+            };
+            let (a, b) = (self.borrow(l), self.borrow(r));
+            return self.call_runtime(sym, &[a, b], t);
+        }
         if self.is_instant(t) && matches!(op, BinaryOp::Add | BinaryOp::Sub) {
             let (a, b) = (self.borrow(l), self.borrow(r));
             // `instant - instant` is the elapsed duration; a duration moves the instant.
@@ -564,7 +580,12 @@ impl<'a> FnLower<'a> {
             let zero = self.b.iconst(0);
             return Ok(self.b.icmp(cc, c, zero));
         }
-        if let Some(sym) = self.ordering_symbol(t) {
+        let sym = if self.is_bigint(t) {
+            Some("msstd_bigint_compare")
+        } else {
+            self.ordering_symbol(t)
+        };
+        if let Some(sym) = sym {
             let a = self.borrow(l);
             let b = self.borrow(r);
             let c = self.call_runtime(sym, &[a, b], MTy::INT)?;
@@ -590,6 +611,11 @@ impl<'a> FnLower<'a> {
     /// Whether `t` is the `Instant` record.
     fn is_instant(&self, t: MTy) -> bool {
         matches!(self.b.m.types.kind(t), TyKind::Rec(rid) if self.b.m.records[rid.index()].name == "Instant")
+    }
+
+    /// Whether `t` is the `BigInt` runtime object.
+    pub(crate) fn is_bigint(&self, t: MTy) -> bool {
+        matches!(self.b.m.types.kind(t), TyKind::Obj(n, _) if n == "BigInt")
     }
 
     /// Whether `t` is the `Decimal` record.

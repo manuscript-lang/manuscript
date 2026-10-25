@@ -76,6 +76,12 @@ pub(crate) fn element_eq(
         return Ok(b.call_rt(ext, &[x, y]));
     }
     match b.m.types.kind(t) {
+        TyKind::Obj(n, _) if n == "BigInt" => {
+            let ext = runtime_fn(b.m, "msstd_bigint_compare", &[t, t], MTy::INT);
+            let c = b.call_rt(ext, &[x, y]);
+            let zero = b.iconst(0);
+            Ok(b.icmp(Cc::Eq, c, zero))
+        }
         TyKind::Bytes | TyKind::Obj(..) => {
             let d = b
                 .emit(Op::TypeDesc, &[], Imm::Ty(t), Some(MTy::PTR))
