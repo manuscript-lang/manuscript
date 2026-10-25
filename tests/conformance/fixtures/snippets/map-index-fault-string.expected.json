@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 70,
+    "stdout": "1\n",
+    "stderr": "map key not found: \"eve\"\n  at map-index-fault-string.ms:9 in main\n"
+  }
+}

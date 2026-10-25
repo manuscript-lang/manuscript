@@ -147,7 +147,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
 | `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool` |
+| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool`; `[key] V` faults with `map key not found: <key>` when absent |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
 | `Map[K, V]` | `filter(predicate: Callable[[K, V], Bool]) -> Map[K, V]` |
 | `Map[K, V]` | `map[W](transform: Callable[[K, V], W]) -> Map[K, W]` |
@@ -157,7 +157,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `find(predicate: Callable[[K, V], Bool]) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `some(predicate: Callable[[K, V], Bool]) -> Bool`; `every` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]` |
+| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
