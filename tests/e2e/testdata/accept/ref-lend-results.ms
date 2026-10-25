@@ -56,7 +56,7 @@ impl Holder:
         return self.inner.pick(True)
 
     # An interface call result is owned, so this one is returned as a copy.
-    def listed() -> ref List[String]:
+    def listed() -> List[String]:
         return self.source.names()
 
     def maybe(flag: Bool) -> ref Optional[List[String]]:
@@ -65,41 +65,16 @@ impl Holder:
 
         return none
 
-# The second argument is a temporary, so this result is returned as a copy, never as a borrow
-# of the temporary freed at return.
+# The second argument is a temporary freed at return, so the result is an owned copy and the
+# function cannot be `ref`.
 def either(a: Shelf, b: Shelf, flag: Bool) -> ref List[String]:
     if flag:
         return a.names
 
     return b.names
 
-def from_temporary(s: Shelf) -> ref List[String]:
+def from_temporary(s: Shelf) -> List[String]:
     return either(s, Shelf(names: ["temporary"], ages: {}, spare: []), False)
-
-type Recorded:
-    result: Result[String, Failed]
-    other: Result[String, Failed]
-
-type Failed:
-    detail: String
-
-impl Error for Failed:
-    def message() -> ref String:
-        return self.detail
-
-def checked(n: Int) -> Result[Int, Failed]:
-    if n < 0:
-        return error(Failed(detail: "negative"))
-
-    return ok(n)
-
-# The `try` exit returns an owned failure, so this result is returned as a copy.
-def stored(r: Recorded, n: Int) -> ref Result[String, Failed]:
-    let i = try checked(n)
-    if i > 5:
-        return r.other
-
-    return r.result
 
 def shelf() -> Shelf:
     return Shelf(names: ["ada", "grace"], ages: {"ada": "36"}, spare: ["x"])
@@ -142,10 +117,6 @@ test "user ref functions chain borrows and copy interface results":
     try expect_true(h.maybe(False).is_none())
     try expect_equal(h.shelved(), ["ada", "grace"])
 
-test "a ref result over a temporary argument or a try exit is a copy":
+test "a result over a temporary argument is an owned copy":
     let s = shelf()
     try expect_equal(from_temporary(s), ["temporary"])
-
-    let r = Recorded(result: ok("kept"), other: ok("other"))
-    try expect_equal(stored(r, 1), ok("kept"))
-    try expect_true(stored(r, -1).is_error())

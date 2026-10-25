@@ -12,7 +12,7 @@
 
 ## Status
 
-Approved, 2026-10-25, checked against `7f0a4c39`. Stage 1 (binding markers) and the soundness fixes below are implemented in the first PR. Decisions from the user (project thread):
+Approved, 2026-10-25, checked against `7f0a4c39`. Stage 1 (binding markers) and the soundness fixes below landed in #1314; stage 2 (every path lends) is the next PR. `Ownership.lenders` stays as the lowering gate (it now equals the checked `ref` functions) instead of being deleted, so a function the checker did not vet never gets a lent instance. The MIR verifier check for lent `ret` provenance is deferred: a conservative version rejects borrows of owned argument temporaries that the result does not come from. Decisions from the user (project thread):
 
 - "reference is basically a handle for an object someone else owns, following the same multiple immutable one mutable pattern"
 - "where moving is easier we should follow that, reference is looking into memory someone else holds without copying" (so `Error.message` becomes owning)

@@ -5108,8 +5108,7 @@ def message(value: Reader) -> String:
     return value.read()
 def make() -> Box:
     return Box(label: "value")
-type	6	19	110	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`
-type	8	31	174	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`def answer() -> Int:
+type	6	19	110	`read` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`def answer() -> Int:
     let number = 42
     return number
 def later() -> Int:

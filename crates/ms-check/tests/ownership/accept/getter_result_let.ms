@@ -9,7 +9,7 @@ impl Box:
         if first:
             return self.items
 
-        return [1]
+        return self.items
 
 def first_of[T](xs: List[T]) -> ref T:
     return xs[0]
