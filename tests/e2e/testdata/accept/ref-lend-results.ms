@@ -39,6 +39,32 @@ impl Item:
             case Named(_, tags): return some(tags)
             case _: return none
 
+interface Names:
+    def names() -> ref List[String]
+
+impl Names for Shelf:
+    def names() -> ref List[String]:
+        return self.names
+
+type Holder:
+    inner: Shelf
+    source: Names
+
+impl Holder:
+    # Lends through another user `ref` function.
+    def shelved() -> ref List[String]:
+        return self.inner.pick(True)
+
+    # An interface call result is owned, so this one is returned as a copy.
+    def listed() -> ref List[String]:
+        return self.source.names()
+
+    def maybe(flag: Bool) -> ref Optional[List[String]]:
+        if flag:
+            return some(self.inner.names)
+
+        return none
+
 def shelf() -> Shelf:
     return Shelf(names: ["ada", "grace"], ages: {"ada": "36"}, spare: ["x"])
 
@@ -70,3 +96,12 @@ test "ref Optional results borrow alternative payloads":
 
     # The receiver is unchanged after reading through the borrow.
     try expect_equal(item, Item.Named("title", ["a", "b"]))
+
+test "user ref functions chain borrows and copy interface results":
+    let h = Holder(inner: shelf(), source: shelf())
+    try expect_equal(h.shelved(), ["ada", "grace"])
+    try expect_equal(h.listed(), ["ada", "grace"])
+    if let names = h.maybe(True):
+        try expect_equal(names.length(), 2)
+    try expect_true(h.maybe(False).is_none())
+    try expect_equal(h.shelved(), ["ada", "grace"])
