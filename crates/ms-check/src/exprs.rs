@@ -438,6 +438,18 @@ impl Checker {
                         ),
                     );
                     i.ty = Some(invalid());
+                } else if s
+                    .decl
+                    .as_ref()
+                    .is_some_and(|d| d.fn_params().iter().any(|p| p.mutable))
+                {
+                    self.type_error(
+                        e.pos,
+                        format!(
+                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a lambda"
+                        ),
+                    );
+                    i.ty = Some(invalid());
                 }
             }
             return i;
