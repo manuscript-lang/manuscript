@@ -30,12 +30,12 @@ impl Shelf:
 
 impl Item:
     def text() -> ref Optional[String]:
-        match ref self:
+        match self:
             case Named(text, _): return some(text)
             case _: return none
 
     def tags() -> ref Optional[List[String]]:
-        match ref self:
+        match self:
             case Named(_, tags): return some(tags)
             case _: return none
 
@@ -64,6 +64,42 @@ impl Holder:
             return some(self.inner.names)
 
         return none
+
+# The second argument is a temporary, so this result is returned as a copy, never as a borrow
+# of the temporary freed at return.
+def either(a: Shelf, b: Shelf, flag: Bool) -> ref List[String]:
+    if flag:
+        return a.names
+
+    return b.names
+
+def from_temporary(s: Shelf) -> ref List[String]:
+    return either(s, Shelf(names: ["temporary"], ages: {}, spare: []), False)
+
+type Recorded:
+    result: Result[String, Failed]
+    other: Result[String, Failed]
+
+type Failed:
+    detail: String
+
+impl Error for Failed:
+    def message() -> ref String:
+        return self.detail
+
+def checked(n: Int) -> Result[Int, Failed]:
+    if n < 0:
+        return error(Failed(detail: "negative"))
+
+    return ok(n)
+
+# The `try` exit returns an owned failure, so this result is returned as a copy.
+def stored(r: Recorded, n: Int) -> ref Result[String, Failed]:
+    let i = try checked(n)
+    if i > 5:
+        return r.other
+
+    return r.result
 
 def shelf() -> Shelf:
     return Shelf(names: ["ada", "grace"], ages: {"ada": "36"}, spare: ["x"])
@@ -105,3 +141,11 @@ test "user ref functions chain borrows and copy interface results":
         try expect_equal(names.length(), 2)
     try expect_true(h.maybe(False).is_none())
     try expect_equal(h.shelved(), ["ada", "grace"])
+
+test "a ref result over a temporary argument or a try exit is a copy":
+    let s = shelf()
+    try expect_equal(from_temporary(s), ["temporary"])
+
+    let r = Recorded(result: ok("kept"), other: ok("other"))
+    try expect_equal(stored(r, 1), ok("kept"))
+    try expect_true(stored(r, -1).is_error())

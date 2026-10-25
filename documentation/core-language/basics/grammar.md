@@ -175,7 +175,7 @@ Statement     = SimpleStatement, NEWLINE
               | WithStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
-Binding       = ("let" | "var"), [ "ref" ], ( BindingEntry
+Binding       = ("let" | "var"), ( BindingEntry
               | "(", NEWLINE, { BindingEntry, NEWLINE }, ")" ) ;
 BindingEntry  = (Name, [ ":", Type ] | PositionalPattern | RecordPattern), "=", Expression ;
 Assignment    = (Name | Expression, ".", Name), "=", Expression ;
@@ -186,9 +186,9 @@ IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
                 { "elif", [ "let", Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
-ForStatement  = "for", [ "ref" ], Name, "in", Expression, Suite ;
+ForStatement  = "for", Name, "in", Expression, Suite ;
 WithStatement = "with", Expression, "as", Name, Suite ;
-MatchExpression = "match", [ "ref" ], Expression, ":", NEWLINE, INDENT,
+MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
 MatchArm      = "case", (CasePattern | LiteralPattern | "_"), ArmSuite ;
 LiteralPattern = [ "-" ], Number | String | "True" | "False" ;
