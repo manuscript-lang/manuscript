@@ -1,17 +1,24 @@
 //! Buffered standard output and unbuffered standard error.
-use crate::global::Global;
+use crate::global::Process;
 use crate::sys;
 use ms_rt_abi::{StrVal, VecVal};
 
 const BUF_LIMIT: usize = 64 * 1024;
-static OUT: Global<Vec<u8>> = Global::new(Vec::new());
+static OUT: Process<Vec<u8>> = Process::new(Vec::new());
 /// 0 unknown, 1 pipe/file, 2 terminal.
-static TTY: Global<u8> = Global::new(0);
+static TTY: Process<u8> = Process::new(0);
 
 /// Bit 0: standard output was closed; bit 1: standard error was closed.
-static CLOSED: Global<u8> = Global::new(0);
+static CLOSED: Process<u8> = Process::new(0);
+
+/// Serializes whole writes from worker isolates, which skip the main isolate's buffer.
+static WORKER_OUT: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 pub fn flush_stdout() {
+    // The buffer belongs to the main isolate; a worker writes straight through.
+    if crate::isolate::is_worker() {
+        return;
+    }
     // SAFETY: single threaded access to the output buffer (the fault path may
     // run on the same thread inside a write; the buffer is only appended to).
     let out = unsafe { &mut *OUT.ptr() };
@@ -22,6 +29,11 @@ pub fn flush_stdout() {
 }
 
 pub fn write_stdout(data: &[u8]) {
+    if crate::isolate::is_worker() {
+        let _turn = WORKER_OUT.lock().unwrap_or_else(|e| e.into_inner());
+        sys::write_all(sys::STDOUT, data);
+        return;
+    }
     // SAFETY: single threaded access.
     let (out, tty) = unsafe { (&mut *OUT.ptr(), &mut *TTY.ptr()) };
     if *tty == 0 {

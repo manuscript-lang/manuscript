@@ -414,6 +414,7 @@ impl Checker {
         };
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
+        self.check_worker_entry(&callable, &resolved);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -432,6 +433,29 @@ impl Checker {
             i.no_return = true;
         }
         i
+    }
+
+    /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
+    /// that captured anything: `WorkerGroup.spawn` takes the name of a top-level `def`.
+    fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
+        let is_spawn = callable.method.as_ref().is_some_and(|m| {
+            m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
+                && m.decl
+                    .as_ref()
+                    .is_some_and(|d| d.name().as_str() == "spawn")
+        });
+        if !is_spawn {
+            return;
+        }
+        let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {
+            return;
+        };
+        if self.function_symbol(entry.value).is_none() {
+            self.type_error(
+                entry.value.pos,
+                "a worker entry must be the name of a top-level def; lambdas, local functions and captured values cannot run on another thread, so move the work into a def and send what it needs through the worker's channel",
+            );
+        }
     }
 
     /// Checks a call to the named callable. A missing argument is reported at

@@ -7,7 +7,7 @@ use crate::sys::{self, Borrowed};
 use std::sync::atomic::Ordering;
 
 use ms_rt::fault::{
-    msrt_cancel_flag, msrt_cancelled, msrt_cleanup_discard, msrt_cleanup_push, msrt_shield_enter,
+    cancel_flag, msrt_cancelled, msrt_cleanup_discard, msrt_cleanup_push, msrt_shield_enter,
     msrt_shield_exit,
 };
 #[cfg(unix)]
@@ -36,7 +36,7 @@ pub fn cleanup_discard(handle: usize) {
 pub fn cancel_requested() -> bool {
     // The flag is a static `u8` the runtime updates from a signal handler; atomics have the
     // layout of the integer and relaxed loads are what the ABI prescribes.
-    msrt_cancel_flag.load(Ordering::Relaxed) != 0
+    cancel_flag().load(Ordering::Relaxed) != 0
 }
 
 /// Unwinds the program through the runtime's cancellation path when a stop was requested.

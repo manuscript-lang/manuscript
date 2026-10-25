@@ -5,16 +5,26 @@
 //! and the page's class is recorded in a side table, so `free` needs no size.
 //! Large blocks go to the system allocator, with freed blocks up to [`LARGE_MAX`] kept in
 //! per-size free lists so growing and rebuilding big lists does not map and unmap memory
-//! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB). Single
-//! threaded: no locks.
-use crate::global::Global;
+//! (musl's malloc does a `mmap`/`munmap` pair for every block above a few KiB).
+//!
+//! Each isolate thread owns one arena and allocates from it without locks. A thread that never
+//! claimed an arena (pool and helper threads) allocates from the system allocator. A block
+//! freed on a thread other than its owner is pushed onto the owner's lock-free remote-free
+//! stack, found by address in a small registry, and the owner drains it on its next slow-path
+//! allocation (see `proposals/worker-threads.md`).
 use crate::sys;
 use core::ptr::null_mut;
+use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 pub const MAX_SMALL: usize = 2048;
 const PAGE_SHIFT: usize = 16;
 const PAGE_SIZE: usize = 1 << PAGE_SHIFT;
-const ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 16 << 30 };
+/// Address space reserved for the main isolate's arena.
+const MAIN_ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 16 << 30 };
+/// Address space reserved for a worker isolate's arena (committed on demand).
+const WORKER_ARENA_SIZE: usize = if cfg!(miri) { 64 << 20 } else { 2 << 30 };
+/// Most arenas the registry can hold; further claims fall back to the system allocator.
+const MAX_ARENAS: usize = 256;
 /// Arena growth step where memory is committed explicitly.
 const COMMIT_STEP: usize = 4 << 20;
 const NUM_CLASSES: usize = 24;
@@ -85,12 +95,44 @@ struct State {
     large_free: [*mut u8; NUM_LARGE],
     /// Usable bytes held in `large_free`.
     large_cached: usize,
+    /// The arena is mapped (or mapping failed and the system allocator serves everything).
     initialized: bool,
+    /// This thread asked for an arena; set by [`claim_arena`].
+    claimed: bool,
+    /// Whether the claim is the main isolate's (a larger arena).
+    main: bool,
+    /// Registry slot of this thread's arena (valid once `initialized` and `base != 0`).
+    slot: usize,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
 }
 
-static STATE: Global<State> = Global::new(State {
+/// One registered arena: what another thread needs to free a block into it.
+struct Arena {
+    base: AtomicUsize,
+    end: AtomicUsize,
+    page_class: AtomicPtr<u8>,
+    /// Head of the blocks other threads freed into this arena.
+    remote: AtomicPtr<u8>,
+}
+
+impl Arena {
+    const fn new() -> Self {
+        Arena {
+            base: AtomicUsize::new(0),
+            end: AtomicUsize::new(0),
+            page_class: AtomicPtr::new(null_mut()),
+            remote: AtomicPtr::new(null_mut()),
+        }
+    }
+}
+
+static ARENAS: [Arena; MAX_ARENAS] = [const { Arena::new() }; MAX_ARENAS];
+/// Slots handed out so far (never reused: a retired arena stays registered, see the proposal).
+static ARENA_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+crate::isolate_static! {
+static STATE: State = State {
     base: 0,
     end: 0,
     next_page: 0,
@@ -102,23 +144,150 @@ static STATE: Global<State> = Global::new(State {
     large_free: [null_mut(); NUM_LARGE],
     large_cached: 0,
     initialized: false,
+    claimed: false,
+    main: false,
+    slot: 0,
     #[cfg(any(test, feature = "stats"))]
     live: 0,
-});
+};
+}
 
 #[cold]
 fn init(s: &mut State) {
     s.initialized = true;
-    let arena = sys::map_anon(ARENA_SIZE);
-    let table = sys::map_anon(ARENA_SIZE >> PAGE_SHIFT);
-    if arena.is_null() || table.is_null() || !sys::commit(table, ARENA_SIZE >> PAGE_SHIFT) {
+    let size = if s.main {
+        MAIN_ARENA_SIZE
+    } else {
+        WORKER_ARENA_SIZE
+    };
+    let slot = ARENA_COUNT.fetch_add(1, Ordering::Relaxed);
+    if slot >= MAX_ARENAS {
+        ARENA_COUNT.store(MAX_ARENAS, Ordering::Relaxed);
+        // Everything falls back to the system allocator.
+        return;
+    }
+    let arena = sys::map_anon(size);
+    let table = sys::map_anon(size >> PAGE_SHIFT);
+    if arena.is_null() || table.is_null() || !sys::commit(table, size >> PAGE_SHIFT) {
         // Everything falls back to the system allocator.
         return;
     }
     s.base = arena as usize;
-    s.end = s.base + ARENA_SIZE;
+    s.end = s.base + size;
     s.committed = 0;
     s.page_class = table;
+    s.slot = slot;
+    let a = &ARENAS[slot];
+    a.page_class.store(table, Ordering::Relaxed);
+    a.end.store(s.end, Ordering::Relaxed);
+    // Published last: a reader that sees `base` sees the rest.
+    a.base.store(s.base, Ordering::Release);
+}
+
+/// Gives the calling thread an arena; the first allocation maps it. `main` selects the
+/// main isolate's larger reservation. Threads that never call this use the system allocator.
+pub fn claim_arena(main: bool) {
+    // SAFETY: this isolate's allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    s.claimed = true;
+    s.main = main;
+}
+
+/// Returns the calling thread's arena to the system as its isolate ends. Blocks still live in
+/// it are gone; the owner registry forgets the arena first, so a late free of one of its blocks
+/// falls through to the system allocator's path and must not happen (isolates copy what they
+/// hand out).
+pub fn release_arena() {
+    // SAFETY: this isolate's allocator state; nothing allocates from it afterwards.
+    let s = unsafe { &mut *STATE.ptr() };
+    if s.base != 0 {
+        let a = &ARENAS[s.slot];
+        a.base.store(0, Ordering::Release);
+        a.remote.store(null_mut(), Ordering::Relaxed);
+        let size = s.end - s.base;
+        // SAFETY: the mappings were made by `init` and are no longer reachable.
+        unsafe {
+            sys::unmap(s.base as *mut u8, size);
+            sys::unmap(s.page_class, size >> PAGE_SHIFT);
+        }
+    }
+    for class in 0..NUM_LARGE {
+        let mut p = s.large_free[class];
+        while !p.is_null() {
+            // SAFETY: cached large blocks are live system blocks linked through word 0.
+            unsafe {
+                let next = *(p as *mut *mut u8);
+                sys::free(p.cast());
+                p = next;
+            }
+        }
+        s.large_free[class] = null_mut();
+    }
+    s.large_cached = 0;
+    s.free = [null_mut(); NUM_CLASSES];
+    s.bump = [null_mut(); NUM_CLASSES];
+    s.bump_end = [null_mut(); NUM_CLASSES];
+    s.base = 0;
+    s.end = 0;
+    s.initialized = true;
+    s.claimed = false;
+}
+
+/// Whether the calling thread has an arena (or will map one on its first small allocation).
+#[inline(always)]
+pub fn has_arena() -> bool {
+    // SAFETY: this isolate's allocator state.
+    unsafe { (*STATE.ptr()).claimed }
+}
+
+/// The registered arena holding `p`, if any thread's. `own` is the caller's state: its own
+/// arena was already checked, and when it is the only arena nothing else can hold `p`.
+#[inline(never)]
+fn arena_of(own: &State, p: *mut u8) -> Option<&'static Arena> {
+    let n = ARENA_COUNT.load(Ordering::Relaxed).min(MAX_ARENAS);
+    if n == 0 || (n == 1 && own.base != 0) {
+        return None;
+    }
+    let addr = p as usize;
+    ARENAS[..n].iter().find(|a| {
+        let base = a.base.load(Ordering::Acquire);
+        base != 0 && addr.wrapping_sub(base) < a.end.load(Ordering::Relaxed) - base
+    })
+}
+
+/// Pushes a block onto its owning arena's remote-free stack.
+///
+/// # Safety
+/// `p` is a live small block inside `arena`, owned by the caller.
+unsafe fn remote_free(arena: &Arena, p: *mut u8) {
+    let mut head = arena.remote.load(Ordering::Relaxed);
+    loop {
+        // SAFETY: a freed block is at least 16 bytes and holds the link in its first word.
+        unsafe { *(p as *mut *mut u8) = head };
+        match arena
+            .remote
+            .compare_exchange_weak(head, p, Ordering::Release, Ordering::Relaxed)
+        {
+            Ok(_) => return,
+            Err(h) => head = h,
+        }
+    }
+}
+
+/// Moves the blocks other threads freed into this arena onto its free lists.
+#[cold]
+fn drain_remote(s: &mut State) {
+    let mut p = ARENAS[s.slot].remote.swap(null_mut(), Ordering::Acquire);
+    while !p.is_null() {
+        // SAFETY: remote blocks are small arena blocks of this arena with the link in word 0.
+        unsafe {
+            let next = *(p as *mut *mut u8);
+            let class = *s.page_class.add((p as usize - s.base) >> PAGE_SHIFT) as usize;
+            *(p as *mut *mut u8) = s.free[class];
+            s.free[class] = p;
+            p = next;
+        }
+    }
 }
 
 #[cold]
@@ -131,14 +300,14 @@ fn refill(s: &mut State, class: usize) -> *mut u8 {
     if used > s.committed {
         let chunk = COMMIT_STEP
             .max(used - s.committed)
-            .min(ARENA_SIZE - s.committed);
+            .min(s.end - s.base - s.committed);
         if !sys::commit((s.base + s.committed) as *mut u8, chunk) {
             return null_mut();
         }
         s.committed += chunk;
     }
     s.next_page += 1;
-    // SAFETY: `page` indexes the side table, which has ARENA_SIZE/PAGE_SIZE entries.
+    // SAFETY: `page` indexes the side table, which has one entry per arena page.
     unsafe { *s.page_class.add(page) = class as u8 };
     let start = (s.base + page * PAGE_SIZE) as *mut u8;
     let size = CLASS_SIZES[class] as usize;
@@ -181,9 +350,13 @@ pub fn alloc(size: usize) -> *mut u8 {
 fn alloc_slow(size: usize) -> *mut u8 {
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &mut *STATE.ptr() };
-    if size <= MAX_SMALL {
+    if size <= MAX_SMALL && (s.initialized || s.claimed || cfg!(test)) {
         if !s.initialized {
+            s.claimed = true;
             init(s);
+        }
+        if s.base != 0 && !ARENAS[s.slot].remote.load(Ordering::Relaxed).is_null() {
+            drain_remote(s);
         }
         let class = class_of(size.max(1));
         let head = s.free[class];
@@ -286,6 +459,9 @@ pub unsafe fn free(p: *mut u8) {
             *(p as *mut *mut u8) = s.free[class];
             s.free[class] = p;
         }
+    } else if let Some(a) = arena_of(s, p) {
+        // SAFETY: a live small block of another isolate's arena, owned by the caller.
+        unsafe { remote_free(a, p) };
     } else {
         // SAFETY: not an arena block, so it came from malloc/realloc.
         unsafe { free_large(s, p) };
@@ -320,14 +496,26 @@ unsafe fn free_large(s: &mut State, p: *mut u8) {
 pub unsafe fn usable_size(p: *mut u8) -> usize {
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &*STATE.ptr() };
-    if in_arena(s, p) {
-        let page = (p as usize - s.base) >> PAGE_SHIFT;
-        // SAFETY: arena pointers have a recorded class.
-        unsafe { CLASS_SIZES[*s.page_class.add(page) as usize] as usize }
-    } else {
+    match small_size(s, p) {
+        Some(n) => n,
         // SAFETY: not an arena block, so it came from malloc/realloc.
-        unsafe { sys::malloc_usable_size(p.cast()) }
+        None => unsafe { sys::malloc_usable_size(p.cast()) },
     }
+}
+
+/// Block size when `p` is a small block of any isolate's arena.
+fn small_size(s: &State, p: *mut u8) -> Option<usize> {
+    let (base, table) = if in_arena(s, p) {
+        (s.base, s.page_class)
+    } else {
+        let a = arena_of(s, p)?;
+        (
+            a.base.load(Ordering::Relaxed),
+            a.page_class.load(Ordering::Relaxed),
+        )
+    };
+    // SAFETY: arena pointers have a recorded class.
+    Some(unsafe { CLASS_SIZES[*table.add((p as usize - base) >> PAGE_SHIFT) as usize] as usize })
 }
 
 /// Resizes a block, preserving the common prefix.
@@ -340,9 +528,7 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     }
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &mut *STATE.ptr() };
-    if in_arena(s, p) {
-        // SAFETY: `p` is a live arena block.
-        let old = unsafe { usable_size(p) };
+    if let Some(old) = small_size(s, p) {
         if new_size <= old && new_size > old / 2 {
             return p;
         }
@@ -527,64 +713,69 @@ mod tests {
         }
         assert_eq!(live_blocks(), before);
     }
+
+    #[test]
+    fn remote_free_returns_to_owner() {
+        let _g = lock();
+        let p = alloc(48) as usize;
+        std::thread::spawn(move || {
+            // SAFETY: a live block of the spawning thread's arena, freed once.
+            unsafe { free(p as *mut u8) };
+        })
+        .join()
+        .unwrap();
+        // The owner's next slow-path allocation drains the remote stack.
+        let mut got = false;
+        let mut v = Vec::new();
+        for _ in 0..4096 {
+            let q = alloc(48);
+            got |= q as usize == p;
+            v.push(q);
+        }
+        assert!(got);
+        for q in v {
+            // SAFETY: allocated above, freed once.
+            unsafe { free(q) };
+        }
+    }
 }
 
 /// Rust's global allocator for compiled programs (installed by `ms-native` on Linux).
 ///
 /// The standard-library natives (`Vec`, `String`, `HashMap` inside `ms-std-*`) then share the
-/// runtime's size-class allocator instead of libc's, which is several times slower per call. The
-/// arena is single threaded: only the thread that runs `main` touches it, and every other thread
-/// uses the system allocator. A block that another thread frees from the arena is leaked.
+/// runtime's size-class allocator instead of libc's, which is several times slower per call. Only
+/// threads that claimed an arena (isolates) use it; every other thread uses the system allocator.
+/// A block that another thread frees is routed to its owner's remote-free stack.
 #[cfg(target_os = "linux")]
 pub struct StdHeap;
 
 #[cfg(target_os = "linux")]
-mod owner {
-    use core::sync::atomic::{AtomicUsize, Ordering};
-
-    /// The thread that owns the arena; 0 until the runtime thread starts, when any thread may use it.
-    static OWNER: AtomicUsize = AtomicUsize::new(0);
-
-    std::thread_local! {
-        static IS_OWNER: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
-    }
-
-    pub fn claim() {
-        OWNER.store(crate::sys::thread_self(), Ordering::Relaxed);
-        IS_OWNER.with(|c| c.set(true));
-    }
-
-    #[inline(always)]
-    pub fn is_current() -> bool {
-        IS_OWNER.with(|c| c.get()) || OWNER.load(Ordering::Relaxed) == 0
-    }
-}
-
-#[cfg(target_os = "linux")]
-pub fn claim_arena() {
-    owner::claim();
-}
-
-#[cfg(target_os = "linux")]
 mod std_heap {
-    use super::{MAX_SMALL, STATE, StdHeap, in_arena, owner};
+    use super::{MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena};
     use core::alloc::{GlobalAlloc, Layout};
     use std::alloc::System;
 
     /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
-    /// library out of the arena so leak checks see only program allocations.
+    /// library out of the arena so leak checks see only program allocations. A worker's arena
+    /// ends with the worker, and Rust code can keep what it allocates in process-wide state
+    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator.
     #[inline(always)]
     fn arena_ok(layout: Layout) -> bool {
-        !cfg!(feature = "stats") && layout.align() <= 16 && owner::is_current()
+        !cfg!(feature = "stats")
+            && layout.align() <= 16
+            && has_arena()
+            && !crate::isolate::is_worker()
     }
 
+    /// Whether `p` is a small block of any isolate's arena.
     #[inline(always)]
     fn owns(p: *mut u8) -> bool {
-        // SAFETY: single field reads of the allocator state.
-        in_arena(unsafe { &*STATE.ptr() }, p)
+        // SAFETY: single field reads of this isolate's allocator state.
+        let s = unsafe { &*STATE.ptr() };
+        in_arena(s, p) || arena_of(s, p).is_some()
     }
 
-    // SAFETY: blocks come from the arena or the system allocator, and `dealloc` and `realloc`
+    // SAFETY: blocks come from an arena or the system allocator, and `dealloc` and `realloc`
     // tell them apart by address, so each is released by the allocator that produced it.
     unsafe impl GlobalAlloc for StdHeap {
         #[inline]
@@ -609,19 +800,17 @@ mod std_heap {
 
         #[inline]
         unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
-            if !owns(p) {
-                if layout.size() > MAX_SMALL && owner::is_current() {
-                    // SAFETY: a large block is a system block either way; the runtime keeps
-                    // freed ones for reuse, where the system allocator would unmap them and
-                    // fault the next block in again.
-                    unsafe { super::free(p) };
-                } else {
-                    // SAFETY: not an arena block, so the system allocator produced it.
-                    unsafe { System.dealloc(p, layout) };
-                }
-            } else if owner::is_current() {
-                // SAFETY: an arena block freed on the arena's thread.
+            if owns(p) {
+                // SAFETY: an arena block; `free` routes it to its owner.
                 unsafe { super::free(p) };
+            } else if layout.size() > MAX_SMALL && arena_ok(layout) {
+                // SAFETY: a large block is a system block either way; the runtime keeps
+                // freed ones for reuse, where the system allocator would unmap them and
+                // fault the next block in again.
+                unsafe { super::free(p) };
+            } else {
+                // SAFETY: not an arena block, so the system allocator produced it.
+                unsafe { System.dealloc(p, layout) };
             }
         }
 

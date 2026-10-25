@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn a_post_before_the_park_returns_at_once_and_frees_the_token() {
         let _g = lock();
-        task::reset_for_tests();
+        task::teardown();
         let token = msrt_channel_token();
         assert_ne!(token, 0);
         msrt_channel_post(token);
@@ -49,6 +49,6 @@ mod tests {
         // A late post to the freed token is dropped, and the slot is reused under a new id.
         msrt_channel_post(token);
         assert_ne!(msrt_channel_token(), token);
-        task::reset_for_tests();
+        task::teardown();
     }
 }

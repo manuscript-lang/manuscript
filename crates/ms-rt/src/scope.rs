@@ -3,7 +3,6 @@
 //!
 //! A task started in a scope may carry its own time limit; the scope may carry one for every task,
 //! counted from the scope's creation. A task ends as returned (0), timed out (1) or cancelled (2); a task that no longer exists reads as 3.
-use crate::global::Global;
 use crate::task;
 use ms_rt_abi::Closure;
 
@@ -16,9 +15,13 @@ struct Scope {
     created: i64,
 }
 
-static SCOPES: Global<Vec<Option<Scope>>> = Global::new(Vec::new());
-/// The generation each slot last had, kept when its scope is closed.
-static GENERATIONS: Global<Vec<i64>> = Global::new(Vec::new());
+crate::isolate_static! {
+    static SCOPES: Vec<Option<Scope>> = Vec::new();
+}
+crate::isolate_static! {
+    /// The generation each slot last had, kept when its scope is closed.
+    static GENERATIONS: Vec<i64> = Vec::new();
+}
 
 fn scopes() -> &'static mut Vec<Option<Scope>> {
     // SAFETY: every task runs on the one runtime thread.

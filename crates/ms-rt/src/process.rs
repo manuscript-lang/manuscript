@@ -1,10 +1,10 @@
 //! Process exit and exported process helpers.
-use crate::global::Global;
+use crate::global::Process;
 use crate::sys;
 
 /// Natives' cleanups that must run when the program ends (restoring the terminal, releasing the
 /// shared standard-input handle), in registration order.
-static EXIT_HOOKS: Global<[Option<extern "C" fn()>; 4]> = Global::new([None; 4]);
+static EXIT_HOOKS: Process<[Option<extern "C" fn()>; 4]> = Process::new([None; 4]);
 
 /// Registers a hook that runs after output is flushed and before the process ends, whether
 /// `main` returns or the program exits. A registered hook stays registered; past four, later
