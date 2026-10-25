@@ -867,9 +867,11 @@ impl FnLower<'_> {
         self.b.iconst(0)
     }
 
-    /// The result of an encoder whose value has no JSON form; nothing was written.
-    fn jno_form(&mut self) -> Value {
-        self.b.iconst(-1)
+    /// The result of an encoder whose value has no JSON form; nothing was written. The omission
+    /// is noted for strict `stringify`.
+    fn jno_form(&mut self, w: Value) -> Result<Value, Error> {
+        self.jw("msrt_json_w_no_form", &[w])?;
+        Ok(self.b.iconst(-1))
     }
 
     /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
@@ -895,7 +897,7 @@ impl FnLower<'_> {
                 self.jw("msrt_json_w_string", &[w, value])?;
                 return Ok(self.jwritten());
             }
-            "Unit" | "Never" => return Ok(self.jno_form()),
+            "Unit" | "Never" => return self.jno_form(w),
             _ => {}
         }
         if t.is_std("Optional") {
@@ -1007,7 +1009,7 @@ impl FnLower<'_> {
             }
             ct::Kind::Alternative => self.jencode_alternative(t, mt, w, value),
             // No JSON form: omitted, `null` in a list, `InvalidData` at the root.
-            _ => Ok(self.jno_form()),
+            _ => self.jno_form(w),
         }
     }
 
@@ -1099,7 +1101,7 @@ impl FnLower<'_> {
         self.b.def_var(out, written);
         self.b.br(join, &[]);
         self.b.switch_to(no);
-        let none = self.jno_form();
+        let none = self.jno_form(w)?;
         self.b.def_var(out, none);
         self.b.br(join, &[]);
         self.b.seal_block(join);
@@ -1185,7 +1187,7 @@ impl FnLower<'_> {
             || key.is_std("Decimal")
             || jplain_alt(key);
         if !keyable {
-            return Ok(self.jno_form());
+            return self.jno_form(w);
         }
         self.jw("msrt_json_w_begin_object", &[w])?;
         let (key, value_ty) = (key.clone(), value_ty.clone());
@@ -1475,7 +1477,7 @@ impl FnLower<'_> {
         Ok(out)
     }
 
-    /// `stringify(value, max_bytes, indent)`.
+    /// `stringify(value, max_bytes, indent, strict)`.
     pub(crate) fn json_stringify(
         &mut self,
         t: ct::Ty,
@@ -1507,6 +1509,18 @@ impl FnLower<'_> {
         let written = self.b.call(enc, &[writer, value]);
         let zero = self.b.iconst(0);
         let has_form = self.b.icmp(Cc::Ge, written, zero);
+        // `strict` also rejects a value left out below the root.
+        let has_form = match args.iter().find(|a| a.name.as_str() == "strict") {
+            Some(a) => {
+                let strict = self.borrow(a.val);
+                let lost = self.call_runtime("msrt_json_w_lost", &[writer], MTy::BOOL)?;
+                let bad = self.b.binop(Op::And, strict, lost);
+                let f = self.b.bconst(false);
+                let intact = self.b.icmp(Cc::Eq, bad, f);
+                self.b.binop(Op::And, has_form, intact)
+            }
+            None => has_form,
+        };
         let TyKind::Alt(ra) = self.b.m.types.kind(rty).clone() else {
             return Err(Error::new("stringify returns a Result"));
         };

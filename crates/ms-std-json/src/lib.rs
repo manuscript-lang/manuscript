@@ -981,6 +981,8 @@ pub struct Writer {
     width: usize,
     err: Option<Fail>,
     levels: Vec<Level>,
+    /// A value without a JSON form was left out.
+    pub lost: bool,
 }
 
 impl Writer {
@@ -1004,6 +1006,7 @@ impl Writer {
             width,
             err,
             levels: Vec::new(),
+            lost: false,
         }
     }
 
