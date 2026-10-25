@@ -806,7 +806,17 @@ extern "C" fn task_main() -> ! {
             let mut msg = crate::string::NO_STR;
             (*t).status = fault::msrt_guard_call(entry, (*t).arg, &mut msg);
             if (*t).status == 1 && (*t).fatal {
-                fault::exit_with_report(&msg, &(*t).started_by);
+                if isolate::is_worker() {
+                    // A worker contains its faults: the first one ends its main task, and
+                    // `run_worker_task` hands the report to the parent.
+                    let first = &mut *FATAL.ptr();
+                    if first.is_empty() {
+                        *first = fault::fault_report(&msg, &(*t).started_by);
+                        isolate::raise_cancel(isolate::id(), sys::SIGTERM as u8);
+                    }
+                } else {
+                    fault::exit_with_report(&msg, &(*t).started_by);
+                }
             }
             (*t).msg = msg;
         }
@@ -905,6 +915,11 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         let mut msg = crate::string::NO_STR;
         let status = msrt_task_join(h, &mut msg);
         fault::msrt_shield_exit();
+        let fatal = core::mem::take(&mut *FATAL.ptr());
+        if !fatal.is_empty() {
+            crate::string::release_opt(&msg);
+            return (1, fatal);
+        }
         let report = if msg.is_empty() {
             Vec::new()
         } else {
@@ -913,6 +928,11 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         crate::string::release_opt(&msg);
         (status, report)
     }
+}
+
+crate::isolate_static! {
+    /// The report of the first fatal task fault in a worker isolate, empty until one happens.
+    static FATAL: Vec<u8> = Vec::new();
 }
 
 /// Lets other runnable tasks run, then continues.
