@@ -32,7 +32,8 @@ test "a group collects its results in start order":
 - A task cancelled before it first ran never starts.
 - Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A Manuscript fault in a task on the main thread ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
+- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Values owned by the faulted task's frames are not released, so contain faults only where an occasional leak is acceptable (a per-request group in a server). A faulted task that is never collected is dropped when the group closes, with no report.
+- A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
 

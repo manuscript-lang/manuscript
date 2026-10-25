@@ -2,7 +2,7 @@
 //! them, or cancel and collect them, with one call.
 //!
 //! A task started in a scope may carry its own time limit; the scope may carry one for every task,
-//! counted from the scope's creation. A task ends as returned (0), timed out (1) or cancelled (2); a task that no longer exists reads as 3.
+//! counted from the scope's creation. A task ends as returned (0), timed out (1), cancelled (2) or faulted (4, only in a scope that contains faults); a task that no longer exists reads as 3.
 use crate::task;
 use ms_rt_abi::Closure;
 use std::collections::VecDeque;
@@ -14,6 +14,8 @@ struct Scope {
     tasks: VecDeque<u64>,
     /// Monotonic time the scope was created at, in nanoseconds.
     created: i64,
+    /// Whether a fault in a task of the scope is returned by join instead of ending the process.
+    contain: bool,
 }
 
 crate::isolate_static! {
@@ -58,6 +60,7 @@ pub extern "C-unwind" fn msrt_scope_new() -> i64 {
         generation,
         tasks: VecDeque::new(),
         created: crate::sys::monotonic_ns(),
+        contain: false,
     };
     if slot == all.len() {
         all.push(Some(scope));
@@ -65,6 +68,25 @@ pub extern "C-unwind" fn msrt_scope_new() -> i64 {
         all[slot] = Some(scope);
     }
     generation << 32 | (slot as i64 + 1)
+}
+
+/// Makes a fault in the scope's tasks end only that task: its join then reads as faulted (4).
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_scope_contain(scope: i64) {
+    if let Some(s) = find(scope) {
+        s.contain = true;
+    }
+}
+
+/// Takes the report of the fault the last join or wait of a scope returned as 4.
+///
+/// # Safety
+/// `out` must be valid for writing a string.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_scope_fault_message(out: *mut ms_rt_abi::StrVal) {
+    let report = task::take_fault_report();
+    // SAFETY: forwarded contract.
+    unsafe { *out = crate::string::from_bytes(&report) };
 }
 
 /// Starts `closure` as a task of `scope`. A negative limit means none. `task_limit_ns` counts from
@@ -91,7 +113,7 @@ pub unsafe extern "C-unwind" fn msrt_scope_spawn(
         limit = if limit < 0 { left } else { limit.min(left) };
     }
     // SAFETY: forwarded contract.
-    let handle = unsafe { task::spawn_closure(closure, limit) };
+    let handle = unsafe { task::spawn_closure(closure, limit, !s.contain) };
     s.tasks.push_back(handle);
     handle as i64
 }
@@ -132,6 +154,8 @@ pub extern "C-unwind" fn msrt_scope_wait(scope: i64) -> i64 {
         let outcome = unsafe { task::join_closure(handle, true) };
         worst = match (worst, outcome) {
             (_, 3) => worst,
+            (4, _) => 4,
+            (_, 4) => 4,
             (1, _) | (_, 1) => 1,
             (_, o) => worst.max(o),
         };

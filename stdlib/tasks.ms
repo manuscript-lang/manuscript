@@ -14,6 +14,10 @@ extern def msrt_scope_spawn(
     scope_limit_ns: Int
 ) -> Int
 
+extern def msrt_scope_contain(scope: Int) -> Unit
+
+extern def msrt_scope_fault_message() -> String
+
 extern def msrt_scope_started() -> Unit
 
 extern def msrt_scope_join(scope: Int, handle: Int, keep: Int) -> Int
@@ -36,6 +40,11 @@ export type TaskError:
     case Cancelled
     # The task's group was closed, or its result was already collected.
     case Closed
+    # The task faulted in a group that contains faults. Carries the fault report.
+    case Faulted(
+        # The fault report from the task: its message and stack.
+        message: String
+    )
 
 impl Error for TaskError:
     # Returns the fixed diagnostic `task: <reason>`.
@@ -44,8 +53,9 @@ impl Error for TaskError:
             case TimedOut: return "task: timed out"
             case Cancelled: return "task: cancelled"
             case Closed: return "task: closed"
+            case Faulted(message): return "task: fault: " + message
 
-# Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected) to a result.
+# Maps a runtime outcome (0 returned, 1 timed out, 2 cancelled, 3 closed or collected, 4 faulted) to a result.
 def outcome(code: Int) -> Result[Unit, TaskError]:
     if code == 1:
         return error(TaskError.TimedOut)
@@ -53,8 +63,17 @@ def outcome(code: Int) -> Result[Unit, TaskError]:
         return error(TaskError.Cancelled)
     if code == 3:
         return error(TaskError.Closed)
+    if code == 4:
+        return error(TaskError.Faulted(msrt_scope_fault_message()))
 
     return ok(())
+
+# A new runtime scope, one that contains task faults when `contain` is set.
+def new_scope(contain: Bool) -> Int:
+    let scope = msrt_scope_new()
+    if contain:
+        msrt_scope_contain(scope)
+    return scope
 
 # A limit in nanoseconds, or -1 for none.
 def nanos(limit: Optional[Duration]) -> Int:
@@ -271,12 +290,14 @@ impl Task[T, In, Out]:
 # `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
 # A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
-# A fault in a task ends the program. A task owns the values its closure captures; return results instead of sharing them.
+# A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
 export type TaskGroup[T, In = Unit, Out = Unit]:
     # Limit for every task started in the group, counted from the group's creation; none for no limit.
     timeout: Optional[Duration] = none
-    # Internal state: the runtime scope that owns the tasks.
-    scope: Int = msrt_scope_new()
+    # Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.
+    contain_faults: Bool = False
+    # Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
+    scope: Int = new_scope(contain_faults)
     # Internal state: the uncollected tasks in start order, changed through the shared handle so the group works as a `with` binding.
     tasks: Shared[List[Entry[T, In, Out]]] = share([])
 
