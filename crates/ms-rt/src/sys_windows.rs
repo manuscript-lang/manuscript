@@ -467,74 +467,8 @@ struct Context([u8; ctx::SIZE]);
 /// of `anchor_pc`; walker-internal frames below that function do not consume it.
 pub fn source_frame(
     anchor_pc: usize,
-    is_source: impl FnMut(usize) -> bool,
+    mut is_source: impl FnMut(usize) -> bool,
 ) -> Option<(usize, usize, usize, usize)> {
-    let (c, remaining) = unwind_to_source(anchor_pc, is_source)?;
-    let word = |off: usize| c.0.as_ptr().wrapping_add(off).cast::<usize>();
-    // SAFETY: offsets inside the CONTEXT.
-    unsafe {
-        Some((
-            word(ctx::PC).read_unaligned(),
-            word(ctx::SP).read_unaligned(),
-            word(ctx::FP).read_unaligned(),
-            remaining,
-        ))
-    }
-}
-
-/// Calls `visit(pc)` for each generated source frame, innermost first, found by unwinding with the
-/// native metadata: Cranelift points `rbp` into the frame, not at its saved-`rbp` record, so the
-/// register cannot be followed as a chain. Stops when `visit` returns false, at a frame that is not
-/// source (glue and native code), or when the shared raw-frame budget runs out.
-#[cfg(target_arch = "x86_64")]
-pub fn walk_unwound(
-    anchor_pc: usize,
-    mut is_source: impl FnMut(usize) -> bool,
-    mut visit: impl FnMut(usize) -> bool,
-) {
-    let Some((mut c, remaining)) = unwind_to_source(anchor_pc, &mut is_source) else {
-        return;
-    };
-    // SAFETY: as in `unwind_to_source`.
-    unsafe {
-        for _ in 0..remaining {
-            let word =
-                |c: &Context, off: usize| c.0.as_ptr().add(off).cast::<usize>().read_unaligned();
-            let (pc, sp) = (word(&c, ctx::PC), word(&c, ctx::SP));
-            if !is_source(pc) || !visit(pc) {
-                return;
-            }
-            let mut image = 0;
-            let entry = RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut());
-            if entry.is_null() {
-                return;
-            }
-            let mut handler = core::ptr::null_mut();
-            let mut establisher = 0;
-            RtlVirtualUnwind(
-                0,
-                image,
-                pc,
-                entry,
-                c.0.as_mut_ptr().cast(),
-                &mut handler,
-                &mut establisher,
-                core::ptr::null_mut(),
-            );
-            let (next_pc, next_sp) = (word(&c, ctx::PC), word(&c, ctx::SP));
-            if next_sp <= sp || next_pc == 0 {
-                return;
-            }
-        }
-    }
-}
-
-/// Unwinds from the caller through native frames to the first source frame: its context and the
-/// raw-frame budget left.
-fn unwind_to_source(
-    anchor_pc: usize,
-    mut is_source: impl FnMut(usize) -> bool,
-) -> Option<(Context, usize)> {
     let mut c = Context([0; ctx::SIZE]);
     let (lo, hi) = stack_limits();
     // SAFETY: aligned, correctly sized architecture-specific CONTEXT. Native
@@ -556,8 +490,7 @@ fn unwind_to_source(
             if is_source(pc) {
                 // The generated walker consumes this first source frame. A
                 // missing anchor must never grant it a fresh/full budget.
-                let _ = fp;
-                return Some((c, budget.remaining()?));
+                return Some((pc, sp, fp, budget.remaining()?));
             }
             let mut image = 0;
             let entry = RtlLookupFunctionEntry(pc, &mut image, core::ptr::null_mut());

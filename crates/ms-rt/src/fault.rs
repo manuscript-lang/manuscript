@@ -475,7 +475,7 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 }
 
 /// How far above a frame's stack pointer to look for its frame record, in bytes.
-#[cfg(any(all(windows, target_arch = "aarch64"), test))]
+#[cfg(any(windows, test))]
 const FRAME_RECORD_SCAN: usize = 4096;
 
 /// Windows native frames do not use the generated code's frame layout. Recover
@@ -484,18 +484,22 @@ const FRAME_RECORD_SCAN: usize = 4096;
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
 unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
-    // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record (by an amount that
-    // differs per function), so the register cannot be followed as a chain: unwind each frame.
+    let Some((pc, sp, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
+    else {
+        return;
+    };
+    let (lo, hi) = sys::stack_limits();
+    // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record, by an amount that
+    // differs per function, and the CONTEXT register can be a caller's: find each frame's own
+    // record by its contents instead of following the register.
     #[cfg(target_arch = "x86_64")]
-    sys::walk_unwound(anchor, |pc| find_func(t, pc).is_some(), f);
+    // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
+    unsafe {
+        let _ = fp;
+        walk_scanned_frames(pc, sp, t, lo, hi, remaining, f)
+    }
     #[cfg(not(target_arch = "x86_64"))]
     {
-        let Some((pc, sp, fp, remaining)) =
-            sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
-        else {
-            return;
-        };
-        let (lo, hi) = sys::stack_limits();
         // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
         // register pointing at a caller's record, so it finds the generated frame's own record.
         let fp = if anchor == capture_frames as *const () as usize {
@@ -510,12 +514,42 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
     }
 }
 
+/// Visits the source frames above the one running at `pc` with stack pointer `sp`, finding each
+/// frame's record with [`frame_record`]. Ends at the first frame no record leads out of.
+///
+/// # Safety
+/// `sp..hi` is live stack memory.
+#[cfg(all(windows, target_arch = "x86_64"))]
+unsafe fn walk_scanned_frames(
+    mut pc: usize,
+    mut sp: usize,
+    t: &Tables,
+    lo: usize,
+    hi: usize,
+    remaining: usize,
+    mut f: impl FnMut(usize) -> bool,
+) {
+    for _ in 0..remaining {
+        if find_func(t, pc).is_none() || !f(pc) {
+            break;
+        }
+        // SAFETY: forwarded; a found record lies below `hi`.
+        let Some(at) = (unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) })
+        else {
+            break;
+        };
+        // SAFETY: `frame_record` checked `at + 16 <= hi`.
+        pc = unsafe { *((at + 8) as *const usize) };
+        sp = at + 16;
+    }
+}
+
 /// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
 /// return address `is_source` accepts and whose saved fp lies further up the stack.
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
-#[cfg(any(all(windows, target_arch = "aarch64"), test))]
+#[cfg(any(windows, test))]
 unsafe fn frame_record(
     sp: usize,
     lo: usize,
