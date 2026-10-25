@@ -1,0 +1,1250 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu_count": 5,
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "mode": "processes",
+    "members": 4,
+    "duration": 180.0,
+    "pid": 473005,
+    "max_requests_per_member": 64,
+    "overload_clients": 384,
+    "binary_sha256": "b03467e4fe4baf23fcde72e0fe21f315d067039a4813ff04cb31f05895ebebbf",
+    "build": "Release",
+    "commit": "0385da26a0bfcd3c891f332ba6883ed7c8372038",
+    "working_tree": true,
+    "shared_runner": true,
+    "/sys/fs/cgroup/cpu.max": "400000 100000",
+    "/sys/fs/cgroup/memory.max": "17179869184",
+    "baseline": [
+      {
+        "pid": 473005,
+        "rss_kib": 1912,
+        "threads": 2,
+        "fds": 19,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-processes-cache-diagnostic.server.log": 2,
+          "socket:": 9,
+          "anon_inode:": 5,
+          "pipe:": 2
+        }
+      },
+      {
+        "pid": 473017,
+        "rss_kib": 1948,
+        "threads": 3,
+        "fds": 13,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-processes-cache-diagnostic.server.log": 2,
+          "socket:": 4,
+          "anon_inode:": 4,
+          "pipe:": 2
+        }
+      },
+      {
+        "pid": 473014,
+        "rss_kib": 2220,
+        "threads": 3,
+        "fds": 13,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-processes-cache-diagnostic.server.log": 2,
+          "socket:": 4,
+          "anon_inode:": 4,
+          "pipe:": 2
+        }
+      },
+      {
+        "pid": 473010,
+        "rss_kib": 1948,
+        "threads": 3,
+        "fds": 13,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-processes-cache-diagnostic.server.log": 2,
+          "socket:": 4,
+          "anon_inode:": 4,
+          "pipe:": 2
+        }
+      },
+      {
+        "pid": 473008,
+        "rss_kib": 1944,
+        "threads": 3,
+        "fds": 13,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-processes-cache-diagnostic.server.log": 2,
+          "socket:": 4,
+          "anon_inode:": 4,
+          "pipe:": 2
+        }
+      }
+    ],
+    "exit_code": 143,
+    "elapsed": 180.23236865899526
+  },
+  "records": [
+    {
+      "cycle": 1,
+      "phase": "overload",
+      "elapsed": 20.312193669000408,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1888,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3544,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3364,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3520,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3492,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.138488596996467,
+      "statuses": {
+        "503": 8297,
+        "200": 19550
+      },
+      "errors": {},
+      "members": {
+        "2": 2347,
+        "0": 2145,
+        "3": 7819,
+        "1": 7239
+      },
+      "error_samples": [],
+      "throughput": 1382.7750710226194,
+      "p50_ms": 238.002359001257,
+      "p99_ms": 1094.5554339996306
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 30.34206692600128,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1800,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3424,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3244,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3400,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3372,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17552,
+          "external": 1724416
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1757184
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1769472
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17296,
+          "external": 1699840
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "phase": "recovery",
+      "elapsed": 50.529188782995334,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1768,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3464,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3288,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3452,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3420,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.007371737003268,
+      "statuses": {
+        "200": 16455
+      },
+      "errors": {},
+      "members": {
+        "1": 3614,
+        "2": 3114,
+        "3": 5958,
+        "0": 3769
+      },
+      "error_samples": [],
+      "throughput": 822.4468569035871,
+      "p50_ms": 13.162483999622054,
+      "p99_ms": 95.2426439980627
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 60.56787630699546,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1716,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3384,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3208,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3372,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3340,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1687552
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17552,
+          "external": 1642496
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1675264
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17296,
+          "external": 1634304
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "overload",
+      "elapsed": 80.84084219999932,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1712,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3516,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3232,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3404,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3364,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.167619195999578,
+      "statuses": {
+        "503": 6467,
+        "200": 19527
+      },
+      "errors": {},
+      "members": {
+        "0": 1480,
+        "3": 8507,
+        "1": 7484,
+        "2": 2056
+      },
+      "error_samples": [],
+      "throughput": 1288.897799357305,
+      "p50_ms": 301.2929090036778,
+      "p99_ms": 578.1462869999814
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 90.86622606899618,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1700,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3448,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3184,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3336,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3316,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17552,
+          "external": 1642496
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17296,
+          "external": 1638400
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1675264
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1712128
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "recovery",
+      "elapsed": 110.92791987399687,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1696,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3520,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3256,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3420,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3388,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.00238799500221,
+      "statuses": {
+        "200": 14847
+      },
+      "errors": {},
+      "members": {
+        "3": 5795,
+        "1": 6280,
+        "2": 971,
+        "0": 1801
+      },
+      "error_samples": [],
+      "throughput": 742.2613741774065,
+      "p50_ms": 19.107561005512252,
+      "p99_ms": 59.50974299776135
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 120.96039370899962,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1696,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3492,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3228,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3392,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3360,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1679360
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17552,
+          "external": 1646592
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1716224
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "overload",
+      "elapsed": 141.30246729699866,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1688,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3516,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3224,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3484,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3376,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.154576844994153,
+      "statuses": {
+        "503": 3473,
+        "200": 14381
+      },
+      "errors": {},
+      "members": {
+        "2": 1450,
+        "1": 5866,
+        "3": 4547,
+        "0": 2518
+      },
+      "error_samples": [],
+      "throughput": 885.8533789775123,
+      "p50_ms": 414.52747100265697,
+      "p99_ms": 863.8472829989041
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 151.33889803799684,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1684,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3452,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3180,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3440,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3312,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1642496
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1708032
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1732608
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17296,
+          "external": 1622016
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "recovery",
+      "elapsed": 171.44608355999662,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1648,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3492,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3208,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3468,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3340,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 20.004406651001773,
+      "statuses": {
+        "200": 22043
+      },
+      "errors": {},
+      "members": {
+        "0": 6674,
+        "1": 8386,
+        "2": 2607,
+        "3": 4376
+      },
+      "error_samples": [],
+      "throughput": 1101.907213973584,
+      "p50_ms": 11.855422002554405,
+      "p99_ms": 53.50970399740618
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 180.01092716499988,
+      "resources": [
+        {
+          "pid": 473005,
+          "rss_kib": 1616,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473017,
+          "rss_kib": 3392,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473014,
+          "rss_kib": 3108,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473010,
+          "rss_kib": 3368,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 473008,
+          "rss_kib": 3240,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-processes-cache-diagnostic.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17744,
+          "external": 1748992
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1724416
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17808,
+          "external": 1658880
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 17296,
+          "external": 1581056
+        }
+      }
+    }
+  ]
+}

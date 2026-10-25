@@ -47,6 +47,12 @@ unsafe extern "C-unwind" fn release_write(arg: *mut u8) {
     unsafe { (*arg.cast::<IpcLink>()).writing.set(false) }
 }
 
+#[allow(unsafe_code)]
+unsafe extern "C-unwind" fn release_read_buffer(arg: *mut u8) {
+    // SAFETY: read registers its unmoved stack buffer until the operation returns.
+    unsafe { core::ptr::drop_in_place(arg.cast::<Vec<u8>>()) }
+}
+
 impl Drop for Busy<'_> {
     fn drop(&mut self) {
         ms_rt::fault::msrt_cleanup_discard(self.cleanup);
@@ -59,7 +65,8 @@ impl Drop for Busy<'_> {
 }
 
 impl IpcLink {
-    fn new(link: Link) -> Res<IpcLink> {
+    /// Splits an owned native endpoint after any descriptor bootstrap has completed.
+    pub fn new(link: Link) -> Res<IpcLink> {
         let (reader, writer) = link.split()?;
         Ok(IpcLink {
             reader: RefCell::new(Some(reader)),
@@ -108,7 +115,7 @@ impl IpcLink {
     }
 
     #[allow(unsafe_code)]
-    fn read(&self, max: i64) -> Vec<u8> {
+    pub fn read(&self, max: i64) -> Vec<u8> {
         if self.reading.get() {
             ms_rt::ffi::fault("another task is already reading this process channel");
         }
@@ -119,14 +126,23 @@ impl IpcLink {
             return Vec::new();
         };
         let mut buf = alloc::vec![0u8; max.clamp(1, 1 << 20) as usize];
+        // SAFETY: buf stays in this stack slot until the cleanup is discarded. Cancellation
+        // skips Rust Drop, so release its allocation explicitly before abandoning the frame.
+        let cleanup = unsafe {
+            ms_rt::fault::msrt_cleanup_push(
+                release_read_buffer,
+                core::ptr::from_mut(&mut buf).cast(),
+            )
+        };
         // A failed read means the other process is gone, the same as end of stream.
         let n = reader.read(&mut buf).unwrap_or(0);
+        ms_rt::fault::msrt_cleanup_discard(cleanup);
         buf.truncate(n);
         buf
     }
 
     #[allow(unsafe_code)]
-    fn write(&self, data: &[u8]) -> bool {
+    pub fn write(&self, data: &[u8]) -> bool {
         if self.writing.get() {
             ms_rt::ffi::fault("another task is already writing this process channel");
         }
@@ -136,7 +152,7 @@ impl IpcLink {
         writer.as_mut().is_some_and(|w| w.write(data).is_ok())
     }
 
-    fn close(&self) {
+    pub fn close(&self) {
         // A half in use by a parked task is left to that task; it ends when the pipe does.
         if !self.writing.get() {
             self.writer.borrow_mut().take();

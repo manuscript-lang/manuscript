@@ -755,6 +755,92 @@ mod std_heap {
     use core::alloc::{GlobalAlloc, Layout};
     use std::alloc::System;
 
+    /// Native zeroed blocks must consume the same size classes that deallocation
+    /// fills. Cold misses still use calloc so untouched pages stay lazy.
+    fn zeroed_large(size: usize) -> *mut u8 {
+        // SAFETY: this is the current isolate's state; arena_ok checked that
+        // the thread owns an arena and that the requested alignment is <= 16.
+        let state = unsafe { &mut *STATE.ptr() };
+        let mut request = size;
+        if size <= super::LARGE_MAX {
+            let class = super::large_class_up(size);
+            if !state.large_free[class].is_null() {
+                let block = super::alloc_large(state, size);
+                // SAFETY: the selected class holds at least size bytes.
+                unsafe { core::ptr::write_bytes(block, 0, size) };
+                return block;
+            }
+            request = super::large_size(class);
+        }
+        // SAFETY: calloc provides the required alignment and zeroed storage.
+        let block = unsafe { crate::sys::calloc(1, request) }.cast::<u8>();
+        #[cfg(any(test, feature = "stats"))]
+        if !block.is_null() {
+            state.live += 1;
+        }
+        block
+    }
+
+    #[cfg(all(test, not(feature = "stats")))]
+    #[test]
+    fn zeroed_large_blocks_reuse_cached_storage_and_clear_dirty_bytes() {
+        let _guard = crate::testutil::lock();
+        super::claim_arena(true);
+        let heap = StdHeap;
+        for size in [2049, 4097, 8193, 16385, 1 << 20] {
+            let layout = Layout::from_size_align(size, 16).unwrap();
+            // SAFETY: each allocation is accessed within its requested size and
+            // released once through the same allocator and layout.
+            unsafe {
+                let first = heap.alloc_zeroed(layout);
+                assert!(!first.is_null());
+                core::ptr::write_bytes(first, 0xA5, size);
+                heap.dealloc(first, layout);
+                let cached = (*STATE.ptr()).large_cached;
+                for _ in 0..8 {
+                    let next = heap.alloc_zeroed(layout);
+                    assert_eq!(next, first, "size {size} did not reuse its cache bin");
+                    assert!(
+                        core::slice::from_raw_parts(next, size)
+                            .iter()
+                            .all(|&b| b == 0)
+                    );
+                    core::ptr::write_bytes(next, 0x5A, size);
+                    heap.dealloc(next, layout);
+                    assert_eq!((*STATE.ptr()).large_cached, cached);
+                }
+            }
+        }
+    }
+
+    #[cfg(all(test, not(feature = "stats")))]
+    #[test]
+    fn zeroed_large_boundaries_and_high_alignment_remain_valid() {
+        let _guard = crate::testutil::lock();
+        super::claim_arena(true);
+        let heap = StdHeap;
+        for (size, alignment) in [
+            (super::LARGE_MAX - 1, 16),
+            (super::LARGE_MAX, 16),
+            (super::LARGE_MAX + 1, 16),
+            (8193, 64),
+        ] {
+            let layout = Layout::from_size_align(size, alignment).unwrap();
+            // SAFETY: accesses are in bounds, followed by one matching free.
+            unsafe {
+                let block = heap.alloc_zeroed(layout);
+                assert!(!block.is_null());
+                assert_eq!(block as usize % alignment, 0);
+                for index in [0, size / 2, size - 1] {
+                    assert_eq!(*block.add(index), 0);
+                    *block.add(index) = 0xA5;
+                }
+                heap.dealloc(block, layout);
+                assert!((*STATE.ptr()).large_cached <= super::LARGE_CACHE_LIMIT);
+            }
+        }
+    }
+
     /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
     /// library out of the arena so leak checks see only program allocations. A worker's arena
     /// ends with the worker, and Rust code can keep what it allocates in process-wide state
@@ -790,12 +876,14 @@ mod std_heap {
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-            if arena_ok(layout) && layout.size() <= MAX_SMALL {
-                super::alloc_zeroed(layout.size())
-            } else {
-                // SAFETY: forwarded; the system allocator hands out lazily zeroed pages for big blocks.
-                unsafe { System.alloc_zeroed(layout) }
+            if arena_ok(layout) {
+                if layout.size() <= MAX_SMALL {
+                    return super::alloc_zeroed(layout.size());
+                }
+                return zeroed_large(layout.size());
             }
+            // SAFETY: forwarded for threads/alignment not served by the arena.
+            unsafe { System.alloc_zeroed(layout) }
         }
 
         #[inline]

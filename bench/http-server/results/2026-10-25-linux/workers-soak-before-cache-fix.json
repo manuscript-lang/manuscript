@@ -1,0 +1,5172 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu_count": 5,
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "mode": "workers",
+    "members": 4,
+    "duration": 1800.0,
+    "pid": 423632,
+    "max_requests_per_member": 64,
+    "overload_clients": 384,
+    "binary_sha256": "9cb1e2bd1f41cd43fd17b201f4c54c4cdecd5f45b33ccff0a9673e1643659c2d",
+    "build": "Release",
+    "commit": "0385da26a0bfcd3c891f332ba6883ed7c8372038",
+    "working_tree": true,
+    "shared_runner": true,
+    "/sys/fs/cgroup/cpu.max": "400000 100000",
+    "/sys/fs/cgroup/memory.max": "17179869184",
+    "baseline": [
+      {
+        "pid": 423632,
+        "rss_kib": 2644,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "pipe:": 11,
+          "/tmp/http-workers-soak-current.server.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17
+        }
+      }
+    ],
+    "exit_code": 143,
+    "elapsed": 1800.086296245001
+  },
+  "records": [
+    {
+      "cycle": 1,
+      "phase": "overload",
+      "elapsed": 20.224927392999234,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5984,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.119289189002302,
+      "statuses": {
+        "503": 11418,
+        "200": 31054
+      },
+      "errors": {},
+      "members": {
+        "1": 7959,
+        "2": 6902,
+        "0": 7591,
+        "3": 8602
+      },
+      "throughput": 2111.0089725841926,
+      "p50_ms": 191.10743700002786,
+      "p99_ms": 349.1712600007304
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 30.233311457999662,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5206016
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5206016
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5206016
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5206016
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "phase": "recovery",
+      "elapsed": 50.26103296400106,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5912,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002307757997187,
+      "statuses": {
+        "200": 34655
+      },
+      "errors": {},
+      "members": {
+        "1": 11976,
+        "2": 7296,
+        "3": 5733,
+        "0": 9650
+      },
+      "throughput": 1732.5500846843272,
+      "p50_ms": 8.156485000654357,
+      "p99_ms": 25.29514099660446
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 60.286473903001024,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "overload",
+      "elapsed": 80.95272016200033,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5996,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.120478036998975,
+      "statuses": {
+        "503": 6946,
+        "200": 20446
+      },
+      "errors": {},
+      "members": {
+        "2": 4807,
+        "1": 5719,
+        "0": 5196,
+        "3": 4724
+      },
+      "throughput": 1361.399065649913,
+      "p50_ms": 215.78134700030205,
+      "p99_ms": 1101.4509130000079
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 90.99395428999924,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "recovery",
+      "elapsed": 111.87677400399843,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002931751998403,
+      "statuses": {
+        "200": 13828
+      },
+      "errors": {},
+      "members": {
+        "1": 3652,
+        "0": 3050,
+        "3": 3417,
+        "2": 3709
+      },
+      "throughput": 691.2986641879887,
+      "p50_ms": 12.148538000474218,
+      "p99_ms": 159.75437199813314
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 121.8974656950013,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "overload",
+      "elapsed": 143.13717583199832,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 21.142823545000283,
+      "statuses": {
+        "503": 7410,
+        "200": 16774
+      },
+      "errors": {
+        "TimeoutError": 156,
+        "IncompleteReadError": 131
+      },
+      "members": {
+        "0": 4039,
+        "3": 4446,
+        "2": 3965,
+        "1": 4324
+      },
+      "throughput": 1143.8396554995074,
+      "p50_ms": 177.5206349993823,
+      "p99_ms": 6531.564647000778
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 153.34576216099958,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "recovery",
+      "elapsed": 173.641648402001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.0063737820019,
+      "statuses": {
+        "200": 26260
+      },
+      "errors": {},
+      "members": {
+        "1": 6133,
+        "0": 6464,
+        "2": 4808,
+        "3": 8855
+      },
+      "throughput": 1312.581694520972,
+      "p50_ms": 10.434007999720052,
+      "p99_ms": 33.61446000053547
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 183.67823484199835,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5201920
+        }
+      }
+    },
+    {
+      "cycle": 4,
+      "phase": "overload",
+      "elapsed": 204.20610957999816,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5856,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.470816818997264,
+      "statuses": {
+        "503": 3901,
+        "200": 18143
+      },
+      "errors": {},
+      "members": {
+        "1": 4385,
+        "3": 5058,
+        "2": 4232,
+        "0": 4468
+      },
+      "throughput": 1076.8500443784342,
+      "p50_ms": 267.66596699962975,
+      "p99_ms": 1257.076589998178
+    },
+    {
+      "cycle": 4,
+      "phase": "idle",
+      "elapsed": 214.2591167319988,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5856,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5169152
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5169152
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 4,
+      "phase": "recovery",
+      "elapsed": 234.3003775299985,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.004538188997685,
+      "statuses": {
+        "200": 12964
+      },
+      "errors": {},
+      "members": {
+        "1": 2249,
+        "2": 4854,
+        "3": 2204,
+        "0": 3657
+      },
+      "throughput": 648.0529506614695,
+      "p50_ms": 15.604275999066886,
+      "p99_ms": 120.05323500125087
+    },
+    {
+      "cycle": 4,
+      "phase": "idle",
+      "elapsed": 244.3300738709986,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 5,
+      "phase": "overload",
+      "elapsed": 265.31188472600115,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5952,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.8725527960014,
+      "statuses": {
+        "503": 3344,
+        "200": 17304
+      },
+      "errors": {},
+      "members": {
+        "2": 3760,
+        "0": 3734,
+        "1": 4116,
+        "3": 5694
+      },
+      "throughput": 989.2417186246419,
+      "p50_ms": 369.0986649999104,
+      "p99_ms": 958.7650729990855
+    },
+    {
+      "cycle": 5,
+      "phase": "idle",
+      "elapsed": 275.3621142789998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        }
+      }
+    },
+    {
+      "cycle": 5,
+      "phase": "recovery",
+      "elapsed": 295.4738744509996,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002848940999684,
+      "statuses": {
+        "200": 19948
+      },
+      "errors": {},
+      "members": {
+        "2": 2809,
+        "3": 3403,
+        "1": 10385,
+        "0": 3351
+      },
+      "throughput": 997.2579435478683,
+      "p50_ms": 12.016543001664104,
+      "p99_ms": 52.78269300106331
+    },
+    {
+      "cycle": 5,
+      "phase": "idle",
+      "elapsed": 305.5087994809983,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 6,
+      "phase": "overload",
+      "elapsed": 325.80404285999975,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5992,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.230936184998427,
+      "statuses": {
+        "503": 1194,
+        "200": 12507
+      },
+      "errors": {},
+      "members": {
+        "0": 3062,
+        "1": 3292,
+        "2": 3127,
+        "3": 3026
+      },
+      "throughput": 677.2301526095227,
+      "p50_ms": 503.2715140005166,
+      "p99_ms": 1492.4369199979992
+    },
+    {
+      "cycle": 6,
+      "phase": "idle",
+      "elapsed": 335.86638419500014,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5884,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        }
+      }
+    },
+    {
+      "cycle": 6,
+      "phase": "recovery",
+      "elapsed": 355.9380434429986,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.001004421999824,
+      "statuses": {
+        "200": 19730
+      },
+      "errors": {},
+      "members": {
+        "1": 3385,
+        "3": 3975,
+        "2": 7662,
+        "0": 4708
+      },
+      "throughput": 986.4504593728435,
+      "p50_ms": 11.466848001873586,
+      "p99_ms": 74.66336899960879
+    },
+    {
+      "cycle": 6,
+      "phase": "idle",
+      "elapsed": 365.9630872050002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 7,
+      "phase": "overload",
+      "elapsed": 386.48778973499793,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5944,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.485235668002133,
+      "statuses": {
+        "503": 4096,
+        "200": 4700,
+        "504": 91
+      },
+      "errors": {
+        "TimeoutError": 204,
+        "IncompleteReadError": 676
+      },
+      "members": {
+        "2": 1232,
+        "1": 1150,
+        "3": 1107,
+        "0": 1211
+      },
+      "throughput": 433.8246405376465,
+      "p50_ms": 237.9388570006995,
+      "p99_ms": 5650.628280000092
+    },
+    {
+      "cycle": 7,
+      "phase": "idle",
+      "elapsed": 396.56257908800035,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5920,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        }
+      }
+    },
+    {
+      "cycle": 7,
+      "phase": "recovery",
+      "elapsed": 416.62555069500013,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.004007078998256,
+      "statuses": {
+        "200": 14722
+      },
+      "errors": {},
+      "members": {
+        "3": 3732,
+        "0": 4370,
+        "2": 3425,
+        "1": 3195
+      },
+      "throughput": 735.9525489998595,
+      "p50_ms": 16.963923997536767,
+      "p99_ms": 96.35489799984498
+    },
+    {
+      "cycle": 7,
+      "phase": "idle",
+      "elapsed": 426.6481550360004,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        }
+      }
+    },
+    {
+      "cycle": 8,
+      "phase": "overload",
+      "elapsed": 446.859848873999,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6004,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.159169847000157,
+      "statuses": {
+        "503": 2502,
+        "200": 16498
+      },
+      "errors": {},
+      "members": {
+        "0": 4208,
+        "2": 4688,
+        "3": 3984,
+        "1": 3618
+      },
+      "throughput": 942.4991279007131,
+      "p50_ms": 349.7822339995764,
+      "p99_ms": 1034.8596100011491
+    },
+    {
+      "cycle": 8,
+      "phase": "idle",
+      "elapsed": 456.89699209099854,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        }
+      }
+    },
+    {
+      "cycle": 8,
+      "phase": "recovery",
+      "elapsed": 476.96692089299904,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.00163003399939,
+      "statuses": {
+        "200": 21815
+      },
+      "errors": {
+        "IncompleteReadError": 9
+      },
+      "members": {
+        "2": 6918,
+        "0": 5249,
+        "3": 5614,
+        "1": 4034
+      },
+      "throughput": 1090.6611092655041,
+      "p50_ms": 8.328019001055509,
+      "p99_ms": 52.2299580006802
+    },
+    {
+      "cycle": 8,
+      "phase": "idle",
+      "elapsed": 487.00265150799896,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        }
+      }
+    },
+    {
+      "cycle": 9,
+      "phase": "overload",
+      "elapsed": 507.2580585120013,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6024,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.172777900002984,
+      "statuses": {
+        "503": 8046,
+        "200": 17788
+      },
+      "errors": {
+        "IncompleteReadError": 18
+      },
+      "members": {
+        "0": 5138,
+        "3": 5108,
+        "1": 4021,
+        "2": 3521
+      },
+      "throughput": 1280.6367138953221,
+      "p50_ms": 242.7163020001899,
+      "p99_ms": 1077.5908780015016
+    },
+    {
+      "cycle": 9,
+      "phase": "idle",
+      "elapsed": 517.3263726699988,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5908,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5214208
+        }
+      }
+    },
+    {
+      "cycle": 9,
+      "phase": "recovery",
+      "elapsed": 537.5433719309985,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.115031139997882,
+      "statuses": {
+        "200": 15795
+      },
+      "errors": {},
+      "members": {
+        "0": 2809,
+        "1": 4868,
+        "3": 4496,
+        "2": 3622
+      },
+      "throughput": 785.2336837099057,
+      "p50_ms": 17.230782999831717,
+      "p99_ms": 83.46835799966357
+    },
+    {
+      "cycle": 9,
+      "phase": "idle",
+      "elapsed": 547.738274962001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5916,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5218304
+        }
+      }
+    },
+    {
+      "cycle": 10,
+      "phase": "overload",
+      "elapsed": 567.9098418959984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6000,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.124065056999825,
+      "statuses": {
+        "503": 3609,
+        "200": 18076
+      },
+      "errors": {},
+      "members": {
+        "3": 4836,
+        "1": 4367,
+        "2": 4198,
+        "0": 4675
+      },
+      "throughput": 1077.565588193983,
+      "p50_ms": 287.0871609993628,
+      "p99_ms": 1244.6848159997899
+    },
+    {
+      "cycle": 10,
+      "phase": "idle",
+      "elapsed": 577.9424387559993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 10,
+      "phase": "recovery",
+      "elapsed": 598.3290448150001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.157517501000257,
+      "statuses": {
+        "200": 51252
+      },
+      "errors": {},
+      "members": {
+        "2": 10784,
+        "0": 10520,
+        "1": 12980,
+        "3": 16968
+      },
+      "throughput": 2542.574997018198,
+      "p50_ms": 5.433428999822354,
+      "p99_ms": 18.22000700121862
+    },
+    {
+      "cycle": 10,
+      "phase": "idle",
+      "elapsed": 608.3642184179989,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        }
+      }
+    },
+    {
+      "cycle": 11,
+      "phase": "overload",
+      "elapsed": 628.5572577409985,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5984,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.15140119500211,
+      "statuses": {
+        "503": 5637,
+        "200": 18583
+      },
+      "errors": {},
+      "members": {
+        "0": 7703,
+        "3": 4127,
+        "1": 3081,
+        "2": 3672
+      },
+      "throughput": 1201.9015335770782,
+      "p50_ms": 302.35991299923626,
+      "p99_ms": 1093.4293440004694
+    },
+    {
+      "cycle": 11,
+      "phase": "idle",
+      "elapsed": 638.582037199998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 11,
+      "phase": "recovery",
+      "elapsed": 658.7098944940008,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.003650097998616,
+      "statuses": {
+        "200": 32142
+      },
+      "errors": {},
+      "members": {
+        "3": 6724,
+        "0": 10068,
+        "2": 8782,
+        "1": 6568
+      },
+      "throughput": 1606.8067498949024,
+      "p50_ms": 8.453919999737991,
+      "p99_ms": 27.84588999929838
+    },
+    {
+      "cycle": 11,
+      "phase": "idle",
+      "elapsed": 668.7563995829987,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5197824
+        }
+      }
+    },
+    {
+      "cycle": 12,
+      "phase": "overload",
+      "elapsed": 689.056282698999,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6000,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.167598130999977,
+      "statuses": {
+        "503": 7072,
+        "200": 18786
+      },
+      "errors": {
+        "IncompleteReadError": 9
+      },
+      "members": {
+        "3": 4308,
+        "1": 3678,
+        "2": 3920,
+        "0": 6880
+      },
+      "throughput": 1282.155655424986,
+      "p50_ms": 232.30642400085344,
+      "p99_ms": 1150.240658000257
+    },
+    {
+      "cycle": 12,
+      "phase": "idle",
+      "elapsed": 699.0996843079993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 12,
+      "phase": "recovery",
+      "elapsed": 719.2066762139984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.03709026800061,
+      "statuses": {
+        "200": 21034
+      },
+      "errors": {},
+      "members": {
+        "3": 3864,
+        "2": 8505,
+        "0": 3597,
+        "1": 5068
+      },
+      "throughput": 1049.7532185894008,
+      "p50_ms": 11.840197999845259,
+      "p99_ms": 48.324952000257326
+    },
+    {
+      "cycle": 12,
+      "phase": "idle",
+      "elapsed": 729.4922807879993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 13,
+      "phase": "overload",
+      "elapsed": 750.2489334929996,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5976,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.133765726997808,
+      "statuses": {
+        "503": 2901,
+        "200": 12991
+      },
+      "errors": {
+        "IncompleteReadError": 476
+      },
+      "members": {
+        "2": 3192,
+        "1": 3318,
+        "0": 3354,
+        "3": 3127
+      },
+      "throughput": 789.3207964911437,
+      "p50_ms": 294.951134997973,
+      "p99_ms": 2744.936367998889
+    },
+    {
+      "cycle": 13,
+      "phase": "idle",
+      "elapsed": 760.2776067570012,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5177344
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 13,
+      "phase": "recovery",
+      "elapsed": 780.3836210640002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.007813610001904,
+      "statuses": {
+        "200": 17461
+      },
+      "errors": {},
+      "members": {
+        "0": 6791,
+        "1": 1591,
+        "3": 6627,
+        "2": 2452
+      },
+      "throughput": 872.7090495920678,
+      "p50_ms": 14.250863001507241,
+      "p99_ms": 80.88800900077331
+    },
+    {
+      "cycle": 13,
+      "phase": "idle",
+      "elapsed": 790.5820795719992,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5900,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 14,
+      "phase": "overload",
+      "elapsed": 810.9206178390014,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5940,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.261707481000485,
+      "statuses": {
+        "503": 3737,
+        "200": 17894
+      },
+      "errors": {
+        "IncompleteReadError": 41
+      },
+      "members": {
+        "2": 4532,
+        "1": 3640,
+        "0": 4134,
+        "3": 5588
+      },
+      "throughput": 1067.5803122853051,
+      "p50_ms": 361.5134589999798,
+      "p99_ms": 1225.986217999889
+    },
+    {
+      "cycle": 14,
+      "phase": "idle",
+      "elapsed": 821.0045930560009,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 14,
+      "phase": "recovery",
+      "elapsed": 841.0683434899984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.007745185001113,
+      "statuses": {
+        "200": 22464
+      },
+      "errors": {},
+      "members": {
+        "1": 4104,
+        "0": 5982,
+        "3": 8728,
+        "2": 3650
+      },
+      "throughput": 1122.7651987911277,
+      "p50_ms": 12.025933003315004,
+      "p99_ms": 49.53013399790507
+    },
+    {
+      "cycle": 14,
+      "phase": "idle",
+      "elapsed": 851.1077793769982,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 15,
+      "phase": "overload",
+      "elapsed": 871.9892687130014,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.785751875999267,
+      "statuses": {
+        "503": 17913,
+        "200": 34983
+      },
+      "errors": {},
+      "members": {
+        "3": 9963,
+        "2": 8198,
+        "1": 8209,
+        "0": 8613
+      },
+      "throughput": 2544.820140043986,
+      "p50_ms": 162.38512500058278,
+      "p99_ms": 263.7196520008729
+    },
+    {
+      "cycle": 15,
+      "phase": "idle",
+      "elapsed": 882.0179179379993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 15,
+      "phase": "recovery",
+      "elapsed": 902.0901124800002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.003835636001895,
+      "statuses": {
+        "200": 26235
+      },
+      "errors": {
+        "IncompleteReadError": 5
+      },
+      "members": {
+        "3": 12890,
+        "1": 2559,
+        "0": 6636,
+        "2": 4150
+      },
+      "throughput": 1311.4984784609792,
+      "p50_ms": 9.056407001480693,
+      "p99_ms": 55.98713499784935
+    },
+    {
+      "cycle": 15,
+      "phase": "idle",
+      "elapsed": 912.1212253749982,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 16,
+      "phase": "overload",
+      "elapsed": 932.2659484200012,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5996,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.109589420000702,
+      "statuses": {
+        "503": 9822,
+        "200": 22620
+      },
+      "errors": {
+        "IncompleteReadError": 1
+      },
+      "members": {
+        "3": 6127,
+        "1": 4378,
+        "0": 4768,
+        "2": 7347
+      },
+      "throughput": 1613.260187586608,
+      "p50_ms": 234.44174700125586,
+      "p99_ms": 998.8768369985337
+    },
+    {
+      "cycle": 16,
+      "phase": "idle",
+      "elapsed": 942.2917104759981,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 16,
+      "phase": "recovery",
+      "elapsed": 962.3262492020003,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.00513993899949,
+      "statuses": {
+        "200": 30571
+      },
+      "errors": {},
+      "members": {
+        "1": 7666,
+        "2": 8292,
+        "0": 5281,
+        "3": 9332
+      },
+      "throughput": 1528.15726824298,
+      "p50_ms": 8.866988999216119,
+      "p99_ms": 40.36242200163542
+    },
+    {
+      "cycle": 16,
+      "phase": "idle",
+      "elapsed": 972.3419668930001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 17,
+      "phase": "overload",
+      "elapsed": 992.8382556809993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5980,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.417000637997262,
+      "statuses": {
+        "503": 7701,
+        "200": 22987
+      },
+      "errors": {
+        "IncompleteReadError": 129
+      },
+      "members": {
+        "1": 6680,
+        "3": 6407,
+        "2": 4855,
+        "0": 5045
+      },
+      "throughput": 1503.0611275432784,
+      "p50_ms": 236.74413700064179,
+      "p99_ms": 1248.844113000814
+    },
+    {
+      "cycle": 17,
+      "phase": "idle",
+      "elapsed": 1002.9488814430006,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 17,
+      "phase": "recovery",
+      "elapsed": 1023.0356188229998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.007507350001106,
+      "statuses": {
+        "200": 24166
+      },
+      "errors": {},
+      "members": {
+        "2": 3572,
+        "1": 13598,
+        "3": 3674,
+        "0": 3322
+      },
+      "throughput": 1207.8466136361892,
+      "p50_ms": 10.844156000530347,
+      "p99_ms": 42.990361998818116
+    },
+    {
+      "cycle": 17,
+      "phase": "idle",
+      "elapsed": 1033.0651589830013,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 18,
+      "phase": "overload",
+      "elapsed": 1053.227396274,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5996,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.12568497800021,
+      "statuses": {
+        "503": 2547,
+        "200": 17472
+      },
+      "errors": {
+        "IncompleteReadError": 83
+      },
+      "members": {
+        "0": 4208,
+        "2": 3847,
+        "1": 5665,
+        "3": 3752
+      },
+      "throughput": 994.6990635043315,
+      "p50_ms": 358.34995100231026,
+      "p99_ms": 1407.403114000772
+    },
+    {
+      "cycle": 18,
+      "phase": "idle",
+      "elapsed": 1063.260621778998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5880,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5173248
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 18,
+      "phase": "recovery",
+      "elapsed": 1083.346144752999,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.011901044003025,
+      "statuses": {
+        "200": 49935
+      },
+      "errors": {},
+      "members": {
+        "1": 17550,
+        "2": 10751,
+        "0": 10950,
+        "3": 10684
+      },
+      "throughput": 2495.2651869605384,
+      "p50_ms": 5.187533999560401,
+      "p99_ms": 19.032518997846637
+    },
+    {
+      "cycle": 18,
+      "phase": "idle",
+      "elapsed": 1093.3864677460006,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5896,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5189632
+        }
+      }
+    },
+    {
+      "cycle": 19,
+      "phase": "overload",
+      "elapsed": 1114.1702127530007,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5868,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.69202662799944,
+      "statuses": {
+        "503": 6274,
+        "200": 19963
+      },
+      "errors": {},
+      "members": {
+        "3": 4323,
+        "1": 6814,
+        "2": 4273,
+        "0": 4553
+      },
+      "throughput": 1267.9763307716496,
+      "p50_ms": 265.2795070025604,
+      "p99_ms": 1097.4720469966996
+    },
+    {
+      "cycle": 19,
+      "phase": "idle",
+      "elapsed": 1124.199224213,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5864,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 19,
+      "phase": "recovery",
+      "elapsed": 1144.2661385350002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.005069996997918,
+      "statuses": {
+        "200": 26535
+      },
+      "errors": {},
+      "members": {
+        "1": 11067,
+        "0": 5399,
+        "3": 4662,
+        "2": 5407
+      },
+      "throughput": 1326.413754312382,
+      "p50_ms": 10.820095998496981,
+      "p99_ms": 34.953620001033414
+    },
+    {
+      "cycle": 19,
+      "phase": "idle",
+      "elapsed": 1154.3053634479984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 20,
+      "phase": "overload",
+      "elapsed": 1174.490571544,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5984,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.140063855000335,
+      "statuses": {
+        "503": 5114,
+        "200": 24780
+      },
+      "errors": {},
+      "members": {
+        "3": 6308,
+        "1": 7682,
+        "0": 4978,
+        "2": 5812
+      },
+      "throughput": 1484.3051251090237,
+      "p50_ms": 251.85294300172245,
+      "p99_ms": 553.2089930020447
+    },
+    {
+      "cycle": 20,
+      "phase": "idle",
+      "elapsed": 1184.590590148,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5876,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "sample_error": "IncompleteReadError",
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 20,
+      "phase": "recovery",
+      "elapsed": 1221.5202821019993,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.01371368299806,
+      "statuses": {
+        "200": 5018
+      },
+      "errors": {
+        "TimeoutError": 4,
+        "IncompleteReadError": 1
+      },
+      "members": {
+        "0": 1041,
+        "1": 1623,
+        "3": 1022,
+        "2": 1332
+      },
+      "throughput": 250.72807972979368,
+      "p50_ms": 24.157062001904706,
+      "p99_ms": 447.0719939999981
+    },
+    {
+      "cycle": 20,
+      "phase": "idle",
+      "elapsed": 1231.5788905219997,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 21,
+      "phase": "overload",
+      "elapsed": 1251.8592057630012,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6000,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.125635258998955,
+      "statuses": {
+        "503": 6104,
+        "200": 26326
+      },
+      "errors": {},
+      "members": {
+        "1": 8636,
+        "2": 6059,
+        "0": 6076,
+        "3": 5555
+      },
+      "throughput": 1611.3777072204111,
+      "p50_ms": 224.2337019997649,
+      "p99_ms": 573.7019230000442
+    },
+    {
+      "cycle": 21,
+      "phase": "idle",
+      "elapsed": 1261.8915396619996,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 21,
+      "phase": "recovery",
+      "elapsed": 1281.9540571049984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.0133786410006,
+      "statuses": {
+        "200": 23369
+      },
+      "errors": {
+        "IncompleteReadError": 8
+      },
+      "members": {
+        "1": 10043,
+        "0": 3664,
+        "3": 4320,
+        "2": 5342
+      },
+      "throughput": 1167.6689088430514,
+      "p50_ms": 11.109690000012051,
+      "p99_ms": 33.80397100045229
+    },
+    {
+      "cycle": 21,
+      "phase": "idle",
+      "elapsed": 1291.9812390650004,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 22,
+      "phase": "overload",
+      "elapsed": 1312.1396191929998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5964,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.12212842000008,
+      "statuses": {
+        "503": 13240,
+        "200": 25061
+      },
+      "errors": {},
+      "members": {
+        "1": 8678,
+        "2": 4712,
+        "0": 6906,
+        "3": 4765
+      },
+      "throughput": 1903.4268741636351,
+      "p50_ms": 201.60570000007283,
+      "p99_ms": 781.8384660022275
+    },
+    {
+      "cycle": 22,
+      "phase": "idle",
+      "elapsed": 1322.1749121510002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 22,
+      "phase": "recovery",
+      "elapsed": 1342.9478021270006,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.00681788899965,
+      "statuses": {
+        "200": 33837
+      },
+      "errors": {},
+      "members": {
+        "2": 3275,
+        "1": 18025,
+        "3": 5890,
+        "0": 6647
+      },
+      "throughput": 1691.273454266038,
+      "p50_ms": 8.090955998341087,
+      "p99_ms": 22.441822999098804
+    },
+    {
+      "cycle": 22,
+      "phase": "idle",
+      "elapsed": 1352.9897017110015,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 23,
+      "phase": "overload",
+      "elapsed": 1373.1854180519986,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5968,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.12738481499764,
+      "statuses": {
+        "503": 5620,
+        "200": 25181
+      },
+      "errors": {},
+      "members": {
+        "3": 6066,
+        "1": 7700,
+        "2": 3810,
+        "0": 7605
+      },
+      "throughput": 1530.303130938753,
+      "p50_ms": 244.4289300001401,
+      "p99_ms": 604.3025049984863
+    },
+    {
+      "cycle": 23,
+      "phase": "idle",
+      "elapsed": 1383.2196274589987,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 23,
+      "phase": "recovery",
+      "elapsed": 1403.429790967999,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.09229807799784,
+      "statuses": {
+        "200": 22530
+      },
+      "errors": {},
+      "members": {
+        "1": 6346,
+        "3": 4291,
+        "2": 3785,
+        "0": 8108
+      },
+      "throughput": 1121.3251919983995,
+      "p50_ms": 10.706245000619674,
+      "p99_ms": 65.02566100243712
+    },
+    {
+      "cycle": 23,
+      "phase": "idle",
+      "elapsed": 1413.525677581998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 24,
+      "phase": "overload",
+      "elapsed": 1433.8142855990009,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5924,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.191643746999034,
+      "statuses": {
+        "503": 1918,
+        "200": 4701,
+        "504": 1
+      },
+      "errors": {
+        "TimeoutError": 207,
+        "IncompleteReadError": 495
+      },
+      "members": {
+        "3": 749,
+        "1": 1479,
+        "0": 1830,
+        "2": 643
+      },
+      "throughput": 327.85839939276326,
+      "p50_ms": 414.3095749968779,
+      "p99_ms": 5511.7960770003265
+    },
+    {
+      "cycle": 24,
+      "phase": "idle",
+      "elapsed": 1443.8712093499998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5876,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5169152
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5169152
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5169152
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 24,
+      "phase": "recovery",
+      "elapsed": 1463.946135569,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002333483997063,
+      "statuses": {
+        "200": 38460
+      },
+      "errors": {},
+      "members": {
+        "0": 15696,
+        "3": 9251,
+        "2": 7273,
+        "1": 6240
+      },
+      "throughput": 1922.7756616881754,
+      "p50_ms": 7.368639002379496,
+      "p99_ms": 26.943232001940487
+    },
+    {
+      "cycle": 24,
+      "phase": "idle",
+      "elapsed": 1473.9927731989992,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 25,
+      "phase": "overload",
+      "elapsed": 1494.239375115998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5980,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.125072203001764,
+      "statuses": {
+        "503": 12296,
+        "200": 27759
+      },
+      "errors": {},
+      "members": {
+        "1": 6638,
+        "2": 5643,
+        "0": 8819,
+        "3": 6659
+      },
+      "throughput": 1990.3034183413056,
+      "p50_ms": 179.85667700122576,
+      "p99_ms": 487.6034820008499
+    },
+    {
+      "cycle": 25,
+      "phase": "idle",
+      "elapsed": 1504.2657035650009,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 25,
+      "phase": "recovery",
+      "elapsed": 1525.0948657439985,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.739179161999346,
+      "statuses": {
+        "200": 17881
+      },
+      "errors": {
+        "TimeoutError": 4,
+        "IncompleteReadError": 7
+      },
+      "members": {
+        "0": 9146,
+        "3": 2252,
+        "1": 3841,
+        "2": 2642
+      },
+      "throughput": 862.1845570804257,
+      "p50_ms": 11.772212001233129,
+      "p99_ms": 35.70648900131346
+    },
+    {
+      "cycle": 25,
+      "phase": "idle",
+      "elapsed": 1535.6578981860002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 26,
+      "phase": "overload",
+      "elapsed": 1555.9000208420002,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6004,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.127269640001032,
+      "statuses": {
+        "503": 8331,
+        "200": 27866
+      },
+      "errors": {},
+      "members": {
+        "1": 6942,
+        "2": 5763,
+        "3": 7290,
+        "0": 7871
+      },
+      "throughput": 1798.405876575624,
+      "p50_ms": 210.45781499924487,
+      "p99_ms": 819.8234610026702
+    },
+    {
+      "cycle": 26,
+      "phase": "idle",
+      "elapsed": 1565.922195875999,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 26,
+      "phase": "recovery",
+      "elapsed": 1585.9830386739995,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002327117999812,
+      "statuses": {
+        "200": 30042
+      },
+      "errors": {},
+      "members": {
+        "3": 3875,
+        "0": 11851,
+        "1": 11614,
+        "2": 2702
+      },
+      "throughput": 1501.9252421367325,
+      "p50_ms": 9.835857003054116,
+      "p99_ms": 24.56205099952058
+    },
+    {
+      "cycle": 26,
+      "phase": "idle",
+      "elapsed": 1595.998194975,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 27,
+      "phase": "overload",
+      "elapsed": 1616.1589651579998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6004,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.114493139000842,
+      "statuses": {
+        "503": 6212,
+        "200": 25540
+      },
+      "errors": {},
+      "members": {
+        "0": 7597,
+        "2": 6065,
+        "3": 5411,
+        "1": 6467
+      },
+      "throughput": 1578.5632668234978,
+      "p50_ms": 236.14092799834907,
+      "p99_ms": 571.0665940023318
+    },
+    {
+      "cycle": 27,
+      "phase": "idle",
+      "elapsed": 1626.186566624001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 27,
+      "phase": "recovery",
+      "elapsed": 1646.2468963399988,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002932226998382,
+      "statuses": {
+        "200": 30060
+      },
+      "errors": {},
+      "members": {
+        "0": 9881,
+        "1": 9757,
+        "3": 6056,
+        "2": 4366
+      },
+      "throughput": 1502.7796754431522,
+      "p50_ms": 9.813186999963364,
+      "p99_ms": 30.769117001909763
+    },
+    {
+      "cycle": 27,
+      "phase": "idle",
+      "elapsed": 1656.2769716000003,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 28,
+      "phase": "overload",
+      "elapsed": 1676.4343083780004,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 6012,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.112750569001946,
+      "statuses": {
+        "503": 17304,
+        "200": 36599
+      },
+      "errors": {},
+      "members": {
+        "1": 8697,
+        "0": 9234,
+        "2": 8796,
+        "3": 9872
+      },
+      "throughput": 2680.041191535287,
+      "p50_ms": 159.9984829990717,
+      "p99_ms": 288.29874900111463
+    },
+    {
+      "cycle": 28,
+      "phase": "idle",
+      "elapsed": 1686.4962188099998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 28,
+      "phase": "recovery",
+      "elapsed": 1707.4427653679995,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.881494378001662,
+      "statuses": {
+        "200": 27018
+      },
+      "errors": {
+        "IncompleteReadError": 5
+      },
+      "members": {
+        "1": 7866,
+        "3": 6768,
+        "0": 7326,
+        "2": 5058
+      },
+      "throughput": 1293.8729149798328,
+      "p50_ms": 6.274667000980116,
+      "p99_ms": 136.11486199806677
+    },
+    {
+      "cycle": 28,
+      "phase": "idle",
+      "elapsed": 1717.7256925740003,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 29,
+      "phase": "overload",
+      "elapsed": 1737.9499622820003,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5972,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.16050910299964,
+      "statuses": {
+        "503": 5044,
+        "200": 20420
+      },
+      "errors": {},
+      "members": {
+        "2": 4731,
+        "3": 4809,
+        "1": 5172,
+        "0": 5708
+      },
+      "throughput": 1263.0633417988072,
+      "p50_ms": 264.64460599891027,
+      "p99_ms": 920.2431000012439
+    },
+    {
+      "cycle": 29,
+      "phase": "idle",
+      "elapsed": 1747.9932526509983,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5876,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 29,
+      "phase": "recovery",
+      "elapsed": 1768.1869744340001,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.002539684999647,
+      "statuses": {
+        "200": 32165
+      },
+      "errors": {},
+      "members": {
+        "3": 8730,
+        "2": 5767,
+        "1": 7293,
+        "0": 10375
+      },
+      "throughput": 1608.045803509704,
+      "p50_ms": 8.302231999550713,
+      "p99_ms": 31.27677200245671
+    },
+    {
+      "cycle": 29,
+      "phase": "idle",
+      "elapsed": 1778.2100022839986,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5892,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 30,
+      "phase": "overload",
+      "elapsed": 1798.439445838998,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5920,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "load_seconds": 20.13599401600004,
+      "statuses": {
+        "503": 15370,
+        "200": 30922
+      },
+      "errors": {},
+      "members": {
+        "1": 4932,
+        "2": 5624,
+        "0": 10890,
+        "3": 9476
+      },
+      "throughput": 2298.9677074405377,
+      "p50_ms": 186.78148099934333,
+      "p99_ms": 302.60930900112726
+    },
+    {
+      "cycle": 30,
+      "phase": "idle",
+      "elapsed": 1800.0026477799984,
+      "resources": [
+        {
+          "pid": 423632,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "pipe:": 11,
+            "/tmp/http-workers-soak-current.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    }
+  ]
+}

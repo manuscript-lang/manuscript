@@ -12,6 +12,7 @@
 
 pub mod handler;
 pub mod http_client;
+pub mod http_group;
 pub mod http_server;
 pub mod net;
 pub mod tls;
@@ -68,6 +69,8 @@ handle_newtype! {
     DgramH(std::rc::Rc<crate::conn::Datagrams>);
     /// An `HttpHeaders` handle.
     HeadersH(crate::http::headers::Shared);
+    /// A scoped HTTP group coordinator.
+    HttpGroupH(std::rc::Rc<crate::http::group::launch::Coordinator>);
     /// An `HttpServer` handle.
     ServerH(std::rc::Rc<crate::http::server::Server>);
     /// An `HttpClient` handle.

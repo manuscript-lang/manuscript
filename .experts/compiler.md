@@ -129,3 +129,33 @@ Verify: simplify unused arithmetic chains at N/2N/4N; shared operands disappear 
 Verified: generic function recursion validation must not expand every path through an acyclic call graph. Repeated calls into a shared suffix made checking exponential in the number of declarations. Iterative sink removal identifies paths that cannot reach a cycle; skipping only those paths preserves recursive diagnostics and their order. A specialization-only memo is not interchangeable: the same specialization can be visited under different active ancestors, and reusing that result can hide a type-argument-changing cycle. Paths that lead to cycles still use the original ancestor-sensitive traversal.
 Evidence: [generic recursion validation](../crates/ms-check/src/recursion.rs), [finite DAG and ancestor-context regressions](../crates/ms-check/tests/generic_recursion.rs).
 Verify: a forty-level repeated-call DAG checks without expanding its trillion paths; direct and mutual cycles, changed arguments, acyclic tails, and same-spelled declarations in different modules keep their diagnostics. Do not claim that pruning acyclic suffixes makes cycle-containing graphs globally linear.
+
+### Map word specialization requires the value representation to fit one word
+
+Verified: String values occupy two words. Selecting the scalar map lookup path for
+String-valued maps read later slots at the wrong stride even when iteration worked.
+Restrict word-value specialization to supported scalar Int/Float representations;
+use descriptor-based access for String and aggregate values.
+
+Apply when: specializing map lookup or changing native map slot layout.
+Evidence: [map native selection](../crates/ms-lower/src/rtcall.rs),
+[multiple String-valued map entries](../tests/e2e/testdata/stdlib/map-string-values.ms).
+Verify: insertion, contains, lookup and replacement agree for both String and Int keys
+with multiple long String values under both Debug and Release.
+
+### Cleanup registration preserves an owner even though normal calls borrow its bits
+
+Verified: removing a copy used by `CleanupPush`, or moving its registered source,
+can make fault cleanup free borrowed or already-transferred ownership. This caused
+Release-only HTTP deadline allocator corruption and skipped middleware. Preserve
+registered values in every copy-elimination path, including merged String owners
+and Optional/variant unboxing. `lastuse` also treats registration as an escape.
+Compiler-owned call temporaries register after argument evaluation and discard
+immediately after normal return, before mutable writeback.
+
+Apply when: optimizing ownership around callbacks or extending cleanup lowering.
+Evidence: [copy elimination](../crates/ms-mir/src/opt/copyelim.rs),
+[optimizer regressions](../crates/ms-mir/tests/opt_copyelim.rs),
+[HTTP deadline fixture](../tests/e2e/testdata/stdlib/http-deadlines.ms).
+Verify: both code generators must execute the fault path, not merely verify MIR;
+run the separate-process HTTP ownership recovery test under Debug and Release.

@@ -1,0 +1,1 @@
+{"name":"manuscript-next-reference","private":true,"type":"module","scripts":{"build":"next build","start":"next start"}}

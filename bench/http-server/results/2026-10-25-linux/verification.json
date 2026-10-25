@@ -1,0 +1,98 @@
+{
+  "platform": "Linux x86_64",
+  "rust": "1.99.1",
+  "workspace_nextest": {
+    "passed": 930,
+    "skipped": 5,
+    "test_threads": 1,
+    "note": "Final allocator, response commitment and HEAD fixes included. Five ignored child-process entrypoints are invoked by their parent tests."
+  },
+  "final_network_nextest": {
+    "passed": 268,
+    "skipped": 1,
+    "note": "Included in the final 930-test workspace run."
+  },
+  "conformance": {
+    "passed": 2255,
+    "check": 1508,
+    "run": 493,
+    "test": 254,
+    "note": "1508 check fixtures passed; 747 executing fixtures reran successfully after allocator fix."
+  },
+  "release_e2e": {
+    "fixtures": 268,
+    "failed": 0,
+    "note": "All 268 fixtures passed after allocator fix. All 21 HTTP fixtures (95 tests/profile) passed in both profiles after commitment and HEAD fixes."
+  },
+  "group_tls_debug": {
+    "passed": 9
+  },
+  "group_tls_release": {
+    "passed": 9
+  },
+  "clippy": "passed, workspace all targets, warnings denied",
+  "format": "passed",
+  "repo_check": "passed",
+  "documentation_and_book": "passed",
+  "distribution_smoke": "passed after final runtime rebuild; extracted package compiled and ran hello from a path with spaces",
+  "windows_native_crosscheck": "passed after final commitment and HEAD changes; runtime execution unavailable",
+  "macos_execution": "unavailable",
+  "performance_acceptance": "Shared runner measurements; no preselected dedicated-runner latency/scaling threshold.",
+  "status": "Implementation and available Linux correctness validation complete; resource/load observations recorded; dedicated-runner performance and macOS/Windows runtime acceptance remain open",
+  "earlier_gate_failures": [
+    "Parallel run: existing stdin-concurrency 1-second latency assertion exceeded under load; unchanged assertion passed serially.",
+    "Earlier Release ownership fixture expired before reaching blocked-output coverage; corrected fixture requires producer byte before pause and bounded retries only for complete precommit 504 responses. Both profiles passed final gate."
+  ],
+  "targeted_final_http_fixtures": {
+    "files": 21,
+    "Debug": {
+      "passed": 95,
+      "failed": 0
+    },
+    "Release": {
+      "passed": 95,
+      "failed": 0
+    }
+  },
+  "binaries": {
+    "compiler": "51b0634be6edfb77aa5874b77db30832d4ccded59abf6610b317ec96351a346f",
+    "benchmark": "8580c9e771af2526eada8491fb4628700edcb2afb8e6c9766dce71321a03f0c0",
+    "production_example": "f3c7cec954dcbfaa94a1b73c759e0898288586354b1094e754cabd1444ccdbc2",
+    "reference": "fea9836559fd6f6ee43257d103ecd2a8558c8b16075d392f674eb61e053d6466"
+  },
+  "load_checks": {
+    "persistent_cpu": {
+      "records": 10,
+      "client_errors": 0,
+      "note": "Whole-handler multicore execution demonstrated; not a portable scaling factor."
+    },
+    "connection_churn": {
+      "records": 54,
+      "client_errors": 89,
+      "gateway_timeout_responses": 3,
+      "note": "Includes anomalous first-round four-process CPU sample; retained without causal attribution.",
+      "bad_gateway_responses": 1
+    },
+    "process_soak": {
+      "seconds": 1800,
+      "idle_fds": 71,
+      "recovery_client_errors": 46
+    },
+    "worker_followup": {
+      "seconds": 180,
+      "idle_fds": 51,
+      "recovery_client_errors": 31,
+      "earlier_soak_seconds": 1800
+    },
+    "proxy_smoke": {
+      "requests": 32,
+      "upstreams": 4,
+      "all_processes_reaped": true
+    }
+  },
+  "benchmark_checks": [
+    "Go build and vet passed for proxy and persistent client",
+    "Python measurement scripts compiled and executed",
+    "Both benchmark and soak groups reaped their sampled processes"
+  ]
+}

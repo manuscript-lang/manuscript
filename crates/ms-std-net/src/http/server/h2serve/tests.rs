@@ -47,6 +47,7 @@ impl Dispatch for App {
             "/cancel" => return Outcome::Cancelled,
             "/size" => format!("{}", r.body.len()).into_bytes(),
             "/big" => vec![b'x'; 300_000],
+            "/huge" => vec![b'z'; 8 << 20],
             "/cookie" => {
                 let cookie = r.headers.text("cookie").unwrap().unwrap();
                 format!(
@@ -85,16 +86,25 @@ impl Dispatch for Streamer {
     }
 
     fn streaming(&self, ex: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
+        if ex.path() == "/cancel" {
+            return Outcome::Cancelled;
+        }
         let result = (|| {
             match ex.path().as_str() {
                 "/fault" => return Err(HttpErr::Failed("nope".into())),
                 "/ws" => {
-                    let upgrade = ex.upgrade(&[], &[], None);
+                    let upgrade = ex.upgrade(&[], &[], None, &headers::Headers::new());
                     assert!(matches!(upgrade, Err(WsErr::Failed(_))));
                     return Ok(());
                 }
+                "/huge" => {
+                    ex.send_headers(200, &Headers::new(), None)?;
+                    ex.write(&vec![b'z'; 8 << 20])
+                        .map_err(|_| HttpErr::Closed)?;
+                    return Ok(());
+                }
                 "/stream" => {
-                    ex.send_headers(200, &Headers::new())?;
+                    ex.send_headers(200, &Headers::new(), None)?;
                     let chunk = vec![b'y'; 4096];
                     for _ in 0..100 {
                         ex.write(&chunk).map_err(|_| HttpErr::Closed)?;
@@ -106,7 +116,7 @@ impl Dispatch for Streamer {
                     while let Some(chunk) = ex.read(None).map_err(|_| HttpErr::Closed)? {
                         total += chunk.len();
                     }
-                    ex.send_headers(200, &Headers::new())?;
+                    ex.send_headers(200, &Headers::new(), None)?;
                     ex.write(total.to_string().as_bytes())
                         .map_err(|_| HttpErr::Closed)?;
                     return Ok(());
@@ -114,7 +124,7 @@ impl Dispatch for Streamer {
                 "/nobody" => return Ok(()),
                 _ => {}
             }
-            ex.send_headers(200, &Headers::new())?;
+            ex.send_headers(200, &Headers::new(), None)?;
             ex.write(ex.protocol().as_bytes())
                 .map_err(|_| HttpErr::Closed)?;
             Ok(())
@@ -345,6 +355,42 @@ fn serves_get_and_reports_the_protocol() {
     assert_eq!(head.status, "200");
     assert!(head.body.is_empty());
     assert_eq!(head.header("content-length"), Some("21"));
+}
+
+#[test]
+fn head_errors_end_without_data_and_preserve_the_connection() {
+    for streaming in [false, true] {
+        let dispatch: Box<dyn Dispatch> = if streaming {
+            Box::new(Streamer)
+        } else {
+            Box::new(App)
+        };
+        let (_net, server) = start(dispatch, streaming, limits());
+        let addr = server.address().to_string();
+        with_client(move || {
+            let mut c = Client::connect(&addr, big_window());
+            for (path, status) in [("/fault", "500"), ("/cancel", "504")] {
+                let id = c
+                    .core
+                    .open_stream(request("HEAD", path, &[]), true)
+                    .unwrap();
+                let response = c.response(id);
+                assert_eq!(response.status, status);
+                assert!(response.body.is_empty(), "HEAD must not send error DATA");
+                assert!(
+                    response
+                        .header("content-length")
+                        .unwrap()
+                        .parse::<usize>()
+                        .unwrap()
+                        > 0
+                );
+            }
+            let id = c.get("/hello");
+            assert_eq!(c.response(id).status, "200");
+        });
+        server.close().unwrap();
+    }
 }
 
 #[test]
@@ -713,4 +759,245 @@ fn drops_a_peer_that_floods_pings_without_reading() {
     });
     let bytes = closed_after.expect("server kept answering pings it could not deliver");
     assert!(bytes < 32 << 20, "closed only after {bytes} bytes");
+}
+
+#[test]
+fn collecting_upload_holds_admission_and_reset_returns_it() {
+    let (_net, server) = start(
+        Box::new(App),
+        false,
+        Limits {
+            event_capacity: 8,
+            admission: 1,
+            ..limits()
+        },
+    );
+    let address = server.address().to_string();
+    with_client(move || {
+        let mut client = Client::connect(&address, big_window());
+        let upload = client
+            .core
+            .open_stream(request("POST", "/size", &[]), false)
+            .unwrap();
+        let refused = client.get("/");
+        assert_eq!(client.response(refused).status, "503");
+        client.core.send_rst(upload, error_code::CANCEL);
+        let recovered = client.get("/");
+        assert_eq!(client.response(recovered).status, "200");
+    });
+    assert_eq!(server.admitted.get(), 0);
+    let stats = server.stats();
+    assert_eq!(
+        (
+            stats.requests,
+            stats.admitted,
+            stats.rejected,
+            stats.completed,
+            stats.aborted,
+            stats.active_requests
+        ),
+        (3, 2, 1, 2, 1, 0)
+    );
+    let events = server.take_events();
+    assert_eq!(events.len(), 3);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.status == 503 && e.rejected && e.outcome == "completed")
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| e.path == "/size" && e.outcome == "aborted")
+    );
+    server.close().unwrap();
+}
+
+#[test]
+fn other_streams_do_not_refresh_a_flow_control_stalled_response() {
+    let (_net, server) = start(
+        Box::new(App),
+        false,
+        Limits {
+            event_capacity: 32,
+            timeout: None,
+            write_timeout: Some(Duration::from_millis(40)),
+            ..limits()
+        },
+    );
+    let address = server.address().to_string();
+    with_client(move || {
+        let mut settings = big_window();
+        settings.initial_window_size = 0;
+        let mut client = Client::connect(&address, settings);
+        let stalled = client.get("/big");
+        client.flush();
+        for _ in 0..20 {
+            let active = client.get("/empty");
+            assert_eq!(client.response(active).status, "204");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(
+            client
+                .events
+                .iter()
+                .any(|event| matches!(event, Event::Reset { id, .. } if *id == stalled)),
+            "stalled stream never reset"
+        );
+        let healthy = client.get("/empty");
+        assert_eq!(client.response(healthy).status, "204");
+    });
+    assert_eq!(server.admitted.get(), 0);
+    let stats = server.stats();
+    assert_eq!(
+        (
+            stats.requests,
+            stats.completed,
+            stats.timed_out,
+            stats.aborted,
+            stats.active_requests
+        ),
+        (22, 21, 1, 0, 0)
+    );
+    assert!(
+        server
+            .take_events()
+            .iter()
+            .any(|e| e.path == "/big" && e.outcome == "timed_out")
+    );
+    server.close().unwrap();
+}
+
+#[test]
+fn incomplete_header_frame_expires_from_its_first_fragment() {
+    let (_net, server) = start(
+        Box::new(App),
+        false,
+        Limits {
+            timeout: None,
+            header_timeout: Some(Duration::from_millis(40)),
+            ..limits()
+        },
+    );
+    let address = server.address().to_string();
+    with_client(move || {
+        let mut client = Client::connect(&address, big_window());
+        client.flush();
+        let _request = client.get("/");
+        let bytes = client.core.take_output();
+        // Identify HEADERS but withhold its payload; the core has not emitted Headers yet.
+        assert!(bytes.len() > 9);
+        client.tls.write_all(&bytes[..9]).unwrap();
+        client.tls.flush().unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        let mut byte = [0; 1];
+        assert!(matches!(client.tls.read(&mut byte), Ok(0) | Err(_)));
+    });
+    assert!(server.st.borrow().conns.is_empty());
+    server.close().unwrap();
+}
+
+#[test]
+fn large_peer_windows_preserve_large_buffered_and_streamed_responses() {
+    for streaming in [false, true] {
+        let app: Box<dyn Dispatch> = if streaming {
+            Box::new(Streamer)
+        } else {
+            Box::new(App)
+        };
+        let (_net, server) = start(app, streaming, limits());
+        let address = server.address().to_string();
+        let response = with_client(move || {
+            let mut client = Client::connect(
+                &address,
+                Settings {
+                    initial_window_size: 64 << 20,
+                    connection_window: 64 << 20,
+                    ..Settings::default()
+                },
+            );
+            let id = client.get("/huge");
+            client.response(id)
+        });
+        assert_eq!(response.status, "200", "streaming={streaming}");
+        assert_eq!(response.body, vec![b'z'; 8 << 20], "streaming={streaming}");
+        server.close().unwrap();
+    }
+}
+
+fn output_test_pair() -> (H2Conn, Connection) {
+    let mut server = H2Conn::new(&limits());
+    let mut client = Connection::client(Settings {
+        initial_window_size: 64 << 20,
+        connection_window: 64 << 20,
+        ..Settings::default()
+    });
+    for _ in 0..3 {
+        server.core.feed(&client.take_output()).unwrap();
+        client.feed(&server.core.take_output()).unwrap();
+    }
+    (server, client)
+}
+
+#[test]
+fn data_encoding_counts_transport_and_core_queues_before_allocating() {
+    for streaming in [false, true] {
+        let (mut server, mut client) = output_test_pair();
+        let id = client
+            .open_stream(request("GET", "/huge", &[]), true)
+            .unwrap();
+        server.core.feed(&client.take_output()).unwrap();
+        server
+            .streams
+            .insert(id, H2Stream::new(true, None, Instant::now()));
+        let payload = vec![b'z'; 8 << 20];
+        if streaming {
+            server
+                .core
+                .send_response_headers(id, vec![hv(":status", "200")], false)
+                .unwrap();
+        } else {
+            server.respond(id, vec![hv(":status", "200")], payload.clone());
+        }
+        server.core.take_output();
+        let transport_queued = OUT_HOLD - 100;
+        if streaming {
+            assert_eq!(server.send_body(id, &payload, transport_queued), Some(91));
+            assert_eq!(server.send_body(id, &payload, transport_queued), Some(0));
+        } else {
+            assert!(server.send_pending(transport_queued));
+            assert!(!server.send_pending(transport_queued));
+            assert_eq!(server.streams[&id].out.as_ref().unwrap().pos, 91);
+        }
+        assert_eq!(
+            transport_queued + server.core.pending_output_len(),
+            OUT_HOLD
+        );
+    }
+}
+
+#[test]
+fn bounded_data_pumps_rotate_between_buffered_streams() {
+    let (mut server, mut client) = output_test_pair();
+    let mut ids = Vec::new();
+    for _ in 0..64 {
+        let id = client
+            .open_stream(request("GET", "/big", &[]), true)
+            .unwrap();
+        server.core.feed(&client.take_output()).unwrap();
+        server
+            .streams
+            .insert(id, H2Stream::new(true, None, Instant::now()));
+        server.respond(id, vec![hv(":status", "200")], vec![b'x'; 1 << 20]);
+        ids.push(id);
+    }
+    for _ in 0..3 {
+        assert!(server.send_pending(0));
+        assert!(server.core.pending_output_len() <= OUT_HOLD);
+        server.core.take_output();
+    }
+    assert!(
+        ids.iter()
+            .all(|id| server.streams[id].out.as_ref().unwrap().pos > 0)
+    );
 }

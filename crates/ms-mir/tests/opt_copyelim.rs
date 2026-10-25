@@ -408,3 +408,67 @@ fn a_copy_at_the_last_use_across_blocks_becomes_a_move() {
     );
     assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
 }
+
+#[test]
+fn fault_cleanup_keeps_registered_ownership_through_copy_elimination() {
+    let source = r#"module "cleanup-ownership"
+extern @msrt_cleanup_discard(int)
+fn @release(%value: own str) {
+b0:
+  drop %value
+  ret
+}
+fn @borrowed(%source: str) {
+b0:
+  %copy: str = copy %source
+  %h: int = cleanup.push @release %copy
+  %u: unit = call.rt @msrt_cleanup_discard (%h)
+  drop %copy
+  ret
+}
+fn @moved(%source: own str) -> str {
+b0:
+  %h: int = cleanup.push @release %source
+  %copy: str = copy %source
+  %u: unit = call.rt @msrt_cleanup_discard (%h)
+  drop %source
+  ret %copy
+}
+"#;
+    let mut m = parse_module(source).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    opt::copyelim::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    for name in ["borrowed", "moved"] {
+        assert_eq!(count(&m, name, Op::Copy), 1, "{}", print_module(&m));
+        assert_eq!(count(&m, name, Op::Drop), 1, "{}", print_module(&m));
+    }
+}
+
+#[test]
+fn registered_closures_phis_and_optional_containers_keep_their_owners() {
+    let closure = CLOSURE_LOOP
+        .replace("entry @main", "entry @main\nextern @msrt_cleanup_discard(int)\nfn @release(%v: own fn(int) -> int) {\nb0:\n  drop %v\n  ret\n}")
+        .replace("  %x: int = iconst 5", "  %h: int = cleanup.push @release %c\n  %x: int = iconst 5")
+        .replace("  drop %c", "  %u: unit = call.rt @msrt_cleanup_discard (%h)\n  drop %c");
+    let phi = PHI
+        .replace("entry @main", "entry @main\nextern @msrt_cleanup_discard(int)\nfn @release(%v: own str) {\nb0:\n  drop %v\n  ret\n}")
+        .replace("b3(%8: own str):", "b3(%8: own str):\n  %h: int = cleanup.push @release %8")
+        .replace("  drop %8", "  %u: unit = call.rt @msrt_cleanup_discard (%h)\n  drop %8");
+    let optional = UNWRAP
+        .replace("entry @main", "entry @main\nextern @msrt_cleanup_discard(int)\nfn @release(%v: own opt<List>) {\nb0:\n  drop %v\n  ret\n}")
+        .replace("b3():\n  %p:", "b3():\n  %h: int = cleanup.push @release %r\n  %p:")
+        .replace("  %c: List = copy %p", "  %c: List = copy %p\n  %u: unit = call.rt @msrt_cleanup_discard (%h)");
+    for (source, name, copies, drops) in [
+        (closure, "main", 1, 2),
+        (phi, "is_q", 2, 1),
+        (optional, "build", 2, 2),
+    ] {
+        let mut m = parse_module(&source).unwrap_or_else(|e| panic!("{e}"));
+        verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+        opt::copyelim::run(&mut m);
+        verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+        assert_eq!(count(&m, name, Op::Copy), copies, "{}", print_module(&m));
+        assert_eq!(count(&m, name, Op::Drop), drops, "{}", print_module(&m));
+    }
+}

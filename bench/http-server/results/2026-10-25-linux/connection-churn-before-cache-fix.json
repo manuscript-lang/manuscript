@@ -1,0 +1,2697 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "cpu_max": "400000 100000",
+    "build": "Release",
+    "shared_runner": true,
+    "server_sha256": "9cb1e2bd1f41cd43fd17b201f4c54c4cdecd5f45b33ccff0a9673e1643659c2d",
+    "baseline_sha256": "3e6e8514f4a1e97bb8a46e5b89db9591e51336a8a2257959bbe217028e61cecd",
+    "baseline_commit": "0385da26a0bfcd3c891f332ba6883ed7c8372038",
+    "baseline_reconstructed_after_implementation": true
+  },
+  "records": [
+    {
+      "round": 1,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423503": 0.18170925922511383
+      },
+      "cpu_cores_by_thread": {
+        "423503:423503": 0.0,
+        "423503:423504": 0.18370606427154365
+      },
+      "resources": [
+        {
+          "pid": 423503,
+          "rss_kib": 1872,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.0055678589997115,
+      "statuses": {
+        "200": 10138
+      },
+      "errors": {},
+      "members": {
+        "0": 10138
+      },
+      "throughput": 2025.3446333311579,
+      "p50_ms": 12.56962499974179,
+      "p99_ms": 42.73757099872455
+    },
+    {
+      "round": 1,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423503": 0.9803954141673232
+      },
+      "cpu_cores_by_thread": {
+        "423503:423503": 0.0,
+        "423503:423504": 0.9803954141673232
+      },
+      "resources": [
+        {
+          "pid": 423503,
+          "rss_kib": 1876,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.047909749999235,
+      "statuses": {
+        "200": 4100
+      },
+      "errors": {},
+      "members": {
+        "0": 4100
+      },
+      "throughput": 812.217373735856,
+      "p50_ms": 35.99170999950729,
+      "p99_ms": 84.87235200300347
+    },
+    {
+      "round": 1,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423503": 0.16063897315963457
+      },
+      "cpu_cores_by_thread": {
+        "423503:423503": 0.0,
+        "423503:423504": 0.16063897315963457
+      },
+      "resources": [
+        {
+          "pid": 423503,
+          "rss_kib": 2548,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.03712086700034,
+      "statuses": {
+        "200": 6294
+      },
+      "errors": {},
+      "members": {
+        "0": 6294
+      },
+      "throughput": 1249.5233221886426,
+      "p50_ms": 23.862870002631098,
+      "p99_ms": 50.59162099860259
+    },
+    {
+      "round": 1,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423505": 0.28758308550946066
+      },
+      "cpu_cores_by_thread": {
+        "423505:423505": 0.0,
+        "423505:423506": 0.289580190269943
+      },
+      "resources": [
+        {
+          "pid": 423505,
+          "rss_kib": 2356,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.003879407002387,
+      "statuses": {
+        "200": 16942
+      },
+      "errors": {},
+      "members": {
+        "0": 16942
+      },
+      "throughput": 3385.77304167073,
+      "p50_ms": 8.426010997936828,
+      "p99_ms": 22.2548679994361
+    },
+    {
+      "round": 1,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423505": 0.9921663051001274
+      },
+      "cpu_cores_by_thread": {
+        "423505:423505": 0.0,
+        "423505:423506": 0.9901819724899271
+      },
+      "resources": [
+        {
+          "pid": 423505,
+          "rss_kib": 2392,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.037657160999515,
+      "statuses": {
+        "200": 5112
+      },
+      "errors": {},
+      "members": {
+        "0": 5112
+      },
+      "throughput": 1014.7574232673139,
+      "p50_ms": 25.217414000508143,
+      "p99_ms": 81.48365699889837
+    },
+    {
+      "round": 1,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423505": 0.15322793521427797
+      },
+      "cpu_cores_by_thread": {
+        "423505:423505": 0.0,
+        "423505:423506": 0.15322793521427797
+      },
+      "resources": [
+        {
+          "pid": 423505,
+          "rss_kib": 3132,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.023094127998775,
+      "statuses": {
+        "200": 6385
+      },
+      "errors": {},
+      "members": {
+        "0": 6385
+      },
+      "throughput": 1271.128877400475,
+      "p50_ms": 24.42844599863747,
+      "p99_ms": 36.97939400080941
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423507": 0.3615006519917492
+      },
+      "cpu_cores_by_thread": {
+        "423507:423507": 0.0,
+        "423507:423508": 0.0,
+        "423507:423509": 0.3634978931629743
+      },
+      "resources": [
+        {
+          "pid": 423507,
+          "rss_kib": 2400,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.003085043001192,
+      "statuses": {
+        "200": 15635
+      },
+      "errors": {},
+      "members": {
+        "0": 15635
+      },
+      "throughput": 3125.07180382068,
+      "p50_ms": 9.415159998752642,
+      "p99_ms": 20.81395099958172
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423507": 0.987748613197008
+      },
+      "cpu_cores_by_thread": {
+        "423507:423507": 0.0,
+        "423507:423508": 0.0,
+        "423507:423509": 0.9857651822468131
+      },
+      "resources": [
+        {
+          "pid": 423507,
+          "rss_kib": 2408,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.039142187997641,
+      "statuses": {
+        "200": 5164
+      },
+      "errors": {},
+      "members": {
+        "0": 5164
+      },
+      "throughput": 1024.777592563224,
+      "p50_ms": 29.810183998051798,
+      "p99_ms": 57.45589999787626
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423507": 0.18526027233187695
+      },
+      "cpu_cores_by_thread": {
+        "423507:423507": 0.0,
+        "423507:423508": 0.0,
+        "423507:423509": 0.1832682263928245
+      },
+      "resources": [
+        {
+          "pid": 423507,
+          "rss_kib": 3108,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.01792797500093,
+      "statuses": {
+        "200": 6741
+      },
+      "errors": {},
+      "members": {
+        "0": 6741
+      },
+      "throughput": 1343.3831720150886,
+      "p50_ms": 23.40882399948896,
+      "p99_ms": 29.59824400022626
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423510": 0.28742452998798385
+      },
+      "cpu_cores_by_thread": {
+        "423510:423510": 0.0,
+        "423510:423511": 0.0,
+        "423510:423512": 0.10578819506502185,
+        "423510:423513": 0.18163633492296205
+      },
+      "resources": [
+        {
+          "pid": 423510,
+          "rss_kib": 2576,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.0077976749998925,
+      "statuses": {
+        "200": 7137
+      },
+      "errors": {},
+      "members": {
+        "0": 3745,
+        "1": 3392
+      },
+      "throughput": 1425.177385985378,
+      "p50_ms": 13.354556998820044,
+      "p99_ms": 181.43837400202756
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423510": 1.7010268993273516
+      },
+      "cpu_cores_by_thread": {
+        "423510:423510": 0.0,
+        "423510:423511": 0.0,
+        "423510:423512": 0.8366031829635688,
+        "423510:423513": 0.8644237163637825
+      },
+      "resources": [
+        {
+          "pid": 423510,
+          "rss_kib": 2604,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.02935513400007,
+      "statuses": {
+        "200": 7748
+      },
+      "errors": {},
+      "members": {
+        "0": 4307,
+        "1": 3441
+      },
+      "throughput": 1540.5553582050727,
+      "p50_ms": 17.79067200186546,
+      "p99_ms": 88.34544899946195
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423510": 0.30029384305408774
+      },
+      "cpu_cores_by_thread": {
+        "423510:423510": 0.0,
+        "423510:423511": 0.0,
+        "423510:423512": 0.10142374831628129,
+        "423510:423513": 0.19887009473780645
+      },
+      "resources": [
+        {
+          "pid": 423510,
+          "rss_kib": 3820,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.0245675159967504,
+      "statuses": {
+        "200": 5494
+      },
+      "errors": {},
+      "members": {
+        "1": 3436,
+        "0": 2058
+      },
+      "throughput": 1093.427440771512,
+      "p50_ms": 25.76776199930464,
+      "p99_ms": 113.26017600003979
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423514": 0.3531168763030406
+      },
+      "cpu_cores_by_thread": {
+        "423514:423514": 0.0,
+        "423514:423515": 0.0,
+        "423514:423516": 0.03790520141106086,
+        "423514:423517": 0.07980042402328602,
+        "423514:423518": 0.2054860918599615,
+        "423514:423519": 0.029925159008732254
+      },
+      "resources": [
+        {
+          "pid": 423514,
+          "rss_kib": 2816,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.009023625996633,
+      "statuses": {
+        "200": 6240
+      },
+      "errors": {},
+      "members": {
+        "3": 305,
+        "1": 1422,
+        "0": 311,
+        "2": 4202
+      },
+      "throughput": 1245.7517604058899,
+      "p50_ms": 18.125537000742042,
+      "p99_ms": 156.15573999821208
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423514": 1.9899154397394678
+      },
+      "cpu_cores_by_thread": {
+        "423514:423514": 0.0,
+        "423514:423515": 0.0,
+        "423514:423516": 0.4631871103489471,
+        "423514:423517": 0.5228249357157643,
+        "423514:423518": 0.6023420362048538,
+        "423514:423519": 0.3995734299576753
+      },
+      "resources": [
+        {
+          "pid": 423514,
+          "rss_kib": 2800,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.025950865001505,
+      "statuses": {
+        "200": 8545
+      },
+      "errors": {},
+      "members": {
+        "2": 2447,
+        "1": 2791,
+        "0": 1686,
+        "3": 1621
+      },
+      "throughput": 1700.1757935008068,
+      "p50_ms": 16.7366210007458,
+      "p99_ms": 49.02587600008701
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423514": 0.46968476466603937
+      },
+      "cpu_cores_by_thread": {
+        "423514:423514": 0.0,
+        "423514:423515": 0.0,
+        "423514:423516": 0.06169588010443738,
+        "423514:423517": 0.11344081180493323,
+        "423514:423518": 0.20498953712119516,
+        "423514:423519": 0.08955853563547361
+      },
+      "resources": [
+        {
+          "pid": 423514,
+          "rss_kib": 4600,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.023215042998345,
+      "statuses": {
+        "200": 4556
+      },
+      "errors": {},
+      "members": {
+        "3": 462,
+        "0": 293,
+        "1": 1436,
+        "2": 2365
+      },
+      "throughput": 906.9888430021373,
+      "p50_ms": 27.893266000319272,
+      "p99_ms": 194.45918300334597
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423531": 0.0,
+        "423533": 0.2608082595048783
+      },
+      "cpu_cores_by_thread": {
+        "423531:423531": 0.0,
+        "423531:423532": 0.0,
+        "423533:423533": 0.0,
+        "423533:423534": 0.2608082595048783,
+        "423533:423535": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423531,
+          "rss_kib": 1884,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423533,
+          "rss_kib": 2408,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.011010267000529,
+      "statuses": {
+        "200": 13227
+      },
+      "errors": {},
+      "members": {
+        "0": 13227
+      },
+      "throughput": 2639.5874873984976,
+      "p50_ms": 10.635840000759345,
+      "p99_ms": 26.490634998481255
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423531": 0.0,
+        "423533": 0.9935396732024812
+      },
+      "cpu_cores_by_thread": {
+        "423531:423531": 0.0,
+        "423531:423532": 0.0,
+        "423533:423533": 0.0,
+        "423533:423534": 0.9935396732024812,
+        "423533:423535": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423531,
+          "rss_kib": 1884,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423533,
+          "rss_kib": 2484,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.03178128700165,
+      "statuses": {
+        "200": 3891
+      },
+      "errors": {},
+      "members": {
+        "0": 3891
+      },
+      "throughput": 773.2848027499579,
+      "p50_ms": 38.30583899980411,
+      "p99_ms": 80.67747300083283
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423531": 0.0,
+        "423533": 0.25666094354605284
+      },
+      "cpu_cores_by_thread": {
+        "423531:423531": 0.0,
+        "423531:423532": 0.0,
+        "423533:423533": 0.0,
+        "423533:423534": 0.25865056326346414,
+        "423533:423535": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423531,
+          "rss_kib": 1884,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423533,
+          "rss_kib": 3240,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.024104480002279,
+      "statuses": {
+        "200": 4655
+      },
+      "errors": {},
+      "members": {
+        "0": 4655
+      },
+      "throughput": 926.5332794189599,
+      "p50_ms": 28.2365259990911,
+      "p99_ms": 236.13225200097077
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423536": 0.0,
+        "423541": 0.12583695464339847,
+        "423538": 0.2017386098251309
+      },
+      "cpu_cores_by_thread": {
+        "423536:423536": 0.0,
+        "423536:423537": 0.0,
+        "423541:423541": 0.0,
+        "423541:423542": 0.12583695464339847,
+        "423541:423543": 0.0,
+        "423538:423538": 0.0,
+        "423538:423539": 0.20373602180359754,
+        "423538:423540": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423536,
+          "rss_kib": 1892,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423541,
+          "rss_kib": 2368,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423538,
+          "rss_kib": 2356,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.002921677998529,
+      "statuses": {
+        "200": 8513
+      },
+      "errors": {},
+      "members": {
+        "0": 5414,
+        "1": 3099
+      },
+      "throughput": 1701.6056912179592,
+      "p50_ms": 15.222508998704143,
+      "p99_ms": 58.88302300081705
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423536": 0.0,
+        "423541": 0.9226246037206869,
+        "423538": 0.942551700993272
+      },
+      "cpu_cores_by_thread": {
+        "423536:423536": 0.0,
+        "423536:423537": 0.0,
+        "423541:423541": 0.0,
+        "423541:423542": 0.9206318939934285,
+        "423541:423543": 0.0,
+        "423538:423538": 0.0,
+        "423538:423539": 0.9405589912660134,
+        "423538:423540": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423536,
+          "rss_kib": 1892,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423541,
+          "rss_kib": 2400,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423538,
+          "rss_kib": 2396,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.015457076999155,
+      "statuses": {
+        "200": 8747
+      },
+      "errors": {},
+      "members": {
+        "1": 4552,
+        "0": 4195
+      },
+      "throughput": 1744.00854512616,
+      "p50_ms": 16.19273100004648,
+      "p99_ms": 53.19326400058344
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423536": 0.0,
+        "423541": 0.07957547971226547,
+        "423538": 0.16710850739575747
+      },
+      "cpu_cores_by_thread": {
+        "423536:423536": 0.0,
+        "423536:423537": 0.0,
+        "423541:423541": 0.0,
+        "423541:423542": 0.0815648667050721,
+        "423541:423543": 0.0,
+        "423538:423538": 0.0,
+        "423538:423539": 0.1690978943885641,
+        "423538:423540": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423536,
+          "rss_kib": 1892,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423541,
+          "rss_kib": 3044,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423538,
+          "rss_kib": 3160,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.023822598999686,
+      "statuses": {
+        "200": 6202
+      },
+      "errors": {},
+      "members": {
+        "1": 2241,
+        "0": 3961
+      },
+      "throughput": 1234.518114002454,
+      "p50_ms": 24.869272001524223,
+      "p99_ms": 37.955176001560176
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423544": 0.0,
+        "423553": 0.029949887476893394,
+        "423550": 0.16372605154035055,
+        "423548": 0.07786970743992283,
+        "423546": 0.045923160797903206
+      },
+      "cpu_cores_by_thread": {
+        "423544:423544": 0.0,
+        "423544:423545": 0.0,
+        "423553:423553": 0.0,
+        "423553:423556": 0.029949887476893394,
+        "423553:423557": 0.0,
+        "423550:423550": 0.0,
+        "423550:423554": 0.16572271070547678,
+        "423550:423555": 0.0,
+        "423548:423548": 0.0,
+        "423548:423551": 0.07986636660504906,
+        "423548:423552": 0.0,
+        "423546:423546": 0.0,
+        "423546:423547": 0.045923160797903206,
+        "423546:423549": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423544,
+          "rss_kib": 1908,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423553,
+          "rss_kib": 2304,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423550,
+          "rss_kib": 2372,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423548,
+          "rss_kib": 2328,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423546,
+          "rss_kib": 2292,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.005824979998579,
+      "statuses": {
+        "200": 9341
+      },
+      "errors": {},
+      "members": {
+        "2": 7290,
+        "3": 402,
+        "0": 466,
+        "1": 1183
+      },
+      "throughput": 1866.0260870731945,
+      "p50_ms": 15.732403997390065,
+      "p99_ms": 47.07643800065853
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423544": 0.0,
+        "423553": 0.47142439206800013,
+        "423550": 0.6106636639868187,
+        "423548": 0.5251309683795444,
+        "423546": 0.41572868330047263
+      },
+      "cpu_cores_by_thread": {
+        "423544:423544": 0.0,
+        "423544:423545": 0.0,
+        "423553:423553": 0.0,
+        "423553:423556": 0.47142439206800013,
+        "423553:423557": 0.0,
+        "423550:423550": 0.0,
+        "423550:423554": 0.6106636639868187,
+        "423550:423555": 0.0,
+        "423548:423548": 0.0,
+        "423548:423551": 0.5251309683795444,
+        "423548:423552": 0.0,
+        "423546:423546": 0.0,
+        "423546:423547": 0.41572868330047263,
+        "423546:423549": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423544,
+          "rss_kib": 1908,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423553,
+          "rss_kib": 2324,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423550,
+          "rss_kib": 2376,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423548,
+          "rss_kib": 2332,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423546,
+          "rss_kib": 2308,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.021653845000401,
+      "statuses": {
+        "200": 9847
+      },
+      "errors": {},
+      "members": {
+        "2": 3656,
+        "0": 1851,
+        "1": 2361,
+        "3": 1979
+      },
+      "throughput": 1960.9077614546754,
+      "p50_ms": 15.49522999994224,
+      "p99_ms": 37.59184700174956
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423544": 0.0,
+        "423553": 0.03383239087791096,
+        "423550": 0.13731970415152095,
+        "423548": 0.06766478175582193,
+        "423546": 0.04577323471717366
+      },
+      "cpu_cores_by_thread": {
+        "423544:423544": 0.0,
+        "423544:423545": 0.0,
+        "423553:423553": 0.0,
+        "423553:423556": 0.03383239087791096,
+        "423553:423557": 0.0,
+        "423550:423550": 0.0,
+        "423550:423554": 0.13532956351164385,
+        "423550:423555": 0.0,
+        "423548:423548": 0.0,
+        "423548:423551": 0.06766478175582193,
+        "423548:423552": 0.0,
+        "423546:423546": 0.0,
+        "423546:423547": 0.04776337535705077,
+        "423546:423549": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423544,
+          "rss_kib": 1908,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423553,
+          "rss_kib": 2572,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423550,
+          "rss_kib": 3116,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423548,
+          "rss_kib": 2804,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423546,
+          "rss_kib": 2480,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.022788470003434,
+      "statuses": {
+        "200": 5916
+      },
+      "errors": {},
+      "members": {
+        "0": 404,
+        "1": 907,
+        "2": 4248,
+        "3": 357
+      },
+      "throughput": 1177.8318030573873,
+      "p50_ms": 24.74270200036699,
+      "p99_ms": 71.78780100002768
+    },
+    {
+      "round": 2,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423558": 0.1458377492038204
+      },
+      "cpu_cores_by_thread": {
+        "423558:423558": 0.0,
+        "423558:423559": 0.1458377492038204
+      },
+      "resources": [
+        {
+          "pid": 423558,
+          "rss_kib": 1864,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.0028624900005525,
+      "statuses": {
+        "200": 11909
+      },
+      "errors": {},
+      "members": {
+        "0": 11909
+      },
+      "throughput": 2380.4372044610573,
+      "p50_ms": 11.577354998735245,
+      "p99_ms": 36.11448000083328
+    },
+    {
+      "round": 2,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423558": 0.9952784383024925
+      },
+      "cpu_cores_by_thread": {
+        "423558:423558": 0.0,
+        "423558:423559": 0.9952784383024925
+      },
+      "resources": [
+        {
+          "pid": 423558,
+          "rss_kib": 1868,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.021901518000959,
+      "statuses": {
+        "200": 6528
+      },
+      "errors": {},
+      "members": {
+        "0": 6528
+      },
+      "throughput": 1299.9060169938507,
+      "p50_ms": 23.27396900000167,
+      "p99_ms": 39.21722300219699
+    },
+    {
+      "round": 2,
+      "mode": "baseline",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423558": 0.12340788386416149
+      },
+      "cpu_cores_by_thread": {
+        "423558:423558": 0.0,
+        "423558:423559": 0.12340788386416149
+      },
+      "resources": [
+        {
+          "pid": 423558,
+          "rss_kib": 2580,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.02267159099938,
+      "statuses": {
+        "200": 6308
+      },
+      "errors": {},
+      "members": {
+        "0": 6308
+      },
+      "throughput": 1255.9053256246987,
+      "p50_ms": 24.52258699850063,
+      "p99_ms": 42.08737099907012
+    },
+    {
+      "round": 2,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423560": 0.18572215686759969
+      },
+      "cpu_cores_by_thread": {
+        "423560:423560": 0.0,
+        "423560:423561": 0.18771916930703622
+      },
+      "resources": [
+        {
+          "pid": 423560,
+          "rss_kib": 2352,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.00462745600089,
+      "statuses": {
+        "200": 8739
+      },
+      "errors": {},
+      "members": {
+        "0": 8739
+      },
+      "throughput": 1746.1839221461616,
+      "p50_ms": 14.57071600088966,
+      "p99_ms": 64.13057000099798
+    },
+    {
+      "round": 2,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423560": 0.9972105753633753
+      },
+      "cpu_cores_by_thread": {
+        "423560:423560": 0.0,
+        "423560:423561": 0.9972105753633753
+      },
+      "resources": [
+        {
+          "pid": 423560,
+          "rss_kib": 2396,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.033239876000152,
+      "statuses": {
+        "200": 4318
+      },
+      "errors": {},
+      "members": {
+        "0": 4318
+      },
+      "throughput": 857.8967238556204,
+      "p50_ms": 36.159341001621215,
+      "p99_ms": 59.70696299846168
+    },
+    {
+      "round": 2,
+      "mode": "local",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423560": 0.2851987192538036
+      },
+      "cpu_cores_by_thread": {
+        "423560:423560": 0.0,
+        "423560:423561": 0.2851987192538036
+      },
+      "resources": [
+        {
+          "pid": 423560,
+          "rss_kib": 3144,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 1,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.01316922100159,
+      "statuses": {
+        "200": 4184
+      },
+      "errors": {},
+      "members": {
+        "0": 4184
+      },
+      "throughput": 834.6017889186816,
+      "p50_ms": 25.95646700137877,
+      "p99_ms": 473.01422100281343
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423562": 0.3257899701808862
+      },
+      "cpu_cores_by_thread": {
+        "423562:423562": 0.0,
+        "423562:423563": 0.0,
+        "423562:423564": 0.32380344597246613
+      },
+      "resources": [
+        {
+          "pid": 423562,
+          "rss_kib": 2404,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.029483840000466,
+      "statuses": {
+        "200": 14372
+      },
+      "errors": {},
+      "members": {
+        "0": 14372
+      },
+      "throughput": 2857.5496924150902,
+      "p50_ms": 10.551293999014888,
+      "p99_ms": 29.79539399893838
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423562": 0.9784557184336207
+      },
+      "cpu_cores_by_thread": {
+        "423562:423562": 0.0,
+        "423562:423563": 0.0,
+        "423562:423564": 0.9784557184336207
+      },
+      "resources": [
+        {
+          "pid": 423562,
+          "rss_kib": 2428,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.487188865998178,
+      "statuses": {
+        "200": 3405
+      },
+      "errors": {},
+      "members": {
+        "0": 3405
+      },
+      "throughput": 620.5363225420152,
+      "p50_ms": 35.53994699905161,
+      "p99_ms": 711.8670360032411
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423562": 0.211087053433483
+      },
+      "cpu_cores_by_thread": {
+        "423562:423562": 0.0,
+        "423562:423563": 0.0,
+        "423562:423564": 0.21307844073002527
+      },
+      "resources": [
+        {
+          "pid": 423562,
+          "rss_kib": 3128,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "load_seconds": 5.019770938000875,
+      "statuses": {
+        "200": 5471
+      },
+      "errors": {},
+      "members": {
+        "0": 5471
+      },
+      "throughput": 1089.8903690172817,
+      "p50_ms": 25.176623999868752,
+      "p99_ms": 113.07051399853663
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423574": 0.30553459418481094
+      },
+      "cpu_cores_by_thread": {
+        "423574:423574": 0.0,
+        "423574:423575": 0.0,
+        "423574:423576": 0.08365828174107919,
+        "423574:423577": 0.22551362904116998
+      },
+      "resources": [
+        {
+          "pid": 423574,
+          "rss_kib": 2548,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.494573709998804,
+      "statuses": {
+        "200": 8828
+      },
+      "errors": {},
+      "members": {
+        "1": 7540,
+        "0": 1288
+      },
+      "throughput": 1606.6760527636861,
+      "p50_ms": 15.668568001274252,
+      "p99_ms": 62.94865600284538
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423574": 1.6893016013283289
+      },
+      "cpu_cores_by_thread": {
+        "423574:423574": 0.0,
+        "423574:423575": 0.0,
+        "423574:423576": 0.829797621285545,
+        "423574:423577": 0.8575235561256348
+      },
+      "resources": [
+        {
+          "pid": 423574,
+          "rss_kib": 2572,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.046675954999955,
+      "statuses": {
+        "200": 7768
+      },
+      "errors": {},
+      "members": {
+        "1": 3477,
+        "0": 4291
+      },
+      "throughput": 1539.2309847641227,
+      "p50_ms": 16.459991998999612,
+      "p99_ms": 46.119105001707794
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 2,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423574": 0.3753123557118247
+      },
+      "cpu_cores_by_thread": {
+        "423574:423574": 0.0,
+        "423574:423575": 0.0,
+        "423574:423576": 0.17351123982657224,
+        "423574:423577": 0.20368710762249784
+      },
+      "resources": [
+        {
+          "pid": 423574,
+          "rss_kib": 3692,
+          "threads": 4,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 11,
+            "anon_inode:": 9,
+            "pipe:": 6
+          }
+        }
+      ],
+      "load_seconds": 5.115963935000764,
+      "statuses": {
+        "200": 5723
+      },
+      "errors": {},
+      "members": {
+        "1": 3431,
+        "0": 2292
+      },
+      "throughput": 1118.6552666734437,
+      "p50_ms": 25.354202000016812,
+      "p99_ms": 138.67341799777932
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423578": 0.4195323054698993
+      },
+      "cpu_cores_by_thread": {
+        "423578:423578": 0.0,
+        "423578:423579": 0.0,
+        "423578:423580": 0.027968820364659953,
+        "423578:423581": 0.04594877631336992,
+        "423578:423582": 0.22974388156684958,
+        "423578:423583": 0.11387305434182979
+      },
+      "resources": [
+        {
+          "pid": 423578,
+          "rss_kib": 2800,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.004249138000887,
+      "statuses": {
+        "200": 6143
+      },
+      "errors": {},
+      "members": {
+        "1": 236,
+        "0": 191,
+        "2": 5018,
+        "3": 698
+      },
+      "throughput": 1227.5567883604663,
+      "p50_ms": 18.162721000408055,
+      "p99_ms": 138.09718800257542
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423578": 2.3217997425952888
+      },
+      "cpu_cores_by_thread": {
+        "423578:423578": 0.0,
+        "423578:423579": 0.0,
+        "423578:423580": 0.4913023346106071,
+        "423578:423581": 0.5685635888437268,
+        "423578:423582": 0.6517680164793942,
+        "423578:423583": 0.6101658026615605
+      },
+      "resources": [
+        {
+          "pid": 423578,
+          "rss_kib": 2852,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.042582340000081,
+      "statuses": {
+        "200": 4697
+      },
+      "errors": {},
+      "members": {
+        "1": 705,
+        "2": 956,
+        "0": 1647,
+        "3": 1389
+      },
+      "throughput": 931.4671894876633,
+      "p50_ms": 14.532997000060277,
+      "p99_ms": 592.7978930012614
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 4,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423578": 0.5787436148260636
+      },
+      "cpu_cores_by_thread": {
+        "423578:423578": 0.0,
+        "423578:423579": 0.0,
+        "423578:423580": 0.051531965703690605,
+        "423578:423581": 0.10504593008829238,
+        "423578:423582": 0.2893718074130318,
+        "423578:423583": 0.13477591030196004
+      },
+      "resources": [
+        {
+          "pid": 423578,
+          "rss_kib": 4848,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 5.043641698001011,
+      "statuses": {
+        "200": 3320
+      },
+      "errors": {},
+      "members": {
+        "0": 445,
+        "1": 883,
+        "3": 661,
+        "2": 1331
+      },
+      "throughput": 658.2545309108384,
+      "p50_ms": 38.02083999835304,
+      "p99_ms": 236.87770399919827
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423584": 0.0,
+        "423586": 0.1587793029722019
+      },
+      "cpu_cores_by_thread": {
+        "423584:423584": 0.0,
+        "423584:423585": 0.0,
+        "423586:423586": 0.0,
+        "423586:423587": 0.1587793029722019,
+        "423586:423588": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423584,
+          "rss_kib": 1880,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423586,
+          "rss_kib": 2384,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.029882550999901,
+      "statuses": {
+        "200": 5207
+      },
+      "errors": {},
+      "members": {
+        "0": 5207
+      },
+      "throughput": 1035.2130387149675,
+      "p50_ms": 25.97408300061943,
+      "p99_ms": 89.83380800054874
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423584": 0.0,
+        "423586": 0.9635527625011935
+      },
+      "cpu_cores_by_thread": {
+        "423584:423584": 0.0,
+        "423584:423585": 0.0,
+        "423586:423586": 0.0,
+        "423586:423587": 0.9595711395156515,
+        "423586:423588": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423584,
+          "rss_kib": 1880,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423586,
+          "rss_kib": 2436,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.022681859998556,
+      "statuses": {
+        "200": 2567
+      },
+      "errors": {},
+      "members": {
+        "0": 2567
+      },
+      "throughput": 511.08154399425524,
+      "p50_ms": 54.1061960029765,
+      "p99_ms": 152.50745999946957
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 1,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423584": 0.0,
+        "423586": 0.2870105085496208
+      },
+      "cpu_cores_by_thread": {
+        "423584:423584": 0.0,
+        "423584:423585": 0.0,
+        "423586:423586": 0.0,
+        "423586:423587": 0.2870105085496208,
+        "423586:423588": 0.0019262450238229586
+      },
+      "resources": [
+        {
+          "pid": 423584,
+          "rss_kib": 1880,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423586,
+          "rss_kib": 3196,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.18789332400047,
+      "statuses": {
+        "200": 4361
+      },
+      "errors": {},
+      "members": {
+        "0": 4361
+      },
+      "throughput": 840.6109624160816,
+      "p50_ms": 27.96726300221053,
+      "p99_ms": 251.8743020009424
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423589": 0.0,
+        "423592": 0.1594858748269094,
+        "423591": 0.11164011237883659
+      },
+      "cpu_cores_by_thread": {
+        "423589:423589": 0.0,
+        "423589:423590": 0.0,
+        "423592:423592": 0.0,
+        "423592:423594": 0.1594858748269094,
+        "423592:423596": 0.0,
+        "423591:423591": 0.0,
+        "423591:423593": 0.11164011237883659,
+        "423591:423595": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423589,
+          "rss_kib": 1896,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423592,
+          "rss_kib": 2348,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423591,
+          "rss_kib": 2352,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.014031642000191,
+      "statuses": {
+        "200": 5419
+      },
+      "errors": {},
+      "members": {
+        "0": 2846,
+        "1": 2573
+      },
+      "throughput": 1080.7670128380482,
+      "p50_ms": 18.108752999978606,
+      "p99_ms": 164.98962599871447
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423589": 0.0,
+        "423592": 0.7455361291211625,
+        "423591": 0.6997743206840579
+      },
+      "cpu_cores_by_thread": {
+        "423589:423589": 0.0,
+        "423589:423590": 0.0,
+        "423592:423592": 0.0,
+        "423592:423594": 0.7436293871029498,
+        "423592:423596": 0.0,
+        "423591:423591": 0.0,
+        "423591:423593": 0.6883338685747817,
+        "423591:423595": 0.011440452109276151
+      },
+      "resources": [
+        {
+          "pid": 423589,
+          "rss_kib": 1892,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423592,
+          "rss_kib": 2384,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423591,
+          "rss_kib": 2376,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.2351484169994364,
+      "statuses": {
+        "200": 4462
+      },
+      "errors": {},
+      "members": {
+        "1": 2233,
+        "0": 2229
+      },
+      "throughput": 852.3158551744418,
+      "p50_ms": 22.2666619993106,
+      "p99_ms": 231.19428900099592
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 2,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423589": 0.0,
+        "423592": 0.1529454475020363,
+        "423591": 0.09534261662464602
+      },
+      "cpu_cores_by_thread": {
+        "423589:423589": 0.0,
+        "423589:423590": 0.0,
+        "423592:423592": 0.0,
+        "423592:423594": 0.1529454475020363,
+        "423592:423596": 0.0,
+        "423591:423591": 0.0,
+        "423591:423593": 0.09335631211163255,
+        "423591:423595": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423589,
+          "rss_kib": 1892,
+          "threads": 2,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 5,
+            "anon_inode:": 3,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423592,
+          "rss_kib": 3052,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423591,
+          "rss_kib": 2740,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.031095161997655,
+      "statuses": {
+        "200": 2994
+      },
+      "errors": {},
+      "members": {
+        "0": 822,
+        "1": 2172
+      },
+      "throughput": 595.0990596670005,
+      "p50_ms": 45.843592000892386,
+      "p99_ms": 249.15303099987796
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/",
+      "cpu_cores_by_process": {
+        "423600": 0.0,
+        "423611": 0.12388774912627847,
+        "423608": 0.08392395908554348,
+        "423605": 0.05195292705295549,
+        "423602": 0.04396016904480849
+      },
+      "cpu_cores_by_thread": {
+        "423600:423600": 0.0,
+        "423600:423601": 0.0,
+        "423611:423611": 0.0,
+        "423611:423612": 0.11989137012220497,
+        "423611:423613": 0.0,
+        "423608:423608": 0.0,
+        "423608:423609": 0.08192576958350672,
+        "423608:423610": 0.0,
+        "423605:423605": 0.0,
+        "423605:423606": 0.05195292705295549,
+        "423605:423607": 0.0,
+        "423602:423602": 0.0,
+        "423602:423603": 0.04396016904480849,
+        "423602:423604": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423600,
+          "rss_kib": 1908,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423611,
+          "rss_kib": 2352,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423608,
+          "rss_kib": 2344,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423605,
+          "rss_kib": 2304,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423602,
+          "rss_kib": 2328,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.003583424997487,
+      "statuses": {
+        "200": 5568
+      },
+      "errors": {},
+      "members": {
+        "2": 1971,
+        "0": 1308,
+        "3": 1667,
+        "1": 622
+      },
+      "throughput": 1112.8024711615149,
+      "p50_ms": 26.635171001544222,
+      "p99_ms": 66.8977060013276
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/cpu",
+      "cpu_cores_by_process": {
+        "423600": 0.0,
+        "423611": 0.4501518393224194,
+        "423608": 0.4939719298759293,
+        "423605": 0.27487147710838,
+        "423602": 0.17129671761826581
+      },
+      "cpu_cores_by_thread": {
+        "423600:423600": 0.0,
+        "423600:423601": 0.0,
+        "423611:423611": 0.0,
+        "423611:423612": 0.45413548391819303,
+        "423611:423613": 0.0,
+        "423608:423608": 0.0,
+        "423608:423609": 0.49596375217381616,
+        "423608:423610": 0.0,
+        "423605:423605": 0.0,
+        "423605:423606": 0.27287965481049326,
+        "423605:423607": 0.0,
+        "423602:423602": 0.0,
+        "423602:423603": 0.169304895320379,
+        "423602:423604": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423600,
+          "rss_kib": 1904,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423611,
+          "rss_kib": 2348,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423608,
+          "rss_kib": 2340,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423605,
+          "rss_kib": 2316,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423602,
+          "rss_kib": 2324,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.016915049996896,
+      "statuses": {
+        "200": 4952
+      },
+      "errors": {},
+      "members": {
+        "1": 1097,
+        "2": 1310,
+        "0": 693,
+        "3": 1852
+      },
+      "throughput": 987.0607635668583,
+      "p50_ms": 26.919200998236192,
+      "p99_ms": 76.81771200077492
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 4,
+      "path": "/slow",
+      "cpu_cores_by_process": {
+        "423600": 0.0,
+        "423611": 0.21418362498405788,
+        "423608": 0.15050741215095959,
+        "423605": 0.14278908332270523,
+        "423602": 0.0366620619342081
+      },
+      "cpu_cores_by_thread": {
+        "423600:423600": 0.0,
+        "423600:423601": 0.0,
+        "423611:423611": 0.0,
+        "423611:423612": 0.21418362498405788,
+        "423611:423613": 0.0,
+        "423608:423608": 0.0,
+        "423608:423609": 0.14857782994389598,
+        "423608:423610": 0.0,
+        "423605:423605": 0.0,
+        "423605:423606": 0.14085950111564166,
+        "423605:423607": 0.0,
+        "423602:423602": 0.0,
+        "423602:423603": 0.0366620619342081,
+        "423602:423604": 0.0
+      },
+      "resources": [
+        {
+          "pid": 423600,
+          "rss_kib": 1904,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423611,
+          "rss_kib": 3012,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423608,
+          "rss_kib": 2864,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423605,
+          "rss_kib": 2780,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 423602,
+          "rss_kib": 2588,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-scaling-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "load_seconds": 5.180824659000791,
+      "statuses": {
+        "200": 5287
+      },
+      "errors": {},
+      "members": {
+        "2": 1403,
+        "1": 927,
+        "0": 341,
+        "3": 2616
+      },
+      "throughput": 1020.4939074351315,
+      "p50_ms": 27.265347001957707,
+      "p99_ms": 64.64964900078485
+    }
+  ]
+}

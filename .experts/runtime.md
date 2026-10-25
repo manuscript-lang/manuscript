@@ -27,6 +27,8 @@ and the peer observes connection release.
 
 Verified: lowering marshals native calls from `crates/ms-rt/SYMBOLS.md`, not from the Rust source, and programs link `target/ms-native/libms_native.a`. Adding parameters to `msstd_process_command_spawn` without editing its catalogue line made compiled calls pass the out pointer as a mode and segfault inside the native; a stale archive instead ignored the new arguments. Crate tests that call the native directly passed both times. A payload-free alternative parameter crosses as its case index (`p.ty == "i64"`), and a bundled declaration's default such as `Stdio.Pipe` is built by `literal_default`.
 
+Verified: native interface methods also need the dispatch entry in `crates/ms-lower/src/natiface.rs`. Bundled interface defaults lower through `contract_default`/`literal_default`; a checked factory call such as `headers()` is not supported there. Preserve old call arities and use a separately named operation with a required header argument when adding handshake metadata.
+
 Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
 Evidence: [catalogue](../crates/ms-rt/SYMBOLS.md), [Stdio default](../crates/ms-lower/src/call.rs), [called source check](../tests/e2e/testdata/stdlib/host.ms).
 Verify: run `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.
@@ -243,3 +245,71 @@ Apply when: publishing task metadata to signal handlers or worker cancellation c
 Evidence: [concurrent shield regression and ABI checks](../crates/ms-rt/src/fault.rs).
 Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads`
 passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.
+
+### HTTP cancellation needs ownership cleanup as well as socket shutdown
+
+Verified: retaining a closed `HttpExchange` kept its connection's shutdown socket
+open. `close_conn` must take and drop the I/O owner after deregistration, then clear
+TLS/output buffers. Native shutdown alone does not release a descriptor. Source
+helpers must put owned parser state, response producers and callback-held buffers
+in `with` scopes before parking or invoking application code; fault jumps skip
+ordinary local drops. Nonparking factories finish pattern-binding ownership before
+starting a callback. Keep shared parser state in its shared slot across input reads.
+
+Apply when: adding request/response helpers, streaming adapters or cancellation paths.
+Evidence: [connection close](../crates/ms-std-net/src/http/server.rs),
+[HTTP dispatch](../stdlib/http.ms), [multipart scanner](../stdlib/web_multipart.ms),
+[separate-process recovery regression](../crates/ms-cli/tests/engine.rs).
+Verify: repeated interrupted uploads, gzip producers and static staging have bounded
+heap recovery; the deadline recovery harness checks member tasks and descriptors.
+Small-block heap metrics exclude large/native allocations: also measure RSS and FDs.
+
+### Bounded HTTP/2 output needs an explicit continuation
+
+Verified: peer flow-control credit is not an application memory budget. Bound DATA
+before encoding and count both protocol-core and transport staging, including frame
+headers. After draining a full queue, recompute production; queue fullness before
+the drain does not imply exhausted peer credit. Rotate buffered streams when a
+shared staging cap interrupts a pass.
+
+A synthetic writable event queued during a service turn may have no corresponding
+kernel edge. Before parking, service that pending work with a cooperative yield;
+notifying only an already parked reactor loses this wake.
+Evidence: [H2 queue/progress regressions](../crates/ms-std-net/src/http/server/h2serve/tests.rs),
+[Unix pending-readiness regression](../crates/ms-std-net/src/sys/unix.rs).
+
+### Zeroed native allocations must consume the cache their frees populate
+
+Verified: `StdHeap` formerly sent large zeroed allocations directly to `System`,
+then cached their frees in the runtime. Repetition could fill the bounded large
+cache without reusing it; non-class-sized calloc blocks could also land in a lower
+bin than their next request. Use matching rounded classes on cold calloc and
+clear requested bytes when reusing a cached block. Preserve lazy calloc on misses
+and System routing for workers, high alignment, counting builds and unclaimed
+threads; those branches encode allocator lifetime constraints.
+
+Evidence: [zeroed reuse and boundary regressions](../crates/ms-rt/src/alloc.rs).
+The non-class-sized reuse regression fails before the correction. Cache retention
+is distinct from live ownership leaks: small-block metrics alone cannot distinguish
+it, and an RSS correlation does not identify the allocating call site.
+
+### HTTP response selection is not transport commitment
+
+Verified: a staged HTTP/1 status could suppress the error response even though no
+bytes had been accepted. Mark final commitment on positive transport acceptance
+(TLS plaintext acceptance counts), not while encoding headers. Track incomplete
+sends across cancellation and swallowed I/O errors: a partial 100, final header or
+chunk must close without appending another status or a chunk terminator. A failed
+upgrade attempt is terminal; before commitment it may fail with 500/504, and after
+commitment it must close. Never send 100 after committing the final response.
+
+Evidence: [deterministic prefix/error transport regression](../crates/ms-std-net/src/http/exchange.rs).
+Test a transport that fails once and then accepts writes, so an incorrect second
+response is observable rather than hidden by a permanently broken mock socket.
+
+For interrupted-output ownership tests, observe final headers and a nonzero chunk
+payload before withholding reads. A complete precommit 504 has not exercised the
+producer; bounded retries may exclude it from the required successful probes, but
+must retain all attempts in resource accounting and never retry malformed or
+partially committed output. Shared-runner scheduling can consume a short request
+deadline before response generation begins.

@@ -51,7 +51,8 @@ def handle_headers(request: HttpRequest) -> HttpResponse:
 test "one header type preserves repeated values through buffered requests":
     with (
         network().serve(
-            address: "127.0.0.1:0", handler: handle_headers, max_requests: 2
+            address: "127.0.0.1:0", handler: handle_headers,
+            options: HttpServerOptions(max_requests: 2)
         ) | try expect_ok
     ) as server:
         let response = (

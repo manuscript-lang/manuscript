@@ -111,3 +111,36 @@ fn encoder_roundtrips() {
     assert!(Encoder::new(Format::Gzip, 10).is_err());
     assert!(Encoder::new(Format::Gzip, -1).is_err());
 }
+
+#[test]
+fn sync_flush_exposes_payload_without_ending_the_stream() {
+    for format in [Format::Gzip, Format::Zlib, Format::Deflate] {
+        let mut encoder = Encoder::new(format, 6).unwrap();
+        encoder.feed(b"first");
+        encoder.flush();
+        let first = encoder.take(usize::MAX);
+        let mut decoder = Decoder::new(format, None);
+        decoder.feed(&first);
+        let mut output = Vec::new();
+        loop {
+            match decoder.poll(1024).unwrap() {
+                Poll::Output(bytes) => output.extend(bytes),
+                Poll::NeedInput => break,
+                Poll::Done => panic!("sync flush ended the stream"),
+            }
+        }
+        assert_eq!(output, b"first");
+        encoder.feed(b"second");
+        encoder.finish();
+        decoder.feed(&encoder.take(usize::MAX));
+        decoder.finish_input();
+        loop {
+            match decoder.poll(1024).unwrap() {
+                Poll::Output(bytes) => output.extend(bytes),
+                Poll::Done => break,
+                Poll::NeedInput => panic!("finished stream needs more input"),
+            }
+        }
+        assert_eq!(output, b"firstsecond");
+    }
+}

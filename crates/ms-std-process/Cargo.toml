@@ -15,6 +15,7 @@ ms-std-fs = { path = "../ms-std-fs" }
 ms-std-io = { path = "../ms-std-io" }
 
 [target.'cfg(unix)'.dependencies]
+rustix = { version = "1", default-features = false, features = ["std", "net", "fs"] }
 libc = { version = "0.2", default-features = false }
 
 [target.'cfg(windows)'.dependencies]

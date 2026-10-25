@@ -436,6 +436,33 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// Protect existing expression-temporary ownership only while a call runs.
+    /// Argument evaluation (including early `try`) is already complete.
+    pub(crate) fn protect_call_temps(&mut self) -> Vec<Value> {
+        self.temps
+            .clone()
+            .into_iter()
+            .map(|value| {
+                let thunk = self.drop_thunk(self.ty_of(value));
+                self.b
+                    .emit(
+                        Op::CleanupPush,
+                        &[value],
+                        ms_mir::ir::Imm::Func(thunk),
+                        Some(MTy::INT),
+                    )
+                    .expect("temporary cleanup")
+            })
+            .collect()
+    }
+
+    pub(crate) fn discard_call_temps(&mut self, cleanups: Vec<Value>) -> Result<(), Error> {
+        for cleanup in cleanups.into_iter().rev() {
+            self.call_runtime("msrt_cleanup_discard", &[cleanup], MTy::UNIT)?;
+        }
+        Ok(())
+    }
+
     /// Drops the owned temporaries registered after `mark`.
     pub fn flush_temps(&mut self, mark: usize) {
         while self.temps.len() > mark {

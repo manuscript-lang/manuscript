@@ -35,6 +35,8 @@ pub struct RequestWire {
     pub headers: *mut Obj,
     /// `Bytes`.
     pub body: VecVal,
+    pub peer_address: StrVal,
+    pub scheme: StrVal,
 }
 
 /// Response a buffered handler thunk fills in; the native takes ownership.
@@ -105,11 +107,22 @@ impl Drop for Program {
 /// Runs one request under `msrt_guard_call`. `None` means it returned normally;
 /// otherwise the outcome that ends the request (a fault becomes a 500 for the caller).
 /// Values owned by the abandoned frames leak, per the ms-rt contract.
-fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
+fn guarded<T>(deadline: Option<std::time::Instant>, mut call: impl FnMut()) -> Option<Outcome<T>> {
     unsafe extern "C-unwind" fn run(data: *mut u8) {
         // SAFETY: `data` is the `&mut dyn FnMut()` below, live for the guard call.
-        unsafe { (*data.cast::<&mut dyn FnMut()>())() };
+        unsafe {
+            crate::rt::check_cancel();
+            (*data.cast::<&mut dyn FnMut()>())()
+        };
     }
+    let remaining = deadline.map_or(-1, |d| {
+        d.saturating_duration_since(std::time::Instant::now())
+            .as_nanos()
+            .min(i64::MAX as u128) as i64
+    });
+    // SAFETY: this scope surrounds the callback guard and is dropped on the same
+    // task after every callback return, fault, or cancellation; it never crosses a park.
+    let _deadline = unsafe { ms_rt::task::RequestDeadline::enter(remaining) };
     let mut dynamic: &mut dyn FnMut() = &mut call;
     let mut message = NO_MESSAGE;
     // SAFETY: `run` and its data outlive the call; `message` is written only on a fault.
@@ -132,6 +145,13 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
     }
 }
 
+/// Finalization can write headers and park after the user's callback guard has
+/// returned. Keep cancellation inside the HTTP boundary rather than abandoning
+/// the reactor's Rust frames and owned connection references.
+pub(crate) fn finish_guarded(call: impl FnMut()) -> bool {
+    guarded::<()>(None, call).is_none()
+}
+
 impl Dispatch for Program {
     fn buffered(&self, request: ServerRequest) -> Outcome<Reply> {
         let Some(thunk) = self.buffered else {
@@ -149,6 +169,8 @@ impl Dispatch for Program {
                 protocol: new_string(request.protocol),
                 headers: headers_handle(request.headers),
                 body: body.assume_init(),
+                peer_address: new_string(&request.peer_address),
+                scheme: new_string(request.scheme),
             };
             let mut resp = ResponseWire {
                 status: 0,
@@ -159,7 +181,26 @@ impl Dispatch for Program {
                     cap: 0,
                 },
             };
-            if let Some(stop) = guarded(|| thunk(self.env, &mut req, &mut resp)) {
+            let mut invoked = false;
+            let stopped = guarded(request.deadline, || {
+                invoked = true;
+                thunk(self.env, &mut req, &mut resp);
+            });
+            if let Some(stop) = stopped {
+                // A preflight cancellation leaves every wire field native-owned.
+                // Once invoked, the generated thunk owns their cleanup instead.
+                if !invoked {
+                    str_release(&req.method);
+                    str_release(&req.path);
+                    str_release(&req.query);
+                    str_release(&req.protocol);
+                    str_release(&req.peer_address);
+                    str_release(&req.scheme);
+                    msrt_release(req.headers);
+                    if !req.body.ptr.is_null() {
+                        msrt_free(req.body.ptr);
+                    }
+                }
                 return stop;
             }
             let headers = if resp.headers.is_null() {
@@ -185,14 +226,17 @@ impl Dispatch for Program {
         // SAFETY: the thunk borrows the exchange handle (it takes its own reference for the
         // handler); the status and optional message string come back owned.
         let mut status = 0;
+        let deadline = exchange.absolute_deadline();
         let handle = Object(ExchH(exchange)).into_raw().cast();
         // SAFETY: the thunk contract; the handle is live for the call.
         let call = || status = unsafe { thunk(self.env, handle, &mut message) };
-        if let Some(stop) = guarded(call) {
+        let stopped = guarded(deadline, call);
+        // SAFETY: the native owns this handle outside the callback guard. The
+        // thunk borrows it, so release after cancellation/fault as well as success.
+        unsafe { msrt_release(handle) };
+        if let Some(stop) = stopped {
             return stop;
         }
-        // SAFETY: the handle created above is released once, after the thunk returned.
-        unsafe { msrt_release(handle) };
         let text = if message.ptr_word.is_null() && message.is_static() {
             String::new()
         } else {
@@ -280,6 +324,9 @@ mod tests {
 
     fn request(path: &str) -> ServerRequest {
         ServerRequest {
+            deadline: None,
+            peer_address: "127.0.0.1:1".into(),
+            scheme: "http",
             method: "GET".into(),
             path: path.into(),
             query: String::new(),

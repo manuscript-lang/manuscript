@@ -95,9 +95,20 @@ static INHERIT: std::sync::Mutex<()> = std::sync::Mutex::new(());
 pub fn start(
     program: &[u8],
     args: &[Vec<u8>],
+    streams: [StdStream; 3],
+    ipc: Option<&ChildEnd>,
+    env: &[(&str, &[u8])],
+) -> Res<Child> {
+    start_config(program, args, streams, ipc, env, false)
+}
+
+pub(crate) fn start_config(
+    program: &[u8],
+    args: &[Vec<u8>],
     [stdin, stdout, stderr]: [StdStream; 3],
     ipc: Option<&ChildEnd>,
     env: &[(&str, &[u8])],
+    independent: bool,
 ) -> Res<Child> {
     let failed = |e: i32| {
         let mut m = b"fork/exec ".to_vec();
@@ -143,7 +154,7 @@ pub fn start(
         }
     }
     #[cfg(unix)]
-    let shared = crate::ipc::started_by_group();
+    let shared = crate::ipc::started_by_group() && !independent;
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -179,11 +190,13 @@ pub fn start(
         let _ = end.end.inherit(false);
     }
     match spawned {
-        Ok(inner) => Ok(Child::new(
+        Ok(inner) => Child::new(
             inner,
             #[cfg(unix)]
             shared,
-        )),
+            #[cfg(windows)]
+            independent,
+        ),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(Fail::status(STATUS_UNAVAILABLE)),
         Err(e) => Err(failed(e.raw_os_error().unwrap_or(0))),
     }
@@ -266,36 +279,78 @@ fn exit_code(status: std::process::ExitStatus) -> i64 {
 }
 
 impl Child {
-    fn new(inner: std::process::Child, #[cfg(unix)] shared: bool) -> Child {
+    /// OS process identity while this owned child is alive, used for targeted socket duplication.
+    pub fn id(&self) -> u32 {
+        self.inner.id()
+    }
+
+    fn new(
+        inner: std::process::Child,
+        #[cfg(unix)] shared: bool,
+        #[cfg(windows)] independent: bool,
+    ) -> Res<Child> {
         #[cfg(windows)]
         {
             use std::os::windows::io::AsRawHandle;
+            use windows_sys::Win32::Foundation::{CloseHandle, GetLastError};
             use windows_sys::Win32::System::JobObjects::{
-                AssignProcessToJobObject, CreateJobObjectW,
+                AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+                JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectExtendedLimitInformation,
+                SetInformationJobObject,
             };
-            // SAFETY: plain job creation; a failed assignment (the process may already be in a
-            // job without nesting support) leaves only the process itself killable.
-            let job = unsafe { CreateJobObjectW(core::ptr::null(), core::ptr::null()) };
-            if !job.is_null() {
-                // SAFETY: both handles are open.
-                unsafe { AssignProcessToJobObject(job, inner.as_raw_handle() as _) };
+            // SAFETY: this child remains suspended until its required job is installed.
+            let mut job = unsafe { CreateJobObjectW(core::ptr::null(), core::ptr::null()) };
+            let guarded = if job.is_null() {
+                false
+            } else {
+                // SAFETY: initialized limit structure and live handles for this child.
+                unsafe {
+                    let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = core::mem::zeroed();
+                    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+                    let configured = !independent
+                        || SetInformationJobObject(
+                            job,
+                            JobObjectExtendedLimitInformation,
+                            (&raw const limits).cast(),
+                            core::mem::size_of_val(&limits) as u32,
+                        ) != 0;
+                    configured && AssignProcessToJobObject(job, inner.as_raw_handle() as _) != 0
+                }
+            };
+            if !guarded {
+                // SAFETY: capture the failure before cleanup changes the last-error value.
+                let why = unsafe { GetLastError() };
+                if !job.is_null() {
+                    // SAFETY: this handle has not been stored anywhere else.
+                    unsafe { CloseHandle(job) };
+                    job = core::ptr::null_mut();
+                }
+                if independent {
+                    let mut inner = inner;
+                    let _ = inner.kill();
+                    let _ = inner.wait();
+                    return Err(Fail {
+                        status: STATUS_FAILED,
+                        message: Some(alloc::format!("process job: {why}").into_bytes()),
+                    });
+                }
             }
             resume(inner.id());
-            Child {
+            Ok(Child {
                 inner,
                 code: None,
                 job: job as isize,
-            }
+            })
         }
         #[cfg(unix)]
         {
             let exit = exit_descriptor(inner.id() as libc::pid_t);
-            Child {
+            Ok(Child {
                 inner,
                 code: None,
                 exit,
                 shared,
-            }
+            })
         }
     }
 

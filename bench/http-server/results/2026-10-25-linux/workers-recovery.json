@@ -1,0 +1,1051 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu_count": 5,
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "mode": "workers",
+    "members": 4,
+    "duration": 180.0,
+    "pid": 501175,
+    "max_requests_per_member": 64,
+    "overload_clients": 384,
+    "binary_sha256": "8580c9e771af2526eada8491fb4628700edcb2afb8e6c9766dce71321a03f0c0",
+    "build": "Release",
+    "commit": "0385da26a0bfcd3c891f332ba6883ed7c8372038",
+    "working_tree": true,
+    "shared_runner": true,
+    "/sys/fs/cgroup/cpu.max": "400000 100000",
+    "/sys/fs/cgroup/memory.max": "17179869184",
+    "baseline": [
+      {
+        "pid": 501175,
+        "rss_kib": 2648,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-workers-recovery-final.server.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17,
+          "pipe:": 10
+        }
+      }
+    ],
+    "exit_code": 143,
+    "elapsed": 180.14285041599942
+  },
+  "records": [
+    {
+      "cycle": 1,
+      "phase": "overload",
+      "elapsed": 20.24719065499812,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5904,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 20.139366749004694,
+      "statuses": {
+        "503": 3946,
+        "200": 14911
+      },
+      "errors": {
+        "IncompleteReadError": 214
+      },
+      "members": {
+        "1": 6219,
+        "2": 2266,
+        "0": 2740,
+        "3": 3686
+      },
+      "error_samples": [
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0028055,
+          "latency_ms": 1627.1287849958753
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0031972,
+          "latency_ms": 1623.4427470044466
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0032918,
+          "latency_ms": 1623.764977994142
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0064209,
+          "latency_ms": 1627.505864998966
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0069149,
+          "latency_ms": 1635.5095350008924
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.007289,
+          "latency_ms": 1640.3778320018318
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0081465,
+          "latency_ms": 1629.4234570013941
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0094397,
+          "latency_ms": 1640.7388469961006
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0095906,
+          "latency_ms": 1638.03234599618
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.011112,
+          "latency_ms": 1638.4967310004868
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0112412,
+          "latency_ms": 1639.302862000477
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.012325,
+          "latency_ms": 1639.5694129969343
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0138564,
+          "latency_ms": 1642.909629001224
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0140116,
+          "latency_ms": 1638.9967130016885
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0148113,
+          "latency_ms": 1640.0303760019597
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0152473,
+          "latency_ms": 1642.0378650000202
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0156715,
+          "latency_ms": 1648.1446769976174
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0165782,
+          "latency_ms": 1648.4930149963475
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0167692,
+          "latency_ms": 1643.69752699713
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0168912,
+          "latency_ms": 1629.3300649995217
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0187132,
+          "latency_ms": 1630.8203360022162
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0188758,
+          "latency_ms": 1630.8521229948383
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0189745,
+          "latency_ms": 1630.6829770037439
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0191183,
+          "latency_ms": 1630.2571080013877
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0192678,
+          "latency_ms": 1630.3099770011613
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.019482,
+          "latency_ms": 1630.419297995104
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0195663,
+          "latency_ms": 1629.9365690065315
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0198584,
+          "latency_ms": 1629.770097999426
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0200446,
+          "latency_ms": 1629.4679599959636
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0201418,
+          "latency_ms": 1629.5125399992685
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0210164,
+          "latency_ms": 1630.038916002377
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940187.0230522,
+          "latency_ms": 1630.807553003251
+        }
+      ],
+      "throughput": 936.3253688665226,
+      "p50_ms": 335.7398530060891,
+      "p99_ms": 1638.4393129992532
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 30.272498654994706,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5828,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5185536
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "phase": "recovery",
+      "elapsed": 50.4325897719973,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 20.00256304100185,
+      "statuses": {
+        "200": 24312
+      },
+      "errors": {},
+      "members": {
+        "1": 13584,
+        "3": 5262,
+        "0": 3090,
+        "2": 2376
+      },
+      "error_samples": [],
+      "throughput": 1215.444238329085,
+      "p50_ms": 11.837229998491239,
+      "p99_ms": 46.09980300301686
+    },
+    {
+      "cycle": 1,
+      "phase": "idle",
+      "elapsed": 60.467238681994786,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "overload",
+      "elapsed": 81.37268433799909,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5948,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 20.829956569003116,
+      "statuses": {
+        "503": 16162,
+        "200": 22655
+      },
+      "errors": {
+        "IncompleteReadError": 111
+      },
+      "members": {
+        "1": 4890,
+        "2": 3856,
+        "0": 7257,
+        "3": 6652
+      },
+      "error_samples": [
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8143787,
+          "latency_ms": 1096.5078270019148
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8144252,
+          "latency_ms": 1096.8823980001616
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.814438,
+          "latency_ms": 1096.395381995535
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8144548,
+          "latency_ms": 1096.6645640000934
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.814465,
+          "latency_ms": 1097.048971998447
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8144743,
+          "latency_ms": 1096.5158529943437
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8147833,
+          "latency_ms": 1096.0372749977978
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8147998,
+          "latency_ms": 1095.914534998883
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148103,
+          "latency_ms": 1096.4132770022843
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148263,
+          "latency_ms": 1096.0242609944544
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148427,
+          "latency_ms": 1096.5430709984503
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.814851,
+          "latency_ms": 1096.3993819968891
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.81486,
+          "latency_ms": 1096.2093679991085
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148673,
+          "latency_ms": 1095.713065995369
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148758,
+          "latency_ms": 1095.9019680012716
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8148832,
+          "latency_ms": 1095.6530139956158
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.814891,
+          "latency_ms": 1095.4225749956095
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8149004,
+          "latency_ms": 1095.5206439975882
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8151543,
+          "latency_ms": 1095.598413994594
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.815165,
+          "latency_ms": 1095.517084999301
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8151832,
+          "latency_ms": 1095.447529994999
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8151932,
+          "latency_ms": 1095.295441999042
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8152022,
+          "latency_ms": 1095.3840789952665
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8152096,
+          "latency_ms": 1095.2426220028428
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.815227,
+          "latency_ms": 1094.9774489999982
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8152363,
+          "latency_ms": 1095.1749570012907
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.815336,
+          "latency_ms": 1094.7825300027034
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8153708,
+          "latency_ms": 1094.9754920002306
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.815389,
+          "latency_ms": 1094.7451280007954
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8154085,
+          "latency_ms": 1094.6469109985628
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8154173,
+          "latency_ms": 1094.9183910051943
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940259.8154263,
+          "latency_ms": 1097.6894710038323
+        }
+      ],
+      "throughput": 1863.5180477410718,
+      "p50_ms": 177.13166100293165,
+      "p99_ms": 992.4324550011079
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 91.42374428000039,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5948,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5242880
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5242880
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5242880
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5242880
+        }
+      }
+    },
+    {
+      "cycle": 2,
+      "phase": "recovery",
+      "elapsed": 113.94963607999671,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5940,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 22.333356657996774,
+      "statuses": {
+        "200": 4994
+      },
+      "errors": {
+        "IncompleteReadError": 26,
+        "TimeoutError": 5
+      },
+      "members": {
+        "0": 2710,
+        "2": 698,
+        "1": 785,
+        "3": 801
+      },
+      "error_samples": [
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940279.9114838,
+          "latency_ms": 2611.4634690020466
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940280.5834842,
+          "latency_ms": 3280.771203004406
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940281.5191233,
+          "latency_ms": 4215.515775998938
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940282.3560164,
+          "latency_ms": 5051.404858000751
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.0605028,
+          "latency_ms": 5333.289285998035
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3416398,
+          "latency_ms": 5538.847998002893
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.348917,
+          "latency_ms": 5544.924032998097
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3768058,
+          "latency_ms": 5494.019514000684
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3838422,
+          "latency_ms": 5398.726850995445
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3846157,
+          "latency_ms": 5388.293459000124
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3865724,
+          "latency_ms": 5365.847150002082
+        },
+        {
+          "type": "TimeoutError",
+          "at_unix": 1792940283.3962348,
+          "latency_ms": 3484.718455001712
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3986287,
+          "latency_ms": 5193.234845995903
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.3988185,
+          "latency_ms": 4369.967243997962
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.4007783,
+          "latency_ms": 3512.643162997847
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.4019516,
+          "latency_ms": 3498.6817250028253
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.4041338,
+          "latency_ms": 3500.5945859957137
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.4245286,
+          "latency_ms": 2840.6772929956787
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940283.4274673,
+          "latency_ms": 1907.9573799972422
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3396497,
+          "latency_ms": 3203.667037996638
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3418803,
+          "latency_ms": 3203.886622999562
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.342238,
+          "latency_ms": 3202.54564100469
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3427937,
+          "latency_ms": 3202.580374003446
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3429945,
+          "latency_ms": 2662.306391997845
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3431509,
+          "latency_ms": 2605.1227530042524
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.3432062,
+          "latency_ms": 1978.3824049955
+        },
+        {
+          "type": "IncompleteReadError",
+          "at_unix": 1792940288.34327,
+          "latency_ms": 1968.8161359954393
+        },
+        {
+          "type": "TimeoutError",
+          "at_unix": 1792940292.4181364,
+          "latency_ms": 3370.5675110031734
+        },
+        {
+          "type": "TimeoutError",
+          "at_unix": 1792940292.4219263,
+          "latency_ms": 3374.163991000387
+        },
+        {
+          "type": "TimeoutError",
+          "at_unix": 1792940292.4219995,
+          "latency_ms": 3374.0241679988685
+        },
+        {
+          "type": "TimeoutError",
+          "at_unix": 1792940292.4296803,
+          "latency_ms": 3380.241938997642
+        }
+      ],
+      "throughput": 223.6117067611432,
+      "p50_ms": 14.123271997959819,
+      "p99_ms": 1978.3962279980187
+    },
+    {
+      "cycle": 2,
+      "phase": "idle",
+      "elapsed": 124.35500838299777,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5888,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5193728
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "overload",
+      "elapsed": 144.64793573499628,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5968,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 20.15756305099785,
+      "statuses": {
+        "503": 11329,
+        "200": 21789
+      },
+      "errors": {},
+      "members": {
+        "0": 10017,
+        "1": 7993,
+        "3": 1674,
+        "2": 2105
+      },
+      "error_samples": [],
+      "throughput": 1642.9565377626625,
+      "p50_ms": 241.65230200014776,
+      "p99_ms": 446.5829870023299
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 154.67698493399803,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5876,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "2": {
+          "member": 2,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        },
+        "3": {
+          "member": 3,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5181440
+        }
+      }
+    },
+    {
+      "cycle": 3,
+      "phase": "recovery",
+      "elapsed": 174.75334022299648,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5848,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "load_seconds": 20.00323063399992,
+      "statuses": {
+        "200": 23652
+      },
+      "errors": {},
+      "members": {
+        "2": 2705,
+        "0": 10149,
+        "3": 3077,
+        "1": 7721
+      },
+      "error_samples": [],
+      "throughput": 1182.40900346358,
+      "p50_ms": 11.764012000639923,
+      "p99_ms": 42.47458299505524
+    },
+    {
+      "cycle": 3,
+      "phase": "idle",
+      "elapsed": 180.00314247299684,
+      "resources": [
+        {
+          "pid": 501175,
+          "rss_kib": 5820,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-workers-recovery-final.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "member_samples": {
+        "1": {
+          "member": 1,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5111808
+        },
+        "0": {
+          "member": 0,
+          "active_requests": 1,
+          "active_connections": 1,
+          "tasks": 4,
+          "heap_used": 5072,
+          "external": 5111808
+        }
+      }
+    }
+  ]
+}

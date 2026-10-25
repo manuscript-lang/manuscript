@@ -213,6 +213,7 @@ struct Stream {
 
 #[derive(Debug)]
 struct PendingHeaders {
+    marker: u64,
     id: StreamId,
     block: Vec<u8>,
     end_stream: bool,
@@ -228,6 +229,10 @@ pub struct Connection {
     decoder: Decoder,
     out: Vec<u8>,
     inbuf: Vec<u8>,
+    input_marker: u64,
+    latest_marker: u64,
+    header_announced: bool,
+    header_starts: Vec<(StreamId, u64)>,
     preface_done: bool,
     got_settings: bool,
     settings_unacked: u32,
@@ -275,6 +280,10 @@ impl Connection {
             local,
             out: Vec::new(),
             inbuf: Vec::new(),
+            input_marker: 0,
+            latest_marker: 0,
+            header_announced: false,
+            header_starts: Vec::new(),
             preface_done: role == Role::Client,
             got_settings: false,
             settings_unacked: 1,
@@ -328,6 +337,11 @@ impl Connection {
         }
     }
 
+    /// Bytes still owned by the protocol output queue.
+    pub fn pending_output_len(&self) -> usize {
+        self.out.len()
+    }
+
     /// Bytes queued for the transport. Call after every `feed` and send.
     pub fn take_output(&mut self) -> Vec<u8> {
         std::mem::take(&mut self.out)
@@ -364,6 +378,16 @@ impl Connection {
     /// Events produced before a connection error in the same call are dropped
     /// with the error; the connection is unusable afterwards anyway.
     pub fn feed(&mut self, bytes: &[u8]) -> Result<Vec<Event>, H2Error> {
+        self.feed_marked(bytes, 0)
+    }
+
+    /// Feed with an opaque transport timestamp. Protocol code does not read a clock.
+    pub fn feed_marked(&mut self, bytes: &[u8], marker: u64) -> Result<Vec<Event>, H2Error> {
+        if self.inbuf.is_empty() {
+            self.input_marker = marker;
+        }
+        self.latest_marker = marker;
+        self.header_starts.clear();
         if let Some(e) = &self.failed {
             return Err(e.clone());
         }
@@ -376,6 +400,32 @@ impl Connection {
                 Err(e)
             }
         }
+    }
+
+    /// First-byte markers of HEADERS frames identified since the last feed.
+    pub fn take_header_starts(&mut self) -> Vec<(StreamId, u64)> {
+        std::mem::take(&mut self.header_starts)
+    }
+
+    /// An incomplete header block (or not-yet-identifiable frame prefix).
+    /// Dropping this block would desynchronize HPACK, so its timeout is connection-scoped.
+    pub fn pending_header_marker(&self) -> Option<u64> {
+        if let Some(pending) = &self.pending {
+            return Some(pending.marker);
+        }
+        if self.inbuf.is_empty() {
+            return None;
+        }
+        if !self.preface_done
+            || self.inbuf.len() < 4
+            || matches!(
+                self.inbuf[3],
+                frame::TYPE_HEADERS | frame::TYPE_CONTINUATION
+            )
+        {
+            return Some(self.input_marker);
+        }
+        None
     }
 
     fn fail(&mut self, e: &H2Error) {
@@ -400,9 +450,16 @@ impl Connection {
             }
             self.inbuf.drain(..PREFACE.len());
             self.preface_done = true;
+            self.input_marker = self.latest_marker;
         }
         let mut pos = 0;
         let result = loop {
+            let input = &self.inbuf[pos..];
+            if !self.header_announced && input.len() >= 9 && input[3] == frame::TYPE_HEADERS {
+                let id = u32::from_be_bytes(input[5..9].try_into().unwrap()) & 0x7fffffff;
+                self.header_starts.push((id, self.input_marker));
+                self.header_announced = true;
+            }
             let parsed = parse_frame(&self.inbuf[pos..], self.local.max_frame_size);
             let (frame, used) = match parsed {
                 Ok(Some(p)) => p,
@@ -413,6 +470,8 @@ impl Connection {
             if let Err(e) = self.handle(frame, ev) {
                 break Err(e);
             }
+            self.input_marker = self.latest_marker;
+            self.header_announced = false;
         };
         self.inbuf.drain(..pos);
         result
@@ -646,6 +705,7 @@ impl Connection {
             ));
         }
         let p = PendingHeaders {
+            marker: self.input_marker,
             id,
             block,
             end_stream,
@@ -1175,6 +1235,16 @@ impl Connection {
         if self.streams.contains_key(&id) {
             write_rst_stream(&mut self.out, id, code);
             self.remove_stream(id, true);
+        }
+    }
+
+    /// Reset a stream whose response may already be encoded but not flushed.
+    /// The transport must retain encoded frames in order before this reset.
+    pub(crate) fn reset_encoded_stream(&mut self, id: StreamId, code: u32) {
+        if self.streams.contains_key(&id) {
+            self.send_rst(id, code);
+        } else if id != 0 && id <= self.highest_peer_id {
+            write_rst_stream(&mut self.out, id, code);
         }
     }
 

@@ -945,7 +945,9 @@ impl FnLower<'_> {
             });
         }
         self.at(e.pos);
+        let cleanups = self.protect_call_temps();
         let v = self.b.call_ind(fv, &args);
+        self.discard_call_temps(cleanups)?;
         Ok(self.val(v, true))
     }
 }

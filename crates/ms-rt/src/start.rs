@@ -39,25 +39,52 @@ fn image_base() -> i64 {
 /// # Safety
 /// `runner` is a live closure of that shape.
 pub unsafe fn entry_value(runner: *mut ms_rt_abi::Closure) -> stdalloc::string::String {
-    // SAFETY: the caller guarantees the shape: the capture is the entry closure pointer.
-    unsafe {
-        let entry =
-            *(runner as *const *mut ms_rt_abi::Closure).byte_add(ms_rt_abi::CLOSURE_CAPTURE_OFFSET);
-        let base = image_base();
-        let words = [
-            (*runner).code as i64,
-            (*runner).hdr.drop.map_or(0, |d| d as usize as i64),
-            (*entry).code as i64,
-            (*entry).hdr.drop.map_or(0, |d| d as usize as i64),
-        ];
-        let mut out = stdalloc::string::String::new();
-        for (i, w) in words.iter().enumerate() {
-            if i > 0 {
-                out.push(':');
-            }
-            out.push_str(&stdalloc::format!("{}", w - base));
+    // SAFETY: forwarded shape guarantee from this function's caller.
+    unsafe { EntrySnapshot::capture(runner) }.environment_value()
+}
+
+/// Code offsets of a runner capturing exactly one capture-free application entry.
+/// The snapshot contains no arena pointers and can cross isolate boundaries.
+#[derive(Clone, Copy)]
+pub struct EntrySnapshot([i64; 4]);
+
+impl EntrySnapshot {
+    /// Captures code identity, never application values.
+    ///
+    /// # Safety
+    /// `runner` must be live and have exactly one capture: a live, capture-free closure.
+    /// The source checker must establish the named-entry restriction before this call.
+    pub unsafe fn capture(runner: *mut ms_rt_abi::Closure) -> Self {
+        // SAFETY: the caller guarantees both closure layouts and lifetimes.
+        unsafe {
+            let entry = *(runner as *const *mut ms_rt_abi::Closure)
+                .byte_add(ms_rt_abi::CLOSURE_CAPTURE_OFFSET);
+            let base = image_base();
+            Self([
+                (*runner).code as i64 - base,
+                (*runner).hdr.drop.map_or(0, |d| d as usize as i64) - base,
+                (*entry).code as i64 - base,
+                (*entry).hdr.drop.map_or(0, |d| d as usize as i64) - base,
+            ])
         }
-        out
+    }
+
+    /// Environment representation used only when restarting this executable.
+    pub fn environment_value(&self) -> stdalloc::string::String {
+        self.0
+            .iter()
+            .map(|word| stdalloc::format!("{word}"))
+            .collect::<stdalloc::vec::Vec<_>>()
+            .join(":")
+    }
+
+    /// Reconstructs and runs both closures in the calling isolate's own arena.
+    ///
+    /// # Safety
+    /// This must run in an initialized isolate of the same executable that made the snapshot.
+    pub unsafe fn invoke(self) {
+        // SAFETY: snapshot origin and current isolate are guaranteed by the caller.
+        unsafe { run_entry(self.0) }
     }
 }
 
@@ -86,7 +113,7 @@ unsafe fn run_entry(words: [i64; 4]) {
             let obj = alloc::alloc(size) as *mut Closure;
             (*obj).hdr = Obj {
                 rc: 1,
-                drop: (drop != 0)
+                drop: (word(drop) != 0)
                     .then(|| core::mem::transmute::<usize, ms_rt_abi::DropFn>(word(drop))),
             };
             (*obj).code = word(code) as *const u8;

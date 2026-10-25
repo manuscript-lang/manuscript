@@ -106,6 +106,7 @@ struct Task {
     owned: *mut ms_rt_abi::Obj,
     /// When the task is cancelled for running too long, or `NO_DEADLINE`.
     kill_at: i64,
+    kill_generation: u64,
     /// Frames of the code that started a group task, for the fault report.
     started_by: Vec<usize>,
     /// Set when the task was cancelled because `kill_at` passed.
@@ -139,7 +140,7 @@ struct Sched {
     /// Min-heap of (deadline, handle).
     timers: BinaryHeap<Reverse<(i64, u64)>>,
     /// Min-heap of (kill deadline, handle) for tasks started with a time limit.
-    kills: BinaryHeap<Reverse<(i64, u64)>>,
+    kills: BinaryHeap<Reverse<(i64, u64, u64)>>,
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
     kill_limit: usize,
@@ -477,6 +478,7 @@ unsafe fn new_task(ctx: Ctx) -> *mut Task {
             fatal: false,
             owned: null_mut(),
             kill_at: NO_DEADLINE,
+            kill_generation: 0,
             started_by: Vec::new(),
             timed_out: false,
         });
@@ -613,16 +615,20 @@ unsafe fn wake(t: *mut Task, result: u32) {
 /// Cancels tasks whose time limit has passed.
 unsafe fn expire_kills(now: i64) {
     let mut s = sched();
-    while let Some(&Reverse((deadline, h))) = s.kills.peek()
+    while let Some(&Reverse((deadline, h, generation))) = s.kills.peek()
         && deadline <= now
     {
         s.kills.pop();
         // SAFETY: handles are validated by `lookup`.
         unsafe {
             let t = lookup(h);
-            if !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline {
+            if !t.is_null()
+                && (*t).state != State::Done
+                && (*t).kill_at == deadline
+                && (*t).kill_generation == generation
+            {
                 (*t).timed_out = true;
-                msrt_task_cancel(h);
+                cancel_task(h, 2);
             }
         }
     }
@@ -659,6 +665,17 @@ unsafe fn shielded(t: *mut Task) -> bool {
     }
 }
 
+unsafe fn signal_shielded(t: *mut Task) -> bool {
+    // SAFETY: the scheduler supplies a live task; the running context is in TLS.
+    unsafe {
+        if t == sched().cur {
+            fault::signal_shield_depth() != 0
+        } else {
+            (*t).ctx.signal_shielded()
+        }
+    }
+}
+
 /// Wakes every waiting task that is not shielded with `WAIT_CANCELLED`, the main task first.
 /// Returns whether any task woke.
 unsafe fn cancel_all_waiters() -> bool {
@@ -666,13 +683,17 @@ unsafe fn cancel_all_waiters() -> bool {
     let mut woke = false;
     // SAFETY: slots hold live records or null.
     unsafe {
-        if !s.main.is_null() && (*s.main).state == State::Waiting && !shielded(s.main) {
+        if !s.main.is_null()
+            && (*s.main).state == State::Waiting
+            && !shielded(s.main)
+            && !signal_shielded(s.main)
+        {
             wake(s.main, WAIT_CANCELLED);
             woke = true;
         }
         for i in 0..s.slots.len() {
             let t = s.slots[i].task;
-            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) {
+            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) && !signal_shielded(t) {
                 wake(t, WAIT_CANCELLED);
                 woke = true;
             }
@@ -729,9 +750,13 @@ unsafe fn reactor_wait() {
                 timeout_ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
                 break;
             }
-            while let Some(&Reverse((deadline, h))) = s.kills.peek() {
+            while let Some(&Reverse((deadline, h, generation))) = s.kills.peek() {
                 let t = lookup(h);
-                if t.is_null() || (*t).state == State::Done || (*t).kill_at != deadline {
+                if t.is_null()
+                    || (*t).state == State::Done
+                    || (*t).kill_at != deadline
+                    || (*t).kill_generation != generation
+                {
                     s.kills.pop();
                     continue;
                 }
@@ -1075,6 +1100,13 @@ pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
 /// cancellation checks fire. A handle that no longer exists is ignored.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
+    // SAFETY: forwarded runtime-thread contract.
+    unsafe {
+        cancel_task(handle, 1);
+    }
+}
+
+unsafe fn cancel_task(handle: u64, reason: u8) {
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
@@ -1083,14 +1115,14 @@ pub unsafe extern "C-unwind" fn msrt_task_cancel(handle: u64) {
             return;
         }
         if t == cur {
-            fault::set_live_task_cancel(1);
+            fault::set_live_task_cancel(fault::live_task_cancel() | reason);
             // A parked task runs the reactor on its own stack, so it can be the one expiring its kill timer.
             if (*t).state == State::Waiting && !shielded(t) {
                 wake(t, WAIT_CANCELLED);
             }
             return;
         }
-        (*t).ctx.set_cancel(1);
+        (*t).ctx.set_cancel(reason);
         if !shielded(t) {
             wake(t, WAIT_CANCELLED);
         }
@@ -1196,28 +1228,111 @@ pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i
     // SAFETY: single threaded scheduler; `closure` is a live closure object.
     unsafe {
         crate::obj::msrt_retain(closure.cast());
+        let signal_depth = fault::signal_shield_depth();
         let h = msrt_task_spawn(closure_entry, closure.cast(), SPAWN_FATAL, TASK_GROUP_STACK);
         let t = lookup(h);
+        (*t).ctx.inherit_signal_shield(signal_depth);
         (*t).owned = closure.cast();
         (*t).started_by = fault::capture_frames();
         if limit_ns >= 0 {
             let at = clock_ns().saturating_add(limit_ns);
-            (*t).kill_at = at;
-            let mut s = sched();
-            s.kills.push(Reverse((at, h)));
-            if s.kills.len() > s.kill_limit {
-                // Completed tasks leave future deadlines behind. Compact geometrically so
-                // repeated short tasks with long limits retain space proportional to live work.
-                let sched = &mut *s;
-                let slots = &sched.slots;
-                sched.kills.retain(|&Reverse((deadline, handle))| {
-                    let t = lookup_in(slots, handle);
-                    !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline
-                });
-                s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
-            }
+            set_kill_deadline(t, at);
         }
         h
+    }
+}
+
+/// Replaces a timer identity even when its absolute timestamp is unchanged.
+unsafe fn set_kill_deadline(t: *mut Task, at: i64) {
+    // SAFETY: scheduler-owned live task on the current isolate.
+    unsafe {
+        (*t).kill_at = at;
+        (*t).kill_generation = (*t)
+            .kill_generation
+            .checked_add(1)
+            .expect("deadline generation overflow");
+        let mut s = sched();
+        if at != NO_DEADLINE {
+            s.kills
+                .push(Reverse((at, (*t).handle, (*t).kill_generation)));
+        }
+        if s.kills.len() > s.kill_limit {
+            let scheduler = &mut *s;
+            let slots = &scheduler.slots;
+            scheduler
+                .kills
+                .retain(|&Reverse((deadline, handle, generation))| {
+                    let t = lookup_in(slots, handle);
+                    !t.is_null()
+                        && (*t).state != State::Done
+                        && (*t).kill_at == deadline
+                        && (*t).kill_generation == generation
+                });
+            scheduler.kill_limit = (scheduler.kills.len() * 2).max(MIN_TIMER_LIMIT);
+        }
+    }
+}
+
+/// A native callback's deadline, restored after its fault guard returns. This
+/// guard must stay outside the callback's longjmp boundary and on the same task.
+pub struct RequestDeadline {
+    task: *mut Task,
+    previous: i64,
+    timed_out: bool,
+    cancel: u8,
+    changed: bool,
+}
+
+impl RequestDeadline {
+    /// Enters with the request's remaining budget, not a fresh timeout.
+    ///
+    /// # Safety
+    /// Called on the runtime thread, outside a guard that catches every callback
+    /// fault/cancellation. Drop must run on this same task before another park.
+    pub unsafe fn enter(remaining_ns: i64) -> Self {
+        // SAFETY: ensured by the native callback owner.
+        unsafe {
+            let task = ensure_init();
+            let previous = (*task).kill_at;
+            let deadline = if remaining_ns < 0 {
+                NO_DEADLINE
+            } else {
+                clock_ns().saturating_add(remaining_ns)
+            };
+            let changed = deadline < previous;
+            let scope = Self {
+                task,
+                previous,
+                timed_out: (*task).timed_out,
+                cancel: fault::live_task_cancel(),
+                changed,
+            };
+            if changed {
+                set_kill_deadline(task, deadline);
+            }
+            if remaining_ns == 0 {
+                expire_kills(clock_ns());
+            }
+            scope
+        }
+    }
+}
+
+impl Drop for RequestDeadline {
+    fn drop(&mut self) {
+        if !self.changed {
+            return;
+        }
+        // SAFETY: enter's contract keeps the task and this scope alive across the guard.
+        unsafe {
+            set_kill_deadline(self.task, self.previous);
+            (*self.task).timed_out = self.timed_out;
+            // Only this scope's deadline bit is consumed; explicit cancellation survives.
+            let cancellation = (fault::live_task_cancel() & !2) | (self.cancel & 2);
+            fault::set_live_task_cancel(cancellation);
+            // An enclosing deadline can expire while the inner cleanup is shielded.
+            expire_kills(clock_ns());
+        }
     }
 }
 
@@ -1586,14 +1701,14 @@ mod tests {
             let active = msrt_task_spawn(long_wait, null_mut(), 0, 0);
             let deadline = clock_ns() + 3_600_000_000_000;
             (*lookup(active)).kill_at = deadline;
-            sched().kills.push(Reverse((deadline, active)));
+            sched().kills.push(Reverse((deadline, active, 0)));
             for _ in 0..4 * MIN_TIMER_LIMIT {
                 let task = spawn_closure(closure, 3_600_000_000_000);
                 assert_eq!(join_closure(task, false), 0);
             }
             crate::obj::release(closure.cast());
             let retained = sched().kills.len();
-            let kept_active = sched().kills.iter().any(|&Reverse((_, h))| h == active);
+            let kept_active = sched().kills.iter().any(|&Reverse((_, h, _))| h == active);
             msrt_task_cancel(active);
             assert_eq!(msrt_task_join(active, null_mut()), 0);
             teardown();
@@ -2005,6 +2120,59 @@ mod tests {
             close_all(fds);
             teardown();
         }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn request_deadline_expires_inside_signal_shield_and_restores_task() {
+        let _lock = lock();
+        teardown();
+        fault::signal_shield_enter();
+        // SAFETY: this test owns the runtime thread and drops the scope normally.
+        unsafe {
+            let deadline = RequestDeadline::enter(1_000_000);
+            assert_eq!(msrt_task_sleep(100_000_000), WAIT_CANCELLED);
+            assert_eq!(fault::live_task_cancel(), 2);
+            drop(deadline);
+            assert_eq!(fault::live_task_cancel(), 0);
+            assert_eq!(msrt_task_sleep(1_000_000), WAIT_TIMEOUT);
+        }
+        fault::signal_shield_exit();
+        teardown();
+    }
+
+    #[test]
+    fn request_deadline_preserves_explicit_and_enclosing_cancellation() {
+        let _lock = lock();
+        teardown();
+        // SAFETY: no other test uses this runtime isolate while the lock is held.
+        unsafe {
+            let outer = RequestDeadline::enter(0);
+            let inner = RequestDeadline::enter(1_000_000);
+            msrt_task_cancel(msrt_task_current());
+            drop(inner);
+            assert_eq!(fault::live_task_cancel(), 3);
+            drop(outer);
+            assert_eq!(fault::live_task_cancel(), 1);
+            fault::set_live_task_cancel(0);
+        }
+        teardown();
+    }
+
+    #[test]
+    fn obsolete_request_deadlines_cannot_cancel_reused_task_scope() {
+        let _lock = lock();
+        teardown();
+        // SAFETY: the test runs all scopes on its own initialized task.
+        unsafe {
+            for _ in 0..4 * MIN_TIMER_LIMIT {
+                drop(RequestDeadline::enter(3_600_000_000_000));
+            }
+            assert!(sched().kills.len() <= MIN_TIMER_LIMIT);
+            expire_kills(i64::MAX);
+            assert_eq!(fault::live_task_cancel(), 0);
+        }
+        teardown();
     }
 
     /// Runs `f` as a shielded cleanup action would: cancellation is off until it returns.

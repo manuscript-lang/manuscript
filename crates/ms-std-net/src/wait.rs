@@ -41,6 +41,11 @@ impl Deadline {
         }
     }
 
+    /// The earlier of two independently configured absolute budgets.
+    pub fn earliest(self, other: Deadline) -> Deadline {
+        Deadline([self.0, other.0].into_iter().flatten().min())
+    }
+
     /// Time left, or `None` without a limit.
     pub fn remaining(&self) -> Option<Duration> {
         self.0.map(|t| t.saturating_duration_since(Instant::now()))

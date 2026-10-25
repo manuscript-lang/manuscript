@@ -1,0 +1,28 @@
+[
+  {
+    "mode": "workers",
+    "members": [
+      0,
+      1
+    ],
+    "health": true,
+    "auth": true,
+    "json": true,
+    "sse": true,
+    "websocket": true,
+    "observations": true
+  },
+  {
+    "mode": "processes",
+    "members": [
+      0,
+      1
+    ],
+    "health": true,
+    "auth": true,
+    "json": true,
+    "sse": true,
+    "websocket": true,
+    "observations": true
+  }
+]

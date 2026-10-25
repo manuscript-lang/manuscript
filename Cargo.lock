@@ -1271,6 +1271,7 @@ dependencies = [
  "mio",
  "ms-rt",
  "ms-rt-abi",
+ "ms-std-process",
  "psl",
  "ring",
  "rustix",
@@ -1299,6 +1300,7 @@ dependencies = [
  "ms-rt-abi",
  "ms-std-fs",
  "ms-std-io",
+ "rustix",
  "windows-sys 0.61.2",
 ]
 

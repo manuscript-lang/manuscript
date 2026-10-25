@@ -32,6 +32,66 @@ pub fn cleanup_discard(handle: usize) {
     msrt_cleanup_discard(handle)
 }
 
+/// A native temporary whose destructor also runs when cancellation longjmps
+/// out of a parked operation. The allocation stays put while its cleanup is live.
+pub struct ScopeOwned<T: 'static> {
+    value: Option<std::ptr::NonNull<T>>,
+    cleanup: usize,
+}
+
+impl<T: 'static> ScopeOwned<T> {
+    pub fn new(value: T) -> Self {
+        unsafe extern "C-unwind" fn release<T>(value: *mut u8) {
+            // SAFETY: new registers exactly one owned Box, discarded on normal return.
+            unsafe { drop(Box::from_raw(value.cast::<T>())) };
+        }
+        let value = std::ptr::NonNull::from(Box::leak(Box::new(value)));
+        // SAFETY: the Box is stable and remains owned until this cleanup or Drop runs.
+        let cleanup = unsafe { cleanup_push(release::<T>, value.as_ptr().cast()) };
+        Self {
+            value: Some(value),
+            cleanup,
+        }
+    }
+
+    pub fn into_inner(mut self) -> T {
+        cleanup_discard(self.cleanup);
+        let value = self.value.take().expect("owned native temporary");
+        // SAFETY: ownership moves out once, after removing the cancellation cleanup.
+        unsafe { *Box::from_raw(value.as_ptr()) }
+    }
+}
+
+impl<T: 'static> std::ops::Deref for ScopeOwned<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        // SAFETY: this scope owns the allocation for its entire borrow.
+        unsafe { self.value.expect("owned native temporary").as_ref() }
+    }
+}
+
+impl<T: 'static> std::ops::DerefMut for ScopeOwned<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        // SAFETY: the exclusive scope borrow prevents another access to the allocation.
+        unsafe {
+            self.value
+                .as_mut()
+                .expect("owned native temporary")
+                .as_mut()
+        }
+    }
+}
+
+impl<T: 'static> Drop for ScopeOwned<T> {
+    fn drop(&mut self) {
+        if let Some(value) = self.value.take() {
+            cleanup_discard(self.cleanup);
+            // SAFETY: this is normal return; cancellation would have abandoned this frame.
+            unsafe { drop(Box::from_raw(value.as_ptr())) };
+        }
+    }
+}
+
 /// Whether SIGINT/SIGTERM asked the program to stop.
 pub fn cancel_requested() -> bool {
     // The flag is a static `u8` the runtime updates from a signal handler; atomics have the
@@ -150,4 +210,35 @@ impl Drop for Token {
 pub fn post(id: u64) {
     // SAFETY: plain scheduler call on the runtime thread; stale ids are ignored.
     unsafe { msrt_token_post(id, 0) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    struct CountDrop(Rc<Cell<usize>>);
+    impl Drop for CountDrop {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    #[test]
+    fn native_temporaries_release_once_on_return_transfer_and_cancellation() {
+        crate::http::server::serialize_tests();
+        let count = Rc::new(Cell::new(0));
+        drop(ScopeOwned::new(CountDrop(count.clone())));
+        assert_eq!(count.get(), 1);
+        let transferred = ScopeOwned::new(CountDrop(count.clone())).into_inner();
+        assert_eq!(count.get(), 1);
+        drop(transferred);
+        assert_eq!(count.get(), 2);
+        assert!(!crate::ffi::handler::finish_guarded(|| {
+            let _temporary = ScopeOwned::new(CountDrop(count.clone()));
+            cancelled();
+        }));
+        assert_eq!(count.get(), 3);
+    }
 }

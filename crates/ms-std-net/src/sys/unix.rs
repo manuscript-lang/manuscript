@@ -292,6 +292,12 @@ impl Poller {
     /// is kept between parks (edge-triggered), which is sound because the reactor drains
     /// this set before every park.
     pub fn park(&self, timeout_ns: i64) -> u32 {
+        // A bounded service turn can requeue remembered readiness without a new
+        // kernel edge. Yield to other tasks, but do not sleep on the kernel set
+        // while that local work remains. Preserve cancellation from the yield.
+        if !self.pending.borrow().is_empty() {
+            return rt::sleep(0) | 1;
+        }
         let fd = self.poll.borrow().as_raw_fd();
         self.parked.set(true);
         // SAFETY: the descriptor belongs to `self.poll`, which outlives the call.
@@ -326,4 +332,40 @@ pub fn prepare_listener(sock: &socket2::Socket) -> std::io::Result<()> {
 /// Options for a freshly bound datagram socket.
 pub fn prepare_udp(_sock: &std::net::UdpSocket) -> std::io::Result<()> {
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn synthetic_readiness_prevents_kernel_park() {
+        crate::http::server::serialize_tests();
+        let poller = Poller::new();
+        let (socket, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+        socket.set_nonblocking(true).unwrap();
+        assert!(poller.add(socket.as_fd(), 7, Ev::IN | Ev::OUT));
+        let mut events = Vec::new();
+        poller.poll(&mut events, 64);
+        assert!(
+            events
+                .iter()
+                .any(|&(id, ev)| id == 7 && ev.contains(Ev::OUT))
+        );
+        assert_eq!(poller.poll(&mut events, 64), 0);
+        // Requeue remembered readiness with the kernel edge already consumed,
+        // during a service turn and before parked becomes true.
+        poller.modify(socket.as_fd(), 7, Ev::IN);
+        poller.modify(socket.as_fd(), 7, Ev::IN | Ev::OUT);
+        assert_ne!(poller.park(1_000_000) & 1, 0);
+        assert_eq!(&*poller.pending.borrow(), &[7]);
+        assert_eq!(poller.poll(&mut events, 64), 0);
+        assert!(
+            events
+                .iter()
+                .any(|&(id, ev)| id == 7 && ev.contains(Ev::OUT))
+        );
+        assert!(poller.pending.borrow().is_empty());
+        poller.delete(socket.as_fd());
+    }
 }

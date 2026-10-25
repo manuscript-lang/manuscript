@@ -214,7 +214,8 @@ impl FnLower<'_> {
     }
 
     /// `Map[Int, V]` and `Map[String, V]` lookups whose values are single words go to the `_w8` /
-    /// `_sw8` entry points, which probe without descriptor dispatch (`add` likewise for scalar values). `get` copies the value bitwise, so it excludes `String`.
+    /// `_sw8` entry points, which probe without descriptor dispatch. Strings occupy two words,
+    /// so maps with String values must use descriptor-driven slot strides.
     pub(crate) fn word_map_symbol(&self, sym: &str, map: MTy) -> Option<&'static str> {
         let TyKind::Obj(n, a) = self.b.m.types.kind(map) else {
             return None;
@@ -230,7 +231,7 @@ impl FnLower<'_> {
             _ => return None,
         };
         let scalar = a[1] == MTy::INT || a[1] == MTy::FLOAT;
-        let word = scalar || matches!(types.kind(a[1]), TyKind::Str);
+        let word = scalar;
         match (sym, int_key) {
             ("msrt_map_add", true) if scalar => Some("msrt_map_add_w8"),
             ("msrt_map_add", false) if scalar => Some("msrt_map_add_sw8"),
@@ -375,6 +376,18 @@ impl FnLower<'_> {
                     cursor += 1;
                     let Some(x) = input.val else {
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
+                    };
+                    let x = if p.ty == "*const Obj"
+                        && matches!(
+                            sym,
+                            "msrt_http_group_new"
+                                | "msrt_net_member_serve_stream"
+                                | "msrt_http_server_activate"
+                                | "msrt_http_server_check_close"
+                        ) {
+                        self.http_native_handle(x)?
+                    } else {
+                        x
                     };
                     // An `HttpMethod` crosses as its token text.
                     let x = if p.name == "method"

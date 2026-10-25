@@ -1,5 +1,7 @@
 from "@std/bytes.ms" import Bytes
-from "@std/io.ms" import ReadStream
+from "@std/io.ms" import ReadStream, WriteStream, IoError
+from "@std/shared.ms" import Shared, share
+from "@std/core.ms" import Closeable
 
 extern def msrt_archive_pack(
     entries: List[ArchiveEntry],
@@ -225,3 +227,215 @@ impl CompressionFormat:
         return msstd_archive_decompress_stream(
             compression_format_name(self), input, max_bytes
         )
+
+# Internal owned native incremental encoder; construct through compress_writer.
+export extern type NativeCompressionEncoder
+
+extern def msrt_compress_encoder_new(
+    format: String,
+    level: Int
+) -> Result[NativeCompressionEncoder, CompressionError]
+
+extern def msrt_compress_encoder_feed(
+    encoder: NativeCompressionEncoder,
+    data: Bytes
+) -> Unit
+
+extern def msrt_compress_encoder_flush(encoder: NativeCompressionEncoder) -> Unit
+
+extern def msrt_compress_encoder_finish(encoder: NativeCompressionEncoder) -> Unit
+
+extern def msrt_compress_encoder_has_output(encoder: NativeCompressionEncoder) -> Bool
+
+extern def msrt_compress_encoder_take(
+    encoder: NativeCompressionEncoder,
+    max: Int
+) -> Bytes
+
+# Internal shared state of CompressionWriter; callers should use compress_writer.
+export type CompressionWriteState:
+    # Owned codec handle, shared only by aliases of one writer.
+    encoder: NativeCompressionEncoder
+    # Remaining uncompressed input-byte budget.
+    remaining_input: Int
+    # Remaining encoded output-byte budget.
+    remaining_output: Int
+    # Whether an operation owns the destination; reentrant operations are rejected.
+    busy: Bool = False
+    # Whether finish, close or failure invalidated all aliases.
+    closed: Bool = False
+
+type CompressionHeld[T]:
+    value: T
+
+impl Closeable for CompressionHeld[T]:
+    var def close() -> Unit: ()
+
+# Incremental compression with shared lifetime across writer aliases.
+# Feed chunks are at most 64 KiB and output drains before more input is accepted.
+# finish is required on success; close abandons the encoder without finalizing or closing its destination.
+export type CompressionWriter:
+    # Internal shared codec, byte budgets and operation/lifetime flags.
+    state: Shared[CompressionWriteState]
+    # Internal destination, exclusively borrowed during each output operation.
+    output: Shared[WriteStream]
+
+impl CompressionWriter:
+    # Internal entry check. Reentrant, cancelled, failed or finished writers report Closed.
+    def begin() -> Result[Unit, IoError]:
+        if self.state.get().closed or self.state.get().busy: return error(
+            IoError.Closed
+        )
+
+        var state = self.state.take()
+        state.busy = True
+        self.state.put(state)
+        return ok(())
+
+    # Internal completion; a failed operation poisons every alias.
+    def end(
+        result: Result[Unit, IoError],
+        finish: Bool = False
+    ) -> Result[Unit, IoError]:
+        var state = self.state.take()
+        state.busy = False
+        state.closed = state.closed or finish or result.is_error()
+        self.state.put(state)
+        return result
+
+    # Internal budget debit; all owned state returns before downstream suspension.
+    def debit_output(size: Int) -> Result[Unit, IoError]:
+        var state = self.state.take()
+
+        if size > state.remaining_output:
+            state.closed = True
+            self.state.put(state)
+            return error(IoError.LimitExceeded)
+
+        state.remaining_output -= size
+        self.state.put(state)
+        return ok(())
+
+    # Internal encoded-output pump; no codec borrow spans downstream suspension.
+    def drain() -> Result[Unit, IoError]:
+        while msrt_compress_encoder_has_output(self.state.get().encoder):
+            if self.state.get().closed: return error(IoError.Closed)
+
+            with CompressionHeld(
+                msrt_compress_encoder_take(
+                    self.state.get().encoder, 65536
+                )
+            ) as bytes:
+                try self.debit_output(bytes.value.length())
+                try self.output.get().write_bytes(bytes.value)
+
+        return ok(())
+
+    # Emits the format trailer exactly once after successful production, then invalidates aliases.
+    # Failure or cancellation never triggers implicit finalization during cleanup.
+    def finish() -> Result[Unit, IoError]:
+        try self.begin()
+        msrt_compress_encoder_finish(self.state.get().encoder)
+        return self.end(self.drain(), True)
+
+    # Internal input budget debit, completed before any downstream write.
+    def debit_input(size: Int) -> Result[Unit, IoError]:
+        var state = self.state.take()
+
+        if size > state.remaining_input:
+            state.closed = True
+            self.state.put(state)
+            return error(IoError.LimitExceeded)
+
+        state.remaining_input -= size
+        self.state.put(state)
+        return ok(())
+
+    # Internal bounded feed, returning an error before accepting bytes over the input limit.
+    def feed(data: Bytes) -> Result[Unit, IoError]:
+        try self.debit_input(data.length())
+
+        var offset = 0
+
+        while offset < data.length():
+            let size = 65536 if data.length() - offset > 65536 else data.length() - offset
+
+            msrt_compress_encoder_feed(
+                self.state.get().encoder, data.slice(offset, offset + size).get()
+            )
+            try self.drain()
+            offset += size
+
+        return ok(())
+
+impl CompressionWriter:
+    # Returns a WriteStream alias sharing this encoder and its lifetime.
+    def writer() -> WriteStream: return CompressionOutput(self.clone())
+
+    # Performs a sync flush, drains encoded bytes, and flushes the destination without finishing.
+    var def flush() -> Result[Unit, IoError]:
+        try self.begin()
+        msrt_compress_encoder_flush(self.state.get().encoder)
+
+        let drained = self.drain()
+        if drained.is_error(): return self.end(drained)
+
+        return self.end(self.output.get().flush())
+
+    # Compresses UTF-8 text while enforcing cumulative encoded and unencoded bounds.
+    var def write(data: String) -> Result[Unit, IoError]:
+        with CompressionHeld(data.to_bytes()) as bytes:
+            return self.write_bytes(bytes.value)
+
+    # Compresses bytes incrementally; a destination error poisons every writer alias.
+    var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
+        try self.begin()
+        return self.end(self.feed(data))
+
+# Creates an incremental compression writer. Explicit budgets are nonnegative; none is unlimited.
+# The destination remains caller-owned. Call finish on success and close/leave scope on failure.
+export def compress_writer(
+    output: WriteStream,
+    format: CompressionFormat = CompressionFormat.Gzip,
+    level: Int = 6,
+    max_input_bytes: Optional[Int] = none,
+    max_output_bytes: Optional[Int] = none
+) -> Result[CompressionWriter, CompressionError]:
+    let input_limit = max_input_bytes.get(9223372036854775807)
+    let output_limit = max_output_bytes.get(9223372036854775807)
+    if input_limit < 0 or output_limit < 0: return error(CompressionError.InvalidInput)
+
+    let encoder = try msrt_compress_encoder_new(compression_format_name(format), level)
+    return ok(
+        CompressionWriter(
+            share(
+                CompressionWriteState(
+                    encoder, input_limit, output_limit
+                )
+            ),
+            share(output)
+        )
+    )
+
+impl Closeable for CompressionWriter:
+    # Abandons the codec without finalization when a scope exits, including cancellation.
+    var def close() -> Unit:
+        var state = self.state.take()
+        state.closed = True
+        self.state.put(state)
+
+type CompressionOutput:
+    owner: CompressionWriter
+
+impl WriteStream for CompressionOutput:
+    var def close() -> Unit: self.owner.close()
+
+    var def flush() -> Result[Unit, IoError]: return self.owner.flush()
+
+    var def write(data: String) -> Result[Unit, IoError]: return self.owner.write(data)
+
+    var def write_bytes(data: Bytes) -> Result[Unit, IoError]: return (
+        self
+        .owner
+        .write_bytes(data)
+    )

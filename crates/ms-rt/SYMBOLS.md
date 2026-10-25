@@ -316,6 +316,7 @@ msrt_compress_decoder_finish_input(d: *mut DecoderObj)
 msrt_compress_decoder_poll( d: *mut DecoderObj, max: i64, out: *mut VecVal, ) -> u8
 msrt_compress_encoder_new( format: *const StrVal, level: i64, out: *mut *mut EncoderObj, ) -> u8
 msrt_compress_encoder_feed(e: *mut EncoderObj, data: *const VecVal)
+msrt_compress_encoder_flush(e: *mut EncoderObj)
 msrt_compress_encoder_finish(e: *mut EncoderObj)
 msrt_compress_encoder_has_output(e: *const EncoderObj) -> u8
 msrt_compress_encoder_is_finished(e: *const EncoderObj) -> u8
@@ -437,6 +438,7 @@ msrt_html_next_sibling(t: *const TreeObj, id: u32) -> u32
 msrt_html_attr_count(t: *const TreeObj, id: u32) -> i64
 msrt_html_attr(t: *const TreeObj, id: u32, i: i64, which: u8, out: *mut StrVal)
 msstd_io_acc_new(kind: i64, has_max: u8, max: i64) -> *mut Acc
+msstd_io_acc_drop(a: *mut Acc)
 msstd_io_acc_want(a: *const Acc) -> i64
 msstd_io_acc_push(a: *mut Acc, data: *const VecVal) -> u8
 msstd_io_acc_finish_bytes(a: *mut Acc, out: *mut VecVal) -> u8
@@ -565,19 +567,46 @@ msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
 msrt_net_network_request( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_request_bytes( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
-msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, has_max_requests: u8, max_requests: i64, has_max_body: u8, max_body: i64, has_max_response: u8, max_response: i64, has_timeout: u8, timeout: i64, has_grace: u8, grace: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
+msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_network_serve_stream( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
+msrt_http_group_new(net: *const Obj, address: *const StrVal, runner: *mut Obj, config: *const StrVal, processes: u8, has_count: u8, count: i64, cleanup_ns: i64, out: *mut *mut Obj, err: *mut StrVal) -> u8
+msrt_http_group_count(group: *const Obj) -> i64
+msrt_http_group_address(group: *const Obj, out: *mut StrVal)
+msrt_http_group_next(group: *const Obj, timeout_ns: i64) -> i64
+msrt_http_group_post(group: *const Obj, index: i64, kind: i64, err: *mut StrVal) -> u8
+msrt_http_group_join(group: *const Obj, index: i64, timeout_ns: i64, err: *mut StrVal) -> u8
+msrt_http_group_abort(group: *const Obj)
+msrt_http_group_close(group: *const Obj)
+msrt_http_member_take(out: *mut *mut Obj, err: *mut StrVal) -> u8
+msrt_http_member_connect(member: *const Obj, err: *mut StrVal) -> u8
+msrt_http_member_disarm(member: *const Obj)
+msrt_http_member_close(member: *const Obj)
+msrt_net_member_serve_stream(member: *const Obj, net: *const Obj, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal) -> u8
+msrt_http_server_check_close(server: *const Obj)
+msrt_http_server_activate(server: *const Obj, err: *mut StrVal) -> u8
+msrt_http_group_spawn(group: *const Obj, index: i64, err: *mut StrVal) -> u8
+msrt_http_group_connect(group: *const Obj, index: i64, err: *mut StrVal) -> u8
+msrt_http_group_read(group: *const Obj, index: i64, out: *mut VecVal, err: *mut StrVal) -> u8
+msrt_http_group_write(group: *const Obj, index: i64, data: *const VecVal, err: *mut StrVal) -> u8
+msrt_http_member_read(member: *const Obj, out: *mut VecVal, err: *mut StrVal) -> u8
+msrt_http_member_write(member: *const Obj, data: *const VecVal, err: *mut StrVal) -> u8
+msrt_http_server_is_ready(s: *const Obj) -> u8
+msrt_http_server_stats(s: *const Obj, out: *mut HttpStatsWire)
+msrt_http_server_take_events(s: *const Obj, out: *mut VecVal)
 msrt_http_server_address(s: *const Obj, out: *mut StrVal)
 msrt_http_server_close(s: *const Obj)
 msrt_http_server_wait(s: *const Obj) -> u8
+msrt_http_exchange_set_route(x: *const Obj, route: *const StrVal)
 msrt_http_exchange_close(x: *const Obj)
 msrt_http_exchange_headers(x: *const Obj) -> *mut Obj
 msrt_http_exchange_method(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_path(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_protocol(x: *const Obj, out: *mut StrVal)
+msrt_http_exchange_peer_address(x: *const Obj, out: *mut StrVal)
+msrt_http_exchange_scheme(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_query(x: *const Obj, out: *mut StrVal)
 msrt_http_exchange_read( x: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
-msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, err: *mut StrVal, ) -> u8
+msrt_http_exchange_send_headers( x: *const Obj, status: i64, headers: *const Obj, has_content_length: u8, content_length: i64, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write( x: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> u8
 msrt_http_exchange_write_bytes( x: *const Obj, data: *const VecVal, err: *mut StrVal, ) -> u8
 msrt_net_parse_ip( text: *const StrVal, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
@@ -625,6 +654,7 @@ msrt_tls_error_message(status: u8, out: *mut StrVal)
 msrt_websocket_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: *mut StrVal)
 msrt_net_network_web_socket( net: *const Obj, address: *const StrVal, headers: *const Obj, subprotocols: *const VecVal, opts: *const WebSocketOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_http_exchange_upgrade( x: *const Obj, origins: *const VecVal, subprotocols: *const VecVal, has_max: u8, max: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
+msrt_http_exchange_upgrade_with_headers( x: *const Obj, origins: *const VecVal, subprotocols: *const VecVal, response_headers: *const Obj, has_max: u8, max: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_websocket_close(s: *const Obj)
 msrt_websocket_subprotocol(s: *const Obj, out: *mut StrVal)
 msrt_websocket_ping( s: *const Obj, data: *const StrVal, err: *mut StrVal, ) -> u8

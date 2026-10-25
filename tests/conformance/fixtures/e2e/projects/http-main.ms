@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,interpolation,modules,stdlib-http,stdlib-io,stdlib-net,tier-io,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/http/main.ms
-from "@std/http.ms" import headers, HttpRequest, HttpResponse
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, HttpServerOptions
 from "@std/net.ms" import network
 from "@std/io.ms" import stdout
 
@@ -12,8 +12,12 @@ export def main() -> Int:
     let serve = network().serve
 
     if let acquired = serve(
-        address: "127.0.0.1:0", handler: handle, max_requests: 2, max_body_bytes: 1024,
-        max_response_bytes: 1024, timeout: 2.seconds, grace: 0.seconds
+        address: "127.0.0.1:0",
+        handler: handle,
+        options: HttpServerOptions(
+            max_requests: 2, max_body_bytes: 1024, max_response_bytes: 1024,
+            timeout: 2.seconds, grace: 0.seconds
+        )
     ):
         with acquired as server:
             if stdout().write(f"{server.address()}\n").is_error():

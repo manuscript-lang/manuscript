@@ -388,7 +388,9 @@ impl<'a> FnLower<'a> {
             vals.push(slot);
         }
         self.at(e.pos);
+        let cleanups = self.protect_call_temps();
         let v = self.b.call(fid, &vals);
+        self.discard_call_temps(cleanups)?;
         for (p, slot, ty, moved) in slots_out {
             let new = self.move_out(slot, ty);
             let target = args.places.get(p).cloned().flatten();
@@ -720,7 +722,9 @@ impl<'a> FnLower<'a> {
         }
         let r = self.borrow(recv);
         self.at(e.pos);
+        let cleanups = self.protect_call_temps();
         let v = self.b.call_method(iface, k as u32, r, &args);
+        self.discard_call_temps(cleanups)?;
         Ok(self.val(v, true))
     }
 
@@ -926,6 +930,9 @@ impl<'a> FnLower<'a> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
+            ExprKind::Name(name) if name.as_str() == "none" && t.is_std("Optional") => {
+                Some(val(self.b.opt_none(mt)))
+            }
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
             ExprKind::Number(n) if t.id.as_str() == "Int" => n
                 .as_str()

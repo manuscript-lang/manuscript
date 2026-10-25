@@ -1,0 +1,707 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu_max": "400000 100000",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "shared_runner": true,
+    "persistent_connections": 64,
+    "server_sha256": "8580c9e771af2526eada8491fb4628700edcb2afb8e6c9766dce71321a03f0c0",
+    "client_sha256": "d22be28d65ce1a01a6af2583c09f16627dd8113fcee5377cf06e8d1efce8821b",
+    "proxy_sha256": "9b0dae9d57cdc92a4f63f9ece781fdb038bb997fae0a3a2b3c7b7a524dd522db"
+  },
+  "records": [
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "502598:502598": 0.0,
+        "502598:502599": 0.0,
+        "502598:502600": 0.9904207232136697
+      },
+      "resources": [
+        {
+          "pid": 502598,
+          "rss_kib": 2352,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.047085257,
+      "members": {
+        "0": 4970
+      },
+      "p50_ms": 64.019,
+      "p99_ms": 691.396,
+      "statuses": {
+        "200": 4970
+      },
+      "throughput": 617.6149302850613
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502616:502616": 0.0,
+        "502616:502617": 0.0,
+        "502616:502618": 0.7162336663706994,
+        "502616:502619": 0.8203229881269949,
+        "502616:502620": 0.7620825342871629,
+        "502616:502621": 0.7596042171024892
+      },
+      "resources": [
+        {
+          "pid": 502616,
+          "rss_kib": 2828,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.069992059,
+      "members": {
+        "0": 2521,
+        "1": 1968,
+        "2": 2869,
+        "3": 3701
+      },
+      "p50_ms": 23.777,
+      "p99_ms": 433.371,
+      "statuses": {
+        "200": 11059
+      },
+      "throughput": 1370.3854872653226
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "502640:502640": 0.0,
+        "502640:502641": 0.0,
+        "502642:502642": 0.0,
+        "502642:502643": 0.9986473274749602,
+        "502642:502644": 0.0
+      },
+      "resources": [
+        {
+          "pid": 502640,
+          "rss_kib": 1944,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502642,
+          "rss_kib": 2568,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.050890218,
+      "members": {
+        "0": 8867
+      },
+      "p50_ms": 53.383,
+      "p99_ms": 135.415,
+      "statuses": {
+        "200": 8867
+      },
+      "throughput": 1101.3688871542877
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502661:502661": 0.0,
+        "502661:502662": 0.0,
+        "502672:502672": 0.0,
+        "502672:502673": 0.8663171450398994,
+        "502672:502674": 0.0,
+        "502669:502669": 0.0,
+        "502669:502670": 0.8862324817074833,
+        "502669:502671": 0.0,
+        "502666:502666": 0.0,
+        "502666:502667": 0.8750301048319674,
+        "502666:502668": 0.0,
+        "502663:502663": 0.0,
+        "502663:502664": 0.7356227481588801,
+        "502663:502665": 0.0
+      },
+      "resources": [
+        {
+          "pid": 502661,
+          "rss_kib": 1968,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502672,
+          "rss_kib": 2396,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502669,
+          "rss_kib": 2440,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502666,
+          "rss_kib": 2468,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502663,
+          "rss_kib": 2336,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.0340093,
+      "members": {
+        "0": 6727,
+        "1": 6857,
+        "2": 8360,
+        "3": 4909
+      },
+      "p50_ms": 20.239,
+      "p99_ms": 49.861,
+      "statuses": {
+        "200": 26853
+      },
+      "throughput": 3342.4158470914394
+    },
+    {
+      "round": 1,
+      "mode": "proxy",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502702:502702": 0.0,
+        "502702:502703": 0.05976143243641562,
+        "502702:502704": 0.0,
+        "502702:502705": 0.0,
+        "502702:502706": 0.0,
+        "502702:502707": 0.0,
+        "502702:502710": 0.1307281334546592,
+        "502702:502712": 0.0,
+        "502702:502713": 0.0,
+        "502702:502716": 0.0,
+        "502702:502721": 0.12823807376980853,
+        "502702:502722": 0.09462226802432475,
+        "502702:502723": 0.07221173086066887,
+        "502702:502732": 0.11952286487283124,
+        "502702:502733": 0.0485561638545877,
+        "502702:502734": 0.11454274550312996,
+        "502702:502743": 0.0,
+        "502719:502719": 0.0,
+        "502719:502720": 0.4992569668125555,
+        "502717:502717": 0.0,
+        "502717:502718": 0.5702236678307991,
+        "502714:502714": 0.0,
+        "502714:502715": 0.8130044871037376,
+        "502709:502709": 0.0,
+        "502709:502711": 0.7196272489218382
+      },
+      "resources": [
+        {
+          "pid": 502702,
+          "rss_kib": 17708,
+          "threads": 17,
+          "fds": 135,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "/sys/fs/cgroup/cpu.max": 1,
+            "socket:": 125,
+            "anon_inode:": 6
+          }
+        },
+        {
+          "pid": 502719,
+          "rss_kib": 2400,
+          "threads": 2,
+          "fds": 40,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 31,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502717,
+          "rss_kib": 2424,
+          "threads": 2,
+          "fds": 36,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 27,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502714,
+          "rss_kib": 2436,
+          "threads": 2,
+          "fds": 33,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 24,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502709,
+          "rss_kib": 2424,
+          "threads": 2,
+          "fds": 55,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 46,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.03193599,
+      "members": {
+        "0": 3835,
+        "1": 3835,
+        "2": 3836,
+        "3": 3836
+      },
+      "p50_ms": 18.057,
+      "p99_ms": 163.538,
+      "statuses": {
+        "200": 15342
+      },
+      "throughput": 1910.1247842489345
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "502752:502752": 0.0,
+        "502752:502753": 0.0,
+        "502752:502754": 1.0007640749280367
+      },
+      "resources": [
+        {
+          "pid": 502752,
+          "rss_kib": 2356,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.053846258,
+      "members": {
+        "0": 8903
+      },
+      "p50_ms": 56.326,
+      "p99_ms": 83.892,
+      "statuses": {
+        "200": 8903
+      },
+      "throughput": 1105.4345606804357
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502770:502770": 0.0,
+        "502770:502771": 0.0,
+        "502770:502772": 0.7669306771862633,
+        "502770:502773": 0.8690220985000191,
+        "502770:502774": 0.8690220985000191,
+        "502770:502775": 0.8615519945014516
+      },
+      "resources": [
+        {
+          "pid": 502770,
+          "rss_kib": 2908,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.032016691,
+      "members": {
+        "0": 4697,
+        "1": 6866,
+        "2": 7815,
+        "3": 7171
+      },
+      "p50_ms": 19.122,
+      "p99_ms": 47.809,
+      "statuses": {
+        "200": 26549
+      },
+      "throughput": 3305.396517632809
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "502794:502794": 0.0,
+        "502794:502795": 0.0,
+        "502796:502796": 0.0,
+        "502796:502797": 0.9505023204115561,
+        "502796:502798": 0.0012408646480568618
+      },
+      "resources": [
+        {
+          "pid": 502794,
+          "rss_kib": 1944,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502796,
+          "rss_kib": 2568,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.058896686,
+      "members": {
+        "0": 6048
+      },
+      "p50_ms": 75.126,
+      "p99_ms": 770.108,
+      "statuses": {
+        "200": 6048
+      },
+      "throughput": 750.4749391447899
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502814:502814": 0.0,
+        "502814:502815": 0.0,
+        "502825:502825": 0.0,
+        "502825:502826": 0.8529238086712866,
+        "502825:502827": 0.0,
+        "502821:502821": 0.0,
+        "502821:502823": 0.8504335201788157,
+        "502821:502824": 0.0,
+        "502819:502819": 0.0,
+        "502819:502820": 0.7707442884197466,
+        "502819:502822": 0.0,
+        "502816:502816": 0.0,
+        "502816:502817": 0.8392272219626966,
+        "502816:502818": 0.0
+      },
+      "resources": [
+        {
+          "pid": 502814,
+          "rss_kib": 1968,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502825,
+          "rss_kib": 2452,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502821,
+          "rss_kib": 2424,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502819,
+          "rss_kib": 2380,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502816,
+          "rss_kib": 2420,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.031198016,
+      "members": {
+        "0": 6692,
+        "1": 5632,
+        "2": 4627,
+        "3": 6477
+      },
+      "p50_ms": 18.449,
+      "p99_ms": 73.496,
+      "statuses": {
+        "200": 23428
+      },
+      "throughput": 2917.123940080424
+    },
+    {
+      "round": 2,
+      "mode": "proxy",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "502853:502853": 0.0,
+        "502853:502854": 0.043743466868358116,
+        "502853:502855": 0.0,
+        "502853:502856": 0.0,
+        "502853:502857": 0.0,
+        "502853:502858": 0.0,
+        "502853:502862": 0.0,
+        "502853:502863": 0.12113575440468402,
+        "502853:502865": 0.0,
+        "502853:502869": 0.1502980656502561,
+        "502853:502870": 0.0,
+        "502853:502873": 0.1121627355598926,
+        "502853:502874": 0.13123040060507435,
+        "502853:502883": 0.1200141270490851,
+        "502853:502884": 0.11777087233788724,
+        "502853:502885": 0.12674389118267865,
+        "502871:502871": 0.0,
+        "502871:502872": 0.4890295270411318,
+        "502867:502867": 0.0,
+        "502867:502868": 0.5013674279527199,
+        "502864:502864": 0.0,
+        "502864:502866": 0.5888543616894362,
+        "502860:502860": 0.0,
+        "502860:502861": 0.5249216024202974
+      },
+      "resources": [
+        {
+          "pid": 502853,
+          "rss_kib": 17884,
+          "threads": 16,
+          "fds": 59,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "/sys/fs/cgroup/cpu.max": 1,
+            "socket:": 49,
+            "anon_inode:": 6
+          }
+        },
+        {
+          "pid": 502871,
+          "rss_kib": 2400,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 10,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502867,
+          "rss_kib": 2388,
+          "threads": 2,
+          "fds": 17,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 8,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502864,
+          "rss_kib": 2412,
+          "threads": 2,
+          "fds": 29,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 20,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 502860,
+          "rss_kib": 2404,
+          "threads": 2,
+          "fds": 23,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-with-proxy.json.server.log": 2,
+            "socket:": 14,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.915617072,
+      "members": {
+        "0": 2789,
+        "1": 2788,
+        "2": 2789,
+        "3": 2789
+      },
+      "p50_ms": 20.61,
+      "p99_ms": 495.331,
+      "statuses": {
+        "200": 11155
+      },
+      "throughput": 1251.175315170602
+    }
+  ]
+}

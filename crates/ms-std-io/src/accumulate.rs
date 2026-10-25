@@ -143,6 +143,11 @@ native! {
         start(kind, has_max, max)
     }
 
+    /// Abandons an accumulator after an I/O error, fault or cancellation.
+    fn msstd_io_acc_drop(a: Own<Acc>) -> () {
+        drop(a);
+    }
+
     /// The next read size, or `0` when the loop should stop.
     fn msstd_io_acc_want(a: Ref<Acc>) -> i64 {
         a.want()

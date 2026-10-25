@@ -22,9 +22,55 @@ fn pointer(mode: Mode) -> Param {
 }
 
 impl FnLower<'_> {
+    /// Private launcher natives take native Network/HttpServer handles. Their
+    /// source values are interfaces whose data box contains that handle; never
+    /// pass the two-word interface itself through a one-pointer C parameter.
+    pub(crate) fn http_native_handle(&mut self, value: Val) -> Result<Val, Error> {
+        let TyKind::Iface(iface) = self.b.m.types.kind(self.ty_of(value.v)).clone() else {
+            return Ok(value);
+        };
+        let ity = self
+            .cx
+            .contracts
+            .get(&iface)
+            .cloned()
+            .ok_or_else(|| Error::new("unknown HTTP native interface"))?;
+        let hir = self.hir.clone();
+        let table = self.cx.handle_vtable(self.b.m, &hir, "net", &ity, iface)?;
+        let value = self.borrow(value);
+        let valid = self
+            .b
+            .emit(Op::IfaceIs, &[value], Imm::Vtable(table), Some(MTy::BOOL))
+            .expect("iface.is");
+        let (good, bad) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(valid, good, &[], bad, &[]);
+        self.b.seal_block(good);
+        self.b.seal_block(bad);
+        self.b.switch_to(bad);
+        let message = self
+            .b
+            .str_lit("HTTP launcher requires its native network or server handle");
+        self.call_runtime("msrt_fault_string", &[message], MTy::UNIT)?;
+        self.b.unreachable();
+        self.b.switch_to(good);
+        let data = self
+            .b
+            .emit(Op::IfaceData, &[value], Imm::None, Some(MTy::PTR))
+            .expect("iface.data");
+        let handle = crate::natiface::handle_ty(self.b.m);
+        let value = self
+            .b
+            .emit(Op::Load, &[data], Imm::Ty(handle), Some(handle))
+            .expect("handle");
+        Ok(Val {
+            v: value,
+            own: false,
+        })
+    }
+
     /// The function the cleanup stack calls to release `ty` when a fault abandons the frame
     /// that owns it.
-    fn drop_thunk(&mut self, ty: MTy) -> ms_mir::ir::FuncId {
+    pub(crate) fn drop_thunk(&mut self, ty: MTy) -> ms_mir::ir::FuncId {
         let key = format!("drop:{}", ty.index());
         if let Some(f) = self.cx.helpers.get(&key) {
             return *f;
@@ -175,6 +221,8 @@ impl FnLower<'_> {
             ("protocol", MTy::STR),
             ("headers", fields[by_name("headers")?].1),
             ("body", MTy::BYTES),
+            ("peer_address", MTy::STR),
+            ("scheme", MTy::STR),
         ]
         .iter()
         .map(|(n, t)| (n.to_string(), *t))
@@ -192,6 +240,8 @@ impl FnLower<'_> {
                 "query" => 2,
                 "protocol" => 3,
                 "headers" => 4,
+                "peer_address" => 6,
+                "scheme" => 7,
                 _ => 5,
             })
             .collect();
@@ -300,7 +350,13 @@ impl FnLower<'_> {
         let ex =
             fl.b.emit(Op::IfaceNew, &[handle], Imm::Vtable(vt), Some(exchange))
                 .expect("iface");
+        // A fault or cancellation skips the thunk's normal interface release.
+        let drop = fl.drop_thunk(exchange);
+        let cleanup =
+            fl.b.emit(Op::CleanupPush, &[ex], Imm::Func(drop), Some(MTy::INT))
+                .expect("exchange cleanup");
         let r = fl.b.call_ind(handler, &[ex]);
+        fl.call_runtime("msrt_cleanup_discard", &[cleanup], MTy::UNIT)?;
         fl.drop_value(ex);
         let tag = fl.b.alt_tag(r);
         let ok_tag = fl.b.iconst(ok as i64);

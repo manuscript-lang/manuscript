@@ -26,10 +26,24 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+// A cleanup registration borrows bits during normal execution but can consume the
+// ownership on a fault. Neither borrowing away that ownership nor moving it into
+// another owner is safe while the cleanup record may still be live.
+fn cleanup_values(f: &Func) -> Vec<bool> {
+    let mut protected = vec![false; f.values.len()];
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if inst.op == Op::CleanupPush {
+            protected[inst.args[0].index()] = true;
+        }
+    }
+    protected
+}
+
 /// Turns `c = copy v; ...; drop v` into a move when `v` is not touched in between: the copy
 /// and the drop cancel, and `c` is `v`. This is the shape of `l = More(l)` in a loop, which
 /// would otherwise deep-copy the old value on every iteration.
 fn move_dead_sources(f: &mut Func) -> bool {
+    let protected = cleanup_values(f);
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
     let mut dead: Vec<(usize, usize)> = Vec::new();
@@ -39,6 +53,9 @@ fn move_dead_sources(f: &mut Func) -> bool {
                 continue;
             };
             let v = inst.args[0];
+            if protected[v.index()] || protected[c.index()] {
+                continue;
+            }
             if touched[c.index()] || touched[v.index()] {
                 continue;
             }
@@ -94,6 +111,7 @@ fn move_dead_sources(f: &mut Func) -> bool {
 /// the copy keeps its drop.
 fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let n = f.values.len();
     let nb = f.blocks.len();
     let mut owned = vec![false; n];
@@ -124,6 +142,9 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
+            if protected[v.index()] || protected[c.index()] {
+                continue;
+            }
             if !owned[v.index()] || touched[v.index()] || touched[c.index()] {
                 continue;
             }
@@ -219,6 +240,7 @@ fn move_dead_sources_across_blocks(m: &mut Module, fi: usize) -> bool {
 /// over a list of records, which otherwise copies every record on every visit.
 fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -244,6 +266,9 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
+            if protected[v.index()] || protected[c.index()] {
+                continue;
+            }
             let kind = m.types.kind(f.ty(v));
             let is_str = matches!(kind, TyKind::Str);
             let composite = matches!(
@@ -323,6 +348,7 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
 /// and the list; the paths from the copy reach the list's release only through the drop.
 fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let nb = f.blocks.len();
     let mut defs: Vec<Option<(usize, usize)>> = vec![None; f.values.len()];
     let mut uses = vec![0u32; f.values.len()];
@@ -345,6 +371,9 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
                 continue;
             };
             let v = inst.args[0];
+            if protected[v.index()] || protected[c.index()] {
+                continue;
+            }
             if !matches!(m.types.kind(f.ty(v)), TyKind::Str) || alias[v.index()].is_some() {
                 continue;
             }
@@ -464,6 +493,7 @@ fn borrow_str_copies_across_blocks(m: &mut Module, fi: usize) -> bool {
 /// source stays alive and unchanged until the drop, `p` borrows the sources instead.
 fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let nv = f.values.len();
     let mut defs: Vec<Option<(usize, usize)>> = vec![None; nv];
     let mut uses = vec![0u32; nv];
@@ -486,6 +516,9 @@ fn borrow_str_phis(m: &mut Module, fi: usize) -> bool {
     for (bb, b) in f.blocks.iter().enumerate() {
         'param: for (pi, param) in b.params.iter().enumerate() {
             let p = param.value;
+            if protected[p.index()] {
+                continue;
+            }
             if param.mode != Mode::Own || !matches!(m.types.kind(f.ty(p)), TyKind::Str) {
                 continue;
             }
@@ -698,6 +731,7 @@ fn str_source_stable(
 /// shape of unwrapping a recursive result, which would otherwise copy every subtree once per
 /// level.
 fn unbox_dead_options(f: &mut Func) -> bool {
+    let protected = cleanup_values(f);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -720,6 +754,9 @@ fn unbox_dead_options(f: &mut Func) -> bool {
                     continue;
                 };
                 let v = get.args[0];
+                if protected[v.index()] {
+                    continue;
+                }
                 if uses[p.index()] != 1 {
                     continue;
                 }
@@ -766,6 +803,7 @@ fn unbox_dead_options(f: &mut Func) -> bool {
 /// would otherwise deep-copy the whole tail on every iteration.
 fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let mut uses = vec![0u32; f.values.len()];
     for b in &f.blocks {
         for i in &b.insts {
@@ -785,6 +823,9 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
                     continue;
                 };
                 let v = get.args[0];
+                if protected[v.index()] {
+                    continue;
+                }
                 if uses[p.index()] != 1 || !nd[p.index()] {
                     continue;
                 }
@@ -847,6 +888,7 @@ fn unbox_dead_sources(m: &mut Module, fi: usize) -> bool {
 
 fn run_func(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
+    let protected = cleanup_values(f);
     let stable = stable_values(f);
     // `copy` results that can be replaced by their source.
     let mut alias: Vec<Option<Value>> = vec![None; f.values.len()];
@@ -855,6 +897,7 @@ fn run_func(m: &mut Module, fi: usize) -> bool {
         for i in &b.insts {
             if let (Op::Copy, Some(res)) = (i.op, i.res)
                 && stable[i.args[0].index()]
+                && !protected[res.index()]
             {
                 alias[res.index()] = Some(i.args[0]);
                 any = true;

@@ -26,10 +26,13 @@ const CONN_WINDOW: u32 = 1 << 20;
 const MAX_STREAMS: u32 = 250;
 /// Output a streaming writer may leave unsent before it waits for the socket.
 const OUT_HOLD: usize = 512 * 1024;
-/// Output a peer may leave unread before the connection is dropped. Handlers wait at
-/// `OUT_HOLD`, so only control frames (PING and SETTINGS acknowledgements, resets) a peer
-/// provokes without reading the answers can pile up this far.
-const OUT_ABUSE: usize = if cfg!(test) { 1 << 20 } else { 64 << 20 };
+/// Hard queued-output cutoff, including headers and peer-provoked control frames.
+/// DATA production is bounded below this ceiling before encoding, independently
+/// of the peer's advertised window. Tests exercise the production limit.
+const OUT_ABUSE: usize = 1 << 20;
+/// One minimum-sized DATA frame per stream per pump keeps streams interleaved.
+const DATA_QUANTUM: usize = 16 * 1024;
+const FRAME_HEADER: usize = 9;
 /// Bytes read per reactor turn before yielding to other connections.
 const READ_ROUND: usize = 1 << 20;
 
@@ -72,6 +75,10 @@ struct Outgoing {
 }
 
 struct H2Stream {
+    trace: Option<Rc<Trace>>,
+    admission: Option<Rc<Admission>>,
+    response_started: bool,
+    is_head: bool,
     head: Option<Head>,
     /// Buffered mode: the body so far. Streaming: unread bytes.
     body: Vec<u8>,
@@ -81,12 +88,16 @@ struct H2Stream {
     out: Option<Outgoing>,
     started: Instant,
     deadline: Option<Instant>,
+    write_deadline: Option<Instant>,
 }
 
 impl H2Stream {
-    fn new(remote_done: bool, timeout: Option<Duration>) -> H2Stream {
-        let started = Instant::now();
+    fn new(remote_done: bool, timeout: Option<Duration>, started: Instant) -> H2Stream {
         H2Stream {
+            trace: None,
+            admission: None,
+            response_started: false,
+            is_head: false,
             head: None,
             body: Vec::new(),
             remote_done,
@@ -94,15 +105,51 @@ impl H2Stream {
             stage: Stage::Collecting,
             out: None,
             started,
-            deadline: timeout.map(|t| started + t),
+            deadline: timeout.and_then(|t| started.checked_add(t)),
+            write_deadline: None,
+        }
+    }
+}
+
+struct Retiring {
+    id: u32,
+    end: u128,
+    trace: Option<Rc<Trace>>,
+    _admission: Option<Rc<Admission>>,
+    deadline: Option<Instant>,
+    write_deadline: Option<Instant>,
+    resetting: bool,
+}
+
+struct H2Waiter {
+    token: rt::Token,
+    conn: Weak<Conn>,
+}
+
+impl Drop for H2Waiter {
+    fn drop(&mut self) {
+        if let Some(conn) = self.conn.upgrade() {
+            with_h2(&conn, |h| h.waiters.retain(|&w| w != self.token.id()));
         }
     }
 }
 
 pub(in crate::http) struct H2Conn {
     core: h2::Connection,
+    clock_origin: Instant,
+    header_starts: HashMap<u32, Instant>,
+    header_deadline: Option<Instant>,
+    header_timeout: Option<Duration>,
+    emitted: u128,
+    submitted: u128,
+    confirmed: u128,
+    retiring: VecDeque<Retiring>,
+    wire: VecDeque<(u128, u128, u32)>,
+    write_timeout: Option<Duration>,
+    failed_write: bool,
     streams: HashMap<u32, H2Stream>,
     queue: VecDeque<u32>,
+    send_cursor: u32,
     goaway: bool,
     /// Tokens of handlers parked in `h2_wait`, posted when the reactor serves the connection.
     waiters: Vec<u64>,
@@ -119,23 +166,48 @@ impl H2Conn {
         };
         H2Conn {
             core: h2::Connection::server(settings),
+            clock_origin: Instant::now(),
+            header_starts: HashMap::new(),
+            header_deadline: None,
+            header_timeout: [limits.header_timeout, limits.timeout]
+                .into_iter()
+                .flatten()
+                .min(),
+            emitted: 0,
+            submitted: 0,
+            confirmed: 0,
+            retiring: VecDeque::new(),
+            wire: VecDeque::new(),
+            write_timeout: limits.write_timeout,
+            failed_write: false,
             streams: HashMap::new(),
             queue: VecDeque::new(),
+            send_cursor: 0,
             goaway: false,
             waiters: Vec::new(),
         }
     }
 
-    /// Streams admitted and waiting for the handler.
-    pub(in crate::http) fn queued(&self) -> usize {
-        self.streams
-            .values()
-            .filter(|s| s.stage == Stage::Queued)
-            .count()
+    fn feed(&mut self, bytes: &[u8]) -> Result<Vec<Event>, h2::H2Error> {
+        let marker = self.clock_origin.elapsed().as_nanos().min(u64::MAX as u128) as u64;
+        let events = self.core.feed_marked(bytes, marker);
+        for (id, marker) in self.core.take_header_starts() {
+            if !self.streams.contains_key(&id) {
+                self.header_starts
+                    .entry(id)
+                    .or_insert(self.clock_origin + Duration::from_nanos(marker));
+            }
+        }
+        self.header_deadline = self.core.pending_header_marker().and_then(|marker| {
+            self.header_timeout.and_then(|limit| {
+                (self.clock_origin + Duration::from_nanos(marker)).checked_add(limit)
+            })
+        });
+        events
     }
 
     fn is_idle(&self) -> bool {
-        self.streams.is_empty() && self.core.open_streams() == 0
+        self.streams.is_empty() && self.retiring.is_empty() && self.core.open_streams() == 0
     }
 
     fn take_next(&mut self) -> Option<(u32, Head, Instant)> {
@@ -164,14 +236,139 @@ impl H2Conn {
         if !s.remote_done {
             self.core.send_rst(id, error_code::NO_ERROR);
         }
+        if s.remote_done && !s.response_started {
+            return;
+        }
+        let end = self.emitted + self.core.pending_output_len() as u128;
+        if end <= self.confirmed {
+            if let Some(trace) = &s.trace {
+                trace.finish();
+            }
+            return;
+        }
+        self.retiring.push_back(Retiring {
+            id,
+            end,
+            trace: s.trace,
+            _admission: s.admission,
+            deadline: s.deadline,
+            write_deadline: s.write_deadline.or_else(|| {
+                self.write_timeout
+                    .and_then(|t| Instant::now().checked_add(t))
+            }),
+            resetting: false,
+        });
+    }
+
+    fn reset_and_retire(&mut self, id: u32, code: u32) {
+        if let Some(trace) = self.streams.get(&id).and_then(|s| s.trace.as_ref()) {
+            trace.fail(End::Aborted);
+        }
+        self.core.reset_encoded_stream(id, code);
+        if let Some(stream) = self.streams.get_mut(&id) {
+            stream.remote_done = true;
+            stream.response_started = true;
+        }
+        self.close_stream(id);
+        let end = self.emitted + self.core.pending_output_len() as u128;
+        let now = Instant::now();
+        for entry in &mut self.retiring {
+            if entry.id == id {
+                entry.end = end;
+                entry.deadline = None;
+                entry.write_deadline =
+                    now.checked_add(self.write_timeout.unwrap_or(Duration::ZERO));
+                entry.resetting = true;
+            }
+        }
+    }
+
+    fn begin_write(&mut self, id: u32) {
+        if let Some(stream) = self.streams.get_mut(&id) {
+            stream.response_started = true;
+            if stream.write_deadline.is_none() {
+                stream.write_deadline = self
+                    .write_timeout
+                    .and_then(|t| Instant::now().checked_add(t));
+            }
+        }
+    }
+
+    /// Frame ownership is retained alongside the ordered encoded bytes. Header
+    /// compression state and partial frames prohibit deleting arbitrary output.
+    fn record_output(&mut self, out: &[u8]) {
+        let mut at = 0;
+        while at + 9 <= out.len() {
+            let length =
+                ((out[at] as usize) << 16) | ((out[at + 1] as usize) << 8) | out[at + 2] as usize;
+            let end = at + 9 + length;
+            assert!(end <= out.len(), "HTTP/2 core emits complete frames");
+            let id = u32::from_be_bytes(out[at + 5..at + 9].try_into().unwrap()) & 0x7fffffff;
+            if id != 0 {
+                self.wire
+                    .push_back((self.emitted + at as u128, self.emitted + end as u128, id));
+            }
+            at = end;
+        }
+        assert_eq!(at, out.len());
+        self.emitted += out.len() as u128;
+    }
+
+    /// Called only after a bounded plaintext batch has also flushed its TLS
+    /// records. Activity on other streams never refreshes this stream's timer.
+    fn flushed(&mut self) {
+        self.confirmed = self.submitted;
+        let now = Instant::now();
+        while let Some(&(start, end, id)) = self.wire.front() {
+            if start >= self.submitted {
+                break;
+            }
+            let next = self.write_timeout.and_then(|t| now.checked_add(t));
+            if let Some(stream) = self.streams.get_mut(&id) {
+                stream.write_deadline = next;
+            }
+            for retiring in &mut self.retiring {
+                if retiring.id == id {
+                    retiring.write_deadline = if retiring.resetting {
+                        now.checked_add(self.write_timeout.unwrap_or(Duration::ZERO))
+                    } else {
+                        next
+                    };
+                }
+            }
+            if end > self.submitted {
+                self.wire.front_mut().unwrap().0 = self.submitted;
+                break;
+            }
+            self.wire.pop_front();
+        }
+        self.retiring.retain(|entry| {
+            if entry.end > self.submitted {
+                return true;
+            }
+            if let Some(trace) = &entry.trace {
+                trace.finish();
+            }
+            false
+        });
     }
 
     /// Sends the response head and leaves the body to the reactor.
     fn respond(&mut self, id: u32, headers: Vec<Header>, body: Vec<u8>) {
+        self.begin_write(id);
+        if let Some(trace) = self.streams.get(&id).and_then(|s| s.trace.as_ref()) {
+            let status = headers
+                .iter()
+                .find(|(n, _)| n == b":status")
+                .and_then(|(_, v)| std::str::from_utf8(v).ok())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+            trace.status(status);
+            trace.response_bytes(body.len());
+        }
         let end = body.is_empty();
         if self.core.send_response_headers(id, headers, end).is_err() {
-            self.core.send_rst(id, error_code::INTERNAL_ERROR);
-            self.streams.remove(&id);
+            self.reset_and_retire(id, error_code::INTERNAL_ERROR);
             return;
         }
         if end {
@@ -186,7 +383,13 @@ impl H2Conn {
 
     /// An error response like `http.Error`.
     fn error_response(&mut self, reactor: &Reactor, id: u32, status: u16, message: &str) {
-        let body = format!("{message}\n").into_bytes();
+        if let Some(s) = self.streams.get(&id)
+            && s.stage != Stage::Running
+            && let Some(trace) = &s.trace
+        {
+            trace.reject();
+        }
+        let mut body = format!("{message}\n").into_bytes();
         let headers = vec![
             hv(":status", status.to_string()),
             hv("content-type", "text/plain; charset=utf-8"),
@@ -194,48 +397,115 @@ impl H2Conn {
             hv("date", reactor.date_text()),
             hv("content-length", body.len().to_string()),
         ];
+        if self.streams.get(&id).is_some_and(|s| s.is_head) {
+            body.clear();
+        }
         self.respond(id, headers, body);
     }
 
-    /// Flushes buffered response bodies as far as the windows allow.
-    fn send_pending(&mut self) {
-        let ids: Vec<u32> = self
+    fn data_budget(&self, queued: usize) -> usize {
+        OUT_HOLD
+            .saturating_sub(queued.saturating_add(self.core.pending_output_len()))
+            .saturating_sub(FRAME_HEADER)
+            .min(DATA_QUANTUM)
+    }
+
+    /// Encodes bounded DATA, counting both transport and core staging. Returns
+    /// whether progress was made; a writable turn can resume remaining bodies.
+    fn send_pending(&mut self, queued: usize) -> bool {
+        let mut ids: Vec<u32> = self
             .streams
             .iter()
             .filter(|(_, s)| s.out.is_some())
             .map(|(id, _)| *id)
             .collect();
+        ids.sort_unstable();
+        if !ids.is_empty() {
+            let start = ids.partition_point(|id| *id <= self.send_cursor) % ids.len();
+            ids.rotate_left(start);
+        }
+        let mut progressed = false;
         for id in ids {
+            let budget = self.data_budget(queued);
+            if budget == 0 {
+                break;
+            }
             let Some(out) = self.streams.get_mut(&id).and_then(|s| s.out.as_mut()) else {
                 continue;
             };
-            out.pos += self.core.send_data(id, &out.data[out.pos..], true);
+            let end = out.pos.saturating_add(budget).min(out.data.len());
+            let sent = self
+                .core
+                .send_data(id, &out.data[out.pos..end], end == out.data.len());
+            out.pos += sent;
+            progressed |= sent != 0;
+            if sent != 0 {
+                self.send_cursor = id;
+            }
             if out.pos == out.data.len() {
                 self.close_stream(id);
             }
         }
+        progressed
     }
 
-    /// Sends response body bytes of a streaming exchange; `None` when the
-    /// stream is gone or was reset.
-    fn send_body(&mut self, id: u32, data: &[u8]) -> Option<usize> {
+    /// Sends at most one bounded streaming DATA frame; None means reset/closed.
+    fn send_body(&mut self, id: u32, data: &[u8], queued: usize) -> Option<usize> {
         let alive = self.streams.get(&id).is_some_and(|s| !s.reset);
-        alive.then(|| self.core.send_data(id, data, false))
+        let count = data.len().min(self.data_budget(queued));
+        alive.then(|| self.core.send_data(id, &data[..count], false))
     }
 
-    /// Resets the streams that waited too long for the rest of their request.
+    /// Expiry discards unencoded payload only. Already encoded frames stay in
+    /// order, followed by RST; admission remains held until that reset flushes.
     fn expire(&mut self, now: Instant) -> bool {
         let late: Vec<u32> = self
             .streams
             .iter()
-            .filter(|(_, s)| s.stage == Stage::Collecting && s.deadline.is_some_and(|d| d <= now))
+            .filter(|(_, s)| {
+                s.stage != Stage::Running
+                    && [s.deadline, s.write_deadline]
+                        .into_iter()
+                        .flatten()
+                        .any(|d| d <= now)
+            })
             .map(|(id, _)| *id)
             .collect();
-        for id in &late {
-            self.core.send_rst(*id, error_code::CANCEL);
-            self.streams.remove(id);
+        let retiring_late: Vec<u32> = self
+            .retiring
+            .iter()
+            .filter(|s| {
+                [s.deadline, s.write_deadline]
+                    .into_iter()
+                    .flatten()
+                    .any(|d| d <= now)
+            })
+            .map(|s| s.id)
+            .collect();
+        let mut changed = !late.is_empty();
+        for id in late {
+            if let Some(trace) = self.streams.get(&id).and_then(|s| s.trace.as_ref()) {
+                trace.fail(End::TimedOut);
+            }
+            self.reset_and_retire(id, error_code::CANCEL);
         }
-        !late.is_empty()
+        for id in retiring_late {
+            for entry in &self.retiring {
+                if entry.id == id
+                    && let Some(trace) = &entry.trace
+                {
+                    trace.fail(End::TimedOut);
+                }
+            }
+            let resetting = self.retiring.iter().any(|s| s.id == id && s.resetting);
+            if resetting {
+                self.failed_write = true;
+                continue;
+            }
+            self.reset_and_retire(id, error_code::CANCEL);
+            changed = true;
+        }
+        changed || self.failed_write
     }
 }
 
@@ -270,6 +540,7 @@ fn drain(conn: &Conn) -> Drain {
         return Drain::Gone;
     };
     let out = h2.core.take_output();
+    h2.record_output(&out);
     if st.out_pos > 64 * 1024 {
         st.outbuf.drain(..st.out_pos);
         st.out_pos = 0;
@@ -282,26 +553,40 @@ fn drain(conn: &Conn) -> Drain {
 }
 
 fn drain_io(io: &dyn Io, st: &mut ConnSt) -> Drain {
-    while st.out_pos < st.outbuf.len() {
-        match io.write(&st.outbuf[st.out_pos..]) {
+    loop {
+        if st.flush_pending {
+            match io.flush() {
+                Step::Done(_) => {
+                    st.flush_pending = false;
+                    if let Some(h) = &mut st.h2 {
+                        h.flushed();
+                    }
+                }
+                Step::WantRead | Step::WantWrite => return Drain::Blocked,
+                Step::Eof | Step::Err(_) => return Drain::Failed,
+            }
+        }
+        if st.out_pos == st.outbuf.len() {
+            if let Some(h) = &mut st.h2 {
+                h.flushed();
+            }
+            st.outbuf.clear();
+            st.out_pos = 0;
+            return Drain::Empty;
+        }
+        let end = (st.out_pos + 16 * 1024).min(st.outbuf.len());
+        match io.write(&st.outbuf[st.out_pos..end]) {
             Step::Done(0) => return Drain::Blocked,
-            Step::Done(n) => st.out_pos += n,
+            Step::Done(n) => {
+                st.out_pos += n;
+                if let Some(h) = &mut st.h2 {
+                    h.submitted += n as u128;
+                }
+                st.flush_pending = true;
+            }
             Step::WantRead | Step::WantWrite => return Drain::Blocked,
             Step::Eof | Step::Err(_) => return Drain::Failed,
         }
-    }
-    match io.flush() {
-        Step::Done(_) => {
-            st.outbuf.clear();
-            st.out_pos = 0;
-            st.flush_pending = false;
-            Drain::Empty
-        }
-        Step::WantRead | Step::WantWrite => {
-            st.flush_pending = true;
-            Drain::Blocked
-        }
-        Step::Eof | Step::Err(_) => Drain::Failed,
     }
 }
 
@@ -346,6 +631,7 @@ impl Server {
                     return (false, total > 0);
                 }
                 Pull::Failed => {
+                    self.observer.protocol_error();
                     // The GOAWAY with the error code goes out before closing.
                     let _ = drain(conn);
                     self.close_conn(conn, reactor);
@@ -366,7 +652,7 @@ impl Server {
         };
         let mut scratch = reactor.scratch.borrow_mut();
         match io.read(&mut scratch) {
-            Step::Done(n) => feed_result(h2.core.feed(&scratch[..n]), n),
+            Step::Done(n) => feed_result(h2.feed(&scratch[..n]), n),
             Step::Eof | Step::Err(_) => Pull::Eof,
             Step::WantRead | Step::WantWrite => Pull::Blocked,
         }
@@ -375,14 +661,47 @@ impl Server {
     /// Queues the core's output and bufferd bodies, writes, and settles the
     /// interest set and a pending close.
     pub(in crate::http) fn h2_pump_out(&self, conn: &Rc<Conn>, reactor: &Reactor) {
-        with_h2(conn, H2Conn::send_pending);
-        match drain(conn) {
+        // Drain first: a previously full transport queue must not be mistaken
+        // for exhausted flow-control credit after the socket becomes writable.
+        let mut state = drain(conn);
+        let mut resume = false;
+        if matches!(state, Drain::Empty) {
+            resume = with_h2(conn, |h| {
+                h.send_pending(0) && h.streams.values().any(|s| s.out.is_some())
+            })
+            .unwrap_or(false);
+            state = drain(conn);
+        }
+        match state {
             Drain::Gone => {}
             Drain::Failed => self.close_conn(conn, reactor),
             Drain::Blocked => self.set_interest(conn, reactor, Ev::IN | Ev::OUT),
             Drain::Empty => {
                 self.set_interest(conn, reactor, Ev::IN);
+                if resume {
+                    // Toggle the logical interest to queue the remembered
+                    // writable readiness edge on Unix and rearm it on Windows.
+                    self.set_interest(conn, reactor, Ev::IN | Ev::OUT);
+                }
                 self.h2_settle(conn, reactor);
+            }
+        }
+        let idle = with_h2(conn, |h| {
+            h.is_idle() && h.core.pending_header_marker().is_none()
+        })
+        .unwrap_or(false);
+        {
+            let mut st = conn.st.borrow_mut();
+            if idle {
+                if st.deadline.is_none() {
+                    st.deadline = self
+                        .limits
+                        .idle_timeout
+                        .and_then(|t| Instant::now().checked_add(t));
+                    reactor.note_deadline(st.deadline);
+                }
+            } else {
+                st.deadline = None;
             }
         }
     }
@@ -406,7 +725,16 @@ impl Server {
     }
 
     pub(super) fn h2_sweep(&self, conn: &Rc<Conn>, reactor: &Reactor, now: Instant) {
+        if with_h2(conn, |h| h.header_deadline.is_some_and(|at| at <= now)).unwrap_or(false) {
+            self.observer.connection_timeout();
+            self.close_conn(conn, reactor);
+            return;
+        }
         if with_h2(conn, |h| h.expire(now)).unwrap_or(false) {
+            if with_h2(conn, |h| h.failed_write).unwrap_or(false) {
+                self.close_conn(conn, reactor);
+                return;
+            }
             self.h2_pump_out(conn, reactor);
             wake_waiters(conn);
         }
@@ -416,12 +744,14 @@ impl Server {
     /// drained, a stream expired, or the connection closed. `false` when the deadline
     /// passed or the connection is gone.
     pub(in crate::http) fn h2_wait(&self, conn: &Rc<Conn>, deadline: Deadline) -> bool {
-        let token = rt::Token::new();
-        if with_h2(conn, |h| h.waiters.push(token.id())).is_none() {
+        let waiter = rt::ScopeOwned::new(H2Waiter {
+            token: rt::Token::new(),
+            conn: Rc::downgrade(conn),
+        });
+        if with_h2(conn, |h| h.waiters.push(waiter.token.id())).is_none() {
             return false;
         }
-        let got = wait_token(&token, deadline);
-        with_h2(conn, |h| h.waiters.retain(|&w| w != token.id()));
+        let got = wait_token(&waiter.token, deadline);
         got == Wait::Ready
     }
 
@@ -460,9 +790,31 @@ impl Server {
             self.h2_remote_end(conn, reactor, id, end_stream);
             return;
         }
+        let method = headers
+            .iter()
+            .find(|(n, _)| n == b":method")
+            .map(|(_, v)| String::from_utf8_lossy(v).into_owned())
+            .unwrap_or_default();
+        let path = headers
+            .iter()
+            .find(|(n, _)| n == b":path")
+            .and_then(|(_, v)| std::str::from_utf8(v).ok())
+            .and_then(|s| target::parse(s).ok())
+            .map(|t| t.path)
+            .unwrap_or_default();
         let timeout = self.limits.timeout;
         with_h2(conn, |h| {
-            h.streams.insert(id, H2Stream::new(end_stream, timeout));
+            let started = h.header_starts.remove(&id).unwrap_or_else(Instant::now);
+            let mut stream = H2Stream::new(end_stream, timeout, started);
+            stream.is_head = method == "HEAD";
+            stream.trace = Some(self.observer.begin(
+                &method,
+                &path,
+                &conn.peer_address,
+                if self.tls.is_some() { "https" } else { "http" },
+                started,
+            ));
+            h.streams.insert(id, stream);
         });
         let head = match self.h2_head(headers) {
             Ok(head) => head,
@@ -471,8 +823,19 @@ impl Server {
                 return;
             }
         };
+        let admission = match self.admit() {
+            Ok(lease) => lease,
+            Err((status, message)) => {
+                with_h2(conn, |h| h.error_response(reactor, id, status, message));
+                return;
+            }
+        };
         with_h2(conn, |h| {
             if let Some(s) = h.streams.get_mut(&id) {
+                if let Some(trace) = &s.trace {
+                    trace.admitted();
+                }
+                s.admission = Some(admission);
                 s.head = Some(head);
             }
         });
@@ -531,36 +894,17 @@ impl Server {
 
     /// Admits a request for the handler, or answers 503.
     fn h2_queue(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32) {
-        let refusal = {
-            let mut s = self.st.borrow_mut();
-            if s.closing {
-                Some("server closed")
-            } else if s.admitted >= self.limits.admission {
-                Some("server busy")
-            } else {
-                s.admitted += 1;
-                None
-            }
-        };
-        if let Some(message) = refusal {
-            with_h2(conn, |h| h.error_response(reactor, id, 503, message));
-            return;
-        }
         let queued = with_h2(conn, |h| {
             let Some(s) = h.streams.get_mut(&id) else {
                 return false;
             };
             s.stage = Stage::Queued;
-            s.deadline = None;
             h.queue.push_back(id);
             true
         })
         .unwrap_or(false);
         if queued {
             reactor.ready.borrow_mut().push_back(conn.clone());
-        } else {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
         }
     }
 
@@ -591,6 +935,9 @@ impl Server {
                 h.core.release(id, n);
                 return Next::Nothing;
             };
+            if let Some(trace) = &s.trace {
+                trace.request_bytes(n);
+            }
             s.remote_done |= end;
             let collecting = s.stage == Stage::Collecting && !streaming;
             let streamed = streaming && matches!(s.stage, Stage::Queued | Stage::Running);
@@ -622,25 +969,22 @@ impl Server {
     }
 
     fn h2_reset(&self, conn: &Rc<Conn>, id: u32) {
-        let was_queued = with_h2(conn, |h| {
+        with_h2(conn, |h| {
+            h.header_starts.remove(&id);
             let Some(s) = h.streams.get_mut(&id) else {
-                return false;
+                return;
             };
+            if let Some(trace) = &s.trace {
+                trace.fail(End::Aborted);
+            }
             s.reset = true;
             s.remote_done = true;
-            if s.stage == Stage::Running {
-                // The handler notices and cleans up.
-                return false;
+            if s.stage != Stage::Running {
+                // The peer reset stops application work, but already encoded
+                // bytes still own capacity until the transport has flushed them.
+                h.close_stream(id);
             }
-            let queued = s.stage == Stage::Queued;
-            h.streams.remove(&id);
-            queued
-        })
-        .unwrap_or(false);
-        if was_queued {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
-        }
+        });
     }
 
     // --------------------------------------------------------------- dispatch
@@ -649,14 +993,14 @@ impl Server {
         let Some((id, head, started)) = with_h2(conn, H2Conn::take_next).flatten() else {
             return;
         };
+        let _trace = with_h2(conn, |h| h.streams.get(&id).and_then(|s| s.trace.clone()));
+        let _admission = with_h2(conn, |h| {
+            h.streams.get(&id).and_then(|s| s.admission.clone())
+        });
         if self.streaming {
             run_streaming(self, conn, reactor, id, head, started);
         } else {
             self.h2_buffered(conn, reactor, id, head, started);
-        }
-        {
-            let mut s = self.st.borrow_mut();
-            s.admitted = s.admitted.saturating_sub(1);
         }
         self.h2_pump_out(conn, reactor);
     }
@@ -675,7 +1019,11 @@ impl Server {
         .flatten();
         let Some(body) = body else { return };
         let is_head = head.method == "HEAD";
+        let is_connect = head.method == "CONNECT";
         let request = Request {
+            peer_address: conn.peer_address.clone(),
+            scheme: if self.tls.is_some() { "https" } else { "http" },
+            deadline: self.limits.timeout.and_then(|t| started.checked_add(t)),
             method: head.method,
             path: head.path,
             query: head.query,
@@ -687,6 +1035,17 @@ impl Server {
         let outcome = self.dispatch.buffered(request);
         self.leave_handler(reactor);
         let late = self.limits.timeout.is_some_and(|t| started.elapsed() > t);
+        with_h2(conn, |h| {
+            if let Some(trace) = h.streams.get(&id).and_then(|s| s.trace.as_ref()) {
+                match &outcome {
+                    Outcome::Fault(_) => trace.fail(End::Faulted),
+                    Outcome::Cancelled if late => trace.fail(End::TimedOut),
+                    Outcome::Cancelled => trace.fail(End::Aborted),
+                    _ if late => trace.fail(End::TimedOut),
+                    _ => {}
+                }
+            }
+        });
         let result = match outcome {
             Outcome::Cancelled => Err((504, "request cancelled")),
             Outcome::Fault(message) => {
@@ -694,6 +1053,9 @@ impl Server {
                 Err((500, "handler fault"))
             }
             Outcome::Done(_) if late => Err((504, "request cancelled")),
+            Outcome::Done(reply) if is_connect && (200..300).contains(&reply.status) => {
+                Err((500, "CONNECT tunnels are not supported"))
+            }
             Outcome::Done(reply) => self.h2_validate(reply),
         };
         with_h2(conn, |h| match result {
@@ -714,7 +1076,11 @@ impl Server {
 impl H2Conn {
     fn reply(&mut self, reactor: &Reactor, id: u32, reply: Reply, is_head: bool) {
         let allowed = body_allowed(reply.status);
-        let length = allowed.then_some(reply.body.len());
+        let length = if reply.status == 205 {
+            Some(0)
+        } else {
+            allowed.then_some(reply.body.len())
+        };
         let headers = response_head(
             reactor,
             reply.status as u16,
@@ -783,6 +1149,13 @@ fn run_streaming(
     let Some(server_rc) = server.rc() else { return };
     let timeout = server.limits.timeout;
     let exchange = Rc::new(Exchange {
+        trace: with_h2(conn, |h| {
+            h.streams
+                .get(&id)
+                .and_then(|s| s.trace.as_ref().map(Rc::downgrade))
+        })
+        .flatten()
+        .unwrap_or_default(),
         server: server_rc,
         conn: conn.clone(),
         reactor: Reactor::get(),
@@ -797,17 +1170,20 @@ fn run_streaming(
             decoded: Vec::new(),
             remaining_read: server.limits.body,
             remaining_write: server.limits.response,
+            content_length: None,
+            written: 0,
             expect_continue: head.expect_continue,
             minor: 1,
             sent: false,
             status: 0,
             staged: Headers::new(),
             head_written: false,
+            output_incomplete: false,
             chunked: false,
             close_conn: false,
             closed: false,
             upgraded: false,
-            rejected: false,
+            upgrade_attempted: false,
             websocket: None,
             deadline: timeout.map(|t| started + t),
             h2: Some(id),
@@ -820,11 +1196,17 @@ fn run_streaming(
     exchange.finish(outcome, late);
 }
 
-fn timed_out() -> IoErr {
-    IoErr::failed("operation timed out")
-}
-
 impl Exchange {
+    fn wait_h2(&self, deadline: Deadline) -> Result<(), IoErr> {
+        if self.server.h2_wait(&self.conn, deadline) {
+            return Ok(());
+        }
+        if deadline.expired() {
+            return Err(self.timed_out());
+        }
+        Err(IoErr::Closed)
+    }
+
     pub(in crate::http) fn h2_id(&self) -> Option<u32> {
         self.st.borrow().h2
     }
@@ -881,9 +1263,7 @@ impl Exchange {
                 Got::End => return Ok(None),
                 Got::Broken => return Err(IoErr::failed("unexpected EOF")),
                 Got::Wait => {
-                    if !self.server.h2_wait(&self.conn, deadline) {
-                        return Err(timed_out());
-                    }
+                    self.wait_h2(deadline)?;
                 }
             }
         }
@@ -900,11 +1280,15 @@ impl Exchange {
         let headers = {
             let st = self.st.borrow();
             let allowed = body_allowed(st.status);
-            let length = content_length.filter(|_| allowed && !st.is_head);
+            let length = st
+                .content_length
+                .or_else(|| content_length.filter(|_| allowed && !st.is_head));
+            let length = if st.status == 205 { Some(0) } else { length };
             let sniffed = if allowed { first } else { &[] };
             response_head(&self.reactor, st.status as u16, &st.staged, length, sniffed)
         };
         let sent = with_h2(&self.conn, |h| {
+            h.begin_write(id);
             h.core.send_response_headers(id, headers, end).is_ok()
         });
         if sent != Some(true) {
@@ -917,7 +1301,21 @@ impl Exchange {
     /// Bytes of output the socket has not taken yet.
     fn h2_unsent(&self) -> usize {
         let st = self.conn.st.borrow();
-        st.outbuf.len().saturating_sub(st.out_pos)
+        st.outbuf
+            .len()
+            .saturating_sub(st.out_pos)
+            .saturating_add(st.h2.as_ref().map_or(0, |h| h.core.pending_output_len()))
+    }
+
+    fn write_deadline_h2(&self, id: u32, absolute: Deadline) -> Deadline {
+        let at = with_h2(&self.conn, |h| {
+            h.streams.get(&id).and_then(|s| s.write_deadline)
+        })
+        .flatten();
+        let progress = at.map_or(Deadline::none(), |at| {
+            Deadline::after(at.saturating_duration_since(Instant::now()))
+        });
+        absolute.earliest(progress)
     }
 
     /// `HttpExchange.write` on an HTTP/2 stream: honors the peer's windows.
@@ -930,21 +1328,33 @@ impl Exchange {
         if !self.st.borrow().head_written {
             self.send_head_h2(id, data, None, false)?;
         }
+        self.server.h2_pump_out(&self.conn, &self.reactor);
         let mut rest = data;
+        let mut round = 0;
         while !rest.is_empty() {
-            while self.h2_unsent() > OUT_HOLD {
-                if !self.server.h2_wait(&self.conn, deadline) {
-                    return Err(timed_out());
-                }
+            if self.write_deadline_h2(id, deadline).expired() {
+                return Err(self.timed_out());
             }
-            let sent = with_h2(&self.conn, |h| h.send_body(id, rest)).flatten();
+            while self.h2_unsent() >= OUT_HOLD - FRAME_HEADER {
+                self.wait_h2(self.write_deadline_h2(id, deadline))?;
+            }
+            let sent = {
+                let mut st = self.conn.st.borrow_mut();
+                let queued = st.outbuf.len().saturating_sub(st.out_pos);
+                st.h2.as_mut().and_then(|h| h.send_body(id, rest, queued))
+            };
             let Some(n) = sent else {
                 return Err(IoErr::failed("stream closed"));
             };
             rest = &rest[n..];
             self.server.h2_pump_out(&self.conn, &self.reactor);
-            if !rest.is_empty() && !self.server.h2_wait(&self.conn, deadline) {
-                return Err(timed_out());
+            if !rest.is_empty() && n == 0 {
+                self.wait_h2(self.write_deadline_h2(id, deadline))?;
+            }
+            round += n;
+            if round >= READ_ROUND {
+                crate::wait::sleep(Duration::ZERO);
+                round = 0;
             }
         }
         Ok(())
@@ -974,8 +1384,7 @@ impl Exchange {
         with_h2(&self.conn, |h| {
             if failed && head_written {
                 // Part of the response is out: abort only this stream.
-                h.core.send_rst(id, error_code::INTERNAL_ERROR);
-                h.streams.remove(&id);
+                h.reset_and_retire(id, error_code::INTERNAL_ERROR);
             } else if failed {
                 let code = if late || cancelled { 504 } else { 500 };
                 h.error_response(reactor, id, code, "request failed");
@@ -985,7 +1394,9 @@ impl Exchange {
             } else if !head_written {
                 let allowed = body_allowed(status);
                 let st = self.st.borrow();
-                let length = (allowed && !is_head).then_some(0);
+                let length = st
+                    .content_length
+                    .or_else(|| (allowed && !is_head || status == 205).then_some(0));
                 let headers = response_head(reactor, status as u16, &st.staged, length, &[]);
                 h.respond(id, headers, Vec::new());
             } else {

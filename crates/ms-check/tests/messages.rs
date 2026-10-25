@@ -15,6 +15,27 @@ fn first_message(source: &str) -> String {
 }
 
 #[test]
+fn http_isolated_entry_rejects_captures_and_indirect_serve_values() {
+    let capture = first_message(
+        r#"from "@std/http.ms" import serve, workers
+export def main() -> Int:
+    let result = serve("127.0.0.1:0", lambda server: ok(()), execution: workers(2))
+    return 0
+"#,
+    );
+    assert!(capture.contains("must name a top-level def"), "{capture}");
+    for body in ["let launch = serve", "let launchers = [serve]"] {
+        let message = first_message(&format!(
+            "from \"@std/http.ms\" import serve\nexport def main() -> Int:\n    {body}\n    return 0\n"
+        ));
+        assert!(
+            message.contains("HTTP serve must be called directly"),
+            "{message}"
+        );
+    }
+}
+
+#[test]
 fn mismatch_names_its_use_site() {
     let cases = [
         (

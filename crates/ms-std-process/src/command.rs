@@ -278,6 +278,29 @@ pub fn spawn_with(
     ipc: Option<&ChildEnd>,
     env: &[(&str, &[u8])],
 ) -> Res<Subprocess> {
+    spawn_config(program, args, modes, ipc, env, false)
+}
+
+/// Starts an independently supervised process group, even inside another group child.
+/// Windows requires a kill-on-close job before the child can execute user code.
+pub fn spawn_isolated(
+    program: &[u8],
+    args: &[Vec<u8>],
+    modes: [i64; 3],
+    ipc: Option<&ChildEnd>,
+    env: &[(&str, &[u8])],
+) -> Res<Subprocess> {
+    spawn_config(program, args, modes, ipc, env, true)
+}
+
+fn spawn_config(
+    program: &[u8],
+    args: &[Vec<u8>],
+    modes: [i64; 3],
+    ipc: Option<&ChildEnd>,
+    env: &[(&str, &[u8])],
+    independent: bool,
+) -> Res<Subprocess> {
     let mut parent = [
         Fd(sys::INVALID_FD),
         Fd(sys::INVALID_FD),
@@ -299,7 +322,7 @@ pub fn spawn_with(
             _ => StdStream::Null,
         };
     }
-    let child = start(program, args, streams, ipc, env)?;
+    let child = crate::spawn::start_config(program, args, streams, ipc, env, independent)?;
     drop(child_ends);
     let [stdin, stdout, stderr] = parent;
     Ok(Subprocess {

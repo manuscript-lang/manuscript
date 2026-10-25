@@ -172,13 +172,19 @@ impl FnLower<'_> {
         }
         let ps = vec![Param {
             ty,
-            mode: Mode::Borrow,
+            mode: Mode::Own,
         }];
         let mut b = FuncBuilder::new(self.b.m, "close", ps, MTy::UNIT);
         b.func_mut().linkage = Linkage::Internal;
         b.func_mut().kind = FuncKind::Normal;
         let v = b.params()[0];
         close_call(&mut b, kind, v, ty);
+        // CleanupPush borrows the bits of the immutable binding, without retaining it.
+        // A fault abandons its frame, so this thunk also discharges that ownership.
+        // Normal scope exit discards the thunk, then closes and drops the local itself.
+        if b.m.needs_drop(ty) {
+            b.emit(Op::Drop, &[v], Imm::None, None);
+        }
         let u = b.unit();
         b.ret(Some(u));
         let f = b.into_func();

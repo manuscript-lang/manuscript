@@ -113,6 +113,8 @@ native! {
         e.codec.borrow_mut().feed(data);
     }
 
+    fn msrt_compress_encoder_flush(e: ObjRef<EncoderObj>) -> () { e.codec.borrow_mut().flush(); }
+
     fn msrt_compress_encoder_finish(e: ObjRef<EncoderObj>) -> () {
         e.codec.borrow_mut().finish();
     }

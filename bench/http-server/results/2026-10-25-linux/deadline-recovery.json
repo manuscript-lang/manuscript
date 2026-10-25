@@ -1,0 +1,281 @@
+[
+  {
+    "phase": "baseline",
+    "resources": [
+      {
+        "pid": 500432,
+        "rss_kib": 2648,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-deadline-final.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17,
+          "pipe:": 10
+        }
+      }
+    ]
+  },
+  {
+    "phase": "after-timeout",
+    "cycle": 0,
+    "responses": [
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504
+    ],
+    "resources": [
+      {
+        "pid": 500432,
+        "rss_kib": 3456,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-deadline-final.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17,
+          "pipe:": 10
+        }
+      }
+    ],
+    "samples": {
+      "2": {
+        "member": 2,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2686976
+      },
+      "0": {
+        "member": 0,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2686976
+      },
+      "1": {
+        "member": 1,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2686976
+      },
+      "3": {
+        "member": 3,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2699264
+      }
+    }
+  },
+  {
+    "phase": "after-timeout",
+    "cycle": 1,
+    "responses": [
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504
+    ],
+    "resources": [
+      {
+        "pid": 500432,
+        "rss_kib": 3704,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-deadline-final.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17,
+          "pipe:": 10
+        }
+      }
+    ],
+    "samples": {
+      "2": {
+        "member": 2,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2928640
+      },
+      "3": {
+        "member": 3,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2928640
+      },
+      "0": {
+        "member": 0,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2940928
+      },
+      "1": {
+        "member": 1,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 2953216
+      }
+    }
+  },
+  {
+    "phase": "after-timeout",
+    "cycle": 2,
+    "responses": [
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504,
+      504
+    ],
+    "resources": [
+      {
+        "pid": 500432,
+        "rss_kib": 3944,
+        "threads": 6,
+        "fds": 51,
+        "descriptor_targets": {
+          "/dev/null": 1,
+          "/tmp/http-deadline-final.log": 2,
+          "socket:": 21,
+          "anon_inode:": 17,
+          "pipe:": 10
+        }
+      }
+    ],
+    "samples": {
+      "3": {
+        "member": 3,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 3198976
+      },
+      "1": {
+        "member": 1,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 3198976
+      },
+      "0": {
+        "member": 0,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 3198976
+      },
+      "2": {
+        "member": 2,
+        "active_requests": 1,
+        "active_connections": 1,
+        "tasks": 4,
+        "heap_used": 5072,
+        "external": 3198976
+      }
+    }
+  }
+]

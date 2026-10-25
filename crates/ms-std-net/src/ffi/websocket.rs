@@ -111,7 +111,26 @@ native! {
     ) -> Result<(), StatusCode> {
         let origins: Vec<String> = origins.into_iter().map(str::to_string).collect();
         let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
-        let s = x.upgrade(&origins, &protocols, opt(has_max, max));
+        let s = x.upgrade(&origins, &protocols, opt(has_max, max), &Headers::new());
+        out.write(Object(SocketH(report(s, &err)?)));
+        Ok(())
+    }
+
+    /// `HttpExchange.upgrade_with_headers(origins, subprotocols, response_headers, max_message_bytes)`.
+    fn msrt_http_exchange_upgrade_with_headers(
+        x: ObjRef<ExchH>,
+        origins: Vec<&str>,
+        subprotocols: Vec<&str>,
+        response_headers: ObjRef<HeadersH>,
+        has_max: bool,
+        max: i64,
+        out: Out<Object<SocketH>>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        let origins: Vec<String> = origins.into_iter().map(str::to_string).collect();
+        let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
+        let fields = response_headers.borrow().clone();
+        let s = x.upgrade(&origins, &protocols, opt(has_max, max), &fields);
         out.write(Object(SocketH(report(s, &err)?)));
         Ok(())
     }

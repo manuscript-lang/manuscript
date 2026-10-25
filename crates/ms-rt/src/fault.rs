@@ -17,7 +17,8 @@ pub struct Hdr {
     pub limit: usize,
     /// Non-zero (the signal number) once a stop was requested and not shielded.
     pub cancel: AtomicU8,
-    /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
+    /// Low 16 bits: cleanup shields; high 16 bits: signal-only shields.
+    /// A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
     pub shield: core::sync::atomic::AtomicU32,
 }
@@ -92,14 +93,48 @@ impl ShieldRef {
     #[inline(always)]
     pub(crate) fn get(&self) -> u32 {
         // SAFETY: the running task owns this live block; remote readers use atomic loads too.
-        unsafe { (*cur_hdr()).shield.load(Ordering::Relaxed) }
+        unsafe { (*cur_hdr()).shield.load(Ordering::Relaxed) & 0xffff }
     }
 
     #[inline(always)]
     pub(crate) fn set(&self, value: u32) {
         // SAFETY: only the owning task writes its depth; readers may run on other threads.
-        unsafe { (*cur_hdr()).shield.store(value, Ordering::Relaxed) }
+        unsafe {
+            let signals = (*cur_hdr()).shield.load(Ordering::Relaxed) & 0xffff0000;
+            assert!(value <= 0xffff, "cancellation shield nesting overflow");
+            (*cur_hdr())
+                .shield
+                .store(signals | value, Ordering::Relaxed);
+        }
     }
+}
+
+/// Signal-only shield depth. Explicit task cancellation remains observable.
+pub(crate) fn signal_shield_depth() -> u32 {
+    // SAFETY: the calling task owns its live header.
+    unsafe { (*cur_hdr()).shield.load(Ordering::Relaxed) >> 16 }
+}
+
+fn set_signal_shield(depth: u32) {
+    assert!(depth <= 0xffff, "signal shield nesting overflow");
+    // SAFETY: the task alone writes its header; signal readers use atomic loads.
+    unsafe {
+        (*cur_hdr())
+            .shield
+            .store((depth << 16) | SHIELD.get(), Ordering::Relaxed);
+    }
+    if SHIELD.get() == 0 {
+        cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
+    }
+}
+
+/// Begins a native server drain region that masks signals, never request cancellation.
+pub fn signal_shield_enter() {
+    set_signal_shield(signal_shield_depth() + 1);
+}
+/// Ends a native server drain region.
+pub fn signal_shield_exit() {
+    set_signal_shield(signal_shield_depth().saturating_sub(1));
 }
 
 pub static TABLES: Process<*const Tables> = Process::new(core::ptr::null());
@@ -198,7 +233,17 @@ crate::isolate_static! {
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
-    crate::isolate::pending_cancel().max(task)
+    let signal = if signal_shield_depth() == 0 {
+        crate::isolate::pending_cancel()
+    } else {
+        0
+    };
+    signal.max(task)
+}
+
+pub(crate) fn live_task_cancel() -> u8 {
+    // SAFETY: isolate-local state of the current task.
+    unsafe { *TASK_CANCEL.ptr() }
 }
 
 /// Records a stop request aimed at the running task.
@@ -245,7 +290,7 @@ impl Ctx {
     }
 
     pub(crate) fn set_cancel(&mut self, v: u8) {
-        self.cancel = v;
+        self.cancel |= v;
     }
 
     /// Whether the task is inside a cleanup action that shields it from cancellation.
@@ -256,7 +301,25 @@ impl Ctx {
             self.hdr
         };
         // SAFETY: the block lives as long as its stack.
-        unsafe { (*hdr).shield.load(Ordering::Relaxed) > 0 }
+        unsafe { (*hdr).shield.load(Ordering::Relaxed) & 0xffff > 0 }
+    }
+
+    pub(crate) fn signal_shielded(&self) -> bool {
+        let hdr = if self.hdr.is_null() {
+            ROOT_HDR.ptr()
+        } else {
+            self.hdr
+        };
+        // SAFETY: the context owns its live header.
+        unsafe { (*hdr).shield.load(Ordering::Relaxed) >> 16 != 0 }
+    }
+
+    pub(crate) fn inherit_signal_shield(&mut self, depth: u32) {
+        assert!(!self.hdr.is_null());
+        // SAFETY: caller initializes a new task before it can run.
+        unsafe {
+            (*self.hdr).shield.store(depth << 16, Ordering::Relaxed);
+        }
     }
 
     /// The task's block (null for the root task before it ever ran).
@@ -1140,6 +1203,7 @@ struct GuardFrame {
     cleanups: usize,
     limit: usize,
     shield: u32,
+    signal_shield: u32,
     eq_pairs: usize,
     /// `jmp` is the register buffer of `expect_fault` (Windows) rather than a guard slot.
     #[cfg_attr(not(windows), allow(dead_code))]
@@ -1180,6 +1244,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
         *FAULTING.ptr() = false;
         (*cur_hdr()).limit = f.limit;
         SHIELD.set(f.shield);
+        set_signal_shield(f.signal_shield);
         cancel_flag().store(
             if f.shield == 0 {
                 unshielded_cancel_flag()
@@ -1216,6 +1281,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
             shield: SHIELD.get(),
+            signal_shield: signal_shield_depth(),
             eq_pairs: crate::desc::eq_len(),
             trap: true,
         });
@@ -1406,6 +1472,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
             shield: SHIELD.get(),
+            signal_shield: signal_shield_depth(),
             eq_pairs: crate::desc::eq_len(),
             trap: false,
         });
@@ -1640,6 +1707,7 @@ mod tests {
                 cleanups: 1,
                 limit: 200,
                 shield: 2,
+                signal_shield: 0,
                 eq_pairs: 1,
                 trap: false,
             });

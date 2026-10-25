@@ -1,0 +1,286 @@
+{
+  "references": {
+    "node": "24.19.0",
+    "express": "5.1.0",
+    "go": "1.25.1",
+    "next": "16.0.10",
+    "react": "19.2.3"
+  },
+  "results": [
+    {
+      "name": "node",
+      "cases": [
+        {
+          "method": "GET",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "HEAD",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 0
+        },
+        {
+          "method": "GET",
+          "path": "/missing",
+          "status": 404,
+          "bytes": 9
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "bytes": 22
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "bytes": 14
+        }
+      ],
+      "concurrent_requests": 64,
+      "passed": true
+    },
+    {
+      "name": "express",
+      "cases": [
+        {
+          "method": "GET",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "HEAD",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 0
+        },
+        {
+          "method": "GET",
+          "path": "/missing",
+          "status": 404,
+          "bytes": 146
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "bytes": 22
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "bytes": 14
+        }
+      ],
+      "concurrent_requests": 64,
+      "passed": true
+    },
+    {
+      "name": "go",
+      "cases": [
+        {
+          "method": "GET",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 25
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 200,
+          "bytes": 25
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 13
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 13
+        },
+        {
+          "method": "HEAD",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 0
+        },
+        {
+          "method": "GET",
+          "path": "/missing",
+          "status": 404,
+          "bytes": 19
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "bytes": 22
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "bytes": 14
+        }
+      ],
+      "concurrent_requests": 64,
+      "passed": true
+    },
+    {
+      "name": "next",
+      "cases": [
+        {
+          "method": "GET",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "HEAD",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 0
+        },
+        {
+          "method": "GET",
+          "path": "/missing",
+          "status": 404,
+          "bytes": 5156
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "bytes": 22
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "bytes": 3776
+        }
+      ],
+      "concurrent_requests": 64,
+      "passed": true
+    },
+    {
+      "name": "manuscript",
+      "cases": [
+        {
+          "method": "GET",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 200,
+          "bytes": 24
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "POST",
+          "path": "/echo",
+          "status": 400,
+          "bytes": 12
+        },
+        {
+          "method": "HEAD",
+          "path": "/hello/Ada",
+          "status": 200,
+          "bytes": 0
+        },
+        {
+          "method": "GET",
+          "path": "/missing",
+          "status": 404,
+          "bytes": 9
+        },
+        {
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "bytes": 22
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "status": 200,
+          "bytes": 14
+        }
+      ],
+      "concurrent_requests": 64,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,481 @@
+{
+  "metadata": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu_max": "400000 100000",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "shared_runner": true,
+    "persistent_connections": 64,
+    "server_sha256": "8580c9e771af2526eada8491fb4628700edcb2afb8e6c9766dce71321a03f0c0",
+    "client_sha256": "a1927d6170c389559cca6a6f482b12822e829bb2c1a41d1abd1a2397833b5887"
+  },
+  "records": [
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "500440:500440": 0.0,
+        "500440:500441": 0.0,
+        "500440:500442": 0.9990916307236604
+      },
+      "resources": [
+        {
+          "pid": 500440,
+          "rss_kib": 2332,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.067328113,
+      "members": {
+        "0": 6181
+      },
+      "p50_ms": 71.281,
+      "p99_ms": 208.076,
+      "statuses": {
+        "200": 6181
+      },
+      "throughput": 766.176844851482
+    },
+    {
+      "round": 1,
+      "mode": "workers",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "500458:500458": 0.0,
+        "500458:500459": 0.0,
+        "500458:500460": 0.8960879878751827,
+        "500458:500461": 0.8487944551817703,
+        "500458:500462": 0.7990117891887046,
+        "500458:500463": 0.8550172884309035
+      },
+      "resources": [
+        {
+          "pid": 500458,
+          "rss_kib": 2884,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.03492525,
+      "members": {
+        "0": 2558,
+        "1": 5180,
+        "2": 4992,
+        "3": 3417
+      },
+      "p50_ms": 24.421,
+      "p99_ms": 135.082,
+      "statuses": {
+        "200": 16147
+      },
+      "throughput": 2009.60176947508
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "500490:500490": 0.0,
+        "500490:500491": 0.0,
+        "500492:500492": 0.0,
+        "500492:500493": 0.9943757570318558,
+        "500492:500494": 0.001239870021236728
+      },
+      "resources": [
+        {
+          "pid": 500490,
+          "rss_kib": 1956,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500492,
+          "rss_kib": 2568,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.065361553,
+      "members": {
+        "0": 5161
+      },
+      "p50_ms": 84.25,
+      "p99_ms": 236.95,
+      "statuses": {
+        "200": 5161
+      },
+      "throughput": 639.8969179602753
+    },
+    {
+      "round": 1,
+      "mode": "processes",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "500512:500512": 0.0,
+        "500512:500513": 0.0,
+        "500523:500523": 0.0,
+        "500523:500524": 0.860153951790353,
+        "500523:500525": 0.0,
+        "500519:500519": 0.0,
+        "500519:500521": 0.8416161511052161,
+        "500519:500522": 0.001235853379009128,
+        "500517:500517": 0.0,
+        "500517:500518": 0.7748800686387232,
+        "500517:500520": 0.0,
+        "500514:500514": 0.0,
+        "500514:500515": 0.773644215259714,
+        "500514:500516": 0.0
+      },
+      "resources": [
+        {
+          "pid": 500512,
+          "rss_kib": 1952,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500523,
+          "rss_kib": 2432,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500519,
+          "rss_kib": 2400,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500517,
+          "rss_kib": 2340,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500514,
+          "rss_kib": 2432,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.091574753,
+      "members": {
+        "0": 4327,
+        "1": 4233,
+        "2": 4676,
+        "3": 4484
+      },
+      "p50_ms": 19.877,
+      "p99_ms": 135.24,
+      "statuses": {
+        "200": 17720
+      },
+      "throughput": 2189.932187604175
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "500547:500547": 0.0,
+        "500547:500549": 0.0,
+        "500547:500550": 0.9794689777673177
+      },
+      "resources": [
+        {
+          "pid": 500547,
+          "rss_kib": 2348,
+          "threads": 3,
+          "fds": 18,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 6,
+            "anon_inode:": 5,
+            "pipe:": 4
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.086014136,
+      "members": {
+        "0": 3239
+      },
+      "p50_ms": 116.047,
+      "p99_ms": 570.629,
+      "statuses": {
+        "200": 3239
+      },
+      "throughput": 400.5681842156998
+    },
+    {
+      "round": 2,
+      "mode": "workers",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "500569:500569": 0.0,
+        "500569:500570": 0.0,
+        "500569:500571": 0.8429429031815204,
+        "500569:500572": 0.8267564072563214,
+        "500569:500573": 0.8690903196760729,
+        "500569:500574": 0.8180406017581374
+      },
+      "resources": [
+        {
+          "pid": 500569,
+          "rss_kib": 2872,
+          "threads": 6,
+          "fds": 51,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 21,
+            "anon_inode:": 17,
+            "pipe:": 10
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.0313862,
+      "members": {
+        "0": 4762,
+        "1": 3412,
+        "2": 3570,
+        "3": 3518
+      },
+      "p50_ms": 27.136,
+      "p99_ms": 116.441,
+      "statuses": {
+        "200": 15262
+      },
+      "throughput": 1900.2946216183702
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 1,
+      "cpu_cores_by_thread": {
+        "500595:500595": 0.0,
+        "500595:500596": 0.0,
+        "500597:500597": 0.0,
+        "500597:500598": 0.9673468004961125,
+        "500597:500599": 0.0
+      },
+      "resources": [
+        {
+          "pid": 500595,
+          "rss_kib": 1940,
+          "threads": 2,
+          "fds": 10,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 3,
+            "anon_inode:": 2,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500597,
+          "rss_kib": 2556,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.538819786,
+      "members": {
+        "0": 5326
+      },
+      "p50_ms": 89.839,
+      "p99_ms": 795.358,
+      "statuses": {
+        "200": 5326
+      },
+      "throughput": 623.7395955741277
+    },
+    {
+      "round": 2,
+      "mode": "processes",
+      "member_count": 4,
+      "cpu_cores_by_thread": {
+        "500614:500614": 0.0,
+        "500614:500615": 0.0,
+        "500625:500625": 0.0,
+        "500625:500626": 0.8418823113273998,
+        "500625:500627": 0.0,
+        "500622:500622": 0.0,
+        "500622:500623": 0.7509689848083166,
+        "500622:500624": 0.017435432483111832,
+        "500617:500617": 0.0,
+        "500617:500619": 0.8530908036379716,
+        "500617:500620": 0.0,
+        "500616:500616": 0.0,
+        "500616:500618": 0.7733859694294605,
+        "500616:500621": 0.0
+      },
+      "resources": [
+        {
+          "pid": 500614,
+          "rss_kib": 1968,
+          "threads": 2,
+          "fds": 19,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 9,
+            "anon_inode:": 5,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500625,
+          "rss_kib": 2408,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500622,
+          "rss_kib": 2380,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500617,
+          "rss_kib": 2448,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        },
+        {
+          "pid": 500616,
+          "rss_kib": 2404,
+          "threads": 3,
+          "fds": 13,
+          "descriptor_targets": {
+            "/dev/null": 1,
+            "/tmp/http-cpu-final.json.server.log": 2,
+            "socket:": 4,
+            "anon_inode:": 4,
+            "pipe:": 2
+          }
+        }
+      ],
+      "errors": {},
+      "load_seconds": 8.029625886,
+      "members": {
+        "0": 5544,
+        "1": 3554,
+        "2": 3900,
+        "3": 4638
+      },
+      "p50_ms": 16.768,
+      "p99_ms": 256.472,
+      "statuses": {
+        "200": 17636
+      },
+      "throughput": 2196.366337658287
+    }
+  ]
+}

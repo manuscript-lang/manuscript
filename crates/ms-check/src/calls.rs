@@ -415,6 +415,7 @@ impl Checker {
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
         self.check_worker_entry(&callable, &resolved);
+        self.check_http_entry(&callable, &resolved);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -455,6 +456,24 @@ impl Checker {
                 entry.value.pos,
                 "a worker entry must be the name of a top-level def; lambdas, local functions and captured values cannot run on another thread, so move the work into a def and send what it needs through the worker's channel",
             );
+        }
+    }
+
+    /// Explicit execution selects an isolated HTTP application. Its runner can
+    /// reconstruct code identity, but cannot transfer arbitrary captured values.
+    fn check_http_entry(&mut self, callable: &Info, args: &[Arg]) {
+        let grouped_serve = callable.symbol.as_ref().is_some_and(|symbol| {
+            symbol.module.as_str() == "@std/http.ms" && symbol.name.as_str() == "serve"
+        }) && args.iter().any(|arg| arg.name.as_str() == "execution");
+        if !grouped_serve {
+            return;
+        }
+        let Some(entry) = args.iter().find(|arg| arg.name.as_str() == "application") else {
+            return;
+        };
+        if self.function_symbol(entry.value).is_none() {
+            self.type_error(entry.value.pos,
+                "an HTTP application with explicit execution must name a top-level def; initialize member-local resources inside that function instead of capturing them");
         }
     }
 

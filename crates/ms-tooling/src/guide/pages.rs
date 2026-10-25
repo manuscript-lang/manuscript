@@ -309,13 +309,23 @@ pub(crate) fn clip_text(s: &str, limit: usize) -> String {
     if s.len() <= limit {
         return s.to_string();
     }
-    let (head, tail) = (limit * 2 / 3, limit / 3);
-    let bytes = s.as_bytes();
-    let mut out = Vec::new();
-    out.extend_from_slice(&bytes[..head]);
-    out.extend_from_slice(
-        format!("\n[... {} bytes omitted ...]\n", s.len() - head - tail).as_bytes(),
-    );
-    out.extend_from_slice(&bytes[s.len() - tail..]);
-    String::from_utf8_lossy(&out).into_owned()
+    // Reserve the omission marker inside the byte budget and cut only at UTF-8 boundaries.
+    const MARKER: &str = "\n[... omitted ...]\n";
+    if limit < MARKER.len() {
+        let mut end = limit;
+        while !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        return s[..end].to_string();
+    }
+    let available = limit - MARKER.len();
+    let mut head = available * 2 / 3;
+    let mut tail = s.len() - (available - head);
+    while !s.is_char_boundary(head) {
+        head -= 1;
+    }
+    while !s.is_char_boundary(tail) {
+        tail += 1;
+    }
+    format!("{}{MARKER}{}", &s[..head], &s[tail..])
 }

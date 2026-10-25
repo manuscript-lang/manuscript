@@ -369,6 +369,15 @@ impl Encoder {
         self.run(data, TDEFLFlush::None);
     }
 
+    /// Makes all input so far decodable without ending the stream.
+    pub fn flush(&mut self) {
+        if self.finished {
+            return;
+        }
+        self.header();
+        self.run(&[], TDEFLFlush::Sync);
+    }
+
     /// The input ended: flushes the compressor and writes the trailer.
     pub fn finish(&mut self) {
         if self.finished {

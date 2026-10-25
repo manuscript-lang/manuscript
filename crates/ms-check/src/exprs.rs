@@ -428,6 +428,12 @@ impl Checker {
                 self.m().facts_mut().const_use.insert(e.id);
                 return self.call(e, e, &[], true, expected);
             } else {
+                if s.module.as_str() == "@std/http.ms" && s.name.as_str() == "serve" {
+                    self.type_error(e.pos,
+                        "HTTP serve must be called directly so its isolated application entry can be checked; wrap a direct serve call in a top-level def instead of storing serve as a callable");
+                    i.ty = Some(invalid());
+                    return i;
+                }
                 i.ty = s.ty_opt();
                 i.symbol = Some(s.clone());
                 if !s.variables().is_empty() {
@@ -485,6 +491,12 @@ impl Checker {
             return i;
         }
         if let Some(s) = self.function_symbol(left) {
+            if s.module.as_str() == "@std/http.ms" && s.name.as_str() == "serve" {
+                self.type_error(e.pos,
+                    "HTTP serve must be called directly so its isolated application entry can be checked; wrap a direct serve call in a top-level def instead of storing serve as a callable");
+                i.ty = Some(invalid());
+                return i;
+            }
             let args = self.resolve_arguments(types);
             let mut supplied: Vec<Option<Ty>> = args.into_iter().map(Some).collect();
             let vars = s.variables();

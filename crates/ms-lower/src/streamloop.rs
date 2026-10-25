@@ -108,6 +108,16 @@ impl FnLower<'_> {
         let sink_var = sink.map(|v| hold(self, v));
         let k = self.b.iconst(kind.kind());
         let acc = self.call_runtime("msstd_io_acc_new", &[k, has, max], MTy::PTR)?;
+        let cleanup_fn = self.acc_drop_thunk()?;
+        let cleanup = self
+            .b
+            .emit(
+                Op::CleanupPush,
+                &[acc],
+                Imm::Func(cleanup_fn),
+                Some(MTy::INT),
+            )
+            .expect("cleanup");
         let res = self.b.declare_var(result, Mode::Own);
         let [header, body, got, chunk, stop, exit, join] =
             std::array::from_fn(|_| self.b.new_block());
@@ -137,6 +147,7 @@ impl FnLower<'_> {
         self.b.seal_block(fail);
         self.b.seal_block(ok_blk);
         self.enter(fail);
+        self.b.emit(Op::CleanupRun, &[cleanup], Imm::None, None);
         self.fail_with(r, src, serr, dst, derr, res, join)?;
 
         // got: end of stream finishes; a chunk goes to the accumulator.
@@ -164,7 +175,13 @@ impl FnLower<'_> {
         self.enter(next);
         if let (Some(sink_var), Some((wiface, widx))) = (sink_var, write) {
             let sink = self.b.use_var(sink_var);
+            let chunk_drop = self.drop_thunk(self.ty_of(r));
+            let chunk_cleanup = self
+                .b
+                .emit(Op::CleanupPush, &[r], Imm::Func(chunk_drop), Some(MTy::INT))
+                .expect("chunk cleanup");
             let w = self.b.call_method(wiface, widx, sink, &[data]);
+            self.call_runtime("msrt_cleanup_discard", &[chunk_cleanup], MTy::UNIT)?;
             let wsrc = self.alt_of(w)?;
             let werr = case(self, wsrc, "error")?;
             let (wfail, wok) = (self.b.new_block(), self.b.new_block());
@@ -176,6 +193,7 @@ impl FnLower<'_> {
             self.b.seal_block(wok);
             self.enter(wfail);
             self.drop_value(r);
+            self.b.emit(Op::CleanupRun, &[cleanup], Imm::None, None);
             self.fail_with(w, wsrc, werr, dst, derr, res, join)?;
             self.enter(wok);
             self.drop_value(w);
@@ -190,6 +208,7 @@ impl FnLower<'_> {
         let sym = kind.finish();
         let sig = crate::rtcall::rt_sig(sym)
             .ok_or_else(|| Error::new(format!("no runtime symbol {sym}")))?;
+        self.call_runtime("msrt_cleanup_discard", &[cleanup], MTy::UNIT)?;
         let out = self.finish_rt_call(sym, &sig, true, vec![acc], result)?;
         let out = self.owned(out);
         self.b.def_var(res, out);
@@ -199,6 +218,32 @@ impl FnLower<'_> {
         self.enter(join);
         let v = self.b.use_var(res);
         Ok(Val { v, own: true })
+    }
+
+    fn acc_drop_thunk(&mut self) -> Result<ms_mir::ir::FuncId, Error> {
+        let key = "io.acc.drop".to_string();
+        if let Some(id) = self.cx.helpers.get(&key) {
+            return Ok(*id);
+        }
+        let hir = self.hir.clone();
+        let b = FuncBuilder::new(
+            self.b.m,
+            "io.acc.drop",
+            vec![Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            }],
+            MTy::UNIT,
+        );
+        let mut fl = FnLower::new(self.cx, b, hir, Default::default(), 0, MTy::UNIT);
+        fl.b.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let acc = fl.b.params()[0];
+        let done = fl.call_runtime("msstd_io_acc_drop", &[acc], MTy::UNIT)?;
+        fl.b.ret(Some(done));
+        let func = fl.b.into_func();
+        let id = self.b.m.add_func(func);
+        self.cx.helpers.insert(key, id);
+        Ok(id)
     }
 
     /// Returns `failed` (a `Result` whose error case is `err`) as the error of this operation.

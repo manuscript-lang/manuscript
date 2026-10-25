@@ -26,6 +26,81 @@ pub type Borrowed<'a> = BorrowedSocket<'a>;
 /// The handle's raw form, as the runtime takes it: the `SOCKET` as an unsigned 64-bit integer.
 pub type Raw = u64;
 
+/// Duplicates a listener for a particular child of this executable. The private
+/// bootstrap bytes are a Winsock protocol record, never an application handle.
+pub fn export_listener(socket: &socket2::Socket, child: u32) -> std::io::Result<Vec<u8>> {
+    use windows_sys::Win32::Networking::WinSock::{
+        WSADuplicateSocketW, WSAGetLastError, WSAPROTOCOL_INFOW,
+    };
+    let mut protocol = std::mem::MaybeUninit::<WSAPROTOCOL_INFOW>::zeroed();
+    // SAFETY: socket is live, child is the target process, and the output storage is writable.
+    let result =
+        unsafe { WSADuplicateSocketW(socket.as_raw_socket() as _, child, protocol.as_mut_ptr()) };
+    if result != 0 {
+        // SAFETY: reads this thread's Winsock error.
+        return Err(std::io::Error::from_raw_os_error(unsafe {
+            WSAGetLastError()
+        }));
+    }
+    // SAFETY: bytes were zeroed before Winsock wrote the record in place, including padding.
+    // Do not move it through a typed Rust value before copying its representation.
+    Ok(unsafe {
+        std::slice::from_raw_parts(protocol.as_ptr().cast(), size_of::<WSAPROTOCOL_INFOW>())
+    }
+    .to_vec())
+}
+
+/// Adopts the duplicate created specifically for this process. The byte record
+/// is consumed once by trusted bootstrap before any application initialization.
+pub fn import_listener(bytes: &[u8]) -> std::io::Result<socket2::Socket> {
+    use windows_sys::Win32::Networking::WinSock::{
+        INVALID_SOCKET, WSA_FLAG_NO_HANDLE_INHERIT, WSA_FLAG_OVERLAPPED, WSADATA, WSAGetLastError,
+        WSAPROTOCOL_INFOW, WSASocketW, WSAStartup,
+    };
+    static STARTED: std::sync::OnceLock<Result<(), i32>> = std::sync::OnceLock::new();
+    let started = STARTED.get_or_init(|| {
+        let mut data = std::mem::MaybeUninit::<WSADATA>::uninit();
+        // SAFETY: valid writable startup record; one reference is retained for process lifetime.
+        let status = unsafe { WSAStartup(0x0202, data.as_mut_ptr()) };
+        if status == 0 { Ok(()) } else { Err(status) }
+    });
+    if let Err(code) = started {
+        return Err(std::io::Error::from_raw_os_error(*code));
+    }
+    if bytes.len() != size_of::<WSAPROTOCOL_INFOW>() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "invalid listener bootstrap",
+        ));
+    }
+    let mut protocol = std::mem::MaybeUninit::<WSAPROTOCOL_INFOW>::zeroed();
+    // SAFETY: exact-size initialized bytes from WSADuplicateSocketW, copied into aligned storage.
+    unsafe {
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), protocol.as_mut_ptr().cast(), bytes.len());
+    }
+    // SAFETY: the trusted record names a duplicate for this process. -1 selects its parameters.
+    let raw = unsafe {
+        WSASocketW(
+            -1,
+            -1,
+            -1,
+            protocol.as_ptr(),
+            0,
+            WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT,
+        )
+    };
+    if raw == INVALID_SOCKET {
+        // SAFETY: reads this thread's Winsock error.
+        return Err(std::io::Error::from_raw_os_error(unsafe {
+            WSAGetLastError()
+        }));
+    }
+    // SAFETY: WSASocketW returned a new owned socket reference, adopted exactly once.
+    let socket = unsafe { socket2::Socket::from_raw_socket(raw as _) };
+    socket.set_nonblocking(true)?;
+    Ok(socket)
+}
+
 /// The borrowed handle of a socket-like value.
 pub trait AsSock {
     fn as_sock(&self) -> Borrowed<'_>;

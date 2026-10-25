@@ -354,22 +354,20 @@ export interface Network:
         allow_listen: Bool
     ) -> Result[Network, NetworkError]
     # Starts an HTTP server on `address` that calls `handler` with each fully buffered request and sends the returned response.
-    # A request beyond `limit` concurrent requests is answered with 503, a request header block over 1 MiB with 431, an oversized request body with 413, and a handler fault with 500. An address that cannot be bound returns IoError.Unavailable.
+    # Limits, timeouts, and TLS use the same options and HttpError values as serve_stream.
+    # Excess requests receive 503, configured header/body limits produce 431/413, and handler faults produce 500.
+    # Omitted limits are unlimited, including request headers; configure max_header_bytes for public services.
     def serve(
         address: String,
         handler: Callable[[HttpRequest], HttpResponse],
-        max_requests: Optional[Int] = none,
-        max_body_bytes: Optional[Int] = none,
-        max_response_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none,
-        grace: Optional[Duration] = none
-    ) -> Result[HttpServer, IoError]
+        options: HttpServerOptions = HttpServerOptions()
+    ) -> Result[HttpServer, HttpError]
     # Starts an HTTP server on `address` whose handler receives each request as a streaming exchange. Limits, timeouts, and TLS come from `options`.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
     def serve_stream(
         address: String,
         handler: Callable[[HttpExchange], Result[Unit, HttpError]],
-        options: HttpServerOptions
+        options: HttpServerOptions = HttpServerOptions()
     ) -> Result[HttpServer, HttpError]
     # Opens a WebSocket client connection to a `ws` or `wss` URL, sending the given headers and offering `subprotocols` in order.
     # Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. Failures use WebSocketError.

@@ -1,0 +1,12 @@
+{
+  "requests": 32,
+  "upstreams": [
+    "0",
+    "1",
+    "2",
+    "3"
+  ],
+  "processes": 5,
+  "normal_shutdown_exit": 0,
+  "all_processes_reaped": true
+}

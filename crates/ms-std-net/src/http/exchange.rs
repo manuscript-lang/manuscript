@@ -8,14 +8,63 @@ use super::sniff;
 use crate::conn::SharedIo;
 use crate::conn::{Io, Step};
 use crate::error::{HttpErr, IoErr, WsErr};
+use crate::rt::ScopeOwned;
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
 use crate::ws::handshake::{self, Rejected};
 use crate::ws::socket::{Config, Role, Socket};
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::time::Instant;
 
 const CHUNK: usize = 65536;
+
+fn validate_upgrade_headers(fields: &headers::Headers) -> Result<(), WsErr> {
+    server::check_response_headers(fields).map_err(|_| WsErr::InvalidInput)?;
+    if fields.entries().iter().any(|field| {
+        field.name.eq_ignore_ascii_case("upgrade")
+            || field
+                .name
+                .to_ascii_lowercase()
+                .starts_with("sec-websocket-")
+    }) {
+        return Err(WsErr::InvalidInput);
+    }
+    Ok(())
+}
+
+/// Validate the complete size before extending the handshake, so a refusal writes no prefix.
+fn append_upgrade_headers(
+    response: &mut Vec<u8>,
+    fields: &headers::Headers,
+    limit: usize,
+) -> Result<(), WsErr> {
+    let mut size = response.len();
+    for field in fields.entries() {
+        for value in &field.values {
+            size = size.saturating_add(
+                field
+                    .name
+                    .len()
+                    .saturating_add(value.len())
+                    .saturating_add(4),
+            );
+            if size > limit {
+                return Err(WsErr::LimitExceeded);
+            }
+        }
+    }
+    if size > limit {
+        return Err(WsErr::LimitExceeded);
+    }
+    response.truncate(response.len().saturating_sub(2));
+    for field in fields.entries() {
+        for value in &field.values {
+            h1::header_line(response, &field.name, value);
+        }
+    }
+    response.extend_from_slice(b"\r\n");
+    Ok(())
+}
 
 pub(super) struct ExSt {
     pub method: String,
@@ -28,6 +77,8 @@ pub(super) struct ExSt {
     pub decoded: Vec<u8>,
     pub remaining_read: usize,
     pub remaining_write: usize,
+    pub content_length: Option<usize>,
+    pub written: usize,
     pub expect_continue: bool,
     pub minor: u8,
     pub is_head: bool,
@@ -36,11 +87,13 @@ pub(super) struct ExSt {
     /// Staged response headers (handler headers), written with the first body bytes.
     pub staged: Headers,
     pub head_written: bool,
+    /// HTTP/1 bytes were accepted but the current send/flush did not complete.
+    pub output_incomplete: bool,
     pub chunked: bool,
     pub close_conn: bool,
     pub closed: bool,
     pub upgraded: bool,
-    pub rejected: bool,
+    pub upgrade_attempted: bool,
     pub websocket: Option<Rc<Socket>>,
     pub deadline: Option<Instant>,
     /// The HTTP/2 stream this exchange answers; `None` on HTTP/1.
@@ -49,6 +102,7 @@ pub(super) struct ExSt {
 
 /// One request being handled.
 pub struct Exchange {
+    pub(super) trace: Weak<super::server::observe::Trace>,
     pub(super) server: Rc<Server>,
     pub(super) conn: Rc<Conn>,
     pub(super) reactor: Rc<Reactor>,
@@ -76,6 +130,13 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
     }
     let timeout = server.limits.timeout;
     let exchange = Rc::new(Exchange {
+        trace: conn
+            .st
+            .borrow()
+            .trace
+            .as_ref()
+            .map(Rc::downgrade)
+            .unwrap_or_default(),
         server: server_rc,
         conn: conn.clone(),
         reactor: reactor_rc,
@@ -94,30 +155,58 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
             decoded: Vec::new(),
             remaining_read: server.limits.body,
             remaining_write: server.limits.response,
+            content_length: None,
+            written: 0,
             expect_continue,
             minor: head.minor,
             sent: false,
             status: 0,
             staged: Headers::new(),
             head_written: false,
+            output_incomplete: false,
             chunked: false,
             close_conn: !keep_alive || head.minor == 0,
             closed: false,
             upgraded: false,
-            rejected: false,
+            upgrade_attempted: false,
             websocket: None,
             deadline: timeout.map(|t| started + t),
             h2: None,
         }),
     });
     server.enter_handler(reactor);
+    let _trace = conn.st.borrow().trace.clone();
+    let admission = conn.st.borrow().admission.clone();
     let outcome = server.dispatch.streaming(exchange.clone());
     server.leave_handler(reactor);
+    drop(admission);
     let late = timeout.is_some_and(|t| started.elapsed() > t);
-    exchange.finish(outcome, late);
+    let mut outcome = Some(outcome);
+    if !crate::ffi::handler::finish_guarded(|| {
+        exchange.finish(outcome.take().expect("one finalization"), late)
+    }) {
+        server.close_conn(conn, reactor);
+    }
 }
 
 impl Exchange {
+    pub(super) fn timed_out(&self) -> IoErr {
+        if let Some(trace) = self.trace.upgrade() {
+            trace.fail(super::server::observe::End::TimedOut);
+        }
+        IoErr::failed("operation timed out")
+    }
+
+    pub fn set_route(&self, route: &str) {
+        if let Some(trace) = self.trace.upgrade() {
+            trace.route(route);
+        }
+    }
+
+    pub(crate) fn absolute_deadline(&self) -> Option<Instant> {
+        self.st.borrow().deadline
+    }
+
     pub(super) fn deadline(&self) -> Deadline {
         match self.st.borrow().deadline {
             Some(at) => Deadline::after(at.saturating_duration_since(Instant::now())),
@@ -137,6 +226,18 @@ impl Exchange {
         self.st.borrow().query.clone()
     }
 
+    pub fn peer_address(&self) -> String {
+        self.conn.peer_address.clone()
+    }
+
+    pub fn scheme(&self) -> &'static str {
+        if self.server.tls_enabled() {
+            "https"
+        } else {
+            "http"
+        }
+    }
+
     pub fn protocol(&self) -> &'static str {
         self.st.borrow().protocol
     }
@@ -147,7 +248,7 @@ impl Exchange {
 
     pub fn is_closed(&self) -> bool {
         let st = self.st.borrow();
-        st.closed || st.upgraded || st.rejected
+        st.closed || st.upgraded || st.upgrade_attempted
     }
 
     /// `HttpExchange.close()`: later calls report `Closed`.
@@ -168,7 +269,7 @@ impl Exchange {
 
     /// Reads more bytes from the socket into the connection's input buffer.
     fn fill(&self, deadline: Deadline) -> Result<bool, IoErr> {
-        let io = self.io()?;
+        let io = ScopeOwned::new(self.io()?);
         let mut scratch = [0u8; 16 * 1024];
         loop {
             match io.read(&mut scratch) {
@@ -184,7 +285,7 @@ impl Exchange {
                 Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
                 Step::WantRead | Step::WantWrite => {
                     if wait_fd(io.fd(), Interest::Read, deadline) == Wait::TimedOut {
-                        return Err(IoErr::failed("operation timed out"));
+                        return Err(self.timed_out());
                     }
                 }
             }
@@ -192,28 +293,62 @@ impl Exchange {
     }
 
     /// Writes all of `bytes` and flushes, blocking.
-    fn send(&self, bytes: &[u8], deadline: Deadline) -> Result<(), IoErr> {
-        let io = self.io()?;
+    fn send(&self, bytes: &[u8], deadline: Deadline, final_response: bool) -> Result<(), IoErr> {
+        if self.st.borrow().output_incomplete {
+            return Err(IoErr::Closed);
+        }
+        let io = ScopeOwned::new(self.io()?);
         let mut rest = bytes;
-        while !rest.is_empty() {
-            match io.write(rest) {
-                Step::Done(n) => rest = &rest[n..],
-                Step::Eof => return Err(IoErr::failed("connection closed")),
-                Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
-                Step::WantRead | Step::WantWrite => {
-                    if wait_fd(io.fd(), Interest::Write, deadline) == Wait::TimedOut {
-                        return Err(IoErr::failed("operation timed out"));
+        let write_timeout = self.server.limits.write_timeout;
+        let mut progress = write_timeout.map_or(Deadline::none(), Deadline::after);
+        let mut flush_pending = rest.is_empty();
+        loop {
+            if deadline.earliest(progress).expired() {
+                return Err(self.timed_out());
+            }
+            if flush_pending {
+                match io.flush() {
+                    Step::Done(_) => {
+                        if rest.is_empty() {
+                            self.st.borrow_mut().output_incomplete = false;
+                            return Ok(());
+                        }
+                        flush_pending = false;
+                        progress = write_timeout.map_or(Deadline::none(), Deadline::after);
+                    }
+                    Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
+                    Step::Eof => return Err(IoErr::Closed),
+                    _ => {
+                        if wait_fd(io.fd(), Interest::Write, deadline.earliest(progress))
+                            == Wait::TimedOut
+                        {
+                            return Err(self.timed_out());
+                        }
+                        continue;
                     }
                 }
             }
-        }
-        loop {
-            match io.flush() {
-                Step::Done(_) => return Ok(()),
+            // Flush each bounded TLS plaintext chunk before crediting progress.
+            match io.write(&rest[..rest.len().min(16 * 1024)]) {
+                Step::Done(0) => return Err(IoErr::failed("connection made no write progress")),
+                Step::Done(n) => {
+                    let mut st = self.st.borrow_mut();
+                    st.output_incomplete = true;
+                    if final_response {
+                        st.sent = true;
+                        st.head_written = true;
+                    }
+                    drop(st);
+                    rest = &rest[n..];
+                    flush_pending = true;
+                }
+                Step::Eof => return Err(IoErr::Closed),
                 Step::Err(e) => return Err(IoErr::Failed(crate::error::describe_io_error(&e))),
-                _ => {
-                    if wait_fd(io.fd(), Interest::Write, deadline) == Wait::TimedOut {
-                        return Err(IoErr::failed("operation timed out"));
+                Step::WantRead | Step::WantWrite => {
+                    if wait_fd(io.fd(), Interest::Write, deadline.earliest(progress))
+                        == Wait::TimedOut
+                    {
+                        return Err(self.timed_out());
                     }
                 }
             }
@@ -236,8 +371,9 @@ impl Exchange {
         }
         if std::mem::take(&mut self.st.borrow_mut().expect_continue)
             && !self.st.borrow().decoder.is_done()
+            && !self.st.borrow().head_written
         {
-            self.send(b"HTTP/1.1 100 Continue\r\n\r\n", deadline)?;
+            self.send(b"HTTP/1.1 100 Continue\r\n\r\n", deadline, false)?;
         }
         loop {
             {
@@ -260,6 +396,9 @@ impl Exchange {
                 if !conn.unread().is_empty() {
                     let mut out = std::mem::take(&mut st.decoded);
                     let fed = st.decoder.feed(conn.unread(), &mut out);
+                    if let Some(trace) = self.trace.upgrade() {
+                        trace.request_bytes(out.len());
+                    }
                     st.decoded = out;
                     match fed {
                         Ok((used, _)) => conn.consume(used),
@@ -281,7 +420,28 @@ impl Exchange {
     }
 
     /// `HttpExchange.send_headers(status, headers)`.
-    pub fn send_headers(&self, status: i64, headers: &Headers) -> Result<(), HttpErr> {
+    pub fn send_headers(
+        &self,
+        status: i64,
+        headers: &Headers,
+        content_length: Option<i64>,
+    ) -> Result<(), HttpErr> {
+        let length = content_length
+            .map(usize::try_from)
+            .transpose()
+            .map_err(|_| HttpErr::InvalidInput)?;
+        if status == 204 && length.is_some() || status == 205 && length.is_some_and(|n| n != 0) {
+            return Err(HttpErr::InvalidInput);
+        }
+        if (200..300).contains(&status) && self.st.borrow().method == "CONNECT" {
+            return Err(HttpErr::InvalidInput);
+        }
+        if !self.st.borrow().is_head
+            && server::body_allowed(status)
+            && length.is_some_and(|n| n > self.server.limits.response)
+        {
+            return Err(HttpErr::LimitExceeded);
+        }
         if self.is_closed() {
             return Err(HttpErr::Closed);
         }
@@ -312,6 +472,13 @@ impl Exchange {
         let mut st = self.st.borrow_mut();
         st.sent = true;
         st.status = status;
+        st.content_length = length;
+        if !st.is_head && server::body_allowed(status) {
+            st.remaining_write = st.remaining_write.min(length.unwrap_or(usize::MAX));
+        }
+        if let Some(trace) = self.trace.upgrade() {
+            trace.status(status);
+        }
         st.staged = headers.clone();
         Ok(())
     }
@@ -323,7 +490,7 @@ impl Exchange {
         content_length: Option<usize>,
         deadline: Deadline,
     ) -> Result<(), IoErr> {
-        let mut out = Vec::with_capacity(256 + first.len());
+        let mut out = ScopeOwned::new(Vec::with_capacity(256 + first.len()));
         {
             let mut st = self.st.borrow_mut();
             h1::status_line(&mut out, st.status as u16);
@@ -332,9 +499,20 @@ impl Exchange {
                 h1::header_line(&mut out, "Date", self.reactor_date().as_bytes());
             }
             let allowed = server::body_allowed(st.status);
+            let content_length = st.content_length.or_else(|| {
+                if st.is_head || st.status == 304 {
+                    None
+                } else {
+                    content_length
+                }
+            });
+            let content_length = if st.status == 205 {
+                Some(0)
+            } else {
+                content_length
+            };
             if let Some(n) = content_length
-                && allowed
-                && !st.is_head
+                && (allowed || st.status == 304 || st.status == 205)
             {
                 h1::header_line(&mut out, "Content-Length", n.to_string().as_bytes());
             }
@@ -349,7 +527,6 @@ impl Exchange {
                 h1::header_line(&mut out, "Transfer-Encoding", b"chunked");
             }
             out.extend_from_slice(b"\r\n");
-            st.head_written = true;
         }
         let chunked = self.st.borrow().chunked;
         if !first.is_empty() {
@@ -359,7 +536,7 @@ impl Exchange {
                 out.extend_from_slice(first);
             }
         }
-        self.send(&out, deadline)
+        self.send(&out, deadline, true)
     }
 
     fn reactor_date(&self) -> String {
@@ -368,6 +545,9 @@ impl Exchange {
 
     /// `HttpExchange.write_bytes(data)`.
     pub fn write(&self, data: &[u8]) -> Result<(), IoErr> {
+        if self.st.borrow().output_incomplete {
+            return Err(IoErr::Closed);
+        }
         if self.is_closed() {
             return Err(IoErr::Closed);
         }
@@ -384,13 +564,16 @@ impl Exchange {
         if is_head || !server::body_allowed(status) {
             return Err(IoErr::InvalidInput);
         }
+        if let Some(trace) = self.trace.upgrade() {
+            trace.response_bytes(data.len());
+        }
         let deadline = self.deadline();
         let result = if let Some(id) = self.h2_id() {
             self.write_h2(id, data, deadline)
         } else if !self.st.borrow().head_written {
             self.write_head(data, None, deadline)
         } else {
-            let mut out = Vec::with_capacity(data.len() + 16);
+            let mut out = ScopeOwned::new(Vec::with_capacity(data.len() + 16));
             if self.st.borrow().chunked {
                 h1::chunk(&mut out, data);
             } else {
@@ -399,12 +582,14 @@ impl Exchange {
             if out.is_empty() {
                 Ok(())
             } else {
-                self.send(&out, deadline)
+                self.send(&out, deadline, true)
             }
         };
         match result {
             Ok(()) => {
-                self.st.borrow_mut().remaining_write -= data.len();
+                let mut st = self.st.borrow_mut();
+                st.remaining_write -= data.len();
+                st.written += data.len();
                 Ok(())
             }
             Err(e) => {
@@ -422,7 +607,9 @@ impl Exchange {
         allowed_origins: &[String],
         subprotocols: &[String],
         max_message_bytes: Option<i64>,
+        response_headers: &headers::Headers,
     ) -> Result<Rc<Socket>, WsErr> {
+        validate_upgrade_headers(response_headers)?;
         let max = match max_message_bytes {
             Some(n) if n <= 0 => return Err(WsErr::InvalidInput),
             Some(n) => Some(n as u64),
@@ -433,47 +620,65 @@ impl Exchange {
         }
         {
             let st = self.st.borrow();
-            if st.closed || st.sent || st.upgraded || st.rejected {
+            if st.closed || st.sent || st.upgraded || st.upgrade_attempted || st.output_incomplete {
                 return Err(WsErr::InvalidInput);
             }
         }
-        let fields: Vec<(String, Vec<u8>)> = {
-            let st = self.st.borrow();
-            let headers = st.headers.borrow();
-            headers
-                .entries()
-                .iter()
-                .flat_map(|e| e.values.iter().map(|v| (e.name.clone(), v.clone())))
-                .collect()
+        let accepted = {
+            let fields: Vec<(String, Vec<u8>)> = {
+                let st = self.st.borrow();
+                let headers = st.headers.borrow();
+                headers
+                    .entries()
+                    .iter()
+                    .flat_map(|e| e.values.iter().map(|v| (e.name.clone(), v.clone())))
+                    .collect()
+            };
+            let host = {
+                let st = self.st.borrow();
+                let headers = st.headers.borrow();
+                headers
+                    .first("Host")
+                    .map(|h| String::from_utf8_lossy(h).into_owned())
+                    .unwrap_or_default()
+            };
+            let method = self.method();
+            let request = handshake::Request {
+                method: &method,
+                host: &host,
+                tls: self.server.tls_enabled(),
+                fields: &fields,
+            };
+            let options = handshake::ServerOptions {
+                allowed_origins,
+                subprotocols,
+                compression: false,
+            };
+            if self.h2_id().is_some() {
+                return Err(self.upgrade_h2(&request, &options));
+            }
+            handshake::accept(&request, &options)
         };
-        let host = {
-            let st = self.st.borrow();
-            let headers = st.headers.borrow();
-            headers
-                .first("Host")
-                .map(|h| String::from_utf8_lossy(h).into_owned())
-                .unwrap_or_default()
-        };
-        let method = self.method();
-        let request = handshake::Request {
-            method: &method,
-            host: &host,
-            tls: self.server.tls_enabled(),
-            fields: &fields,
-        };
-        let options = handshake::ServerOptions {
-            allowed_origins,
-            subprotocols,
-            compression: false,
-        };
-        if self.h2_id().is_some() {
-            return Err(self.upgrade_h2(&request, &options));
-        }
         let deadline = self.deadline();
-        match handshake::accept(&request, &options) {
+        match accepted {
             Err(rejected) => Err(self.reject(rejected, deadline)),
             Ok(accepted) => {
-                self.send(&accepted.response, deadline)
+                let mut accepted = ScopeOwned::new(accepted);
+                append_upgrade_headers(
+                    &mut accepted.response,
+                    response_headers,
+                    self.server.limits.header,
+                )?;
+                {
+                    let mut st = self.st.borrow_mut();
+                    st.upgrade_attempted = true;
+                    st.close_conn = true;
+                    st.status = 101;
+                }
+                if let Some(trace) = self.trace.upgrade() {
+                    trace.status(101);
+                }
+                self.send(&accepted.response, deadline, true)
                     .map_err(|e| WsErr::Failed(io_text(e)))?;
                 let (io, leftover) = self
                     .server
@@ -485,6 +690,7 @@ impl Exchange {
                     .owner
                     .adopt_io(Box::new(SharedIo(io)), local, peer)
                     .map_err(WsErr::from)?;
+                let accepted = accepted.into_inner();
                 let config = Config::new(max, accepted.compress, accepted.subprotocol);
                 let socket = Rc::new(Socket::new(conn, leftover, Role::Server, config));
                 let mut st = self.st.borrow_mut();
@@ -497,11 +703,19 @@ impl Exchange {
 
     /// Answers a refused upgrade and marks the exchange.
     fn reject(&self, rejected: Rejected, deadline: Deadline) -> WsErr {
-        let response = rejected.response(unix_now(), false);
-        let _ = self.send(&response, deadline);
-        let mut st = self.st.borrow_mut();
-        st.rejected = true;
-        st.close_conn = true;
+        {
+            let mut st = self.st.borrow_mut();
+            st.upgrade_attempted = true;
+            st.close_conn = true;
+            st.status = rejected.status as i64;
+        }
+        if let Some(trace) = self.trace.upgrade() {
+            trace.status(rejected.status as i64);
+            trace.response_bytes(h1::status_text(rejected.status).len() + 1);
+        }
+        let rejected = ScopeOwned::new(rejected);
+        let response = ScopeOwned::new(rejected.response(unix_now(), false));
+        let _ = self.send(&response, deadline, true);
         rejected.error()
     }
 
@@ -510,25 +724,48 @@ impl Exchange {
         let server = &self.server;
         let reactor = &self.reactor;
         let conn = &self.conn;
-        let (failed, fault, cancelled) = match outcome {
+        let (mut failed, fault, cancelled) = match outcome {
             Outcome::Done(Ok(())) => (late, None, false),
             Outcome::Done(Err(_)) => (true, None, false),
             Outcome::Fault(m) => (true, Some(m), false),
             Outcome::Cancelled => (true, None, true),
         };
+        {
+            let st = self.st.borrow();
+            failed |=
+                st.output_incomplete || st.upgrade_attempted && !st.upgraded && !st.head_written;
+            if st.sent
+                && !st.is_head
+                && server::body_allowed(st.status)
+                && st.content_length.is_some_and(|n| n != st.written)
+            {
+                failed = true;
+            }
+        }
         if let Some(m) = &fault {
             eprintln!("HTTP stream handler fault: {m}");
         }
+        if let Some(trace) = self.trace.upgrade() {
+            use super::server::observe::End;
+            if fault.is_some() {
+                trace.fail(End::Faulted);
+            } else if late {
+                trace.fail(End::TimedOut);
+            } else if failed || cancelled {
+                trace.fail(End::Aborted);
+            }
+        }
+        drop(fault);
         if let Some(id) = self.h2_id() {
             self.finish_h2(id, failed, cancelled, late);
             return;
         }
-        let (sent, upgraded, rejected, head_written, chunked, status, is_head, minor) = {
+        let (sent, upgraded, upgrade_attempted, head_written, chunked, status, is_head, minor) = {
             let st = self.st.borrow();
             (
                 st.sent,
                 st.upgraded,
-                st.rejected,
+                st.upgrade_attempted,
                 st.head_written,
                 st.chunked,
                 st.status,
@@ -543,23 +780,33 @@ impl Exchange {
             if let Some(socket) = socket {
                 socket.close();
             }
+            if let Some(trace) = self.trace.upgrade() {
+                trace.finish();
+            }
+            server.close_conn(conn, reactor);
             return;
         }
-        let mut out = Vec::new();
+        if self.st.borrow().output_incomplete {
+            server.close_conn(conn, reactor);
+            return;
+        }
+        let mut out = ScopeOwned::new(Vec::new());
         let mut close = self.st.borrow().close_conn || server.is_closing();
-        if rejected {
-            // The upgrade attempt already answered.
+        if upgrade_attempted && (!failed || head_written) {
+            // A terminal upgrade attempt cannot fall back to an empty response.
             close = true;
         } else if failed {
-            if !sent {
-                let status = if late || cancelled { 504 } else { 500 };
-                server::error_bytes(&mut out, reactor, status, "request failed", false);
+            if !head_written {
+                self.failure_bytes(&mut out, late, cancelled);
             } else {
                 // Part of the response is out: abort the connection.
                 server.close_conn(conn, reactor);
                 return;
             }
         } else if !sent {
+            if let Some(trace) = self.trace.upgrade() {
+                trace.status(204);
+            }
             h1::status_line(&mut out, 204);
             h1::header_line(&mut out, "Date", reactor.date_text().as_bytes());
             if close {
@@ -569,10 +816,14 @@ impl Exchange {
         } else if !head_written {
             // Headers only: an empty body.
             let _ = (status, is_head, minor);
-            let mut buf = Vec::new();
-            std::mem::swap(&mut buf, &mut out);
-            if self.write_head(&[], Some(0), Deadline::none()).is_err() {
-                server.close_conn(conn, reactor);
+            out.clear();
+            if self.write_head(&[], Some(0), self.deadline()).is_err() {
+                if self.st.borrow().head_written {
+                    server.close_conn(conn, reactor);
+                } else {
+                    self.failure_bytes(&mut out, false, false);
+                    server.queue_output(conn, reactor, out.into_inner(), true);
+                }
                 return;
             }
         } else if chunked {
@@ -582,7 +833,26 @@ impl Exchange {
         if !close {
             close = !self.drain_request_body();
         }
-        server.queue_output(conn, reactor, out, close);
+        server.queue_output(conn, reactor, out.into_inner(), close);
+    }
+
+    fn failure_bytes(&self, out: &mut Vec<u8>, late: bool, cancelled: bool) {
+        use super::server::observe::End;
+        let is_head = self.st.borrow().is_head;
+        let timed_out = late || self.deadline().expired();
+        let status = if timed_out || cancelled { 504 } else { 500 };
+        if let Some(trace) = self.trace.upgrade() {
+            trace.fail(if timed_out {
+                End::TimedOut
+            } else {
+                End::Aborted
+            });
+            trace.status(status as i64);
+            if !is_head {
+                trace.response_bytes("request failed\n".len());
+            }
+        }
+        server::error_bytes(out, &self.reactor, status, "request failed", false, is_head);
     }
 
     /// Skips what is left of the request body that is already buffered.
@@ -599,6 +869,9 @@ impl Exchange {
             let n = conn.unread().len().min(DRAIN_LIMIT - total);
             match st.decoder.feed(&conn.unread()[..n], &mut sink) {
                 Ok((used, state)) => {
+                    if let Some(trace) = self.trace.upgrade() {
+                        trace.request_bytes(sink.len());
+                    }
                     conn.consume(used);
                     total += used;
                     if state == Decoded::Done {
@@ -646,6 +919,236 @@ mod tests {
     use super::*;
     use crate::net::Network;
 
+    struct PrefixThenError {
+        inner: Rc<dyn Io>,
+        remaining: std::cell::Cell<usize>,
+        failed: std::cell::Cell<bool>,
+    }
+
+    impl Io for PrefixThenError {
+        fn fd(&self) -> crate::sys::Borrowed<'_> {
+            self.inner.fd()
+        }
+        fn read(&self, bytes: &mut [u8]) -> Step {
+            self.inner.read(bytes)
+        }
+        fn write(&self, bytes: &[u8]) -> Step {
+            let remaining = self.remaining.get();
+            if remaining == 0 && !self.failed.replace(true) {
+                return Step::Err(std::io::Error::from(std::io::ErrorKind::BrokenPipe));
+            }
+            let bytes = if remaining == 0 {
+                bytes
+            } else {
+                &bytes[..bytes.len().min(remaining)]
+            };
+            let result = self.inner.write(bytes);
+            if let Step::Done(n) = result {
+                self.remaining.set(remaining.saturating_sub(n));
+            }
+            result
+        }
+        fn flush(&self) -> Step {
+            self.inner.flush()
+        }
+        fn shutdown_write(&self) -> Result<(), crate::error::NetErr> {
+            self.inner.shutdown_write()
+        }
+        fn shutdown_both(&self) {
+            self.inner.shutdown_both();
+        }
+    }
+
+    struct Commitment;
+    impl Dispatch for Commitment {
+        fn buffered(&self, _: Request) -> Outcome<Reply> {
+            Outcome::Cancelled
+        }
+        fn streaming(&self, ex: Rc<Exchange>) -> Outcome<Result<(), HttpErr>> {
+            let path = ex.path();
+            if path == "/response-before-read" {
+                ex.send_headers(200, &Headers::new(), None).unwrap();
+                ex.write(b"first").unwrap();
+                assert_eq!(ex.read(Some(1)).unwrap(), Some(vec![b'x']));
+                ex.write(b"last").unwrap();
+                return Outcome::Done(Ok(()));
+            }
+            if path.starts_with("/staged") || path == "/expired" {
+                ex.send_headers(200, &Headers::new(), None).unwrap();
+                if path == "/staged-fault" {
+                    return Outcome::Fault("staged failure".into());
+                }
+                if path == "/expired" {
+                    assert!(
+                        ex.write_head(b"never", None, Deadline::after(std::time::Duration::ZERO))
+                            .is_err()
+                    );
+                }
+                return Outcome::Cancelled;
+            }
+            let prefix = if path == "/upgrade-zero" {
+                0
+            } else if path == "/partial-body" {
+                256
+            } else {
+                5
+            };
+            let inner = ex.io().unwrap();
+            ex.conn.st.borrow_mut().io = Some(Rc::new(PrefixThenError {
+                inner,
+                remaining: std::cell::Cell::new(prefix),
+                failed: std::cell::Cell::new(false),
+            }));
+            if path == "/partial-interim" {
+                assert!(ex.read(Some(1)).is_err());
+            } else if path.contains("upgrade") {
+                assert!(ex.upgrade(&[], &[], None, &Headers::new()).is_err());
+                assert!(ex.is_closed(), "failed upgrades are terminal");
+                assert!(ex.send_headers(200, &Headers::new(), None).is_err());
+            } else {
+                ex.send_headers(200, &Headers::new(), None).unwrap();
+                assert!(ex.write(&[b'x'; 512]).is_err());
+            }
+            // Deliberately swallow the I/O error. Completion must still not
+            // append another status or the final chunk to an incomplete send.
+            Outcome::Done(Ok(()))
+        }
+    }
+
+    #[test]
+    fn response_commitment_distinguishes_staging_and_partial_output() {
+        let net = Network::new_root();
+        let server = Server::start(
+            &net,
+            "127.0.0.1:0",
+            Box::new(Commitment),
+            Options {
+                limits: Limits::default(),
+                streaming: true,
+                tls: None,
+            },
+        )
+        .unwrap();
+        for (path, expected) in [
+            ("/staged-fault", "500"),
+            ("/staged-cancel", "504"),
+            ("/expired", "504"),
+        ] {
+            let address = server.address().to_string();
+            let reply = with_client(move || {
+                raw(
+                    &address,
+                    format!("GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+                        .as_bytes(),
+                )
+            });
+            assert!(
+                reply.starts_with(&format!("HTTP/1.1 {expected}")),
+                "{path}: {reply}"
+            );
+        }
+        for path in ["/staged-fault", "/staged-cancel", "/expired"] {
+            let address = server.address().to_string();
+            let reply = with_client(move || {
+                raw(
+                    &address,
+                    format!("HEAD {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+                        .as_bytes(),
+                )
+            });
+            let expected = if path == "/staged-fault" {
+                "500"
+            } else {
+                "504"
+            };
+            assert!(
+                reply.starts_with(&format!("HTTP/1.1 {expected}")),
+                "{reply}"
+            );
+            assert!(reply.contains("Content-Length: 15\r\n"), "{reply}");
+            assert!(reply.ends_with("\r\n\r\n"), "HEAD error body: {reply}");
+        }
+        for path in [
+            "/partial-interim",
+            "/partial-final",
+            "/partial-body",
+            "/partial-upgrade",
+            "/upgrade-zero",
+        ] {
+            let address = server.address().to_string();
+            let reply = with_client(move || {
+                let request = if path == "/partial-interim" {
+                    format!(
+                        "POST {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\nContent-Length: 1\r\nExpect: 100-continue\r\n\r\nx"
+                    )
+                } else {
+                    format!(
+                        "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: Upgrade, close\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
+                    )
+                };
+                raw(&address, request.as_bytes())
+            });
+            if path == "/upgrade-zero" {
+                assert!(reply.starts_with("HTTP/1.1 500"), "{reply}");
+                continue;
+            }
+            let expected = if path == "/partial-body" { 256 } else { 5 };
+            assert_eq!(reply.len(), expected, "{path}: {reply}");
+        }
+        let address = server.address().to_string();
+        let reply = with_client(move || {
+            raw(&address, b"POST /response-before-read HTTP/1.1\r\nHost: t\r\nConnection: close\r\nContent-Length: 1\r\nExpect: 100-continue\r\n\r\nx")
+        });
+        assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
+        assert!(!reply.contains("100 Continue"), "{reply}");
+        assert!(reply.ends_with("0\r\n\r\n"), "{reply}");
+        server.close().unwrap();
+    }
+
+    #[test]
+    fn upgrade_headers_preserve_repeated_fields_and_enforce_the_full_limit() {
+        let mut fields = headers::Headers::new();
+        fields.append("Set-Cookie", b"a=1").unwrap();
+        fields.append("set-cookie", b"b=2").unwrap();
+        validate_upgrade_headers(&fields).unwrap();
+        let initial = b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n\r\n".to_vec();
+        let expected = b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\n\r\n";
+        let mut response = initial.clone();
+        append_upgrade_headers(&mut response, &fields, expected.len()).unwrap();
+        assert_eq!(response, expected);
+        let mut refused = initial.clone();
+        assert!(matches!(
+            append_upgrade_headers(&mut refused, &fields, expected.len() - 1),
+            Err(WsErr::LimitExceeded)
+        ));
+        assert_eq!(refused, initial);
+    }
+
+    #[test]
+    fn upgrade_headers_cannot_override_framing_or_handshake_fields() {
+        for name in [
+            "Content-Length",
+            "Transfer-Encoding",
+            "Connection",
+            "Upgrade",
+            "Sec-WebSocket-Accept",
+            "sec-websocket-protocol",
+            "Sec-WebSocket-Extensions",
+        ] {
+            let mut fields = headers::Headers::new();
+            fields.append(name, b"value").unwrap();
+            assert!(
+                matches!(validate_upgrade_headers(&fields), Err(WsErr::InvalidInput)),
+                "{name}"
+            );
+        }
+        let fields = headers::Headers::from_received([("X-Test".into(), b"a\r\nb".to_vec())]);
+        assert!(matches!(
+            validate_upgrade_headers(&fields),
+            Err(WsErr::InvalidInput)
+        ));
+    }
+
     struct Streamer;
 
     impl Dispatch for Streamer {
@@ -658,7 +1161,12 @@ mod tests {
                 match ex.path().as_str() {
                     "/ws" => {
                         let socket = ex
-                            .upgrade(&[], &["chat".to_string()], Some(1024))
+                            .upgrade(
+                                &[],
+                                &["chat".to_string()],
+                                Some(1024),
+                                &headers::Headers::new(),
+                            )
                             .map_err(|_| HttpErr::Closed)?;
                         assert_eq!(socket.subprotocol(), "chat");
                         assert!(ex.is_closed());
@@ -676,7 +1184,7 @@ mod tests {
                     }
                     "/wsbad" => {
                         assert!(matches!(
-                            ex.upgrade(&[], &[], None),
+                            ex.upgrade(&[], &[], None, &headers::Headers::new()),
                             Err(WsErr::Failed(m)) if m == "websocket: 'Connection' header lacks the 'upgrade' token"
                         ));
                         return Ok(());
@@ -703,8 +1211,8 @@ mod tests {
                 assert_eq!(ex.write(b"x"), Err(IoErr::InvalidInput));
                 let mut h = Headers::new();
                 h.append("X-Seen", total.len().to_string().as_bytes())?;
-                ex.send_headers(200, &h)?;
-                assert_eq!(ex.send_headers(200, &h), Err(HttpErr::InvalidInput));
+                ex.send_headers(200, &h, None)?;
+                assert_eq!(ex.send_headers(200, &h, None), Err(HttpErr::InvalidInput));
                 ex.write(&total).map_err(|_| HttpErr::Closed)?;
                 ex.write(b"|done").map_err(|_| HttpErr::Closed)?;
                 if ex.path() == "/partial" {
