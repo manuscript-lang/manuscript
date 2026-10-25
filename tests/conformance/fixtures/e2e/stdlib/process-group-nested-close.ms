@@ -1,7 +1,7 @@
 # conform: tags=stdlib-processes,tier-io
 # conform: phase=run
 # conform: timeout=30
-# A group closing its child stops the child's own children, three levels down.
+# A group closing its child stops the child's own children, three levels down, even when the middle one is busy.
 from "@std/channels.ms" import Channel
 from "@std/fs.ms" import filesystem
 from "@std/io.ms" import stdout
@@ -20,7 +20,9 @@ def leaf(ch: Channel[Unit, Unit]) -> Int:
 def middle(ch: Channel[Unit, Unit]) -> Int:
     with ProcessGroup[Int]() as group:
         var g = group.spawn(leaf).get()
-        g.result().get()
+        var spin = 0
+        while True:
+            spin += 1
     return 0
 
 def top(ch: Channel[Unit, Unit]) -> Int:
