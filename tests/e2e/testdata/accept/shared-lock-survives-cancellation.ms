@@ -31,7 +31,7 @@ test "a task cancelled while holding the lock puts the payload back":
 
     with let group = TaskGroup[Int](timeout: some(duration(20000000))):
         group.spawn(lambda ch: hold(mine))
-        group.wait()
+        let ignored = group.wait()
 
     box.get().clone() | try expect_equal([1, 2])
     with var guard = lock(box):
