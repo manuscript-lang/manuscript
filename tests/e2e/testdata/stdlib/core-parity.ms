@@ -46,7 +46,9 @@ test "core parity operations are callable":
     try expect_false(not (success.is_ok()) or success.is_error())
     try expect_false(success.get() != 2 or failure.err().message() != "failed")
     try expect_equal(failure.get(7), 7)
-    try expect_equal(failure.or_else(lambda cause: cause.message().scalar_length()), 6)
+    try expect_equal(
+        failure.get_or_else(lambda cause: cause.message().scalar_length()), 6
+    )
     try expect_equal(success.map(lambda n: n + 1).get(), 3)
 
     let chained: Result[String, TextError] = success.and_then(
@@ -142,9 +144,9 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
     let create = lambda (cause: Counter) -> Int: 12
     let unexpected = lambda (cause: Counter) -> Int: panic("fallback must stay lazy")
-    let lazy = success.clone().or_else
+    let lazy = success.clone().get_or_else
     try expect_false(lazy(unexpected) != 0)
-    try expect_false(failure.clone().or_else(create) != 12)
+    try expect_false(failure.clone().get_or_else(create) != 12)
 
     let extract = failure.clone().err
     var extracted = extract().clone()

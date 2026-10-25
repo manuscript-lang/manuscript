@@ -3,6 +3,6 @@
 # conform: origin=documentation/core-language/types/optionals.md:70
 def display_name(
     name: Optional[String],
-    create: Callable[[], Optional[String]]
+    create: Callable[[], String]
 ) -> String:
-    return name.or_else(create).get()
+    return name.get_or_else(create)

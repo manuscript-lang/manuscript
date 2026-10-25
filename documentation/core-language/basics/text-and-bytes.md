@@ -67,7 +67,7 @@ The built-in method wins over any field or interface operation named `to_string`
 
 ## Indexing and character boundaries
 
-There is no `text[index]` or slice syntax. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
+There is no `text[index]` or slice syntax: scalar position is not a constant-time offset in UTF-8, so use `get(index)` or `for c in text.chars()`. Byte positions, scalars, and graphemes differ: `"é"` is two UTF-8 bytes; `"e\u{301}"` is two scalars and may display as one grapheme. Grapheme indexing is unsupported.
 
 - `get`, `scalar_at`, `index_of`, `last_index_of`, `slice`, and `slice_scalars` use scalar indexes. `get(index, default:)` returns a one-scalar String; `scalar_at(index, default:)` its code point as an Int. Negative indexes count from the end; out of range gives the default, or a fault without one.
 - Searches return the first or last scalar index or `none`. An empty search matches at 0 (`index_of`) or `scalar_length()` (`last_index_of`).
@@ -97,11 +97,11 @@ Equal bounds give an empty range. Bounds are never clamped or swapped; `text.sli
 | --- | --- |
 | `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]` |
 | `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `concat(values: Bytes) -> Bytes` |
+| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `[index] Int`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_string() -> Optional[String]` |
 | `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` returns the unsigned byte as Int.
+`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the unsigned byte as Int; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 

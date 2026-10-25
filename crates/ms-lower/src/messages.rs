@@ -14,11 +14,6 @@ pub(crate) fn table(name: &str) -> Option<&'static [(&'static str, Message)]> {
             ("LimitExceeded", Text("collection: limit exceeded")),
             ("OutOfRange", Text("collection: value out of range")),
         ],
-        "JsonError" => &[
-            ("InvalidInput", Text("JSON: invalid input")),
-            ("InvalidData", Text("JSON: invalid data")),
-            ("LimitExceeded", Text("JSON: limit exceeded")),
-        ],
         "RandomError" => &[
             ("InvalidInput", Text("random: invalid input")),
             ("LimitExceeded", Text("random: limit exceeded")),
