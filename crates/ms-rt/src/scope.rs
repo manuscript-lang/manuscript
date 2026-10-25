@@ -5,12 +5,13 @@
 //! counted from the scope's creation. A task ends as returned (0), timed out (1) or cancelled (2); a task that no longer exists reads as 3.
 use crate::task;
 use ms_rt_abi::Closure;
+use std::collections::VecDeque;
 
 struct Scope {
     /// Bumped each time the slot is reused, so an id from an earlier scope never matches.
     generation: i64,
     /// Handles of the tasks started in the scope and not yet collected by `msrt_scope_close`.
-    tasks: Vec<u64>,
+    tasks: VecDeque<u64>,
     /// Monotonic time the scope was created at, in nanoseconds.
     created: i64,
 }
@@ -36,7 +37,9 @@ fn find(id: i64) -> Option<&'static mut Scope> {
 }
 
 fn tasks_of(id: i64) -> Vec<u64> {
-    find(id).map(|s| s.tasks.clone()).unwrap_or_default()
+    find(id)
+        .map(|s| s.tasks.iter().copied().collect())
+        .unwrap_or_default()
 }
 
 /// Creates a scope and returns its id.
@@ -53,7 +56,7 @@ pub extern "C-unwind" fn msrt_scope_new() -> i64 {
     let generation = generations[slot];
     let scope = Scope {
         generation,
-        tasks: Vec::new(),
+        tasks: VecDeque::new(),
         created: crate::sys::monotonic_ns(),
     };
     if slot == all.len() {
@@ -89,7 +92,7 @@ pub unsafe extern "C-unwind" fn msrt_scope_spawn(
     }
     // SAFETY: forwarded contract.
     let handle = unsafe { task::spawn_closure(closure, limit) };
-    s.tasks.push(handle);
+    s.tasks.push_back(handle);
     handle as i64
 }
 
@@ -101,12 +104,19 @@ pub extern "C-unwind" fn msrt_scope_started() {
     unsafe { task::unwind_if_cancelled() }
 }
 
-/// Waits for one task and returns how it ended; the task stays joinable until `msrt_scope_close`
-/// or a second call collects it.
+/// Waits for one task of `scope` and returns how it ended. Without `keep` the task is collected:
+/// the scope forgets it and it reads as gone afterwards.
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_scope_join(handle: i64, keep: i64) -> i64 {
+pub extern "C-unwind" fn msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64 {
     // SAFETY: single threaded scheduler.
-    i64::from(unsafe { task::join_closure(handle as u64, keep != 0) })
+    let outcome = i64::from(unsafe { task::join_closure(handle as u64, keep != 0) });
+    if keep == 0
+        && let Some(s) = find(scope)
+        && let Some(at) = s.tasks.iter().position(|&h| h == handle as u64)
+    {
+        s.tasks.remove(at);
+    }
+    outcome
 }
 
 /// Waits for every task of the scope and returns the worst outcome: timed out, else cancelled,

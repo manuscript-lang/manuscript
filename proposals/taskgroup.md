@@ -69,7 +69,7 @@ Transport (from the child-processes proposal, PR #1183): processes use `Sender[T
 
 ## Implementation
 
-- Runtime (`ms-rt`): `scope.rs` keeps the task list of each scope. `msrt_scope_new`, `msrt_scope_spawn(scope, closure, task_limit_ns, scope_limit_ns)` (retains the closure, starts a `SPAWN_FATAL` task, registers a kill deadline), `msrt_scope_join(handle, keep)` and `msrt_scope_wait(scope)` (0 returned, 1 timed out, 2 cancelled, 3 collected or closed). Scope ids carry a generation, so a closed group's id never reaches a later group, and `msrt_scope_close(scope)` (cancel, wait, release).
+- Runtime (`ms-rt`): `scope.rs` keeps the task list of each scope. `msrt_scope_new`, `msrt_scope_spawn(scope, closure, task_limit_ns, scope_limit_ns)` (retains the closure, starts a `SPAWN_FATAL` task, registers a kill deadline), `msrt_scope_join(scope, handle, keep)` and `msrt_scope_wait(scope)` (0 returned, 1 timed out, 2 cancelled, 3 collected or closed). Scope ids carry a generation, so a closed group's id never reaches a later group, and `msrt_scope_close(scope)` (cancel, wait, release).
 - Compiler: no TaskGroup-specific code. An `extern def` parameter of function type passes the closure object, lent. A `with` binding whose `close` is in a generic `impl` binds the impl's type variables.
 - Library: `@std/tasks.ms` is about 100 lines with comments over five externs. A task's result travels in a `Shared[List[T]]` slot filled by the task.
 
