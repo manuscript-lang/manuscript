@@ -26,3 +26,25 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 | --- | ---: | ---: | ---: |
 | Baseline (`b69b5b65`; Go 52k–61k in the same run) | 38.8k–51.0k | 8.4 | 392–487 |
 | Sockets registered once, reactor parks until real work | 75.7k–81.9k | 2.07 | 0 |
+
+## 2026-10-25
+
+`sh bench/perf/web/run.sh 5` on main at `6003f16b`, shared 4-CPU Linux VM, server on 2 CPUs, load on the other 2, Go 1.24.7. Ranges cover both rounds. Whole-file reads and writes already run on the blocking pool on Unix (`ms-std-fs/src/ops.rs`), which the first table above predates; this run records the effect.
+
+| Measurement | Manuscript | Go |
+| --- | ---: | ---: |
+| `/health` req/s | 81.5k–92.4k | 61.4k–62.4k |
+| `/user/42` req/s | 80.0k–85.4k | 57.1k–59.6k |
+| `/top?n=10` req/s | 20.4k–22.4k | 26.3k–27.9k |
+| `/health` p99 | 2.5 ms | 5.2–5.3 ms |
+| `/io` req/s | 490–546 | 707–728 |
+| `/health` req/s during `/io` | 24.0k | 2.0k |
+| `/health` p99 during `/io` | 12.6 ms | 97 ms |
+| Threads | 6 | 68 |
+| Resident memory after load | 70 MB | 15 MB |
+| System calls in 5 idle seconds | 2 | 72 |
+| System calls per `/health` request | 2.08 | 2.65 |
+| Resident memory, 10,000 idle connections | 93 MB | 197 MB |
+| `/health` req/s beside 10,000 idle connections | 75.2k | 63.9k |
+
+`/health` beside `/io` improved from 773 to 24.0k req/s and its p99 from 137 ms to 12.6 ms. Resident memory after load rose from 9.7 MB to 70 MB (the `/io` payloads and pool threads); not investigated. Windows is measured by CI only: the whole-file offload now compiles there too, but this suite has not run on it.
