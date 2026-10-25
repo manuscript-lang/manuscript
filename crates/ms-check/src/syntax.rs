@@ -363,6 +363,11 @@ impl Facts {
     pub fn info(&self, id: NodeId) -> Option<&Info> {
         self.exprs.get(id.index()).and_then(|i| i.as_ref())
     }
+    /// A node id past every parsed or synthetic one, for a node the checker builds.
+    pub fn fresh_id(&mut self) -> NodeId {
+        self.exprs.push(None);
+        NodeId((self.exprs.len() - 1) as u32)
+    }
     /// Sets the fact of an expression.
     pub fn set_info(&mut self, id: NodeId, info: Info) {
         let i = id.index();
