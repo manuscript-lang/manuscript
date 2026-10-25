@@ -9,6 +9,7 @@ from "@std/bytes.ms" import Bytes, read_integer, write_integer
 from "@std/channels.ms" import Channel, ChannelError, Transport
 from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
+from "@std/io.ms" import ReadStream, WriteStream
 from "@std/json.ms" import parse, stringify
 from "@std/process.ms" import CommandError, Stdio
 from "@std/shared.ms" import Shared, share
@@ -28,6 +29,10 @@ extern def msstd_process_fork(
 ) -> Result[NativeProcess, CommandError]
 
 extern def msstd_process_forked_link(process: NativeProcess) -> NativeLink
+
+extern def msstd_process_forked_stdin(process: NativeProcess) -> WriteStream
+
+extern def msstd_process_forked_output(process: NativeProcess, which: Int) -> ReadStream
 
 extern def msstd_process_forked_wait(
     process: NativeProcess,
@@ -299,6 +304,21 @@ impl Process[T, In, Out]:
 
         return error(ProcessError.Exited(-1))
 
+    # The child's standard input, when spawned with `stdin: Stdio.Pipe`; otherwise already closed,
+    # so writes return `Closed`. Closing it delivers end of input to the child.
+    def stdin() -> WriteStream:
+        return msstd_process_forked_stdin(self.native)
+
+    # The child's standard output, when spawned with `stdout: Stdio.Pipe`; otherwise already
+    # closed. Read it while the child runs: a child whose pipe is full waits until it is read.
+    def stdout() -> ReadStream:
+        return msstd_process_forked_output(self.native, 1)
+
+    # The child's standard error, when spawned with `stderr: Stdio.Pipe`; otherwise already
+    # closed. Read it like `stdout`.
+    def stderr() -> ReadStream:
+        return msstd_process_forked_output(self.native, 2)
+
     # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     # elapses first, leaving the child running.
     def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]:
@@ -331,8 +351,9 @@ export type ProcessGroup[T, In = Unit, Out = Unit]:
 impl ProcessGroup[T, In, Out]:
     # Starts this executable again in a new process at `entry`, a top-level `def`, and returns the
     # process. The child gets its end of a new channel, and the process's `channel` is the
-    # group's end. `stdin`, `stdout` and `stderr` are the parent's own streams or the null
-    # device; `Stdio.Pipe` gives `InvalidInput`.
+    # group's end. `stdin`, `stdout` and `stderr` each choose the parent's own stream (the
+    # default), the null device, or a pipe the process's `stdin()`, `stdout()` or `stderr()`
+    # reaches.
     def spawn(
         entry: Callable[[Channel[Out, In]], T],
         stdin: Stdio = Stdio.Inherit,

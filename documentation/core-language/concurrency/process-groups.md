@@ -43,6 +43,6 @@ test "a child process answers messages on its channel":
 - `child.wait()` gives the exit status; `terminate()` and `kill()` signal the child's process group.
 - `group.results()` waits for every child's result in start order, or gives the first error.
 - Leaving the `with` block closes every child: its channel closes, then the child is stopped and joined. Call `result()` first to keep the work.
-- `stdin`, `stdout` and `stderr` default to the parent's own streams, so a child's output goes where the parent's goes. `Stdio.Null` discards a stream; `Stdio.Pipe` is not offered yet and gives `CommandError.InvalidInput`.
+- `stdin`, `stdout` and `stderr` default to the parent's own streams, so a child's output goes where the parent's goes. `Stdio.Null` discards a stream. `Stdio.Pipe` connects it to the parent: `child.stdin()` is a `WriteStream` (close it to end the child's input), and `child.stdout()` and `child.stderr()` are `ReadStream`s. Read a piped output while the child runs, since a child whose pipe is full waits. A stream that is not piped is already closed.
 
 The child talks to the parent over its own pipe, not its standard streams: a socket pair on Linux and macOS and an owner-only named pipe on Windows. Waiting on it parks the task, as any I/O does.

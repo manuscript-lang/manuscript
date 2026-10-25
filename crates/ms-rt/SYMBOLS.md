@@ -668,6 +668,8 @@ msstd_process_subprocess_kill(h: *mut ChildHandle)
 msstd_process_subprocess_close(h: *mut ChildHandle)
 msstd_process_fork( runner: *mut Closure, stdin: i64, stdout: i64, stderr: i64, out: *mut *mut Handle<Forked>, ) -> u8
 msstd_process_forked_link(h: *mut Handle<Forked>) -> *mut Handle<IpcLink>
+msstd_process_forked_stdin(h: *mut Handle<Forked>) -> *mut Handle<Stream>
+msstd_process_forked_output(h: *mut Handle<Forked>, which: i64) -> *mut Handle<Stream>
 msstd_process_forked_wait(h: *mut Handle<Forked>, timeout_ns: i64, out: *mut i64) -> u8
 msstd_process_forked_signal(h: *mut Handle<Forked>, force: u8)
 msstd_process_forked_close(h: *mut Handle<Forked>)
