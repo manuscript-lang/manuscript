@@ -5,7 +5,7 @@
 # `Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
 # and the entry's return value comes back through `Process.result`. Each process is isolated: a
 # fault in the child ends only the child, and the parent sees its exit status.
-from "@std/bytes.ms" import Bytes, read_integer, write_integer
+from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/channels.ms" import Channel, ChannelError, Transport
 from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
@@ -106,20 +106,11 @@ export type Inbox:
 
 def frame(kind: Int, body: String) -> Bytes:
     let data = body.to_bytes()
-
-    match write_integer(data.length(), 4, False, True):
-        case ok(size):
-            return (
-                size
-                .concat(
-                    write_integer(kind, 1, False, True).get(
-                        "".to_bytes()
-                    )
-                )
-                .concat(data)
-            )
-        case error(_):
-            return "".to_bytes()
+    var out = BytesBuilder()
+    out.append_uint32_le(data.length())
+    out.append(kind)
+    out.append_bytes(data)
+    return out.build()
 
 def encode[T](value: T) -> Result[String, ChannelError]:
     match stringify(Envelope[T](value: value)):
@@ -149,7 +140,7 @@ def next_frame(
             let available = state.value.pending.length()
 
             if available >= 5:
-                let size = read_integer(state.value.pending, 0, 4, False, True).get(0)
+                let size = state.value.pending.uint32_le(0).get(0)
                 if size > FRAME_LIMIT:
                     return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 

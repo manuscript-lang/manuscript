@@ -19,7 +19,7 @@ recorded here before it is committed.)_
 - **v2.2 (stdlib natives, ABI_VERSION unchanged).** Standard-library natives that need no runtime state live in `ms-std-<module>`
   crates (rlibs linked into `libms_native.a` with `ms-rt`) and are named `msstd_<module>_<name>`; the argument and ownership rules above apply.
   `ms-std-math` exports `@std/math` (`f64`/`i64` by value; `Bool` as `u8`; results come from the host libm and may differ from Go in the last bit). `ms-rt` gains
-  `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (`status` + string `out`),
+  `msrt_numbers_parse_int/parse_float/error_message`, `msrt_float_to_precision/to_exponential/to_fixed` (string `out`; a digit count out of range faults),
   `msrt_float_truncate_to_int` (present flag + `out`) and `msrt_float_compare`/`msrt_int_compare`.
 - **v2.7 (`ms-std-fs` watchers).** `msstd_fs_watch` (polling, snapshot comparison every interval) and `msstd_fs_watch_native` (inotify,
   Linux; other hosts return `UNSUPPORTED`) return a refcounted watcher handle; `msstd_fs_watch_next` waits in 50 ms slices (cancellable)

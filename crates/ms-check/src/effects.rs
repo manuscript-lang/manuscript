@@ -18,7 +18,7 @@ pub fn collection_mutation(method: &Method) -> bool {
         return matches!(name, "append" | "build");
     }
     if receiver.is_std("BytesBuilder") {
-        return matches!(name, "append" | "concat" | "build");
+        return name.starts_with("append") || name == "build";
     }
     if receiver.is_std("ListBuilder") {
         return matches!(name, "append" | "build");

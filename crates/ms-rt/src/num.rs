@@ -385,44 +385,42 @@ unsafe fn msrt_numbers_error_message_val(status: u8) -> StrVal {
     })
 }
 
-unsafe fn precision_out(v: f64, format: u8, digits: i64, minimum: i64, out: *mut StrVal) -> u8 {
-    match float_precision(v, format, digits, minimum) {
-        Some(text) => {
-            // SAFETY: the caller passes a writable out.
-            unsafe { *out = crate::string::from_buf(text) };
-            STATUS_OK
-        }
-        None => STATUS_INVALID_INPUT,
-    }
-}
-
-/// `Float.to_precision(digits)`: `digits` in `1..=100`.
-#[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_float_to_precision(
+unsafe fn precision_out(
     v: f64,
+    format: u8,
     digits: i64,
+    minimum: i64,
+    name: &str,
     out: *mut StrVal,
-) -> u8 {
-    // SAFETY: forwarded caller contract.
-    unsafe { precision_out(v, b'g', digits, 1, out) }
+) {
+    let Some(text) = float_precision(v, format, digits, minimum) else {
+        crate::fault::fault_fmt(format_args!(
+            "{name}: digits must be at least {minimum} and at most 100, found {digits}"
+        ));
+    };
+    // SAFETY: the caller passes a writable out.
+    unsafe { *out = crate::string::from_buf(text) };
 }
 
-/// `Float.to_exponential(digits)`: `digits` in `0..=100`.
+/// `Float.to_precision(digits)`: `digits` in `1..=100`, otherwise a fault.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_float_to_exponential(
-    v: f64,
-    digits: i64,
-    out: *mut StrVal,
-) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_float_to_precision(v: f64, digits: i64, out: *mut StrVal) {
     // SAFETY: forwarded caller contract.
-    unsafe { precision_out(v, b'e', digits, 0, out) }
+    unsafe { precision_out(v, b'g', digits, 1, "to_precision", out) }
 }
 
-/// `Float.to_fixed(digits)`: `digits` in `0..=100`.
+/// `Float.to_exponential(digits)`: `digits` in `0..=100`, otherwise a fault.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal) -> u8 {
+pub unsafe extern "C-unwind" fn msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal) {
     // SAFETY: forwarded caller contract.
-    unsafe { precision_out(v, b'f', digits, 0, out) }
+    unsafe { precision_out(v, b'e', digits, 0, "to_exponential", out) }
+}
+
+/// `Float.to_fixed(digits)`: `digits` in `0..=100`, otherwise a fault.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal) {
+    // SAFETY: forwarded caller contract.
+    unsafe { precision_out(v, b'f', digits, 0, "to_fixed", out) }
 }
 
 /// `Float.truncate_to_int()`: present flag, value through `out` only when present.
@@ -583,12 +581,8 @@ mod tests {
                 STATUS_OUT_OF_RANGE
             );
             let mut out = crate::string::NO_STR;
-            assert_eq!(msrt_float_to_fixed(1.005, 2, &mut out), STATUS_OK);
+            msrt_float_to_fixed(1.005, 2, &mut out);
             assert_eq!(crate::string::bytes(&out), b"1.00");
-            assert_eq!(
-                msrt_float_to_precision(1.0, 0, &mut out),
-                STATUS_INVALID_INPUT
-            );
             assert_eq!(msrt_float_truncate_to_int(-2.9, &mut n), 1);
             assert_eq!(n, -2);
             assert_eq!(msrt_float_truncate_to_int(9223372036854775808.0, &mut n), 0);

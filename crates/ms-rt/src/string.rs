@@ -1258,36 +1258,24 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
     }
 }
 
+/// Pads to `target` scalars with repeated `padding`; a short target or empty padding leaves the text unchanged.
+/// Output beyond the string limit faults like `concat`.
 unsafe fn pad(
     atstart: bool,
     s: *const StrVal,
     target: i64,
     padding: *const StrVal,
-    has_max: u8,
-    max: i64,
     out: *mut StrVal,
-) -> u8 {
+) {
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
-        if target < 0 || limit < 0 {
-            return STATUS_INVALID_INPUT;
-        }
-        let limit = (limit as u64).min(MAX_BYTES as u64) as usize;
         let text = bytes(s);
-        if text.len() > limit {
-            return STATUS_LIMIT_EXCEEDED;
-        }
-        let needed = target - scalar_count(s) as i64;
+        let needed = target as i128 - scalar_count(s) as i128;
         let padb = bytes(padding);
         if needed <= 0 || padb.is_empty() {
-            *out = cloned(&*s);
-            return STATUS_OK;
+            return cloned(&*s).write_to(out);
         }
         let needed = needed as usize;
-        if needed > limit - text.len() {
-            return STATUS_LIMIT_EXCEEDED;
-        }
         let pcount = scalar_count(padding);
         let (cycles, rem) = (needed / pcount, needed % pcount);
         let prefix_end = if rem > 0 {
@@ -1295,11 +1283,11 @@ unsafe fn pad(
         } else {
             0
         };
-        let remaining = limit as i128 - text.len() as i128 - prefix_end as i128;
-        if remaining < 0 || cycles as i128 > remaining / padb.len() as i128 {
-            return STATUS_LIMIT_EXCEEDED;
+        let total = text.len() as u128 + cycles as u128 * padb.len() as u128 + prefix_end as u128;
+        if total > MAX_BYTES as u128 {
+            fault::fault(b"string: limit exceeded");
         }
-        let mut b = Vec::with_capacity(text.len() + cycles * padb.len() + prefix_end);
+        let mut b = Vec::with_capacity(total as usize);
         if !atstart {
             b.extend_from_slice(text);
         }
@@ -1310,8 +1298,7 @@ unsafe fn pad(
         if atstart {
             b.extend_from_slice(text);
         }
-        *out = from_buf(b);
-        STATUS_OK
+        from_buf(b).write_to(out)
     }
 }
 
@@ -1320,12 +1307,10 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_start(
     s: *const StrVal,
     target: i64,
     padding: *const StrVal,
-    has_max: u8,
-    max: i64,
     out: *mut StrVal,
-) -> u8 {
+) {
     // SAFETY: forwarded contract.
-    unsafe { pad(true, s, target, padding, has_max, max, out) }
+    unsafe { pad(true, s, target, padding, out) }
 }
 
 #[unsafe(no_mangle)]
@@ -1333,12 +1318,10 @@ pub unsafe extern "C-unwind" fn msrt_string_pad_end(
     s: *const StrVal,
     target: i64,
     padding: *const StrVal,
-    has_max: u8,
-    max: i64,
     out: *mut StrVal,
-) -> u8 {
+) {
     // SAFETY: forwarded contract.
-    unsafe { pad(false, s, target, padding, has_max, max, out) }
+    unsafe { pad(false, s, target, padding, out) }
 }
 
 // ---------------------------------------------------------------------------
@@ -2414,10 +2397,11 @@ mod tests {
             assert_eq!(ret(|o| msrt_string_lower(st("ΟΔΟΣ"), o)), "οδος");
             let mut o = NO_STR;
             assert_eq!(
-                msrt_string_pad_start(st("7"), 3, st("ab"), 0, 0, &mut o),
-                STATUS_OK
+                ret(|o| msrt_string_pad_start(st("7"), 3, st("ab"), o)),
+                "ab7"
             );
-            assert_eq!(txt(&o), "ab7");
+            assert_eq!(ret(|o| msrt_string_pad_end(st("7"), -2, st("ab"), o)), "7");
+            assert_eq!(ret(|o| msrt_string_pad_end(st("7"), 4, st(""), o)), "7");
             assert_eq!(msrt_string_slice(st("héllo"), 1, -1, &mut o), STATUS_OK);
             assert_eq!(txt(&o), "éll");
             assert_eq!(
