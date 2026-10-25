@@ -43,6 +43,11 @@ with box.lock() as var guard:
 - Already locked: `lock()` faults "shared value is locked" in v1. Tasks switch only at waits, so this means a lock held across a wait, which is the bug to surface. Waiting instead (as Rust's `Mutex` does) needs a wait queue per box and is deferred.
 - Rejected: `lock` without `with` still compiles but the guard is a plain value; a diagnostic is out of scope for v1.
 
+## Worker and process messages (#1249)
+
+- A message type containing `Shared` is accepted today and silently copied by the JSON encoder, so the two sides diverge.
+- Stage 4 adds the checker rule the worker proposal already states: `WorkerGroup[In, Out]`, `worker_channel[Send, Receive]` and `ProcessGroup` messages that contain `Shared`, `Weak`, a resource handle, a closure or a `ref` are rejected with "send the value, not a handle to it".
+
 ## Components touched
 
 | Component | Change | Test |
@@ -67,6 +72,7 @@ with box.lock() as var guard:
 1. `with ... as var` (parser, checker, lowering) with fixtures. Gate: existing `with` fixtures unchanged.
 2. `lock`/`SharedGuard` in `shared.ms` plus the p13 e2e fixture (fails before, passes after).
 3. Migrate the stdlib sites, remove the public `take`/`put`, update docs.
+4. Reject `Shared` (and the other handles) in worker and process message types (#1249), with a reject fixture.
 Each stage runs `cargo fmt --all --check`, clippy, `cargo nextest run --workspace`, `make repo-check` and the conformance corpus; no platform-specific tests are touched.
 
 ## Open questions
