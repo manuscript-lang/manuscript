@@ -3,6 +3,7 @@
 use crate::Error;
 use ms_check::Program;
 use ms_check::hir::{Callable, ModuleHir};
+use ms_check::ownership::BorrowKind;
 use ms_check::types::{self as ct, Kind, Name, Subst};
 use ms_mir::ir::{FuncId, Module};
 use ms_mir::types::{CaseDef, IfaceDef, MethodSig, Ty as MTy};
@@ -162,10 +163,8 @@ pub struct Cx {
     pub mutated: std::collections::HashSet<crate::mutation::ParamKey>,
     /// The `make_fixture` factory and hooks type of each module with tests.
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
-    /// Bindings that are exclusive borrows of another place.
-    pub exclusive: Rc<std::collections::HashSet<usize>>,
-    /// Pattern and arm bindings that only borrow a part of their scrutinee.
-    pub read_borrows: Rc<std::collections::HashSet<usize>>,
+    /// Bindings that borrow a place another binding owns, and how.
+    pub borrows: Rc<HashMap<usize, BorrowKind>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
@@ -173,6 +172,16 @@ pub struct Cx {
 }
 
 impl Cx {
+    /// The binding is a `var` borrow: it lowers as a path into its origin.
+    pub fn exclusive(&self, uid: usize) -> bool {
+        self.borrows.get(&uid) == Some(&BorrowKind::Exclusive)
+    }
+
+    /// The binding is a `let` borrow of a place: it may point into its origin instead of copying.
+    pub fn shared(&self, uid: usize) -> bool {
+        self.borrows.get(&uid) == Some(&BorrowKind::Shared)
+    }
+
     /// Indexes every module of the program.
     pub fn new(program: &Program) -> Cx {
         let mut mods = HashMap::new();
@@ -207,8 +216,7 @@ impl Cx {
             contracts: HashMap::new(),
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
-            exclusive: program.exclusive_borrows.clone(),
-            read_borrows: program.read_borrows.clone(),
+            borrows: program.borrows.clone(),
             lenders: program.lenders.clone(),
             getters: program.getter_borrows.clone(),
         }

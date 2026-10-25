@@ -219,7 +219,7 @@ impl<'a> FnLower<'a> {
     fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
-            && self.cx.exclusive.contains(&b.uid)
+            && self.cx.exclusive(b.uid)
         {
             let alias = self.alias_chain(value)?;
             self.aliases.insert(b.uid, alias);
@@ -232,7 +232,7 @@ impl<'a> FnLower<'a> {
         }
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
-            && !b.mutable
+            && self.cx.shared(b.uid)
             && !x.own
             && self.ownership_checked()
             && !self.slotted.contains(&b.uid)
@@ -592,7 +592,7 @@ impl<'a> FnLower<'a> {
         let c = if binding.is_some() {
             let exclusive = binding
                 .and_then(|p| self.hir.pattern_binding(p))
-                .is_some_and(|b| self.cx.exclusive.contains(&b.uid));
+                .is_some_and(|b| self.cx.exclusive(b.uid));
             let found = if exclusive {
                 let (alias, found) = self.alias_accessor(cond)?;
                 accessor_alias = Some(alias);
@@ -638,7 +638,7 @@ impl<'a> FnLower<'a> {
                 .hir
                 .pattern_binding(p)
                 .ok_or_else(|| Error::new("if let without binding"))?;
-            if self.cx.exclusive.contains(&bnd.uid) {
+            if self.cx.exclusive(bnd.uid) {
                 // `if var`: the payload is the entry itself, not a copy.
                 if o.own {
                     self.drop_value(o.v);

@@ -112,17 +112,14 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// Bindings that are exclusive (`var`) borrows of another value, for lowering. Filled when
+    /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
     /// the ownership pass ran (every program that type checks).
-    pub exclusive_borrows: Rc<HashSet<usize>>,
+    pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
-    /// file and node, with the fields. Filled together with `exclusive_borrows`.
+    /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// Pattern and match-arm bindings that only borrow a part of a non-`Copy` scrutinee, for
-    /// lowering. Filled together with `exclusive_borrows`.
-    pub read_borrows: Rc<HashSet<usize>>,
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
-    /// Filled together with `exclusive_borrows`.
+    /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
 }
 
