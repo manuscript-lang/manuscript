@@ -41,7 +41,11 @@ pub struct InspectionRows {
 pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
     let mut facts = Facts::default();
     let mut id_to_key: HashMap<String, String> = HashMap::new();
-    for e in &inspection.entities {
+    for e in inspection
+        .entities
+        .iter()
+        .filter(|e| !e.file.starts_with("@std/"))
+    {
         let key = fact_key(&e.file, &e.kind, &e.name);
         facts.entities.insert(
             key.clone(),
@@ -85,7 +89,11 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
             )
         })
         .collect();
-    for module in &program.modules {
+    for module in program.modules.iter().filter(|m| !m.is_standard()) {
+        facts
+            .imports
+            .entry(module.file.as_str().to_string())
+            .or_default();
         for import in &module.imports {
             append_unique(
                 facts

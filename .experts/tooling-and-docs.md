@@ -2,6 +2,14 @@
 
 The Go debugger (embedded Delve, DAP, scripted `ms debug`) and Go toolchain bundling are gone. `ms emit` now prints MIR, not standalone Go source. The native profiler `ms profile` replaced the debugger; lessons about those Go-era tools were removed with them.
 
+### Project review must keep library internals behind their boundary
+
+Verified: inspection deliberately includes bundled standard source modules. Feeding every inspection entity into a project review makes even the hello project show hundreds of library entities before its own entry point. Review facts and diagrams exclude standard declarations while retaining calls into them as external boundaries and imports as dependencies. An unscoped call view also needs roots for disconnected recursive groups: selecting only declarations with no callers silently loses them.
+
+Apply when: changing inspection consumers, review facts, or diagram roots.
+Evidence: [fact collection](../crates/ms-tooling/src/collect.rs), [CLI regressions](../crates/ms-cli/tests/review_diagram.rs), [view regressions](../crates/ms-tooling/tests/review.rs), [output contract](../documentation/developer-tooling/implementation.md#review-report).
+Verify: a program importing process arguments has one project entry point in its review and keeps the standard call as a diagram leaf; recursive groups remain visible without `--entity`; an explanation's stable ID selects the same finding in a diff-marked JSON diagram.
+
 ### Readable formatting needs paragraphs while retaining inline guards
 
 Decision: the user's formatter request keeps inline `if` bodies and introduces natural reading boundaries around declarations, guard sections, substantial control flow. Later feedback in [issue #102](https://github.com/manuscript-lang/manuscript/issues/102) requested authored spacing between match arms and compact short lists and callback signatures. The latest user direction supersedes authored spacing: discard authored blank lines and derive paragraphs from syntax. This also requires wrapping complex expressions; paragraph breaks alone leave dense calls and conditions unreadable. Do not expand inline bodies to create readability or guess business stages from adjacent call names.

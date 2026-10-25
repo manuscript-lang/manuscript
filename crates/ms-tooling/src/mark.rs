@@ -2,6 +2,7 @@
 
 use crate::diff::atoi;
 use crate::facts::Facts;
+use crate::json::Json;
 use crate::report::REPORT_FORMAT;
 use crate::review::{Finding, TIER_INTERNAL};
 use crate::tree::Node;
@@ -47,15 +48,11 @@ fn walk(n: &mut Node, by_key: &HashMap<&str, String>, lines: &BTreeMap<&str, BTr
     }
 }
 
-/// Renders one finding's full score derivation, evidence, and callers.
-/// `selector` is the display number from LOOK HERE FIRST or a stable finding id.
-pub fn explain(findings: &[Finding], head: &Facts, selector: &str) -> Result<String, String> {
+fn select<'a>(findings: &'a [Finding], selector: &str) -> Result<(&'a Finding, usize), String> {
     let attention: Vec<&Finding> = findings
         .iter()
         .filter(|f| f.tier != TIER_INTERNAL)
         .collect();
-    let found: &Finding;
-    let mut number = 0;
     if let Some(n) = atoi(selector) {
         if n < 1 || n > attention.len() as i64 {
             return Err(format!(
@@ -63,23 +60,80 @@ pub fn explain(findings: &[Finding], head: &Facts, selector: &str) -> Result<Str
                 attention.len()
             ));
         }
-        found = attention[(n - 1) as usize];
-        number = n;
-    } else {
-        found = findings
-            .iter()
-            .find(|f| f.id == selector || f.entity == selector)
-            .ok_or_else(|| {
-                format!(
-                    "no finding {selector:?}; pass a number from LOOK HERE FIRST or a finding id"
-                )
-            })?;
-        for (i, f) in attention.iter().enumerate() {
-            if f.id == found.id {
-                number = i as i64 + 1;
-            }
-        }
+        return Ok((attention[(n - 1) as usize], n as usize));
     }
+    let found = if let Some(found) = findings.iter().find(|f| f.id == selector) {
+        found
+    } else {
+        let matches: Vec<&Finding> = findings.iter().filter(|f| f.entity == selector).collect();
+        if matches.len() > 1 {
+            return Err(format!(
+                "finding {selector:?} is ambiguous; pass a number from LOOK HERE FIRST or a full finding id"
+            ));
+        }
+        matches.first().copied().ok_or_else(|| {
+            format!("no finding {selector:?}; pass a number from LOOK HERE FIRST or a finding id")
+        })?
+    };
+    let number = attention
+        .iter()
+        .position(|f| f.id == found.id)
+        .map_or(0, |i| i + 1);
+    Ok((found, number))
+}
+
+fn diagram_available(found: &Finding, head: &Facts) -> bool {
+    head.entities
+        .get(&found.id)
+        .is_some_and(|f| f.kind == "fn" || f.kind == "method" || f.kind == "test")
+}
+
+/// One finding and the source identities needed to investigate it.
+pub fn explain_json(findings: &[Finding], head: &Facts, selector: &str) -> Result<Json, String> {
+    let (found, number) = select(findings, selector)?;
+    let callers = head
+        .entities
+        .values()
+        .filter(|f| f.calls.contains(&found.id))
+        .map(|f| {
+            ms_json::obj([
+                ("id", Json::str(&f.key)),
+                ("entity", Json::str(&f.name)),
+                ("file", Json::str(&f.file)),
+                ("line", Json::from(f.line)),
+            ])
+        })
+        .collect();
+    Ok(ms_json::obj([
+        ("format", Json::int(REPORT_FORMAT)),
+        (
+            "number",
+            if number == 0 {
+                Json::Null
+            } else {
+                Json::from(number)
+            },
+        ),
+        ("finding", found.to_json()),
+        ("callers", Json::Arr(callers)),
+        (
+            "diagram",
+            if diagram_available(found, head) {
+                ms_json::obj([
+                    ("view", Json::str("flow")),
+                    ("entity", Json::str(&found.id)),
+                ])
+            } else {
+                Json::Null
+            },
+        ),
+    ]))
+}
+
+/// Renders one finding's full score derivation, evidence, and callers.
+/// `selector` is the display number from LOOK HERE FIRST or a stable finding id.
+pub fn explain(findings: &[Finding], head: &Facts, selector: &str) -> Result<String, String> {
+    let (found, number) = select(findings, selector)?;
     let mut b = String::new();
     let title = if number > 0 {
         format!("EXPLAIN #{number} {}", found.entity)
@@ -122,10 +176,14 @@ pub fn explain(findings: &[Finding], head: &Facts, selector: &str) -> Result<Str
     for c in &callers {
         let _ = writeln!(b, "  {c}");
     }
-    let _ = write!(
-        b,
-        "\nNEXT\n  ms diagram <project> --view flow --entity {} --diff <diff>\n",
-        found.entity
-    );
+    if diagram_available(found, head) {
+        let entity = found.id.replace('\'', "'\\''");
+        let _ = write!(
+            b,
+            "\nNEXT\n  ms diagram <project> --view flow --entity '{entity}' --diff <diff>\n"
+        );
+    } else {
+        b.push_str("\nNEXT\n  Inspect the declaration in the diff and its callers; no flow exists for this entity in the current tree.\n");
+    }
     Ok(b)
 }

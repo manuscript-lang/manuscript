@@ -187,11 +187,6 @@ fn parse_review(args: &[String], io: &mut Io) -> Result<ReviewRequest, i32> {
             io,
             "--json and --format cannot be combined; --json is the JSON report",
         ));
-    } else if json && !explain.is_empty() {
-        return Err(usage_error(
-            io,
-            "--explain prints text and cannot be combined with --json",
-        ));
     } else if json {
         format = "json".to_string();
     } else if format.is_empty() {
