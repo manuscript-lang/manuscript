@@ -4,6 +4,6 @@ from "@std/processes.ms" import ProcessGroup
 
 export def main() -> Int:
     let base = 3
-    with ProcessGroup[Int]() as group:
+    with let group = ProcessGroup[Int]():
         let child = group.spawn(lambda ch: base)
     return 0

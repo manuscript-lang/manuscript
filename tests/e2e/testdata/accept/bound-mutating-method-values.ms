@@ -68,4 +68,4 @@ test "a builder method value appends to the builder":
     let append = sb.append
     append("a")
     append("b")
-    sb.freeze() | try expect_equal("ab")
+    sb.build() | try expect_equal("ab")

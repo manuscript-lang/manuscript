@@ -254,7 +254,9 @@ impl<'a> FnLower<'a> {
                 (self.hir.resolution(a), self.hir.resolution(b)),
                 (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
             ),
-            (ExprKind::Number(x), ExprKind::Number(y)) => x == y,
+            (ExprKind::Number(x), ExprKind::Number(y)) => {
+                ms_syntax::number::canonical(x.as_str()) == ms_syntax::number::canonical(y.as_str())
+            }
             _ => false,
         }
     }
@@ -650,8 +652,8 @@ impl<'a> FnLower<'a> {
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
         let mt = self.ty_of(old);
-        if name == "freeze" {
-            return self.freeze_builder(old, result_ty);
+        if name == "build" {
+            return self.build_builder(old, result_ty);
         }
         if name == "add_default_from" {
             return self.add_default_from(old, decl, args, copy_result);
@@ -664,8 +666,8 @@ impl<'a> FnLower<'a> {
                 "msrt_list_insert_copy".to_string()
             }
             (_, "append") if mt == MTy::BYTES && text => "msrt_strbuilder_append".to_string(),
-            // `BytesBuilder.concat` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
-            (_, "concat") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
+            // `BytesBuilder.append_bytes` mutates in place; `msrt_bytes_concat` is the pure `Bytes.concat`.
+            (_, "append_bytes") if mt == MTy::BYTES => "msrt_bytes_extend".to_string(),
             _ => crate::rtcall::method_symbol(self.b.m, mt, name)
                 .ok_or_else(|| Error::new(format!("unsupported mutator {name}")))?,
         };
@@ -769,14 +771,10 @@ impl<'a> FnLower<'a> {
         Ok((new, result))
     }
 
-    /// `builder.freeze()`: a copy of the accumulated value; freezing again yields the same.
-    fn freeze_builder(
-        &mut self,
-        old: Value,
-        result_ty: MTy,
-    ) -> Result<(Value, Option<Val>), Error> {
+    /// `builder.build()`: a copy of the accumulated value; building again yields the same.
+    fn build_builder(&mut self, old: Value, result_ty: MTy) -> Result<(Value, Option<Val>), Error> {
         if result_ty == MTy::STR {
-            // The runtime consumes the buffer it freezes: freeze a copy.
+            // The runtime consumes the buffer it builds from: build from a copy.
             let copy = self.owned(Val { v: old, own: false });
             let slot = self.put_slot(copy);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;

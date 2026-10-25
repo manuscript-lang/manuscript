@@ -6,4 +6,4 @@ from "@std/collections.ms" import (
     ListBuilder,
 )
 
-def count() -> Int: ListBuilder[Int]().freeze().length() + List[Int]().length()
+def count() -> Int: ListBuilder[Int]().build().length() + List[Int]().length()

@@ -9,7 +9,7 @@ test "numbers radix and signed boundaries":
     try expect_equal((try parse_int("-9223372036854775808", 10)), -9223372036854775808)
     try expect_equal(255.to_string_radix(16), "ff")
     try expect_equal((try parse_float("-1.25e2")), -125.0)
-    try expect_equal((try 1.25.to_fixed(2)), "1.25")
+    try expect_equal(1.25.to_fixed(2), "1.25")
     try expect_equal(1.9.truncate_to_int(), some(1))
 
 test "numbers reject whitespace separators overflow and invalid radix":

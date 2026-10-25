@@ -114,7 +114,7 @@ export def main() -> Int:
     if let acquired = network().serve(
         address: f"127.0.0.1:{args.get(0)}", handler: handler
     ):
-        with acquired as server:
+        with let server = acquired:
             let _ignored = server.wait()
             return 0
 

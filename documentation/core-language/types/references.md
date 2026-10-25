@@ -9,10 +9,10 @@ Strings, records, lists, maps, sets, and alternatives are values. Scalars and re
 
 ## Borrowing with `ref`
 
-`ref` marks a borrow wherever one is written. It is a second-class type: allowed in a function's result type and in local bindings, never in a field, element, type argument, function type or escaping closure.
+A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. `ref` is written in one place, before a function's result type, never in a binding, field, element, type argument, function type or escaping closure.
 
-- A function that returns part of a parameter or the receiver declares it: `def list() -> ref List[Int]`, `def trim() -> ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
-- A binding borrows a place with `let ref x = a.b` or `var ref x = xs[i]`; `for ref e in xs:` and `match ref v:` say the same for loop variables and payloads. Today the marker documents the borrow and is rejected on an owned value; an unmarked place binding still borrows.
+- A function that returns part of a parameter or the receiver declares it: `def list() -> ref List[Int]`, `def trim() -> ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. Every path of a `ref` function returns such a part (or `none`): returning a new value, a `try` failure, or a borrow of a temporary built inside the function is rejected, because the caller would hold a borrow of something freed when the function returns. Drop `ref` to return owned values. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
+- A binding of a place (`let x = a.b`, `var x = xs[i]`), a loop variable and a match payload borrow without a marker; `let ref`, `for ref` and `match ref` are rejected.
 - A `ref` result freezes every borrowable argument of the call until its last use, not only the one it came from.
 - An interface operation declares `ref` when implementations may lend; an implementation of a `ref` operation may lend or own, while an owning operation cannot be implemented by a lender.
 
@@ -49,10 +49,11 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, `take()` it out, change the local, and `put` it back. One holder at a time can have it out. A second `take`, or a `get`, while it is out is a fault, so the single mutable borrow is checked when the program runs. Keep `take` and `put` in one function with no early exit between them, since only `put` returns the value. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner.
+To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. A task that locks a box it already holds waits forever. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
-```manuscript
-from "@std/shared.ms" import share, Shared
+```
+import {share, Shared} from "@std/shared.ms"
+import {lock} from "@std/sync.ms"
 
 type Counter:
     values: List[Int]
@@ -62,9 +63,8 @@ impl Counter:
         self.values.append(1)
 
 def bump(shared: Shared[Counter]) -> Unit:
-    var counter = shared.take()
-    counter.bump()
-    shared.put(counter)
+    with var guard = lock(shared):
+        guard.value.bump()
 ```
 
 ## References inside other values

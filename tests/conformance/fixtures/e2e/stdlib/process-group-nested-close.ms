@@ -18,7 +18,7 @@ def leaf(ch: Channel[Unit, Unit]) -> Int:
     return 0
 
 def middle(ch: Channel[Unit, Unit]) -> Int:
-    with ProcessGroup[Int]() as group:
+    with let group = ProcessGroup[Int]():
         var g = group.spawn(leaf).get()
         var spin = 0
         while True:
@@ -26,7 +26,7 @@ def middle(ch: Channel[Unit, Unit]) -> Int:
     return 0
 
 def top(ch: Channel[Unit, Unit]) -> Int:
-    with ProcessGroup[Int]() as group:
+    with let group = ProcessGroup[Int]():
         var m = group.spawn(middle).get()
         var c = ch
         c.send(())
@@ -37,7 +37,7 @@ def top(ch: Channel[Unit, Unit]) -> Int:
 
 export def main() -> Int:
     filesystem().remove(marker())
-    with ProcessGroup[Int, Unit, Unit]() as group:
+    with let group = ProcessGroup[Int, Unit, Unit]():
         var c = group.spawn(top).get()
         c.channel.receive()
         c.result().get()

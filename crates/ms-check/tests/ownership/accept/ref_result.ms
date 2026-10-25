@@ -14,5 +14,5 @@ def len(line: String) -> Int:
     return t.length()
 
 def grow(b: Box) -> Int:
-    let ref xs = b.items
+    let xs = b.items
     return xs.length()

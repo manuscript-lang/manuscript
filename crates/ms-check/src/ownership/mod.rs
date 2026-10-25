@@ -164,6 +164,8 @@ pub struct Ownership {
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
+    /// `ref` functions that can hand back a borrow on every path, by module file and node.
+    pub lenders: HashSet<Key>,
 }
 
 impl Ownership {
@@ -358,6 +360,7 @@ impl Hir<'_> {
         let mut exclusive = HashSet::new();
         let mut read_borrows = HashSet::new();
         let mut getters = HashMap::new();
+        let mut lenders = HashSet::new();
         for (c, out) in callables.iter().zip(outcomes) {
             let held: Vec<usize> = out
                 .facts
@@ -379,6 +382,9 @@ impl Hir<'_> {
                     })
                     .map(|f| f.binding.uid),
             );
+            if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
+                lenders.insert((c.module.file, c.id()));
+            }
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);
             }
@@ -391,6 +397,7 @@ impl Hir<'_> {
             exclusive,
             read_borrows,
             getters,
+            lenders,
         }
     }
 }

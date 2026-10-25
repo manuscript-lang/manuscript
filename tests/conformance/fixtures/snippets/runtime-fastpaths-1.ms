@@ -25,7 +25,7 @@ export def main() -> Int:
 
     b.append(f"{9223372036854775807}|{-9223372036854775807}|")
 
-    let joined = b.freeze()
+    let joined = b.build()
     say(f"{joined}\n")
 
     var total = 0

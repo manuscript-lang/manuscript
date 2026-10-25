@@ -23,7 +23,7 @@ impl ReadStream for Chunks:
             self.index += 1
             return ok(some(part.clone()))
 
-        if let cause = self.failure: return error(cause)
+        if let cause = self.failure: return error(cause.clone())
 
         return ok(none)
 
@@ -128,10 +128,10 @@ test "multi-byte scalars survive every chunk split":
 
 def invalid_bytes() -> Bytes:
     var builder = BytesBuilder()
-    builder.concat("data: ".to_bytes())
+    builder.append_bytes("data: ".to_bytes())
     builder.append(255)
-    builder.concat("\n\n".to_bytes())
-    return builder.freeze()
+    builder.append_bytes("\n\n".to_bytes())
+    return builder.build()
 
 def is_case(result: Result[List[SseEvent], SseError], want: SseError) -> Bool:
     if not result.is_error(): return False
@@ -222,9 +222,7 @@ test "reader reports truncation limits and read failures":
     let limited = next_event(var big)
     try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
 
-    var broken = try reader(
-        stream(["data: a\n\n".to_bytes()], some(IoError.Closed))
-    )
+    var broken = try reader(stream(["data: a\n\n".to_bytes()], some(IoError.Closed)))
     let _event = try next_event(var broken)
     let failed = next_event(var broken)
     try expect_false(failed.is_ok())

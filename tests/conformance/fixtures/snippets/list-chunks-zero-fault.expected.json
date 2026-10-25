@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "",
+    "stderr": "List.chunks: size must be positive, found 0\n  at list-chunks-zero-fault.ms:7 in main\n"
+  }
+}

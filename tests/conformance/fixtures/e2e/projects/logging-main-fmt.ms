@@ -14,7 +14,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
     let bindings = Service("api")
 
     if (mode == "file" or mode == "missing"):
-        with try file_transport(path) as transport:
+        with let transport = try file_transport(path):
             let logger = try create(transport, timestamp: False)
                 | try bind(bindings)
             try emit(logger)
@@ -22,7 +22,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
 
         return ok(())
 
-    with stdout_transport() as transport:
+    with let transport = stdout_transport():
         if mode == "limit":
             let logger = try create(transport, max_bytes: 1)
             try logger.info("too large")
@@ -42,7 +42,7 @@ def exercise(mode: String, path: String) -> Result[Unit, Error]:
                 try emit(logger)
                 try logger.flush()
 
-    with stdout_transport() as transport:
+    with let transport = stdout_transport():
         let logger = try create(transport, timestamp: False)
         try logger.info("still open")
 

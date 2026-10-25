@@ -60,7 +60,7 @@ impl Closeable for Resource:
         self.events.append(value: 10)
 
 def leave(resource: Resource) -> Unit:
-    with resource as local:
+    with let local = resource:
         return
 
 export def first_resource(resource: Resource) -> Closeable:
@@ -69,7 +69,7 @@ export def first_resource(resource: Resource) -> Closeable:
 test "first local cleanup":
     let events = ListBuilder[Int]()
     leave(Resource(events))
-    events.freeze().get(index: 0) | try expect_equal(10)
+    events.build().get(index: 0) | try expect_equal(10)
 
 export def mixed[T: Read[Int]](value: T, concrete: Item) -> Int:
     return value.get() + concrete.get()

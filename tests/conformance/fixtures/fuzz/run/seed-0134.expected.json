@@ -4,7 +4,7 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "l1 = [11, 19] len 2\ni2 = -8\nl3 = [-25, -1, -29, -14] len 4\nfact(16) = 20922789888000\nf4 = 859.301\nf5 = 2219210.998677\ni6 = -8\ns7 = [brace{s}emoji 😀line\nbreak]\ns8 = [brace{s}emoji 😀line\nbreak37:Tab\there]\n0 19 true sum 19\ns9 = [brace{s}emoji 😀line\nbreak37:Tab\therebeta]\ngcd(1411, 2114) = 1\ns10 = [ms28:gammahéllo]\ns11 = [8:ms28:gammahéllo]\n",
+    "stdout": "l1 = [11, 19] len 2\ni2 = -8\nl3 = [-25, -1, -29, -14] len 4\nfact(16) = 20922789888000\nf4 = 859.301\nf5 = 2219210.998677\ni6 = -8\ns7 = [brace{s}emoji 😀line\nbreak]\ns8 = [brace{s}emoji 😀line\nbreak37:Tab\there]\n0 19 true sum 19\ns9 = [brace{s}emoji 😀line\nbreak37:Tab\therebbrace{s}emoji 😀line\nbreak37:Tab\thereebrace{s}emoji 😀line\nbreak37:Tab\theretbrace{s}emoji 😀line\nbreak37:Tab\thereabrace{s}emoji 😀line\nbreak37:Tab\there]\ngcd(1411, 2114) = 1\ns10 = [ms28:gammahéllo]\ns11 = [8:ms28:gammahéllo]\n",
     "stderr": ""
   }
 }

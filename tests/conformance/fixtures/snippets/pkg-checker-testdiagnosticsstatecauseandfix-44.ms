@@ -14,6 +14,6 @@ def mk() -> Result[R, Error]:
     return ok(R(n: 1))
 
 def f() -> Int:
-    with mk() as x:
+    with let x = mk():
         return 1
     return 0

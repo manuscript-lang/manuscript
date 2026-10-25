@@ -3,7 +3,7 @@ diag parse 2:1:40 end=2:7:46 fix=- "imports read: from \x22path.ms\x22 import na
 diag parse 3:1:75 end=3:7:81 fix=- "imports read: from \x22path.ms\x22 import name, other"
 diag parse 4:1:120 end=4:7:126 fix=- "imports read: from \x22path.ms\x22 import name, other"
 diag parse 13:14:354 end=- fix=- "unknown text escape \x5c{; valid escapes are \x5cn \x5ct \x5cr \x5c\x5c \x5c\x22 \x5c{ \x5c} and \x5cu{H}"
-diag parse 19:1:496 end=19:3:498 fix=19:1:496>19:3:498="def" "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
-diag parse 25:8:624 end=25:10:626 fix=25:8:624>25:10:626="def" "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
+diag parse 19:1:495 end=19:3:497 fix=19:1:495>19:3:497="def" "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
+diag parse 25:8:623 end=25:10:625 fix=25:8:623>25:10:625="def" "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
 omitted []
 recovered []

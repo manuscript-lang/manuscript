@@ -121,6 +121,9 @@ pub struct Program {
     /// Pattern and match-arm bindings that only borrow a part of a non-`Copy` scrutinee, for
     /// lowering. Filled together with `exclusive_borrows`.
     pub read_borrows: Rc<HashSet<usize>>,
+    /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
+    /// Filled together with `exclusive_borrows`.
+    pub lenders: Rc<HashSet<(Name, NodeId)>>,
 }
 
 /// A body-check result retained from an inference probe.

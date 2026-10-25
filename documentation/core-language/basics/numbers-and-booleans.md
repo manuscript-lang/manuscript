@@ -14,7 +14,7 @@ let price = 12.50d
 let active = True
 ```
 
-Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
@@ -40,6 +40,8 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 def literals() -> Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
+    let mask: Int = 0xFF_00
+    let flags: Int = 0b1010_0101
     let precise: Decimal = 1e3d
     # Rejected: an Int token does not become Float from context.
     let mismatch: Float = 1

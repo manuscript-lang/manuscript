@@ -2,7 +2,7 @@
 //! `BytesBuilder`): shared handles that accumulate a value.
 //!
 //! A builder is a `Shared` cell holding `{items, sealed}`. Copies of the handle see every
-//! append or add, and `freeze` seals the cell so later changes fault with "builder is sealed".
+//! append or add, and `build` seals the cell so later changes fault with "builder is sealed".
 
 use crate::Error;
 use crate::func::{FnLower, Val};
@@ -110,7 +110,7 @@ impl<'a> FnLower<'a> {
         self.b.switch_to(good);
     }
 
-    /// A builder method (`append`, `add`, `freeze`) on the handle `handle`.
+    /// A builder method (`append`, `add`, `build`) on the handle `handle`.
     pub(crate) fn builder_call(
         &mut self,
         name: &str,
@@ -131,8 +131,8 @@ impl<'a> FnLower<'a> {
         };
         let items = field(self, 0);
         let sealed = field(self, 1);
-        if name == "freeze" {
-            // Seal, then hand out a copy: the builder keeps its items for a second freeze.
+        if name == "build" {
+            // Seal, then hand out a copy: the builder keeps its items for a second build.
             let yes = self.b.bconst(true);
             self.b.emit(Op::Store, &[sealed, yes], Imm::None, None);
             let cur = self
@@ -220,6 +220,13 @@ impl<'a> FnLower<'a> {
                 let v = self
                     .b
                     .emit(Op::Load, &[value], Imm::Ty(value_ty), Some(value_ty))
+                    .expect("load");
+                Ok(Val { v, own: false })
+            }
+            "locked" => {
+                let v = self
+                    .b
+                    .emit(Op::Load, &[taken], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
                     .expect("load");
                 Ok(Val { v, own: false })
             }

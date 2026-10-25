@@ -188,7 +188,7 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
         if c == "": return error(flow_invalid(flow, "unterminated string"))
 
         if c == quote:
-            result.append(whitespace.freeze())
+            result.append(whitespace.build())
             whitespace = StringBuilder()
 
             if quote == "'" and peek(flow) == "'":
@@ -196,7 +196,7 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
                 result.append("'")
                 continue
 
-            return ok(result.freeze())
+            return ok(result.build())
 
         if c == "\n":
             whitespace = StringBuilder()
@@ -207,7 +207,7 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
             whitespace.append(c)
             continue
 
-        result.append(whitespace.freeze())
+        result.append(whitespace.build())
         whitespace = StringBuilder()
 
         if c != "\\" or quote == "'":
@@ -862,7 +862,7 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
         builder.append(separator)
         index += 1
 
-    var result = builder.freeze()
+    var result = builder.build()
 
     if mode != "+":
         let final_break = result.ends_with("\n")
@@ -949,7 +949,7 @@ def block_value(
                 probe += 1
                 context.index = probe
 
-            remainder = joined.freeze()
+            remainder = joined.build()
 
         result = try inline_value(var context, remainder, depth)
     else:
@@ -984,7 +984,7 @@ def pad(width: Int) -> String:
         builder.append(" ")
         spaces -= 1
 
-    return builder.freeze()
+    return builder.build()
 
 # Columns of the nested sequence levels opened by consecutive compact `- ` indicators.
 def nested_columns(line: String, base: Int) -> List[Int]:
@@ -1236,11 +1236,7 @@ export def parse(
         YamlError.LimitExceeded
     )
 
-    var normalized = (
-        text
-        .replace("\r\n", "\n", text.byte_length())
-        .replace("\r", "\n", text.byte_length())
-    )
+    var normalized = (text.replace("\r\n", "\n").replace("\r", "\n"))
     if normalized.starts_with(f"\u{feff}"): normalized = (
         normalized
         .slice(1, normalized.scalar_length())
@@ -1356,7 +1352,7 @@ def quote_text(text: String) -> String:
         else: result.append(c)
 
     result.append("\"")
-    return result.freeze()
+    return result.build()
 
 def format_key(key: String) -> String:
     var plain = key != ""
@@ -1452,7 +1448,7 @@ export def stringify(
         let text = try scalar_text(value.clone())
         out.append(text.concat("\n"))
 
-    let text = out.freeze()
+    let text = out.build()
     if not within(text.byte_length(), max_bytes): return error(YamlError.LimitExceeded)
 
     return ok(text)

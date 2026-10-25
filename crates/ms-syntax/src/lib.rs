@@ -7,6 +7,7 @@ pub mod diag;
 pub mod dump;
 pub mod format;
 pub mod lexer;
+pub mod number;
 pub mod parser;
 pub mod partial;
 pub mod pos;

@@ -56,6 +56,55 @@ impl Bytes:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     def decode_utf8() -> Optional[String]: ...
 
+    # Reads one signed byte at `at`; an offset whose byte is missing returns BinaryError.OutOfRange.
+    # Offsets are absolute: a negative `at` is out of range. Example: `Bytes([255]).int8(0)` is `ok(-1)`.
+    def int8(at: Int) -> Result[Int8, BinaryError]: ...
+
+    # Reads one unsigned byte at `at` as an Int (0 through 255).
+    def uint8(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int16_le(at: Int) -> Result[Int16, BinaryError]: ...
+
+    # Reads an unsigned 16-bit little-endian integer from two bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
+    def uint16_le(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int16_be(at: Int) -> Result[Int16, BinaryError]: ...
+
+    # Reads an unsigned 16-bit big-endian integer from two bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
+    def uint16_be(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int32_le(at: Int) -> Result[Int32, BinaryError]: ...
+
+    # Reads an unsigned 32-bit little-endian integer from four bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
+    def uint32_le(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int32_be(at: Int) -> Result[Int32, BinaryError]: ...
+
+    # Reads an unsigned 32-bit big-endian integer from four bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
+    def uint32_be(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int64_le(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def int64_be(at: Int) -> Result[Int, BinaryError]: ...
+
+    # Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def float32_le(at: Int) -> Result[Float32, BinaryError]: ...
+
+    # Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def float32_be(at: Int) -> Result[Float32, BinaryError]: ...
+
+    # Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def float64_le(at: Int) -> Result[Float, BinaryError]: ...
+
+    # Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def float64_be(at: Int) -> Result[Float, BinaryError]: ...
+
 # Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 export def values(data: Bytes) -> List[Int]: ...
 
@@ -63,48 +112,64 @@ export def values(data: Bytes) -> List[Int]: ...
 export type BytesBuilder: ...
 
 impl BytesBuilder:
-    # Appends one unsigned byte; values outside 0 through 255 or writes after freeze fault.
+    # Appends one unsigned byte; values outside 0 through 255 or writes after build fault.
     def append(value: Int) -> Unit: ...
 
     # Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults.
-    def concat(values: Bytes) -> Unit: ...
+    def append_bytes(values: Bytes) -> Unit: ...
 
-    # Seals the builder and returns its immutable bytes; repeated freeze returns the same value.
-    def freeze() -> Bytes: ...
+    # Appends one signed byte.
+    def append_int8(value: Int8) -> Unit: ...
 
-# Errors returned when a byte range or numeric representation is invalid.
+    # Appends a signed 16-bit little-endian integer.
+    def append_int16_le(value: Int16) -> Unit: ...
+
+    # Appends an unsigned 16-bit little-endian integer; a value outside 0 through 65535 faults.
+    def append_uint16_le(value: Int) -> Unit: ...
+
+    # Appends a signed 16-bit big-endian integer.
+    def append_int16_be(value: Int16) -> Unit: ...
+
+    # Appends an unsigned 16-bit big-endian integer; a value outside 0 through 65535 faults.
+    def append_uint16_be(value: Int) -> Unit: ...
+
+    # Appends a signed 32-bit little-endian integer.
+    def append_int32_le(value: Int32) -> Unit: ...
+
+    # Appends an unsigned 32-bit little-endian integer; a value outside 0 through 4294967295 faults.
+    def append_uint32_le(value: Int) -> Unit: ...
+
+    # Appends a signed 32-bit big-endian integer.
+    def append_int32_be(value: Int32) -> Unit: ...
+
+    # Appends an unsigned 32-bit big-endian integer; a value outside 0 through 4294967295 faults.
+    def append_uint32_be(value: Int) -> Unit: ...
+
+    # Appends a signed 64-bit little-endian integer.
+    def append_int64_le(value: Int) -> Unit: ...
+
+    # Appends a signed 64-bit big-endian integer.
+    def append_int64_be(value: Int) -> Unit: ...
+
+    # Appends an IEEE 754 binary32 little-endian float.
+    def append_float32_le(value: Float32) -> Unit: ...
+
+    # Appends an IEEE 754 binary32 big-endian float.
+    def append_float32_be(value: Float32) -> Unit: ...
+
+    # Appends an IEEE 754 binary64 little-endian float.
+    def append_float64_le(value: Float) -> Unit: ...
+
+    # Appends an IEEE 754 binary64 big-endian float.
+    def append_float64_be(value: Float) -> Unit: ...
+
+    # Seals the builder and returns its immutable bytes; repeated build returns the same value.
+    def build() -> Bytes: ...
+
+# Returned when a fixed-width read crosses the end of the bytes.
 export type BinaryError:
-    # Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
-    case InvalidInput
-    # A read crosses the byte buffer or a number cannot fit the requested signedness/width or result type.
+    # The read starts before the buffer or needs bytes past its end.
     case OutOfRange
-
-# Reads a 64-bit floating-point value (binary64, 8 bytes) at `offset` using the selected byte order.
-export def read_float(
-    data: Bytes,
-    offset: Int,
-    little_endian: Bool
-) -> Result[Float, BinaryError]: ...
-
-# Reads an integer of `width` bytes. Signed values use two's-complement encoding.
-export def read_integer(
-    data: Bytes,
-    offset: Int,
-    width: Int,
-    signed: Bool,
-    little_endian: Bool
-) -> Result[Int, BinaryError]: ...
-
-# Encodes a 64-bit floating-point value (binary64) as 8 bytes using the selected byte order.
-export def write_float(value: Float, little_endian: Bool) -> Bytes: ...
-
-# Encodes an integer into `width` bytes, returning an error when it does not fit.
-export def write_integer(
-    value: Int,
-    width: Int,
-    signed: Bool,
-    little_endian: Bool
-) -> Result[Bytes, BinaryError]: ...
 
 impl Error for BinaryError:
     # Returns a binary-prefixed diagnostic without echoing source bytes or numeric input.

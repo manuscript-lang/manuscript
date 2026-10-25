@@ -7,6 +7,6 @@ def work(enabled: Bool) -> Int:
         run(count)
     for item in [1, 2]:
         run(item)
-    with acquire() as resource:
+    with let resource = acquire():
         run(resource)
     return count

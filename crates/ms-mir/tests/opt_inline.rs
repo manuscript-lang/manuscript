@@ -304,7 +304,9 @@ fn constant_bonus_survives_continuation_splits_without_marking_call_results_cons
 #[test]
 fn closures_and_methods_are_not_inline_candidates_and_survive() {
     let m = inlined(include_str!("fixtures-opt/dead.mir"));
-    assert!(has_func(&m, "add"));
+    // The closure reaches its call through an owning block parameter; it is still known there,
+    // so its code is inlined and removed.
+    assert!(!has_func(&m, "add"));
     assert!(has_func(&m, "area_int"));
     assert!(has_func(&m, "kept_exported"));
     assert!(!has_func(&m, "unused"));
@@ -349,7 +351,7 @@ fn removed_functions_renumber_every_reference() {
     let m = inlined(include_str!("fixtures-opt/dead.mir"));
     let main = m.entry.expect("entry kept");
     assert_eq!(m.funcs[main.index()].name, "main");
-    assert_eq!(m.funcs.len(), 4);
+    assert_eq!(m.funcs.len(), 3);
     let v = &m.vtables[0];
     assert_eq!(m.funcs[v.methods[0].index()].name, "area_int");
     let text = print_module(&m);
@@ -512,4 +514,87 @@ b0:
     }
     let names: Vec<&str> = m.funcs.iter().map(|f| f.name.as_str()).collect();
     assert!(names.contains(&"sort.cmp.cmp"), "{names:?}");
+}
+
+const SPECIALIZE: &str = r#"module "spec"
+entry @main
+fn @add(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = iadd %x, %k
+  ret %r
+}
+fn @mul(%env: ptr, %x: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %r: int = imul %x, %k
+  ret %r
+}
+fn @total(%n: int, %f: fn(int) -> int) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  br b1(%zero, %zero, %f)
+b1(%i: int, %acc: int, %g: fn(int) -> int):
+  %c: bool = icmp.lt %i, %n
+  br_if %c, b2(), b3()
+b2():
+  %h: fn(int) -> int = copy %g
+  %v: int = call.ind (%h, %i)
+  drop %h
+  %acc2: int = iadd %acc, %v
+  %i2: int = iadd %i, %one
+  br b1(%i2, %acc2, %g)
+b3():
+  ret %acc
+}
+fn @main() -> int {
+b0:
+  %n: int = iconst 10
+  %a: int = iconst 3
+  %b: int = iconst 5
+  %f: fn(int) -> int = closure.new @add %a
+  %r1: int = call @total (%n, %f)
+  drop %f
+  %f2: fn(int) -> int = closure.new @add %b
+  %r2: int = call @total (%n, %f2)
+  drop %f2
+  %f3: fn(int) -> int = closure.new @mul %a
+  %r3: int = call @total (%n, %f3)
+  drop %f3
+  %s1: int = iadd %r1, %r2
+  %s2: int = iadd %s1, %r3
+  ret %s2
+}
+"#;
+
+#[test]
+fn a_known_closure_argument_specializes_the_callee() {
+    let before = module(SPECIALIZE);
+    let m = inlined(SPECIALIZE);
+    let text = print_module(&m);
+    assert_eq!(calls_to(&m, "total"), 0, "{text}");
+    assert!(has_func(&m, "total.add"), "{text}");
+    assert!(has_func(&m, "total.mul"), "{text}");
+    assert!(!has_func(&m, "total"), "{text}");
+    for name in ["total.add", "total.mul"] {
+        assert_eq!(count_op(&m, name, Op::CallInd), 0, "{text}");
+        assert_eq!(count_op(&m, name, Op::ClosureNew), 0, "{text}");
+        assert_eq!(count_op(&m, name, Op::Copy), 0, "{text}");
+        assert_eq!(count_op(&m, name, Op::Drop), 0, "{text}");
+    }
+    assert_eq!(count_op(&m, "main", Op::ClosureNew), 0, "{text}");
+    assert_eq!(outcome(&before), outcome(&m));
+}
+
+#[test]
+fn a_closure_that_escapes_the_callee_is_kept_correct() {
+    let src = SPECIALIZE.replace(
+        "  %acc2: int = iadd %acc, %v\n",
+        "  %acc2: int = iadd %acc, %v\n  %esc: int = call @use (%g)\n  %acc3: int = iadd %acc2, %esc\n",
+    ).replace("br b1(%i2, %acc2, %g)", "br b1(%i2, %acc3, %g)")
+    .replace("fn @total", "fn @use(%f: fn(int) -> int) -> int inline(never) {\nb0:\n  %z: int = iconst 0\n  %r: int = call.ind (%f, %z)\n  ret %r\n}\nfn @total");
+    let before = module(&src);
+    let m = inlined(&src);
+    assert_eq!(outcome(&before), outcome(&m), "{}", print_module(&m));
 }

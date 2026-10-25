@@ -14,7 +14,7 @@ type Ledger:
     fees: Int
 
 def fields(line: String) -> List[String]:
-    let spaced = line.replace_all(old: "\t", new: " ").get()
+    let spaced = line.replace(old: "\t", new: " ")
     return (
         spaced
         .split(" ")
@@ -187,7 +187,7 @@ def run() -> Result[Unit, Error]:
 
         step(var l, t)
 
-    try stdout().write(l.out.freeze())
+    try stdout().write(l.out.build())
     return stdout().flush()
 
 export def main() -> Int:
