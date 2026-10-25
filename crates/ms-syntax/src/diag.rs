@@ -81,75 +81,7 @@ impl Diagnostic {
 
     /// Stable rule family code (`MS1000`, ...).
     pub fn code(&self) -> &'static str {
-        // Messages read "<cause>; <fix>". Only the cause identifies the rule, not a
-        // trailing " (in <use site>)" context.
-        let message = self
-            .message
-            .split("; ")
-            .next()
-            .and_then(|cause| cause.split(" (in ").next())
-            .unwrap_or("");
-        match self.phase {
-            Phase::Parse => {
-                if message.starts_with("string-literal match patterns") {
-                    "MS1000"
-                } else if message.contains("indent")
-                    || message.contains("suite")
-                    || message.contains("tabs")
-                {
-                    "MS1002"
-                } else if message.contains("UTF-8")
-                    || message.contains("scalar")
-                    || message.contains("escape")
-                    || message.contains("literal")
-                {
-                    "MS1001"
-                } else {
-                    "MS1000"
-                }
-            }
-            Phase::Resolution => {
-                if message.starts_with("redundant prelude import ") {
-                    "MS2003"
-                } else if message.contains("module")
-                    || message.contains("import")
-                    || message.contains("path")
-                    || message.contains("alias")
-                {
-                    "MS2002"
-                } else {
-                    "MS2001"
-                }
-            }
-            Phase::Type => {
-                const RULES: &[(&str, &str)] = &[
-                    ("duplicate argument", "MS3002"),
-                    ("missing argument", "MS3003"),
-                    ("unknown argument", "MS3004"),
-                    ("overlapping implementation", "MS3010"),
-                    ("signature does not match", "MS3011"),
-                    ("nominal source data", "MS3012"),
-                    ("Hashable", "MS3021"),
-                    ("captured", "MS3030"),
-                    ("recursive", "MS3040"),
-                    ("exhaustive", "MS3050"),
-                    ("immutable", "MS3060"),
-                    ("literal", "MS3070"),
-                    ("infer", "MS3080"),
-                    ("generic arity", "MS3080"),
-                    ("expected ", "MS3001"),
-                    ("same independently known type", "MS3001"),
-                ];
-                for (needle, code) in RULES {
-                    if message.contains(needle) {
-                        return code;
-                    }
-                }
-                "MS3000"
-            }
-            Phase::Lowering => "MS4000",
-            _ => "MS0000",
-        }
+        code_for(self.phase.as_str(), &self.message)
     }
 
     /// JSON object in the shape of the CLI's JSON diagnostics, indented by
@@ -179,6 +111,66 @@ impl Diagnostic {
         }
         out.push('}');
         out
+    }
+}
+
+/// The stable rule family for a source diagnostic.
+pub fn code_for(phase: &str, message: &str) -> &'static str {
+    // Messages read "<cause>; <fix>". Only the cause identifies the rule, not a
+    // trailing " (in <use site>)" context.
+    let message = message
+        .split("; ")
+        .next()
+        .and_then(|cause| cause.split(" (in ").next())
+        .unwrap_or("");
+    let has = |needle: &str| message.contains(needle);
+    match phase {
+        "parse" => {
+            if message.starts_with("string-literal match patterns") {
+                "MS1000"
+            } else if has("indent") || has("suite") || has("tabs") {
+                "MS1002"
+            } else if has("UTF-8") || has("scalar") || has("escape") || has("literal") {
+                "MS1001"
+            } else {
+                "MS1000"
+            }
+        }
+        "resolution" => {
+            if message.starts_with("redundant prelude import ") {
+                "MS2003"
+            } else if has("module") || has("import") || has("path") || has("alias") {
+                "MS2002"
+            } else {
+                "MS2001"
+            }
+        }
+        "type" => {
+            const RULES: &[(&str, &str)] = &[
+                ("duplicate argument", "MS3002"),
+                ("missing argument", "MS3003"),
+                ("unknown argument", "MS3004"),
+                ("overlapping implementation", "MS3010"),
+                ("signature does not match", "MS3011"),
+                ("nominal source data", "MS3012"),
+                ("Hashable", "MS3021"),
+                ("captured", "MS3030"),
+                ("recursive", "MS3040"),
+                ("exhaustive", "MS3050"),
+                ("immutable", "MS3060"),
+                ("literal", "MS3070"),
+                ("infer", "MS3080"),
+                ("generic arity", "MS3080"),
+                ("expected ", "MS3001"),
+                ("same independently known type", "MS3001"),
+            ];
+            RULES
+                .iter()
+                .find(|(needle, _)| has(needle))
+                .map_or("MS3000", |(_, code)| code)
+        }
+        "lowering" => "MS4000",
+        _ => "MS0000",
     }
 }
 
@@ -228,4 +220,21 @@ pub fn json_string(out: &mut String, text: &str) {
         }
     }
     out.push('"');
+}
+
+#[cfg(test)]
+mod code_tests {
+    use super::code_for;
+
+    #[test]
+    fn codes() {
+        assert_eq!(
+            code_for("resolution", "unknown import alias @x; fix"),
+            "MS2002"
+        );
+        assert_eq!(code_for("resolution", "line too long; keep"), "MS2001");
+        assert_eq!(code_for("type", "expected Int"), "MS3001");
+        assert_eq!(code_for("parse", "bad indent"), "MS1002");
+        assert_eq!(code_for("other", ""), "MS0000");
+    }
 }
