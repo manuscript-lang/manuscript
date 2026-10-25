@@ -12,6 +12,7 @@ use base64::Engine as _;
 use base64::alphabet::STANDARD;
 use base64::engine::DecodePaddingMode;
 use base64::engine::general_purpose::{GeneralPurpose, GeneralPurposeConfig};
+use ms_rt::fault::with_cleanup;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerifier};
 use rustls::crypto::{CryptoProvider, WebPkiSupportedAlgorithms, ring};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, ServerName, UnixTime};
@@ -845,12 +846,18 @@ impl TlsIo {
                 Handshake::Done => return Ok(io),
                 Handshake::Failed(e) => return Err(e),
                 Handshake::WantWrite => {
-                    if wait_fd(io.sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
+                    if with_cleanup(&mut || io.sock.release(), || {
+                        wait_fd(io.sock.as_sock(), Interest::Write, deadline)
+                    }) == Wait::TimedOut
+                    {
                         return Err(NetErr::Timeout);
                     }
                 }
                 Handshake::WantRead => {
-                    if wait_fd(io.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                    if with_cleanup(&mut || io.sock.release(), || {
+                        wait_fd(io.sock.as_sock(), Interest::Read, deadline)
+                    }) == Wait::TimedOut
+                    {
                         return Err(NetErr::Timeout);
                     }
                 }

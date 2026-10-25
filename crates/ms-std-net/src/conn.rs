@@ -67,28 +67,51 @@ pub trait Io {
 
 /// A socket that can be closed before its owner is dropped, so a closed connection frees its
 /// descriptor even while handles to it are alive (or a cancelled task never drops them).
-pub struct OwnedSock(UnsafeCell<Option<Socket>>);
+pub struct Owned<T>(UnsafeCell<Option<T>>);
 
-impl OwnedSock {
-    pub fn new(sock: Socket) -> OwnedSock {
-        OwnedSock(UnsafeCell::new(Some(sock)))
+pub type OwnedSock = Owned<Socket>;
+
+impl<T> Owned<T> {
+    pub fn new(sock: T) -> Owned<T> {
+        Owned(UnsafeCell::new(Some(sock)))
     }
 
     /// Closes the descriptor. The caller guarantees nothing is using it.
     pub fn release(&self) {
         // SAFETY: tasks share one thread and no reference to the socket outlives an operation;
-        // `Connection` and `Listener` release only with no operation parked and refuse new ones.
+        // owners release only with no operation parked and refuse new ones.
         drop(unsafe { (*self.0.get()).take() });
+    }
+
+    /// The socket, if it was not released.
+    pub fn into_inner(self) -> Option<T> {
+        self.0.into_inner()
     }
 }
 
-impl Deref for OwnedSock {
-    type Target = Socket;
+impl<T> Deref for Owned<T> {
+    type Target = T;
 
-    fn deref(&self) -> &Socket {
+    fn deref(&self) -> &T {
         // SAFETY: see `release`.
         unsafe { (*self.0.get()).as_ref() }.expect("socket used after it was released")
     }
+}
+
+/// Runs `body`, which may park on a socket, counted in `busy`. A cancellation that leaves it
+/// still counts it out, and `idle` runs when the count reaches zero, so the close of an
+/// enclosing `with` can free the descriptor.
+fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
+    busy.set(busy.get() + 1);
+    let leave = || {
+        busy.set(busy.get() - 1);
+        if busy.get() == 0 {
+            idle();
+        }
+    };
+    let r = with_cleanup(&mut { leave }, body);
+    leave();
+    r
 }
 
 /// An unencrypted socket.
@@ -303,17 +326,8 @@ impl Connection {
         }
     }
 
-    /// Runs `body`, which may park on `io`. A cancellation that leaves it still counts it out,
-    /// so the `close` of an enclosing `with` can free the descriptor.
     fn parked<T>(&self, body: impl FnOnce() -> T) -> T {
-        self.busy.set(self.busy.get() + 1);
-        let leave = || {
-            self.busy.set(self.busy.get() - 1);
-            self.release_if_idle();
-        };
-        let r = with_cleanup(&mut { leave }, body);
-        leave();
-        r
+        parked(&self.busy, &|| self.release_if_idle(), body)
     }
 
     fn failure(&self, e: DriveError) -> IoErr {
@@ -531,18 +545,10 @@ impl Listener {
         }
     }
 
-    /// Waits for the listener to become readable; see `Connection::parked`.
     fn parked_wait(&self, deadline: Deadline) -> Wait {
-        self.busy.set(self.busy.get() + 1);
-        let leave = || {
-            self.busy.set(self.busy.get() - 1);
-            self.release_if_idle();
-        };
-        let r = with_cleanup(&mut { leave }, || {
+        parked(&self.busy, &|| self.release_if_idle(), || {
             wait_fd(self.sock.as_sock(), Interest::Read, deadline)
-        });
-        leave();
-        r
+        })
     }
 
     pub fn raw(&self) -> &Socket {
@@ -655,8 +661,10 @@ pub struct Datagram {
 /// A connectionless socket.
 pub struct Datagrams {
     owner: Rc<Network>,
-    sock: UdpSocket,
+    sock: Owned<UdpSocket>,
     closed: Cell<bool>,
+    /// Calls parked on `sock`; see `Connection::busy`.
+    busy: Cell<u32>,
     address: String,
     /// Taken out for a receive, which can park; see ABI.md.
     scratch: Cell<Vec<u8>>,
@@ -673,8 +681,9 @@ impl Datagrams {
         let address = sock.local_addr().map(|a| a.to_string()).unwrap_or_default();
         Datagrams {
             owner,
-            sock,
+            sock: Owned::new(sock),
             closed: Cell::new(false),
+            busy: Cell::new(0),
             address,
             scratch: Cell::new(Vec::new()),
         }
@@ -685,9 +694,22 @@ impl Datagrams {
     }
 
     pub fn close(&self) {
-        // The descriptor stays open for in-flight calls; `shutdown` is not defined for UDP, so
-        // closing only marks the socket and later calls report `Closed`.
+        // `shutdown` is not defined for UDP, so a parked call is not woken: the descriptor is
+        // freed now, or when the last parked call returns.
         self.closed.set(true);
+        self.release_if_idle();
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.sock.release();
+        }
+    }
+
+    fn parked_wait(&self, interest: Interest, deadline: Deadline) -> Wait {
+        parked(&self.busy, &|| self.release_if_idle(), || {
+            wait_fd(self.sock.as_sock(), interest, deadline)
+        })
     }
 
     /// Waits for one datagram. A datagram longer than `max_bytes` is discarded with `LimitExceeded`.
@@ -735,7 +757,7 @@ impl Datagrams {
                     });
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Read, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                     if self.closed.get() {
@@ -784,7 +806,7 @@ impl Datagrams {
                 Ok(n) if n == data.len() => return Ok(()),
                 Ok(_) => return Err(NetErr::failed("partial datagram")),
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Write, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }

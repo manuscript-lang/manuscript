@@ -20,6 +20,20 @@ def read_one(address: String) -> Int:
         let got = client.read(none, none)
         return got.get(none).map(lambda b: b.length()).get(-1)
 
+def receive_one(address: String) -> Int:
+    with network().bind_datagram(address).get() as socket:
+        let got = socket.receive(none, none)
+        if got.is_ok():
+            return 1
+        return 0
+
+def rebound_datagram(address: String) -> Int:
+    let again = network().bind_datagram(address)
+    if again.is_ok():
+        again.get().close()
+        return 1
+    return 0
+
 def rebound(address: String) -> Int:
     let again = network().listen(address)
     if again.is_ok():
@@ -53,4 +67,13 @@ export def main() -> Int:
             if accepted.is_ok():
                 accepted.get().close()
     stdout().write(f"cancelled reads rebound: {rebound(third_address)}\n").get()
+    let udp = net.bind_datagram("127.0.0.1:0").get()
+    let udp_address = udp.address().clone()
+    udp.close()
+    stdout().write(f"closed datagram socket rebound: {rebound_datagram(udp_address)}\n").get()
+    with TaskGroup[Int](timeout: some(duration(2000000))) as group:
+        let a = udp_address.clone()
+        group.spawn(lambda ch: receive_one(a))
+        group.wait()
+    stdout().write(f"cancelled receive rebound: {rebound_datagram(udp_address)}\n").get()
     return 0

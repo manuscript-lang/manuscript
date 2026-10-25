@@ -2,11 +2,13 @@
 //! (`CNAME`, `MX`, `NS`, `TXT`, `PTR`, `SRV`) and for networks with an explicit
 //! resolver (`with_resolver`).
 
+use crate::conn::Owned;
 use crate::error::{NetErr, cannot_resolve};
 use crate::ip::ip_text;
 use crate::rt;
 use crate::sys::AsSock;
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use ms_rt::fault::with_cleanup;
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream, UdpSocket};
 use std::time::Duration;
@@ -225,6 +227,7 @@ fn query_udp(
     let sock = UdpSocket::bind(bind).map_err(io_failed)?;
     sock.set_nonblocking(true).map_err(io_failed)?;
     crate::sys::prepare_udp(&sock).map_err(io_failed)?;
+    let sock = Owned::new(sock);
     sock.send_to(query, server).map_err(io_failed)?;
     let mut buf = vec![0u8; 4096];
     loop {
@@ -237,7 +240,10 @@ fn query_udp(
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                if wait_fd(sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                if with_cleanup(&mut || sock.release(), || {
+                    wait_fd(sock.as_sock(), Interest::Read, deadline)
+                }) == Wait::TimedOut
+                {
                     return Err(NetErr::Timeout);
                 }
             }
