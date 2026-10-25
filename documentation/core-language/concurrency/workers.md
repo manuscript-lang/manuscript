@@ -29,10 +29,10 @@ def squares() -> Unit:
 test "a worker answers over its channel":
     with WorkerGroup[Int, Int]() as group:
         var worker = group.spawn(squares).get(none)
-        expect_ok(worker.channel.send(12))
-        expect_equal(worker.channel.receive(), ok(some(144)))
+        try expect_ok(worker.channel.send(12))
+        try expect_equal(worker.channel.receive(), ok(some(144)))
         worker.channel.close()
-        expect_ok(worker.join())
+        try expect_ok(worker.join())
 ```
 
 ## How workers run

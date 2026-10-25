@@ -17,7 +17,7 @@ def magnitude(value: Int) -> Int:
     return labs(value)
 
 test "an extern calls the native symbol":
-    expect_equal(magnitude(-7), 7)
+    try expect_equal(magnitude(-7), 7)
 ```
 
 An extern has no body and no trailing `:`. It may be exported. It cannot be generic, take defaults or `var` parameters, or be a method.
