@@ -1691,12 +1691,12 @@ resolution	1	33	32	unknown type Layer32; declare it with 'type Layer32:' / 'inte
     let x = 1
     let y: Int = x.foo
     return y
-resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef g(v: Int) -> Int:
+resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef g(v: Int) -> Int:
     return v
 def f() -> Int:
     let x = 1
     return g(v: x.foo())
-resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
+resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f(first: Int, second: Int = first + 1) -> Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Int = True) -> Int: ...
 type	1	20	19	expected Int, found Bool
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(first: Int = second, second: Int = 1) -> Int: ...
@@ -1879,7 +1879,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 48 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 52 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2331,9 +2331,9 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 48 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 52 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, partition, pop, prepend, remove, reverse_in_place, reversed, set, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export interface Read[T]:
     def get() -> T
 export type Box[T]:
     value: T
@@ -4627,10 +4627,10 @@ def run(n: Int) -> Int:
 def run(n: Int) -> Int:
     let a = n |.size()|try.m()| .k
     return a
-resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef run(n: Int) -> Int:
+resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef run(n: Int) -> Int:
     let a = n | .size() | try .m() | .k
     return a
-resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f() -> Int:
+resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radixdef f() -> Int:
     for mode in [1]:
         if not (
                 mode == 2
@@ -6454,15 +6454,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, partition, pop, prepend, remove, reverse_in_place, reversed, set, ...export def main() -> Int:
+resolution	3	23	72	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export def main() -> Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, partition, pop, prepend, remove, reverse_in_place, reversed, set, ...export def main() -> Int:
+resolution	2	23	48	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...export def main() -> Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, partition, pop, prepend, remove, reverse_in_place, reversed, set, ...from "@std/faults.ms" import panic
+resolution	3	22	77	unknown or ambiguous member METHOD on List[Int]; available: append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, every, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, min, partition, pop, prepend, remove, reverse_in_place, ...from "@std/faults.ms" import panic
 
 def run() -> Int:
     let boom = lambda (value: Int) -> Int: panic(message: "closure failed")

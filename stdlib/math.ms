@@ -254,32 +254,6 @@ export def min[T: Comparable](left: T, right: T) -> T:
 
     return left
 
-# Returns the greatest of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def max_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) > 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
-
-# Returns the least of the values, keeping the first of equal ones, or none for an empty list. Float orders NaN above every other value.
-export def min_of[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
-    var best: Optional[T] = none
-
-    for item in values:
-        if let current = best:
-            if item.compare(current) < 0:
-                best = some(item.clone())
-        else:
-            best = some(item.clone())
-
-    return best
-
 # Returns π, the ratio of a circle's circumference to its diameter.
 export def pi() -> Float:
     return msstd_math_pi()

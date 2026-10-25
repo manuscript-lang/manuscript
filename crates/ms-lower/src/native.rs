@@ -326,8 +326,6 @@ impl<'a> FnLower<'a> {
             }
             "math/min" => self.math_extreme(view, false),
             "math/max" => self.math_extreme(view, true),
-            "math/min_of" => self.math_extreme_of(e, view, false),
-            "math/max_of" => self.math_extreme_of(e, view, true),
             "io/read_all" => self.stream_native(e, view, crate::streamloop::Loop::ReadAll),
             "io/copy" => self.stream_native(e, view, crate::streamloop::Loop::Copy),
             other
@@ -403,8 +401,6 @@ impl<'a> FnLower<'a> {
             native,
             "math/min"
                 | "math/max"
-                | "math/max_of"
-                | "math/min_of"
                 | "time/duration"
                 | "shared/share"
                 | "core/category"
@@ -431,9 +427,6 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         if matches!(native, "math/min" | "math/max") {
             return self.min_max(native == "math/max", args);
-        }
-        if matches!(native, "math/max_of" | "math/min_of") {
-            return self.extreme_of(native == "math/max_of", args, result);
         }
         if let Some(name) = native.strip_prefix("math/").filter(|n| {
             matches!(
@@ -635,63 +628,6 @@ impl<'a> FnLower<'a> {
             }
         };
         Ok(Val { v, own: false })
-    }
-
-    /// `max_of(values)` / `min_of(values)`: the first greatest (least) element, or `none`.
-    fn extreme_of(&mut self, max: bool, args: &[NArg], result: MTy) -> Result<Val, Error> {
-        use ms_mir::ir::Cc;
-        // The list lives in a variable so the loop and the branches may read it.
-        let list = self.borrow(args[0].val);
-        let lt = self.ty_of(list);
-        let lvar = self.fresh_var(lt);
-        let held_list = self.owned(Val {
-            v: list,
-            own: false,
-        });
-        self.b.def_var(lvar, held_list);
-        let n = self.b.list_len(list);
-        let (zero, one) = (self.b.iconst(0), self.b.iconst(1));
-        let best = self.b.declare_var(MTy::INT, Mode::Borrow);
-        self.b.def_var(best, zero);
-        self.counted_loop(one, n, &mut |s, iv| {
-            let bv = s.b.use_var(best);
-            let l = s.b.use_var(lvar);
-            let cur = s.b.list_get(l, iv);
-            let held = s.b.list_get(l, bv);
-            let above = if max {
-                s.strictly_above(cur, held)?
-            } else {
-                s.strictly_above(held, cur)?
-            };
-            let pick = s.b.select(above, iv, bv);
-            s.b.def_var(best, pick);
-            Ok(())
-        })?;
-        let empty = self.b.icmp(Cc::Eq, n, zero);
-        let TyKind::Opt(elem) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("max_of and min_of return an Optional"));
-        };
-        let out = self.two_ways(
-            empty,
-            result,
-            &mut |s| {
-                let v = s.b.opt_none(result);
-                Ok(Some(s.owned(Val { v, own: false })))
-            },
-            &mut |s| {
-                let bv = s.b.use_var(best);
-                let l = s.b.use_var(lvar);
-                let item = s.b.list_get(l, bv);
-                let o = s.owned(Val {
-                    v: item,
-                    own: false,
-                });
-                let _ = elem;
-                Ok(Some(s.b.opt_some(o)))
-            },
-        )?;
-        self.release_source(lvar, true);
-        Ok(out)
     }
 
     /// `stdout()` / `stderr()`: an interface value over a MIR-built vtable.
@@ -1095,10 +1031,13 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
         }
+        let recv_ty = self.ty_of(recv.v);
+        let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         if matches!(
             native,
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
-        ) {
+        ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
+        {
             return self.numeric_conversion(e, recv);
         }
         // Other operations on a sized number run on its 64-bit kind.
@@ -1401,7 +1340,17 @@ impl<'a> FnLower<'a> {
                     )
                 };
                 let (m1, one, zero) = (self.b.iconst(-1), self.b.iconst(1), self.b.iconst(0));
-                let g = self.b.select(gt, one, zero);
+                // An unordered pair has a NaN: NaN equals NaN and sorts above every other value.
+                let unordered = if name == "compare_float" {
+                    let a_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, a, a);
+                    let b_nan = self.b.fcmp(ms_mir::ir::Cc::Ne, b, b);
+                    let a_only = self.b.select(b_nan, zero, one);
+                    let b_only = self.b.select(b_nan, m1, zero);
+                    self.b.select(a_nan, a_only, b_only)
+                } else {
+                    zero
+                };
+                let g = self.b.select(gt, one, unordered);
                 let v = self.b.select(lt, m1, g);
                 Ok(Val { v, own: false })
             }
@@ -1433,6 +1382,7 @@ impl<'a> FnLower<'a> {
                 let out = self.call_runtime("msrt_int_to_string_radix", &[v, r], MTy::STR)?;
                 Ok(Val { v: out, own: true })
             }
+            (_, "to_string") if m.receiver.is_std("Duration") => self.duration_text(recv),
             (_, "to_string") => self.format_value(recv),
             (_, "clone") => {
                 let v = self.owned(Val {
@@ -1444,11 +1394,32 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v, own: true })
             }
+            (TyKind::List(_), "sum" | "min" | "max") => {
+                let out = self.emty(e)?;
+                let element = self
+                    .ety(recv_expr)
+                    .args
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| Error::new("sum, min and max take a list"))?;
+                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                let r = match name {
+                    "sum" => self.list_sum(lv, &element, out),
+                    _ => self.list_extreme(lv, &element, out, name == "max"),
+                };
+                self.release_source(lv, hidden);
+                r
+            }
             (TyKind::List(elem), "sorted") => {
                 let f = args
                     .into_iter()
                     .next()
                     .ok_or_else(|| Error::new("sorted without comparator"))?;
+                if !self.is_fn(f.val.v) {
+                    return Err(Error::new(
+                        "sorted takes a comparator function; omit compare to sort in natural order",
+                    ));
+                }
                 let ft = self.ty_of(f.val.v);
                 let fvar = self.fresh_var(ft);
                 let fo = self.owned(f.val);
@@ -2423,7 +2394,14 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse_in_place"
+            "append"
+                | "set"
+                | "prepend"
+                | "insert"
+                | "remove"
+                | "pop"
+                | "reverse_in_place"
+                | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
@@ -2547,6 +2525,23 @@ impl<'a> FnLower<'a> {
                 let r = self.b.use_var(res);
                 let l = self.b.use_var(acc);
                 Ok((l, Some(Val { v: r, own: true })))
+            }
+            "sort" => {
+                let f = args
+                    .iter()
+                    .find(|a| self.is_fn(a.val.v))
+                    .ok_or_else(|| Error::new("sort without comparator"))?;
+                let ft = self.ty_of(f.val.v);
+                let fvar = self.fresh_var(ft);
+                let fo = self.owned(f.val);
+                self.b.def_var(fvar, fo);
+                let var = self.fresh_var(lt);
+                self.b.def_var(var, old);
+                let r = self.list_sorted(var, fvar, elem)?;
+                let o = self.b.use_var(var);
+                self.drop_value(o);
+                self.release_source(fvar, true);
+                Ok((r.v, None))
             }
             "reverse_in_place" => {
                 let var = self.fresh_var(lt);
