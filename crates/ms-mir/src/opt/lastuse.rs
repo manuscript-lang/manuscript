@@ -151,7 +151,12 @@ fn candidate(m: &Module, f: &mut Func, v: Value, db: usize, di: Option<usize>) -
                                 fam.insert(*a);
                             }
                         }
+                        // A fresh result points into no borrowed argument, so it does not
+                        // extend the family (a concat chain would otherwise keep every
+                        // intermediate alive until the end of the scope).
+                        let fresh = matches!(i.imm, Imm::Ext(e) if m.externs[e.index()].fresh);
                         if i.op == Op::CallRt
+                            && !fresh
                             && let Some(r) = i.res
                             && !is_scalar(m, f.ty(r))
                         {

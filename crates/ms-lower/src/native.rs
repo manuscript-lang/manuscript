@@ -200,6 +200,7 @@ impl<'a> FnLower<'a> {
                     ret: MTy::UNIT,
                     noreturn: true,
                     pure_: false,
+                    fresh: false,
                 });
                 self.at(e.pos);
                 self.b.call_rt(ext, &[m]);
@@ -592,6 +593,7 @@ impl<'a> FnLower<'a> {
                     ret: MTy::INT,
                     noreturn: true,
                     pure_: false,
+                    fresh: false,
                 });
                 self.b.call_rt(ext, &[left, count]);
                 self.b.unreachable();
@@ -1859,6 +1861,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[opv, original, len]);
         self.b.unreachable();
@@ -1898,6 +1901,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[msg]);
         self.b.unreachable();
@@ -1915,6 +1919,7 @@ impl<'a> FnLower<'a> {
             ret: MTy::UNIT,
             noreturn: true,
             pure_: false,
+            fresh: false,
         });
         self.b.call_rt(ext, &[]);
         self.b.unreachable();

@@ -29,6 +29,7 @@ pub(crate) fn runtime_fn(m: &mut Module, sym: &str, params: &[MTy], ret: MTy) ->
         ret,
         noreturn: false,
         pure_: false,
+        fresh: crate::rtcall::fresh_result(sym),
     })
 }
 

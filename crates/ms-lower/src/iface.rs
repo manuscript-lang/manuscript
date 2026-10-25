@@ -634,6 +634,7 @@ fn build_builtin_compare(
             ret: MTy::INT,
             noreturn: false,
             pure_: false,
+            fresh: false,
         });
         b.call_rt(ext, &[me, you])
     };

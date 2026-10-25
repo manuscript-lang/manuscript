@@ -972,6 +972,9 @@ pub struct ExternDef {
     /// Whether the call has no observable effect and does not fault, so equal calls
     /// can be merged and unused ones removed.
     pub pure_: bool,
+    /// Whether the result points into no borrowed argument (it is an owned allocation, an
+    /// inline value or a static), so a borrowed argument may be dropped once the call returns.
+    pub fresh: bool,
 }
 
 /// A module-level variable.

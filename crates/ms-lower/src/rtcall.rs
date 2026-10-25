@@ -57,6 +57,20 @@ pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     })
 }
 
+/// Whether a runtime function's result points into none of its borrowed arguments, so the
+/// `lastuse` pass may drop an argument right after the call instead of keeping it alive as long
+/// as the result. These string constructors return an owned buffer, an inline value or a
+/// static (`ms-rt/src/string.rs`: `msrt_string_concat_val`, `concat_parts`, `msrt_string_append`,
+/// `cloned`), never a view. Every other result is assumed to possibly borrow from an argument.
+pub(crate) fn fresh_result(sym: &str) -> bool {
+    matches!(
+        sym,
+        "msrt_string_concat" | "msrt_string_append" | "msrt_string_clone"
+    ) || sym
+        .strip_prefix("msrt_string_concat")
+        .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
 /// A language-level argument of the call being marshalled.
 #[derive(Clone, Copy)]
 pub(crate) struct Input {
