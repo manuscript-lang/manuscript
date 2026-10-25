@@ -125,6 +125,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
     };
     let (entry, arg) = (entry as usize, arg as usize);
     let w = worker.clone();
+    isolate::count_worker();
     let spawned = std::thread::Builder::new()
         .stack_size(1 << 20)
         .spawn(move || {
@@ -144,6 +145,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
             handle
         }
         Err(_) => {
+            isolate::retire_worker();
             WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker =
                 None;
             if arg != 0 {
@@ -200,6 +202,7 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
         crate::pipe::msrt_pipe_close(end);
     }
     msrt_token_post_remote(done, status as u64 + 1);
+    isolate::retire_worker();
 }
 
 /// Asks the worker to stop: its main task sees a pending cancellation at its next poll or wait.
@@ -313,7 +316,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_start(entry: *mut ms_rt_abi::Closure
             code: (*entry).code,
             drop: (*entry).hdr.drop,
         });
-        let done = crate::task::msrt_token_new(crate::task::TOKEN_REMOTE);
+        let done = crate::task::msrt_token_new(crate::task::TOKEN_REMOTE | crate::task::TOKEN_PEER);
         let handle = msrt_worker_spawn(closure_main, block.cast(), done);
         if handle == 0 {
             crate::task::msrt_token_free(done);

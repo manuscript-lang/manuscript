@@ -6,7 +6,7 @@
 //! ends have arenas of their own that end with the isolate. A task that must wait (no message
 //! to read, or no room to send) parks on a remote token of its isolate, recorded on the lane;
 //! the other end posts it.
-use crate::task::{TOKEN_REMOTE, msrt_token_new, msrt_token_post_remote};
+use crate::task::{TOKEN_PEER, TOKEN_REMOTE, msrt_token_new, msrt_token_post_remote};
 use core::ptr::null_mut;
 use ms_rt_abi::StrVal;
 use std::sync::Mutex;
@@ -228,7 +228,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal)
             return OK;
         }
         // SAFETY: tokens belong to the calling isolate.
-        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE | TOKEN_PEER) };
         lane.wait_on(token);
         drop(t);
         park(token);
@@ -274,7 +274,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) ->
             return ENDED as u8;
         }
         // SAFETY: tokens belong to the calling isolate.
-        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE | TOKEN_PEER) };
         lane.wait_on(token);
         drop(t);
         park(token);

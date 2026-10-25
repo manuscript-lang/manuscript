@@ -39,6 +39,7 @@ test "a worker answers over its channel":
 
 - `spawn(entry)` starts `entry`, the name of a top-level `def` that takes no arguments and returns `Unit`, and returns a `Result[Worker[In, Out], WorkerError]`. A lambda, a local function or a captured value is a compile error: a worker shares no memory with its starter, so there is nothing to capture. Send what the worker needs through the channel.
 - The worker takes its end of the channel with `worker_channel[Send, Receive]()`; the starter holds the other in `worker.channel`. A `WorkerGroup[In, Out]` sends `In` to its workers and receives `Out` from them.
+- When the starter and its workers all wait on each other (the starter in `receive` or `result()`, a worker in `receive`, with no timer, descriptor wait or blocking call pending anywhere), the program stops with a deadlock fault on the main isolate instead of hanging, as it does within one isolate.
 - Every worker has its own memory (2 GiB of address space, reserved lazily), scheduler and task tree. Tasks inside a worker run cooperatively, as in the main program.
 - Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. `send` waits while the other side has 16 unread messages.
 - `worker.join()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
