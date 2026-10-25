@@ -246,6 +246,7 @@ msrt_list_fill( v: *mut VecVal, d: *const TypeDesc, value: *const u8, start: i64
 msrt_list_copy_within( v: *mut VecVal, d: *const TypeDesc, target: i64, start: i64, end: i64, )
 msrt_list_slice( v: *const VecVal, d: *const TypeDesc, start: i64, end: i64, out: *mut VecVal, ) -> u8
 msrt_list_take( v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal, )
+msrt_list_pieces( v: *const VecVal, d: *const TypeDesc, od: *const TypeDesc, size: i64, step: i64, short_last: u8, out: *mut VecVal, )
 msrt_list_drop_n( v: *const VecVal, d: *const TypeDesc, count: i64, out: *mut VecVal, )
 msrt_list_concat( a: *const VecVal, b: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_extend( v: *mut VecVal, d: *const TypeDesc, other: *mut VecVal, )

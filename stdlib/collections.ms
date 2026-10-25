@@ -71,6 +71,20 @@ impl List[T]:
     # Leaves the receiver unchanged; negative count is a programming fault.
     def drop(count: Int) -> List[T]: ...
 
+    # Pairs elements by position into fresh `Pair` records, stopping at the shorter list; both lists are unchanged.
+    def zip[U](other: List[U]) -> List[Pair[T, U]]: ...
+
+    # Splits the list into consecutive copies of `size` elements; the last chunk may be shorter, and an empty list gives an empty list.
+    # A `size` of zero or less is a programming fault.
+    def chunks(size: Int) -> List[List[T]]: ...
+
+    # Returns each run of `size` consecutive elements as an overlapping copy, in order; a list shorter than `size` gives an empty list.
+    # A `size` of zero or less is a programming fault. Windows are copies: `slice` and `take` do not borrow today.
+    def windows(size: Int) -> List[List[T]]: ...
+
+    # Calls `predicate` once per element in order and splits the elements into those that matched and the rest, each keeping the original order.
+    def partition(predicate: Callable[[T], Bool]) -> Partition[T]: ...
+
     # Reverses this list in place.
     var def reverse_in_place() -> Unit: ...
 
@@ -331,6 +345,20 @@ impl Set[T]:
 
     # Removes an equal value in place; an absent value leaves it unchanged.
     var def remove(value: T) -> Unit: ...
+
+# Two values of possibly different types, as produced by `List.zip`.
+export type Pair[A, B]:
+    # The value taken from the receiver list.
+    first: A
+    # The value taken from the argument list.
+    second: B
+
+# The two lists `List.partition` produces: elements the predicate accepted and the rest, each in original order.
+export type Partition[T]:
+    # Elements for which the predicate was True, in original order.
+    matching: List[T]
+    # Elements for which the predicate was False, in original order.
+    rest: List[T]
 
 # One list index and its corresponding value.
 export type ListEntry[T]:
