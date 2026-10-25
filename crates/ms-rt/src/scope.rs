@@ -145,6 +145,11 @@ pub unsafe fn spawn_native(
     Some(handle)
 }
 
+/// The scope the running task was started in by [`spawn_native`], or 0.
+pub fn current() -> i64 {
+    task::current_scope()
+}
+
 /// Called when a task started by [`spawn_native`] ends: the scope forgets it.
 pub(crate) fn task_ended(scope: i64, handle: u64) {
     if let Some(s) = find(scope)

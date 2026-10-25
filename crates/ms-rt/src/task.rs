@@ -1051,18 +1051,6 @@ pub unsafe extern "C-unwind" fn msrt_task_yield() {
     }
 }
 
-/// Hook run by a task just before it parks (on a descriptor, a timer, a token or a join); zero
-/// when none is installed. Single threaded like the scheduler.
-static PREPARK: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
-
-/// Installs (or, with `None`, removes) the hook a task runs just before it parks. A native that
-/// lends its own task to another job (the HTTP reactor running handlers inline) uses it to hand
-/// that job on, so a handler that sleeps or waits does not stall everything else.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>) {
-    PREPARK.store(hook.map_or(0, |f| f as usize), Ordering::Relaxed);
-}
-
 /// Parks the current task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`), the
 /// timeout (nanoseconds, negative for none) expires, or cancellation is requested. Returns the
 /// ready bits, `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A file that cannot be polled (a regular
@@ -1101,8 +1089,6 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
             s.fd_waiting += 1;
             (*cur).wait_fd = fd;
         }
-        // After the check above, so a file that is always ready does not count as a park.
-        before_park();
         (*cur).wait_events = events;
         set_deadline(cur, timeout_ns);
         (*cur).state = State::Waiting;
@@ -1158,18 +1144,6 @@ unsafe fn set_deadline(cur: *mut Task, timeout_ns: i64) {
                     || (!t.is_null() && (*t).state == State::Waiting && (*t).deadline == deadline)
             });
             s.timer_limit = (s.timers.len() * 2).max(MIN_TIMER_LIMIT);
-        }
-    }
-}
-
-/// Runs the pre-park hook, if one is installed.
-unsafe fn before_park() {
-    let hook = PREPARK.load(Ordering::Relaxed);
-    if hook != 0 {
-        // SAFETY: only `msrt_task_set_prepark` stores here, and it stores a function pointer.
-        unsafe {
-            let hook: unsafe extern "C-unwind" fn() = core::mem::transmute(hook);
-            hook();
         }
     }
 }
@@ -1262,13 +1236,9 @@ unsafe fn join(handle: u64, msg_out: *mut StrVal, keep: bool) -> u8 {
         if (*t).joiner != 0 {
             fault::fault(b"join: the task is already being joined");
         }
-        if (*t).state != State::Done {
-            if cancel_flag().load(Ordering::Relaxed) != 0 {
-                return 2;
-            }
-            before_park();
+        if (*t).state != State::Done && cancel_flag().load(Ordering::Relaxed) != 0 {
+            return 2;
         }
-        // The hook can run other code; look again.
         if (*t).state != State::Done {
             (*t).joiner = (*cur).handle;
             (*cur).wait_events = 0;
@@ -1320,6 +1290,12 @@ pub(crate) unsafe fn unwind_if_cancelled() {
     if cancel_flag().load(Ordering::Relaxed) != 0 {
         fault::msrt_cancelled();
     }
+}
+
+/// The scope the running task was started in by `spawn_scoped`, or 0.
+pub(crate) fn current_scope() -> i64 {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe { (*ensure_init()).scope }
 }
 
 /// Cancels task `h` once it has run `limit_ns` nanoseconds; a negative limit means never.
@@ -1572,11 +1548,6 @@ pub unsafe extern "C-unwind" fn msrt_token_park(
         }
         if cancel_flag().load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
-        }
-        before_park();
-        // The hook can run other code; look again.
-        if take(value_out) {
-            return 0;
         }
         let mut s = sched();
         let k = token_mut(&mut s, id)
@@ -1891,41 +1862,6 @@ mod tests {
             assert_eq!(value, 7);
             msrt_token_free(plain);
             msrt_token_free(peer);
-        }
-        teardown();
-    }
-
-    unsafe extern "C-unwind" fn hook() {
-        note(7);
-    }
-
-    #[test]
-    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
-    fn the_prepark_hook_runs_before_each_park_and_only_then() {
-        let _g = lock();
-        teardown();
-        // SAFETY: tests hold the global lock; every handle is joined once.
-        unsafe {
-            *LOG_N.ptr() = 0;
-            msrt_task_set_prepark(Some(hook));
-            let a = msrt_task_spawn(counter, core::ptr::without_provenance_mut(1), 0, 0);
-            // The join parks: the hook runs first. Each yield is not a park.
-            assert_eq!(msrt_task_join(a, null_mut()), 0);
-            let b = msrt_task_spawn(sleeper, core::ptr::without_provenance_mut(1), 0, 0);
-            msrt_task_yield();
-            // `b` parked in its sleep; it has not finished, so this join parks too.
-            assert_eq!(msrt_task_join(b, null_mut()), 0);
-            let c = msrt_task_spawn(counter, core::ptr::without_provenance_mut(2), 0, 0);
-            for _ in 0..4 {
-                msrt_task_yield();
-            }
-            // `c` is done: joining it does not park.
-            assert_eq!(msrt_task_join(c, null_mut()), 0);
-            msrt_task_set_prepark(None);
-            assert_eq!(
-                &(&(*LOG.ptr()))[..*LOG_N.ptr()],
-                &[7, 10, 11, 12, 7, 7, 1, 20, 21, 22]
-            );
         }
         teardown();
     }

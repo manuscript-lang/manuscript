@@ -189,10 +189,11 @@ code 1000. `receive` returns `present = 0` after a clean close.
 ## Concurrency and fault isolation
 
 Servers use the `ms-rt` cooperative tasks (ABI §7). The first server on the thread
-spawns a reactor task (epoll over listeners and connections, timeouts). Ready requests
-run inline on it; a handler that is about to park (`wait_fd`, `sleep`, a client call, a
-slow `read`) first hands the reactor role to a fresh task, so blocked handlers overlap
-and a handler that never blocks costs no task switch. Switches happen only when a task
+spawns a reactor task (epoll over listeners and connections, timeouts) that only serves
+I/O. Each ready request runs as its own task of the server's `ms-rt` scope (contained
+faults), so blocked handlers overlap; closing the server cancels the tasks still running
+after the grace period. A request task is shielded from SIGINT/SIGTERM while the server
+drains (`grace`). Switches happen only when a task
 parks. Every blocking wait in the crate parks the running task (`wait::use_tasks` only
 makes unit tests on a thread without a server poll instead). Each handler thunk runs under
 `msrt_guard_call` (`code` is `extern "C-unwind"`): a fault inside becomes a 500

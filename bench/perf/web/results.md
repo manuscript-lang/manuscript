@@ -48,3 +48,15 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 | `/health` req/s beside 10,000 idle connections | 75.2k | 63.9k |
 
 `/health` beside `/io` improved from 773 to 24.0k req/s and its p99 from 137 ms to 12.6 ms. Resident memory after load rose from 9.7 MB to 70 MB (the `/io` payloads and pool threads); not investigated. Windows is measured by CI only: the whole-file offload now compiles there too, but this suite has not run on it.
+
+## 2026-10-25, one task per request
+
+`/health`, `/user/42` and `/top?n=10`, 64 connections, 4 s, server on CPUs 0 and 1, load on 2 and 3, shared 4-CPU Linux VM (±10% between runs). Runs of main (`7439d30d`) and this change alternated, three rounds each. Each request now runs as a task of the server's scope instead of inline on the reactor task (`proposals/http-server-request-tasks.md`).
+
+| Build | `/health` req/s | `/user/42` req/s | `/top?n=10` req/s |
+| --- | ---: | ---: | ---: |
+| main, inline handlers | 102k–115k | 100k–113k | 23k–25k |
+| task per request, stack pool 512 | 95k–111k | 85k–106k | 23k–24k |
+| task per request, stack pool 32 (spike) | 32k–33k | 32k–33k | 15k–17k |
+
+The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn before any runs), so every request paid `mmap`, `mprotect` and two `munmap` calls. With 512 the cost left is about 7% on the shortest handlers (`/health` median 107k against 114k).

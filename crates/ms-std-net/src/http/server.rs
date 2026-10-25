@@ -182,11 +182,9 @@ pub struct Reactor {
     targets: RefCell<HashMap<u64, Target>>,
     ready: RefCell<VecDeque<Rc<Conn>>>,
     retry: RefCell<Vec<Rc<Conn>>>,
-    /// `(task, server)` of every handler running.
-    handlers: RefCell<Vec<(u64, usize)>>,
     task_started: Cell<bool>,
-    /// Task currently running the reactor loop (`0`: none).
-    role: Cell<u64>,
+    /// Task running the reactor loop (`0`: none).
+    task: Cell<u64>,
     scratch: RefCell<Vec<u8>>,
     date: RefCell<(i64, String)>,
     /// When `sweep_timeouts` next has work: the earliest deadline it knows of.
@@ -211,9 +209,8 @@ impl Reactor {
                 targets: RefCell::new(HashMap::new()),
                 ready: RefCell::new(VecDeque::new()),
                 retry: RefCell::new(Vec::new()),
-                handlers: RefCell::new(Vec::new()),
                 task_started: Cell::new(false),
-                role: Cell::new(0),
+                task: Cell::new(0),
                 scratch: RefCell::new(vec![0; 64 * 1024]),
                 date: RefCell::new((0, String::new())),
                 next_sweep: Cell::new(None),
@@ -264,49 +261,50 @@ impl Reactor {
         cached.1.clone()
     }
 
-    /// Whether a handler of `server` is running on the stack.
+    /// Whether the running task is a request task of `server`.
     pub fn in_handler_of(&self, server: &Server) -> bool {
-        let task = rt::current_task();
-        self.handlers
-            .borrow()
-            .iter()
-            .any(|&(t, id)| t == task && id == server.id())
+        server.scope.contains_current()
     }
 
-    /// Whether the running task is inside any handler.
+    /// Whether the running task is a request task of any server.
     fn in_handler(&self) -> bool {
-        let task = rt::current_task();
-        self.handlers.borrow().iter().any(|&(t, _)| t == task)
+        rt::in_scope_task()
     }
 
-    /// Whether any handler of a server owned by `network` is running.
+    /// Whether the running task is a request task of a server owned by `network`.
     pub fn in_handler_of_network(&self, network: &Network) -> bool {
-        let task = rt::current_task();
-        self.handlers.borrow().iter().any(|&(t, id)| {
-            t == task
-                && SERVERS
-                    .with(|s| s.borrow().get(&id).and_then(Weak::upgrade))
-                    .is_some_and(|s| s.owner.is_within(network))
+        SERVERS.with(|s| {
+            s.borrow()
+                .values()
+                .filter_map(Weak::upgrade)
+                .any(|s| s.owner.is_within(network) && s.scope.contains_current())
         })
     }
 
-    /// Runs the requests that became ready, inline on the reactor task. A handler
-    /// that blocks hands the reactor role to a fresh task first (see
-    /// [`give_up_reactor_role`]), so the rest keep being served.
+    /// Queues a connection whose request is ready, waking the reactor when a request task
+    /// (not the reactor itself) found it.
+    pub(super) fn enqueue(&self, conn: &Rc<Conn>) {
+        self.ready.borrow_mut().push_back(conn.clone());
+        if rt::current_task() != self.task.get() {
+            self.poller.kick();
+        }
+    }
+
+    /// Starts a task for each request that became ready. The reactor task only serves I/O.
     fn run_handlers(&self) {
-        let me = rt::current_task();
         loop {
-            // A task whose handler parked lost the role: what is left belongs to the new reactor.
-            if self.role.get() != me {
-                if !self.ready.borrow().is_empty() || !self.retry.borrow().is_empty() {
-                    self.poller.kick();
-                }
-                break;
-            }
             let next = self.ready.borrow_mut().pop_front();
             let Some(conn) = next else { break };
-            if let Some(server) = conn.server.upgrade() {
-                server.dispatch_conn(&conn, self);
+            let Some(server) = conn.server.upgrade() else {
+                continue;
+            };
+            let limit = -1;
+            let job = Box::into_raw(Box::new(Job { conn }));
+            // SAFETY: `request_task` takes back the boxed job leaked here.
+            let started = unsafe { server.scope.spawn(request_task, job.cast(), limit) };
+            if started.is_none() {
+                // SAFETY: the scope is closed, so the task never runs; the job is still ours.
+                drop(unsafe { Box::from_raw(job) });
             }
         }
     }
@@ -315,7 +313,6 @@ impl Reactor {
     /// first server.
     fn spawn_task(&self) {
         crate::wait::use_tasks();
-        rt::install_prepark_hook();
         #[cfg(test)]
         serialize_tests();
         if !self.task_started.replace(true) {
@@ -365,31 +362,40 @@ pub(crate) fn serialize_tests() {
     });
 }
 
-thread_local! {
-    /// Set just before the reactor task waits for events and consumed by the park hook: that
-    /// park is the reactor's job, not a handler waiting, so it must not hand the role on.
-    static PARKING: Cell<bool> = const { Cell::new(false) };
+/// A request that became ready, on its way to its task.
+struct Job {
+    conn: Rc<Conn>,
 }
 
-/// Body of the reactor task: serve events until the program is cancelled. Handlers
-/// run inline; one that parks passes the role on, and this loop then ends once the
-/// handler returns.
+/// Body of a request task: serves the one request that became ready on a connection. While the
+/// server drains on a stop it is shielded, so the request finishes within the grace period.
+unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
+    // SAFETY: `arg` is the `Box<Job>` leaked by `run_handlers`.
+    let Job { conn } = *unsafe { Box::from_raw(arg.cast::<Job>()) };
+    let Some(server) = conn.server.upgrade() else {
+        return;
+    };
+    let shield = server.limits.grace.is_some_and(|g| !g.is_zero());
+    if shield {
+        rt::shield();
+    }
+    server.dispatch_conn(&conn, &Reactor::get());
+    if shield {
+        rt::unshield();
+    }
+}
+
+/// Body of the reactor task: serve events until the program is cancelled.
 unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     // SAFETY: `arg` is the `Box<Rc<Reactor>>` leaked by `spawn_task` for this task.
     let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
-    let me = rt::current_task();
-    reactor.role.set(me);
+    reactor.task.set(rt::current_task());
     let mut drain = DrainShield::default();
     loop {
-        // Serve before parking: the poller's registration is edge-triggered, so whatever a
-        // previous reactor task left unserved would not wake this one.
         reactor.service();
-        if reactor.role.get() != me {
-            return;
-        }
         // No servers left: end; the next server starts a new reactor task.
         if reactor.targets.borrow().is_empty() {
-            reactor.role.set(0);
+            reactor.task.set(0);
             reactor.task_started.set(false);
             return;
         }
@@ -397,16 +403,14 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
             at.saturating_duration_since(Instant::now()).as_nanos() as i64
         });
-        PARKING.with(|p| p.set(true));
         let got = reactor.poller.park(timeout);
-        PARKING.with(|p| p.set(false));
         if got & 16 != 0 {
             return;
         }
     }
 }
 
-/// Shields the reactor task (and the handlers it runs) from SIGINT/SIGTERM while a server with a
+/// Shields the reactor task from SIGINT/SIGTERM while a server with a
 /// nonzero `grace` is open, so in-flight requests finish within the grace period.
 #[derive(Default)]
 struct DrainShield(bool);
@@ -429,22 +433,6 @@ impl Drop for DrainShield {
     fn drop(&mut self) {
         self.set(false);
     }
-}
-
-/// Called before a task parks: if it is running the reactor loop (inline in a
-/// handler), a new reactor task takes over so other requests are not stalled.
-pub(crate) fn give_up_reactor_role() {
-    if PARKING.with(|p| p.replace(false)) {
-        return;
-    }
-    let reactor = REACTOR.with(|r| r.borrow().clone());
-    let Some(reactor) = reactor else { return };
-    if reactor.role.get() != rt::current_task() {
-        return;
-    }
-    reactor.role.set(0);
-    reactor.task_started.set(false);
-    reactor.spawn_task();
 }
 
 impl Reactor {
@@ -486,7 +474,7 @@ impl Reactor {
                 }
             }
             self.run_handlers();
-            if raw < 64 || self.role.get() != rt::current_task() {
+            if raw < 64 {
                 break;
             }
         }
@@ -598,6 +586,8 @@ pub struct Server {
     pub(super) dispatch: Box<dyn Dispatch>,
     st: RefCell<ServerSt>,
     token: u64,
+    /// Owns the request tasks; closing it cancels the ones still running.
+    scope: rt::Scope,
 }
 
 struct ServerSt {
@@ -674,6 +664,7 @@ impl Server {
                 draining: None,
             }),
             token,
+            scope: rt::Scope::new(),
         });
         reactor
             .targets
@@ -809,6 +800,10 @@ impl Server {
             rt::post(id);
         }
         SERVERS.with(|s| s.borrow_mut().remove(&self.id));
+        if !self.scope.contains_current() {
+            // What outlived the grace period is cancelled; its connections are closed already.
+            self.scope.close();
+        }
     }
 
     /// Whether every connection has closed or gone idle, so a close can stop waiting.
@@ -1365,7 +1360,7 @@ impl Server {
         }
         // Stop reading while the request waits; the handler owns the stream next.
         self.set_interest(conn, reactor, Ev::NONE);
-        reactor.ready.borrow_mut().push_back(conn.clone());
+        reactor.enqueue(conn);
         false
     }
 
@@ -1488,28 +1483,10 @@ impl Server {
             }
         };
         self.detach(conn, reactor);
-        super::exchange::run(self, conn, reactor, pending);
+        super::exchange::run(self, conn, pending);
         {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
-        }
-    }
-
-    pub(super) fn enter_handler(&self, reactor: &Reactor) {
-        reactor
-            .handlers
-            .borrow_mut()
-            .push((rt::current_task(), self.id));
-    }
-
-    pub(super) fn leave_handler(&self, reactor: &Reactor) {
-        let task = rt::current_task();
-        let mut handlers = reactor.handlers.borrow_mut();
-        if let Some(at) = handlers
-            .iter()
-            .rposition(|&(t, id)| t == task && id == self.id)
-        {
-            handlers.remove(at);
         }
     }
 }

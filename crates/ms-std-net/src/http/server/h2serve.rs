@@ -555,7 +555,7 @@ impl Server {
         })
         .unwrap_or(false);
         if queued {
-            reactor.ready.borrow_mut().push_back(conn.clone());
+            reactor.enqueue(conn);
         } else {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
@@ -620,7 +620,7 @@ impl Server {
         let Some((id, head, started)) = with_h2(conn, H2Conn::take_next).flatten() else {
             return;
         };
-        run_streaming(self, conn, reactor, id, head, started);
+        run_streaming(self, conn, id, head, started);
         {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
@@ -672,14 +672,7 @@ fn response_head(
 // ----------------------------------------------------------------- exchanges
 
 /// Runs the streaming handler for a queued stream.
-fn run_streaming(
-    server: &Server,
-    conn: &Rc<Conn>,
-    reactor: &Reactor,
-    id: u32,
-    head: Head,
-    started: Instant,
-) {
+fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started: Instant) {
     let Some(server_rc) = server.rc() else { return };
     let timeout = server.limits.timeout;
     let exchange = Rc::new(Exchange {
@@ -714,9 +707,7 @@ fn run_streaming(
             h2: Some(id),
         }),
     });
-    server.enter_handler(reactor);
     let outcome = server.dispatch.streaming(exchange.clone());
-    server.leave_handler(reactor);
     let late = timeout.is_some_and(|t| started.elapsed() > t);
     exchange.finish(outcome, late);
 }
