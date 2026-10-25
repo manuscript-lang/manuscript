@@ -618,7 +618,7 @@ impl Checker {
         }
         if receiver.is_std("Map") && name == "set" {
             return format!(
-                "{message}; 'm[key] = value' assigns only into a List; write m.add(key, value) to insert or replace a Map entry; available: {}",
+                "{message}; write m[key] = value or m.add(key, value) to insert or replace a Map entry; available: {}",
                 available.join(", ")
             );
         }

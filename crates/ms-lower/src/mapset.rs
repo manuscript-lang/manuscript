@@ -380,6 +380,72 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// `m[key]`: one probe, borrowing the entry; an absent key faults with the key's text.
+    pub(crate) fn map_index(&mut self, e: &Expr, map: &Expr, key: &Expr) -> Result<Val, Error> {
+        let stable = self.stable_place(map);
+        let mv = self.expr(map)?;
+        if self.dead {
+            return Ok(mv);
+        }
+        let mv = self.borrow(mv);
+        let kv = self.expr(key)?;
+        if self.dead {
+            return Ok(kv);
+        }
+        let kv = self.borrow(kv);
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        self.at(e.pos);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let (bad, good) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, bad, &[], good, &[]);
+        self.b.seal_block(bad);
+        self.b.seal_block(good);
+        self.b.switch_to(bad);
+        let head = "map key not found";
+        let msg = if self.ty_of(kv) == MTy::INT {
+            let head = self.b.str_lit(&format!("{head}: "));
+            let text = self.call_runtime("msrt_int_to_string", &[kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[head, text], MTy::STR)?
+        } else if self.ty_of(kv) == MTy::STR {
+            let open = self.b.str_lit(&format!("{head}: \""));
+            let close = self.b.str_lit("\"");
+            let text = self.call_runtime("msrt_string_concat", &[open, kv], MTy::STR)?;
+            self.call_runtime("msrt_string_concat", &[text, close], MTy::STR)?
+        } else {
+            self.b.str_lit(head)
+        };
+        let fault = self.b.m.add_extern(ms_mir::ir::ExternDef {
+            name: "msrt_fault_string".to_string(),
+            params: vec![ms_mir::ir::Param {
+                ty: MTy::STR,
+                mode: ms_mir::ir::Mode::Borrow,
+            }],
+            ret: MTy::UNIT,
+            noreturn: true,
+            pure_: false,
+            fresh: false,
+        });
+        self.b.call_rt(fault, &[msg]);
+        self.b.unreachable();
+        self.b.switch_to(good);
+        let v = self
+            .b
+            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        if stable {
+            self.stable_reads.insert(v);
+        }
+        Ok(Val { v, own: false })
+    }
+
     /// A fresh empty map or set of type `ty`.
     pub(crate) fn map_new(&mut self, ty: MTy) -> Result<Value, Error> {
         let v = self.call_runtime("msrt_map_new", &[], ty)?;
