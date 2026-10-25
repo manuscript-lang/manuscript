@@ -16,7 +16,7 @@ We learn by watching agents build real programs. Their mistakes, repair attempts
 - **Spend tokens on meaning.** Compact expressions, inferred types, pipe flows, and a concise API vocabulary aim to reduce the context needed to express and understand a program. Token efficiency is a design goal alongside readability and analyzability; shorter code still needs to say clearly what it does.
 - **Keep reasoning local.** A small, regular core, explicit types at boundaries, `Optional` and `Result`, and visible mutation make intent easier to follow. Python-like syntax gives agents a familiar starting point, paired with Manuscript’s own static checking, ownership and borrowing, and native compilation. Familiarity guides the design; Python compatibility is not the goal.
 - **Make analysis part of the language.** Static checking, structured diagnostics, symbol search, inspection, and diagrams derive evidence from source. Agents can find exact APIs and act on compiler feedback; people can examine the same program and its relationships.
-- **Design the whole loop.** The compiler, standard library, formatter, tests, language server, and profiler belong to one toolchain. Native executables, explicit numeric widths, and scoped tasks, workers, and processes give that philosophy practical reach.
+- **Design the whole loop.** We’re building a batteries-included language: a broad standard library and integrated tooling, so agents can build complete applications without assembling the basics themselves.
 
 The [vision](VISION.md) sets out the longer-term ambition. The [language tour](documentation/learn/tour.md) shows how these choices feel in code.
 
@@ -84,29 +84,11 @@ test "orders from JSON":
 
 `try` passes a failure to the caller. `Optional[String]` represents a coupon that may be absent; `if let` gives its value when present. The standard library includes JSON, files, streams, HTTP, networking, text, time, and processes. Find the exact API with `ms search_symbol json.parse` or the [library reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/).
 
-## Small building blocks
-
-Functions use `def name(...) -> Type`; function types use `Callable`, and callbacks use `lambda`. A pipe feeds its value into the next call. This complete example combines filtering, mapping, and a test:
-
-```manuscript
-from "@std/testing.ms" import expect_equal
-
-def positive(values: List[Int]) -> List[Int]:
-    return values.filter(lambda (value: Int) -> Bool: return value > 0)
-
-def doubled(values: List[Int]) -> List[Int]:
-    return values.map(lambda (value: Int) -> Int: return value * 2)
-
-test "pipe flow":
-    let result = [-2, 0, 3, 5] | positive | doubled
-    try expect_equal(result, [6, 10])
-```
-
-Save it as `flow.ms` and run `ms test flow.ms`. The [tour](documentation/learn/tour.md) builds from variables and functions through types, errors, modules, and cleanup.
+## Ownership and visible mutation
 
 Ownership and borrowing are central to the memory model. Ordinary records and collections have value semantics: the compiler borrows or moves them according to use, `var` makes mutation visible, and `.clone()` explicitly copies ordinary nested data. Owned values are reclaimed deterministically during normal execution, without a tracing garbage collector. External resources still need `with` or `close()`, and shared handles have their own contracts. See [references and borrowing](documentation/core-language/types/references.md) and [scoped cancellation](documentation/core-language/concurrency/task-groups.md) for the exact rules.
 
-`Int` remains signed 64-bit and `Float` remains 64-bit. Sized integer and floating-point types let you choose storage and arithmetic deliberately; conversions make width changes explicit. Exclusive `a..b` ranges include `a` and stop before `b`. See [numeric types](documentation/core-language/basics/numbers-and-booleans.md).
+The [language tour](documentation/learn/tour.md) introduces functions, types, mutation, and cleanup through runnable examples.
 
 ## Concurrency with a scope
 
@@ -139,7 +121,7 @@ The [tooling guide](documentation/developer-tooling/implementation.md) covers st
 
 `ms` checks and lowers your source to an intermediate representation, then compiles it ahead of time to native machine code and links it with the runtime and standard library. There is no JIT compilation at runtime. Cranelift keeps debug builds fast for quick iteration. Release and MinSizeRel builds use LLVM to optimize for runtime performance or binary size when its tools are available, falling back to Cranelift if they cannot be fetched. The resulting executable runs without `ms` installed. See [how compilation works](documentation/developer-tooling/how-it-works.md).
 
-Performance is part of the design: native execution, explicit numeric widths, packed storage, and compiler optimizations aim to make readable code efficient to run. Benchmark results guide that work alongside the agent feedback loop.
+Performance is part of the design: native execution, packed storage, and compiler optimizations aim to make readable code efficient to run. Benchmark results guide that work alongside the agent feedback loop.
 
 The project uses [agent exercises](bench/agent/README.md) to study how agents build programs, and [performance benchmarks](bench/perf/README.md) to guide compiler and runtime work. Results depend on the program, revision, build mode, hardware, and comparison settings. The benchmark directories include sources, commands, and recorded results; measure your own workload before drawing conclusions about performance.
 
