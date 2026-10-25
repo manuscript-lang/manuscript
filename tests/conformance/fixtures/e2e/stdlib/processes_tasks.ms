@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel
 from "@std/process.ms" import commands, os_type
 from "@std/processes.ms" import ProcessGroup
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal
+from "@std/testing.ms" import expect_equal, expect_ok
 from "@std/time.ms" import duration, sleep
 
 def talker(ch: Channel[Int, Unit]) -> Int:
@@ -89,6 +89,13 @@ def long_alive() -> Bool:
 
     let found = commands().run("pgrep", ["-f", "sleep 30.717"])
     return found.get().exit_code == 0
+
+# Names the error when the listing command cannot run, instead of failing inside `long_alive`.
+test "the process listing command runs":
+    if os_type() == "windows":
+        try expect_ok(commands().run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]))
+    else:
+        try expect_ok(commands().run("pgrep", ["-f", "sleep 30.717"]))
 
 test "cancelling a task inside commands().run kills the child":
     with let group = TaskGroup[Int](timeout: some(duration(200000000))):
