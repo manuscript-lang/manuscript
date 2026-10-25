@@ -22,11 +22,7 @@ impl Closeable for SharedGuard[T]:
 
 # Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
 # and stops waiting if the task is cancelled. Use it with `with var`, which closes the guard:
-#
-# ```
-# with var guard = lock(box):
-#     guard.value.append(1)
-# ```
+# `with var guard = lock(box):` then change `guard.value`.
 export def lock[T](box: Shared[T]) -> SharedGuard[T]:
     while box.locked():
         sleep(duration(50000))
