@@ -170,7 +170,6 @@ def next_frame(
                 return error(ChannelError.Broken("a frame is not UTF-8"))
 
         inbox.put(state)
-
         if msstd_process_ipc_wait_reader(link):
             return ok(some(Frame(kind: RETRY, body: "")))
 
@@ -232,9 +231,11 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 return error(ChannelError.Broken("the other process exited"))
 
             let frame = next.get(Frame(kind: -1, body: ""))
+
             if frame.kind == RETRY:
                 if self.inbox.get().finished:
                     return ok(none)
+
                 continue
 
             if frame.kind == MESSAGE:
