@@ -49,7 +49,7 @@ def hash_worker() -> Unit:
     # receive chunks, send digests, until the starter closes its end
 
 def hash_all(chunks: List[Bytes]) -> Result[List[String], WorkerError]:
-    with WorkerGroup[Bytes, String]() as group:
+    with let group = WorkerGroup[Bytes, String]():
         var worker = try group.spawn(hash_worker)
         # send chunks, read digests, then worker.channel.close() and worker.join()
 ```

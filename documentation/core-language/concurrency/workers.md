@@ -27,7 +27,7 @@ def squares() -> Unit:
     let finished = serve(var ch)
 
 test "a worker answers over its channel":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(squares).get(none)
         expect_ok(worker.channel.send(12))
         expect_equal(worker.channel.receive(), ok(some(144)))

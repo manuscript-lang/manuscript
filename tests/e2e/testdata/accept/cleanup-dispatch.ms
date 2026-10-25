@@ -25,17 +25,17 @@ impl Disposable for Resource:
         panic("disposable")
 
 def bound_cleanup[T: Disposable](resource: T) -> Unit:
-    with resource as item:
+    with let item = resource:
         let completed = ()
 
 def canonical_cleanup[T: Closeable](resource: T) -> Unit:
-    with resource as item:
+    with let item = resource:
         let completed = ()
 
 test "cleanup uses the selected contract":
     let direct = try expect_fault(
         lambda:
-            with Resource(0) as resource:
+            with let resource = Resource(0):
                 let completed = ()
     )
     try expect_equal(direct, "closeable")

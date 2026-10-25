@@ -41,11 +41,11 @@ def first(c: Channel[Unit, Int]) -> Int:
     return 0
 
 test "result waits while another task receives from the same child":
-    with ProcessGroup[Int, Unit, Int]() as procs:
+    with let procs = ProcessGroup[Int, Unit, Int]():
         var child = procs.spawn(talker).get()
         let reader = child.channel.clone()
 
-        with TaskGroup[Int]() as tasks:
+        with let tasks = TaskGroup[Int]():
             tasks.spawn(lambda ch: read_all(reader.clone()))
 
             # The receiver is the one reading the pipe by now, so `result` waits for it.
@@ -54,11 +54,11 @@ test "result waits while another task receives from the same child":
             try expect_equal(tasks.results().get([]), [3])
 
 test "a task cancelled in a channel read releases the link":
-    with ProcessGroup[Int, Unit, Int]() as group:
+    with let group = ProcessGroup[Int, Unit, Int]():
         var child = group.spawn(late).get()
         let reader = child.channel.clone()
 
-        with TaskGroup[Int](timeout: some(duration(50000000))) as tasks:
+        with let tasks = TaskGroup[Int](timeout: some(duration(50000000))):
             tasks.spawn(lambda ch: first(reader.clone()))
             try expect_equal(tasks.wait().is_error(), True)
 
@@ -91,7 +91,7 @@ def long_alive() -> Bool:
     return found.get().exit_code == 0
 
 test "cancelling a task inside commands().run kills the child":
-    with TaskGroup[Int](timeout: some(duration(200000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(200000000))):
         let t = group.spawn(lambda ch: run_long())
         try expect_equal(t.result().is_ok(), False)
 
@@ -99,5 +99,5 @@ test "cancelling a task inside commands().run kills the child":
     try expect_equal(long_alive(), False)
 
 test "the liveness check sees a live child":
-    with try commands().spawn(long_program(), long_args()) as child:
+    with let child = try commands().spawn(long_program(), long_args()):
         try expect_equal(long_alive(), True)

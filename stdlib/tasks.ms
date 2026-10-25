@@ -199,7 +199,7 @@ def run[T, In, Out](
     down: Shared[Lane[In]],
     slot: Shared[List[T]]
 ) -> Unit:
-    with TaskTransport[Out, In](outgoing: up, incoming: down) as end:
+    with let end = TaskTransport[Out, In](outgoing: up, incoming: down):
         msrt_scope_started()
 
         let value = entry(

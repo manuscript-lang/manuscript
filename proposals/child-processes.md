@@ -66,7 +66,7 @@ def hasher(parent: Channel[String, Bytes], argument: HashConfig):
 
 def hash_all(chunks: List[Bytes]) -> List[String]:
     var digests = List[String]()
-    with ProcessGroup() as group:
+    with let group = ProcessGroup():
         let worker = group.spawn(hasher, HashConfig(algorithm="sha256"))
         for chunk in chunks:
             worker.send(chunk.clone())

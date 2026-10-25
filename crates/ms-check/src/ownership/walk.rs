@@ -838,12 +838,22 @@ impl Walker<'_> {
             StmtKind::For {
                 by_ref, iter, body, ..
             } => self.for_stmt(s, *by_ref, iter, body),
-            StmtKind::With { value, body, .. } => {
+            StmtKind::With {
+                mutable,
+                value,
+                body,
+                ..
+            } => {
                 self.expr(value, Demand::Consume);
                 self.release_pending();
                 let mark = self.declared.len();
                 if let Some(b) = self.cx.m.stmt(s).loop_binding {
-                    self.declare(&b, Role::With, Perm::Immutable, None, false);
+                    let perm = if *mutable {
+                        Perm::Mutable
+                    } else {
+                        Perm::Immutable
+                    };
+                    self.declare(&b, Role::With, perm, None, false);
                 }
                 self.block(body);
                 let ended: Vec<usize> = self.declared.drain(mark..).collect();

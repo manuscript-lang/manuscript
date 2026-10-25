@@ -15,7 +15,7 @@ def pure() -> Int:
     return 1
 
 def direct(resource: Resource) -> Unit:
-    with resource as item:
+    with let item = resource:
         return
 
 def transitive(resource: Resource) -> Unit:
@@ -23,7 +23,7 @@ def transitive(resource: Resource) -> Unit:
 
 def nested(resource: Resource) -> Unit:
     let callback = lambda (item: Resource) -> Unit:
-        with item as held:
+        with let held = item:
             return
     callback(resource)
 

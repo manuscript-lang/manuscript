@@ -16,7 +16,7 @@ def square(n: Int) -> Int:
     return n * n
 
 test "a group collects its results in start order":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         for n in [1, 2, 3]:
             group.spawn(lambda ch: square(n))
         group.results() | try expect_ok | try expect_equal([1, 4, 9])
@@ -50,7 +50,7 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
     return 1
 
 test "a task that passes its timeout is cancelled":
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let task = group.spawn(wait_a_minute, timeout: some(duration(10000000)))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
@@ -81,7 +81,7 @@ def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     return ok(())
 
 test "a task answers messages on its channel":
-    with TaskGroup[Result[Unit, ChannelError], Int, Int]() as group:
+    with let group = TaskGroup[Result[Unit, ChannelError], Int, Int]():
         var task = group.spawn(square_all)
         task.channel.send(3) | try expect_ok
         task.channel.receive() | try expect_ok | try expect_equal(some(9))

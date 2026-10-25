@@ -85,7 +85,7 @@ from "@std/bytes.ms" import Bytes
 
 def notes_reader(path: String) -> Callable[[], Result[Bytes, FileSystemError]]:
     return lambda:
-        with try filesystem().open(path: path, flags: "r", mode: 0) as file:
+        with let file = try filesystem().open(path: path, flags: "r", mode: 0):
             return file.read_file(max_bytes: 1048576)
 ```
 

@@ -57,7 +57,7 @@ with var guard = box.lock():
 | `crates/ms-lower` `with.rs`, `sharedbuilder.rs` | close the binding's current value; `take`/`put` internal | p13 as e2e fixture |
 | `stdlib/shared.ms` | `lock`, `SharedGuard`; `take`/`put` unexported | stdlib tests |
 | `stdlib/tasks.ms`, `processes.ms`, `log.ms`, `workers.ms` | migrate all take/put sites to `with lock()` | existing e2e |
-| docs, `ms guide`, LSP/VS Code snapshots | new API and `with ... as var` | docs checks |
+| docs, `ms guide`, LSP/VS Code snapshots | new API and `with let/var` | docs checks |
 | `ms-rt`, ABI | unchanged | none |
 
 ## Alternatives

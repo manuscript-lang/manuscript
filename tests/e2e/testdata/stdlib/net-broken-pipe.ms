@@ -8,10 +8,10 @@ from "@std/time.ms" import sleep
 test "writing to a closed connection returns an error":
     let net = network()
 
-    with (net.listen("127.0.0.1:0") | try expect_ok) as listener:
+    with let listener = (net.listen("127.0.0.1:0") | try expect_ok):
         let client = (net.connect(listener.address(), 2.seconds) | try expect_ok)
 
-        with (listener.accept(2.seconds) | try expect_ok) as accepted:
+        with let accepted = (listener.accept(2.seconds) | try expect_ok):
             client.close()
 
             var attempts = 0

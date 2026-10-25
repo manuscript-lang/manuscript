@@ -313,7 +313,7 @@ Use an interface when callers should depend on behavior rather than on the type.
 from "@std/fs.ms" import filesystem, FileSystemError
 
 def copy_notes() -> Result[Unit, FileSystemError]:
-    with try filesystem().open("notes.txt", flags: "r", mode: 0) as source:
+    with let source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
         try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: True)
     return ok(())

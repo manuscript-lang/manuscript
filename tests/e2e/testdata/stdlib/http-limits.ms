@@ -10,8 +10,10 @@ def ok_route(request: HttpRequest) -> HttpResponse:
 test "serve caps the request header block":
     let net = network()
 
-    with (net.serve(address: "127.0.0.1:0", handler: ok_route) | try expect_ok) as server:
-        with (net.connect(server.address(), 2.seconds) | try expect_ok) as client:
+    with let server = (
+        net.serve(address: "127.0.0.1:0", handler: ok_route) | try expect_ok
+    ):
+        with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
             let filler = ("a".repeat(2000000) | try expect_ok)
             let head = f"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
 
@@ -29,18 +31,18 @@ test "serve timeout closes idle connections":
     let net = network()
     let handler = ok_route
 
-    with (
+    with let server = (
         net.serve(
             address: "127.0.0.1:0", handler: handler, timeout: 300.milliseconds
         ) | try expect_ok
-    ) as server:
-        with (net.connect(server.address(), 2.seconds) | try expect_ok) as silent:
+    ):
+        with let silent = (net.connect(server.address(), 2.seconds) | try expect_ok):
             let closed = (silent.read(timeout: 3.seconds) | try expect_ok)
             if let _data = closed: return error(
                 TextError("silent connection was answered")
             )
 
-        with (net.connect(server.address(), 2.seconds) | try expect_ok) as reused:
+        with let reused = (net.connect(server.address(), 2.seconds) | try expect_ok):
             reused.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
 
             let first = (reused.read(timeout: 2.seconds) | try expect_ok)

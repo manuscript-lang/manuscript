@@ -297,7 +297,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     };
     let with = Node {
         kind: "with".into(),
-        label: "with TaskGroup[Int]() as group  [closed on exit]".into(),
+        label: "with let group = TaskGroup[Int]()  [closed on exit]".into(),
         children: vec![
             spawn,
             Node {
@@ -318,7 +318,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
     assert_eq!(
         tasks,
-        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with TaskGroup[Int]() as group  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(lambda: fetch(1))\n         `- call fetch\n"
     );
 }
 

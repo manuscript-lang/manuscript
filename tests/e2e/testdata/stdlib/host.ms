@@ -55,9 +55,9 @@ test "subprocess validation returns expected domain errors":
 test "subprocess streams that are not piped are closed":
     if os_type() == "windows": return
 
-    with try commands().spawn(
+    with let child = try commands().spawn(
         "sh", ["-c", "cat; echo done >&2"], stdin: Stdio.Null, stdout: Stdio.Null
-    ) as child:
+    ):
         try expect_equal((try child.wait()), 0)
 
         let line = try read_line(child.stderr())
@@ -68,7 +68,7 @@ test "subprocess streams that are not piped are closed":
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with try commands().spawn("cat", []) as child:
+    with let child = try commands().spawn("cat", []):
         try child.stdin().write("ping\n")
 
         let line = try read_line(child.stdout())
