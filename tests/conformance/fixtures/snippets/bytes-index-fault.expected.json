@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "99\n",
     "stderr": "index 3 out of range for length 3; pass a default: get(index:, default: ...)\n  at bytes-index-fault.ms:9 in main\n"
   }
