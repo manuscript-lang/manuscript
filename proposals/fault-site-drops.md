@@ -39,6 +39,14 @@ Release build, `sh bench/perf/web/run.sh 5`, same VM, ms rows only, req/s.
 - Call-only sites leave the leak: the optimizer inlines the faulting callee, so the fault is an inline op. They still cost 5 to 15% on `/health`.
 - The cost is registrations per site times live values; the leak fix itself (the runtime half) is free.
 
+### Where the `/top` cost goes (callgrind, run on current main plus the spike)
+
+- Spike binary under `valgrind --tool=callgrind`, ~1,350 `/top?n=10` requests: 1,275M instructions total; the handler 475M (37%), `msrt_cleanup_discard` 395M (31%), `msrt_cleanup_push` 368M (29%).
+- 13.6M pushes for ~1,350 requests: about 10,000 per request, one per iteration of the inner selection loop (`pick_after`, inlined; 10 passes x 1,000 ids), with the caller's `out` string live across it.
+- Per call: push 27 instructions, discard 29 (out-of-line calls through the isolate indirection and a `Vec` push with a capacity check), against a loop body of about 35 instructions. That is the 2.6x.
+- A standalone loop of the same code showed no slowdown, because that program did not run the pass; it is not evidence against the cost.
+- Two independent levers follow: register once per live range instead of once per site (cost scales with values, not loop iterations), and make push and discard a few inline instructions instead of ~28 each.
+
 ## Components touched
 
 | Component | Change | Test |
@@ -59,7 +67,7 @@ Release build, `sh bench/perf/web/run.sh 5`, same VM, ms rows only, req/s.
 ## Staging and verification
 
 - Stage 1 (free, can land now): the runtime half plus a unit test. It changes nothing observable until sites exist.
-- Stage 2: spike registration at definition on `bench/perf/web`; go if `/top` and `/health` stay within noise (10%) and the repro RSS stays flat, else try stack maps.
+- Stage 2: spike live-range registration (excluding values borrowed mutably within the range) and inline push/discard, on `bench/perf/web`; go if `/top` and `/health` stay within noise (10%) and the repro RSS stays flat, else try stack maps.
 - Each stage: `cargo nextest run --workspace`, `make conform`, the repro, and a dated `bench/perf/web` section.
 
 ## Open questions
