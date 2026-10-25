@@ -8,19 +8,31 @@ repository=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repository"
 
 stats_target="${LEAK_TARGET_DIR:-$repository/target/leak-stats}"
-# Linux programs link statically against musl, so the counting runtime is a musl build too.
+# Linux programs link statically against musl and Windows ones against mingw-w64, so the counting runtime is built for that target too.
 release=release
 target=
-if [ "$(uname -s)" = Linux ]; then
-    target="$(uname -m)-unknown-linux-musl"
-    release="$target/release"
-    export "CC_$(echo "$target" | tr - _)=${CC:-cc}"
-fi
+case "$(uname -s)" in
+    Linux)
+        target="$(uname -m)-unknown-linux-musl"
+        release="$target/release"
+        export "CC_$(echo "$target" | tr - _)=${CC:-cc}"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        # Windows programs link against the mingw-w64 (gnullvm) runtime, built with the bundled clang.
+        arch=$(uname -m)
+        target="$arch-pc-windows-gnullvm"
+        release="$target/release"
+        mingw="${MS_MINGW:-$repository/target/llvm-bundle/mingw}"
+        export "CC_$(echo "$target" | tr - _)=$mingw/bin/$arch-w64-mingw32-clang"
+        ;;
+esac
 CARGO_TARGET_DIR="$stats_target" cargo build --release --locked -q -p ms-native --features ms-rt/stats ${target:+--target "$target"}
 cargo xtask runtime >/dev/null
 cargo build --release --locked -q -p ms-cli
 ms="$repository/target/release/ms"
 MS_RT_LIB="$stats_target/$release/libms_native.a"
+# `ms.exe` is a native program, which cannot read an MSYS path.
+if command -v cygpath >/dev/null 2>&1; then MS_RT_LIB=$(cygpath -m "$MS_RT_LIB"); fi
 export MS_RT_LIB
 
 if [ "$#" -eq 0 ]; then
