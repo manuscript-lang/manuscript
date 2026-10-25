@@ -898,7 +898,7 @@ fn run_one_cleanup() -> bool {
     }
 }
 
-/// The full fault path: trace, cleanups LIFO, report, exit 70.
+/// The full fault path: trace, cleanups LIFO, report, exit 67.
 #[cold]
 #[inline(never)]
 pub fn fault(msg: &[u8]) -> ! {
@@ -1595,6 +1595,29 @@ mod tests {
         })
         .join()
         .unwrap();
+    }
+
+    #[test]
+    fn publishing_waits_while_a_reader_is_inside_its_section() {
+        let _g = crate::testutil::lock();
+        let published = PublishedHdr::new();
+        // A reader that has not left: publication must not return, or the old header's stack
+        // could be freed under it.
+        published.readers.fetch_add(1, Ordering::SeqCst);
+        let returned = core::sync::atomic::AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                published.publish(core::ptr::null_mut());
+                returned.store(true, Ordering::SeqCst);
+            });
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            assert!(
+                !returned.load(Ordering::SeqCst),
+                "publication returned while a reader was still inside its section"
+            );
+            published.readers.fetch_sub(1, Ordering::SeqCst);
+        });
+        assert!(returned.load(Ordering::SeqCst));
     }
 
     #[test]

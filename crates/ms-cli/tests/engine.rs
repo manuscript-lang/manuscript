@@ -269,7 +269,7 @@ fn runtime_fault_is_reported_as_json() {
     );
     let backend = Engine::new(Native);
     let (status, json, err) = ms(&backend, &["run", &source, "--json"]);
-    assert_eq!(status, 70, "{err}");
+    assert_eq!(status, 67, "{err}");
     for needle in [
         "\"kind\": \"division_by_zero\"",
         "\"cleanups_ran\": true",

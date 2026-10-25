@@ -5,7 +5,9 @@ use crate::tree::Node;
 use std::collections::HashSet;
 
 /// Names the diagram views, in help order.
-pub const VIEWS: [&str; 6] = ["calls", "effects", "errors", "modules", "flow", "scope"];
+pub const VIEWS: [&str; 7] = [
+    "calls", "effects", "errors", "modules", "flow", "scope", "tasks",
+];
 
 /// Bounds one view so a large project stays readable and the output size predictable.
 pub const NODE_CAP: usize = 200;
@@ -50,6 +52,10 @@ pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result
     };
     let mut root = Node::new(format!("{} VIEW", view.to_uppercase()));
     for fact in &roots {
+        if builder.count >= NODE_CAP {
+            builder.skipped += 1;
+            continue;
+        }
         root.children
             .push(builder.expand(fact, 0, &mut HashSet::new()));
     }
@@ -57,6 +63,7 @@ pub fn build_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result
         root.children.push(Node::new("none"));
     }
     if builder.skipped > 0 {
+        root.omitted = builder.skipped;
         root.children.push(Node::new(format!(
             "+{} more (output capped at {NODE_CAP} nodes)",
             builder.skipped
@@ -91,6 +98,9 @@ impl ViewBuilder<'_> {
         let mut node = Node {
             label: self.label(f),
             reference: f.key.clone(),
+            kind: f.kind.clone(),
+            file: f.file.clone(),
+            line: f.line,
             ..Node::default()
         };
         self.count += 1;
@@ -106,8 +116,19 @@ impl ViewBuilder<'_> {
                 continue;
             }
             if path.contains(key) {
-                node.children
-                    .push(Node::new(format!("{}  (cycle)", callee.name)));
+                if self.count >= NODE_CAP {
+                    self.skipped += 1;
+                    continue;
+                }
+                self.count += 1;
+                node.children.push(Node {
+                    label: format!("{}  (cycle)", callee.name),
+                    kind: "cycle".into(),
+                    reference: callee.key.clone(),
+                    file: callee.file.clone(),
+                    line: callee.line,
+                    ..Node::default()
+                });
                 continue;
             }
             if self.count >= NODE_CAP {
@@ -127,7 +148,12 @@ impl ViewBuilder<'_> {
                     continue;
                 }
                 self.count += 1;
-                node.children.push(Node::new(target.clone()));
+                node.children.push(Node {
+                    label: target.clone(),
+                    kind: "external".into(),
+                    reference: target.clone(),
+                    ..Node::default()
+                });
             }
         }
         path.remove(&f.key);
@@ -161,15 +187,50 @@ fn view_roots<'a>(facts: &'a Facts, view: &str, entity: &str) -> Result<Vec<&'a 
         }
     }
     // `entities` is keyed by `Fact::key`, so iteration is already in key order.
-    Ok(facts
+    let mut roots: Vec<&Fact> = facts
         .entities
         .values()
         .filter(|f| {
-            (f.kind == "fn" || f.kind == "method")
+            (f.kind == "fn" || f.kind == "method" || f.kind == "test")
                 && relevant(view, f)
                 && !called.contains(f.key.as_str())
         })
-        .collect())
+        .collect();
+    // Every callable must be reachable from a root, including disconnected
+    // recursive groups, which have no node with zero incoming edges.
+    let mut reached = HashSet::new();
+    for root in &roots {
+        mark_reachable(facts, view, &root.key, &mut reached);
+    }
+    for fact in facts
+        .entities
+        .values()
+        .filter(|f| (f.kind == "fn" || f.kind == "method" || f.kind == "test") && relevant(view, f))
+    {
+        if !reached.contains(fact.key.as_str()) {
+            roots.push(fact);
+            mark_reachable(facts, view, &fact.key, &mut reached);
+        }
+    }
+    Ok(roots)
+}
+
+fn mark_reachable<'a>(facts: &'a Facts, view: &str, key: &'a str, seen: &mut HashSet<&'a str>) {
+    let mut pending = vec![key];
+    while let Some(key) = pending.pop() {
+        if !seen.insert(key) {
+            continue;
+        }
+        if let Some(fact) = facts.entities.get(key) {
+            pending.extend(fact.calls.iter().filter_map(|key| {
+                facts
+                    .entities
+                    .get(key)
+                    .filter(|f| relevant(view, f))
+                    .map(|_| key.as_str())
+            }));
+        }
+    }
 }
 
 /// Resolves a name, `file::name`, or full key to exactly one entity.
@@ -209,16 +270,38 @@ fn modules_view(facts: &Facts, entity: &str) -> Result<Node, String> {
         ));
     }
     let mut root = Node::new("MODULES VIEW");
+    let mut count = 0;
+    let mut skipped = 0;
     for file in &files {
-        let children = facts.imports[*file]
-            .iter()
-            .map(|path| Node::new(path.clone()))
-            .collect();
-        root.children
-            .push(Node::with_children((*file).clone(), children));
+        if count >= NODE_CAP {
+            skipped += 1;
+            continue;
+        }
+        count += 1;
+        let mut module = Node {
+            label: (*file).clone(),
+            kind: "module".into(),
+            file: (*file).clone(),
+            ..Node::default()
+        };
+        for path in &facts.imports[*file] {
+            if count >= NODE_CAP {
+                skipped += 1;
+                continue;
+            }
+            count += 1;
+            module.children.push(Node::new(path.clone()));
+        }
+        root.children.push(module);
     }
     if files.is_empty() {
         root.children.push(Node::new("none"));
+    }
+    if skipped > 0 {
+        root.omitted = skipped;
+        root.children.push(Node::new(format!(
+            "+{skipped} more (output capped at {NODE_CAP} nodes)"
+        )));
     }
     Ok(root)
 }
@@ -251,6 +334,9 @@ fn flow_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result<Node
     let mut header = Node {
         label: format!("{}  [{}] {}:{}", f.name, f.kind, f.file, f.line),
         reference: f.key.clone(),
+        kind: f.kind.clone(),
+        file: f.file.clone(),
+        line: f.line,
         children: body,
         ..Node::default()
     };
@@ -259,6 +345,7 @@ fn flow_view(facts: &Facts, view: &str, entity: &str, depth: i64) -> Result<Node
     }
     root.children.push(header);
     if expander.skipped > 0 {
+        root.omitted = expander.skipped;
         root.children.push(Node::new(format!(
             "+{} more (output capped at {NODE_CAP} nodes)",
             expander.skipped
@@ -290,6 +377,7 @@ impl FlowExpander<'_> {
                 file: n.file.clone(),
                 line: n.line,
                 children: Vec::new(),
+                ..Node::default()
             };
             copied.children = self.expand(&n.children, level, path);
             if !n.reference.is_empty() && level < self.depth {

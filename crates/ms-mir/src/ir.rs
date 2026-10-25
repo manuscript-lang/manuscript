@@ -26,6 +26,7 @@
 use crate::types::{
     AltDef, AltId, IfaceDef, IfaceId, RecId, RecordDef, Ty, TyKind, TyTable, id_type,
 };
+use std::collections::HashMap;
 use std::fmt;
 
 id_type!(
@@ -972,6 +973,9 @@ pub struct ExternDef {
     /// Whether the call has no observable effect and does not fault, so equal calls
     /// can be merged and unused ones removed.
     pub pure_: bool,
+    /// Whether the result points into no borrowed argument (it is an owned allocation, an
+    /// inline value or a static), so a borrowed argument may be dropped once the call returns.
+    pub fresh: bool,
 }
 
 /// A module-level variable.
@@ -1015,6 +1019,8 @@ pub struct Module {
     pub vtables: Vec<VtableDef>,
     /// String literals (UTF-8).
     pub strings: Vec<String>,
+    /// Index of [`Module::strings`] by content; only [`Module::add_string`] writes both.
+    string_ids: HashMap<String, StrId>,
     /// Runtime functions called.
     pub externs: Vec<ExternDef>,
     /// Module-level variables.
@@ -1046,6 +1052,7 @@ impl Module {
             ifaces: Vec::new(),
             vtables: Vec::new(),
             strings: Vec::new(),
+            string_ids: HashMap::new(),
             externs: Vec::new(),
             globals: Vec::new(),
             funcs: Vec::new(),
@@ -1056,11 +1063,13 @@ impl Module {
 
     /// Interns a string literal.
     pub fn add_string(&mut self, s: &str) -> StrId {
-        if let Some(i) = self.strings.iter().position(|x| x == s) {
-            return StrId(i as u32);
+        if let Some(&id) = self.string_ids.get(s) {
+            return id;
         }
+        let id = StrId(self.strings.len() as u32);
         self.strings.push(s.to_string());
-        StrId(self.strings.len() as u32 - 1)
+        self.string_ids.insert(s.to_string(), id);
+        id
     }
 
     /// Registers a source file and returns its index for [`Loc`].

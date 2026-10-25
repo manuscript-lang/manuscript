@@ -130,7 +130,7 @@ test "a Unit result crosses":
 test "a child that faults is data, not a parent fault":
     with let group = ProcessGroup[Unit]():
         var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
-        child.result() | try expect_error | try expect_equal(ProcessError.Exited(70))
+        child.result() | try expect_error | try expect_equal(ProcessError.Exited(67))
         let refused = child.channel.send(()) | try expect_error
 
 test "piped standard streams reach the parent":
@@ -154,5 +154,5 @@ test "a stream that is not piped is closed":
         child.result() | try expect_ok
 
 test "process errors describe themselves":
-    try expect_equal(ProcessError.Exited(70).message(), "process: exited with status 70")
+    try expect_equal(ProcessError.Exited(67).message(), "process: exited with status 67")
     try expect_equal(ProcessError.Broken("bad frame").message(), "process: broken: bad frame")

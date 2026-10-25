@@ -1,24 +1,13 @@
 # Manuscript
 
-Manuscript is the language for the agentic era.
+**The language for the agentic era.**
 
-Agents write the code and people understand it. It is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result.
+Manuscript is a statically typed, natively compiled language built from the ground up for a world where agents write most of the code and people have to understand it. It reads like Python, compiles to a single native executable, manages memory by ownership instead of a garbage collector, runs concurrent work without `async`, and ships a standard library broad enough to build complete services. Every design decision is tested against what coding agents actually do with it, and every performance claim below comes with the command that reproduces it.
 
-[Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
-
-## Highlights
-
-- **Clear syntax, no tricks.** Familiar names, four-space blocks, and one obvious spelling instead of clever alternatives. An agent can write it reliably and a person can read it at a glance. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
-- **Simple, fast memory.** Value semantics with move and copy, no garbage collector, deterministic cleanup. Nothing is copied unless you write `.clone()`, and the only ownership marker is `var`.
-- **Fast, and closing in on Rust.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, and within 1.25x of Rust (overflow checks on) on most kernels, ahead on several.
-- **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK.
-
-## Example
-
-Typed JSON, optional values, error propagation with `try`, and a test in one file:
+[Get started](documentation/learn/getting-started.md) · [Language tour](documentation/learn/tour.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Releases](https://github.com/manuscript-lang/manuscript/releases)
 
 ```manuscript
-from "@std/json.ms" import parse, stringify
+from "@std/json.ms" import parse
 from "@std/testing.ms" import expect_equal
 
 type Order:
@@ -29,8 +18,7 @@ type Order:
 def discount(order: Order) -> Int:
     if let code = order.coupon:
         return order.cents / 10 if code == "SAVE10" else 0
-    else:
-        return 0
+    return 0
 
 def summary(text: String) -> Result[String, Error]:
     let orders = try parse[List[Order]](text)
@@ -40,174 +28,216 @@ def summary(text: String) -> Result[String, Error]:
     return ok(f"{orders.length()} orders, {total / 100} dollars")
 
 test "orders from JSON":
-    let sam = Order(customer: "Sam", cents: 5000, coupon: some("SAVE10"))
-    let ana = Order(customer: "Ana", cents: 2500, coupon: none)
-    let text = try stringify([sam, ana])
+    let text = (
+        "[{\"customer\":\"Sam\",\"cents\":5000,\"coupon\":\"SAVE10\"},"
+        + "{\"customer\":\"Ana\",\"cents\":2500}]"
+    )
     try expect_equal(try summary(text), "2 orders, 70 dollars")
     try expect_equal(summary("not json").is_error(), True)
 ```
 
-Run it with `ms test`. `parse[List[Order]]` reads text into your types and returns a `Result`, `try` passes any error to the caller, and `Optional` fields unwrap with `if let`.
+Save it as `orders.ms` and run `ms test orders.ms`. JSON decodes straight into your record type, `Optional` says a coupon may be absent, `try` hands a failure to the caller, and the test runs in the same file. Nothing here needs an import beyond the two shown.
 
-## The language
+Manuscript is in alpha: syntax, APIs and platform behavior can change, and these docs follow `main`.
 
-### Pipes
+## Why Manuscript
 
-A `|` flow passes each result to the next call, so a sequence of steps reads from top to bottom. A `try` step unwraps a `Result` or returns its error.
+**Reads like Python, runs like native code.** `def`, four-space blocks, `lambda`, `for i in 0..n`, f-strings and `True`/`False` are what agents already write fluently. Underneath, the compiler infers types, checks ownership, monomorphizes generics and emits machine code through Cranelift (debug) or LLVM (release). On seven whole-program kernels Manuscript beats hand-written Go on every one and is level with Rust built with overflow checks on five ([numbers below](#measured-not-asserted)).
+
+**Feedback an agent can act on.** Diagnostics are `<cause>; <fix>`. Habits from Python, TypeScript, Go and Rust get a named replacement instead of a parse error, mechanical repairs carry a byte-exact `fix` that `ms check --fix` applies, and a runtime fault is JSON with a kind, a position and a trace. See [written for agents](#written-for-agents).
+
+**Concurrency without `async`.** Any function can wait. A `TaskGroup` runs cooperative tasks on one thread, a `WorkerGroup` runs isolated entries on OS threads, a `ProcessGroup` runs them in child processes, and all three talk over typed channels inside a `with` block that owns the work. Eight CPU-bound jobs over four workers run 3.95x faster than over one, and the runtime is hardened by adversarial reviews that probe for leaks, hangs and unsound sharing.
+
+**Ownership you can follow, no garbage collector.** Values have one owner and are dropped at their last use. `var` marks mutation at the declaration and at the call (`reset(var counter)`), `.clone()` makes copies visible, and borrows are lexical with no lifetimes in source. An HTTP server holding 10,000 idle connections sits at 31 MB where Go's `net/http` uses 197 MB, and it answers `/health` at 76-82k requests per second against Go's 55k on the same machine.
+
+**Batteries included.** Files, streams, processes, HTTP client and server, TCP, JSON (1.2-3.4x the speed of V8 on the standard documents here), JSON streaming, CSV, TOML, YAML, HTML, time, crypto, random, regex, logging, decimal, semver, archives, sized numerics (`Int8` to `Int64`, `Float32`), and a test runner, all in `ms`. Find any of it with `ms search_symbol <words>`.
+
+**Measured, not asserted.** The [agent benchmark](bench/agent/README.md) gives the same twenty challenges to a coding agent in Manuscript, TypeScript, Go and Rust with hidden tests, and the [performance benchmarks](bench/perf/README.md) pin every speed claim to a script, a machine and a revision. Both are in this repository, including the results that are not flattering yet.
+
+## Measured, not asserted
+
+All runs below: `main` at `c1b81215` (2026-10-25) unless noted, Linux x86-64, four cores, Go 1.24.7, rustc 1.99.1, Node 22, `ms` Release build with LLVM. Ratios are Manuscript time over the other language's time, so below 1.00x Manuscript is faster. Compare only numbers from one machine; rerun before drawing conclusions about your workload.
+
+### Whole-program kernels against Go and Rust
+
+Ordinary programs written the way a user would write them, each compared with hand-written Go and Rust using a slice, struct or map directly; every sample must report the same checksum. "Rust, checked" is the same source with `-C overflow-checks=on`, which matches Manuscript's checked `Int` arithmetic. Median of 5, microseconds. Reproduce: `MS=./target/release/ms GO=go sh bench/perf/kernels/run.sh 5`; details in [`bench/perf/kernels`](bench/perf/kernels/README.md).
+
+| kernel | Manuscript | Go | Rust | Rust, checked | ms / Go | ms / Rust | ms / Rust, checked |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| sieve_5M | 29,703 | 63,413 | 26,714 | 28,160 | 0.47x | 1.11x | 1.05x |
+| nbody_200k | 8,216 | 9,836 | 6,716 | 6,686 | 0.84x | 1.22x | 1.23x |
+| life_128x128_50 | 4,306 | 55,290 | 3,401 | 3,581 | 0.08x | 1.27x | 1.20x |
+| matmul_200 | 8,040 | 11,670 | 6,990 | 7,707 | 0.69x | 1.15x | 1.04x |
+| trees_d16_x20 | 26,065 | 42,206 | 29,972 | 33,569 | 0.62x | 0.87x | 0.78x |
+| collatz_1M | 242,730 | 285,058 | 178,638 | 274,975 | 0.85x | 1.36x | 0.88x |
+| map_count_2M | 14,428 | 25,054 | 23,757 | 24,993 | 0.58x | 0.61x | 0.58x |
+
+### Agent-style workloads against Go and Rust
+
+The reference solutions of the small agent challenges (CSV grouping, a calculator, ciphers, inventory, dynamic programming, BFS, cron, a log analyzer, a ledger, a diff) on about 3 MB of input each, outputs compared byte for byte. Best of 3, milliseconds. Reproduce: `MS=./target/release/ms sh bench/perf/workloads/run.sh 3`; details in [`bench/perf/workloads/results.md`](bench/perf/workloads/results.md).
+
+| program | Manuscript | Go | Rust | ms / Go | ms / Rust |
+|---|---:|---:|---:|---:|---:|
+| c03-csv-group-sum | 63 | 44 | 37 | 1.43x | 1.70x |
+| c05-calculator | 46 | 48 | 98 | 0.96x | 0.47x |
+| c09-ciphers | 63 | 61 | 33 | 1.03x | 1.91x |
+| c13-inventory-orders | 118 | 248 | 143 | 0.48x | 0.83x |
+| c14-dp-suite | 631 | 1,431 | 645 | 0.44x | 0.98x |
+| c16-maze-bfs | 31 | 39 | 32 | 0.79x | 0.97x |
+| c18-cron-next-runs | 809 | 1,052 | 807 | 0.77x | 1.00x |
+| c25-log-analyzer | 28 | 60 | 21 | 0.47x | 1.33x |
+| c36-bank-ledger | 97 | 109 | 63 | 0.89x | 1.54x |
+| c44-unified-diff | 3 | 65 | 15 | 0.05x | 0.20x |
+
+Faster than Go on 8 of 10 and level on the ciphers; the CSV grouping is the one program where Go is clearly ahead. Level with or ahead of Rust on 6 of 10. The four behind Rust are string-heavy, and the remaining costs (integer formatting in f-strings, scalar counting on short strings) are known and being worked on.
+
+### JSON against Node (V8)
+
+`@std/json` `parse` and `stringify` against `JSON.parse` and `JSON.stringify` on the standard documents. MB per second, median of at least five runs after warm-up. Four runs here agree within a few percent; on another machine the twitter parse and citm stringify rows came in just under Node (0.94x and 0.88x), so read the range as 0.9-3.4x across hardware. Reproduce: `sh bench/perf/json/run.sh`; details in [`bench/perf/json/results.md`](bench/perf/json/results.md).
+
+| document | parse: Node | parse: Manuscript | speed | stringify: Node | stringify: Manuscript | speed |
+|---|---:|---:|---:|---:|---:|---:|
+| small RPC message | 190 | 230 | 1.21x | 299 | 352 | 1.18x |
+| twitter.json | 569 | 770 | 1.35x | 364 | 1,266 | 3.48x |
+| canada.json | 162 | 419 | 2.58x | 128 | 355 | 2.78x |
+| citm_catalog.json | 671 | 904 | 1.35x | 908 | 1,269 | 1.40x |
+
+### HTTP server against Go `net/http`
+
+The same server on Manuscript's standard library and on Go, shared 4-CPU VM, server on 2 CPUs and load on the other 2, recorded at an earlier revision. Reproduce: `sh bench/perf/web/run.sh 5`; full table and the rows where Go is ahead in [`bench/perf/web/results.md`](bench/perf/web/results.md).
+
+| measurement | Manuscript | Go |
+|---|---:|---:|
+| `/health` requests per second | 75.7k-81.9k | 54.8k-55.2k |
+| `/health` p99 latency | 2.9-4.3 ms | 5.6-5.8 ms |
+| threads | 2 | 67 |
+| resident memory after load | 9.7 MB | 15 MB |
+| resident memory with 10,000 idle connections | 31 MB | 197 MB |
+| system calls in 5 idle seconds | 0 | 1 |
+
+Where Manuscript is behind: file and DNS calls block the runtime thread, so an `/io` route and everything beside it waits on the disk.
+
+### Agents writing Manuscript
+
+The [agent benchmark](bench/agent/README.md) runs Claude Code on twenty challenges (ten small programs, ten applications of three to five thousand lines) with hidden tests, one trial per cell, and records pass rate, first-build success, turns, tokens and cost over passing runs only. Latest results ([2026-10-21](bench/agent/results/summary-2026-10-21.md), [2026-10-22](bench/agent/results/summary-2026-10-22.md), Claude Haiku):
+
+| | Manuscript | TypeScript |
+|---|---:|---:|
+| small challenges passed | 10 / 10 | 10 / 10 |
+| large applications passed | 8 / 10 | not run |
+| first build succeeded (small) | 1-2 / 10 | 10 / 10 |
+| source size, LLM tokens, same nine small challenges | 1.21-1.28x TypeScript | 1.00x |
+
+Read it honestly: agents that have never seen the language now pass as often as they do in TypeScript, but they still need several compile-fix rounds to get there and write about 20-30% more source than they would in TypeScript. The first-build rate and the token ratio are the two numbers this project is trying to move, and the diagnostics below are how.
+
+## Written for agents
+
+Agents repeat the same mistakes across languages: they reach for `len`, `.unwrap()`, `camelCase` methods, `fn`, `async`, `except`. Manuscript answers each with the Manuscript spelling instead of a bare parse error:
 
 ```manuscript
-from "@std/testing.ms" import expect_equal
+def total(xs: List[Int]) -> Int:
+    var sum = 0
+    for i in 0..len(xs):
+        sum += xs[i]
+    return sum
 
-type Reading:
-    sensor: String
-    celsius: Float
-
-def hot(readings: List[Reading]) -> List[Reading]:
-    return readings.filter(
-        lambda (reading: Reading) -> Bool:
-            return reading.celsius > 30.0
-    )
-
-def names(readings: List[Reading]) -> String:
-    return readings.map(
-        lambda (reading: Reading) -> String:
-            return reading.sensor
-    ).join(", ")
-
-def alert(readings: List[Reading]) -> String:
-    return readings | hot | names
-
-test "pipe flow":
-    let readings = [
-        Reading(sensor: "a", celsius: 21.5),
-        Reading(sensor: "b", celsius: 35.0)
-    ]
-    try expect_equal(alert(readings), "b")
+def shout(name: String) -> String:
+    return name.toUpperCase()
 ```
-
-### Value semantics and ownership
-
-Records, lists, maps, and sets are values, so two names never change one object. Small values copy implicitly; everything else moves at its last use, which passes data along without copying it. `.clone()` is the only deep copy and is always visible. Every value has one owner and is dropped at a known point, so there is no garbage collector and no pause.
-
-The compiler checks this on every program, with no lifetime annotations. It infers whether each parameter reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
-
-```manuscript
-type Cart:
-    items: List[String]
-
-def add(var cart: Cart, item: String) -> Unit:
-    cart.items.append(item)
-
-def count(cart: Cart) -> Int:
-    return cart.items.length()
-
-def pay(cart: Cart) -> Cart:
-    return cart
-
-def demo() -> Int:
-    var cart = Cart(items: [])
-    add(var cart, "book")
-    let seen = count(cart)
-    let receipt = pay(cart)
-    return seen + receipt.items.length()
-```
-
-`count` borrows `cart`. `pay` consumes it, so the move happens at its last use. Using `cart` after that is rejected, with a fix the compiler states:
 
 ```text
-`cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
+habits.ms:3:17: resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length() (String also has byte_length and scalar_length)
+habits.ms:8:17: resolution: unknown or ambiguous member toUpperCase on String; did you mean 'upper'?
+2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)
 ```
 
-Cleanup follows the same ownership. `with let file = try files.open("data.txt"):` closes the resource at the end of the block, including when an error occurs.
+When the repair is mechanical, the JSON diagnostic carries it and `ms check --fix` applies it:
 
-### Errors
+```json
+{"code": "MS2001", "message": "unknown binding duoble; did you mean 'double'?",
+ "fix": {"position": {"line": 7, "column": 22}, "end": {"line": 7, "column": 28}, "replacement": "double"}}
+```
 
-`Optional` and `Result` put absence and failure in the type, and `try` propagates them. Input and output are ordinary calls, so no function needs special async syntax.
+A fault at runtime is data too. `ms run program.ms --json` on an out-of-range index exits with the fault status and a `fault` object: `"kind": "index_out_of_range"`, the message with its remedy (`pass a default: get(index:, default: ...)`), the position, the trace, and whether `with` cleanups ran.
 
-## Performance
+The rest of the agent surface is four commands, chosen after an MCP server was tried and judged worse than a shell:
 
-Representative programs compiled natively (linux/amd64), as a fraction of hand-written Go's time; lower is faster.
+| Command | What it gives an agent |
+| --- | --- |
+| `ms guide` | The whole language cheat sheet, under 4 KB, with a program that checks |
+| `ms search_symbol <words>` | Fuzzy lookup over the project and the standard library in under 100 ms; `<module>` or `<module>.<Name>` prints that page |
+| `ms check --json`, `ms check --fix` | Structured diagnostics; mechanical repairs applied in place |
+| `ms verify` | Check, format, lint and test in one exit status |
 
-| Program | Manuscript / Go |
-| --- | ---: |
-| Game of Life, 128x128 for 50 generations | 0.09 |
-| Stack of 20M pushes and pops | 0.11 |
-| Sorting 1M items with a comparator | 0.14 |
-| Parsing and splitting 1M lines of text | 0.45 |
-| `Result` propagation with `try`, 50M calls | 0.57 |
-| `Optional` construction and `if let`, 100M | 0.66 |
+`ms test --json` and `ms run --json` report results and faults as versioned documents; `ms inspect`, `ms review` and `ms diagram` derive views of a program and of a change from source. See [commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents) and the [diagnostics contract](documentation/developer-tooling/source/diagnostics.md).
 
-Across all 31 benchmarks Manuscript beats Go on 26. Against Rust with overflow checks on, most kernels are within 1.25x and several are ahead (dispatch, sort, string-keyed maps, grids, optionals, sets). Whole programs are level or ahead on sieve, matmul, trees, collatz, and map counting, and within 1.3x on n-body and life. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
+## Concurrency with a scope
 
-## Built on measurement
+There is no `async`, no `await`, no function coloring. A group inside `with` owns the work it starts; leaving the block cancels what is still running and waits for it.
 
-Language and compiler choices are settled by benchmarks, not taste.
+| Choose | For | Communication |
+| --- | --- | --- |
+| `TaskGroup` | Cooperative work that waits on I/O or messages, on one thread | A callable receives a typed `Channel`; values move through it |
+| `WorkerGroup` | CPU-bound work on isolated OS threads | A named `def` opens `worker_channel()`; messages cross as JSON |
+| `ProcessGroup` | The same entry in a fresh child process | Typed messages, or piped stdin, stdout and stderr |
 
-- **Agents.** [`agent-bench`](bench/agent/README.md) gives real agents the same challenges in TypeScript, Go, Rust, and Manuscript, and checks their output against hidden tests. Failures drive changes to diagnostics, documentation, and the `ms guide` cheat sheet.
-- **Speed.** [`bench/perf`](bench/perf/README.md) times Manuscript against hand-written Go and Rust. A design that cannot show a measured gain does not get built.
+```manuscript
+from "@std/tasks.ms" import TaskGroup
+from "@std/testing.ms" import expect_equal, expect_ok
 
-## Tools for the loop
+def square(n: Int) -> Int:
+    return n * n
 
-An agent writes, checks, fixes, and verifies; a person guides and inspects. `check`, `lint`, `test`, `build`, and `inspect` accept `--json`; `ms verify` runs check, format, lint, and test in one result; `ms search_symbol` finds exact APIs. Compiler messages name the next step. The standard library covers files, processes, networking, HTTP, JSON, text, and time.
+test "a group collects its results in start order":
+    with let group = TaskGroup[Int]():
+        for n in [1, 2, 3]:
+            group.spawn(lambda ch: square(n))
+        group.results() | try expect_ok | try expect_equal([1, 4, 9])
+```
 
-See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes where the project is heading.
+Tasks do not share mutable state: a captured value moves into the task, results come back through `result()` or the channel, and `Shared[T]` is the one explicit, reference-counted exception. Deadlocks are reported as a fault with both stacks, not a hang. Cancellation releases owned locals, closes sockets and kills children. Read [concurrency](documentation/core-language/concurrency/_index.md) for the rules; isolation is an execution model, not a security sandbox.
+
+## Ownership and visible mutation
+
+Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads, and drops them deterministically; there is no tracing collector and no reference counting on ordinary data. Strings of 15 bytes or fewer never allocate, `a + b + c` fuses into one allocation, and `s = s + x` in a loop appends in place. `var` makes mutation visible at the declaration and at the call, `.clone()` makes copying visible, and `with` scopes external resources. The exact rules are in [references and borrowing](documentation/core-language/types/references.md) and the [design contract](crates/DESIGN.md).
 
 ## Try it
 
-Extract the [release archive](https://github.com/manuscript-lang/manuscript/releases). It includes `ms` and the hello project; nothing else to install.
-
-From the extracted directory, run:
+[Build from source](#build-from-source) and use `target/release/ms` for the commands below, or extract a [release archive](https://github.com/manuscript-lang/manuscript/releases) for your platform and run from that directory:
 
 ```sh
 ./ms check examples/hello/ms.toml
 ./ms run examples/hello/ms.toml -- first second
-```
-
-On Windows PowerShell, use `.\ms.exe`.
-
-```text
-Arguments: 2
-```
-
-`check` validates source; `run` builds a temporary executable and passes it arguments after `--`.
-
-Start a project with `./ms init my-app`, or keep an executable and run the test:
-
-```sh
 ./ms build examples/hello/ms.toml -o hello
 ./ms test examples/hello/test.ms
 ```
 
-`./ms --help` lists commands; `fmt` formats and `lint` reports findings. See [your first program](documentation/learn/getting-started.md).
+On Windows PowerShell, use `.\ms.exe`. The example prints `Arguments: 2`, and the built executable runs without `ms` installed. The first native link downloads a pinned, checksum-verified linker into the cache; Release builds also fetch LLVM tools once. Plan for network access on first use, or configure local tools as described in [how it works](documentation/developer-tooling/how-it-works.md). Then follow [your first program](documentation/learn/getting-started.md) to edit the example and start a project with `ms init`.
+
+## Build from source
+
+Install [rustup](https://rustup.rs), Make and a C compiler, then run from this checkout:
+
+```sh
+make build
+target/release/ms run examples/hello/ms.toml -- first second
+```
+
+`make build` builds the native runtime before embedding it in `ms`. The repository pins Rust in `rust-toolchain.toml`. See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for platform prerequisites and checks.
+
+## How it is built
+
+Manuscript is implemented in Rust in [`crates/`](crates/DESIGN.md): `ms-syntax` parses, `ms-check` resolves, types and checks ownership, `ms-lower` and `ms-mir` produce and optimize an intermediate representation, `ms-clif` emits object code, and the embedded runtime and standard library link into a static executable. Standard declarations live in [`stdlib/*.ms`](stdlib/) and are the signature authority for both the compiler and the generated reference. Most of the standard library is written in Manuscript; Rust is reserved for small, general runtime primitives.
+
+The project is also built mostly by coding agents: they file the issues, open the PRs, review each other, and CI merges on green. The repository remembers what they cannot: [AGENTS.md](AGENTS.md) routes to domain [skills](skills/), [`.experts/`](.experts/) records decisions and failure modes, and `make repo-check` enforces the rules that matter. The [vision](VISION.md) describes where this is going.
 
 ## Keep exploring
 
 | You want to… | Start here |
 | --- | --- |
-| Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
+| Learn by running code | [Your first program](documentation/learn/getting-started.md), then the [tour](documentation/learn/tour.md) |
+| Build a useful script or service | [Common tasks](documentation/learn/common-tasks.md) |
+| Look up an exact rule | [Core language](documentation/core-language/_index.md) |
 | Find a standard type or function | `ms search_symbol <name or words>` and the [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
-| Understand cleanup | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [runtime conventions](documentation/contributing/runtime-conventions.md) |
-| Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
-| Understand what `ms` bundles | [How it works](documentation/developer-tooling/how-it-works.md) |
-| Choose optimization and debugging settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) |
-
-## Project status
-
-Version 0.1: working compiler, runtime, standard library, test runner, formatter, and editor tooling, still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work.
-
-## Build from source
-
-Releases ship the Rust `ms`. To build it from a checkout, install [rustup](https://rustup.rs) and a C compiler (`cc`; `clang` on Windows; the `ring` crate compiles C sources while building the runtime), then:
-
-```sh
-cargo build --release --locked -p ms-cli
-target/release/ms run examples/hello/ms.toml -- first second
-```
-
-See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for checks, crates, and platform behavior.
-
-## Contribute
-
-See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds the conformance corpus, book, and distribution checks. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
-
-Layout: `crates/` (compiler, runtime, tooling), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
+| Rerun a benchmark | [`bench/perf`](bench/perf/README.md) and [`bench/agent`](bench/agent/README.md) |
+| Contribute | [Architecture](documentation/contributing/architecture.md), [development checks](documentation/contributing/development.md), [maintenance](documentation/contributing/maintenance.md) |

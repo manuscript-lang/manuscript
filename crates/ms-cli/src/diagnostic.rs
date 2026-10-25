@@ -53,7 +53,7 @@ impl CommandDiagnostic {
     /// A source diagnostic whose code is derived from phase and message.
     pub fn source(phase: &str, message: &str, position: Position) -> CommandDiagnostic {
         CommandDiagnostic {
-            code: code_for(phase, message),
+            code: ms_syntax::diag::code_for(phase, message).to_string(),
             phase: phase.into(),
             message: message.into(),
             position,
@@ -92,82 +92,4 @@ pub fn diagnostics_document(diagnostics: &[CommandDiagnostic]) -> Json {
         "diagnostics",
         Json::Arr(diagnostics.iter().map(CommandDiagnostic::to_json).collect()),
     )
-}
-
-/// The stable rule family for a source diagnostic.
-pub fn code_for(phase: &str, message: &str) -> String {
-    // Messages read "<cause>; <fix>". Only the cause identifies the rule, not a
-    // trailing " (in <use site>)" context.
-    let message = message
-        .split("; ")
-        .next()
-        .and_then(|cause| cause.split(" (in ").next())
-        .unwrap_or("");
-    let has = |needle: &str| message.contains(needle);
-    let code = match phase {
-        "parse" => {
-            if message.starts_with("string-literal match patterns") {
-                "MS1000"
-            } else if has("indent") || has("suite") || has("tabs") {
-                "MS1002"
-            } else if has("UTF-8") || has("scalar") || has("escape") || has("literal") {
-                "MS1001"
-            } else {
-                "MS1000"
-            }
-        }
-        "resolution" => {
-            if message.starts_with("redundant prelude import ") {
-                "MS2003"
-            } else if has("module") || has("import") || has("path") || has("alias") {
-                "MS2002"
-            } else {
-                "MS2001"
-            }
-        }
-        "type" => {
-            const RULES: [(&str, &str); 16] = [
-                ("duplicate argument", "MS3002"),
-                ("missing argument", "MS3003"),
-                ("unknown argument", "MS3004"),
-                ("overlapping implementation", "MS3010"),
-                ("signature does not match", "MS3011"),
-                ("nominal source data", "MS3012"),
-                ("Hashable", "MS3021"),
-                ("captured", "MS3030"),
-                ("recursive", "MS3040"),
-                ("exhaustive", "MS3050"),
-                ("immutable", "MS3060"),
-                ("literal", "MS3070"),
-                ("infer", "MS3080"),
-                ("generic arity", "MS3080"),
-                ("expected ", "MS3001"),
-                ("same independently known type", "MS3001"),
-            ];
-            RULES
-                .iter()
-                .find(|(needle, _)| has(needle))
-                .map_or("MS3000", |(_, code)| code)
-        }
-        "lowering" => "MS4000",
-        _ => "MS0000",
-    };
-    code.to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn codes() {
-        assert_eq!(
-            code_for("resolution", "unknown import alias @x; fix"),
-            "MS2002"
-        );
-        assert_eq!(code_for("resolution", "line too long; keep"), "MS2001");
-        assert_eq!(code_for("type", "expected Int"), "MS3001");
-        assert_eq!(code_for("parse", "bad indent"), "MS1002");
-        assert_eq!(code_for("other", ""), "MS0000");
-    }
 }

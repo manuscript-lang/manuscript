@@ -61,6 +61,36 @@ pub fn normalize_text(text: &str, work: &Path) -> String {
     if let Some(root) = work.parent() {
         out = replace_spellings(&out, root, "<SCRATCH>");
     }
+    mask_stdlib_lines(&out)
+}
+
+/// Replace the line of a standard-library frame (`@std/tasks.ms:312`) with `<LINE>`, so editing a
+/// standard-library file does not change the expectation of every fixture that faults through it.
+fn mask_stdlib_lines(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("@std/") {
+        let (head, tail) = rest.split_at(at);
+        out.push_str(head);
+        let Some(dot) = tail.find(".ms:") else {
+            out.push_str(tail);
+            return out;
+        };
+        let name_ok = tail[..dot]
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"@/_-".contains(&b));
+        let after = &tail[dot + 4..];
+        let digits = after.bytes().take_while(u8::is_ascii_digit).count();
+        if name_ok && digits > 0 {
+            out.push_str(&tail[..dot + 4]);
+            out.push_str("<LINE>");
+            rest = &after[digits..];
+        } else {
+            out.push_str("@std/");
+            rest = &tail[5..];
+        }
+    }
+    out.push_str(rest);
     out
 }
 
@@ -314,6 +344,18 @@ mod tests {
         assert_eq!(
             normalize_text("looked for /tmp/ms-conform-x/a.ms", work),
             "looked for <SCRATCH>/a.ms"
+        );
+    }
+
+    #[test]
+    fn normalize_masks_stdlib_lines() {
+        let work = Path::new("/tmp/ms-conform-x/w1");
+        assert_eq!(
+            normalize_text(
+                "at @std/tasks.ms:283 in run\nat a.ms:3 in f @std/x.ms:1 @std/y",
+                work
+            ),
+            "at @std/tasks.ms:<LINE> in run\nat a.ms:3 in f @std/x.ms:<LINE> @std/y"
         );
     }
 

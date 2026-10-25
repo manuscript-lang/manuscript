@@ -56,10 +56,7 @@ def fib(n: Int) -> Int:
     return fib(n - 1) + fib(n - 2)
 
 def dispatch(n: Int) -> Int:
-    let shapes: List[Shape] = [
-        Shape(value: Sq(3)), Shape(value: Rect(2, 5)), Shape(value: Tri(4, 6)),
-        Shape(value: Sq(7))
-    ]
+    let shapes: List[Shape] = [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
     var total = 0
     var i = 0
 

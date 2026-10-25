@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use ms_driver::project::{
-    Overlay, canonical_overlay, gopath, read_project, resolve_import, source_path,
+    Overlay, canonical_overlay, pathops, read_project, resolve_import, source_path,
 };
 
 struct TempDir(PathBuf);
@@ -34,30 +34,30 @@ fn native(path: &Path) -> &str {
 
 #[test]
 fn drive_and_unc_roots_bound_lexical_paths() {
-    assert!(gopath::is_abs(r"C:\repo\main.ms"));
-    assert!(gopath::is_abs("C:/repo/main.ms"));
-    assert!(gopath::is_abs(r"\\server\share\main.ms"));
-    assert!(!gopath::is_abs(r"C:repo\main.ms"));
-    assert!(!gopath::is_abs(r"\repo\main.ms"));
-    assert_eq!(gopath::clean(r"C:\repo\..\.."), "C:/");
-    assert_eq!(gopath::clean(r"C:repo\..\.."), "C:..");
-    assert_eq!(gopath::dir(r"C:\"), "C:/");
-    assert_eq!(gopath::dir("C:/"), "C:/");
-    assert_eq!(gopath::dir(r"\\server\share"), "//server/share");
-    assert_eq!(gopath::clean(r"\\server\share"), "//server/share");
-    assert_eq!(gopath::clean(r"\\server\share\a\..\.."), "//server/share/");
-    assert_eq!(gopath::base(r"C:\repo\main.ms"), "main.ms");
-    assert_eq!(gopath::base(r"\\server\share"), "/");
-    assert_eq!(gopath::ext(r"C:\dir.ms\file"), "");
-    assert_eq!(gopath::rel("c:/root", "C:/root").unwrap(), ".");
+    assert!(pathops::is_abs(r"C:\repo\main.ms"));
+    assert!(pathops::is_abs("C:/repo/main.ms"));
+    assert!(pathops::is_abs(r"\\server\share\main.ms"));
+    assert!(!pathops::is_abs(r"C:repo\main.ms"));
+    assert!(!pathops::is_abs(r"\repo\main.ms"));
+    assert_eq!(pathops::clean(r"C:\repo\..\.."), "C:/");
+    assert_eq!(pathops::clean(r"C:repo\..\.."), "C:..");
+    assert_eq!(pathops::dir(r"C:\"), "C:/");
+    assert_eq!(pathops::dir("C:/"), "C:/");
+    assert_eq!(pathops::dir(r"\\server\share"), "//server/share");
+    assert_eq!(pathops::clean(r"\\server\share"), "//server/share");
+    assert_eq!(pathops::clean(r"\\server\share\a\..\.."), "//server/share/");
+    assert_eq!(pathops::base(r"C:\repo\main.ms"), "main.ms");
+    assert_eq!(pathops::base(r"\\server\share"), "/");
+    assert_eq!(pathops::ext(r"C:\dir.ms\file"), "");
+    assert_eq!(pathops::rel("c:/root", "C:/root").unwrap(), ".");
     assert_eq!(
-        gopath::rel("//server/share", "//server/share/a").unwrap(),
+        pathops::rel("//server/share", "//server/share/a").unwrap(),
         "a"
     );
-    assert!(gopath::rel("C:/root", "D:/root").is_err());
-    assert!(gopath::rel("//server/share", "//server/other").is_err());
-    assert!(gopath::rel("C:/root", "C:root").is_err());
-    assert_eq!(gopath::abs("").unwrap(), gopath::abs(".").unwrap());
+    assert!(pathops::rel("C:/root", "D:/root").is_err());
+    assert!(pathops::rel("//server/share", "//server/other").is_err());
+    assert!(pathops::rel("C:/root", "C:root").is_err());
+    assert_eq!(pathops::abs("").unwrap(), pathops::abs(".").unwrap());
 }
 
 #[test]
@@ -76,22 +76,22 @@ fn native_absolute_project_paths_resolve_without_repeating_the_drive() {
     let project = read_project(native(&manifest)).unwrap();
     let canonical_manifest = std::fs::canonicalize(&manifest).unwrap();
     assert_eq!(
-        gopath::clean(native(&canonical_manifest)),
+        pathops::clean(native(&canonical_manifest)),
         native(&canonical_manifest)
     );
     assert_eq!(
-        gopath::abs(native(&canonical_manifest)).unwrap(),
-        gopath::join(&[&project.root, "ms.toml"])
+        pathops::abs(native(&canonical_manifest)).unwrap(),
+        pathops::join(&[&project.root, "ms.toml"])
     );
     assert_eq!(read_project(native(&canonical_manifest)).unwrap(), project);
     assert_eq!(project.source, project.root);
     assert_eq!(
-        gopath::abs(native(&manifest)).unwrap(),
-        gopath::clean(native(&manifest))
+        pathops::abs(native(&manifest)).unwrap(),
+        pathops::clean(native(&manifest))
     );
     assert_eq!(
         ms_driver::project::find_manifest(&project.entry).unwrap(),
-        gopath::join(&[&project.root, "ms.toml"])
+        pathops::join(&[&project.root, "ms.toml"])
     );
     assert_eq!(
         source_path(&project.root, native(&entry), &Overlay::new()).unwrap(),
@@ -99,7 +99,7 @@ fn native_absolute_project_paths_resolve_without_repeating_the_drive() {
     );
     assert_eq!(
         resolve_import(&project, &project.entry, "./value.ms", &Overlay::new()).unwrap(),
-        gopath::eval_symlinks(native(&value)).unwrap()
+        pathops::eval_symlinks(native(&value)).unwrap()
     );
 }
 
@@ -108,11 +108,11 @@ fn native_overlay_spellings_keep_conflicts_and_root_confinement() {
     let temp = TempDir::new();
     let root = temp.0.join("project");
     std::fs::create_dir(&root).unwrap();
-    let canonical_root = gopath::eval_symlinks(native(&root)).unwrap();
+    let canonical_root = pathops::eval_symlinks(native(&root)).unwrap();
     let unsaved = root.join("new.ms");
     let raw = native(&unsaved).to_string();
     let mixed = format!("{}/new.ms", native(&root));
-    let canonical = gopath::join(&[&canonical_root, "new.ms"]);
+    let canonical = pathops::join(&[&canonical_root, "new.ms"]);
     let mut overlay = Overlay::new();
     overlay.insert(raw.clone(), "first".to_string());
     assert_eq!(
@@ -158,7 +158,7 @@ fn verbatim_names_that_lose_identity_are_rejected() {
     let temp = TempDir::new();
     let verbatim = std::fs::canonicalize(&temp.0).unwrap().join("trailing.");
     std::fs::write(&verbatim, "literal dot").unwrap();
-    assert_eq!(gopath::clean(native(&verbatim)), native(&verbatim));
-    assert!(gopath::abs(native(&verbatim)).is_err());
-    assert!(gopath::eval_symlinks(native(&verbatim)).is_err());
+    assert_eq!(pathops::clean(native(&verbatim)), native(&verbatim));
+    assert!(pathops::abs(native(&verbatim)).is_err());
+    assert!(pathops::eval_symlinks(native(&verbatim)).is_err());
 }

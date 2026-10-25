@@ -74,7 +74,7 @@ fn comparing_with_none_points_to_is_none() {
 }
 
 #[test]
-fn map_index_points_to_get_and_add() {
+fn map_and_bytes_index_check_and_string_index_explains() {
     let all = |source: &str| {
         let file: Arc<str> = Arc::from("t.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("parses");
@@ -88,15 +88,14 @@ fn map_index_points_to_get_and_add() {
         .map(|d| d.message)
         .collect::<Vec<_>>()
     };
-    let write = all(
-        "export def main() -> Int:\n    var m = Map[String, Int]()\n    m[\"a\"] = 1\n    return 0\n",
+    let ok = all(
+        "export def main() -> Int:\n    var m = Map[String, Int]()\n    m[\"a\"] = 1\n    let b = \"x\".to_bytes()\n    return m[\"a\"] + b[0]\n",
     );
-    assert_eq!(write.len(), 1, "{write:?}");
-    assert!(write[0].contains("m.add(key, value)"), "{write:?}");
-    let read =
-        all("export def main() -> Int:\n    let m = Map[String, Int]()\n    return m[\"a\"]\n");
-    assert_eq!(read.len(), 1, "{read:?}");
-    assert!(read[0].contains("m.get(key)"), "{read:?}");
+    assert!(ok.is_empty(), "{ok:?}");
+    let text =
+        all("export def main() -> Int:\n    let s = \"abc\"\n    let c = s[0]\n    return 0\n");
+    assert_eq!(text.len(), 1, "{text:?}");
+    assert!(text[0].contains("s.get(index)"), "{text:?}");
 }
 
 #[test]
@@ -135,4 +134,30 @@ fn foreign_idioms_name_the_replacement() {
         "def f() -> Result[Int, Error]:\n    return ok(1)\nexport def main() -> Int:\n    let x = f().unwrap()\n    return 0\n",
     );
     assert!(got.contains("try x"), "{got}");
+}
+
+#[test]
+fn var_parameter_def_is_not_a_function_value() {
+    let source = "type Ch:\n    buf: List[String]\n\ndef child(var c: Ch) -> Int:\n    c.buf.append(\"a\")\n    return 1\n\ndef run(entry: Callable[[Ch], Int]) -> Int:\n    var c = Ch(buf: [])\n    return entry(c)\n\nexport def main() -> Int:\n    return run(child) - 1\n";
+    assert!(
+        first_message(source)
+            .starts_with("child has a var parameter, so it cannot be a function value")
+    );
+    let call = "def child(var c: List[String]) -> Int:\n    c.append(\"a\")\n    return 1\n\nexport def main() -> Int:\n    var c = [\"x\"]\n    return child(var c) - 1\n";
+    let file: Arc<str> = Arc::from("t.ms");
+    let module = ms_syntax::parser::parse(&file, call).expect("parses");
+    let program = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    assert!(
+        program.diagnostics.is_empty(),
+        "{:?}",
+        program
+            .diagnostics
+            .iter()
+            .map(|d| &d.message)
+            .collect::<Vec<_>>()
+    );
 }

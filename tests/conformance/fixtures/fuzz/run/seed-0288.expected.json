@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "i1 = 26\nb2 = false\ni3 = 26\ns4 = [  padded  naïveline\nbreak]\nf5 = 0\ns6 = [brace{s}]\nf7 = 992.756\n  padded  naïveline\nbreak\nf8 = 0\ni9 = -364136760\n0 -793237 false sum -793237\n",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0288.ms:48 in main\n"
   }

@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "concurrency-edges.ms::many tasks echo through their channels without losing a value",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "concurrency-edges.ms::creating and closing task groups many times leaves them usable",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "concurrency-edges.ms::spawning into a closed group never runs the task",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "concurrency-edges.ms::a zero timeout cancels the task instead of running it",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "concurrency-edges.ms::a task waiting on a task of another group sees it time out",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "concurrency-edges.ms::a send to a task cancelled by its group ends with closed",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "concurrency-edges.ms::a receive from a task cancelled by its group ends with none",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "concurrency-edges.ms::handles of a closed worker group answer instead of faulting",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "concurrency-edges.ms::the worker limit refuses extra workers and frees slots when they end",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN concurrency-edges.ms::many tasks echo through their channels without losing a value\nPASS concurrency-edges.ms::many tasks echo through their channels without losing a value\nRUN concurrency-edges.ms::creating and closing task groups many times leaves them usable\nPASS concurrency-edges.ms::creating and closing task groups many times leaves them usable\nRUN concurrency-edges.ms::spawning into a closed group never runs the task\nPASS concurrency-edges.ms::spawning into a closed group never runs the task\nRUN concurrency-edges.ms::a zero timeout cancels the task instead of running it\nPASS concurrency-edges.ms::a zero timeout cancels the task instead of running it\nRUN concurrency-edges.ms::a task waiting on a task of another group sees it time out\nPASS concurrency-edges.ms::a task waiting on a task of another group sees it time out\nRUN concurrency-edges.ms::a send to a task cancelled by its group ends with closed\nPASS concurrency-edges.ms::a send to a task cancelled by its group ends with closed\nRUN concurrency-edges.ms::a receive from a task cancelled by its group ends with none\nPASS concurrency-edges.ms::a receive from a task cancelled by its group ends with none\nRUN concurrency-edges.ms::handles of a closed worker group answer instead of faulting\nPASS concurrency-edges.ms::handles of a closed worker group answer instead of faulting\nRUN concurrency-edges.ms::the worker limit refuses extra workers and frees slots when they end\nPASS concurrency-edges.ms::the worker limit refuses extra workers and frees slots when they end\n9 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

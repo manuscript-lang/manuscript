@@ -5,14 +5,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::time::{Duration, Instant, SystemTime};
 
-use ms_driver::project::{Overlay, ProjectError, gopath};
+use ms_driver::project::{Overlay, ProjectError, pathops};
 use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
 use ms_tooling::diff::{DiffFile, parse_diff, removed_content, reverse_apply};
 use ms_tooling::facts::Facts;
 use ms_tooling::inspect::inspect;
-use ms_tooling::mark::{explain, mark_changes};
+use ms_tooling::mark::{explain, explain_json, mark_changes};
 use ms_tooling::report::{ReviewOptions, diff_report, project_report};
 use ms_tooling::review::{DiffInput, compare_facts};
 use ms_tooling::views::build_view;
@@ -48,7 +48,7 @@ pub(super) fn analyze_with(
         ..EditorOptions::default()
     };
     let graph = load_editor_file(filename, LoadOptions::default(), &editor);
-    let entry = entry && !graph.library && gopath::base(filename) == "ms.toml";
+    let entry = entry && !graph.library && pathops::base(filename) == "ms.toml";
     check_graph(graph, CheckRequest { entry })
 }
 
@@ -200,8 +200,8 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     }
     for issue in &diagnostics {
         let mut position = issue.position.clone();
-        if !root.is_empty() && !gopath::is_abs(&position.file) {
-            position.file = gopath::join(&[&root, &position.file]);
+        if !root.is_empty() && !pathops::is_abs(&position.file) {
+            position.file = pathops::join(&[&root, &position.file]);
         }
         let label = if issue.phase.is_empty() {
             &issue.code
@@ -230,10 +230,10 @@ fn source_fixes(checked: &Checked) -> Vec<(String, ms_driver::DiagnosticFix)> {
         if file.starts_with("@std/") {
             continue;
         }
-        let path = if gopath::is_abs(file) || checked.source_root.is_empty() {
+        let path = if pathops::is_abs(file) || checked.source_root.is_empty() {
             file.to_string()
         } else {
-            gopath::join(&[&checked.source_root, file])
+            pathops::join(&[&checked.source_root, file])
         };
         fixes.push((path, fix.clone()));
     }
@@ -314,17 +314,17 @@ pub(super) fn watched_files(input: &str, checked: &Checked) -> Vec<String> {
     let mut files = Vec::new();
     files.extend(absolute(input));
     if !checked.project_root.is_empty() {
-        files.push(gopath::join(&[&checked.project_root, "ms.toml"]));
+        files.push(pathops::join(&[&checked.project_root, "ms.toml"]));
     }
     let Some(program) = &checked.program else {
         return files;
     };
     for module in program.modules.iter().filter(|m| !m.is_standard()) {
         let file = module.file.as_str();
-        if gopath::is_abs(file) || checked.source_root.is_empty() {
+        if pathops::is_abs(file) || checked.source_root.is_empty() {
             files.extend(absolute(file));
         } else {
-            files.extend(absolute(&gopath::join(&[&checked.source_root, file])));
+            files.extend(absolute(&pathops::join(&[&checked.source_root, file])));
         }
     }
     files
@@ -425,11 +425,16 @@ pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
         Ok(checked) => checked,
         Err(done) => return done,
     };
-    if !request.view.is_empty() || !request.entity.is_empty() {
+    if request.json || !request.view.is_empty() || !request.entity.is_empty() {
         return Ok(view(request, &checked, io));
     }
     let program = checked.program.as_ref().expect("accepted program");
-    let inspection = inspect(program);
+    let mut inspection = inspect(program);
+    // Keep application structure readable; standard calls remain boundary leaves.
+    inspection
+        .entities
+        .retain(|e| !e.span.file.starts_with("@std/"));
+    inspection.calls.retain(|c| !c.owner.starts_with("@std/"));
     let text = if request.format == "mermaid" {
         inspection.mermaid()
     } else {
@@ -464,7 +469,16 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
             &input.touched,
         );
     }
-    let text = if request.format == "mermaid" {
+    let text = if request.json {
+        ms_json::obj([
+            ("format", ms_json::Json::int(1)),
+            ("view", ms_json::Json::str(name)),
+            ("entity", ms_json::Json::str(&request.entity)),
+            ("tree", tree.to_json()),
+        ])
+        .pretty_line(ms_json::Escape::GoHtml)
+            + "\n"
+    } else if request.format == "mermaid" {
         tree.mermaid()
     } else {
         tree.ascii()
@@ -473,12 +487,19 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
 }
 
 pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
-    let head = match accepted(&request.filename, &Overlay::new()) {
+    let head = match source_program(
+        &request.filename,
+        &request.output,
+        request.format == "json",
+        io,
+    ) {
         Ok(head) => head,
-        Err(failure) => return Ok(failure.report(io)),
+        Err(done) => return done,
     };
     let head_facts = facts_of(&head);
-    let options = ReviewOptions { all: request.all };
+    let options = ReviewOptions {
+        all: request.all || request.format == "json",
+    };
     if request.diff.is_empty() {
         let report = project_report(&head_facts, options);
         return Ok(write_output(
@@ -493,7 +514,13 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
     };
     if !request.explain.is_empty() {
         let findings = compare_facts(&base, &head_facts, &input);
-        return Ok(match explain(&findings, &head_facts, &request.explain) {
+        let explanation = if request.format == "json" {
+            explain_json(&findings, &head_facts, &request.explain)
+                .map(|j| j.pretty_line(ms_json::Escape::GoHtml) + "\n")
+        } else {
+            explain(&findings, &head_facts, &request.explain)
+        };
+        return Ok(match explanation {
             Ok(text) => write_output(io, &request.output, text.as_bytes()),
             Err(message) => {
                 let _ = writeln!(io.stderr, "ms review: {message}");
@@ -538,8 +565,8 @@ fn diff_inputs(
         }
     };
     let root = if head.project_root.is_empty() {
-        match gopath::abs(filename) {
-            Ok(absolute) => gopath::dir(&absolute),
+        match pathops::abs(filename) {
+            Ok(absolute) => pathops::dir(&absolute),
             Err(error) => return Err(fail(2, file_error(&error))),
         }
     } else {
@@ -598,11 +625,11 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
                 }
             }
         }
-        if gopath::ext(file.path()) != ".ms" {
+        if pathops::ext(file.path()) != ".ms" {
             continue;
         }
         let absolute = locate_diff_path(root, file.path(), file.new.is_empty());
-        let Ok(relative) = gopath::rel(root, &absolute) else {
+        let Ok(relative) = pathops::rel(root, &absolute) else {
             continue;
         };
         if relative.starts_with("..") {
@@ -637,18 +664,18 @@ fn review_input(files: &[DiffFile], root: &str) -> Result<(DiffInput, Overlay), 
 fn locate_diff_path(root: &str, path: &str, deleted: bool) -> String {
     let mut dir = root.to_string();
     loop {
-        let candidate = gopath::join(&[&dir, path]);
+        let candidate = pathops::join(&[&dir, path]);
         let target = if deleted {
-            gopath::dir(&candidate)
+            pathops::dir(&candidate)
         } else {
             candidate.clone()
         };
         if std::fs::metadata(&target).is_ok() {
             return candidate;
         }
-        let parent = gopath::dir(&dir);
+        let parent = pathops::dir(&dir);
         if parent == dir {
-            return gopath::join(&[root, path]);
+            return pathops::join(&[root, path]);
         }
         dir = parent;
     }

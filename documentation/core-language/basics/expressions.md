@@ -17,6 +17,7 @@ Rows are ordered from highest to lowest precedence.
 | Prefix `+`, `-`, `try` | Right to left |
 | `*`, `/`, `%` | Left to right |
 | `+`, `-` | Left to right |
+| Range `..` | Non-chainable; Int bounds, excludes the end; see [loops](../control-flow/loops.md) |
 | `<`, `<=`, `>`, `>=`, `==`, `!=` | One comparison of either kind; cannot be chained or mixed without parentheses |
 | `not` | Right to left; its operand includes comparisons |
 | `and` | Left to right, short circuit |
@@ -32,7 +33,8 @@ PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] | Postfix-fr
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
 NotExpression = "not", NotExpression | Comparison ;
-Comparison    = Sum, [ ("<" | "<=" | ">" | ">=" | "==" | "!="), Sum ] ;
+Comparison    = Range, [ ("<" | "<=" | ">" | ">=" | "==" | "!="), Range ] ;
+Range         = Sum, [ "..", Sum ] ;
 Sum           = Product, { ("+" | "-"), Product } ;
 Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
 Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
@@ -93,11 +95,12 @@ def load(path: String) -> Result[Config, ConfigError]:
 
 | Operator | Accepted operands | Result |
 | --- | --- | --- |
-| Unary `+`, `-` | Int, Float, or Decimal | Same numeric type |
-| `+`, `-`, `*`, `/` | Both Int, both Float, or both Decimal | The common operand type |
+| Unary `+`, `-` | Any integer or float width, or Decimal | Same numeric type |
+| `+`, `-`, `*`, `/` | Matching integer or float types, or both Decimal | The common operand type |
 | `+` | Both String | String |
-| `%` | Both Int | Int |
-| `<`, `<=`, `>`, `>=` | Both Int, both Float, both Decimal, or both String | Bool |
+| `%` | Matching integer types | The common operand type |
+| `..` | Both Int | List[Int]; a direct `for` uses a counter loop |
+| `<`, `<=`, `>`, `>=` | Matching integer or float types, both Decimal, or both String | Bool |
 | `==`, `!=` | Same exact type satisfying Equal | Bool |
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |
@@ -155,4 +158,4 @@ def invalid(value: Int, ratio: Float) -> Bool:
     return 0 < value < 10               # Syntax error: comparison chain.
 ```
 
-Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, ranges, ternaries, tuples, and expression-valued blocks.
+Not expressions: assignment (a [statement](grammar.md#statements-and-patterns)), bitwise operators, exponentiation, tuples, and general expression-valued blocks. Conditional expressions use `a if condition else b`.

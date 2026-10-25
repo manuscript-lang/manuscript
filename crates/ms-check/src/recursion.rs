@@ -358,10 +358,20 @@ impl Checker {
             .map(|(id, (vars, _, _))| (*id, vars.clone()))
             .collect();
         let mut reported: HashSet<(Name, Pos)> = HashSet::new();
+        // A diagnostic needs an active ancestor, so only declarations on a path to a cycle can
+        // produce one. Without this pruning every declaration is a root and a chain of N
+        // generic types is walked N times with N different type variables (quadratic).
+        let recursive = recursive_paths(&edges);
+        for outgoing in edges.values_mut() {
+            outgoing.retain(|edge| recursive.contains(&edge.target));
+        }
         // A specialization's reachable subgraph is explored once across all roots,
         // so checking N declarations is linear in the graph rather than N walks.
         let mut visited: HashSet<String> = HashSet::new();
         for root in &roots {
+            if !recursive.contains(root) {
+                continue;
+            }
             let mut active: HashMap<Name, Vec<Ty>> = HashMap::new();
             self.visit_type_application(
                 *root,

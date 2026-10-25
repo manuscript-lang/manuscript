@@ -7,7 +7,7 @@
       <a class="home-button home-button-primary" href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Try Manuscript <span aria-hidden="true">→</span></a>
       <a class="home-explore" href="{{ with .Site.GetPage "learn/tour" }}{{ .RelPermalink }}{{ end }}">Explore the language</a>
     </div>
-    <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One download</p>
+    <p class="home-platforms">Linux, macOS &amp; Windows <span aria-hidden="true">·</span> One native binary, no runtime to install</p>
   </div>
   <div class="home-example" aria-label="A complete Manuscript program">
     {{ .Page.RenderString (dict "display" "block") .Inner }}
@@ -16,18 +16,14 @@
 </section>
 <section class="home-benefits" aria-labelledby="benefits-title">
   <h2 id="benefits-title">Why Manuscript</h2>
-  <p class="home-benefits-lead">Agents write most of the code. Manuscript is built so they get it right quickly and you can see what they did.</p>
+  <p class="home-benefits-lead">Agents write most of the code now. Manuscript is built for that: Python-like syntax that agents already write fluently, ownership instead of a garbage collector, concurrency without <code>async</code>, and a compiler whose feedback an agent can act on. Every number below has a script that reproduces it.</p>
   <ul class="home-benefit-grid">
-    <li><strong>Small enough to get right</strong><span>Statically typed, with no implicit conversions or truthiness. Fewer concepts means fewer first-draft mistakes and less to review.</span></li>
-    <li><strong>Errors you can handle in the open</strong><span><code>Optional</code> and <code>Result</code> are values, <code>try</code> propagates them, and <code>match</code> is exhaustive. No hidden exceptions.</span></li>
-    <li><strong>API first, no async syntax</strong><span>Files, networking, HTTP, and JSON are imported <code>@std</code> APIs, called like any function.</span></li>
-    <li><strong>Feedback built for agents</strong><span><code>--json</code> diagnostics, <code>ms search_symbol</code> for exact APIs, <code>ms guide</code> for the cheat sheet, and one <code>ms verify</code> to check, format, lint, and test.</span></li>
-    <li><strong>Reads top to bottom</strong><span><code>|</code> pipe flows, <code>try</code> inside a flow, <code>+=</code>, <code>range</code>, and bounds-proven <code>[]</code> indexing keep code flat and short.</span></li>
-    <li><strong>Typed data in one call</strong><span><code>json.parse[T]</code> reads JSON straight into your records. Nominal types, generics, and explicit <code>impl</code> blocks keep boundaries clear.</span></li>
-    <li><strong>Inspect what was built</strong><span><code>ms review</code> shows where a change matters and <code>ms diagram</code> draws call graphs from the checked source, deterministically.</span></li>
-    <li><strong>One binary, native result</strong><span>Compiles to a standalone native executable. Nothing else to install.</span></li>
-    <li><strong>Cleanup that stays correct</strong><span><code>with</code> closes files and connections at block end, even on errors and cancellation.</span></li>
-    <li><strong>Debug and profile on source</strong><span>An editor language server, a VS Code extension, a source-level debugger, and CPU, heap, and trace profiling, all on <code>.ms</code> lines.</span></li>
+    <li><strong>Reads like Python, runs like native code</strong><span><code>def</code>, four-space blocks, <code>lambda</code>, <code>0..n</code> and f-strings, compiled ahead of time through LLVM. Faster than hand-written Go on all seven whole-program kernels and level with overflow-checked Rust on five. <a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/kernels/README.md">Kernel results</a>.</span></li>
+    <li><strong>Feedback an agent can act on</strong><span>Diagnostics read <code>cause; fix</code>. <code>len(xs)</code>, <code>.unwrap()</code> and <code>camelCase</code> get the Manuscript spelling, <code>ms check --fix</code> applies mechanical repairs, and a runtime fault is JSON with a kind, position and trace. <a href="{{ with .Site.GetPage "developer-tooling/source/diagnostics" }}{{ .RelPermalink }}{{ end }}">Diagnostics</a>.</span></li>
+    <li><strong>Concurrency without <code>async</code></strong><span>Any function can wait. <code>TaskGroup</code>, <code>WorkerGroup</code> and <code>ProcessGroup</code> own their work inside <code>with</code> and talk over typed channels. Eight CPU-bound jobs over four workers run 3.95x faster than over one. <a href="{{ with .Site.GetPage "core-language/concurrency" }}{{ .RelPermalink }}{{ end }}">Concurrency</a>.</span></li>
+    <li><strong>Ownership you can follow</strong><span>Values have one owner and are dropped at their last use; <code>var</code> marks mutation and <code>.clone()</code> marks copies. No tracing collector: an HTTP server with 10,000 idle connections sits at 31 MB where Go's uses 197 MB. <a href="{{ with .Site.GetPage "core-language/types/references" }}{{ .RelPermalink }}{{ end }}">Ownership and borrowing</a>.</span></li>
+    <li><strong>Batteries included</strong><span>Files, processes, HTTP, TCP, JSON, CSV, TOML, YAML, HTML, time, crypto, regex, logging, sized numerics and a test runner, in one <code>ms</code> binary. JSON parses and writes at 0.9-3.4x the speed of V8 across the standard documents and machines measured. <a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/json/results.md">JSON results</a>.</span></li>
+    <li><strong>Measured against agents</strong><span>The same twenty challenges go to a coding agent in Manuscript, TypeScript, Go and Rust with hidden tests. Agents now pass 10 of 10 small challenges in Manuscript; first-build success and source size are the numbers still being driven down. <a href="https://github.com/manuscript-lang/manuscript/blob/main/bench/agent/README.md">Agent benchmark</a>.</span></li>
   </ul>
-  <p class="home-status">Version 0.1: the compiler, runtime, standard library, and tooling work today and are still evolving.</p>
+  <p class="home-status">Manuscript is in alpha. This book follows the repository; release archives may lag behind. The first link downloads build tools into a local cache; platform requirements differ. <a href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Start with the setup guide.</a></p>
 </section>

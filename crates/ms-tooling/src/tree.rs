@@ -1,5 +1,6 @@
-//! The tree every diagram view is built from, and its two renderings.
+//! The tree every diagram view is built from, and its renderings.
 
+use crate::json::Json;
 use std::fmt::Write;
 
 /// One line of a view: a label and what hangs under it.
@@ -14,9 +15,27 @@ pub struct Node {
     /// Where a flow step is in the source, for marking a diff.
     pub file: String,
     pub line: usize,
+    /// Direct nodes omitted by the output cap (on the view root).
+    pub omitted: usize,
 }
 
 impl Node {
+    /// Structured source identities let agents navigate without parsing labels.
+    pub fn to_json(&self) -> Json {
+        ms_json::obj([
+            ("label", Json::str(&self.label)),
+            ("kind", Json::str(&self.kind)),
+            ("reference", Json::str(&self.reference)),
+            ("file", Json::str(&self.file)),
+            ("line", Json::from(self.line)),
+            ("omitted", Json::from(self.omitted)),
+            (
+                "children",
+                Json::Arr(self.children.iter().map(Node::to_json).collect()),
+            ),
+        ])
+    }
+
     pub fn new(label: impl Into<String>) -> Node {
         Node {
             label: label.into(),

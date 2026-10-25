@@ -94,7 +94,7 @@ b0:
 }
 
 #[test]
-fn leaves_a_value_a_with_close_uses_to_that_close() {
+fn drops_a_value_a_with_close_uses_after_that_close() {
     let body = r#"
 fn @close(%s: str) -> unit {
 b0:
@@ -114,6 +114,13 @@ b0:
 }
 "#;
     let (m, changed) = rewrite(body, true);
-    assert!(!changed, "{}", print_module(&m));
+    // No per-call drop is registered above the close, which would run first and free the value
+    // the close still uses; the close itself drops the value when a cancellation unwinds.
+    assert!(changed, "{}", print_module(&m));
     assert_eq!(count(&m, "main", Op::CleanupPush), 1);
+    assert!(
+        m.funcs.iter().any(|f| f.name == "unwind.close_drop"),
+        "{}",
+        print_module(&m)
+    );
 }

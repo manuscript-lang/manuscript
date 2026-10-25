@@ -202,6 +202,7 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
         ret: Ty::UNIT,
         noreturn: false,
         pure_: false,
+        fresh: false,
     });
     let f = &mut m.funcs[fi];
     let last = plan.pieces.len() - 1;
@@ -261,6 +262,15 @@ fn chain(
     leaves: &mut Vec<Value>,
     remove: &mut HashSet<(usize, usize)>,
 ) {
+    // A chain with more leaves than one call joins is rejected whatever its shape, so stop
+    // descending once it has more inner links than that (each link adds itself and its drop to
+    // `remove`) and keep `v` as a leaf: otherwise every link of a long chain walks the whole
+    // chain below it, and the pass, which restarts after each fusion, is cubic in the chain's
+    // length. The value must stay a leaf, not vanish: the join is built from `leaves`.
+    if remove.len() > 2 * MAX_JOIN {
+        leaves.push(v);
+        return;
+    }
     let inner = info.defs[v.index()].and_then(|(db, di)| {
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
         let (dbi, ddi) = info.drops[v.index()].first().copied()?;
@@ -332,6 +342,7 @@ fn apply_concat(
         ret: Ty::STR,
         noreturn: false,
         pure_: false,
+        fresh: true,
     });
     let f = &mut m.funcs[fi];
     let root = &mut f.blocks[bi].insts[ii];
@@ -402,6 +413,7 @@ fn append_in_place(m: &mut Module, fi: usize) -> bool {
         ret: Ty::STR,
         noreturn: false,
         pure_: false,
+        fresh: true,
     });
     let f = &mut m.funcs[fi];
     let remove: HashSet<(usize, usize)> = sites.iter().map(|s| s.1).collect();

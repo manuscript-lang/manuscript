@@ -26,7 +26,7 @@ mod regexp;
 pub mod util;
 pub mod verify;
 
-pub use ms_driver::project::strconv::quote;
+pub use ms_driver::project::quoting::quote;
 
 use backend::{
     AnalysisCommand, AnalysisRequest, BuildRequest, DiagramRequest, Io, OutputRequest, RunRequest,

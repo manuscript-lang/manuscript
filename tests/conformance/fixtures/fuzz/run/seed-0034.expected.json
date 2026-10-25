@@ -3,7 +3,7 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 70,
+    "exit_code": 67,
     "stdout": "i1 = -1051\nf2 = 1745443853.4225\ngcd(1646, 113) = 1\ni3 = -1020\ni4 = -9338\ni5 = 409913484\nemoji 😀back\\slash\nf6 = 3046574161799988700\ni7 = 0\n",
     "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0034.ms:46 in main\n"
   }

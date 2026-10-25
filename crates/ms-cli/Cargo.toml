@@ -23,6 +23,7 @@ ms-build = { path = "../ms-build" }
 ms-mir = { path = "../ms-mir" }
 ms-syntax = { path = "../ms-syntax" }
 ms-lsp = { path = "../ms-lsp" }
+ms-rt-abi = { path = "../ms-rt-abi" }
 ms-tooling = { path = "../ms-tooling" }
 regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case", "unicode-gencat", "unicode-script", "unicode-bool", "unicode-age", "unicode-segment"] }
 

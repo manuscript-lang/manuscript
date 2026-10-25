@@ -438,6 +438,18 @@ impl Checker {
                         ),
                     );
                     i.ty = Some(invalid());
+                } else if s
+                    .decl
+                    .as_ref()
+                    .is_some_and(|d| d.fn_params().iter().any(|p| p.mutable))
+                {
+                    self.type_error(
+                        e.pos,
+                        format!(
+                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a lambda"
+                        ),
+                    );
+                    i.ty = Some(invalid());
                 }
             }
             return i;
@@ -570,7 +582,22 @@ impl Checker {
             i.native = Some(name);
             return i;
         }
+        // `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`.
+        let index_set = name == ms_syntax::parser::INDEX_SET;
+        let name = match index_set {
+            true if rt.is_std("Map") => n("add"),
+            true => n("set"),
+            false => name,
+        };
         let methods = self.methods(&rt, name);
+        if index_set && methods.is_empty() {
+            self.type_error(
+                e.pos,
+                "index assignment requires a List[T] or Map[K, V]; Bytes and String are immutable, build a new value instead",
+            );
+            i.ty = Some(invalid());
+            return i;
+        }
         if methods.len() > 1 {
             let msg = self.ambiguous_member(&rt, name, &methods);
             self.res_error(e.pos, msg);

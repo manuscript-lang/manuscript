@@ -160,7 +160,7 @@ Verify: parse an inline callback inside a call without consuming the enclosing d
 
 ### Optional values need presence and extraction methods
 
-Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, and `get(default)`; `or_else` takes a lazy Optional fallback. `unwrap`, `unwrap_or`, `unwrap_or_else`, `unwrap_error`, and `at` are removed (Result keeps `get(default)`, `or_else`, `err`). Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
+Decision: the user explicitly rejected relying on `match` for routine Optional handling. Keep one receiver surface: `is_some`, `is_none`, and `get(default)`; `get_or_else` takes a lazy payload fallback and `or_else` a lazy Optional fallback. `unwrap`, `unwrap_or`, `unwrap_or_else`, `unwrap_error`, and `at` are removed (Result keeps `get(default)`, `get_or_else`, `or_else`, `map_error`, `err`). Preserve Optional as an ordinary alternative; these methods do not introduce flattening or new syntax. The private native helpers are implementation bindings, not exported aliases.
 
 ### No special `get` accessor declarations
 
@@ -192,7 +192,7 @@ Verify: direct and mutual trees execute; cyclic equality terminates; uninitializ
 
 ### Match is uniformly a value expression; indexing returns the element
 
-Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The earlier decision that brackets preserve `.at()`'s Optional result was reversed: `at` is removed, `[]` returns `T` and faults out of range, and `get(index, default: ...)` on List, String, and Bytes returns `T` or the default. Generic specialization retains its existing meaning. The flow-sensitive bounds proof (#552) only narrowed the type while the read still faulted, so it was removed; reintroducing bounds-check elimination needs its own proof.
+Decision: when addressing familiar-language friction, the user explicitly chose a single `match` expression form rather than retaining a separate statement form. A standalone match discards the same checked result. The earlier decision that brackets preserve `.at()`'s Optional result was reversed: `at` is removed, `[]` returns `T` and faults out of range, and `get(index, default: ...)` on List, String, and Bytes returns `T` or the default. `[]` also reads `Map[K, V]` (one probe; absent key faults `map key not found: <key>`) and `Bytes` (an `Int`, negative from the end); `m[k] = v` is `m.add(k, v)` and `m[k] += v` reads then adds. String has no `[]` because scalar position is not a constant-time offset, and Bytes cannot be assigned (decision: Chinmay, 2026-10-25, card "Both"). Generic specialization retains its existing meaning. The flow-sensitive bounds proof (#552) only narrowed the type while the read still faulted, so it was removed; reintroducing bounds-check elimination needs its own proof.
 
 Apply when: changing matching, collection lookup, type application parsing, or examples migrating from other languages.
 Evidence: [match values](../documentation/core-language/control-flow/pattern-matching.md#arm-values), [list lookup](../documentation/core-language/types/collections.md#lookup-and-updates), and [expression conformance](../tests/e2e/testdata/accept/expression-conveniences.ms).

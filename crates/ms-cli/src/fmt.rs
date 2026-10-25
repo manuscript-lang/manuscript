@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use ms_driver::project::{
-    Project, ProjectError, discover_modules, gopath, read_project, source_path,
+    Project, ProjectError, discover_modules, pathops, read_project, source_path,
 };
 
 use crate::backend::{FormatFailure, FormatFile, Io};
@@ -90,7 +90,8 @@ pub fn run_format(args: &[String], io: &mut Io) -> i32 {
             }
         };
         for path in paths {
-            let resolved = gopath::abs(&path).and_then(|absolute| gopath::eval_symlinks(&absolute));
+            let resolved =
+                pathops::abs(&path).and_then(|absolute| pathops::eval_symlinks(&absolute));
             match resolved {
                 Ok(absolute) => {
                     let display = format_display(&cwd, &absolute);
@@ -163,11 +164,11 @@ pub fn sort_diagnostics(issues: &mut [CommandDiagnostic]) {
 fn format_paths(target: &str) -> Result<Vec<String>, ProjectError> {
     let info = std::fs::metadata(target)
         .map_err(|e| ProjectError::Path(path_error("stat", target, &e)))?;
-    if !info.is_dir() && gopath::base(target) != "ms.toml" {
+    if !info.is_dir() && pathops::base(target) != "ms.toml" {
         return Ok(vec![target.to_string()]);
     }
     let config = if info.is_dir() {
-        let root = gopath::eval_symlinks(&gopath::abs(target)?)?;
+        let root = pathops::eval_symlinks(&pathops::abs(target)?)?;
         Project {
             root: root.clone(),
             source: root,
@@ -279,8 +280,8 @@ fn failure_error(failure: FormatFailure, file: &FormatFile) -> FmtError {
 fn write_formatted(path: &str, formatted: &str) -> Result<(), ProjectError> {
     let info =
         std::fs::metadata(path).map_err(|e| ProjectError::Path(path_error("stat", path, &e)))?;
-    let directory = gopath::dir(path);
-    let temp = gopath::join(&[
+    let directory = pathops::dir(path);
+    let temp = pathops::join(&[
         &directory,
         &format!(".manuscript-format-{}-{}", std::process::id(), unique()),
     ]);

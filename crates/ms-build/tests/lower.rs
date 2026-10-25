@@ -223,7 +223,7 @@ fn direct_call_with_try_default_runs_it_in_the_callee_frame() {
 fn entries_keys_and_add_default_from_lower() {
     let mir = lower(
         "entries",
-        "from \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    var m: Map[String, Int] = Map()\n    m.add_default_from(\"a\", lambda (key: String): 5)\n    let items = [4, 5]\n    let r = stdout().write(f\"{items.keys()} {items.entries().length()} {[1].to_set().entries()}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    var m: Map[String, Int] = Map()\n    m.add_default_from(\"a\", lambda (key: String): 5)\n    let items = [4, 5]\n    let r = stdout().write(f\"{items.keys()} {items.entries().length()}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("msrt_map_contains"));
 }

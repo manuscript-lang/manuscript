@@ -8,4 +8,4 @@ def crash(cause: TextError) -> Int:
 
 export def main() -> Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))
-    return value.or_else(crash)
+    return value.get_or_else(crash)

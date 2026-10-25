@@ -57,6 +57,7 @@ Receiver methods:
 | `get(default: Optional[T] = none) -> T` | Return the contained value, or `default` when absent; without a default, [fault](../errors/faults.md) with `called Optional.get() on none` |
 | `map[U](transform: Callable[[T], U]) -> Optional[U]` | Transform a present payload once; preserve absence |
 | `and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]` | Return the callback's Optional when present; preserve absence |
+| `get_or_else(create: Callable[[], T]) -> T` | Return the contained value, or call `create` once when absent |
 | `or_else(create: Callable[[], Optional[T]]) -> Optional[T]` | Keep a present Optional or call `create` once when absent |
 
 Fallback for routine absence:
@@ -66,11 +67,11 @@ def display_name(name: Optional[String]) -> ref String:
     return name.get("Anonymous")
 ```
 
-`get(default)` always evaluates its argument. Use `or_else` with `get()` when the fallback costs work:
+`get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
 ```manuscript
-def display_name(name: Optional[String], create: Callable[[], Optional[String]]) -> ref String:
-    return name.or_else(create).get()
+def display_name(name: Optional[String], create: Callable[[], String]) -> String:
+    return name.get_or_else(create)
 ```
 
 Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; use `get` only when absence is a programming error:

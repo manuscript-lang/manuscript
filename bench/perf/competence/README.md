@@ -21,7 +21,30 @@ Ordinary programs grouped by what a general-purpose language must do well, each 
 
 Run `MS=./ms sh bench/perf/competence/run.sh 7` (median of N, microseconds). Compare only runs from the same machine.
 
-## Latest (2026-10-22)
+## Latest (2026-10-25)
+
+`main` at c1b81215; linux/amd64, four cores, Go 1.24.7, rustc 1.99.1; median of 5, microseconds. `rust` is idiomatic Rust at `opt-level=3`; `rust-checked` is the same source with overflow checks on, matching Manuscript's semantics. "folded" means LLVM folded the loop to a constant, so no time is reported. The Manuscript source constructs interface values directly (`[Sq(3), Rect(2, 5)]` typed as `List[Shape]`), as the language now requires.
+
+| kernel | go us | ms us | ms / go | rust us | rust / go | rust-checked us | rust-checked / go | ms / rust | ms / rust-checked |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| call_fib_36 | 77803 | 88524 | 1.14x | 43971 | 0.57x | 83680 | 1.08x | 2.01x | 1.06x |
+| dispatch_100M | 197841 | 163173 | 0.82x | 163741 | 0.83x | 164419 | 0.83x | 1.00x | 0.99x |
+| closure_100M | 32945 | 65674 | 1.99x | 0 | folded | 66027 | 2.00x | folded | 0.99x |
+| sort_1M | 211240 | 23504 | 0.11x | 33097 | 0.16x | 34092 | 0.16x | 0.71x | 0.69x |
+| text_1M | 57752 | 40082 | 0.69x | 30112 | 0.52x | 31075 | 0.54x | 1.33x | 1.29x |
+| strmap_10M | 140826 | 103204 | 0.73x | 206531 | 1.47x | 207794 | 1.48x | 0.50x | 0.50x |
+| errors_50M | 69882 | 36490 | 0.52x | 26939 | 0.39x | 50084 | 0.72x | 1.35x | 0.73x |
+| records_1M_x20 | 162656 | 83228 | 0.51x | 117987 | 0.73x | 123193 | 0.76x | 0.71x | 0.68x |
+| grid2d_500x20 | 7615 | 6922 | 0.91x | 13737 | 1.80x | 14796 | 1.94x | 0.50x | 0.47x |
+| struct_100M | 32710 | 0 | folded | 0 | folded | 0 | folded | folded | folded |
+| stack_20M | 484333 | 50431 | 0.10x | 46185 | 0.10x | 52687 | 0.11x | 1.09x | 0.96x |
+| optional_100M | 128553 | 66126 | 0.51x | 64871 | 0.50x | 94718 | 0.74x | 1.02x | 0.70x |
+| set_2M | 78654 | 67831 | 0.86x | 67511 | 0.86x | 68701 | 0.87x | 1.00x | 0.99x |
+| chars_1M | 395822 | 30724 | 0.08x | 0 | folded | 26803 | 0.07x | folded | 1.15x |
+
+Manuscript is faster than Go on 11 of 14 rows (struct folds to a constant) and slower on call_fib (1.14x) and closure (2.0x, where Go's time halved against the previous run while Manuscript's did not move; read it as a Go gain, not a regression). Against Rust with overflow checks it is level or ahead on 9 rows, within 1.35x on text, errors and chars, and 1.06x on call_fib.
+
+## 2026-10-22
 
 linux/amd64, four cores, Go 1.24.7, rustc 1.99.1; median of 7, microseconds. `rust` is idiomatic Rust at `opt-level=3`; `rust-checked` is the same source with overflow checks on, matching Manuscript's semantics. "folded" means LLVM folded the loop to a constant, so no time is reported.
 

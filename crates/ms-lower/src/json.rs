@@ -262,7 +262,7 @@ impl FnLower<'_> {
         let p = self.b.params();
         let (doc, id, strict) = (p[0], p[1], p[2]);
         let mt = self.jmty(t)?;
-        if t.is_std("JsonValue") {
+        if t.is_source_type("@std/json.ms", "JsonValue") {
             return self.jdecode_tree(t, mt, doc, id, strict);
         }
         match t.id.as_str() {
@@ -877,7 +877,7 @@ impl FnLower<'_> {
     /// Writes `value` (borrowed) to the writer `w`; 0, or -1 when it has no JSON form and nothing
     /// was written.
     fn jencode(&mut self, t: &ct::Ty, mt: MTy, w: Value, value: Value) -> Result<Value, Error> {
-        if t.is_std("JsonValue") {
+        if t.is_source_type("@std/json.ms", "JsonValue") {
             return self.jencode_tree(t, mt, w, value);
         }
         match t.id.as_str() {
@@ -1069,7 +1069,9 @@ impl FnLower<'_> {
     fn json_encode_impl(&self, t: &ct::Ty) -> Option<Rc<ms_check::hir::Callable>> {
         let key = ct::type_key(t);
         let m = self.cx.methods.iter().find(|m| {
-            m.contract.as_ref().is_some_and(|c| c.is_std("JsonEncode"))
+            m.contract
+                .as_ref()
+                .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
                 && ct::type_key(&m.receiver) == key
         })?;
         let decl = m.decl.as_ref()?;
@@ -1349,7 +1351,7 @@ impl FnLower<'_> {
             .map(|a| a.val);
         let flat = self.jlimits(limits)?;
         // An untyped parse is built by the runtime while scanning, without a document.
-        let tree = t.is_std("JsonValue");
+        let tree = t.is_source_type("@std/json.ms", "JsonValue");
         let doc_ty = self.jdoc_ty();
         let mut vals = vec![text];
         vals.extend(flat);

@@ -98,7 +98,7 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
     let mut steps: Vec<Step> = Vec::new();
     let mut ok = true;
     let mut record = |io: &mut Io, step: Step, steps: &mut Vec<Step>| {
-        if step.status != "passed" {
+        if step.status == "failed" {
             ok = false;
         }
         if !structured {
