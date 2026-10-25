@@ -63,6 +63,14 @@ export interface Closeable:
     # Cleanup runs during return, expected errors, faults, and cancellation too.
     var def close() -> Unit
 
+# A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
+# `for item in source:` calls `next` until `none`; a variable or field path advances in place and
+# keeps its final state, while any other expression is held by the loop alone. `next` should keep
+# returning `none` after the end.
+export interface Iterator[T]:
+    # Returns the next item, or none when no items remain.
+    var def next() -> Optional[T]
+
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:
     # A present payload, retained by reference when T is mutable.

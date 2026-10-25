@@ -396,11 +396,13 @@ impl Checker {
             if t.args.len() == 2 {
                 element = standard("MapEntry", t.args.clone());
             }
+        } else if let Some(item) = self.iterator_item(&t) {
+            return self.check_iterator_for(s, name, iter, body, item, i.no_return, i.breaks);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, or Map, found {t}; iterate a collection, e.g. a list literal [1, 2, 3]"
+                    "for requires List, Set, Map, or an Iterator, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var def next() -> Optional[T]'"
                 ),
             );
         }
@@ -418,6 +420,123 @@ impl Checker {
         self.loops -= 1;
         self.scope = old;
         (!i.no_return, i.breaks)
+    }
+
+    /// The item type of `t` when it implements `Iterator[T]`.
+    fn iterator_item(&self, t: &Ty) -> Option<Ty> {
+        self.methods(t, n("next")).into_iter().find_map(|m| {
+            let contract = m.contract.as_ref()?;
+            if !contract.is_std("Iterator") || !m.ty.params.is_empty() {
+                return None;
+            }
+            let result = m.ty.result_ty();
+            (result.is_std("Optional") && result.args.len() == 1).then(|| result.args[0].clone())
+        })
+    }
+
+    /// `for name in iterator:` is checked, lowered and analysed as
+    /// `while True: if let name = iterator.next(): body else: break`. A variable or field path
+    /// is advanced in place, so it keeps the iterator's final state (`error()` of a reader);
+    /// any other expression is held in a hidden `var` for the loop.
+    #[allow(clippy::too_many_arguments)]
+    fn check_iterator_for(
+        &mut self,
+        s: &Stmt,
+        name: Name,
+        iter: &Expr,
+        body: &[Stmt],
+        _item: Ty,
+        _no_return: bool,
+        _breaks: bool,
+    ) -> (bool, bool) {
+        let mut expansion: Vec<Stmt> = Vec::new();
+        let pos = s.pos;
+        let id = |c: &Self| c.m().facts_mut().fresh_id();
+        let place = is_place_path(iter);
+        let holder = if place {
+            iter.clone()
+        } else {
+            let hidden = n(&format!("$iterator{}", s.id.0));
+            let pattern = Pattern {
+                id: id(self),
+                pos,
+                kind: PatternKind::Name(hidden),
+            };
+            expansion.push(Stmt {
+                id: id(self),
+                pos,
+                kind: StmtKind::Bind {
+                    mutable: true,
+                    pattern,
+                    ty: None,
+                    value: iter.clone(),
+                    group: None,
+                },
+            });
+            Expr {
+                id: id(self),
+                pos: iter.pos,
+                kind: ExprKind::Name(hidden),
+            }
+        };
+        let callee = Expr {
+            id: id(self),
+            pos: iter.pos,
+            kind: ExprKind::Member {
+                left: Box::new(holder),
+                name: n("next"),
+            },
+        };
+        let call = Expr {
+            id: id(self),
+            pos: iter.pos,
+            kind: ExprKind::Call {
+                callee: Box::new(callee),
+                args: Vec::new(),
+            },
+        };
+        let binding = Pattern {
+            id: id(self),
+            pos,
+            kind: PatternKind::Name(name),
+        };
+        let leave = Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::Break,
+        };
+        let step = Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::If {
+                binding: Some(binding),
+                mutable: false,
+                cond: call,
+                body: body.to_vec(),
+                else_body: vec![leave],
+            },
+        };
+        let forever = Expr {
+            id: id(self),
+            pos,
+            kind: ExprKind::Bool(true),
+        };
+        expansion.push(Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::While {
+                cond: forever,
+                body: vec![step],
+            },
+        });
+        let expansion = Rc::new(expansion);
+        self.m()
+            .facts_mut()
+            .stmts
+            .entry(s.id)
+            .or_default()
+            .expansion = Some(expansion.clone());
+        self.block(&expansion, false)
     }
 
     fn check_with(
@@ -1400,4 +1519,13 @@ fn same_qualifier(qualifier: &Ty, matched: &Ty) -> bool {
         }
     }
     qualifier.id == matched.id
+}
+
+/// A variable or a field path of variables: evaluating it again has no effect.
+fn is_place_path(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Name(_) => true,
+        ExprKind::Member { left, .. } => is_place_path(left),
+        _ => false,
+    }
 }

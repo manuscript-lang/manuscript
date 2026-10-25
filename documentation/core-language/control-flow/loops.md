@@ -82,6 +82,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `List[T]` | `T` | Position order |
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
+| `Iterator[T]` implementation | `T` | Order of `next()` results |
 
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
@@ -94,7 +95,33 @@ def total(values: Map[String, Int]) -> Int:
     return sum
 ```
 
-`for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and objects with a `next` method are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+`for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+
+## Iterators
+
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T`. It is the same as `while True:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
+```manuscript
+from "@std/core.ms" import Iterator
+from "@std/io.ms" import stdout
+
+type Countdown:
+    left: Int
+
+impl Iterator[Int] for Countdown:
+    var def next() -> Optional[Int]:
+        if self.left == 0:
+            return none
+        self.left -= 1
+        return some(self.left + 1)
+
+export def main() -> Int:
+    for n in Countdown(3):
+        if stdout().write(f"{n}\n").is_error():
+            return 1
+    return 0
+```
 
 ## Repeating while a condition holds
 
