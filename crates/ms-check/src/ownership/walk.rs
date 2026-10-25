@@ -136,6 +136,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         ret_expr: None,
         ret_hit: false,
         owned_return: false,
+        owned_value: false,
         lends: Vec::new(),
         getters: HashMap::new(),
         let_pos: HashMap::new(),
@@ -203,6 +204,8 @@ struct Walker<'a> {
     ret_hit: bool,
     /// Some return gives back a value of its own.
     owned_return: bool,
+    /// Some return gives back an owned value other than `none`.
+    owned_value: bool,
     lends: Vec<Lend>,
     getters: HashMap<NodeId, Vec<Name>>,
     /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
@@ -303,7 +306,31 @@ impl Walker<'_> {
         if !self.ret_hit {
             self.owned_return = true;
         }
+        if !self.ret_hit && !self.is_none(e)
+            || self.ret_hit && self.returns_owned_call(lent.unwrap_or(e))
+        {
+            self.owned_value = true;
+        }
         (self.ret_expr, self.ret_hit) = saved;
+    }
+
+    /// Whether `e` is the `none` literal.
+    fn is_none(&self, e: &Expr) -> bool {
+        matches!(
+            self.cx.m.resolution(e),
+            Resolution::Constructor { ty, case: Some(c) }
+                if ty.is_std("Optional") && c.as_str() == "none"
+        )
+    }
+
+    /// Whether `e` calls a function whose result is an owned copy.
+    fn returns_owned_call(&self, e: &Expr) -> bool {
+        let ExprKind::Call { args, .. } = &e.kind else {
+            return false;
+        };
+        call_modes(self.cx.m, e, args, self.cx.summaries)
+            .origin
+            .owned
     }
 
     /// The argument of `some(argument)` when `e` is that call returned from a function whose
@@ -392,7 +419,11 @@ impl Walker<'_> {
             _ => None,
         };
         self.lends = lends;
-        ResultOrigin { slots, plain }
+        ResultOrigin {
+            slots,
+            plain,
+            owned: self.owned_value,
+        }
     }
 
     /// Records that `e` hands back parts of the read-only parameters `places` belong to.
