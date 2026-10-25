@@ -2,6 +2,8 @@ from "@std/testing.ms" import expect_equal
 from "@std/fetch.ms" import FetchBody, FetchOptions, FetcherOptions, check_status, read_json, fetch, fetcher, json_body
 from "@std/http.ms" import HttpError, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, headers
 from "@std/net.ms" import network
+from "@std/time.ms" import milliseconds, sleep
+from "@std/bytes.ms" import BytesBuilder
 
 type Greeting:
     name: String
@@ -17,6 +19,10 @@ def route(request: HttpRequest) -> HttpResponse:
         var moved = headers()
         try_append(moved, "Location", "/echo")
         return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
+
+    if request.path == "/slow":
+        sleep(milliseconds(1500))
+        return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
     if request.path == "/big":
         return HttpResponse(
@@ -100,3 +106,40 @@ test "fetch enforces max_response_bytes":
 
         let whole = try fetch(url, some(FetchOptions(max_response_bytes: some(10))))
         try expect_equal(whole.body.length(), 10)
+
+test "fetch times out a slow response":
+    with let server = try network().serve("127.0.0.1:0", route):
+        let url = f"http://{server.address()}/slow"
+        let slow = fetch(url, some(FetchOptions(timeout: some(milliseconds(200)))))
+        try expect_equal(slow.is_error(), True)
+        try expect_equal(slow.err().message(), "HTTP: operation timed out")
+
+test "Fetcher.stream returns the body incrementally and reuses the client":
+    with let server = try network().serve("127.0.0.1:0", route):
+        with let client = try fetcher():
+            let url = f"http://{server.address()}/big"
+
+            with let body = try client.stream(url):
+                var out = BytesBuilder()
+
+                while True:
+                    let chunk = try body.read()
+
+                    if let bytes = chunk:
+                        out.append_bytes(bytes)
+                    else:
+                        break
+
+                try expect_equal(out.build(), "0123456789".to_bytes())
+                try expect_equal(body.metadata().status, 200)
+
+            let again = try client.fetch(url)
+            try expect_equal(again.body.length(), 10)
+
+test "a closed Fetcher returns Closed":
+    with let server = try network().serve("127.0.0.1:0", route):
+        let client = try fetcher()
+        client.close()
+
+        let sent = client.fetch(f"http://{server.address()}/big")
+        try expect_equal(sent.err().message(), "HTTP: resource is closed")
