@@ -56,6 +56,8 @@ test "a task that passes its timeout is cancelled":
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
+`cancelled()` from `@std/tasks.ms` returns `True` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `True` inside `with` cleanups.
+
 ## What a task may use
 
 A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task and the caller can no longer use it. A task cannot change a captured `var`. Return a result instead, and combine results in the caller. Use `.clone()` to keep a copy.
