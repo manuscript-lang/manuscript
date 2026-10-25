@@ -125,6 +125,35 @@ pub unsafe extern "C-unwind" fn msrt_scope_spawn(
     handle as i64
 }
 
+/// Starts `entry(arg)` as a task of `scope` for a native caller (the HTTP server's requests). It
+/// leaves the scope and frees itself when it ends, so a scope can serve unboundedly many; the
+/// scope's close still cancels and joins the ones running. `limit_ns` counts from now (negative:
+/// none). Returns the task handle, or `None` when the scope is closed.
+///
+/// # Safety
+/// `arg` must be valid for `entry`, which owns it.
+pub unsafe fn spawn_native(
+    scope: i64,
+    entry: unsafe extern "C-unwind" fn(*mut u8),
+    arg: *mut u8,
+    limit_ns: i64,
+) -> Option<u64> {
+    let s = find(scope)?;
+    // SAFETY: forwarded contract.
+    let handle = unsafe { task::spawn_scoped(entry, arg, limit_ns, scope) };
+    s.tasks.push_back(handle);
+    Some(handle)
+}
+
+/// Called when a task started by [`spawn_native`] ends: the scope forgets it.
+pub(crate) fn task_ended(scope: i64, handle: u64) {
+    if let Some(s) = find(scope)
+        && let Some(at) = s.tasks.iter().position(|&h| h == handle)
+    {
+        s.tasks.remove(at);
+    }
+}
+
 /// Called by a task's closure once its cleanup is registered: a task cancelled before it first ran
 /// unwinds here, so its work never starts but its cleanup runs.
 #[unsafe(no_mangle)]
@@ -184,5 +213,46 @@ pub extern "C-unwind" fn msrt_scope_close(scope: i64) {
     }
     if find(scope).is_some() {
         scopes()[((scope & 0xffff_ffff) - 1) as usize] = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::lock;
+
+    unsafe extern "C-unwind" fn nap(arg: *mut u8) {
+        // SAFETY: called from a running task.
+        unsafe { task::msrt_task_sleep(arg as usize as i64 * 1_000_000) };
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn native_tasks_leave_the_scope_and_close_cancels_the_rest() {
+        let _g = lock();
+        let scope = msrt_scope_new();
+        // SAFETY: `nap` takes no ownership of its argument.
+        unsafe {
+            for _ in 0..8 {
+                spawn_native(scope, nap, std::ptr::dangling_mut::<u8>(), -1).unwrap();
+            }
+            // Cancelled by its own limit long before its hour is up.
+            spawn_native(scope, nap, 3_600_000usize as *mut u8, 5_000_000).unwrap();
+            let long = spawn_native(scope, nap, 3_600_000usize as *mut u8, -1).unwrap();
+            assert_eq!(tasks_of(scope).len(), 10);
+            while tasks_of(scope).len() > 1 {
+                task::msrt_task_sleep(2_000_000);
+            }
+            assert_eq!(tasks_of(scope), vec![long]);
+        }
+        msrt_scope_close(scope);
+        assert!(find(scope).is_none());
+        assert!(spawn_native_closed(scope).is_none());
+        task::teardown();
+    }
+
+    fn spawn_native_closed(scope: i64) -> Option<u64> {
+        // SAFETY: `nap` takes no ownership of its argument.
+        unsafe { spawn_native(scope, nap, std::ptr::dangling_mut::<u8>(), -1) }
     }
 }
