@@ -25,7 +25,7 @@ The rest of the agent surface is deliberately small, after an MCP server was tri
 
 Any function can wait, so there is no `async`, no `await` and no function coloring. A `TaskGroup` runs cooperative tasks on one thread, a `WorkerGroup` runs isolated entries on OS threads, and a `ProcessGroup` runs them in child processes. All three own their work inside a `with` block, cancel what is still running when the block ends, and communicate over typed channels. Values move into tasks and come back as results or messages; `Shared[T]` is the one explicit, reference-counted way to share.
 
-Eight CPU-bound jobs over four workers run 3.95x faster than over one ([worker scaling](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workers/README.md)). An adversarial soundness review ran over a hundred probes against the task, worker and process runtimes, filed 21 issues, and all but two are fixed on `main`; deadlocks are reported as a fault with both stacks, and cancellation releases owned locals, closes sockets and kills children. Read [concurrency](../core-language/concurrency/_index.md) for the rules.
+Eight CPU-bound jobs over four workers run 3.95x faster than over one ([worker scaling](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workers/README.md)). Adversarial reviews probe the task, worker and process runtimes for leaks, hangs and unsound sharing; deadlocks are reported as a fault with both stacks, and cancellation releases owned locals, closes sockets and kills children. Read [concurrency](../core-language/concurrency/_index.md) for the rules.
 
 ## Ownership you can follow
 
