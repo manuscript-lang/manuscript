@@ -19,19 +19,15 @@ pub struct Hdr {
     pub cancel: AtomicU8,
     /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
-    pub shield: core::cell::Cell<u32>,
+    pub shield: core::sync::atomic::AtomicU32,
 }
-
-// SAFETY: `shield` is written by the owning isolate only and read racily as a single word by
-// stop-signal handlers, which tolerate a stale value (the next switch recomputes the flag).
-unsafe impl Sync for Hdr {}
 
 impl Hdr {
     pub const fn new(limit: usize) -> Hdr {
         Hdr {
             limit,
             cancel: AtomicU8::new(0),
-            shield: core::cell::Cell::new(0),
+            shield: core::sync::atomic::AtomicU32::new(0),
         }
     }
 }
@@ -81,9 +77,9 @@ pub fn raise_main_cancel(sig: u8) {
     if hdr.is_null() {
         return;
     }
-    // SAFETY: a task block outlives its stack's use; `shield` is read as one word.
+    // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
     unsafe {
-        if core::ptr::read_volatile((*hdr).shield.as_ptr()) == 0 {
+        if (*hdr).shield.load(Ordering::Relaxed) == 0 {
             (*hdr).cancel.store(sig, Ordering::Relaxed);
         }
     }
@@ -94,9 +90,15 @@ pub(crate) struct ShieldRef;
 pub(crate) static SHIELD: ShieldRef = ShieldRef;
 impl ShieldRef {
     #[inline(always)]
-    pub(crate) fn ptr(&self) -> *mut u32 {
-        // SAFETY: the block lives as long as its stack.
-        unsafe { (*cur_hdr()).shield.as_ptr() }
+    pub(crate) fn get(&self) -> u32 {
+        // SAFETY: the running task owns this live block; remote readers use atomic loads too.
+        unsafe { (*cur_hdr()).shield.load(Ordering::Relaxed) }
+    }
+
+    #[inline(always)]
+    pub(crate) fn set(&self, value: u32) {
+        // SAFETY: only the owning task writes its depth; readers may run on other threads.
+        unsafe { (*cur_hdr()).shield.store(value, Ordering::Relaxed) }
     }
 }
 
@@ -204,7 +206,7 @@ pub(crate) fn set_live_task_cancel(v: u8) {
     // SAFETY: single threaded access.
     unsafe {
         *TASK_CANCEL.ptr() = v;
-        if *SHIELD.ptr() == 0 {
+        if SHIELD.get() == 0 {
             cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
@@ -254,7 +256,7 @@ impl Ctx {
             self.hdr
         };
         // SAFETY: the block lives as long as its stack.
-        unsafe { (*hdr).shield.get() > 0 }
+        unsafe { (*hdr).shield.load(Ordering::Relaxed) > 0 }
     }
 
     /// The task's block (null for the root task before it ever ran).
@@ -273,8 +275,7 @@ impl Ctx {
 
 /// Whether the running task is inside a shielded cleanup action.
 pub(crate) fn live_shielded() -> bool {
-    // SAFETY: single threaded access.
-    unsafe { *SHIELD.ptr() > 0 }
+    SHIELD.get() > 0
 }
 
 /// Starts an independent fault boundary in an `expect_fault` fork child. Inherited cleanup
@@ -314,7 +315,7 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
         core::ptr::swap(STACK_LO.ptr(), &mut c.stack_lo);
         core::ptr::swap(STACK_HI.ptr(), &mut c.stack_hi);
         cancel_flag().store(
-            if *SHIELD.ptr() == 0 {
+            if SHIELD.get() == 0 {
                 unshielded_cancel_flag()
             } else {
                 0
@@ -789,11 +790,11 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
     // SAFETY: single threaded access to the shield counter; the action was
     // registered by generated code with a valid function pointer.
     unsafe {
-        *SHIELD.ptr() += 1;
+        SHIELD.set(SHIELD.get() + 1);
         cancel_flag().store(0, Ordering::Relaxed);
         f(arg);
-        *SHIELD.ptr() -= 1;
-        if *SHIELD.ptr() == 0 {
+        SHIELD.set(SHIELD.get() - 1);
+        if SHIELD.get() == 0 {
             cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
         }
     }
@@ -803,22 +804,16 @@ fn run_shielded(f: CleanupFn, arg: *mut u8) {
 /// work that must drain after SIGINT/SIGTERM (a server finishing in-flight requests).
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_shield_enter() {
-    // SAFETY: single threaded access to the shield counter.
-    unsafe {
-        *SHIELD.ptr() += 1;
-        cancel_flag().store(0, Ordering::Relaxed);
-    }
+    SHIELD.set(SHIELD.get() + 1);
+    cancel_flag().store(0, Ordering::Relaxed);
 }
 
 /// Ends one `msrt_shield_enter`; a stop request that arrived meanwhile applies again.
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_shield_exit() {
-    // SAFETY: single threaded access to the shield counter.
-    unsafe {
-        *SHIELD.ptr() = (*SHIELD.ptr()).saturating_sub(1);
-        if *SHIELD.ptr() == 0 {
-            cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
-        }
+    SHIELD.set(SHIELD.get().saturating_sub(1));
+    if SHIELD.get() == 0 {
+        cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
     }
 }
 
@@ -1184,7 +1179,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
             .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
         (*cur_hdr()).limit = f.limit;
-        *SHIELD.ptr() = f.shield;
+        SHIELD.set(f.shield);
         cancel_flag().store(
             if f.shield == 0 {
                 unshielded_cancel_flag()
@@ -1220,7 +1215,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
             jmp: buf as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
-            shield: *SHIELD.ptr(),
+            shield: SHIELD.get(),
             eq_pairs: crate::desc::eq_len(),
             trap: true,
         });
@@ -1410,7 +1405,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             jmp: core::ptr::addr_of_mut!(slot) as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
-            shield: *SHIELD.ptr(),
+            shield: SHIELD.get(),
             eq_pairs: crate::desc::eq_len(),
             trap: false,
         });
@@ -1463,7 +1458,7 @@ pub fn reset_for_tests() {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
         *FAULTING.ptr() = false;
-        *SHIELD.ptr() = 0;
+        SHIELD.set(0);
         (*SECONDARY.ptr()).clear();
     }
 }
@@ -1475,6 +1470,39 @@ mod tests {
 
     static LOG: Process<[u8; 8]> = Process::new([0; 8]);
     static LOG_N: Process<usize> = Process::new(0);
+
+    #[test]
+    fn task_header_keeps_the_codegen_layout() {
+        fn assert_sync<T: Sync>() {}
+        assert_sync::<Hdr>();
+        assert_eq!(core::mem::offset_of!(Hdr, limit), 0);
+        assert_eq!(
+            core::mem::offset_of!(Hdr, cancel),
+            ms_rt_abi::symbols::ISOLATE_HDR_CANCEL as usize,
+        );
+        assert_eq!(core::mem::size_of::<Hdr>(), 16);
+    }
+
+    #[test]
+    fn concurrent_shield_updates_and_signal_reads() {
+        let _g = lock();
+        set_main_hdr();
+        let reader = std::thread::spawn(|| {
+            for _ in 0..100 {
+                raise_main_cancel(2);
+                std::thread::yield_now();
+            }
+        });
+        for _ in 0..100 {
+            msrt_shield_enter();
+            std::thread::yield_now();
+            msrt_shield_exit();
+        }
+        reader.join().unwrap();
+        MAIN_CUR.store(core::ptr::null_mut(), Ordering::Release);
+        cancel_flag().store(0, Ordering::Relaxed);
+        assert!(!live_shielded());
+    }
 
     #[test]
     fn native_frame_budget_counts_only_callers_after_the_anchor() {
@@ -1600,7 +1628,7 @@ mod tests {
         let signal = PENDING_SIGNAL.swap(15, Ordering::Relaxed);
         unsafe {
             swap_ctx(&mut saved);
-            *SHIELD.ptr() = 2;
+            SHIELD.set(2);
             *TASK_CANCEL.ptr() = 1;
             cancel_flag().store(0, Ordering::Relaxed);
             *STACK_LO.ptr() = 100;
@@ -1628,7 +1656,7 @@ mod tests {
             assert!((*PRIMARY.ptr()).is_none());
             assert!((*SECONDARY.ptr()).is_empty());
             assert_eq!(crate::desc::eq_len(), 0);
-            assert_eq!(*SHIELD.ptr(), 2);
+            assert_eq!(SHIELD.get(), 2);
             assert_eq!(*TASK_CANCEL.ptr(), 1);
             assert_eq!(PENDING_SIGNAL.load(Ordering::Relaxed), 15);
             assert_eq!(cancel_flag().load(Ordering::Relaxed), 0);

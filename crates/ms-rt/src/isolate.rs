@@ -173,9 +173,9 @@ pub fn raise_cancel(slot: usize, sig: u8) {
     inbox.cancel.store(sig, Ordering::Relaxed);
     let hdr = inbox.cur.load(Ordering::Acquire);
     if !hdr.is_null() {
-        // SAFETY: a task block outlives its stack's use; `shield` is read as one word.
+        // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
         unsafe {
-            if core::ptr::read_volatile((*hdr).shield.as_ptr()) == 0 {
+            if (*hdr).shield.load(Ordering::Relaxed) == 0 {
                 (*hdr).cancel.store(sig, Ordering::Relaxed);
             }
         }
