@@ -40,7 +40,7 @@ User code cannot run two things at once. The runtime already has stackful corout
 from "@std/tasks.ms" import TaskGroup
 
 def fetch_all(urls: List[String]) -> Result[List[Int], TaskError]:
-    with TaskGroup[Int](timeout: some(duration(5000000000))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(5000000000))):
         let tasks = urls.map(lambda url: group.spawn(lambda: fetch_size(url.clone())))
         var sizes = List[Int]()
         for task in tasks:

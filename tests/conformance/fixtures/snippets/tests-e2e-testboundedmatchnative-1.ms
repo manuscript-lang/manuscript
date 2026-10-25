@@ -14,7 +14,7 @@ impl Closeable for Watch:
         self.count.total += 10
 
 def next(count: Count) -> Int:
-    with Watch(count) as watch:
+    with let watch = Watch(count):
         count.total += 1
         return 0
 

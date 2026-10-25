@@ -60,7 +60,7 @@ impl Closeable for Resource:
         self.events.append(value: 20)
 
 def leave(resource: Resource) -> Unit:
-    with resource as local:
+    with let local = resource:
         return
 
 export def second_resource(resource: Resource) -> Closeable:

@@ -49,10 +49,11 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, `take()` it out, change the local, and `put` it back. One holder at a time can have it out. A second `take`, or a `get`, while it is out is a fault, so the single mutable borrow is checked when the program runs. Keep `take` and `put` in one function with no early exit between them, since only `put` returns the value. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner.
+To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. A task that locks a box it already holds waits forever. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
-```manuscript
-from "@std/shared.ms" import share, Shared
+```
+import {share, Shared} from "@std/shared.ms"
+import {lock} from "@std/sync.ms"
 
 type Counter:
     values: List[Int]
@@ -62,9 +63,8 @@ impl Counter:
         self.values.append(1)
 
 def bump(shared: Shared[Counter]) -> Unit:
-    var counter = shared.take()
-    counter.bump()
-    shared.put(counter)
+    with var guard = lock(shared):
+        guard.value.bump()
 ```
 
 ## References inside other values

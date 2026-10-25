@@ -49,7 +49,7 @@ def echo(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
 test "many tasks echo through their channels without losing a value":
     var total = 0
     var counts = 0
-    with TaskGroup[Result[Int, ChannelError], Int, Int]() as group:
+    with let group = TaskGroup[Result[Int, ChannelError], Int, Int]():
         for t in range(0, 20):
             var task = group.spawn(echo)
             for i in range(0, 200):
@@ -68,7 +68,7 @@ test "many tasks echo through their channels without losing a value":
 test "creating and closing task groups many times leaves them usable":
     var done = 0
     for i in range(0, 2000):
-        with TaskGroup[Int]() as group:
+        with let group = TaskGroup[Int]():
             let t = group.spawn(lambda ch: quick())
             done += t.result().get(0)
     try expect_equal(done, 2000 * 7)
@@ -83,24 +83,24 @@ test "spawning into a closed group never runs the task":
     try expect_equal(t.channel.send(()).is_ok(), False)
 
 test "a zero timeout cancels the task instead of running it":
-    with TaskGroup[Int](timeout: some(duration(0))) as group:
+    with let group = TaskGroup[Int](timeout: some(duration(0))):
         let t = group.spawn(lambda ch: quick())
         try expect_equal(t.result().is_ok(), False)
-    with TaskGroup[Int]() as group:
+    with let group = TaskGroup[Int]():
         let t = group.spawn(lambda ch: quick(), timeout: some(duration(0)))
         try expect_equal(t.result().is_ok(), False)
 
 test "a task waiting on a task of another group sees it time out":
     var seen = 0
-    with TaskGroup[Int]() as a:
-        with TaskGroup[Int](timeout: some(duration(50000000))) as b:
+    with let a = TaskGroup[Int]():
+        with let b = TaskGroup[Int](timeout: some(duration(50000000))):
             let tb = b.spawn(lambda ch: slow())
             let waiting = a.spawn(lambda ch: waiter(tb))
             seen = waiting.result().get(-1)
     try expect_equal(seen, "task: timed out".length())
 
 test "a send to a task cancelled by its group ends with closed":
-    with TaskGroup[Int, Int, Unit](timeout: some(duration(100000000))) as group:
+    with let group = TaskGroup[Int, Int, Unit](timeout: some(duration(100000000))):
         var t = group.spawn(deaf)
         var sent = 0
         var stopped = False
@@ -113,7 +113,7 @@ test "a send to a task cancelled by its group ends with closed":
         try expect_equal(stopped, True)
 
 test "a receive from a task cancelled by its group ends with none":
-    with TaskGroup[Int, Unit, Int](timeout: some(duration(100000000))) as group:
+    with let group = TaskGroup[Int, Unit, Int](timeout: some(duration(100000000))):
         var t = group.spawn(mute)
         let r = t.channel.receive()
         try expect_equal(r.is_ok(), True)
@@ -121,7 +121,7 @@ test "a receive from a task cancelled by its group ends with none":
 
 test "handles of a closed worker group answer instead of faulting":
     var kept: Optional[Worker[Int, Int]] = none
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         kept = some(group.spawn(waits).get())
     if let worker = kept:
         var w = worker
@@ -130,7 +130,7 @@ test "handles of a closed worker group answer instead of faulting":
         w.cancel()
 
 test "the worker limit refuses extra workers and frees slots when they end":
-    with WorkerGroup[Int, Int]() as group:
+    with let group = WorkerGroup[Int, Int]():
         var started = List[Worker[Int, Int]]()
         var refused = 0
         for i in range(0, 300):
