@@ -464,7 +464,7 @@ impl<'a> FnLower<'a> {
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
-        if let Some(v) = self.map_get_lent(e, view, recv_expr, &method)? {
+        if let Some(v) = self.lent_result(e)? {
             return Ok(v);
         }
         if let Some(v) = self.list_end_lent(e, recv_expr, &method)? {

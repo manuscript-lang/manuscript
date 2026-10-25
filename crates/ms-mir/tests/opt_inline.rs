@@ -460,6 +460,62 @@ b0:
     assert_eq!(outcome(&before), outcome(&m));
 }
 
+/// A sort comparator that captures a variable is called from the specialized thunk, not
+/// inlined into it: its `closure.cap` reads need the closure's own layout, which the thunk
+/// (a plain function) does not have.
+#[test]
+fn capturing_sort_comparators_are_called_not_inlined() {
+    let src = r#"module "i"
+extern @msrt_list_sorted(list<int>, ptr, ptr, fn(int, int) -> int) -> list<int>
+entry @main
+fn @cmp(%env: ptr, %a: int, %b: int) -> int closure(int) {
+b0:
+  %k: int = closure.cap 0 %env
+  %d: int = isub %b, %a
+  %r: int = imul %d, %k
+  ret %r
+}
+fn @sort.cmp(%f: fn(int, int) -> int, %p: ptr, %q: ptr) -> int {
+b0:
+  %a: int = load int %p
+  %b: int = load int %q
+  %r: int = call.ind (%f, %a, %b)
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %k: int = iconst 3
+  %f: fn(int, int) -> int = closure.new @cmp %k
+  %xs: list<int> = list.lit
+  %t: ptr = func.addr @sort.cmp
+  %d: ptr = typedesc int
+  %ys: list<int> = call.rt @msrt_list_sorted (%xs, %d, %t, %f)
+  drop %xs
+  %n: int = list.len %ys
+  drop %ys
+  drop %f
+  ret %n
+}
+"#;
+    let m = inlined(src);
+    for f in &m.funcs {
+        let caps = f
+            .blocks
+            .iter()
+            .flat_map(|b| b.insts.iter())
+            .filter(|i| i.op == Op::ClosureCap)
+            .count();
+        let closure = matches!(f.kind, ms_mir::ir::FuncKind::Closure { .. });
+        assert!(
+            caps == 0 || closure,
+            "{} reads a capture outside a closure",
+            f.name
+        );
+    }
+    let names: Vec<&str> = m.funcs.iter().map(|f| f.name.as_str()).collect();
+    assert!(names.contains(&"sort.cmp.cmp"), "{names:?}");
+}
+
 const SPECIALIZE: &str = r#"module "spec"
 entry @main
 fn @add(%env: ptr, %x: int) -> int closure(int) {

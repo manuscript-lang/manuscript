@@ -350,7 +350,9 @@ impl<'a> FnLower<'a> {
                     self.b.fault(ms_mir::ir::FaultKind::NoneUnwrap);
                     self.b.switch_to(good);
                     let v = load(self);
-                    if stable {
+                    // A `let` of this value is a lexical borrow of the map when the ownership
+                    // checker vetted the function: it rejects changing the map while it lives.
+                    if stable || self.ownership_checked() {
                         self.stable_reads.insert(v);
                     }
                     Ok(Some(Val { v, own: false }))
@@ -446,77 +448,6 @@ impl<'a> FnLower<'a> {
             self.stable_reads.insert(v);
         }
         Ok(Val { v, own: false })
-    }
-
-    /// `return m.get(key)` of a lending function: the entry itself, as an optional that borrows it.
-    pub(crate) fn map_get_lent(
-        &mut self,
-        e: &Expr,
-        view: &CallView<'_>,
-        recv_expr: &Expr,
-        name: &str,
-    ) -> Result<Option<Val>, Error> {
-        if name != "get"
-            || !self.lent_return
-            || self.lent_expr != Some(e as *const Expr as usize)
-            || !self.ety(recv_expr).is_std("Map")
-        {
-            return Ok(None);
-        }
-        let [arg] = view.arguments.as_slice() else {
-            return Ok(None);
-        };
-        let map_ty = self.emty(recv_expr)?;
-        let TyKind::Obj(_, parts) = self.b.m.types.kind(map_ty).clone() else {
-            return Ok(None);
-        };
-        let key_ty = self.emty(arg.expr)?;
-        if parts.first() != Some(&key_ty) || arg.wrap_optional.is_some() {
-            return Ok(None);
-        }
-        let opt_ty = self.emty(e)?;
-        let mv = self.expr(recv_expr)?;
-        if self.dead {
-            return Ok(Some(mv));
-        }
-        let mv = self.borrow(mv);
-        let kv = self.expr(arg.expr)?;
-        if self.dead {
-            return Ok(Some(kv));
-        }
-        let kv = self.borrow(kv);
-        let mt = self.ty_of(mv);
-        let value_ty = self.map_value_type(mv)?;
-        let (kd, vd) = self.map_descs(mt)?;
-        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
-        let ks = self.lend_slot(kv);
-        self.at(e.pos);
-        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
-        let missing = self
-            .b
-            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
-            .expect("is_null");
-        let out = self.b.declare_var(opt_ty, Mode::Borrow);
-        let (absent, present, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
-        self.b.br_if(missing, absent, &[], present, &[]);
-        self.b.seal_block(absent);
-        self.b.seal_block(present);
-        self.enter(absent);
-        let none = self.b.opt_none(opt_ty);
-        self.b.def_var(out, none);
-        self.b.br(join, &[]);
-        self.enter(present);
-        let at = self
-            .b
-            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
-            .expect("load");
-        let some = self.b.opt_view(at);
-        self.b.def_var(out, some);
-        self.b.br(join, &[]);
-        self.b.seal_block(join);
-        self.enter(join);
-        let v = self.b.use_var(out);
-        Ok(Some(Val { v, own: false }))
     }
 
     /// A fresh empty map or set of type `ty`.
@@ -853,7 +784,8 @@ impl<'a> FnLower<'a> {
         Ok((old, Some(Val { v: copy, own: true })))
     }
 
-    /// `map.get_or(key, fallback)`.
+    /// `map.get_or(key, fallback)`: the entry is read through its pointer, so a hit copies the
+    /// value once and a miss copies nothing.
     pub(crate) fn map_get_or(
         &mut self,
         recv: Val,
@@ -861,13 +793,60 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
-        let opt_ty = self.b.m.types.opt(result);
-        let found = self.rt_method("msrt_map_get", recv, decl, args, opt_ty)?;
         let fallback = args
             .iter()
             .find(|a| a.name.as_str() == "fallback")
             .ok_or_else(|| Error::new("get_or without a fallback"))?
             .val;
+        // A key the checker converts on the way in takes the ordinary call, which converts it.
+        let key = args
+            .iter()
+            .find(|a| a.name.as_str() == "key" && !a.wrapped)
+            .map(|a| a.val);
+        let Some(key) = key else {
+            return self.map_get_or_copied(recv, decl, args, result, fallback);
+        };
+        let mt = self.ty_of(recv.v);
+        let mv = self.borrow(recv);
+        let kv = self.borrow(key);
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        let sym = self
+            .word_map_symbol("msrt_map_get_ptr", mt)
+            .unwrap_or("msrt_map_get_ptr");
+        let ptr = self.call_runtime(sym, &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[ptr], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        self.two_ways(
+            missing,
+            result,
+            &mut |s| Ok(Some(s.owned(fallback))),
+            &mut |s| {
+                let hit =
+                    s.b.emit(Op::Load, &[ptr], Imm::Ty(result), Some(result))
+                        .expect("load");
+                let hit = s.owned(Val { v: hit, own: false });
+                // The eager fallback is unused on this path.
+                s.finish(fallback);
+                Ok(Some(hit))
+            },
+        )
+    }
+
+    /// `get_or` through `msrt_map_get`, which copies the entry into an `Optional`.
+    fn map_get_or_copied(
+        &mut self,
+        recv: Val,
+        decl: &[ct::Param],
+        args: &[NArg],
+        result: MTy,
+        fallback: Val,
+    ) -> Result<Val, Error> {
+        let opt_ty = self.b.m.types.opt(result);
+        let found = self.rt_method("msrt_map_get", recv, decl, args, opt_ty)?;
         let present = self.b.opt_is_some(found.v);
         let out = self.two_ways(
             present,

@@ -7,7 +7,9 @@
 //! sealed-builder check (which stays where it was) still runs before any byte is written.
 //!
 //! A chain of concatenations (`"{a}:{b}-{c}"` lowers to nested `string_concat`s) becomes one
-//! `string_concatN` call, so the result is allocated once instead of once per link.
+//! `string_concatN` call, so the result is allocated once instead of once per link. When a piece
+//! is a single-use `int_to_string`, the integer itself is passed to `string_fmtN`, which writes
+//! its digits into the result: `f"w{i}"` builds no temporary string.
 //!
 //! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
 //! with no use of `s` in between, `string_append` consumes `s` and grows it in place.
@@ -125,8 +127,11 @@ fn collect(
         let inst = &f.blocks[db].insts[di];
         let name = ext_name(m, inst)?;
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
-        (single && matches!(name, CONCAT | INT_TO_STRING) && straight_line(f, info, db, at))
-            .then_some((db, di, name == CONCAT))
+        (single && fusable(f, inst, name) && straight_line(f, info, db, at)).then_some((
+            db,
+            di,
+            name == CONCAT,
+        ))
     });
     let Some((db, di, concat)) = fused else {
         if top {
@@ -244,22 +249,38 @@ fn apply(m: &mut Module, fi: usize, bi: usize, ii: usize, plan: Plan) {
     }
 }
 
-/// Most pieces one `string_concatN` joins.
+/// Most pieces one `string_concatN` or `string_fmtN` joins.
 const MAX_JOIN: usize = 6;
 
 fn concat_name(n: usize) -> String {
     format!("msrt_string_concat{n}")
 }
 
+/// `msrt_string_fmtN(mask, parts...)`: part `k` is an integer written in decimal when bit `k` of
+/// `mask` is set, otherwise a string.
+fn fmt_name(n: usize) -> String {
+    format!("msrt_string_fmt{n}")
+}
+
+/// Whether a call named `name` can join a fused chain: a concatenation, or the text of a plain
+/// `Int` (a sized integer is declared with its own width, which `string_fmtN` does not take).
+fn fusable(f: &Func, inst: &Inst, name: &str) -> bool {
+    match name {
+        CONCAT => true,
+        INT_TO_STRING => inst.args.first().is_some_and(|a| f.ty(*a) == Ty::INT),
+        _ => false,
+    }
+}
+
 /// Gathers the leaves of the concat chain rooted at `v` into `leaves` and the chain's inner
-/// links into `remove`.
+/// links into `remove`. A leaf that is a single-use `int_to_string` becomes the integer itself.
 fn chain(
     m: &Module,
     f: &Func,
     info: &Info,
     v: Value,
     at: (usize, usize),
-    leaves: &mut Vec<Value>,
+    leaves: &mut Vec<Piece>,
     remove: &mut HashSet<(usize, usize)>,
 ) {
     // A chain with more leaves than one call joins is rejected whatever its shape, so stop
@@ -268,25 +289,31 @@ fn chain(
     // chain below it, and the pass, which restarts after each fusion, is cubic in the chain's
     // length. The value must stay a leaf, not vanish: the join is built from `leaves`.
     if remove.len() > 2 * MAX_JOIN {
-        leaves.push(v);
+        leaves.push(Piece::Str(v));
         return;
     }
     let inner = info.defs[v.index()].and_then(|(db, di)| {
         let single = info.uses[v.index()] == 2 && info.drops[v.index()].len() == 1;
         let (dbi, ddi) = info.drops[v.index()].first().copied()?;
-        let ok = ext_name(m, &f.blocks[db].insts[di]) == Some(CONCAT)
+        let inst = &f.blocks[db].insts[di];
+        let name = ext_name(m, inst)?;
+        let ok = fusable(f, inst, name)
             && single
             && straight_line(f, info, db, at.0)
             && (dbi != at.0 || ddi > at.1 || db != at.0 || di < at.1);
-        ok.then_some((db, di))
+        ok.then_some((db, di, name == CONCAT))
     });
-    let Some((db, di)) = inner else {
-        leaves.push(v);
+    let Some((db, di, concat)) = inner else {
+        leaves.push(Piece::Str(v));
         return;
     };
     remove.insert((db, di));
     remove.insert(info.drops[v.index()][0]);
     let args = f.blocks[db].insts[di].args.clone();
+    if !concat {
+        leaves.push(Piece::Int(args[0]));
+        return;
+    }
     chain(m, f, info, args[0], at, leaves, remove);
     chain(m, f, info, args[1], at, leaves, remove);
 }
@@ -304,14 +331,18 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
             for &a in &inst.args {
                 chain(m, f, &info, a, (bi, ii), &mut leaves, &mut remove);
             }
-            if remove.is_empty() || leaves.len() < 3 || leaves.len() > MAX_JOIN {
+            let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
+            // Two strings are what `concat` already does; two parts with an integer save the
+            // temporary string.
+            if remove.is_empty() || (leaves.len() < 3 && !ints) || leaves.len() > MAX_JOIN {
                 continue;
             }
             // A leaf dropped before the join would be used after its drop.
-            let early = leaves.iter().any(|l| {
-                info.drops[l.index()]
+            let early = leaves.iter().any(|l| match l {
+                Piece::Str(l) => info.drops[l.index()]
                     .iter()
-                    .any(|&(db, di)| db != bi || di < ii)
+                    .any(|&(db, di)| db != bi || di < ii),
+                Piece::Int(_) => false,
             });
             if early {
                 continue;
@@ -327,27 +358,60 @@ fn apply_concat(
     m: &mut Module,
     fi: usize,
     (bi, ii): (usize, usize),
-    leaves: Vec<Value>,
+    leaves: Vec<Piece>,
     remove: &HashSet<(usize, usize)>,
 ) {
+    let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
+    let piece_params = leaves.iter().map(|p| Param {
+        ty: match p {
+            Piece::Int(_) => Ty::INT,
+            Piece::Str(_) => Ty::STR,
+        },
+        mode: Mode::Borrow,
+    });
+    let mut params = Vec::new();
+    if ints {
+        params.push(Param {
+            ty: Ty::INT,
+            mode: Mode::Borrow,
+        });
+    }
+    params.extend(piece_params);
     let ext = m.add_extern(ExternDef {
-        name: concat_name(leaves.len()),
-        params: leaves
-            .iter()
-            .map(|_| Param {
-                ty: Ty::STR,
-                mode: Mode::Borrow,
-            })
-            .collect(),
+        name: if ints {
+            fmt_name(leaves.len())
+        } else {
+            concat_name(leaves.len())
+        },
+        params,
         ret: Ty::STR,
         noreturn: false,
         pure_: false,
         fresh: true,
     });
     let f = &mut m.funcs[fi];
+    let mut mask = 0i64;
+    let mut args = Vec::new();
+    for (k, p) in leaves.iter().enumerate() {
+        match p {
+            Piece::Int(v) => {
+                mask |= 1 << k;
+                args.push(*v);
+            }
+            Piece::Str(v) => args.push(*v),
+        }
+    }
+    let loc = f.blocks[bi].insts[ii].loc;
+    let mask_val = ints.then(|| f.new_value(Ty::INT));
+    if let Some(mv) = mask_val {
+        args.insert(0, mv);
+    }
     let root = &mut f.blocks[bi].insts[ii];
-    root.args = leaves;
+    root.args = args;
     root.imm = Imm::Ext(ext);
+    // The root moves up by the removals before it in its block; the mask constant goes right
+    // before it afterwards.
+    let shift = (0..ii).filter(|&k| remove.contains(&(bi, k))).count();
     for (b, blk) in f.blocks.iter_mut().enumerate() {
         let mut k = 0usize;
         blk.insts.retain(|_| {
@@ -355,6 +419,18 @@ fn apply_concat(
             k += 1;
             keep
         });
+    }
+    if let Some(mv) = mask_val {
+        f.blocks[bi].insts.insert(
+            ii - shift,
+            Inst {
+                op: Op::IConst,
+                args: Vec::new(),
+                imm: Imm::Int(mask),
+                res: Some(mv),
+                loc,
+            },
+        );
     }
 }
 

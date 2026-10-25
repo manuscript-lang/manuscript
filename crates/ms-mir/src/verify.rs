@@ -776,7 +776,12 @@ impl Verifier<'_> {
                 arity(1)?;
                 want(
                     res.and_then(|r| m.opt_inner(r)) == Some(t(0)),
-                    "opt.some wraps its operand",
+                    "optional constructors wrap their operand",
+                )?;
+                // A boxed optional holds its payload in a heap block, which a borrow cannot own.
+                want(
+                    inst.op == Op::OptSome || !m.opt_is_boxed(t(0)),
+                    "opt.view cannot lend a boxed optional",
                 )
             }
             Op::OptNone => {

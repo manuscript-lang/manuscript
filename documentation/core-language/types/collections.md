@@ -161,9 +161,9 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `List[T]()` | Empty `List[T]` |
 | `List[T](reserve: Optional[Int] = none)` | Empty `List[T]` with room for `reserve` items |
 | `List[T]` | `length() -> Int`; `get(index: Int, default: Optional[T] = none) -> T`; `[index] T` |
-| `List[T]` | `append(value: T) -> List[T]`; `concat(values: List[T]) -> List[T]` |
-| `List[T]` | `set(index: Int, value: T) -> List[T]`; `remove(index: Int) -> List[T]` |
-| `List[T]` | `insert(index: Int, value: T) -> List[T]`; `pop() -> Optional[T]` |
+| `List[T]` | `append(value: T) -> Unit`; `concat(values: List[T]) -> List[T]` |
+| `List[T]` | `set(index: Int, value: T) -> Unit` (also `xs[index] = value`); `remove(index: Int) -> Unit` |
+| `List[T]` | `insert(index: Int, value: T) -> Unit`; `pop() -> Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
 | `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool`; `[key] V` faults with `map key not found: <key>` when absent |
 | `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
@@ -175,13 +175,13 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `find(predicate: Callable[[K, V], Bool]) -> Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `any(predicate: Callable[[K, V], Bool]) -> Bool`; `all` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Map[K, V]`; `remove(key: K) -> Map[K, V]`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
+| `Map[K, V]` | `add(key: K, value: V) -> Unit`; `remove(key: K) -> Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
 | `Set[T]` | `is_empty() -> Bool`; `filter(predicate: Callable[[T], Bool]) -> Set[T]` |
 | `Set[T]` | `map[U: Hashable](transform: Callable[[T], U]) -> Set[U]` |
-| `Set[T]` | `add(value: T) -> Set[T]`; `remove(value: T) -> Set[T]` |
+| `Set[T]` | `add(value: T) -> Unit`; `remove(value: T) -> Unit` |
 | `Set[T]` | `fold[A](initial: A, step: Callable[[A, T], A]) -> A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
 | `Set[T]` | `find(predicate: Callable[[T], Bool]) -> Optional[T]` |

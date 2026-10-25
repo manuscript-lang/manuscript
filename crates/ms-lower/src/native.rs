@@ -1800,10 +1800,26 @@ impl<'a> FnLower<'a> {
         yes: &mut BranchBody<'_, Self>,
         no: &mut BranchBody<'_, Self>,
     ) -> Result<Val, Error> {
-        let owned = self.needs_drop(ty);
-        let out = self
-            .b
-            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+        let mode = if self.needs_drop(ty) {
+            Mode::Own
+        } else {
+            Mode::Borrow
+        };
+        self.two_ways_mode(cond, ty, mode, yes, no)
+    }
+
+    /// `two_ways` with the result's ownership chosen by the caller: `Borrow` joins two values
+    /// that are borrows, so the result is one too.
+    pub(crate) fn two_ways_mode(
+        &mut self,
+        cond: Value,
+        ty: MTy,
+        mode: Mode,
+        yes: &mut BranchBody<'_, Self>,
+        no: &mut BranchBody<'_, Self>,
+    ) -> Result<Val, Error> {
+        let owned = mode == Mode::Own;
+        let out = self.b.declare_var(ty, mode);
         let (a, b, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
         self.b.br_if(cond, a, &[], b, &[]);
         self.b.seal_block(a);

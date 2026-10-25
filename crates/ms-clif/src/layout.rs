@@ -24,7 +24,7 @@
 //! | recursive alternative | `i64` pointer to a heap block `{ tag, payload }` |
 //! | interface | `data, vtable` |
 
-use ms_mir::ir::Module;
+use ms_mir::ir::{Boxing, Module};
 use ms_mir::types::{AltId, Ty, TyKind};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -122,8 +122,7 @@ pub struct Layouts<'m> {
     /// The module whose types are described.
     pub m: &'m Module,
     cache: RefCell<HashMap<Ty, Shape>>,
-    boxed: RefCell<HashMap<AltId, bool>>,
-    boxed_opts: RefCell<HashMap<Ty, bool>>,
+    boxing: RefCell<Boxing>,
 }
 
 impl<'m> Layouts<'m> {
@@ -132,76 +131,19 @@ impl<'m> Layouts<'m> {
         Layouts {
             m,
             cache: RefCell::new(HashMap::new()),
-            boxed: RefCell::new(HashMap::new()),
-            boxed_opts: RefCell::new(HashMap::new()),
+            boxing: RefCell::new(Boxing::default()),
         }
     }
 
     /// Whether the alternative contains itself by value and therefore lives behind a pointer.
     pub fn is_boxed(&self, a: AltId) -> bool {
-        if let Some(b) = self.boxed.borrow().get(&a) {
-            return *b;
-        }
-        // Provisional answer for cycles through other alternatives.
-        self.boxed.borrow_mut().insert(a, false);
-        let target = self.m.types.find(&TyKind::Alt(a));
-        let b = target.is_some_and(|t| self.reaches_by_value(t, t, &mut Vec::new()));
-        self.boxed.borrow_mut().insert(a, b);
-        b
+        self.boxing.borrow_mut().alt(self.m, a)
     }
 
     /// Whether `Optional[inner]` contains itself by value (`type Node: next: Optional[Node]`)
     /// and therefore holds its payload in a heap block behind a nullable pointer.
     pub fn opt_is_boxed(&self, inner: Ty) -> bool {
-        if let Some(b) = self.boxed_opts.borrow().get(&inner) {
-            return *b;
-        }
-        self.boxed_opts.borrow_mut().insert(inner, false);
-        let target = self.m.types.find(&TyKind::Opt(inner));
-        let b = target.is_some_and(|t| self.reaches_by_value(t, t, &mut Vec::new()));
-        self.boxed_opts.borrow_mut().insert(inner, b);
-        b
-    }
-
-    fn reaches_by_value(&self, from: Ty, target: Ty, seen: &mut Vec<Ty>) -> bool {
-        let children: Vec<Ty> = match self.m.types.kind(from) {
-            TyKind::Rec(r) => self.m.records[r.index()]
-                .fields
-                .iter()
-                .map(|f| f.1)
-                .collect(),
-            TyKind::Alt(a) => self.m.alts[a.index()]
-                .cases
-                .iter()
-                .flat_map(|c| c.fields.iter().map(|f| f.1))
-                .collect(),
-            TyKind::Opt(t) => vec![*t],
-            _ => return false,
-        };
-        for c in children {
-            if c == target {
-                return true;
-            }
-            if seen.contains(&c) {
-                continue;
-            }
-            seen.push(c);
-            // Stop at other boxed alternatives: they are one pointer.
-            if let TyKind::Alt(a) = self.m.types.kind(c)
-                && self.is_boxed(*a)
-            {
-                continue;
-            }
-            if let TyKind::Opt(i) = self.m.types.kind(c)
-                && self.opt_is_boxed(*i)
-            {
-                continue;
-            }
-            if self.reaches_by_value(c, target, seen) {
-                return true;
-            }
-        }
-        false
+        self.boxing.borrow_mut().opt(self.m, inner)
     }
 
     /// The flattened shape of `ty`.
