@@ -1002,15 +1002,14 @@ fn define_with(
             &ModuleSymbols(&g.module, &g.locs, &g.scopes),
             exported,
         );
-        if let Some(f) = source {
-            g.llvm_funcs.push(LlvmFn {
-                id,
-                symbol: sym.clone(),
-                name: f.name.clone(),
-                file: f.loc.file,
-                line: f.loc.line,
-            });
-        }
+        // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
+        g.llvm_funcs.push(LlvmFn {
+            id,
+            symbol: sym.clone(),
+            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
+            file: source.map_or(u32::MAX, |f| f.loc.file),
+            line: source.map_or(0, |f| f.loc.line),
+        });
         g.llvm = Some(llvm);
         g.module.clear_context(ctx);
         return Ok(());
@@ -1021,7 +1020,7 @@ fn define_with(
     g.module
         .define_function(id, ctx)
         .map_err(|e| Error(format!("{name}: {e:?}")))?;
-    if let Some(f) = source {
+    {
         let cc = ctx.compiled_code().expect("function compiled");
         let mut ranges: Vec<(u32, u32, u32, u32)> = Vec::new();
         let mut dwarf_ranges = Vec::new();
@@ -1030,7 +1029,7 @@ fn define_with(
             let Some((file, line, scope)) = g.locs.get(bits as usize).copied() else {
                 continue;
             };
-            if r.start < r.end {
+            if source.is_some() && r.start < r.end {
                 dwarf_ranges.push((r.start, r.end, file, line));
             }
             if ranges
@@ -1042,15 +1041,22 @@ fn define_with(
         }
         // Frames of inlined callees return to the physical function's file, so a function
         // without a position of its own borrows the first file its lines name.
-        let (file, line) = if f.loc.is_none() {
-            let first = ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX);
-            (first.unwrap_or(u32::MAX), 0)
-        } else {
-            (f.loc.file, f.loc.line)
+        // Glue has no source of its own, but a cleanup thunk can hold an inlined callee, whose
+        // frame a fault trace must still name.
+        let (file, line) = match source {
+            Some(f) if !f.loc.is_none() => (f.loc.file, f.loc.line),
+            _ => {
+                let first = ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX);
+                (first.unwrap_or(u32::MAX), 0)
+            }
         };
+        if source.is_none() && ranges.is_empty() {
+            g.module.clear_context(ctx);
+            return Ok(());
+        }
         g.dbg.push(FuncDbg {
             id,
-            name: f.name.clone(),
+            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
             file,
             line,
             size: cc.code_buffer().len() as u32,
