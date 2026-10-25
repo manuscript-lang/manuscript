@@ -142,6 +142,8 @@ struct Sched {
     kills: BinaryHeap<Reverse<(i64, u64)>>,
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
+    /// The same for `kills`.
+    kill_limit: usize,
     /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
     fd_waiters: Vec<u64>,
     fd_waiting: usize,
@@ -169,6 +171,7 @@ crate::isolate_static! {
     timers: BinaryHeap::new(),
     kills: BinaryHeap::new(),
     timer_limit: MIN_TIMER_LIMIT,
+    kill_limit: MIN_TIMER_LIMIT,
     fd_waiters: Vec::new(),
     fd_waiting: 0,
     epfd: -1,
@@ -1184,7 +1187,18 @@ pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i
         if limit_ns >= 0 {
             let at = clock_ns().saturating_add(limit_ns);
             (*t).kill_at = at;
-            sched().kills.push(Reverse((at, h)));
+            let s = &mut *sched();
+            s.kills.push(Reverse((at, h)));
+            if s.kills.len() > s.kill_limit {
+                // Collected and finished tasks leave their entries until the deadline; a group
+                // that starts many limited tasks must not grow the heap without bound.
+                let slots = &s.slots;
+                s.kills.retain(|&Reverse((at, h))| {
+                    let t = lookup_in(slots, h);
+                    !t.is_null() && (*t).state != State::Done && (*t).kill_at == at
+                });
+                s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
+            }
         }
         h
     }
@@ -1439,6 +1453,7 @@ pub fn teardown() {
         s.free_slots = Vec::new();
         s.timers = BinaryHeap::new();
         s.timer_limit = MIN_TIMER_LIMIT;
+        s.kill_limit = MIN_TIMER_LIMIT;
         s.fd_waiters = Vec::new();
         s.fd_waiting = 0;
         s.epfd = -1;

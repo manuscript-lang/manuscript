@@ -27,7 +27,7 @@ test "a group collects its results in start order":
 - `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. A task that sends no messages ignores its channel: `lambda ch: square(n)`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
-- `group.results()` waits for every started task and returns their results in start order, or the first task's error. `group.wait()` waits for all of them and reports an error if any ended without a result.
+- `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
 - Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.

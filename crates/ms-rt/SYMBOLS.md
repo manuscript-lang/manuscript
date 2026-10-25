@@ -852,7 +852,7 @@ msrt_task_forget_fd(fd: i32)
 msrt_scope_new() -> i64
 msrt_scope_spawn( scope: i64, closure: *mut Closure, task_limit_ns: i64, scope_limit_ns: i64, ) -> i64
 msrt_scope_started()
-msrt_scope_join(handle: i64, keep: i64) -> i64
+msrt_scope_join(scope: i64, handle: i64, keep: i64) -> i64
 msrt_scope_wait(scope: i64) -> i64
 msrt_scope_close(scope: i64)
 msrt_channel_token() -> i64

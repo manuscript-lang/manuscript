@@ -41,7 +41,7 @@ test "a child process answers messages on its channel":
 - The channel behaves as a task channel: `send` waits while the pipe is full, `receive` gives `ok(none)` once the other end closed and everything it sent was read, and `close` closes this end. A child that exits without closing its end gives `ChannelError.Broken`.
 - `child.result()` waits for the entry to return and gives its value. Messages the parent has not received by then are dropped. A child that ended first gives `ProcessError.Exited(status)`: 70 after a fault, -1 after a signal. A fault in the child never faults the parent.
 - `child.wait()` gives the exit status; `terminate()` and `kill()` signal the child's process group.
-- `group.results()` waits for every child's result in start order, or gives the first error.
+- `group.results()` waits for every open child's result in start order, or gives the first error. Closing a process makes the group forget it and releases its descriptors once the `Process` value is dropped.
 - Leaving the `with` block closes every child: its channel closes, then the child is stopped and joined. Call `result()` first to keep the work.
 - `stdin`, `stdout` and `stderr` default to the parent's own streams, so a child's output goes where the parent's goes. `Stdio.Null` discards a stream. `Stdio.Pipe` connects it to the parent: `child.stdin()` is a `WriteStream` (close it to end the child's input), and `child.stdout()` and `child.stderr()` are `ReadStream`s. Read a piped output while the child runs, since a child whose pipe is full waits. A stream that is not piped is already closed.
 
