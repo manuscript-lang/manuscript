@@ -1094,10 +1094,13 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
         }
+        let recv_ty = self.ty_of(recv.v);
+        let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         if matches!(
             native,
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
-        ) {
+        ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
+        {
             return self.numeric_conversion(e, recv);
         }
         // Other operations on a sized number run on its 64-bit kind.
