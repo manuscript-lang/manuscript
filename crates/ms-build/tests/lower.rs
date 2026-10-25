@@ -261,7 +261,7 @@ fn error_category_tests_standard_error_tables() {
 fn try_in_an_argument_releases_the_receiver_and_earlier_arguments() {
     let mir = lower(
         "trydrop",
-        "from \"@std/http.ms\" import headers, HttpHeaders, HttpMethod\nfrom \"@std/net.ms\" import network\n\ndef hs() -> Result[HttpHeaders, Error]: return ok(headers())\n\ndef one() -> Result[Int, Error]: return ok(1)\n\ndef go(n: Int) -> Result[Int, Error]:\n    let r = network().request(method: HttpMethod.Get, url: f\"http://x/{n}\", headers: (try hs()), body: \"\")\n    let s = f\"abc {n}\".replace(\"a\", \"b\", max_replacements: (try one()))\n    return ok(0)\n\nexport def main() -> Int:\n    let r = go(1)\n    return 0\n",
+        "from \"@std/http.ms\" import headers, HttpHeaders, HttpMethod\nfrom \"@std/net.ms\" import network\n\ndef hs() -> Result[HttpHeaders, Error]: return ok(headers())\n\ndef one() -> Result[String, Error]: return ok(\"b\")\n\ndef go(n: Int) -> Result[Int, Error]:\n    let r = network().request(method: HttpMethod.Get, url: f\"http://x/{n}\", headers: (try hs()), body: \"\")\n    let s = f\"abc {n}\".replace(\"a\", (try one()))\n    return ok(0)\n\nexport def main() -> Int:\n    let r = go(1)\n    return 0\n",
     );
     assert!(mir.contains("drop"));
 }
@@ -288,7 +288,7 @@ fn element_slot_keeps_a_record_whose_field_is_named_like_the_parameter() {
 fn collection_builders_are_shared_handles() {
     let mir = lower(
         "shared-builders",
-        "from \"@std/collections.ms\" import ListBuilder\n\nexport def main() -> Int:\n    var b = ListBuilder[Int]()\n    b.append(1)\n    b.append(2)\n    return b.freeze().length()\n",
+        "from \"@std/collections.ms\" import ListBuilder\n\nexport def main() -> Int:\n    var b = ListBuilder[Int]()\n    b.append(1)\n    b.append(2)\n    return b.build().length()\n",
     );
     assert!(mir.contains("shared.new"));
     assert!(mir.contains("shared.addr"));

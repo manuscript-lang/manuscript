@@ -42,11 +42,11 @@ impl Error for StringError:
 export type StringBuilder: ...
 
 impl StringBuilder:
-    # Appends the supplied text in order; mutation after freeze raises a sealed-builder fault.
+    # Appends the supplied text in order; mutation after build raises a sealed-builder fault.
     def append(value: String) -> Unit: ...
 
-    # Seals the builder and returns immutable text; repeated freeze returns the same text value.
-    def freeze() -> String: ...
+    # Seals the builder and returns immutable text; repeated build returns the same text value.
+    def build() -> String: ...
 
 # Errors returned for invalid patterns or configured result limits.
 export type RegexError:

@@ -22,7 +22,7 @@ pub(crate) fn path_text(path: &Expr) -> Name {
 /// The identity of a literal match arm: its spelling, or `None` for anything else.
 fn literal_key(path: &Expr) -> Option<String> {
     match &path.kind {
-        ExprKind::Number(n) => Some(n.to_string()),
+        ExprKind::Number(n) => Some(ms_syntax::number::canonical(n.as_str()).into_owned()),
         ExprKind::Bool(b) => Some(b.to_string()),
         ExprKind::Text(parts) => match parts.as_slice() {
             [TextPart::Lit(s)] => Some(format!("{s:?}")),
@@ -32,7 +32,7 @@ fn literal_key(path: &Expr) -> Option<String> {
             op: UnaryOp::Neg,
             operand,
         } => match &operand.kind {
-            ExprKind::Number(n) => Some(format!("-{n}")),
+            ExprKind::Number(n) => Some(format!("-{}", ms_syntax::number::canonical(n.as_str()))),
             _ => None,
         },
         _ => None,
@@ -467,7 +467,6 @@ impl Checker {
                 pos,
                 kind: StmtKind::Bind {
                     mutable: true,
-                    by_ref: false,
                     pattern,
                     ty: None,
                     value: iter.clone(),

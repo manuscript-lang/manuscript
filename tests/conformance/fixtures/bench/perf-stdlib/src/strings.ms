@@ -12,7 +12,7 @@ export def bench_string() -> Unit:
             var sb = StringBuilder()
             for i in range(0, 100000):
                 sb.append("x")
-            return sb.freeze().byte_length()
+            return sb.build().byte_length()
     )
 
     bench(

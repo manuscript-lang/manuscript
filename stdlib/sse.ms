@@ -170,7 +170,7 @@ def consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) -> Resu
     return ok(())
 
 def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, SseError]:
-    var bytes = decoder.line.freeze()
+    var bytes = decoder.line.build()
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
 

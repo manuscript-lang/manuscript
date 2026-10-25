@@ -29,5 +29,5 @@ test "views and functions retain local implementations across modules":
     with let second_close = second_resource(resource):
         let active = True
 
-    let values = events.freeze()
+    let values = events.build()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

@@ -66,7 +66,7 @@ export def first_resource(resource: Resource) -> Closeable:
 test "first local cleanup":
     var events = ListBuilder[Int]()
     leave(Resource(events))
-    events.freeze().get(index: 0) | try expect_equal(10)
+    events.build().get(index: 0) | try expect_equal(10)
 
 export def mixed[T: Read[Int]](value: T, concrete: Item) -> Int:
     return value.get() + concrete.get()

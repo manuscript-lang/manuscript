@@ -265,9 +265,11 @@ Verify: `let (` entries evaluate in order with earlier ones in scope, `export le
 
 Decision: the reference-syntax spike recommended no marker (inference plus `Clonable` instead), and Chinmay overrode it: a result that lends part of a borrowed parameter is written `ref T`, and a binding that borrows a place is `let ref x = a.b` / `var ref x = xs[i]` (#1137, #1142). Loops and matches over a parameter borrow it unless a payload or loop variable is moved out (#1128). `ref` is not a type: it appears only in a declared result type or a binding, never in function types, fields, elements or type arguments, so there are no lifetimes to teach. The marker is staged: an unmarked lending function still lends by inference.
 
+Update (2026-10-25): Chinmay folded aliasing, borrows and `ref` into one model ([one-borrow model](../proposals/one-borrow-model.md)): binding a place borrows with no marker (`let` shared, `var` exclusive, "doing that implicit is fine"), mutability is chosen by the caller's binding ("var ref on return is unnecessary, we should just do ref"), and `ref` is written only before a result type. `let ref`, `var ref`, `for ref` and `match ref` are parse errors.
+
 Apply when: changing result types, bindings, interface operation agreement, or the ownership pass.
 Evidence: [ownership notes](../crates/ms-check/OWNERSHIP.md), [grammar](../documentation/core-language/basics/grammar.md).
-Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x` on an owned value, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
+Verify: `def list() -> ref List[Int]` must return part of a parameter; `let ref x = a.b` is a parse error, and an implementation that disagrees with the interface operation's `ref`-ness, are rejected.
 
 ### `Clonable` replaces ad hoc copying in generic code
 

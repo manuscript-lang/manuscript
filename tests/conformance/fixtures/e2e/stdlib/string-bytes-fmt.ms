@@ -23,14 +23,10 @@ test "strings honor omitted none zero and explicit output limits":
 
     let limited: Result[String, StringError] = error(StringError.LimitExceeded)
     try expect_equal("é".repeat(2, 3), limited)
-    try expect_equal((try "x".pad_start(3, "ab")), "abx")
-    try expect_equal((try "x".pad_end(3, "ab")), "xab")
+    try expect_equal("x".pad_start(3, "ab"), "abx")
+    try expect_equal("x".pad_end(3, "ab"), "xab")
     try expect_equal("ab".repeat(4611686018427387904), limited)
-    try expect_equal("ab".pad_start(9223372036854775807, "x"), limited)
-    try expect_equal(
-        "ab".pad_end(4611686018427387904, "xyz", 9223372036854775807), limited
-    )
-    try expect_equal((try "aa".replace_all("a", "xy")), "xyxy")
+    try expect_equal("aa".replace("a", "xy"), "xyxy")
     try expect_equal("a,,b".split(",", 2), ["a", ""])
     try expect_equal(" \té \n".trim(), "é")
 
@@ -101,12 +97,12 @@ test "string and bytes builders freeze":
     var text = StringBuilder()
     text.append("é")
     text.append("🙂")
-    try expect_equal(text.freeze(), "é🙂")
+    try expect_equal(text.build(), "é🙂")
 
     var bytes = BytesBuilder()
     bytes.append(0)
-    bytes.concat(Bytes([255, 1]))
-    try expect_equal(bytes.freeze(), Bytes([0, 255, 1]))
+    bytes.append_bytes(Bytes([255, 1]))
+    try expect_equal(bytes.build(), Bytes([0, 255, 1]))
 
 test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("".split(","), [""])

@@ -543,7 +543,7 @@ fn string_ops_match_char_model(seed: u64) {
             if !needle.is_empty() {
                 let rep = &new_str("<>");
                 let mut got = NO_STR;
-                string::msrt_string_replace_n(s, ns, rep, i64::MAX, &mut got);
+                string::msrt_string_replace(s, ns, rep, &mut got);
                 assert_eq!(text(&got), model.replace(&needle, "<>"));
                 string::release(&got);
                 string::release(rep);

@@ -75,15 +75,7 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
                     text: (
                         example
                         .text
-                        .replace(
-                            old: "\n",
-                            new: ending,
-                            max_replacements: (
-                                example
-                                .text
-                                .byte_length()
-                            )
-                        )
+                        .replace(old: "\n", new: ending)
                     ),
                     expected: example.expected.clone()
                 )
@@ -131,15 +123,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
                     text: (
                         example
                         .text
-                        .replace(
-                            old: "\n",
-                            new: ending,
-                            max_replacements: (
-                                example
-                                .text
-                                .byte_length()
-                            )
-                        )
+                        .replace(old: "\n", new: ending)
                     ),
                     expected: example.expected.clone()
                 )
@@ -153,7 +137,7 @@ test "YAML plain paragraphs retain boundaries and nested collections":
                 (
                     parse(
                         text: text.replace(
-                            old: "\n", new: ending, max_replacements: text.byte_length()
+                            old: "\n", new: ending
                         )
                     ) | try expect_ok
                 )
@@ -651,13 +635,13 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     let list = (try items(root))
     list.length() | try expect_equal(3)
 
-    let first = (try entries(list.first().get().clone()))
+    let first = (try entries(list.first().get()))
     first.get("b").get() | try expect_equal(YamlValue.NumberValue("2"))
     (try items(list.get(1).clone())).length() | try expect_equal(2)
     (
-        (try entries(list.last().get().clone())).get(
-            "d"
-        ).get() | try expect_equal(YamlValue.NumberValue("4"))
+        (try entries(list.last().get())).get("d").get() | try expect_equal(
+            YamlValue.NumberValue("4")
+        )
     )
 
 def repeated(text: String, count: Int) -> String:
@@ -766,7 +750,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 
     let depth = 3000
     var source = f"{repeated(text: "- ", count: depth)}x\n"
-    var root = (parse(text: source) | try expect_ok)
+    var root = (parse(text: source, limits: some(YamlLimits())) | try expect_ok)
 
     for level in range(1, depth):
         let inner = (try items(root))
@@ -780,3 +764,20 @@ test "YAML stringify escapes C1 control characters so output reparses":
         let text = try from_scalars([97, code, 98])
         let encoded = try stringify(YamlValue.StringValue(text.clone()))
         try expect_equal((try parse(encoded)), YamlValue.StringValue(text))
+
+test "YAML parse without limits stops alias bombs and deep nesting":
+    var bomb = "l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"
+    for i in range(0, 9):
+        bomb = bomb + f"l{i+1}: &l{i+1} [" + f"*l{i}, ".repeat(9).get() + f"*l{i}]\n"
+
+    let bombed = parse(bomb)
+    if bombed.is_ok(): return fail(
+        "alias expansion over the default value budget was accepted"
+    )
+
+    let deep = "[".repeat(20000).get() + "]".repeat(20000).get()
+    let nested = parse(deep)
+    if nested.is_ok(): return fail("nesting over the default depth was accepted")
+
+    let lifted = parse(deep, some(YamlLimits()))
+    try expect_true(lifted.is_ok())

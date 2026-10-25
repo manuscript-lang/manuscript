@@ -75,7 +75,7 @@ test "sum even indexes":
 
 ## Iterable types and binding
 
-The iterable is evaluated once. Traversal borrows the collection for the loop body (`for ref e in xs:` states it); mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
+The iterable is evaluated once. Traversal borrows the collection for the loop body; mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |

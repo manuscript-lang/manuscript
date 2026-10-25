@@ -299,7 +299,6 @@ test "tasks joining clones of one worker all see its outcome":
         let worker = workers.spawn(naps).get(none)
         let first_copy = worker.clone()
         let second_copy = worker.clone()
-
         with let tasks = TaskGroup[Int]():
             let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))

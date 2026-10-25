@@ -11,4 +11,4 @@ def probe() -> String:
         b.append("x")
         i += 1
 
-    return b.freeze()
+    return b.build()

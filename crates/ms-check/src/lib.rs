@@ -72,6 +72,7 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.exclusive_borrows = Rc::new(own.exclusive);
         program.getter_borrows = Rc::new(own.getters);
         program.read_borrows = Rc::new(own.read_borrows);
+        program.lenders = Rc::new(own.lenders);
         program.diagnostics.extend(own.diagnostics);
     }
     program
