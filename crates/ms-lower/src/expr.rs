@@ -639,6 +639,7 @@ impl<'a> FnLower<'a> {
             ret,
             noreturn: false,
             pure_: false,
+            fresh: crate::rtcall::fresh_result(sym),
         });
         Ok(self.b.call_rt(ext, args))
     }

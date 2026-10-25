@@ -175,6 +175,9 @@ pub fn print_module(m: &Module) -> String {
         if e.noreturn {
             line.push_str(" noreturn");
         }
+        if e.fresh {
+            line.push_str(" fresh");
+        }
         o.push_str(&line);
         o.push('\n');
     }

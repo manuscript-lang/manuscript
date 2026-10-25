@@ -143,6 +143,7 @@ impl FnLower<'_> {
                 ret: MTy::UNIT,
                 noreturn: true,
                 pure_: false,
+                fresh: false,
             });
             self.b.call_rt(ext, &[msg.v]);
             return Ok(self.dummy(MTy::UNIT));
