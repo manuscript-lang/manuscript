@@ -45,6 +45,13 @@ impl FnLower<'_> {
             return Ok(None);
         }
         let t = self.ty_of(x.v);
+        if !x.own && self.ownership_checked() {
+            // A borrowed part: the checker keeps its origin unchanged while payloads borrow it,
+            // so it is read in place and a lending function can hand back those payloads.
+            let var = self.b.declare_var(t, Mode::Borrow);
+            self.b.def_var(var, x.v);
+            return Ok(Some((var, false)));
+        }
         let owned = self.needs_drop(t);
         let var = self
             .b
