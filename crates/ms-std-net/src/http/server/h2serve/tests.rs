@@ -580,6 +580,28 @@ fn faults_and_cancellations_answer_per_stream() {
 }
 
 #[test]
+fn reset_flood_does_not_wedge_the_server() {
+    let (_net, server) = start(Box::new(App), false, limits());
+    let addr = server.address().to_string();
+    let after = with_client(move || {
+        // Open a stream and reset it at once, many times over: the server may throttle or drop
+        // the connection, but it must neither stall nor keep the streams admitted.
+        let mut flood = Client::connect(&addr, big_window());
+        for _ in 0..2000 {
+            let Ok(id) = flood.core.open_stream(request("GET", "/ok", &[]), true) else {
+                break;
+            };
+            flood.core.send_rst(id, error_code::CANCEL);
+            flood.flush();
+        }
+        let mut c = Client::connect(&addr, big_window());
+        let id = c.get("/ok");
+        c.response(id)
+    });
+    assert_eq!(after.status, "200");
+}
+
+#[test]
 fn body_limit_is_enforced() {
     let (_net, server) = start(
         Box::new(App),

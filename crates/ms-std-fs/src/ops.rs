@@ -68,7 +68,7 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
 }
 
 pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
-    #[cfg(all(unix, not(test)))]
+    #[cfg(not(test))]
     if !ms_rt::glue::pool::alone() {
         let ran =
             ms_rt::glue::pool::run_shielded(Lane::General, (path.to_vec(), max), &[], read_job);
@@ -107,7 +107,7 @@ fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8], cancellable: bool) -> Re
 }
 
 fn write_with(path: &[u8], flags: i32, data: &[u8]) -> Res<()> {
-    #[cfg(all(unix, not(test)))]
+    #[cfg(not(test))]
     if !ms_rt::glue::pool::alone() {
         match ms_rt::glue::pool::run_shielded(
             Lane::General,
@@ -151,15 +151,15 @@ pub fn copy_file(source: &[u8], destination: &[u8], replace: bool, max: i64) -> 
 // With other tasks to run, a whole-file read or write of a regular file runs on a blocking-pool
 // thread, so the disk does not stall them. The wait is shielded: it ends only when the job
 // does, which a regular file guarantees, so a write borrows the caller's bytes. The job opens
-// with `O_NONBLOCK` and hands anything but a regular file back (a FIFO, a device, a directory),
-// to run here on the runtime thread, where a wait is cancellable. Jobs never check for a stop
+// (with `O_NONBLOCK` on Unix) and hands anything but a regular file back (a FIFO, a device, a
+// directory), to run here on the runtime thread, where a wait is cancellable. Jobs never check for a stop
 // request; it takes effect once the job is done.
 
-#[cfg(all(unix, not(test)))]
+#[cfg(not(test))]
 use ms_rt::glue::pool::Lane;
 
 /// What a whole-file job found.
-#[cfg(all(unix, not(test)))]
+#[cfg(not(test))]
 enum Offloaded<T> {
     Done(Res<T>),
     /// Not a regular file: the call runs on the runtime thread instead.
@@ -167,15 +167,18 @@ enum Offloaded<T> {
 }
 
 /// Opens `path` for a job; `None` when it is not a regular file. Runs on a pool thread.
-#[cfg(all(unix, not(test)))]
+#[cfg(not(test))]
 fn open_regular(path: &[u8], flags: i32) -> Option<Res<sys::Fd>> {
     let p = match cpath(path) {
         Ok(p) => p,
         Err(e) => return Some(Err(e)),
     };
-    let fd = match sys::open(&p, flags | libc::O_NONBLOCK, 0o600) {
+    #[cfg(unix)]
+    let flags = flags | libc::O_NONBLOCK;
+    let fd = match sys::open(&p, flags, 0o600) {
         Ok(fd) => fd,
         // A FIFO without a reader.
+        #[cfg(unix)]
         Err(libc::ENXIO) => return None,
         Err(e) => return Some(Err(Fail::errno(e, "open", path))),
     };
@@ -186,7 +189,7 @@ fn open_regular(path: &[u8], flags: i32) -> Option<Res<sys::Fd>> {
     None
 }
 
-#[cfg(all(unix, not(test)))]
+#[cfg(not(test))]
 fn read_job(job: &(Vec<u8>, i64), _: &[u8]) -> Offloaded<Vec<u8>> {
     let (path, max) = job;
     let fd = match open_regular(path, sys::O_RDONLY) {
@@ -199,7 +202,7 @@ fn read_job(job: &(Vec<u8>, i64), _: &[u8]) -> Offloaded<Vec<u8>> {
     Offloaded::Done(result)
 }
 
-#[cfg(all(unix, not(test)))]
+#[cfg(not(test))]
 fn write_job(job: &(Vec<u8>, i32), data: &[u8]) -> Offloaded<()> {
     let (path, flags) = job;
     let fd = match open_regular(path, sys::O_WRONLY | sys::O_CREAT | flags) {

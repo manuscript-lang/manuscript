@@ -104,7 +104,9 @@ impl Drop for Program {
 
 /// Runs one request under `msrt_guard_call`. `None` means it returned normally;
 /// otherwise the outcome that ends the request (a fault becomes a 500 for the caller).
-/// Values owned by the abandoned frames leak, per the ms-rt contract.
+/// Values owned by the abandoned frames leak, per the ms-rt contract: `msrt_unwind_drops` is
+/// false for a fault, and the unwind pass registers no cleanup around the leaf calls (index,
+/// unwrap, arithmetic) that fault. Documented on `Network.serve`.
 fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
     unsafe extern "C-unwind" fn run(data: *mut u8) {
         // SAFETY: `data` is the `&mut dyn FnMut()` below, live for the guard call.
