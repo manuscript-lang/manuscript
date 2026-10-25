@@ -142,6 +142,7 @@ struct Sched {
     kills: BinaryHeap<Reverse<(i64, u64)>>,
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
+    kill_limit: usize,
     /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
     fd_waiters: Vec<u64>,
     fd_waiting: usize,
@@ -169,6 +170,7 @@ crate::isolate_static! {
     timers: BinaryHeap::new(),
     kills: BinaryHeap::new(),
     timer_limit: MIN_TIMER_LIMIT,
+    kill_limit: MIN_TIMER_LIMIT,
     fd_waiters: Vec::new(),
     fd_waiting: 0,
     epfd: -1,
@@ -1184,7 +1186,19 @@ pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i
         if limit_ns >= 0 {
             let at = clock_ns().saturating_add(limit_ns);
             (*t).kill_at = at;
-            sched().kills.push(Reverse((at, h)));
+            let mut s = sched();
+            s.kills.push(Reverse((at, h)));
+            if s.kills.len() > s.kill_limit {
+                // Completed tasks leave future deadlines behind. Compact geometrically so
+                // repeated short tasks with long limits retain space proportional to live work.
+                let sched = &mut *s;
+                let slots = &sched.slots;
+                sched.kills.retain(|&Reverse((deadline, handle))| {
+                    let t = lookup_in(slots, handle);
+                    !t.is_null() && (*t).state != State::Done && (*t).kill_at == deadline
+                });
+                s.kill_limit = (s.kills.len() * 2).max(MIN_TIMER_LIMIT);
+            }
         }
         h
     }
@@ -1438,7 +1452,9 @@ pub fn teardown() {
         s.slots = Vec::new();
         s.free_slots = Vec::new();
         s.timers = BinaryHeap::new();
+        s.kills = BinaryHeap::new();
         s.timer_limit = MIN_TIMER_LIMIT;
+        s.kill_limit = MIN_TIMER_LIMIT;
         s.fd_waiters = Vec::new();
         s.fd_waiting = 0;
         s.epfd = -1;
@@ -1525,6 +1541,55 @@ mod tests {
             assert_eq!(msrt_task_count(), 1);
         }
         teardown();
+    }
+
+    unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}
+
+    unsafe extern "C-unwind" fn long_wait(_: *mut u8) {
+        // SAFETY: called on a live task; the test cancels it after checking the heap.
+        unsafe { msrt_task_sleep(3_600_000_000_000) };
+    }
+
+    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the test closure has no captures and owns this allocation.
+        unsafe { alloc::free(obj.cast()) };
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn completed_task_deadlines_do_not_accumulate() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the closure stays live until every spawned task has been joined.
+        unsafe {
+            let closure =
+                crate::obj::new_obj(core::mem::size_of::<ms_rt_abi::Closure>(), drop_closure)
+                    .cast::<ms_rt_abi::Closure>();
+            (*closure).code = returns as *const u8;
+            let active = msrt_task_spawn(long_wait, null_mut(), 0, 0);
+            let deadline = clock_ns() + 3_600_000_000_000;
+            (*lookup(active)).kill_at = deadline;
+            sched().kills.push(Reverse((deadline, active)));
+            for _ in 0..4 * MIN_TIMER_LIMIT {
+                let task = spawn_closure(closure, 3_600_000_000_000);
+                assert_eq!(join_closure(task, false), 0);
+            }
+            crate::obj::release(closure.cast());
+            let retained = sched().kills.len();
+            let kept_active = sched().kills.iter().any(|&Reverse((_, h))| h == active);
+            msrt_task_cancel(active);
+            assert_eq!(msrt_task_join(active, null_mut()), 0);
+            teardown();
+            assert!(kept_active, "compaction must retain a live task's limit");
+            assert!(
+                retained <= MIN_TIMER_LIMIT,
+                "retained {retained} completed deadlines"
+            );
+            assert!(
+                sched().kills.is_empty(),
+                "teardown must release the deadline heap"
+            );
+        }
     }
 
     unsafe extern "C-unwind" fn hook() {
