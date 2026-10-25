@@ -1087,6 +1087,7 @@ fn ordinal_status(sym: &str) -> bool {
         "msrt_http_",
         "msrt_websocket_",
         "msrt_tls_",
+        "msrt_pipe_",
         "extern:",
     ]
     .iter()

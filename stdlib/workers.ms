@@ -39,7 +39,7 @@ extern def msrt_worker_cancel(handle: Int) -> Unit
 
 extern def msrt_worker_wait(handle: Int) -> String
 
-# Why a read from the pipe gave no message. The native side numbers these cases from 1.
+# Why a read from the pipe gave no message. The native side numbers these cases from 1 (1 + declaration index).
 type PipeEnd:
     # This end is closed.
     case Closed
