@@ -37,6 +37,10 @@ pub unsafe fn retain(o: *mut Obj) {
 #[inline(always)]
 pub unsafe fn release(o: *mut Obj) {
     if !o.is_null() {
+        debug_assert!(
+            !alloc::arena_released(),
+            "runtime object released after its isolate's arena ended (a thread-local holds it?)"
+        );
         // SAFETY: live object per the contract.
         unsafe {
             (*o).rc -= 1;

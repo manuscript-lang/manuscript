@@ -5,8 +5,7 @@ use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
 use ms_rt::ffi::{
-    Bytes, ErrOut, ObjBox, ObjRef, ObjShare, Object, Out, RecArray, StatusCode, Str, abi_handle,
-    abi_record, native,
+    Bytes, ErrOut, ObjRef, Object, Out, RecArray, StatusCode, Str, abi_handle, abi_record, native,
 };
 use ms_rt_abi::STATUS_NONE;
 use std::net::IpAddr;
@@ -30,10 +29,6 @@ abi_record! {
         pub data: Bytes,
         pub sender: Str,
     }
-}
-
-thread_local! {
-    static ROOT_HANDLE: ObjBox<NetH> = ObjBox::new(NetH(root()));
 }
 
 native! {
@@ -111,9 +106,10 @@ native! {
 
     // ------------------------------------------------------------------- Network
 
-    /// `network() -> Network` (+1 reference to the host's root network).
-    fn msrt_net_network() -> ObjShare<NetH> {
-        ROOT_HANDLE.with(|h| h.share())
+    /// `network() -> Network` (a new handle on the isolate's root network). No handle is cached
+    /// in a thread-local: its destructor would run after a worker's arena is gone.
+    fn msrt_net_network() -> Object<NetH> {
+        Object(NetH(root()))
     }
 
     /// `Network.close()`; closing from a handler of a server this network owns faults.
