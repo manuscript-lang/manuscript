@@ -106,12 +106,14 @@ mod tests {
     }
 
     #[test]
-    fn shifted_lines_are_not_differences() {
-        let a = parse(r#"{"t":[{"s":"passed"},{"s":"passed"}]}"#).unwrap();
-        let b = parse(r#"{"t":[{"s":"passed"},{"s":"failed"},{"s":"passed"}]}"#).unwrap();
+    fn unchanged_lines_between_differences_are_hidden() {
+        let a = parse(r#"{"code":0,"t":[{"s":"passed"},{"s":"passed"}]}"#).unwrap();
+        let b = parse(r#"{"code":1,"t":[{"s":"passed"},{"s":"failed"}]}"#).unwrap();
         let d = diff(&a, &b, 5).unwrap();
-        assert!(d.contains("+ t[1].s: \"failed\""), "{d}");
-        assert!(!d.contains("passed"), "{d}");
+        assert_eq!(
+            d,
+            "- code: 0\n- t[1].s: \"passed\"\n+ code: 1\n+ t[1].s: \"failed\"\n"
+        );
     }
 
     #[test]
