@@ -1794,6 +1794,29 @@ mod tests {
         teardown();
     }
 
+    /// A wait for a plain thread (a blocking-pool job, a helper) is not a deadlock even while a
+    /// token that only another isolate could post is also pending.
+    #[test]
+    fn a_thread_post_is_not_a_deadlock_beside_a_pending_peer_token() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; the test thread plays the main isolate.
+        unsafe {
+            let peer = msrt_token_new(TOKEN_REMOTE | TOKEN_PEER);
+            let plain = msrt_token_new(TOKEN_REMOTE);
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                msrt_token_post_remote(plain, 7);
+            });
+            let mut value = 0;
+            assert_eq!(msrt_token_park(plain, -1, &mut value), 0);
+            assert_eq!(value, 7);
+            msrt_token_free(plain);
+            msrt_token_free(peer);
+        }
+        teardown();
+    }
+
     unsafe extern "C-unwind" fn hook() {
         note(7);
     }
