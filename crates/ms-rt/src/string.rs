@@ -1989,6 +1989,13 @@ pub unsafe extern "C-unwind" fn msrt_string_parse_int(s: *const StrVal, out: *mu
     }
 }
 
+/// `String.parse_float()`: present flag, value through `out`; the `Result` form is `math.parse_float`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8 {
+    // SAFETY: caller passes a live string and a writable out.
+    unsafe { u8::from(crate::num::msrt_numbers_parse_float(s, out) == STATUS_OK) }
+}
+
 /// Normalization forms by the spelling `String.normalize` takes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_normalize(

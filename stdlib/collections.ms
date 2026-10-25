@@ -317,9 +317,6 @@ impl Set[T]:
     # Returns an owned list containing copies of values in insertion order.
     def values() -> List[T]: ...
 
-    # Returns a new list of [value, value] lists in insertion order.
-    def entries() -> List[List[T]]: ...
-
     # Calls operation(value:) sequentially over the receiver in insertion order.
     def for_each(operation: Callable[[T], Unit]) -> Unit: ...
 

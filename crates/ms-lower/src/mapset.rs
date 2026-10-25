@@ -888,31 +888,6 @@ impl<'a> FnLower<'a> {
         Ok(Val { v: out, own: true })
     }
 
-    /// `set.entries()`: `[value, value]` lists in insertion order.
-    pub(crate) fn set_entries(&mut self, recv: Val, result: MTy) -> Result<Val, Error> {
-        let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
-            return Err(Error::new("entries without a list type"));
-        };
-        let TyKind::List(inner) = self.b.m.types.kind(pair).clone() else {
-            return Err(Error::new("entries pair is not a list"));
-        };
-        let acc = self.fresh_var(result);
-        let empty = self.b.list_lit(pair, &[]);
-        self.b.def_var(acc, empty);
-        let m = self.borrow(recv);
-        self.each_entry(m, &mut |s, key, _| {
-            let ko = s.owned(Val { v: key, own: false });
-            let kc = s.owned(Val { v: key, own: false });
-            let p = s.b.list_lit(inner, &[ko, kc]);
-            let cur = s.b.use_var(acc);
-            let next = s.b.list_push(cur, p);
-            s.b.def_var(acc, next);
-            Ok(())
-        })?;
-        let out = self.b.use_var(acc);
-        Ok(Val { v: out, own: true })
-    }
-
     /// Runs `body(key, value)` for each live entry of the borrowed map or set `m` (`value` is
     /// `None` for a set). Both are borrowed views of the entry.
     pub(crate) fn each_entry(

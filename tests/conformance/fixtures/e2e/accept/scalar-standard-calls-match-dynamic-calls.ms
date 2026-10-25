@@ -3,8 +3,6 @@
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
 from "@std/testing.ms" import expect_true
 from "@std/math.ms" import (
-    abs,
-    abs_int,
     atan2,
     ceil,
     floor,
@@ -28,7 +26,7 @@ test "typed math":
             and min(left: 0 - 2, right: 3) == 0 - 2
         )
     )
-    try expect_true((abs(value: 0.0 - 2.5) == 2.5 and abs_int(value: 0 - 7) == 7))
+    try expect_true(((0.0 - 2.5).abs() == 2.5 and (0 - 7).abs() == 7))
     try expect_true(
         (
             floor(value: 2.7) == 2.0
@@ -52,7 +50,7 @@ test "typed math":
     var i = 0
 
     while i < 4:
-        total = total + sqrt(value: 4.0) + abs(value: 0.0 - 1.0)
+        total = total + sqrt(value: 4.0) + (0.0 - 1.0).abs()
         i = i + 1
 
     try expect_true((total == 12.0))

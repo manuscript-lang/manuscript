@@ -186,7 +186,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
 | Map `keys()`, `values()`, `entries()` | New lists in insertion order; entries are `MapEntry[K, V]` records with `key` and `value`. |
-| Set `values()`, `entries()` | New lists in insertion order; `entries()` returns `List[List[T]]`, with each inner list `[value, value]`. |
+| Set `values()` | A new list in insertion order. |
 | List/Set `for_each(operation:)` | Calls `operation(value:)` sequentially for each value; returns Unit. |
 | Map `for_each(operation:)` | Calls `operation(key:, value:)` sequentially for each entry; returns Unit. |
 
