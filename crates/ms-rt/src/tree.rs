@@ -8,11 +8,12 @@
 use crate::alloc;
 use crate::desc::{msrt_desc_string, slot_drop};
 use crate::ffi::{AbiType, FromAbi};
-use crate::map::{self, msrt_map_reserve};
+use crate::map;
 use crate::string::from_bytes;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use ms_rt_abi::{StrVal, TypeDesc, VecVal};
+use ms_rt_hot::Layout;
 use std::vec::Vec;
 
 pub const NULL: i64 = 0;
@@ -67,6 +68,8 @@ unsafe impl<'a> FromAbi<'a> for ValueOut<'a> {
 
 pub struct TreeBuilder<'a> {
     desc: &'a TypeDesc,
+    /// Layout of a `String`-keyed map of the values.
+    map_layout: Layout,
     ctor: Ctor,
     /// Words per value.
     words: usize,
@@ -89,6 +92,7 @@ impl<'a> TreeBuilder<'a> {
         let words = size / 8;
         TreeBuilder {
             desc,
+            map_layout: map::string_map_layout(desc),
             ctor: ctor.0,
             words,
             vals: Vec::with_capacity(capacity * words),
@@ -175,40 +179,31 @@ impl<'a> TreeBuilder<'a> {
     pub fn end_object(&mut self) -> bool {
         let (from, key_from) = self.marks.pop().expect("open object");
         let n = self.keys.len() - key_from;
-        let kd = &msrt_desc_string;
         let mut m = map::empty();
-        m.desc = kd;
-        // SAFETY: `m` is a fresh map of `String` keys and values described by `desc`.
-        unsafe { msrt_map_reserve(&raw mut m, kd, self.desc, n as i64) };
-        let mut at = 0;
-        while at < n {
-            let key = &raw mut self.keys[key_from + at];
-            // SAFETY: the key and value are live completed slots; `insert` consumes them.
-            let fresh = unsafe {
-                let val = self.vals.as_mut_ptr().add(from + at * self.words).cast();
-                map::insert(&mut m, kd, Some(self.desc), key.cast(), val)
-            };
-            at += 1;
-            if !fresh {
-                // The replaced pair is gone; release the map and the members not yet moved.
-                // SAFETY: `m` is live; the remaining slots still own their values.
-                unsafe {
-                    map::drop_map(&raw mut m, kd, Some(self.desc));
+        m.desc = &msrt_desc_string;
+        // SAFETY: the keys and values are live completed slots, consumed by the fill up to the
+        // position it returns; the rest are released here.
+        let repeated = unsafe {
+            let keys = self.keys.as_mut_ptr().add(key_from);
+            let vals: *mut u8 = self.vals.as_mut_ptr().add(from).cast();
+            let stride = self.words * 8;
+            match map::fill_strings(&mut m, &self.map_layout, keys, vals, stride, n) {
+                Ok(()) => None,
+                Err(at) => {
+                    map::drop_map(&raw mut m, &msrt_desc_string, Some(self.desc));
                     for i in at..n {
-                        slot_drop(kd, (&raw mut self.keys[key_from + i]).cast());
-                        slot_drop(
-                            self.desc,
-                            self.vals.as_mut_ptr().add(from + i * self.words).cast(),
-                        );
+                        slot_drop(&msrt_desc_string, keys.add(i).cast());
+                        slot_drop(self.desc, vals.add(i * stride));
                     }
+                    Some(at)
                 }
-                self.keys.truncate(key_from);
-                self.vals.truncate(from);
-                return false;
             }
-        }
+        };
         self.keys.truncate(key_from);
         self.vals.truncate(from);
+        if repeated.is_some() {
+            return false;
+        }
         self.scalar(OBJECT, (&raw mut m).cast());
         true
     }

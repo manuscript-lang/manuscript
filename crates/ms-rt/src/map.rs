@@ -381,6 +381,70 @@ unsafe fn upsert_k<K: KeyOps>(
     }
 }
 
+/// The layout of a map of string keys and `vd` values, for [`fill_strings`].
+pub fn string_map_layout(vd: &TypeDesc) -> Layout {
+    layout(&crate::desc::msrt_desc_string, Some(vd))
+}
+
+/// Fills the empty map `m` with `n` members whose keys are `keys[i]` (strings) and whose values sit
+/// `stride` bytes apart from `vals`, consuming them all. It is `n` inserts of fresh keys with the
+/// layout given once, room for exactly `n` allocated up front, and one probe per member that finds
+/// a repeated key and the free index entry together. On a repeated key at position `i`, members
+/// `0..i` are in the map and the caller still owns members `i..n`; the position is returned.
+///
+/// # Safety
+/// `m` is an empty map with no storage; `l` is [`string_map_layout`] of the value type;
+/// `keys[..n]` and the values are live slots of `msrt_desc_string` and that type.
+pub unsafe fn fill_strings(
+    m: &mut MapVal,
+    l: &Layout,
+    keys: *mut StrVal,
+    vals: *mut u8,
+    stride: usize,
+    n: usize,
+) -> Result<(), usize> {
+    if n == 0 {
+        return Ok(());
+    }
+    let kd = &crate::desc::msrt_desc_string;
+    // SAFETY: `m` is a map of string keys; slots are live per the contract.
+    unsafe {
+        let cap = n.next_power_of_two().max(2);
+        m.slots = alloc::alloc(cap * l.stride);
+        m.cap = cap;
+        m.index = alloc::alloc_zeroed(cap * 2 * 8) as *mut u32;
+        m.mask = cap * 2 - 1;
+        let index = index_of(m);
+        for i in 0..n {
+            let key = keys.add(i);
+            let val = vals.add(i * stride);
+            let h = hash_key::<StrKey>(kd, key.cast());
+            let mut pos = (h as usize ^ (h >> 32) as usize) & m.mask;
+            loop {
+                let e = *index.add(pos);
+                if e == 0 {
+                    break;
+                }
+                if (e ^ h) >> 32 == 0 {
+                    let p = slot(m, l, (e as u32 - 1) as usize);
+                    if slot_hash_of(p) == h && StrKey::eq(kd, p.add(l.koff), key.cast()) {
+                        return Err(i);
+                    }
+                }
+                pos = (pos + 1) & m.mask;
+            }
+            let p = slot(m, l, m.used);
+            *(p as *mut u64) = h;
+            copy_slot(key.cast(), p.add(l.koff), l.ksize);
+            copy_slot(val, p.add(l.voff), l.vsize);
+            *index.add(pos) = entry(h, m.used);
+            m.used += 1;
+            m.len += 1;
+        }
+    }
+    Ok(())
+}
+
 /// Inserts only if the key is absent (`key`/`val` consumed either way); returns true when inserted.
 pub unsafe fn insert_unique(
     m: &mut MapVal,

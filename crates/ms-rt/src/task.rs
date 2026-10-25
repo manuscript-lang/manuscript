@@ -681,6 +681,27 @@ unsafe fn cancel_all_waiters() -> bool {
     woke
 }
 
+/// Delivers descriptor readiness, waiting at most `timeout_ms` milliseconds (0 never blocks).
+unsafe fn poll_ready(timeout_ms: i32) {
+    let s = sched();
+    let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
+    // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
+    unsafe {
+        let Some(n) = crate::poller::wait(poller_fd(), timeout_ms, &mut ready) else {
+            return;
+        };
+        for ev in ready.iter().take(n) {
+            if ev.fd >= s.fd_waiters.len() {
+                continue;
+            }
+            let t = lookup(s.fd_waiters[ev.fd]);
+            if !t.is_null() {
+                wake(t, ev.bits & ((*t).wait_events | WAIT_HUP));
+            }
+        }
+    }
+}
+
 /// Blocks until at least one task is runnable.
 unsafe fn reactor_wait() {
     let mut s = sched();
@@ -726,21 +747,7 @@ unsafe fn reactor_wait() {
             if timeout_ms < 0 && s.fd_waiting == 0 && s.remote_tokens == 0 {
                 fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
             }
-            let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
-            let Some(n) = crate::poller::wait(poller_fd(), timeout_ms, &mut ready) else {
-                continue;
-            };
-            for ev in ready.iter().take(n) {
-                let fd = ev.fd;
-                if fd >= s.fd_waiters.len() {
-                    continue;
-                }
-                let t = lookup(s.fd_waiters[fd]);
-                if t.is_null() {
-                    continue;
-                }
-                wake(t, ev.bits & ((*t).wait_events | WAIT_HUP));
-            }
+            poll_ready(timeout_ms);
         }
     }
 }
@@ -759,9 +766,19 @@ unsafe fn switch_away() {
     // SAFETY: single threaded scheduler; stacks and records outlive the switch.
     unsafe {
         let cur = s.cur;
-        // Tasks that keep each other ready never reach `reactor_wait`, so time limits are checked here too.
-        if !s.kills.is_empty() {
-            expire_kills(clock_ns());
+        // A busy ready queue must not starve timers, I/O, remote posts, or signal cancellation.
+        // Only the idle path may block; avoid clock and poll syscalls when nothing needs them.
+        if crate::isolate::pending_cancel() != 0 {
+            cancel_all_waiters();
+        }
+        if !s.tokens.is_empty() {
+            deliver_remote_posts();
+        }
+        if !s.kills.is_empty() || !s.timers.is_empty() {
+            expire_timers(clock_ns());
+        }
+        if s.fd_waiting != 0 {
+            poll_ready(0);
         }
         loop {
             if let Some(h) = s.ready.pop_front() {
@@ -1592,6 +1609,67 @@ mod tests {
         }
     }
 
+    unsafe extern "C-unwind" fn busy(_: *mut u8) {
+        for _ in 0..100 {
+            // SAFETY: called from a running task.
+            unsafe { msrt_task_yield() };
+        }
+        note(2);
+    }
+
+    unsafe extern "C-unwind" fn immediate_timer(_: *mut u8) {
+        // SAFETY: called from a running task.
+        assert_eq!(unsafe { msrt_task_sleep(0) }, WAIT_TIMEOUT);
+        note(1);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn timers_progress_while_tasks_stay_ready() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let timer = msrt_task_spawn(immediate_timer, null_mut(), 0, 0);
+            let spinner = msrt_task_spawn(busy, null_mut(), 0, 0);
+            assert_eq!(msrt_task_join(timer, null_mut()), 0);
+            assert_eq!(msrt_task_join(spinner, null_mut()), 0);
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+        }
+        teardown();
+    }
+
+    unsafe extern "C-unwind" fn posted_token(arg: *mut u8) {
+        let mut value = 0;
+        // SAFETY: the test keeps this token live through the join.
+        assert_eq!(unsafe { msrt_token_park(arg as u64, -1, &mut value) }, 0);
+        assert_eq!(value, 42);
+        note(1);
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn remote_posts_progress_while_tasks_stay_ready() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            let token = msrt_token_new(TOKEN_REMOTE);
+            let waiter = msrt_task_spawn(posted_token, token as *mut u8, 0, 0);
+            let spinner = msrt_task_spawn(busy, null_mut(), 0, 0);
+            std::thread::spawn(move || msrt_token_post_remote(token, 42))
+                .join()
+                .unwrap();
+            assert_eq!(msrt_task_join(waiter, null_mut()), 0);
+            assert_eq!(msrt_task_join(spinner, null_mut()), 0);
+            msrt_token_free(token);
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+        }
+        teardown();
+    }
+
     unsafe extern "C-unwind" fn hook() {
         note(7);
     }
@@ -1844,6 +1922,33 @@ mod tests {
             teardown();
         }
 
+        unsafe extern "C-unwind" fn ready_reader(arg: *mut u8) {
+            // SAFETY: the test owns this pipe until the task joins.
+            let result = unsafe { msrt_task_wait_fd(arg as i32, WAIT_READ, -1) };
+            assert_ne!(result & WAIT_READ, 0);
+            note(1);
+        }
+
+        #[test]
+        #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+        fn io_progresses_while_tasks_stay_ready() {
+            let _g = lock();
+            teardown();
+            let fds = pipe();
+            put(fds[1]);
+            // SAFETY: tests hold the global lock; the pipe stays open through both joins.
+            unsafe {
+                *LOG_N.ptr() = 0;
+                let reader = msrt_task_spawn(ready_reader, fds[0] as *mut u8, 0, 0);
+                let spinner = msrt_task_spawn(busy, null_mut(), 0, 0);
+                assert_eq!(msrt_task_join(reader, null_mut()), 0);
+                assert_eq!(msrt_task_join(spinner, null_mut()), 0);
+                assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[1, 2]);
+            }
+            close_all(fds);
+            teardown();
+        }
+
         #[test]
         fn wakes_on_readable_then_stays_ready() {
             let _g = lock();
@@ -1904,14 +2009,11 @@ mod tests {
 
     /// Runs `f` as a shielded cleanup action would: cancellation is off until it returns.
     fn shielded_call<R>(f: impl FnOnce() -> R) -> R {
-        // SAFETY: tests hold the global lock and run on the task that owns the live globals.
-        unsafe {
-            *fault::SHIELD.ptr() += 1;
-            cancel_flag().store(0, Ordering::Relaxed);
-            let r = f();
-            *fault::SHIELD.ptr() -= 1;
-            r
-        }
+        fault::SHIELD.set(fault::SHIELD.get() + 1);
+        cancel_flag().store(0, Ordering::Relaxed);
+        let r = f();
+        fault::SHIELD.set(fault::SHIELD.get() - 1);
+        r
     }
 
     unsafe extern "C-unwind" fn shielded_sleeper(_: *mut u8) {

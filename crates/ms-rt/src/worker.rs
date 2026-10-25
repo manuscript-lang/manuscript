@@ -31,11 +31,24 @@ struct Worker {
     done: AtomicU64,
 }
 
-static WORKERS: Mutex<Vec<Option<Arc<Worker>>>> = Mutex::new(Vec::new());
+struct WorkerSlot {
+    generation: u32,
+    worker: Option<Arc<Worker>>,
+}
+
+static WORKERS: Mutex<Vec<WorkerSlot>> = Mutex::new(Vec::new());
+
+fn slot_index(handle: u64) -> Option<usize> {
+    (handle as u32 as usize).checked_sub(1)
+}
 
 fn find(handle: u64) -> Option<Arc<Worker>> {
     let table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-    table.get((handle as usize).checked_sub(1)?)?.clone()
+    let slot = table.get(slot_index(handle)?)?;
+    if slot.generation != (handle >> 32) as u32 {
+        return None;
+    }
+    slot.worker.clone()
 }
 
 /// Copies `len` bytes into a system-allocated block for [`msrt_worker_spawn`]'s argument.
@@ -89,16 +102,25 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-        let live = table.iter().filter(|w| w.is_some()).count();
+        let live = table.iter().filter(|s| s.worker.is_some()).count();
         if live >= MAX_WORKERS {
             return 0;
         }
-        let at = table.iter().position(Option::is_none).unwrap_or_else(|| {
-            table.push(None);
-            table.len() - 1
-        });
-        table[at] = Some(worker.clone());
-        at as u64 + 1
+        // Never wrap a generation: retire an exhausted slot instead of reviving stale handles.
+        let at = table
+            .iter()
+            .position(|s| s.worker.is_none() && s.generation < u32::MAX)
+            .unwrap_or_else(|| {
+                table.push(WorkerSlot {
+                    generation: 0,
+                    worker: None,
+                });
+                table.len() - 1
+            });
+        let slot = &mut table[at];
+        slot.generation += 1;
+        slot.worker = Some(worker.clone());
+        (u64::from(slot.generation) << 32) | (at as u64 + 1)
     };
     let (entry, arg) = (entry as usize, arg as usize);
     let w = worker.clone();
@@ -121,7 +143,8 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
             handle
         }
         Err(_) => {
-            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker =
+                None;
             if arg != 0 {
                 // SAFETY: the worker never ran, so the block is still ours.
                 unsafe { crate::sys::free(arg as *mut c_void) };
@@ -190,7 +213,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_join(handle: u64, msg_out: *mut StrV
     if let Some(t) = w.thread.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = t.join();
     }
-    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker = None;
     let (status, ptr, len) =
         core::mem::take(&mut *w.outcome.lock().unwrap_or_else(|e| e.into_inner()));
     let report = if ptr == 0 {
@@ -410,6 +433,28 @@ mod tests {
         let (status, report) = run_worker(faults, b"", None);
         assert_eq!(status, 1);
         assert!(String::from_utf8_lossy(&report).contains("worker boom"));
+        crate::task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn returns(_: *mut u8) {}
+
+    #[test]
+    fn collected_handles_do_not_address_replacement_workers() {
+        let _g = crate::testutil::lock();
+        // SAFETY: entries need no arguments; each worker is joined once.
+        unsafe {
+            let old = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            assert_ne!(old, 0);
+            assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
+            let new = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            assert_ne!(new, 0);
+            let stale_matches = find(old).is_some();
+            assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
+            assert!(
+                !stale_matches,
+                "a collected handle must not name a replacement worker"
+            );
+        }
         crate::task::teardown();
     }
 
