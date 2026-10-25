@@ -1,3 +1,4 @@
+from "@std/core.ms" import Iterator
 from "@std/io.ms" import stdout
 from "@std/testing.ms" import expect_equal
 
@@ -22,6 +23,16 @@ impl Named for Point:
     def label() -> String:
         return "point"
 
+type Counter:
+    n: Int
+
+impl Iterator[Int] for Counter:
+    var def next() -> Optional[Int]:
+        if self.n == 0: return none
+
+        self.n -= 1
+        return some(self.n)
+
 def add(a: Int, b: Int) -> Int:
     let total = a + b
     return total
@@ -44,6 +55,8 @@ export def main() -> Int:
     let values = [1, 2, 3]
     for v in values:
         say(f"{v}")
+    for tick in Counter(n: 2):
+        say(f"{tick}")
 
     let result = add(1, 2)
     return result

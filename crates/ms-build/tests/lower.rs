@@ -294,3 +294,18 @@ fn collection_builders_are_shared_handles() {
     assert!(mir.contains("shared.addr"));
     assert!(mir.contains("builder is sealed"));
 }
+
+#[test]
+fn a_for_over_a_temporary_iterator_drops_it_when_the_loop_ends() {
+    let mir = lower(
+        "iterator-scope",
+        "from \"@std/core.ms\" import Iterator\n\ntype Counter:\n    n: Int\n    label: String\n\nimpl Iterator[Int] for Counter:\n    var def next() -> Optional[Int]:\n        if self.n == 0: return none\n        self.n -= 1\n        return some(self.n)\n\ndef make() -> Counter:\n    return Counter(n: 3, label: \"c\")\n\ndef after() -> Int:\n    return 7\n\nexport def main() -> Int:\n    var total = 0\n    for x in make():\n        total += x\n    return total + after()\n",
+    );
+    let main = mir.split("fn @main").nth(1).expect("main");
+    let drop = main.find("drop ").expect("the iterator is dropped");
+    let call = main.find("@after").expect("the call after the loop");
+    assert!(
+        drop < call,
+        "the hidden iterator outlives the loop:\n{main}"
+    );
+}

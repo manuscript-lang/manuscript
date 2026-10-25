@@ -210,7 +210,7 @@ impl<'a> FnLower<'a> {
             StmtKind::For { iter, body, .. } => {
                 if let Some(expansion) = self.hir.stmt(s).expansion {
                     // A `for` over an `Iterator` is the loop the checker expanded it into.
-                    self.stmts(&expansion)?;
+                    self.block(&expansion)?;
                 } else {
                     self.for_stmt(s, iter, body)?;
                 }
