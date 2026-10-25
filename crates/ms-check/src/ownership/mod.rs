@@ -322,9 +322,31 @@ impl Hir<'_> {
         let mut summaries = Summaries::default();
         let mut escaped: HashMap<Key, HashSet<NodeId>> = HashMap::new();
         let mut outcomes: Vec<walk::Outcome> = Vec::new();
-        // Parameter modes and closure escapes feed each other, and both only
-        // grow, so the iteration ends.
-        for _ in 0..16 {
+        // Parameter modes, closure escapes and result slots feed each other, and each step
+        // carries a fact one call further, so a chain needs about one round per callable.
+        let rounds = callables.len() + 16;
+        for round in 0..=rounds {
+            if round == rounds {
+                // Not converged: lend from every argument of every `ref` callable, which no
+                // real summary exceeds, and take one last pass against that.
+                for c in &callables {
+                    if c.func.func().is_some_and(|f| f.result_ref) {
+                        let key = (c.module.file, c.id());
+                        let mut s = summaries
+                            .get(&key)
+                            .cloned()
+                            .unwrap_or_else(|| modes::Summary::declared(&c.func));
+                        s.result = modes::ResultOrigin {
+                            slots: std::iter::once(modes::Slot::Receiver)
+                                .filter(|_| c.func.method().is_some())
+                                .chain(s.params.iter().map(|(n, _)| modes::Slot::Param(*n)))
+                                .collect(),
+                            ..modes::ResultOrigin::default()
+                        };
+                        summaries.decls.insert(key, s);
+                    }
+                }
+            }
             outcomes.clear();
             let mut changed = false;
             for (c, l) in callables.iter().zip(&liveness) {
@@ -338,7 +360,8 @@ impl Hir<'_> {
                     live: l,
                     escaped: &known,
                 });
-                if summaries.get(&key) != Some(&out.summary) {
+                // The last pass keeps the over-approximated summaries for every callee.
+                if round < rounds && summaries.get(&key) != Some(&out.summary) {
                     summaries.decls.insert(key, out.summary.clone());
                     changed = true;
                 }
@@ -388,7 +411,7 @@ impl Hir<'_> {
 }
 
 /// A value that holds no reference: a number, `Bool`, `Unit`, or an optional of one.
-fn scalar(t: &Type) -> bool {
+pub(crate) fn scalar(t: &Type) -> bool {
     match t.kind {
         Kind::Primitive => t.id.as_str() != "String",
         _ => t.is_std("Optional") && t.args.first().is_some_and(|a| scalar(a)),

@@ -122,6 +122,9 @@ pub struct CallModes {
     pub callbacks_borrowed: bool,
     /// The source callee returns a part of these read-only arguments.
     pub origin: ResultOrigin,
+    /// The callee is a `ref` function whose summary names no slot yet (a recursive call before
+    /// its summary converges): it lends, from arguments a later pass names.
+    pub pending: bool,
 }
 
 /// Resolves the modes of a call from its callee.
@@ -140,6 +143,7 @@ pub fn call_modes(
         returns_receiver: false,
         callbacks_borrowed: true,
         origin: ResultOrigin::default(),
+        pending: false,
     };
     match m.resolution(call) {
         Resolution::Constructor { .. } => CallModes {
@@ -200,10 +204,14 @@ fn from_summary(
     label: impl Fn(usize) -> Option<Name>,
     receiver: Option<()>,
 ) -> CallModes {
-    let summary = summaries
-        .get(&(module, func.id()))
-        .cloned()
-        .unwrap_or_else(|| Summary::declared(func));
+    let known = summaries.get(&(module, func.id())).cloned();
+    // A `ref` callee lends on every path, so one that names no slot and returns nothing owned has
+    // only reached calls of others still pending (or returns only `none`): it lends too.
+    let pending = func.func().is_some_and(|f| f.result_ref)
+        && known
+            .as_ref()
+            .is_none_or(|s| s.result.slots.is_empty() && !s.result.owned);
+    let summary = known.unwrap_or_else(|| Summary::declared(func));
     CallModes {
         receiver: receiver.map(|()| summary.receiver),
         arguments: (0..count)
@@ -217,6 +225,7 @@ fn from_summary(
         returns_receiver: false,
         callbacks_borrowed: true,
         origin: summary.result,
+        pending,
     }
 }
 
@@ -268,6 +277,7 @@ fn method_modes(
                     returns_receiver: false,
                     callbacks_borrowed: false,
                     origin: contract_origin(&declared, func),
+                    pending: false,
                 }
             }
             None => native_unknown(count),
@@ -289,6 +299,7 @@ fn native_unknown(count: usize) -> CallModes {
         returns_receiver: false,
         callbacks_borrowed: false,
         origin: ResultOrigin::default(),
+        pending: false,
     }
 }
 
@@ -362,5 +373,6 @@ fn native_method_modes(
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
         origin: ResultOrigin::default(),
+        pending: false,
     }
 }

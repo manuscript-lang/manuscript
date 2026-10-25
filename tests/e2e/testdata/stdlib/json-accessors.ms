@@ -93,3 +93,20 @@ test "JSON is_null distinguishes null from absent and other values":
     if let user = d.get("user"):
         try expect_false(user.is_null())
     try expect_true(d.get("missing").is_none())
+
+# `get_in` lends the member it reaches, so a `ref` function can hand it back.
+def user_name(d: JsonValue) -> ref Optional[String]:
+    if let name = d.get_in(["user", "name"]):
+        return name.as_string()
+
+    return none
+
+test "JSON get_in reads a chain of members in place":
+    let d = doc()
+    try expect_equal(user_name(d), some("ada"))
+    try expect_equal(d.get_in(["user", "age"]).and_then(lambda n: n.as_int()), some(36))
+    if let tags = d.get_in(["user", "tags"]):
+        try expect_equal(tags.at(-1).and_then(lambda t: string_of(t)), some("c"))
+    try expect_true(d.get_in(["user", "missing"]).is_none())
+    try expect_true(d.get_in(["user", "name", "first"]).is_none())
+    try expect_true(d.get_in([]).is_none())
