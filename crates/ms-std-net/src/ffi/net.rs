@@ -9,6 +9,7 @@ use ms_rt::ffi::{
     abi_record, native,
 };
 use ms_rt_abi::STATUS_NONE;
+use std::mem::ManuallyDrop;
 use std::net::IpAddr;
 
 abi_handle!(Cidr);
@@ -33,7 +34,9 @@ abi_record! {
 }
 
 thread_local! {
-    static ROOT_HANDLE: ObjBox<NetH> = ObjBox::new(NetH(root()));
+    // Never dropped: on a worker the isolate's arena is released before the thread's TLS
+    // destructors run, so releasing the object then would touch freed memory.
+    static ROOT_HANDLE: ManuallyDrop<ObjBox<NetH>> = ManuallyDrop::new(ObjBox::new(NetH(root())));
 }
 
 native! {

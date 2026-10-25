@@ -4,6 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/io.ms" import stdin
+from "@std/net.ms" import network
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
 from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
@@ -49,6 +50,11 @@ def explode() -> Unit:
 def reads_stdin() -> Unit:
     var ch = worker_channel[Int, Int]()
     let input = stdin()
+
+def touches_network() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let net = network()
+    ch.send(1)
 
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -174,3 +180,9 @@ test "standard input stays with the main thread":
         let outcome = worker.join()
         expect_error(outcome)
         expect_true(outcome.err().message().contains("main thread"))
+
+test "a worker that uses the network ends cleanly":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(touches_network).get(none)
+        expect_equal(worker.channel.receive(), ok(some(1)))
+        expect_ok(worker.join())
