@@ -621,6 +621,8 @@ mod tests {
         if cfg!(target_os = "linux") {
             assert!(resident_bytes().unwrap() > 0);
             assert!(available_memory().unwrap() > 0);
+        } else if cfg!(target_os = "macos") {
+            assert!(resident_bytes().unwrap() > 0);
         } else {
             assert_eq!(
                 resident_bytes().unwrap_err().status,

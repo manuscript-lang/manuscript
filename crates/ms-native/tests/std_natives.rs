@@ -520,7 +520,7 @@ mod process {
             // SAFETY: allocated above.
             unsafe { ms_rt::alloc::free(b) };
         }
-        if !cfg!(any(target_os = "linux", windows)) {
+        if !cfg!(any(target_os = "linux", target_os = "macos", windows)) {
             assert_eq!(status, ms_rt_abi::STATUS_UNSUPPORTED);
             return;
         }
