@@ -143,8 +143,8 @@ struct Sched {
     /// Heap size that triggers dropping the entries of tasks that no longer wait on them.
     timer_limit: usize,
     kill_limit: usize,
-    /// `fd_waiters[fd]` is the handle of the task waiting on `fd`, or 0.
-    fd_waiters: Vec<u64>,
+    /// `fd_waiters[fd]` holds the handles of the tasks waiting on `fd`, oldest first.
+    fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
     epfd: i32,
     pool: Vec<usize>,
@@ -592,10 +592,18 @@ unsafe fn wake(t: *mut Task, result: u32) {
             return;
         }
         if (*t).wait_fd >= 0 {
-            crate::poller::unwatch((*t).wait_fd);
-            s.fd_waiters[(*t).wait_fd as usize] = 0;
+            let fd = (*t).wait_fd;
+            let queue = &mut s.fd_waiters[fd as usize];
+            queue.retain(|&h| h != (*t).handle);
+            let empty = queue.is_empty();
             s.fd_waiting -= 1;
             (*t).wait_fd = -1;
+            if empty {
+                crate::poller::unwatch(fd);
+            } else {
+                // The poller watches what the waiters left behind still ask for.
+                rearm(fd);
+            }
         }
         if (*t).wait_token != 0 {
             if let Some(k) = token_mut(&mut s, (*t).wait_token) {
@@ -694,9 +702,22 @@ unsafe fn poll_ready(timeout_ms: i32) {
             if ev.fd >= s.fd_waiters.len() {
                 continue;
             }
-            let t = lookup(s.fd_waiters[ev.fd]);
-            if !t.is_null() {
-                wake(t, ev.bits & ((*t).wait_events | WAIT_HUP));
+            // Every waiter the event concerns wakes; the one that gets the resource proceeds
+            // and the others wait again. `wake` re-arms for those that stay.
+            let queue = s.fd_waiters[ev.fd].clone();
+            for h in queue {
+                let t = lookup(h);
+                if t.is_null() {
+                    continue;
+                }
+                let bits = ev.bits & ((*t).wait_events | WAIT_HUP);
+                if bits != 0 {
+                    wake(t, bits);
+                }
+            }
+            if !s.fd_waiters[ev.fd].is_empty() {
+                // The registration is one-shot: waiters the event did not concern need it again.
+                rearm(ev.fd as i32);
             }
         }
     }
@@ -982,7 +1003,8 @@ pub extern "C-unwind" fn msrt_task_set_prepark(hook: Option<unsafe extern "C-unw
 /// Parks the current task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`), the
 /// timeout (nanoseconds, negative for none) expires, or cancellation is requested. Returns the
 /// ready bits, `WAIT_TIMEOUT`, or `WAIT_CANCELLED`. A file that cannot be polled (a regular
-/// file) is reported ready at once. One task may wait on a given descriptor at a time.
+/// file) is reported ready at once. Several tasks may wait on one descriptor: each wakes when
+/// it becomes ready for what that task asked, and the one that gets the resource proceeds.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
     // SAFETY: single threaded scheduler.
@@ -995,19 +1017,24 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         if fd >= 0 {
             let fd_idx = fd as usize;
             while s.fd_waiters.len() <= fd_idx {
-                s.fd_waiters.push(0);
+                s.fd_waiters.push(Vec::new());
             }
-            if s.fd_waiters[fd_idx] != 0 {
-                fault::fault(b"another task is already waiting on this file descriptor");
+            // Tasks already waiting keep their place; the poller watches what all of them ask.
+            let mut asked = events;
+            for &h in &s.fd_waiters[fd_idx] {
+                let t = lookup(h);
+                let other = if t.is_null() { 0 } else { (*t).wait_events };
+                asked = ((asked | other) & !WAIT_KEEP) | (asked & other & WAIT_KEEP);
             }
-            match crate::poller::watch(poller_fd(), fd, events) {
+            match crate::poller::watch(poller_fd(), fd, asked) {
                 crate::poller::Watch::Armed => {}
                 crate::poller::Watch::Always => return events & (WAIT_READ | WAIT_WRITE),
                 crate::poller::Watch::Failed => {
                     fault::fault(b"cannot wait on this file descriptor");
                 }
             }
-            s.fd_waiters[fd_idx] = (*cur).handle;
+            (*cur).wait_events = events;
+            s.fd_waiters[fd_idx].push((*cur).handle);
             s.fd_waiting += 1;
             (*cur).wait_fd = fd;
         }
@@ -1018,6 +1045,28 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
         (*cur).state = State::Waiting;
         switch_away();
         (*cur).wait_result
+    }
+}
+
+/// Registers `fd` with the poller for what its waiters ask, or for nothing when none remain.
+unsafe fn rearm(fd: i32) {
+    let s = sched();
+    // SAFETY: waiter handles are checked before use.
+    unsafe {
+        let mut asked = 0;
+        let mut keep = WAIT_KEEP;
+        for &h in &s.fd_waiters[fd as usize] {
+            let t = lookup(h);
+            if !t.is_null() {
+                asked |= (*t).wait_events & (WAIT_READ | WAIT_WRITE);
+                keep &= (*t).wait_events;
+            }
+        }
+        if asked == 0 {
+            asked = WAIT_READ;
+        }
+        // A registration that cannot be renewed leaves its tasks to their timeouts.
+        let _ = crate::poller::watch(poller_fd(), fd, asked | keep);
     }
 }
 
@@ -1999,6 +2048,49 @@ mod tests {
                     msrt_task_wait_fd(fds[0], WAIT_READ, 1_000_000_000) & WAIT_READ,
                     WAIT_READ
                 );
+            }
+            close_all(fds);
+            teardown();
+        }
+
+        unsafe extern "C-unwind" fn shared_reader(arg: *mut u8) {
+            // SAFETY: the test owns this pipe until the tasks join.
+            let result = unsafe { msrt_task_wait_fd(arg as i32, WAIT_READ, 2_000_000_000) };
+            note(if result & WAIT_READ != 0 { 1 } else { 2 });
+        }
+
+        unsafe extern "C-unwind" fn impatient_reader(arg: *mut u8) {
+            // SAFETY: as `shared_reader`.
+            let result = unsafe { msrt_task_wait_fd(arg as i32, WAIT_READ, 5_000_000) };
+            note(if result == WAIT_TIMEOUT { 3 } else { 4 });
+        }
+
+        #[test]
+        #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+        fn several_tasks_wait_on_one_descriptor() {
+            let _g = lock();
+            teardown();
+            let fds = pipe();
+            // SAFETY: tests hold the global lock; the pipe stays open through every join.
+            unsafe {
+                *LOG_N.ptr() = 0;
+                let fd = core::ptr::without_provenance_mut(fds[0] as usize);
+                let a = msrt_task_spawn(shared_reader, fd, 0, 0);
+                let b = msrt_task_spawn(shared_reader, fd, 0, 0);
+                // One waiter leaves by timeout; the others must stay registered.
+                let c = msrt_task_spawn(impatient_reader, fd, 0, 0);
+                let w = msrt_task_spawn(
+                    writer,
+                    core::ptr::without_provenance_mut(fds[1] as usize),
+                    0,
+                    0,
+                );
+                for h in [a, b, c, w] {
+                    assert_eq!(msrt_task_join(h, null_mut()), 0);
+                }
+                let mut log = (&(*LOG.ptr()))[..*LOG_N.ptr()].to_vec();
+                log.sort();
+                assert_eq!(log, [1, 1, 3]);
             }
             close_all(fds);
             teardown();
