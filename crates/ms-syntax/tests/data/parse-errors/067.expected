@@ -1,1 +1,1 @@
-error parse 2:13:27 "invalid number 0x; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFF"
+error parse 2:15:29 "a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010"

@@ -254,7 +254,9 @@ impl<'a> FnLower<'a> {
                 (self.hir.resolution(a), self.hir.resolution(b)),
                 (Resolution::Local(x), Resolution::Local(y)) if x.uid == y.uid
             ),
-            (ExprKind::Number(x), ExprKind::Number(y)) => x == y,
+            (ExprKind::Number(x), ExprKind::Number(y)) => {
+                ms_syntax::number::canonical(x.as_str()) == ms_syntax::number::canonical(y.as_str())
+            }
             _ => false,
         }
     }

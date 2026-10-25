@@ -3094,9 +3094,9 @@ def value() -> Int:
     return 03
 parse	2	13	28	leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042fn value() Int:
     return 0xff
-parse	2	12	27	invalid number 0xff; hexadecimal, binary, and octal literals do not exist, so write the value in decimal, e.g. 255 for 0xFFfn value() Int:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn value() Int:
     return 1_000
-parse	2	12	27	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn value() Float:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn value() Float:
     return 1e+
 parse	2	15	32	an exponent requires digits; write e.g. 1e3 or 2.5e-4fn value() Unit:
     other(value: [1)
@@ -3496,7 +3496,7 @@ test "bad":
         return panic(message: "check failed")
 parse	4	21	68	invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)fn f() Int:
     return 1_000
-parse	2	12	23	invalid number 1_000; digit separators are not supported, so write the digits together, e.g. 1000000 for 1_000_000fn f() Int:
+parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Int:
     return values[0, 1]
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Unit:
     for [key, value] in entries:
