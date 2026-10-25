@@ -39,9 +39,49 @@ crate::isolate_static! {
     static CUR_HDR: *mut Hdr = core::ptr::null_mut();
 }
 
+/// A published header with short, signal-safe reader sections. Publishing a replacement waits
+/// for readers that could have observed the old pointer before its stack can be freed or reused.
+/// Readers never wait for the owner, so a signal interrupting publication cannot deadlock it.
+pub(crate) struct PublishedHdr {
+    ptr: core::sync::atomic::AtomicPtr<Hdr>,
+    readers: core::sync::atomic::AtomicUsize,
+}
+
+impl PublishedHdr {
+    pub(crate) const fn new() -> Self {
+        Self {
+            ptr: core::sync::atomic::AtomicPtr::new(core::ptr::null_mut()),
+            readers: core::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    /// The owner keeps `hdr` alive until a subsequent publication returns.
+    pub(crate) fn publish(&self, hdr: *mut Hdr) {
+        self.ptr.store(hdr, Ordering::SeqCst);
+        while self.readers.load(Ordering::SeqCst) != 0 {
+            core::hint::spin_loop();
+        }
+    }
+
+    pub(crate) fn cancel(&self, sig: u8) {
+        // Sequential consistency makes a reader either visible to publication's wait, or
+        // observe the replacement pointer. Acquire/release alone permits both to miss.
+        self.readers.fetch_add(1, Ordering::SeqCst);
+        let hdr = self.ptr.load(Ordering::SeqCst);
+        if !hdr.is_null() {
+            // SAFETY: publication cannot finish retiring this header until this reader exits.
+            unsafe {
+                if (*hdr).shield.load(Ordering::Relaxed) == 0 {
+                    (*hdr).cancel.store(sig, Ordering::Relaxed);
+                }
+            }
+        }
+        self.readers.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 /// The main isolate's running-task block, for stop-signal handlers that run on any thread.
-static MAIN_CUR: core::sync::atomic::AtomicPtr<Hdr> =
-    core::sync::atomic::AtomicPtr::new(core::ptr::null_mut());
+static MAIN_CUR: PublishedHdr = PublishedHdr::new();
 
 /// The running task's block.
 #[inline(always)]
@@ -67,21 +107,38 @@ pub fn cancel_flag() -> &'static AtomicU8 {
 
 /// Makes the calling isolate the one stop signals are delivered to.
 pub fn set_main_hdr() {
-    MAIN_CUR.store(cur_hdr(), Ordering::Release);
+    MAIN_CUR.publish(cur_hdr());
 }
 
 /// Called by a stop-signal handler on any thread: raises the cancel flag of the main isolate's
 /// running task unless it is shielded.
 pub fn raise_main_cancel(sig: u8) {
-    let hdr = MAIN_CUR.load(Ordering::Acquire);
-    if hdr.is_null() {
-        return;
+    MAIN_CUR.cancel(sig);
+}
+
+/// Publishes the complete context transition, after the scheduler's pair of swaps.
+pub(crate) fn publish_current_hdr() {
+    if crate::isolate::is_main() {
+        MAIN_CUR.publish(cur_hdr());
+    } else {
+        crate::isolate::publish_hdr(cur_hdr());
     }
-    // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
-    unsafe {
-        if (*hdr).shield.load(Ordering::Relaxed) == 0 {
-            (*hdr).cancel.store(sig, Ordering::Relaxed);
+    // A request can arrive after swap_ctx refreshed this flag but before publication. Readers
+    // that saw the old header are now finished; recover their pending request on the new one.
+    if SHIELD.get() == 0 {
+        let pending = unshielded_cancel_flag();
+        if pending != 0 {
+            cancel_flag().fetch_max(pending, Ordering::Relaxed);
         }
+    }
+}
+
+/// Unpublishes this isolate's header before scheduler teardown releases any task storage.
+pub(crate) fn retire_hdr() {
+    if crate::isolate::is_main() {
+        MAIN_CUR.publish(core::ptr::null_mut());
+    } else {
+        crate::isolate::publish_hdr(core::ptr::null_mut());
     }
 }
 
@@ -305,7 +362,7 @@ pub(crate) unsafe fn isolate_trap_child() {
 /// Exchanges `c` with the live per-task state.
 ///
 /// # Safety
-/// Single threaded; callers pair two swaps per context switch.
+/// Single threaded; callers pair two swaps per context switch, then publish the current header.
 pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
     // SAFETY: single threaded access to the runtime globals.
     unsafe {
@@ -327,11 +384,6 @@ pub(crate) unsafe fn swap_ctx(c: &mut Ctx) {
             },
             Ordering::Relaxed,
         );
-        if crate::isolate::is_main() {
-            MAIN_CUR.store(cur_hdr(), Ordering::Release);
-        } else {
-            crate::isolate::publish_hdr(cur_hdr());
-        }
     }
 }
 
@@ -1507,6 +1559,52 @@ mod tests {
     static LOG_N: Process<usize> = Process::new(0);
 
     #[test]
+    fn cancellation_during_context_publication_reaches_the_new_task() {
+        let _g = crate::testutil::lock();
+        std::thread::spawn(|| {
+            publish_current_hdr();
+            let hdr = Box::into_raw(Box::new(Hdr::new(0)));
+            // SAFETY: this thread owns both headers; mimic the gap after the context swaps
+            // but before the scheduler publishes its new running task.
+            unsafe { *CUR_HDR.ptr() = hdr };
+            crate::isolate::raise_cancel(crate::isolate::id(), 1);
+            assert_eq!(cancel_flag().load(Ordering::Relaxed), 0);
+            publish_current_hdr();
+            let delivered = cancel_flag().load(Ordering::Relaxed);
+            retire_hdr();
+            // SAFETY: all readers are finished and no task runs on the temporary header.
+            unsafe {
+                *CUR_HDR.ptr() = core::ptr::null_mut();
+                drop(Box::from_raw(hdr));
+            }
+            crate::isolate::unregister();
+            assert_eq!(delivered, 1);
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    fn cancellation_header_retirement_waits_for_readers() {
+        let _g = crate::testutil::lock();
+        let reader = std::thread::spawn(|| {
+            for _ in 0..2000 {
+                raise_main_cancel(1);
+                std::thread::yield_now();
+            }
+        });
+        for _ in 0..100 {
+            let hdr = Box::into_raw(Box::new(Hdr::new(0)));
+            MAIN_CUR.publish(hdr);
+            std::thread::yield_now();
+            MAIN_CUR.publish(core::ptr::null_mut());
+            // SAFETY: the header has been unpublished; all prior readers must be finished.
+            unsafe { drop(Box::from_raw(hdr)) };
+        }
+        reader.join().unwrap();
+    }
+
+    #[test]
     fn task_header_keeps_the_codegen_layout() {
         fn assert_sync<T: Sync>() {}
         assert_sync::<Hdr>();
@@ -1534,7 +1632,7 @@ mod tests {
             msrt_shield_exit();
         }
         reader.join().unwrap();
-        MAIN_CUR.store(core::ptr::null_mut(), Ordering::Release);
+        MAIN_CUR.publish(core::ptr::null_mut());
         cancel_flag().store(0, Ordering::Relaxed);
         assert!(!live_shielded());
     }
