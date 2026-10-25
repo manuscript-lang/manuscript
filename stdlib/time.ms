@@ -22,8 +22,6 @@ extern def msstd_time_duration_to_microseconds(value: Duration) -> Int
 
 extern def msstd_time_duration_to_milliseconds(value: Duration) -> Int
 
-extern def msstd_time_duration_to_string(value: Duration) -> String
-
 extern def msstd_time_duration_to_seconds(value: Duration) -> Float
 
 extern def msstd_time_duration_to_minutes(value: Duration) -> Float
@@ -152,7 +150,31 @@ impl Duration:
 
     # Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
     def to_string() -> String:
-        return msstd_time_duration_to_string(self)
+        var n = self.abs().to_nanoseconds()
+
+        let sign = "-" if self.to_nanoseconds() < 0 else ""
+
+        if n == 0:
+            return "0s"
+        if n < 1000:
+            return f"{sign}{n}ns"
+        if n < 1000000:
+            return f"{sign}{duration_decimal(n / 1000, n % 1000, 3)}µs"
+        if n < 1000000000:
+            return f"{sign}{duration_decimal(n / 1000000, n % 1000000, 6)}ms"
+
+        let hours = n / 3600000000000
+        n = n % 3600000000000
+
+        let minutes = n / 60000000000
+        n = n % 60000000000
+
+        let clock = "" if hours == 0 else f"{hours}h"
+
+        let minute_part = "" if hours == 0 and minutes == 0 else f"{minutes}m"
+
+        let seconds_part = duration_decimal(n / 1000000000, n % 1000000000, 9)
+        return f"{sign}{clock}{minute_part}{seconds_part}s"
 
     # Converts this duration to floating-point seconds.
     def to_seconds() -> Float:
@@ -255,6 +277,27 @@ export interface WallClock:
 # Constructs a duration from a number of nanoseconds.
 export def duration(nanoseconds: Int) -> Duration:
     return msstd_time_duration(nanoseconds)
+
+# Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
+def duration_decimal(whole: Int, frac: Int, width: Int) -> String:
+    if frac == 0:
+        return f"{whole}"
+
+    var rest = frac
+    var places = width
+
+    while rest % 10 == 0:
+        rest = rest / 10
+        places -= 1
+
+    var digits = ""
+
+    while places > 0:
+        digits = f"{rest % 10}{digits}"
+        rest = rest / 10
+        places -= 1
+
+    return f"{whole}.{digits}"
 
 # Constructs a duration from a number of nanoseconds, like `duration`.
 export def nanoseconds(n: Int) -> Duration:

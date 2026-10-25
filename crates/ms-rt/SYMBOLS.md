@@ -811,7 +811,6 @@ msstd_time_duration_abs(value: i64) -> i64
 msstd_time_duration_compare(left: i64, other: i64) -> i64
 msstd_time_duration_to_microseconds(value: i64) -> i64
 msstd_time_duration_to_milliseconds(value: i64) -> i64
-msstd_time_duration_to_string(value: i64, out: *mut StrVal)
 msstd_time_duration_to_seconds(value: i64) -> f64
 msstd_time_duration_to_minutes(value: i64) -> f64
 msstd_time_duration_to_hours(value: i64) -> f64

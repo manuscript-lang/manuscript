@@ -17,8 +17,7 @@ pub mod zone;
 
 pub use core_time as logic;
 
-use alloc::format;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core_time::Ts;
 use ms_rt::ffi::{StatusCode, Str, abi_record, native};
 use ms_rt::glue::{fault, fault_fmt, poll_cancel, task_sleep};
@@ -115,52 +114,6 @@ fn checked_sub(operation: &str, ll: &str, rl: &str, left: i64, right: i64) -> i6
         .unwrap_or_else(|| overflow(operation, ll, rl, left, right))
 }
 
-/// Human text of a nanosecond span: `1m30.5s`, `250ms`, `1.5µs`, `-2h`, `0s`.
-fn duration_text(nanos: i64) -> String {
-    let negative = nanos < 0;
-    let n = nanos.unsigned_abs();
-    let mut out = String::new();
-    if negative {
-        out.push('-');
-    }
-    if n == 0 {
-        return "0s".to_string();
-    }
-    let fraction = |whole: u64, frac: u64, width: usize| {
-        let mut s = whole.to_string();
-        if frac != 0 {
-            let digits = format!("{frac:0width$}");
-            s.push('.');
-            s.push_str(digits.trim_end_matches('0'));
-        }
-        s
-    };
-    if n < 1_000 {
-        out.push_str(&format!("{n}ns"));
-    } else if n < 1_000_000 {
-        out.push_str(&fraction(n / 1_000, n % 1_000, 3));
-        out.push_str("µs");
-    } else if n < 1_000_000_000 {
-        out.push_str(&fraction(n / 1_000_000, n % 1_000_000, 6));
-        out.push_str("ms");
-    } else {
-        let (hours, rest) = (n / 3_600_000_000_000, n % 3_600_000_000_000);
-        let (minutes, rest) = (rest / 60_000_000_000, rest % 60_000_000_000);
-        let (secs, frac) = (rest / 1_000_000_000, rest % 1_000_000_000);
-        if hours > 0 {
-            out.push_str(&format!("{hours}h"));
-        }
-        if hours > 0 || minutes > 0 {
-            out.push_str(&format!("{minutes}m"));
-        }
-        if hours > 0 || minutes > 0 || secs > 0 || frac > 0 {
-            out.push_str(&fraction(secs, frac, 9));
-            out.push('s');
-        }
-    }
-    out
-}
-
 fn duration_of(operation: &str, n: i64, scale: i64) -> i64 {
     let (low, high) = (i64::MIN / scale, i64::MAX / scale);
     if n < low || n > high {
@@ -237,10 +190,6 @@ native! {
 
     safe fn msstd_time_duration_to_milliseconds(value: i64) -> i64 {
         value / 1_000_000
-    }
-
-    safe fn msstd_time_duration_to_string(value: i64) -> String {
-        duration_text(value)
     }
 
     safe fn msstd_time_duration_to_seconds(value: i64) -> f64 {

@@ -559,6 +559,27 @@ impl<'a> FnLower<'a> {
         Ok(Val { v, own: true })
     }
 
+    /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
+    pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
+        let method = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.receiver.is_std("Duration")
+                    && m.decl.as_ref().is_some_and(|d| d.name() == "to_string")
+            })
+            .ok_or_else(|| Error::new("Duration.to_string not found"))?;
+        let callable =
+            self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
+        let f = self
+            .cx
+            .function_for(self.b.m, &callable, &ms_check::types::Subst::new())?;
+        let n = self.borrow(x);
+        let v = self.b.call(f, &[n]);
+        Ok(Val { v, own: true })
+    }
+
     /// A text literal with interpolations.
     pub fn text(&mut self, parts: &[TextPart]) -> Result<Val, Error> {
         let mut acc: Option<Val> = None;
@@ -575,10 +596,7 @@ impl<'a> FnLower<'a> {
                     }
                     let _ = Kind::Record;
                     if self.ety(e).is_std("Duration") {
-                        let n = self.borrow(x);
-                        let v =
-                            self.call_runtime("msstd_time_duration_to_string", &[n], MTy::STR)?;
-                        Val { v, own: true }
+                        self.duration_text(x)?
                     } else {
                         self.format_value(x)?
                     }
