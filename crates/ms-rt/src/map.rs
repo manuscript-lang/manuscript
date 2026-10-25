@@ -96,6 +96,9 @@ trait KeyOps {
 struct IntKey;
 struct StrKey;
 struct DynKey;
+/// A key of plain bits without padding (`KIND_POD` with no `eq`/`hash` glue, see
+/// `Cx::ensure_glue`): equal iff the `kd.size` bytes are equal.
+struct BlobKey;
 
 impl KeyOps for IntKey {
     const CHEAP_EQ: bool = true;
@@ -125,6 +128,31 @@ impl KeyOps for StrKey {
     }
 }
 
+impl KeyOps for BlobKey {
+    const CHEAP_EQ: bool = true;
+    #[inline(always)]
+    unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64 {
+        let n = kd.size as usize;
+        // SAFETY: the key slot holds `n` initialized bytes.
+        unsafe {
+            if !n.is_multiple_of(8) {
+                return crate::string::hash_bytes(core::slice::from_raw_parts(key, n));
+            }
+            let mut h = 0x9e37_79b9_7f4a_7c15u64;
+            for i in 0..n / 8 {
+                h = crate::string::mix(h ^ (key as *const u64).add(i).read_unaligned());
+            }
+            h
+        }
+    }
+    #[inline(always)]
+    unsafe fn eq(kd: &TypeDesc, a: *const u8, b: *const u8) -> bool {
+        let n = kd.size as usize;
+        // SAFETY: both slots hold `n` initialized bytes.
+        unsafe { core::slice::from_raw_parts(a, n) == core::slice::from_raw_parts(b, n) }
+    }
+}
+
 impl KeyOps for DynKey {
     #[inline(always)]
     unsafe fn hash(kd: &TypeDesc, key: *const u8) -> u64 {
@@ -148,6 +176,10 @@ macro_rules! keyed {
             }
             KIND_STRING => {
                 type $K = StrKey;
+                $body
+            }
+            KIND_POD if $kd.eq.is_none() && $kd.hash.is_none() => {
+                type $K = BlobKey;
                 $body
             }
             _ => {
