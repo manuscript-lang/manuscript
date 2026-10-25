@@ -1113,35 +1113,6 @@ impl<'a> FnLower<'a> {
             name
         };
         match (self.b.m.types.kind(rty).clone(), name) {
-            (TyKind::Str, "replace" | "replace_first") => {
-                let sym = if name == "replace" {
-                    "msrt_string_replace"
-                } else {
-                    "msrt_string_replace_first"
-                };
-                let mut vals = vec![self.borrow(recv)];
-                let mut max = None;
-                for a in args {
-                    if a.name.as_str() == "max_replacements" {
-                        max = Some(a);
-                    } else {
-                        vals.push(self.borrow(a.val));
-                    }
-                }
-                let (has, n) = self.optional_int(max)?;
-                vals.push(has);
-                vals.push(n);
-                let out = self.call_runtime(sym, &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
-            (TyKind::Str, "replace_n") => {
-                let mut vals = vec![self.borrow(recv)];
-                for a in args {
-                    vals.push(self.borrow(a.val));
-                }
-                let out = self.call_runtime("msrt_string_replace_n", &vals, MTy::STR)?;
-                Ok(Val { v: out, own: true })
-            }
             (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
                 let r = self.borrow(recv);
                 let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;

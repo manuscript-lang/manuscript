@@ -47,39 +47,21 @@
         },
         {
           "index": 6,
-          "name": "tests-e2e-testpreferrednamesretainfaults-1.ms::old replace",
-          "status": "failed",
-          "failure": "replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:27 in test old replace"
-        },
-        {
-          "index": 7,
-          "name": "tests-e2e-testpreferrednamesretainfaults-1.ms::new replace",
-          "status": "failed",
-          "failure": "replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:30 in test new replace"
-        },
-        {
-          "index": 8,
-          "name": "tests-e2e-testpreferrednamesretainfaults-1.ms::bound replace",
-          "status": "failed",
-          "failure": "replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:34 in test bound replace"
-        },
-        {
-          "index": 9,
           "name": "tests-e2e-testpreferrednamesretainfaults-1.ms::continues",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 10,
-        "selected": 10,
+        "available": 7,
+        "selected": 7,
         "passed": 1,
-        "failed": 9,
+        "failed": 6,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testpreferrednamesretainfaults-1.ms::new set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::bound set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::bound set: List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:9 in test bound set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::new remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::new remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:12 in test new remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::bound remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::bound remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:16 in test bound remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::empty set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::empty set: List.set: index has no valid value for an empty collection, found 0\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:20 in test empty set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::empty remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::empty remove: List.remove: index has no valid value for an empty collection, found 0\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:24 in test empty remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::old replace\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::old replace: replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:27 in test old replace\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::new replace\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::new replace: replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:30 in test new replace\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::bound replace\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::bound replace: replace: max_replacements must be nonnegative, found -1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:34 in test bound replace\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::continues\nPASS tests-e2e-testpreferrednamesretainfaults-1.ms::continues\n10 tests, 9 failed\n",
+      "stdout": "RUN tests-e2e-testpreferrednamesretainfaults-1.ms::new set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::new set: List.set: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:5 in test new set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::bound set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::bound set: List.set: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:9 in test bound set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::new remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::new remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found 1\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:12 in test new remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::bound remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::bound remove: List.remove: index must be between -1 and 0 (negative indexes count from the end), found -2\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:16 in test bound remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::empty set\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::empty set: List.set: index has no valid value for an empty collection, found 0\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:20 in test empty set\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::empty remove\nFAIL tests-e2e-testpreferrednamesretainfaults-1.ms::empty remove: List.remove: index has no valid value for an empty collection, found 0\n  at tests-e2e-testpreferrednamesretainfaults-1.ms:24 in test empty remove\nRUN tests-e2e-testpreferrednamesretainfaults-1.ms::continues\nPASS tests-e2e-testpreferrednamesretainfaults-1.ms::continues\n7 tests, 6 failed\n",
       "diagnostics": []
     },
     "shape": [

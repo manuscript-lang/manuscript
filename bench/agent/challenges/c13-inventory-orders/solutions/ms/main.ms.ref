@@ -262,7 +262,7 @@ def run() -> Result[Unit, Error]:
             break
 
         let line = next.get()
-        if line.replace_all(old: " ", new: "").get().is_empty():
+        if line.replace(old: " ", new: "").is_empty():
             continue
 
         for out in run_command(var w, line):

@@ -83,24 +83,8 @@ def checked_expansion() -> Result[Unit, Error]:
             ) == "xé🙂é"
         )
     ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "aba".replace_all(
-                    old: "a", new: "é", max_bytes: 5
-                )
-            ) == "ébé"
-        )
-    ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "é🙂".replace_all(
-                    old: "", new: "-", max_bytes: 9
-                )
-            ) == "-é-🙂-"
-        )
-    ) | try expect_false
+    (not ("aba".replace(old: "a", new: "é") == "ébé")) | try expect_false
+    (not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | try expect_false
     (try common_result(result: "é🙂".slice_scalars(start: 0, end: 1))) | try expect_equal(
         "é"
     )
@@ -334,7 +318,7 @@ test "string methods use Unicode scalars":
     ("abc".starts_with(prefix: "ab")) | try expect_true
     ("abc".ends_with(suffix: "bc")) | try expect_true
     "a,b,c".split(separator: ",", max_parts: 2) | try expect_equal(["a", "b"])
-    "aba".replace(old: "a", new: "x", max_replacements: 1) | try expect_equal("xba")
+    "aba".replace_first(old: "a", new: "x") | try expect_equal("xba")
 
     let strip = " hello ".trim
     strip() | try expect_equal("hello")
@@ -392,7 +376,6 @@ test "growth limits and invalid inputs return values":
     "x".pad_end(target_length: 4, padding: "", max_bytes: 1) | try expect_equal(
         unchanged
     )
-    "abc".replace_all(old: "", new: "-", max_bytes: 6) | try expect_equal(too_large)
 
     let list_limit: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
@@ -495,8 +478,8 @@ test "normalization, empty separators, and precision formatting":
 
     let empty_texts: List[String] = []
     "".split(separator: "", max_parts: 8) | try expect_equal(empty_texts)
-    "é🙂".replace(old: "", new: "-", max_replacements: 1) | try expect_equal("-é🙂")
-    "".replace(old: "", new: "-", max_replacements: 1) | try expect_equal("-")
+    "é🙂".replace_first(old: "", new: "-") | try expect_equal("-é🙂")
+    "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)

@@ -48,25 +48,13 @@ interface StringOperations:
         count: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
-    # Transitional compatibility name: omitted or none replaces the first occurrence; an explicit cap can replace more.
-    # Use replace_n for a required finite cap; this retained signature has not become a strict first-only operation.
-    # An empty old matches at scalar boundaries, and inserted text is not searched again.
-    # Zero changes nothing; negative caps retain replace's programming fault.
-    def replace_first(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int] = none
-    ) -> String
-    # Replaces at most the required number of nonoverlapping literal occurrences; zero leaves text unchanged.
-    # Empty old matches at scalar boundaries, inserted text is not rescanned, and negative caps retain replace's programming fault.
-    # The count limits replacements, not UTF-8 output bytes; there is no additional allocation budget.
-    def replace_n(old: String, new: String, max_replacements: Int) -> String
-    # Compatibility spelling for replace_first, including its explicit replacement cap.
-    def replace(
-        old: String,
-        new: String,
-        max_replacements: Optional[Int] = none
-    ) -> String
+    # Replaces the first occurrence of old; text without a match is unchanged.
+    # An empty old matches at the first scalar boundary, so new is inserted at the start.
+    def replace_first(old: String, new: String) -> String
+    # Replaces every nonoverlapping occurrence of old, scanning left to right; inserted text is not rescanned.
+    # An empty old matches at each scalar boundary, so "ab".replace("", "-") is "-a-b-".
+    # Output beyond the string limit faults like concat; use Regex.replace_all for a bounded replacement.
+    def replace(old: String, new: String) -> String
     # Returns the number of Unicode scalar values in the string.
     def scalar_length() -> Int
     # Returns each Unicode scalar value as an integer.
@@ -111,13 +99,6 @@ interface StringOperations:
     def pad_end(
         target_length: Int,
         padding: String,
-        max_bytes: Optional[Int] = none
-    ) -> Result[String, StringError]
-    # Replaces every nonoverlapping occurrence; empty old matches at each scalar boundary.
-    # max_bytes bounds UTF-8 output; negatives return InvalidInput and exhaustion returns LimitExceeded.
-    def replace_all(
-        old: String,
-        new: String,
         max_bytes: Optional[Int] = none
     ) -> Result[String, StringError]
     # Selects [start, end) in Unicode scalars; negative bounds are relative to the end.
