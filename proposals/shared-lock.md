@@ -1,6 +1,7 @@
 # Shared: access only through a lock guard
 
-Status: **proposal, not implemented.** Checked against `ccac1772`.
+Status: **implemented** (Chinmay, 2026-10-25: waiting lock, `with let/var name = expr:` replacing `as`). Checked against `ccac1772`.
+Built shape differs from the sketch below in one place: a stdlib module cannot mix native `...` stubs with bodies, so the lock is the function `lock(box)` in `@std/sync.ms`, not a `box.lock()` method. `Shared.take`, `put` and `locked` stay as natives and the checker rejects them outside `@std/sync.ms`. `lock` waits by polling a 50 µs sleep, which is cancellable; a per-box wait queue would replace it.
 Direction (Chinmay, 2026-10-25): "yeah let's make it similar to rust" (`Arc<Mutex<T>>`: access only through a guard, released on every exit, no public `take`/`put`).
 
 ## Summary
@@ -30,12 +31,12 @@ def hold(box: Shared[List[Int]]) -> Int:
 
 ```
 let box: Shared[List[Int]] = share([1])
-with var guard = box.lock():
+with var guard = lock(box):
     guard.value.append(2)
 # guard closed: the payload is back, the box is unlocked
 ```
 
-- `lock() -> SharedGuard[T]` takes the payload (today's `take`). `SharedGuard[T]` has `value: T` and implements `Closeable`; `close` puts `value` back and clears the mark. Written in `shared.ms`; `take`/`put` become unexported natives used only there.
+- `lock(box) -> SharedGuard[T]` takes the payload (today's `take`). `SharedGuard[T]` has `value: T` and implements `Closeable`; `close` puts `value` back and clears the mark. Written in `shared.ms`; `take`/`put` become unexported natives used only there.
 - `with let name = expr:` binds immutably (today's behavior); `with var name = expr:` lets the block change the binding, and `close` runs on its final value. The compiler already closes "the current value" of the binding (`with.rs`). The `as` form is removed: `ms format` rewrites the 414 existing uses (stdlib, docs, fixtures) in the same PR stage.
 - Cancellation: the guard is a registered `with` cleanup, so a cancelled task runs `close` and the box is restored with whatever the block had done. This is the p13 fix.
 - Fault: the program ends (tasks) or the worker ends with its heap, so no holder can observe a half-changed value. No poison flag. If faults become catchable inside a task, poisoning is added then.

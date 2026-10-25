@@ -415,6 +415,7 @@ impl Checker {
         let resolved = function_arguments(args, &sig.params);
         i.arguments = slots(&resolved);
         self.check_worker_entry(&callable, &resolved);
+        self.check_shared_use(e, callee, &callable, &sig);
         i.no_return = callable.no_return
             || self.arguments_for(
                 &callee_name(callee),
@@ -433,6 +434,52 @@ impl Checker {
             i.no_return = true;
         }
         i
+    }
+
+    /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
+    /// its raw `take`, `put` and `locked`; and a `Shared` cannot be a worker or process message,
+    /// because the other side would get a silent copy instead of the same box.
+    fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info, sig: &Ty) {
+        let name = match &callee.kind {
+            ExprKind::Member { name, .. } => name.as_str().to_string(),
+            _ => callee_name(callee),
+        };
+        if let Some(m) = callable.method.as_ref()
+            && m.receiver.is_std("Shared")
+            && matches!(name.as_str(), "take" | "put" | "locked")
+            && self.m().file.as_str() != "@std/sync.ms"
+        {
+            self.type_error(
+                e.pos,
+                format!(
+                    "Shared.{name} is internal; change a Shared with `with var guard = lock(box):` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the block ends"
+                ),
+            );
+            return;
+        }
+        let messages: Vec<Ty> = match callable.method.as_ref() {
+            Some(m)
+                if name == "spawn"
+                    && m.receiver.is_source_type("@std/workers.ms", "WorkerGroup") =>
+            {
+                m.receiver.args.clone()
+            }
+            Some(m)
+                if name == "spawn"
+                    && m.receiver
+                        .is_source_type("@std/processes.ms", "ProcessGroup") =>
+            {
+                m.receiver.args.iter().skip(1).cloned().collect()
+            }
+            None if name == "worker_channel" => sig.result_ty().args.clone(),
+            _ => return,
+        };
+        if messages.iter().any(|t| mentions_shared(t, &mut Vec::new())) {
+            self.type_error(
+                e.pos,
+                "a worker or process message cannot contain a Shared: the other side would get a silent copy, not the same box; send the value, not a handle to it".to_string(),
+            );
+        }
     }
 
     /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
@@ -785,4 +832,30 @@ impl Checker {
         self.p.diagnostics.extend(diagnostics);
         info
     }
+}
+
+/// Whether a value of type `t` holds a `Shared` anywhere in its type arguments or fields.
+fn mentions_shared(t: &Ty, visiting: &mut Vec<Name>) -> bool {
+    if t.is_std("Shared") {
+        return true;
+    }
+    if visiting.contains(&t.id) {
+        return false;
+    }
+    visiting.push(t.id);
+    let mut found = t.args.iter().any(|a| mentions_shared(a, visiting));
+    if !found && matches!(t.kind, Kind::Record | Kind::Alternative) {
+        found = fields(t).iter().any(|f| mentions_shared(&f.ty, visiting));
+        if let Some(def) = &t.def {
+            let s = substitution(t);
+            found = found
+                || def.cases.borrow().iter().any(|case| {
+                    case.fields
+                        .iter()
+                        .any(|f| mentions_shared(&sub(&f.ty, &s), visiting))
+                });
+        }
+    }
+    visiting.pop();
+    found
 }

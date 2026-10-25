@@ -1,5 +1,6 @@
 from "@std/core.ms" import Closeable
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal
 from "@std/time.ms" import duration, sleep
@@ -10,9 +11,8 @@ type Counter:
 
 impl Closeable for Counter:
     var def close() -> Unit:
-        var seen = self.log.take()
-        seen.append(self.value)
-        self.log.put(seen)
+        with var seen = lock(self.log):
+            seen.value.append(self.value)
 
 def count_then_wait(log: Shared[List[Int]]) -> Int:
     with var counter = Counter(value: 0, log: log):

@@ -2,6 +2,7 @@
 # conform: phase=test
 from "@std/collections.ms" import range
 from "@std/shared.ms" import share, Shared
+from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import duration, sleep
@@ -17,8 +18,8 @@ def slow(milliseconds: Int, label: String) -> String:
     return label
 
 def record(log: Shared[List[String]], entry: String) -> Unit:
-    let lines = log.take()
-    log.put(lines.concat([entry]))
+    with var lines = lock(log):
+        lines.value.append(entry)
 
 def slow_square(n: Int) -> Int:
     pause(1)
@@ -210,9 +211,8 @@ test "a task can wait for another task's value":
         group.spawn(
             lambda ch:
                 pause(10)
-
-                let empty = producer.take()
-                producer.put([42])
+                with var items = lock(producer):
+                    items.value.append(42)
                 return 0
         )
 

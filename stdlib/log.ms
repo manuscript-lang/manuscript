@@ -2,6 +2,7 @@ from "@std/io.ms" import IoError
 from "@std/io.ms" import WriteStream
 from "@std/bytes.ms" import Bytes
 from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
 from "@std/fs.ms" import FileHandle, FileSystemError, filesystem
 from "@std/io.ms" import stdout
 from "@std/json.ms" import stringify
@@ -203,10 +204,8 @@ impl StdLogger:
     def send(text: String) -> Result[Unit, LogError]:
         if text == "": return ok(())
 
-        var transport = self.transport.take()
-        let written = transport.write(text)
-        self.transport.put(transport)
-        return written
+        with var transport = lock(self.transport):
+            return transport.value.write(text)
 
 impl Logger for StdLogger:
     def log(level: LogLevel, message: String) -> Result[Unit, LogError]:
@@ -253,15 +252,12 @@ impl Logger for StdLogger:
         self.state.set_level(level_index(level))
 
     def flush() -> Result[Unit, LogError]:
-        var transport = self.transport.take()
-        let flushed = transport.flush()
-        self.transport.put(transport)
-        return flushed
+        with var transport = lock(self.transport):
+            return transport.value.flush()
 
     var def close() -> Unit:
-        var transport = self.transport.take()
-        transport.close()
-        self.transport.put(transport)
+        with var transport = lock(self.transport):
+            transport.value.close()
 
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
 #

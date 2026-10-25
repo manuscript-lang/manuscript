@@ -245,3 +245,10 @@ Apply when: publishing task metadata to signal handlers or worker cancellation c
 Evidence: [concurrent shield regression and ABI checks](../crates/ms-rt/src/fault.rs).
 Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads`
 passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.
+
+## Shared is changed only through a lock guard
+
+Decision (Chinmay, 2026-10-25): a `Shared` payload is changed with `with var guard = lock(box):` from `@std/sync.ms`, like Rust's `Arc<Mutex<T>>`; raw `take`/`put` were the manual lock that a cancellation left set (p13). The guard's close returns the payload on every exit, `lock` waits for a held guard, and the checker rejects `take`, `put` and `locked` outside `@std/sync.ms` and a `Shared` in a worker or process message (#1249). A `with var` binding registers its storage slot, so a fault or cancellation closes the value the block had reached.
+Apply when: adding shared state to the stdlib, or touching `with`, `Shared`, or cancellation cleanup.
+Evidence: [lock proposal](../proposals/shared-lock.md), [cancel regression](../tests/e2e/testdata/accept/shared-lock-survives-cancellation.ms).
+Verify: that fixture passes; without the slot in `crates/ms-lower/src/with.rs` `with-var-closes-final-value.ms` reports `[0]` for `[7]`.
