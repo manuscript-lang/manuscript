@@ -65,6 +65,15 @@ def announce_then_wait() -> Unit:
     ch.send(1)
     let got = ch.receive()
 
+# Runs without parking for long enough that the cancel always lands while it is computing.
+def spin_then_wait() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    ch.send(1)
+    var n = 0
+    for i in range(0, 300000000):
+        n += i
+    let got = ch.receive()
+
 def sleep_long() -> Unit:
     sleep(duration(nanoseconds: 60000000000))
 
@@ -155,6 +164,13 @@ test "a fault in a worker is a result, not the end of the program":
 test "cancelling a worker stops it":
     with WorkerGroup[Int, Int]() as group:
         var worker = group.spawn(announce_then_wait).get(none)
+        try expect_equal(worker.channel.receive(), ok(some(1)))
+        worker.cancel()
+        try expect_equal(worker.join(), error(WorkerError.Cancelled))
+
+test "a worker cancelled while computing is cancelled at its next channel operation":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(spin_then_wait).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         worker.cancel()
         try expect_equal(worker.join(), error(WorkerError.Cancelled))
