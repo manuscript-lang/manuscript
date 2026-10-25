@@ -83,19 +83,34 @@
           "index": 14,
           "name": "router.ms::mount rejects a trailing slash and a clashing route",
           "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "router.ms::json and redirect build responses",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "router.ms::request_id keeps a usable id and makes one otherwise",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "router.ms::access_log writes one record per request",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 15,
-        "selected": 15,
-        "passed": 15,
+        "available": 18,
+        "selected": 18,
+        "passed": 18,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN router.ms::literal, parameter and wildcard routes\nPASS router.ms::literal, parameter and wildcard routes\nRUN router.ms::unknown paths answer 404\nPASS router.ms::unknown paths answer 404\nRUN router.ms::a known path under another method answers 405 with Allow\nPASS router.ms::a known path under another method answers 405 with Allow\nRUN router.ms::OPTIONS lists the methods without calling a handler\nPASS router.ms::OPTIONS lists the methods without calling a handler\nRUN router.ms::HEAD is answered from the GET route without a body\nPASS router.ms::HEAD is answered from the GET route without a body\nRUN router.ms::the first matching route wins\nPASS router.ms::the first matching route wins\nRUN router.ms::invalid and duplicate patterns are rejected\nPASS router.ms::invalid and duplicate patterns are rejected\nRUN router.ms::middleware wraps routes outermost first\nPASS router.ms::middleware wraps routes outermost first\nRUN router.ms::middleware also wraps the 404 answer\nPASS router.ms::middleware also wraps the 404 answer\nRUN router.ms::middleware may answer without calling the rest\nPASS router.ms::middleware may answer without calling the rest\nRUN router.ms::a handler error comes back from call\nPASS router.ms::a handler error comes back from call\nRUN router.ms::a handler that sends nothing answers 204\nPASS router.ms::a handler that sends nothing answers 204\nRUN router.ms::the router serves over a socket\nPASS router.ms::the router serves over a socket\nRUN router.ms::mount places a router under a prefix with its own middleware\nPASS router.ms::mount places a router under a prefix with its own middleware\nRUN router.ms::mount rejects a trailing slash and a clashing route\nPASS router.ms::mount rejects a trailing slash and a clashing route\n15 tests, 0 failed\n",
+      "stdout": "RUN router.ms::literal, parameter and wildcard routes\nPASS router.ms::literal, parameter and wildcard routes\nRUN router.ms::unknown paths answer 404\nPASS router.ms::unknown paths answer 404\nRUN router.ms::a known path under another method answers 405 with Allow\nPASS router.ms::a known path under another method answers 405 with Allow\nRUN router.ms::OPTIONS lists the methods without calling a handler\nPASS router.ms::OPTIONS lists the methods without calling a handler\nRUN router.ms::HEAD is answered from the GET route without a body\nPASS router.ms::HEAD is answered from the GET route without a body\nRUN router.ms::the first matching route wins\nPASS router.ms::the first matching route wins\nRUN router.ms::invalid and duplicate patterns are rejected\nPASS router.ms::invalid and duplicate patterns are rejected\nRUN router.ms::middleware wraps routes outermost first\nPASS router.ms::middleware wraps routes outermost first\nRUN router.ms::middleware also wraps the 404 answer\nPASS router.ms::middleware also wraps the 404 answer\nRUN router.ms::middleware may answer without calling the rest\nPASS router.ms::middleware may answer without calling the rest\nRUN router.ms::a handler error comes back from call\nPASS router.ms::a handler error comes back from call\nRUN router.ms::a handler that sends nothing answers 204\nPASS router.ms::a handler that sends nothing answers 204\nRUN router.ms::the router serves over a socket\nPASS router.ms::the router serves over a socket\nRUN router.ms::mount places a router under a prefix with its own middleware\nPASS router.ms::mount places a router under a prefix with its own middleware\nRUN router.ms::mount rejects a trailing slash and a clashing route\nPASS router.ms::mount rejects a trailing slash and a clashing route\nRUN router.ms::json and redirect build responses\nPASS router.ms::json and redirect build responses\nRUN router.ms::request_id keeps a usable id and makes one otherwise\nPASS router.ms::request_id keeps a usable id and makes one otherwise\nRUN router.ms::access_log writes one record per request\nPASS router.ms::access_log writes one record per request\n18 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

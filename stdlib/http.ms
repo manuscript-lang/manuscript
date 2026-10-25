@@ -4,6 +4,7 @@ from "@std/net.ms" import DatagramSocket
 from "@std/net.ms" import DnsRecord
 from "@std/time.ms" import Duration
 from "@std/io.ms" import IoError
+from "@std/json.ms" import stringify
 from "@std/net.ms" import Listener
 from "@std/net.ms" import NetworkError
 from "@std/io.ms" import ReadStream
@@ -393,6 +394,26 @@ export def reply(
 # Builds a response with a UTF-8 text body and no headers.
 export def text(status: Int, body: String) -> HttpResponse:
     return HttpResponse(status: status, headers: headers(), body: body.to_bytes())
+
+# Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
+# A value `stringify` cannot encode returns Failed with its diagnostic.
+export def json[T](status: Int, value: T) -> Result[HttpResponse, HttpError]:
+    let body = stringify(value)
+    if body.is_error(): return error(HttpError.Failed(body.err().message()))
+
+    let sent = headers()
+    try sent.append("Content-Type", "application/json".to_bytes())
+    return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
+
+# Builds a redirect to `location` with an empty body.
+# The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
+export def redirect(
+    location: String,
+    status: Int = 303
+) -> Result[HttpResponse, HttpError]:
+    let sent = headers()
+    try sent.append("Location", location.to_bytes())
+    return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
 # Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
 # The request body is read in full first.
