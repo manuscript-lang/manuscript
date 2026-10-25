@@ -4,6 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/io.ms" import stdin
+from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
 from "@std/workers.ms" import WorkerError, WorkerGroup, worker_channel
@@ -197,3 +198,16 @@ test "a finished worker's channel ends with none instead of an error":
         expect_equal(worker.channel.receive(), ok(some(1)))
         expect_equal(worker.channel.receive(), ok(none))
         expect_ok(worker.join())
+
+def runs_faulting_task() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    with TaskGroup[Int]() as tasks:
+        let t = tasks.spawn(lambda c: panic("task inside worker faults"))
+        t.result()
+
+test "a fault in a task a worker started is the worker's fault":
+    with WorkerGroup[Int, Int]() as group:
+        var worker = group.spawn(runs_faulting_task).get(none)
+        let outcome = worker.join()
+        expect_error(outcome)
+        expect_true(outcome.err().message().contains("task inside worker faults"))
