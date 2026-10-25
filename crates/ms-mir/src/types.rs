@@ -326,6 +326,9 @@ pub struct MethodSig {
     pub params: Vec<Ty>,
     /// Result type.
     pub ret: Ty,
+    /// The operation lends its result (`ref`): implementations return a borrow of the
+    /// receiver or an argument, which the caller does not release.
+    pub ret_borrowed: bool,
 }
 
 /// An interface declaration.
