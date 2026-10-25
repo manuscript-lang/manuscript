@@ -14,7 +14,7 @@ We learn by watching agents build real programs. Their mistakes, repair attempts
 
 - **Learn from behavior.** The [agent benchmark](bench/agent/README.md) records test outcomes, tokens, turns, time, and cost. We use those observations to find friction and improve the language itself, from common syntax mistakes to the feedback that helps an agent recover.
 - **Spend tokens on meaning.** Compact expressions, inferred types, pipe flows, and a concise API vocabulary aim to reduce the context needed to express and understand a program. Token efficiency is a design goal alongside readability and analyzability; shorter code still needs to say clearly what it does.
-- **Keep reasoning local.** A small, regular core, explicit types at boundaries, `Optional` and `Result`, and visible mutation make intent easier to follow. Familiar syntax gives agents useful starting knowledge; consistent rules help people review what they produce.
+- **Keep reasoning local.** A small, regular core, explicit types at boundaries, `Optional` and `Result`, and visible mutation make intent easier to follow. Python-like syntax gives agents a familiar starting point, paired with Manuscript’s own static checking, ownership and borrowing, and native compilation. Familiarity guides the design; Python compatibility is not the goal.
 - **Make analysis part of the language.** Static checking, structured diagnostics, symbol search, inspection, and diagrams derive evidence from source. Agents can find exact APIs and act on compiler feedback; people can examine the same program and its relationships.
 - **Design the whole loop.** The compiler, standard library, formatter, tests, language server, and profiler belong to one toolchain. Native executables, explicit numeric widths, and scoped tasks, workers, and processes give that philosophy practical reach.
 
@@ -104,7 +104,7 @@ test "pipe flow":
 
 Save it as `flow.ms` and run `ms test flow.ms`. The [tour](documentation/learn/tour.md) builds from variables and functions through types, errors, modules, and cleanup.
 
-Ordinary records and collections have value semantics: the compiler borrows or moves them according to use, and `var` makes mutation visible. Explicit shared handles, including channels, have their own contracts. See [references and borrowing](documentation/core-language/types/references.md) for the exact rules.
+Ownership and borrowing are central to the memory model. Ordinary records and collections have value semantics: the compiler borrows or moves them according to use, `var` makes mutation visible, and `.clone()` explicitly copies ordinary nested data. Owned values are reclaimed deterministically during normal execution, without a tracing garbage collector. External resources still need `with` or `close()`, and shared handles have their own contracts. See [references and borrowing](documentation/core-language/types/references.md) and [scoped cancellation](documentation/core-language/concurrency/task-groups.md) for the exact rules.
 
 `Int` remains signed 64-bit and `Float` remains 64-bit. Sized integer and floating-point types let you choose storage and arithmetic deliberately; conversions make width changes explicit. Exclusive `a..b` ranges include `a` and stop before `b`. See [numeric types](documentation/core-language/basics/numbers-and-booleans.md).
 
@@ -137,7 +137,7 @@ The [tooling guide](documentation/developer-tooling/implementation.md) covers st
 
 ## Native code, measured performance
 
-`ms` checks and lowers your source to an intermediate representation, then compiles it to native machine code and links it with the runtime and standard library. Debug builds use Cranelift; optimized builds use LLVM when available, with a Cranelift fallback. The resulting executable runs without `ms` installed. See [how compilation works](documentation/developer-tooling/how-it-works.md).
+`ms` checks and lowers your source to an intermediate representation, then compiles it ahead of time to native machine code and links it with the runtime and standard library. There is no JIT compilation at runtime. Cranelift keeps debug builds fast for quick iteration. Release and MinSizeRel builds use LLVM to optimize for runtime performance or binary size when its tools are available, falling back to Cranelift if they cannot be fetched. The resulting executable runs without `ms` installed. See [how compilation works](documentation/developer-tooling/how-it-works.md).
 
 Performance is part of the design: native execution, explicit numeric widths, packed storage, and compiler optimizations aim to make readable code efficient to run. Benchmark results guide that work alongside the agent feedback loop.
 
