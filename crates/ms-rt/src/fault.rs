@@ -475,7 +475,7 @@ fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
 }
 
 /// How far above a frame's stack pointer to look for its frame record, in bytes.
-#[cfg(any(windows, test))]
+#[cfg(any(all(windows, target_arch = "aarch64"), test))]
 const FRAME_RECORD_SCAN: usize = 4096;
 
 /// Windows native frames do not use the generated code's frame layout. Recover
@@ -484,44 +484,30 @@ const FRAME_RECORD_SCAN: usize = 4096;
 /// than reconstructing a partial native register context.
 #[cfg(windows)]
 unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
+    // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record (by an amount that
+    // differs per function), so the register cannot be followed as a chain: unwind each frame.
     #[cfg(target_arch = "x86_64")]
-    // SAFETY: written once by the depth-fault shim on this thread, before any report is built.
-    let site = unsafe { core::ptr::replace(core::ptr::addr_of_mut!(DEPTH_SITE), [0; 3]) };
-    #[cfg(target_arch = "x86_64")]
-    let recovered = if site[0] != 0 && anchor == fault_vec as *const () as usize {
-        // The depth limit was hit: the shim saved the generated frame, which a diverging Rust
-        // function between here and there may have clobbered in the register the unwinder reads.
-        Some((site[0], 0, site[1], MAX_STACK_WALK_FRAMES - 2))
-    } else {
-        sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
-    };
+    sys::walk_unwound(anchor, |pc| find_func(t, pc).is_some(), f);
     #[cfg(not(target_arch = "x86_64"))]
-    let recovered = sys::source_frame(anchor, |pc| find_func(t, pc).is_some());
-    let Some((pc, sp, fp, remaining)) = recovered else {
-        return;
-    };
-    let (lo, hi) = sys::stack_limits();
-    #[cfg(target_arch = "x86_64")]
-    if site[0] != 0 {
-        let mut m = format!("WALKDBG ret={:x} rbp={:x} rsp={:x} lo={lo:x} hi={hi:x}\n", site[0], site[1], site[2]);
-        for i in 0..40usize {
-            let w = unsafe { *((site[2] + i * 8) as *const usize) };
-            m.push_str(&format!(" {w:x}"));
-        }
-        m.push('\n');
-        sys::write_all(sys::STDERR, m.as_bytes());
+    {
+        let Some((pc, sp, fp, remaining)) =
+            sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
+        else {
+            return;
+        };
+        let (lo, hi) = sys::stack_limits();
+        // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
+        // register pointing at a caller's record, so it finds the generated frame's own record.
+        let fp = if anchor == capture_frames as *const () as usize {
+            // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
+            unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
+        } else {
+            fp
+        };
+        // SAFETY: source_frame recovered the current generated frame and stack_limits
+        // bounds the live thread stack.
+        unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
     }
-    // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
-    // register pointing at a caller's record, so it finds the generated frame's own record.
-    let fp = if anchor == capture_frames as *const () as usize {
-        // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
-        unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
-    } else {
-        fp
-    };
-    // SAFETY: source_frame recovered the current generated frame and stack_limits
-    // bounds the live thread stack.
-    unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
 }
 
 /// The address of the first frame record `[saved fp, return address]` at or above `sp` whose
@@ -529,7 +515,7 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
-#[cfg(any(windows, test))]
+#[cfg(any(all(windows, target_arch = "aarch64"), test))]
 unsafe fn frame_record(
     sp: usize,
     lo: usize,
@@ -554,7 +540,7 @@ unsafe fn frame_record(
     None
 }
 
-#[cfg(any(windows, test))]
+#[cfg(any(all(windows, target_arch = "aarch64"), test))]
 unsafe fn walk_source_frames(
     mut pc: usize,
     mut fp: usize,
@@ -962,12 +948,9 @@ pub unsafe extern "C-unwind" fn msrt_fault_string(s: *const ms_rt_abi::StrVal) -
     fault(unsafe { crate::string::bytes(s) })
 }
 
-/// Lowers the recursion limit so cleanups can run calls in the reserve. A function of its own that
-/// returns: the Windows frame walk recovers the faulting frame's `rbp` by unwinding, and a
-/// diverging function is free to leave a register it used (here the new limit) unrestored.
-#[inline(never)]
-fn lower_depth_limit() {
-    // SAFETY: single threaded limit change.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_fault_depth() -> ! {
+    // SAFETY: single threaded limit change so cleanups can run calls in the reserve.
     unsafe {
         let lo = *STACK_LO.ptr();
         (*cur_hdr()).limit = if lo == 0 {
@@ -976,35 +959,6 @@ fn lower_depth_limit() {
             lo + STACK_CLEANUP_RESERVE
         };
     }
-}
-
-/// Where the generated code was when it hit the depth limit: the return address into it and its
-/// `rbp`, saved by the entry shim before any Rust code can reuse the register.
-#[cfg(all(windows, target_arch = "x86_64"))]
-static mut DEPTH_SITE: [usize; 3] = [0; 3];
-
-#[cfg(all(windows, target_arch = "x86_64", not(test)))]
-core::arch::global_asm!(
-    ".globl msrt_fault_depth",
-    "msrt_fault_depth:",
-    "mov rax, [rsp]",
-    "mov [rip + {site}], rax",
-    "mov [rip + {site} + 8], rbp",
-    "mov [rip + {site} + 16], rsp",
-    "jmp {body}",
-    site = sym DEPTH_SITE,
-    body = sym fault_depth_body,
-);
-
-#[cfg(not(all(windows, target_arch = "x86_64", not(test))))]
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_fault_depth() -> ! {
-    fault_depth_body()
-}
-
-#[inline(always)]
-extern "C-unwind" fn fault_depth_body() -> ! {
-    lower_depth_limit();
     fault(
         b"stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead",
     )
