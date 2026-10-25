@@ -117,16 +117,6 @@ The same server on Manuscript's standard library and on Go, shared 4-CPU VM, ser
 
 Where Manuscript is behind: file and DNS calls block the runtime thread, so an `/io` route and everything beside it waits on the disk.
 
-### Parallel workers
-
-Eight `fib(38)` jobs over a `WorkerGroup`, best of 3, milliseconds. Reproduce: `MS=./target/release/ms sh bench/perf/workers/run.sh 3`.
-
-| workers | time | speedup |
-|---:|---:|---:|
-| 1 | 1,922 | 1.00x |
-| 2 | 989 | 1.94x |
-| 4 | 486 | 3.95x |
-
 ### Agents writing Manuscript
 
 The [agent benchmark](bench/agent/README.md) runs Claude Code on twenty challenges (ten small programs, ten applications of three to five thousand lines) with hidden tests, one trial per cell, and records pass rate, first-build success, turns, tokens and cost over passing runs only. Latest results ([2026-10-21](bench/agent/results/summary-2026-10-21.md), [2026-10-22](bench/agent/results/summary-2026-10-22.md), Claude Haiku):
