@@ -1,5 +1,4 @@
-//! Byte scans for parsers: a vector compare where the target has one, eight bytes at a time
-//! otherwise.
+//! Byte scans for parsers: SSE2 on x86-64, NEON on aarch64, eight bytes at a time otherwise.
 #![allow(clippy::undocumented_unsafe_blocks)]
 
 const ONES: u64 = 0x0101_0101_0101_0101;
@@ -44,6 +43,32 @@ pub fn json_special(b: &[u8], mut i: usize) -> Option<usize> {
             }
         }
     }
+    #[cfg(target_arch = "aarch64")]
+    {
+        use core::arch::aarch64::{
+            vceqq_u8, vcltq_u8, vdupq_n_u8, vget_lane_u64, vld1q_u8, vorrq_u8, vreinterpret_u64_u8,
+            vreinterpretq_u16_u8, vshrn_n_u16,
+        };
+        // SAFETY: NEON is part of the aarch64 baseline; each load reads 16 bytes inside `b`.
+        unsafe {
+            let (quote, slash, space) = (vdupq_n_u8(b'"'), vdupq_n_u8(b'\\'), vdupq_n_u8(0x20));
+            while i + 16 <= b.len() {
+                let v = vld1q_u8(b.as_ptr().add(i));
+                let hit = vorrq_u8(
+                    vorrq_u8(vceqq_u8(v, quote), vceqq_u8(v, slash)),
+                    vcltq_u8(v, space),
+                );
+                // Four bits per byte, so the first hit is the lowest set nibble.
+                let bits = vget_lane_u64::<0>(vreinterpret_u64_u8(vshrn_n_u16::<4>(
+                    vreinterpretq_u16_u8(hit),
+                )));
+                if bits != 0 {
+                    return Some(i + (bits.trailing_zeros() / 4) as usize);
+                }
+                i += 16;
+            }
+        }
+    }
     while let Some(chunk) = b.get(i..i + 8) {
         let w = word(chunk);
         let zero = |x: u64| x.wrapping_sub(ONES) & !x & HIGHS;
@@ -80,6 +105,28 @@ pub fn skip_spaces(b: &[u8], mut i: usize) -> usize {
                 let m = !_mm_movemask_epi8(_mm_cmpeq_epi8(v, space)) & 0xffff;
                 if m != 0 {
                     return i + m.trailing_zeros() as usize;
+                }
+                i += 16;
+            }
+        }
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        use core::arch::aarch64::{
+            vceqq_u8, vdupq_n_u8, vget_lane_u64, vld1q_u8, vmvnq_u8, vreinterpret_u64_u8,
+            vreinterpretq_u16_u8, vshrn_n_u16,
+        };
+        // SAFETY: NEON is part of the aarch64 baseline; each load reads 16 bytes inside `b`.
+        unsafe {
+            let space = vdupq_n_u8(b' ');
+            while i + 16 <= b.len() {
+                let v = vld1q_u8(b.as_ptr().add(i));
+                let other = vmvnq_u8(vceqq_u8(v, space));
+                let bits = vget_lane_u64::<0>(vreinterpret_u64_u8(vshrn_n_u16::<4>(
+                    vreinterpretq_u16_u8(other),
+                )));
+                if bits != 0 {
+                    return i + (bits.trailing_zeros() / 4) as usize;
                 }
                 i += 16;
             }

@@ -634,7 +634,8 @@ pub unsafe extern "C-unwind" fn msrt_map_reserve(
             return;
         }
         let l = layout(&*kd, opt(vd));
-        let cap = n.next_power_of_two().max(8);
+        // Exact room: small objects dominate parsed documents, and `grow` doubles from here.
+        let cap = n.next_power_of_two().max(2);
         m.slots = if m.slots.is_null() {
             alloc::alloc(cap * l.stride)
         } else {
