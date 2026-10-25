@@ -1,5 +1,24 @@
 # Manuscript vs handwritten Go
 
+## main at c1b81215 (2026-10-25)
+
+Median of 5 alternating runs; linux/amd64, four cores, Go 1.24.7, rustc 1.99.1; ns/op; checksums and operation counts verified. Same caveats as below: Manuscript checks Int overflow and list bounds, "Rust, overflow checks" is the closest like-for-like, and "0.00" means LLVM folded the loop to a constant.
+
+| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| string_append_50k | 50000 | 5.12 | 4.15 | 1.28 | 1.14 | 1.23x | 3.99x | 4.51x |
+| read_line | 200000 | 105.14 | 80.30 | 58.36 | 66.42 | 1.31x | 1.80x | 1.58x |
+| map_put_get_8k | 16000 | 35.08 | 30.37 | 40.36 | 39.54 | 1.15x | 0.87x | 0.89x |
+| int_eq | 10000000 | 0.67 | 0.80 | 0.66 | 0.92 | 0.84x | 1.01x | 0.73x |
+| generic_call | 100000000 | 0.33 | 0.67 | 0.34 | 0.33 | 0.50x | 0.97x | 1.00x |
+| method_call | 100000000 | 0.00 | 0.50 | 1.69 | 1.50 | 0.00x | 0.00x | 0.00x |
+| try | 100000000 | 0.34 | 0.70 | 0.88 | 0.81 | 0.49x | 0.38x | 0.42x |
+| match | 100000000 | 1.56 | 2.12 | 1.16 | 1.60 | 0.74x | 1.34x | 0.97x |
+| builtin_length | 100000000 | 0.00 | 0.33 | 0.33 | 0.35 | 0.00x | 0.00x | 0.00x |
+| for_list | 100000000 | 0.44 | 0.62 | 0.28 | 0.41 | 0.72x | 1.56x | 1.07x |
+
+Faster than Go on 7 of 10 rows (two fold to constants), slower on string_append (1.2x), read_line (1.3x) and map_put_get (1.15x). Against Rust with overflow checks it is level or ahead on 6 rows and behind on string_append (4.5x: a runtime call per append against an inlined push) and read_line (1.6x).
+
 ## Latest: Rust `ms` (2026-10-22)
 
 Median of 7 runs with alternating order; linux/amd64, four cores, Go 1.24.7, rustc 1.99.1 (`-C opt-level=3 -C codegen-units=1`). Checksums and operation counts verified. Ratios are Manuscript time over the other language's time, so below 1.00x is faster than it.
