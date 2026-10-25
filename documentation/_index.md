@@ -2,7 +2,7 @@
 title = "Manuscript — The language for the agentic era."
 weight = 1
 bookToC = false
-description = "Agents write. Humans understand."
+description = "A programming language designed for agents to write and humans to understand. Learning from agent behavior to make every token count, while keeping code readable and easy to analyze."
 +++
 
 {{< docs-home >}}

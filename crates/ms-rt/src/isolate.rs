@@ -22,7 +22,23 @@ pub struct Inbox {
     cancel: AtomicU8,
     /// The running task's header block, for a parent that cancels this isolate.
     cur: PublishedHdr,
+    /// Whether this isolate is parked with only isolate-posted tokens pending (see [`enter_idle`]).
+    /// Changed only with `IDLE` locked.
+    idle: AtomicBool,
 }
+
+/// How many isolates run and how many of them are parked waiting for another isolate.
+struct IdleCount {
+    live: usize,
+    idle: usize,
+}
+
+/// Guards `idle` flags with the counts, so a post and the poster's target agree on whether the
+/// target is parked.
+static IDLE: Mutex<IdleCount> = Mutex::new(IdleCount { live: 0, idle: 0 });
+/// Set once every isolate waits on another and nothing can wake them; the main isolate faults.
+static DEADLOCK: AtomicBool = AtomicBool::new(false);
+static MAIN_INBOX: Mutex<Option<Arc<Inbox>>> = Mutex::new(None);
 
 static REGISTRY: Mutex<Vec<Option<Arc<Inbox>>>> = Mutex::new(Vec::new());
 
@@ -50,7 +66,11 @@ pub fn is_worker() -> bool {
 /// Marks the calling isolate as the main one, the target of signal-driven wake-ups.
 pub fn set_main() {
     // SAFETY: this isolate's state.
-    unsafe { *MAIN.ptr() = true };
+    if unsafe { core::mem::replace(&mut *MAIN.ptr(), true) } {
+        return;
+    }
+    *MAIN_INBOX.lock().unwrap_or_else(|e| e.into_inner()) = Some(current().1.clone());
+    IDLE.lock().unwrap_or_else(|e| e.into_inner()).live += 1;
 }
 
 /// Whether signal handlers should wake the calling isolate's poller.
@@ -74,6 +94,7 @@ fn current() -> &'static (usize, Arc<Inbox>) {
             wake: Mutex::new(None),
             cancel: AtomicU8::new(0),
             cur: PublishedHdr::new(),
+            idle: AtomicBool::new(false),
         });
         let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
         let slot = match reg.iter().position(Option::is_none) {
@@ -115,6 +136,12 @@ pub fn post_remote(id: u64, value: u64) {
             _ => return,
         }
     };
+    // The target stops counting as parked before the post exists, so no check sees it parked
+    // with a wake-up on its way.
+    let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+    if inbox.idle.swap(false, Ordering::Relaxed) {
+        idle.idle -= 1;
+    }
     inbox
         .posts
         .lock()
@@ -173,8 +200,86 @@ pub fn raise_cancel(slot: usize, sig: u8) {
         }
     };
     inbox.cancel.store(sig, Ordering::Relaxed);
+    {
+        let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+        if inbox.idle.swap(false, Ordering::Relaxed) {
+            idle.idle -= 1;
+        }
+    }
     inbox.cur.cancel(sig);
     if let Some(wake) = &*inbox.wake.lock().unwrap_or_else(|e| e.into_inner()) {
         wake();
     }
+}
+
+/// Counts a worker isolate before its thread starts, so the main isolate does not look alone
+/// while the worker is still being set up.
+pub fn count_worker() {
+    IDLE.lock().unwrap_or_else(|e| e.into_inner()).live += 1;
+}
+
+/// Ends the count of a worker isolate (also when its thread never started). Its last posts
+/// were made first, so a parked isolate is already awake by now; if the rest are all parked,
+/// nothing is left to wake them.
+pub fn retire_worker() {
+    let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+    idle.live -= 1;
+    declare_if_stuck(&idle);
+}
+
+/// Flags a deadlock when every isolate is parked, and wakes the main isolate to report it. A
+/// stop request in flight (a signal handler cannot take the lock) is not a deadlock.
+fn declare_if_stuck(idle: &IdleCount) {
+    if idle.live == 0 || idle.idle != idle.live {
+        return;
+    }
+    if crate::fault::PENDING_SIGNAL.load(Ordering::Relaxed) != 0 {
+        return;
+    }
+    DEADLOCK.store(true, Ordering::Release);
+    let main = MAIN_INBOX.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(main) = main
+        && let Some(wake) = &*main.wake.lock().unwrap_or_else(|e| e.into_inner())
+    {
+        wake();
+    }
+}
+
+/// Marks the calling isolate parked on tokens that only other isolates can post. Returns true
+/// on the main isolate when every isolate is now parked, so the process is stuck. Not parked (false) when a post
+/// already waits in the inbox.
+pub fn enter_idle() -> bool {
+    let (_, inbox) = current();
+    let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+    if inbox.full.load(Ordering::Acquire) {
+        return false;
+    }
+    if !inbox.idle.swap(true, Ordering::Relaxed) {
+        idle.idle += 1;
+    }
+    declare_if_stuck(&idle);
+    take_deadlock(&mut idle, inbox)
+}
+
+/// Marks the calling isolate awake again. Returns true on the main isolate when a deadlock was
+/// declared meanwhile.
+pub fn leave_idle() -> bool {
+    let (_, inbox) = current();
+    let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
+    if inbox.idle.swap(false, Ordering::Relaxed) {
+        idle.idle -= 1;
+    }
+    take_deadlock(&mut idle, inbox)
+}
+
+/// Whether the main isolate is to report the declared deadlock; it reports it once. The
+/// reporting isolate stops counting as parked, since its cleanup may wait again.
+fn take_deadlock(idle: &mut IdleCount, inbox: &Inbox) -> bool {
+    if !is_main() || !DEADLOCK.swap(false, Ordering::AcqRel) {
+        return false;
+    }
+    if inbox.idle.swap(false, Ordering::Relaxed) {
+        idle.idle -= 1;
+    }
+    true
 }

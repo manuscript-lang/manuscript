@@ -1,24 +1,59 @@
 # Manuscript
 
-Manuscript is the language for the agentic era.
+**The language for the agentic era.**
 
-Agents write the code and people understand it. It is statically typed, compiles to fast, self-contained native executables, and keeps its core small and regular, so an agent can write a confident first draft and a person can read, inspect, and verify the result.
+Manuscript is a programming language designed for agents to write and humans to understand.
 
-[Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Download](https://github.com/manuscript-lang/manuscript/releases)
+When agents write software, the language shapes how much context they need, how reliably they can make a change, and how well people can understand the result. Manuscript designs for that whole relationship: token-efficient code that stays readable, a small and regular language that is easy to reason about, and compiler-backed tools that make programs inspectable.
 
-## Highlights
+We learn by watching agents build real programs. Their mistakes, repair attempts, token use, and test results feed back into the syntax, standard library, diagnostics, and tools. The ambition is to make every part of the language serve agent generation, human understanding, and precise analysis together.
 
-- **Clear syntax, no tricks.** Familiar names, four-space blocks, and one obvious spelling instead of clever alternatives. An agent can write it reliably and a person can read it at a glance. Claude Haiku 5.5 passes 9 of 10 small challenges and 8 of 10 large applications (3-5k lines) on the [agent bench](bench/agent/results/summary-2026-10-21.md).
-- **Simple, fast memory.** Value semantics with move and copy, no garbage collector, deterministic cleanup. Nothing is copied unless you write `.clone()`, and the only ownership marker is `var`.
-- **Fast, and closing in on Rust.** Native code through LLVM: faster than hand-written Go on 26 of 31 benchmarks, and within 1.25x of Rust (overflow checks on) on most kernels, ahead on several.
-- **One binary.** `ms` is the compiler, formatter, linter, test runner, language server, and profiler. It needs no C toolchain or SDK.
+[Get started](documentation/learn/getting-started.md) · [Language tour](documentation/learn/tour.md) · [The book](https://manuscript-lang.github.io/manuscript/) · [Release archives](https://github.com/manuscript-lang/manuscript/releases)
 
-## Example
+## Designed around how agents work
 
-Typed JSON, optional values, error propagation with `try`, and a test in one file:
+- **Learn from behavior.** The [agent benchmark](bench/agent/README.md) records test outcomes, tokens, turns, time, and cost. We use those observations to find friction and improve the language itself, from common syntax mistakes to the feedback that helps an agent recover.
+- **Spend tokens on meaning.** Compact expressions, inferred types, pipe flows, and a concise API vocabulary aim to reduce the context needed to express and understand a program. Token efficiency is a design goal alongside readability and analyzability; shorter code still needs to say clearly what it does.
+- **Keep reasoning local.** A small, regular core, explicit types at boundaries, `Optional` and `Result`, and visible mutation make intent easier to follow. Python-like syntax gives agents a familiar starting point, paired with Manuscript’s own static checking, ownership and borrowing, and native compilation. Familiarity guides the design; Python compatibility is not the goal.
+- **Make analysis part of the language.** Static checking, structured diagnostics, symbol search, inspection, and diagrams derive evidence from source. Agents can find exact APIs and act on compiler feedback; people can examine the same program and its relationships.
+- **Design the whole loop.** We’re building a batteries-included language: a broad standard library and integrated tooling, so agents can build complete applications without assembling the basics themselves.
+
+The [vision](VISION.md) sets out the longer-term ambition. The [language tour](documentation/learn/tour.md) shows how these choices feel in code.
+
+Manuscript is in alpha. Syntax, APIs, and platform behavior can change. These repository docs describe current `main`; a published release may lag it. Consult the documentation in the release's source tag or [build this checkout](#build-from-source) to try the latest features.
+
+## Try it
+
+To try the current implementation, [build from source](#build-from-source) and use `target/release/ms` for the commands below. If the [releases page](https://github.com/manuscript-lang/manuscript/releases) provides an archive for your platform, you can instead extract it and run from that directory:
+
+```sh
+./ms check examples/hello/ms.toml
+./ms run examples/hello/ms.toml -- first second
+```
+
+On Windows PowerShell, use `.\ms.exe`. The example prints:
+
+```text
+Arguments: 2
+```
+
+The first native link downloads a pinned, checksum-verified linker into the cache. Release builds also fetch LLVM tools when needed; later builds reuse them. Plan for network access on first use, or configure local tools as described in [how it works](documentation/developer-tooling/how-it-works.md). The compiler distribution is not a fully offline toolchain.
+
+`check` validates source without running it; `run` builds a temporary executable and forwards arguments after `--`. Keep an executable and run the example's test with:
+
+```sh
+./ms build examples/hello/ms.toml -o hello
+./ms test examples/hello/test.ms
+```
+
+The resulting executable runs without `ms` installed. Follow [your first program](documentation/learn/getting-started.md) to edit the example, run it again, and create a project.
+
+## Typed data, explicit errors
+
+Put `ms` on your `PATH` for the following commands (or use its full path). Save this as `orders.ms`, then run `ms test orders.ms`. It parses JSON directly into your types and checks both the successful result and malformed input:
 
 ```manuscript
-from "@std/json.ms" import parse, stringify
+from "@std/json.ms" import parse
 from "@std/testing.ms" import expect_equal
 
 type Order:
@@ -29,8 +64,7 @@ type Order:
 def discount(order: Order) -> Int:
     if let code = order.coupon:
         return order.cents / 10 if code == "SAVE10" else 0
-    else:
-        return 0
+    return 0
 
 def summary(text: String) -> Result[String, Error]:
     let orders = try parse[List[Order]](text)
@@ -40,174 +74,77 @@ def summary(text: String) -> Result[String, Error]:
     return ok(f"{orders.length()} orders, {total / 100} dollars")
 
 test "orders from JSON":
-    let sam = Order(customer: "Sam", cents: 5000, coupon: some("SAVE10"))
-    let ana = Order(customer: "Ana", cents: 2500, coupon: none)
-    let text = try stringify([sam, ana])
+    let text = (
+        "[{\"customer\":\"Sam\",\"cents\":5000,\"coupon\":\"SAVE10\"},"
+        + "{\"customer\":\"Ana\",\"cents\":2500}]"
+    )
     try expect_equal(try summary(text), "2 orders, 70 dollars")
     try expect_equal(summary("not json").is_error(), True)
 ```
 
-Run it with `ms test`. `parse[List[Order]]` reads text into your types and returns a `Result`, `try` passes any error to the caller, and `Optional` fields unwrap with `if let`.
+`try` passes a failure to the caller. `Optional[String]` represents a coupon that may be absent; `if let` gives its value when present. The standard library includes JSON, files, streams, HTTP, networking, text, time, and processes. Find the exact API with `ms search_symbol json.parse` or the [library reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/).
 
-## The language
+## Ownership and visible mutation
 
-### Pipes
+Ownership and borrowing are central to the memory model. Ordinary records and collections have value semantics: the compiler borrows or moves them according to use, `var` makes mutation visible, and `.clone()` explicitly copies ordinary nested data. Owned values are reclaimed deterministically during normal execution, without a tracing garbage collector. External resources still need `with` or `close()`, and shared handles have their own contracts. See [references and borrowing](documentation/core-language/types/references.md) and [scoped cancellation](documentation/core-language/concurrency/task-groups.md) for the exact rules.
 
-A `|` flow passes each result to the next call, so a sequence of steps reads from top to bottom. A `try` step unwraps a `Result` or returns its error.
+The [language tour](documentation/learn/tour.md) introduces functions, types, mutation, and cleanup through runnable examples.
 
-```manuscript
-from "@std/testing.ms" import expect_equal
+## Concurrency with a scope
 
-type Reading:
-    sensor: String
-    celsius: Float
+Use a group inside `with` so the work has an explicit lifetime:
 
-def hot(readings: List[Reading]) -> List[Reading]:
-    return readings.filter(
-        lambda (reading: Reading) -> Bool:
-            return reading.celsius > 30.0
-    )
+| Choose | For | Communication |
+| --- | --- | --- |
+| `TaskGroup` | Cooperative work on one runtime thread; a CPU-bound task does not provide parallelism | A callback receives a typed channel; task values move through it |
+| `WorkerGroup` | Parallel work on isolated OS threads | A named zero-argument `Unit` entry opens `worker_channel`; messages are serialized |
+| `ProcessGroup` | Running a named entry in a fresh child process | Typed messages or piped stdin, stdout, and stderr |
 
-def names(readings: List[Reading]) -> String:
-    return readings.map(
-        lambda (reading: Reading) -> String:
-            return reading.sensor
-    ).join(", ")
+`Channel[In, Out]` sends `In` and receives `Out`; its `Transport` supplies the operations. These are distinct execution models, not interchangeable ways to share mutable objects. Read [concurrency](documentation/core-language/concurrency/_index.md) for runnable examples, channels, and scoped cancellation. Isolation here is an execution model, not a security sandbox.
 
-def alert(readings: List[Reading]) -> String:
-    return readings | hot | names
+## Tools for agents and people
 
-test "pipe flow":
-    let readings = [
-        Reading(sensor: "a", celsius: 21.5),
-        Reading(sensor: "b", celsius: 35.0)
-    ]
-    try expect_equal(alert(readings), "b")
-```
-
-### Value semantics and ownership
-
-Records, lists, maps, and sets are values, so two names never change one object. Small values copy implicitly; everything else moves at its last use, which passes data along without copying it. `.clone()` is the only deep copy and is always visible. Every value has one owner and is dropped at a known point, so there is no garbage collector and no pause.
-
-The compiler checks this on every program, with no lifetime annotations. It infers whether each parameter reads, mutates, or consumes its argument. The one marker you write is `var`, on the parameter and again at the call, exactly where a function changes its argument:
-
-```manuscript
-type Cart:
-    items: List[String]
-
-def add(var cart: Cart, item: String) -> Unit:
-    cart.items.append(item)
-
-def count(cart: Cart) -> Int:
-    return cart.items.length()
-
-def pay(cart: Cart) -> Cart:
-    return cart
-
-def demo() -> Int:
-    var cart = Cart(items: [])
-    add(var cart, "book")
-    let seen = count(cart)
-    let receipt = pay(cart)
-    return seen + receipt.items.length()
-```
-
-`count` borrows `cart`. `pay` consumes it, so the move happens at its last use. Using `cart` after that is rejected, with a fix the compiler states:
-
-```text
-`cart` is moved here but used again at 18:25; a value has one owner, so pass `cart.clone()` to keep the original, or move it only at its last use
-```
-
-Cleanup follows the same ownership. `with try files.open("data.txt") as file:` closes the resource at the end of the block, including when an error occurs.
-
-### Errors
-
-`Optional` and `Result` put absence and failure in the type, and `try` propagates them. Input and output are ordinary calls, so no function needs special async syntax.
-
-## Performance
-
-Representative programs compiled natively (linux/amd64), as a fraction of hand-written Go's time; lower is faster.
-
-| Program | Manuscript / Go |
-| --- | ---: |
-| Game of Life, 128x128 for 50 generations | 0.09 |
-| Stack of 20M pushes and pops | 0.11 |
-| Sorting 1M items with a comparator | 0.14 |
-| Parsing and splitting 1M lines of text | 0.45 |
-| `Result` propagation with `try`, 50M calls | 0.57 |
-| `Optional` construction and `if let`, 100M | 0.66 |
-
-Across all 31 benchmarks Manuscript beats Go on 26. Against Rust with overflow checks on, most kernels are within 1.25x and several are ahead (dispatch, sort, string-keyed maps, grids, optionals, sets). Whole programs are level or ahead on sieve, matmul, trees, collatz, and map counting, and within 1.3x on n-body and life. Unreached runtime and standard-library code is removed at link time, so an empty program is about 0.45 MB. Methods and numbers: [programs](bench/perf/programs/results.md), [competence](bench/perf/competence/README.md), [kernels](bench/perf/kernels/README.md).
-
-## Built on measurement
-
-Language and compiler choices are settled by benchmarks, not taste.
-
-- **Agents.** [`agent-bench`](bench/agent/README.md) gives real agents the same challenges in TypeScript, Go, Rust, and Manuscript, and checks their output against hidden tests. Failures drive changes to diagnostics, documentation, and the `ms guide` cheat sheet.
-- **Speed.** [`bench/perf`](bench/perf/README.md) times Manuscript against hand-written Go and Rust. A design that cannot show a measured gain does not get built.
-
-## Tools for the loop
-
-An agent writes, checks, fixes, and verifies; a person guides and inspects. `check`, `lint`, `test`, `build`, and `inspect` accept `--json`; `ms verify` runs check, format, lint, and test in one result; `ms search_symbol` finds exact APIs. Compiler messages name the next step. The standard library covers files, processes, networking, HTTP, JSON, text, and time.
-
-See the [tooling guide](documentation/developer-tooling/implementation.md), [how it works](documentation/developer-tooling/how-it-works.md), and [VS Code integration](extensions/vscode/README.md). The [vision](VISION.md) describes where the project is heading.
-
-## Try it
-
-Extract the [release archive](https://github.com/manuscript-lang/manuscript/releases). It includes `ms` and the hello project; nothing else to install.
-
-From the extracted directory, run:
+After putting `ms` on your `PATH`, use these commands in a project:
 
 ```sh
-./ms check examples/hello/ms.toml
-./ms run examples/hello/ms.toml -- first second
+ms guide
+ms search_symbol "read file"
+ms check ms.toml --json
+ms verify ms.toml
 ```
 
-On Windows PowerShell, use `.\ms.exe`.
+`ms guide` is a compact language reference; `search_symbol` finds project and standard-library APIs. Diagnostics name the cause and a concrete fix. `ms check --fix` applies supported mechanical repairs. `ms verify` combines checking, formatting checks, linting, and tests; it does not establish that a program is correct or secure.
 
-```text
-Arguments: 2
-```
+The [tooling guide](documentation/developer-tooling/implementation.md) covers structured output, inspection, diagrams, and profiling. The [VS Code extension](extensions/vscode/README.md) adds editor diagnostics and navigation into the standard declarations.
 
-`check` validates source; `run` builds a temporary executable and passes it arguments after `--`.
+## Native code, measured performance
 
-Start a project with `./ms init my-app`, or keep an executable and run the test:
+`ms` checks and lowers your source to an intermediate representation, then compiles it ahead of time to native machine code and links it with the runtime and standard library. There is no JIT compilation at runtime. Cranelift keeps debug builds fast for quick iteration. Release and MinSizeRel builds use LLVM to optimize for runtime performance or binary size when its tools are available, falling back to Cranelift if they cannot be fetched. The resulting executable runs without `ms` installed. See [how compilation works](documentation/developer-tooling/how-it-works.md).
+
+Performance is part of the design: native execution, packed storage, and compiler optimizations aim to make readable code efficient to run. Benchmark results guide that work alongside the agent feedback loop.
+
+The project uses [agent exercises](bench/agent/README.md) to study how agents build programs, and [performance benchmarks](bench/perf/README.md) to guide compiler and runtime work. Results depend on the program, revision, build mode, hardware, and comparison settings. The benchmark directories include sources, commands, and recorded results; measure your own workload before drawing conclusions about performance.
+
+## Build from source
+
+Install [rustup](https://rustup.rs), Make, and a C compiler, then run from this checkout:
 
 ```sh
-./ms build examples/hello/ms.toml -o hello
-./ms test examples/hello/test.ms
+make build
+target/release/ms run examples/hello/ms.toml -- first second
 ```
 
-`./ms --help` lists commands; `fmt` formats and `lint` reports findings. See [your first program](documentation/learn/getting-started.md).
+`make build` builds the native runtime before embedding it in `ms`. The repository pins Rust in `rust-toolchain.toml`. See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for downloads, platform prerequisites, and checks.
 
 ## Keep exploring
 
 | You want to… | Start here |
 | --- | --- |
-| Learn the language | [Language tour](documentation/learn/tour.md) and [core language](documentation/core-language/_index.md) |
+| Learn by running code | [Your first program](documentation/learn/getting-started.md), then the [tour](documentation/learn/tour.md) |
+| Build a useful script or service | [Common tasks](documentation/learn/common-tasks.md) |
+| Look up an exact rule | [Core language](documentation/core-language/_index.md) |
 | Find a standard type or function | `ms search_symbol <name or words>` and the [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) |
-| Understand cleanup | [Resource lifetimes](documentation/core-language/cleanup/_index.md) and [runtime conventions](documentation/contributing/runtime-conventions.md) |
-| Set up your editor or use source tools | [VS Code extension](extensions/vscode/README.md) and [tooling guide](documentation/developer-tooling/implementation.md) |
-| Understand what `ms` bundles | [How it works](documentation/developer-tooling/how-it-works.md) |
-| Choose optimization and debugging settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) |
+| Choose build and profiling settings | [Build levels](documentation/developer-tooling/builds/build-levels.md) and [tooling](documentation/developer-tooling/implementation.md) |
+| Contribute | [Architecture](documentation/contributing/architecture.md), [development checks](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md) |
 
-## Project status
-
-Version 0.1: working compiler, runtime, standard library, test runner, formatter, and editor tooling, still evolving. External adapters, incremental frontend compilation, and some tooling APIs remain design work.
-
-## Build from source
-
-Releases ship the Rust `ms`. To build it from a checkout, install [rustup](https://rustup.rs) and a C compiler (`cc`; `clang` on Windows; the `ring` crate compiles C sources while building the runtime), then:
-
-```sh
-cargo build --release --locked -p ms-cli
-target/release/ms run examples/hello/ms.toml -- first second
-```
-
-See the [Rust toolchain guide](documentation/contributing/rust-toolchain.md) for checks, crates, and platform behavior.
-
-## Contribute
-
-See the [architecture guide](documentation/contributing/architecture.md), [development and publishing](documentation/contributing/development.md), and [maintenance](documentation/contributing/maintenance.md). Routine checks: `make setup`, `make doctor`, `make verify`; `make verify-full` adds the conformance corpus, book, and distribution checks. Rust changes also run `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo nextest run --workspace`.
-
-Layout: `crates/` (compiler, runtime, tooling), `documentation/` (guides), [stdlib/](stdlib/intrinsics.ms) (standard declarations). The website builds into ignored `.artifacts/book/`.
+Source lives in `crates/`, authored guides in `documentation/`, and standard declarations and library guides in `stdlib/`. The repository-backed website builds into ignored `.artifacts/book/`.
