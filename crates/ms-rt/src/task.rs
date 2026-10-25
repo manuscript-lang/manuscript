@@ -1307,11 +1307,16 @@ pub(crate) unsafe fn unwind_if_cancelled() {
 /// Starts a task that runs `closure`, which the caller lends: the task retains it and releases it
 /// when it ends, by return, cancellation, or fault. A fault in the task ends the process. With a
 /// non-negative `limit_ns` the task is cancelled once it has run that long. Returns the handle.
-pub(crate) unsafe fn spawn_closure(closure: *mut ms_rt_abi::Closure, limit_ns: i64) -> u64 {
+pub(crate) unsafe fn spawn_closure(
+    closure: *mut ms_rt_abi::Closure,
+    limit_ns: i64,
+    fatal: bool,
+) -> u64 {
     // SAFETY: single threaded scheduler; `closure` is a live closure object.
     unsafe {
         crate::obj::msrt_retain(closure.cast());
-        let h = msrt_task_spawn(closure_entry, closure.cast(), SPAWN_FATAL, TASK_GROUP_STACK);
+        let flags = if fatal { SPAWN_FATAL } else { 0 };
+        let h = msrt_task_spawn(closure_entry, closure.cast(), flags, TASK_GROUP_STACK);
         let t = lookup(h);
         (*t).owned = closure.cast();
         (*t).started_by = fault::capture_frames();
@@ -1346,16 +1351,44 @@ pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
         if lookup(handle).is_null() {
             return 3;
         }
-        let status = join(handle, null_mut(), keep);
+        let started = (*lookup(handle)).started_by.clone();
+        let mut msg = crate::string::NO_STR;
+        let status = join(handle, &mut msg, keep);
         if status == 2 && cancel_flag().load(Ordering::Relaxed) != 0 {
             fault::msrt_cancelled();
         }
         match status {
             0 => 0,
+            1 => {
+                // A contained fault. Collecting takes the report; a kept task still owns it.
+                let report = if keep {
+                    let t = lookup(handle);
+                    fault::fault_report(&(*t).msg, &(*t).started_by)
+                } else {
+                    let report = fault::fault_report(&msg, &started);
+                    crate::string::release_opt(&msg);
+                    report
+                };
+                let last = &mut *LAST_FAULT.ptr();
+                if last.is_empty() || !keep {
+                    *last = report;
+                }
+                4
+            }
             _ if *TIMED_OUT.ptr() => 1,
             _ => 2,
         }
     }
+}
+
+/// The report of the contained fault the last join or wait saw, taken once.
+pub(crate) fn take_fault_report() -> Vec<u8> {
+    // SAFETY: single threaded scheduler.
+    unsafe { core::mem::take(&mut *LAST_FAULT.ptr()) }
+}
+
+crate::isolate_static! {
+    static LAST_FAULT: Vec<u8> = Vec::new();
 }
 
 /// Requests cancellation of a task started by `spawn_closure`.
@@ -1712,7 +1745,7 @@ mod tests {
             (*lookup(active)).kill_at = deadline;
             sched().kills.push(Reverse((deadline, active)));
             for _ in 0..4 * MIN_TIMER_LIMIT {
-                let task = spawn_closure(closure, 3_600_000_000_000);
+                let task = spawn_closure(closure, 3_600_000_000_000, true);
                 assert_eq!(join_closure(task, false), 0);
             }
             crate::obj::release(closure.cast());
