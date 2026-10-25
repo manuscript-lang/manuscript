@@ -5,14 +5,14 @@ weight = 0
 
 # How it works
 
-`ms` checks your program and compiles it to a native executable. The compiler, Cranelift backend, runtime and standard library ship together. Native linking and LLVM optimization use pinned tools downloaded on first use and cached for later builds; a fresh installation needs network access. See [toolchain requirements](../contributing/rust-toolchain.md#differences-users-can-see) for local-tool overrides and platform details.
+`ms` checks your program and compiles it ahead of time to a native executable. Execution uses the compiled machine code, with no JIT compiler. The compiler, Cranelift backend, runtime and standard library ship together. Native linking and LLVM optimization use pinned tools downloaded on first use and cached for later builds; a fresh installation needs network access. See [toolchain requirements](../contributing/rust-toolchain.md#differences-users-can-see) for local-tool overrides and platform details.
 
 ```text
 .ms source → parse → check (HIR) → lower (MIR) → Cranelift or LLVM object code → link → executable
 ```
 
 1. **Parse and check.** Resolves imports, then checks types, control flow, cleanup, and effects. Errors stop here.
-2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift or LLVM emits object code. Debug uses Cranelift; Release and MinSizeRel use LLVM when available, falling back to Cranelift if the LLVM tools cannot be fetched. `ms emit` prints MIR for inspection.
+2. **Lower and compile.** Checked HIR becomes MIR, which is optimized and verified before Cranelift or LLVM emits object code. Debug uses Cranelift to keep compilation fast for quick iteration. Release uses LLVM to optimize runtime performance, and MinSizeRel favors code size as well. Both use Cranelift if the LLVM tools are unavailable or cannot be fetched. `ms emit` prints MIR for inspection.
 3. **Link.** The pinned `lld` links the object with the embedded runtime and native standard library. `ms build` writes the executable; `ms run` and `ms test` use a temporary directory.
 
 ## One binary

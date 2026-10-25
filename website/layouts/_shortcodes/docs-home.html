@@ -16,14 +16,14 @@
 </section>
 <section class="home-benefits" aria-labelledby="benefits-title">
   <h2 id="benefits-title">Why Manuscript</h2>
-  <p class="home-benefits-lead">The ambition is the ideal language for agentic development. Agent behavior, token use, human readability, and program analysis shape the design together.</p>
+  <p class="home-benefits-lead">The ambition is the ideal language for agentic development. Agent behavior, token use, human readability, and program analysis shape the design together. Python-like syntax gives agents a familiar starting point, paired with Manuscript’s own static checking, ownership and borrowing, and native compilation.</p>
   <ul class="home-benefit-grid">
     <li><strong>Shaped by agent behavior</strong><span>We watch agents build programs, measure outcomes, tokens, and repair attempts, then use what we learn to improve syntax, APIs, and compiler feedback.</span></li>
     <li><strong>Make every token count</strong><span>A compact syntax, inferred types, and a small, regular core aim to use context efficiently while keeping intent clear to people and tools.</span></li>
-    <li><strong>Keep reasoning local</strong><span>Explicit types at boundaries, visible mutation, and errors represented as values help agents make focused changes and people understand their effect.</span></li>
+    <li><strong>Ownership you can follow</strong><span>Values move or are borrowed; <code>var</code> makes mutation visible. The memory model uses deterministic reclamation, without a tracing garbage collector. <a href="{{ with .Site.GetPage "core-language/types/references" }}{{ .RelPermalink }}{{ end }}">Ownership and borrowing</a>.</span></li>
     <li><strong>Built to be analyzed</strong><span>Static checking, source-based diagrams, and program inspection turn code into evidence that agents and reviewers can examine together.</span></li>
     <li><strong>Feedback that moves work forward</strong><span>Structured diagnostics explain repairs. <code>ms search_symbol</code> finds exact APIs. <code>ms verify</code> brings type, formatting, lint, and test checks together.</span></li>
-    <li><strong>Native code, measured performance</strong><span>Source is checked, compiled to machine code, and linked with the runtime. Debug builds use Cranelift; optimized builds use LLVM when available. Benchmarks guide performance work. <a href="{{ with .Site.GetPage "developer-tooling/how-it-works" }}{{ .RelPermalink }}{{ end }}">How compilation works</a>.</span></li>
+    <li><strong>Native code, measured performance</strong><span>Ahead-of-time machine code, with no JIT. Cranelift keeps debug builds fast for quick iteration; LLVM optimizes production builds for runtime performance when available. Benchmarks guide performance work. <a href="{{ with .Site.GetPage "developer-tooling/how-it-works" }}{{ .RelPermalink }}{{ end }}">How compilation works</a>.</span></li>
   </ul>
   <p class="home-status">Manuscript is in alpha. This book follows the repository; release archives may lag behind. The first link downloads build tools into a local cache; platform requirements differ. <a href="{{ with .Site.GetPage "learn/getting-started" }}{{ .RelPermalink }}{{ end }}">Start with the setup guide.</a></p>
 </section>
