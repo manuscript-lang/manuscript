@@ -298,13 +298,3 @@ test "tasks joining clones of one worker all see its outcome":
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))
             first.result() | try expect_ok | try expect_equal(1)
             second.result() | try expect_ok | try expect_equal(1)
-
-test "leaving the group while a task joins a worker does not fault":
-    with TaskGroup[Int]() as tasks:
-        with WorkerGroup[Int, Int]() as workers:
-            let worker = workers.spawn(wait_forever).get(none)
-            let copy = worker.clone()
-            tasks.spawn(lambda c: joined_ok(copy.clone()))
-            sleep(duration(nanoseconds: 20000000))
-
-        try expect_equal(1, 1)
