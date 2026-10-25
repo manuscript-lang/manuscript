@@ -42,8 +42,8 @@ pub(crate) fn handles(m: &ms_mir::ir::Module, recv: MTy, name: &str) -> bool {
                 | "fold_right"
                 | "find"
                 | "find_last"
-                | "some"
-                | "every"
+                | "any"
+                | "all"
                 | "for_each"
         ),
         TyKind::Obj(n, _) if n == "Set" => matches!(
@@ -54,8 +54,8 @@ pub(crate) fn handles(m: &ms_mir::ir::Module, recv: MTy, name: &str) -> bool {
                 | "fold_right"
                 | "find"
                 | "find_last"
-                | "some"
-                | "every"
+                | "any"
+                | "all"
                 | "for_each"
         ),
         _ => false,
@@ -232,8 +232,8 @@ impl FnLower<'_> {
                     own: true,
                 }
             }
-            "some" | "every" => {
-                let some = name == "some";
+            "any" | "all" => {
+                let some = name == "any";
                 let acc = self.b.declare_var(MTy::BOOL, ms_mir::ir::Mode::Borrow);
                 let init = self.b.bconst(!some);
                 self.b.def_var(acc, init);

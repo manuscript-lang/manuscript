@@ -145,12 +145,12 @@ test "list methods mutate explicit clones and remain typed":
     original.find_last(predicate: negative) | try expect_equal(absent)
     original.find_index(predicate: negative) | try expect_equal(absent)
     original.find_last_index(predicate: negative) | try expect_equal(absent)
-    (original.some(predicate: positive)) | try expect_true
-    (original.every(predicate: positive)) | try expect_true
-    (not original.some(predicate: negative)) | try expect_true
-    (not original.every(predicate: negative)) | try expect_true
-    (not empty.some(predicate: positive)) | try expect_true
-    (empty.every(predicate: positive)) | try expect_true
+    (original.any(predicate: positive)) | try expect_true
+    (original.all(predicate: positive)) | try expect_true
+    (not original.any(predicate: negative)) | try expect_true
+    (not original.all(predicate: negative)) | try expect_true
+    (not empty.any(predicate: positive)) | try expect_true
+    (empty.all(predicate: positive)) | try expect_true
 
     var observed_original: List[Int] = []
     original.for_each(

@@ -29,20 +29,20 @@
             "file": "collections.ms",
             "line": 169,
             "column": 5,
-            "offset": 5794
+            "offset": 5791
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 168,
               "column": 5,
-              "offset": 5760
+              "offset": 5757
             },
             "end": {
               "file": "collections.ms",
               "line": 168,
               "column": 8,
-              "offset": 5763
+              "offset": 5760
             },
             "replacement": "var"
           }
@@ -55,20 +55,20 @@
             "file": "collections.ms",
             "line": 170,
             "column": 5,
-            "offset": 5813
+            "offset": 5810
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 168,
               "column": 5,
-              "offset": 5760
+              "offset": 5757
             },
             "end": {
               "file": "collections.ms",
               "line": 168,
               "column": 8,
-              "offset": 5763
+              "offset": 5760
             },
             "replacement": "var"
           }
@@ -81,20 +81,20 @@
             "file": "collections.ms",
             "line": 171,
             "column": 22,
-            "offset": 5849
+            "offset": 5846
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 168,
               "column": 5,
-              "offset": 5760
+              "offset": 5757
             },
             "end": {
               "file": "collections.ms",
               "line": 168,
               "column": 8,
-              "offset": 5763
+              "offset": 5760
             },
             "replacement": "var"
           }
@@ -107,20 +107,20 @@
             "file": "collections.ms",
             "line": 171,
             "column": 49,
-            "offset": 5876
+            "offset": 5873
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 168,
               "column": 5,
-              "offset": 5760
+              "offset": 5757
             },
             "end": {
               "file": "collections.ms",
               "line": 168,
               "column": 8,
-              "offset": 5763
+              "offset": 5760
             },
             "replacement": "var"
           }
@@ -133,20 +133,20 @@
             "file": "collections.ms",
             "line": 174,
             "column": 5,
-            "offset": 5946
+            "offset": 5943
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 173,
               "column": 5,
-              "offset": 5906
+              "offset": 5903
             },
             "end": {
               "file": "collections.ms",
               "line": 173,
               "column": 8,
-              "offset": 5909
+              "offset": 5906
             },
             "replacement": "var"
           }
@@ -159,20 +159,20 @@
             "file": "collections.ms",
             "line": 175,
             "column": 5,
-            "offset": 5966
+            "offset": 5963
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 173,
               "column": 5,
-              "offset": 5906
+              "offset": 5903
             },
             "end": {
               "file": "collections.ms",
               "line": 173,
               "column": 8,
-              "offset": 5909
+              "offset": 5906
             },
             "replacement": "var"
           }
@@ -185,20 +185,20 @@
             "file": "collections.ms",
             "line": 176,
             "column": 22,
-            "offset": 6003
+            "offset": 6000
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 173,
               "column": 5,
-              "offset": 5906
+              "offset": 5903
             },
             "end": {
               "file": "collections.ms",
               "line": 173,
               "column": 8,
-              "offset": 5909
+              "offset": 5906
             },
             "replacement": "var"
           }
@@ -211,20 +211,20 @@
             "file": "collections.ms",
             "line": 179,
             "column": 5,
-            "offset": 6072
+            "offset": 6069
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 178,
               "column": 5,
-              "offset": 6040
+              "offset": 6037
             },
             "end": {
               "file": "collections.ms",
               "line": 178,
               "column": 8,
-              "offset": 6043
+              "offset": 6040
             },
             "replacement": "var"
           }
@@ -237,20 +237,20 @@
             "file": "collections.ms",
             "line": 180,
             "column": 5,
-            "offset": 6087
+            "offset": 6084
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 178,
               "column": 5,
-              "offset": 6040
+              "offset": 6037
             },
             "end": {
               "file": "collections.ms",
               "line": 178,
               "column": 8,
-              "offset": 6043
+              "offset": 6040
             },
             "replacement": "var"
           }
@@ -263,20 +263,20 @@
             "file": "collections.ms",
             "line": 181,
             "column": 22,
-            "offset": 6119
+            "offset": 6116
           },
           "fix": {
             "position": {
               "file": "collections.ms",
               "line": 178,
               "column": 5,
-              "offset": 6040
+              "offset": 6037
             },
             "end": {
               "file": "collections.ms",
               "line": 178,
               "column": 8,
-              "offset": 6043
+              "offset": 6040
             },
             "replacement": "var"
           }

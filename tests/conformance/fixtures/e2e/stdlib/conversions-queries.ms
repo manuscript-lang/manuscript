@@ -69,14 +69,14 @@ test "conversions and collection queries are callable":
     let entries: Map[String, Int] = {"b": 2, "a": 1}
     try expect_equal(entries.fold(0, lambda acc, k, v: acc + v), 3)
     try expect_equal(entries.find(lambda k, v: v == 1).get().key, "a")
-    try expect_true((entries.some(lambda k, v: v == 1)))
-    try expect_true((entries.every(lambda k, v: v > 0)))
+    try expect_true((entries.any(lambda k, v: v == 1)))
+    try expect_true((entries.all(lambda k, v: v > 0)))
 
     let values = Set[Int]([2, 1])
     try expect_equal(values.fold(0, lambda acc, n: acc + n), 3)
     try expect_equal(values.find(lambda n: n == 1).get(), 1)
-    try expect_true((values.some(lambda n: n == 1)))
-    try expect_true((values.every(lambda n: n > 0)))
+    try expect_true((values.any(lambda n: n == 1)))
+    try expect_true((values.all(lambda n: n > 0)))
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
     var counter = Counter(0)
@@ -233,7 +233,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     var empty_calls: List[Int] = []
     var values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     var seen: List[String] = []
-    let some = values.some
+    let some = values.any
     try expect_false(
         (
             not (
@@ -256,7 +256,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     values.add("c", 3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.every
+    let every = values.all
     try expect_false(
         (
             every(
@@ -273,7 +273,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     )
     values.clear()
     try expect_false(
-        values.some(
+        values.any(
             (
                 lambda k,
                 v:
@@ -284,7 +284,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
     )
     try expect_true(
         (
-            values.every(
+            values.all(
                 (
                     lambda k,
                     v:
@@ -298,8 +298,8 @@ test "Map predicates short circuit over snapshots including empty receivers":
     let complete: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
     try expect_false(
         (
-            complete.some(lambda k, v: False)
-            or not (complete.every(lambda k, v: True))
+            complete.any(lambda k, v: False)
+            or not (complete.all(lambda k, v: True))
         )
     )
     empty_calls.is_empty() | try expect_true
@@ -391,7 +391,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     var empty_calls: List[Int] = []
     var values = Set[Int]([2, 1, 3])
     var seen: List[Int] = []
-    let some = values.some
+    let some = values.any
     try expect_false(
         (
             not (
@@ -412,7 +412,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     values.add(3)
     seen.splice(0, seen.length(), [])
 
-    let every = values.every
+    let every = values.all
     try expect_false(
         (
             every(
@@ -427,7 +427,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
     values.clear()
     try expect_false(
-        values.some(
+        values.any(
             (
                 lambda v:
                     empty_calls.append(1)
@@ -437,7 +437,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
     )
     try expect_true(
         (
-            values.every(
+            values.all(
                 (
                     lambda v:
                         empty_calls.append(1)
@@ -449,7 +449,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 
     let complete = Set[Int]([2, 1])
     try expect_false(
-        complete.some(lambda v: False) or not (complete.every(lambda v: True))
+        complete.any(lambda v: False) or not (complete.all(lambda v: True))
     )
     try expect_true((complete.find(lambda v: False).is_none()))
     empty_calls.is_empty() | try expect_true
@@ -459,7 +459,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     var map_visits: List[String] = []
     try expect_false(
         (
-            map.some(
+            map.any(
                 lambda k,
                 v:
                     map_visits.append(k)
@@ -472,7 +472,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             not (
-                map.every(
+                map.all(
                     lambda k,
                     v:
                         map_visits.append(k)
@@ -503,7 +503,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     var set_visits: List[Int] = []
     try expect_false(
         (
-            set.some(
+            set.any(
                 lambda v:
                     set_visits.append(v)
                     return False
@@ -515,7 +515,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
     try expect_false(
         (
             not (
-                set.every(
+                set.all(
                     lambda v:
                         set_visits.append(v)
                         return True

@@ -81,8 +81,10 @@ fn is_higher_order(name: &str) -> bool {
             | "partition"
             | "group_by"
             | "count"
-            | "some"
-            | "every"
+            | "any"
+            | "all"
+            | "max_by"
+            | "min_by"
             | "for_each"
             | "find"
             | "find_index"
@@ -2795,8 +2797,8 @@ impl<'a> FnLower<'a> {
                     own: false,
                 })
             }
-            "some" | "every" => {
-                let some = name == "some";
+            "any" | "all" => {
+                let some = name == "any";
                 let acc = self.b.declare_var(MTy::BOOL, Mode::Borrow);
                 let init = self.b.bconst(!some);
                 self.b.def_var(acc, init);
@@ -2831,6 +2833,109 @@ impl<'a> FnLower<'a> {
                 })?;
                 let u = self.b.unit();
                 Ok(Val { v: u, own: false })
+            }
+            "max_by" | "min_by" => {
+                // Keys are computed once per element in order, then scanned for the first extreme.
+                let max = name == "max_by";
+                let fval = self.b.use_var(fvar);
+                let fty = self.ty_of(fval);
+                let TyKind::Fn(_, key_ty) = self.b.m.types.kind(fty).clone() else {
+                    return Err(Error::new("max_by without a key function"));
+                };
+                let best = self.b.declare_var(MTy::INT, Mode::Borrow);
+                let zero = self.b.iconst(0);
+                self.b.def_var(best, zero);
+                let scalar = (self.b.m.types.is_int(key_ty)
+                    && self.b.m.types.int_bits(key_ty) == Some(64))
+                    || self.b.m.types.is_float(key_ty);
+                let keys = if scalar {
+                    // Scalar keys need no storage: carry the best key in a variable. The seed is
+                    // the worst possible key, so the first element is never replaced by an equal
+                    // key and index 0 stays the answer for ties.
+                    let seed = if self.b.m.types.is_int(key_ty) {
+                        self.b
+                            .iconst_ty(if max { i64::MIN } else { i64::MAX }, key_ty)
+                    } else {
+                        let worst = if max {
+                            f64::NEG_INFINITY
+                        } else {
+                            f64::INFINITY
+                        };
+                        self.b.fconst_ty(worst, key_ty)
+                    };
+                    let best_key = self.b.declare_var(key_ty, Mode::Borrow);
+                    self.b.def_var(best_key, seed);
+                    self.each_element(lv, &mut |s, i, x| {
+                        let k = {
+                            let f = s.b.use_var(fvar);
+                            s.b.call_ind(f, &[x])
+                        };
+                        let held = s.b.use_var(best_key);
+                        let (above, below) = if max { (k, held) } else { (held, k) };
+                        let beats = s.strictly_above(above, below)?;
+                        // A branch, not selects: new extremes are rare, so it predicts well.
+                        let (take, skip) = (s.b.new_block(), s.b.new_block());
+                        s.b.br_if(beats, take, &[], skip, &[]);
+                        s.b.seal_block(take);
+                        s.b.seal_block(skip);
+                        s.b.switch_to(take);
+                        s.b.def_var(best, i);
+                        s.b.def_var(best_key, k);
+                        s.b.br(skip, &[]);
+                        s.b.switch_to(skip);
+                        Ok(None)
+                    })?;
+                    None
+                } else {
+                    // Owned keys (String, records) are computed into a list, then scanned.
+                    let keys_ty = self.b.m.types.list(key_ty);
+                    let keys = self.fresh_var(keys_ty);
+                    let computed = self.list_higher_order("map", lv, elem, fvar, keys_ty)?;
+                    self.b.def_var(keys, computed.v);
+                    self.each_element(keys, &mut |s, i, k| {
+                        let ks = s.b.use_var(keys);
+                        let at = s.b.use_var(best);
+                        let held = s.b.list_get(ks, at);
+                        let (above, below) = if max { (k, held) } else { (held, k) };
+                        let replace = s.strictly_above(above, below)?;
+                        let next = s.b.select(replace, i, at);
+                        s.b.def_var(best, next);
+                        Ok(None)
+                    })?;
+                    Some(keys)
+                };
+                let acc = self.fresh_var(out);
+                let none = self.none_owned(out);
+                self.b.def_var(acc, none);
+                let n = {
+                    let l = self.b.use_var(lv);
+                    self.b.list_len(l)
+                };
+                let zero = self.b.iconst(0);
+                let nonempty = self.b.icmp(ms_mir::ir::Cc::Gt, n, zero);
+                let (hit, done) = (self.b.new_block(), self.b.new_block());
+                self.b.br_if(nonempty, hit, &[], done, &[]);
+                self.b.seal_block(hit);
+                self.b.seal_block(done);
+                self.b.switch_to(hit);
+                let l = self.b.use_var(lv);
+                let at = self.b.use_var(best);
+                let x = self.b.list_get(l, at);
+                let payload = self.owned(Val { v: x, own: false });
+                let some = self.b.opt_some(payload);
+                let old = self.b.use_var(acc);
+                self.drop_value(old);
+                self.b.def_var(acc, some);
+                self.b.br(done, &[]);
+                self.b.switch_to(done);
+                if let Some(keys) = keys {
+                    let ks = self.b.use_var(keys);
+                    self.drop_value(ks);
+                }
+                Ok(Val {
+                    v: self.b.use_var(acc),
+                    own: true,
+                })
             }
             "find" | "find_index" | "find_last_index" => {
                 let by_index = name != "find";

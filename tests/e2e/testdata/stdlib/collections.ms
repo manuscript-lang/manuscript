@@ -36,7 +36,7 @@ test "list search callbacks empty identities and folding":
     try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
 
     let empty: List[Int] = []
-    try expect_false(empty.some(positive) or not empty.every(positive))
+    try expect_false(empty.any(positive) or not empty.all(positive))
     try expect_false(not empty.first().is_none() or not empty.last().is_none())
 
     let groups = ([1, 2, 3]).group_by(parity)
