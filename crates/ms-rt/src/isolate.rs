@@ -129,7 +129,9 @@ pub fn post_remote(id: u64, value: u64) {
 /// Takes the posts queued for the calling isolate.
 pub fn take_posts() -> Vec<(u64, u64)> {
     let (_, inbox) = current();
-    if !inbox.full.swap(false, Ordering::Acquire) {
+    // Switches check this even when all work is local. Avoid an unnecessary read-modify-write
+    // on the common empty path; the swap still claims any observed pending batch.
+    if !inbox.full.load(Ordering::Acquire) || !inbox.full.swap(false, Ordering::Acquire) {
         return Vec::new();
     }
     std::mem::take(&mut *inbox.posts.lock().unwrap_or_else(|e| e.into_inner()))
@@ -173,9 +175,9 @@ pub fn raise_cancel(slot: usize, sig: u8) {
     inbox.cancel.store(sig, Ordering::Relaxed);
     let hdr = inbox.cur.load(Ordering::Acquire);
     if !hdr.is_null() {
-        // SAFETY: a task block outlives its stack's use; `shield` is read as one word.
+        // SAFETY: a task block outlives its stack's use; `shield` is read atomically.
         unsafe {
-            if core::ptr::read_volatile((*hdr).shield.as_ptr()) == 0 {
+            if (*hdr).shield.load(Ordering::Relaxed) == 0 {
                 (*hdr).cancel.store(sig, Ordering::Relaxed);
             }
         }

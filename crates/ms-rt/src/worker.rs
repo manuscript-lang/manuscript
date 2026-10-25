@@ -8,7 +8,7 @@ use crate::isolate;
 use crate::task::msrt_token_post_remote;
 use core::ffi::c_void;
 use ms_rt_abi::StrVal;
-use std::sync::atomic::{AtomicI64, AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Entry of a worker: called on the worker's main task with the argument block.
@@ -16,13 +16,17 @@ pub type Entry = unsafe extern "C-unwind" fn(*mut u8);
 
 /// Most workers alive at once; a spawn beyond it fails.
 const MAX_WORKERS: usize = 256;
-/// Registry slot of a worker that has not registered yet.
-const NO_SLOT: usize = usize::MAX;
+/// Cancellation follows the worker's lifetime, rather than a reusable isolate slot.
+#[derive(Default)]
+struct Cancellation {
+    slot: Option<usize>,
+    requested: bool,
+}
 
 struct Worker {
     thread: Mutex<Option<std::thread::JoinHandle<()>>>,
-    /// The worker's isolate slot once it runs, for cancellation.
-    slot: AtomicUsize,
+    /// Serializes cancellation with publication and retirement of the isolate.
+    cancellation: Mutex<Cancellation>,
     /// The status, then a report in a system block of its own: it outlives the worker's arena.
     outcome: Mutex<(u8, usize, usize)>,
     /// The pipe end the worker owns; closed when the worker ends, however it ends.
@@ -31,11 +35,24 @@ struct Worker {
     done: AtomicU64,
 }
 
-static WORKERS: Mutex<Vec<Option<Arc<Worker>>>> = Mutex::new(Vec::new());
+struct WorkerSlot {
+    generation: u32,
+    worker: Option<Arc<Worker>>,
+}
+
+static WORKERS: Mutex<Vec<WorkerSlot>> = Mutex::new(Vec::new());
+
+fn slot_index(handle: u64) -> Option<usize> {
+    (handle as u32 as usize).checked_sub(1)
+}
 
 fn find(handle: u64) -> Option<Arc<Worker>> {
     let table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-    table.get((handle as usize).checked_sub(1)?)?.clone()
+    let slot = table.get(slot_index(handle)?)?;
+    if slot.generation != (handle >> 32) as u32 {
+        return None;
+    }
+    slot.worker.clone()
 }
 
 /// Copies `len` bytes into a system-allocated block for [`msrt_worker_spawn`]'s argument.
@@ -82,23 +99,32 @@ pub unsafe extern "C-unwind" fn msrt_worker_arg_take(block: *mut u8, out: *mut S
 pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, done: u64) -> u64 {
     let worker = Arc::new(Worker {
         thread: Mutex::new(None),
-        slot: AtomicUsize::new(NO_SLOT),
+        cancellation: Mutex::new(Cancellation::default()),
         outcome: Mutex::new((0, 0, 0)),
         end: AtomicI64::new(0),
         done: AtomicU64::new(0),
     });
     let handle = {
         let mut table = WORKERS.lock().unwrap_or_else(|e| e.into_inner());
-        let live = table.iter().filter(|w| w.is_some()).count();
+        let live = table.iter().filter(|s| s.worker.is_some()).count();
         if live >= MAX_WORKERS {
             return 0;
         }
-        let at = table.iter().position(Option::is_none).unwrap_or_else(|| {
-            table.push(None);
-            table.len() - 1
-        });
-        table[at] = Some(worker.clone());
-        at as u64 + 1
+        // Never wrap a generation: retire an exhausted slot instead of reviving stale handles.
+        let at = table
+            .iter()
+            .position(|s| s.worker.is_none() && s.generation < u32::MAX)
+            .unwrap_or_else(|| {
+                table.push(WorkerSlot {
+                    generation: 0,
+                    worker: None,
+                });
+                table.len() - 1
+            });
+        let slot = &mut table[at];
+        slot.generation += 1;
+        slot.worker = Some(worker.clone());
+        (u64::from(slot.generation) << 32) | (at as u64 + 1)
     };
     let (entry, arg) = (entry as usize, arg as usize);
     let w = worker.clone();
@@ -121,7 +147,8 @@ pub unsafe extern "C-unwind" fn msrt_worker_spawn(entry: Entry, arg: *mut u8, do
             handle
         }
         Err(_) => {
-            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+            WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker =
+                None;
             if arg != 0 {
                 // SAFETY: the worker never ran, so the block is still ours.
                 unsafe { crate::sys::free(arg as *mut c_void) };
@@ -139,7 +166,14 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
     isolate::mark_worker();
     crate::alloc::claim_arena(false);
     crate::start::install_thread_fault_handler();
-    w.slot.store(isolate::id(), Ordering::Release);
+    {
+        let mut cancellation = w.cancellation.lock().unwrap_or_else(|e| e.into_inner());
+        let slot = isolate::id();
+        cancellation.slot = Some(slot);
+        if cancellation.requested {
+            isolate::raise_cancel(slot, crate::sys::SIGTERM as u8);
+        }
+    }
     // SAFETY: this thread is the new isolate's only one.
     let outcome = unsafe { crate::task::run_worker_task(entry, arg) };
     let (status, report) = outcome;
@@ -156,8 +190,13 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
     }
     drop(report);
     *w.outcome.lock().unwrap_or_else(|e| e.into_inner()) = (status, block.0, block.1);
-    crate::task::teardown();
-    isolate::unregister();
+    {
+        // A canceller must finish before teardown can free task headers or reuse the slot.
+        let mut cancellation = w.cancellation.lock().unwrap_or_else(|e| e.into_inner());
+        cancellation.slot = None;
+        crate::task::teardown();
+        isolate::unregister();
+    }
     crate::alloc::release_arena();
     let end = w.end.load(Ordering::Acquire);
     if end != 0 {
@@ -170,8 +209,9 @@ unsafe fn run(w: &Worker, entry: Entry, arg: *mut u8, done: u64) {
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_worker_cancel(handle: u64) {
     if let Some(w) = find(handle) {
-        let slot = w.slot.load(Ordering::Acquire);
-        if slot != NO_SLOT {
+        let mut cancellation = w.cancellation.lock().unwrap_or_else(|e| e.into_inner());
+        cancellation.requested = true;
+        if let Some(slot) = cancellation.slot {
             isolate::raise_cancel(slot, crate::sys::SIGTERM as u8);
         }
     }
@@ -190,7 +230,7 @@ pub unsafe extern "C-unwind" fn msrt_worker_join(handle: u64, msg_out: *mut StrV
     if let Some(t) = w.thread.lock().unwrap_or_else(|e| e.into_inner()).take() {
         let _ = t.join();
     }
-    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[handle as usize - 1] = None;
+    WORKERS.lock().unwrap_or_else(|e| e.into_inner())[slot_index(handle).unwrap()].worker = None;
     let (status, ptr, len) =
         core::mem::take(&mut *w.outcome.lock().unwrap_or_else(|e| e.into_inner()));
     let report = if ptr == 0 {
@@ -411,6 +451,108 @@ mod tests {
         assert_eq!(status, 1);
         assert!(String::from_utf8_lossy(&report).contains("worker boom"));
         crate::task::teardown();
+    }
+
+    unsafe extern "C-unwind" fn returns(_: *mut u8) {}
+
+    #[test]
+    fn collected_handles_do_not_address_replacement_workers() {
+        let _g = crate::testutil::lock();
+        // SAFETY: entries need no arguments; each worker is joined once.
+        unsafe {
+            let old = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            assert_ne!(old, 0);
+            assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
+            let new = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            assert_ne!(new, 0);
+            let stale_matches = find(old).is_some();
+            assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
+            assert!(
+                !stale_matches,
+                "a collected handle must not name a replacement worker"
+            );
+        }
+        crate::task::teardown();
+    }
+
+    static RELEASE_ENTRY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    static ENTERED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+    unsafe extern "C-unwind" fn briefly_waits(_: *mut u8) {
+        ENTERED.store(true, Ordering::Release);
+        let until = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !RELEASE_ENTRY.load(Ordering::Acquire) && std::time::Instant::now() < until {
+            std::thread::yield_now();
+        }
+        for _ in 0..5 {
+            // SAFETY: this worker owns its scheduler.
+            unsafe { msrt_task_sleep(1_000_000) };
+            if crate::fault::cancel_flag().load(Ordering::Relaxed) != 0 {
+                crate::fault::msrt_cancelled();
+            }
+        }
+    }
+
+    #[test]
+    fn cancellation_immediately_after_spawn_is_remembered() {
+        let _g = crate::testutil::lock();
+        let mut returned = 0;
+        for _ in 0..32 {
+            // SAFETY: entry ignores its argument and each handle is joined once.
+            unsafe {
+                RELEASE_ENTRY.store(false, Ordering::Release);
+                let h = msrt_worker_spawn(briefly_waits, core::ptr::null_mut(), 0);
+                assert_ne!(h, 0);
+                msrt_worker_cancel(h);
+                RELEASE_ENTRY.store(true, Ordering::Release);
+                returned += usize::from(msrt_worker_join(h, core::ptr::null_mut()) == 0);
+            }
+        }
+        crate::task::teardown();
+        assert_eq!(returned, 0, "startup lost cancellation requests");
+    }
+
+    #[test]
+    fn cancelling_completed_worker_does_not_cancel_reused_isolate() {
+        let _g = crate::testutil::lock();
+        // SAFETY: entries ignore their arguments and each handle is joined once.
+        unsafe {
+            let old = msrt_worker_spawn(returns, core::ptr::null_mut(), 0);
+            let old_worker = find(old).unwrap();
+            let until = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !old_worker
+                .thread
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .is_finished()
+            {
+                assert!(
+                    std::time::Instant::now() < until,
+                    "old worker did not finish"
+                );
+                std::thread::yield_now();
+            }
+            RELEASE_ENTRY.store(false, Ordering::Release);
+            ENTERED.store(false, Ordering::Release);
+            let new = msrt_worker_spawn(briefly_waits, core::ptr::null_mut(), 0);
+            let until = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !ENTERED.load(Ordering::Acquire) && std::time::Instant::now() < until {
+                std::thread::yield_now();
+            }
+            let entered = ENTERED.load(Ordering::Acquire);
+            msrt_worker_cancel(old);
+            RELEASE_ENTRY.store(true, Ordering::Release);
+            let status = msrt_worker_join(new, core::ptr::null_mut());
+            assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
+            crate::task::teardown();
+            assert!(
+                entered,
+                "replacement worker did not start within five seconds"
+            );
+            assert_eq!(status, 0, "completed worker cancelled a different isolate");
+        }
     }
 
     #[test]

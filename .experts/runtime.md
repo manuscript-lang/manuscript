@@ -17,9 +17,11 @@ Verified: production `msrt_guard_call` exits faults and cancellation with a jump
 for state removed across a park; discard it on ordinary return. Interrupted decoders are
 closed and abandoned rather than resumed with potentially partial state.
 
+Decision (#1217): Manuscript frames get the same treatment automatically. `ms_mir::unwind` runs after the optimizer in every profile and, for programs that start tasks, workers or servers, registers one cleanup per owned value live across each call that can reach a cancellation point (`msrt_cleanup_discard` after the call). The cleanup drops only while `msrt_unwind_drops` is true, which `msrt_cancelled` sets when a guard will catch the jump; faults and process exit free nothing. A value moved out of a field and not yet refilled, or held in a stack slot, is skipped (it leaks rather than double frees). Rust natives use `ms_rt::fault::with_cleanup(&mut cleanup, body)` around a park that holds a borrow or flag.
+
 Apply when: native operations take state or resource ownership across a cancellable wait.
 Evidence: [response body guard and cancellation regression](../crates/ms-std-net/src/http/client.rs), [runtime guard](../crates/ms-rt/src/fault.rs).
-Verify: use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard),
+Verify: `make leak-check` on `tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release.ms` reports zero live blocks; use the production runtime dependency (not `ms-rt`'s own unwinding unit-test guard),
 assert a stack destructor is skipped, join reports cancellation, later reads return Closed,
 and the peer observes connection release.
 
@@ -187,15 +189,18 @@ Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime re
 Verify: child faults leave parent cleanup pending, child cleanup runs LIFO, nested assertions
 and assertions during fault cleanup retain their own report and cleanup boundaries.
 
-### Task time limits must not depend on the scheduler going idle
+### Reactor progress must not depend on the scheduler going idle
 
-Verified: task kill deadlines expired only in `reactor_wait`, which runs when no task is ready.
-Two tasks that keep waking each other through a channel never let it run, so a task's timeout
-never fired. `switch_away` now expires kills on every switch while any are pending.
+Verified: tasks that keep each other ready through channels or yields can prevent `reactor_wait`
+from running indefinitely. Checking only task kill deadlines at switches still starves sleep and
+park timers, readable descriptors, remote completion posts, and pending isolate cancellation.
+Service those events at switches too, without blocking; skip clock and poll calls when there
+are no corresponding waits.
 
-Apply when: adding a wake path that makes a task ready without the reactor, or moving deadline checks.
-Evidence: [scheduler](../crates/ms-rt/src/task.rs), [channel fixture](../tests/conformance/fixtures/e2e/stdlib/channels.ms) ("a task cancelled before it first ran closes its end").
-Verify: a zero-timeout task that only sends on a channel times out instead of running to its end.
+Apply when: changing task wake paths, reactor servicing, or deadline checks.
+Evidence: [scheduler regressions](../crates/ms-rt/src/task.rs) (`timers_progress_while_tasks_stay_ready`,
+`io_progresses_while_tasks_stay_ready`, `remote_posts_progress_while_tasks_stay_ready`).
+Verify: ready events finish before a bounded busy task finishes yielding; retain shielded cleanup tests.
 
 ### Worker threads are isolates that share nothing
 
@@ -228,3 +233,30 @@ Verified: the map insert copied a 72-byte `JsonValue` slot through a `memcpy` ca
 Apply when: a map or list of records shows `memcpy` in a profile.
 Evidence: [map slots](../crates/ms-rt/src/map.rs).
 Verify: callgrind on `bench/perf/json` (`ms build bench/perf/json/ms.toml -o /tmp/jb`, then `valgrind --tool=callgrind /tmp/jb quick twitter:parse`).
+
+### Cross-thread cancellation metadata must use atomic accesses
+
+Verified: a volatile read of `Hdr.shield` raced with the owning task's writes through
+`Cell<u32>`. Miri reports undefined behavior when `raise_main_cancel` runs concurrently
+with `msrt_shield_enter` and `msrt_shield_exit`. The depth now uses `AtomicU32` for all
+reads and writes; only the owner changes it, so relaxed loads/stores suffice.
+
+Apply when: publishing task metadata to signal handlers or worker cancellation callers.
+Evidence: [concurrent shield regression and ABI checks](../crates/ms-rt/src/fault.rs).
+Verify: `cargo +nightly miri test -p ms-rt concurrent_shield_updates_and_signal_reads`
+passes; ordinary shielded cancellation tests still pass. Volatile is not synchronization.
+
+### Worker cancellation must follow startup and retirement
+
+Verified: a cancellation sent immediately after spawn was discarded before the worker published
+its isolate slot. A completed, unjoined worker retained that slot and could cancel a later worker
+that reused it. Keep the request in the worker object, and serialize slot publication, cancellation,
+and retirement before task teardown. Generation-checking the public worker handle alone does not
+protect the separately reused isolate slot.
+
+Apply when: changing worker startup, cancellation or isolate retirement.
+Evidence: [worker regressions](../crates/ms-rt/src/worker.rs)
+(`cancellation_immediately_after_spawn_is_remembered`,
+`cancelling_completed_worker_does_not_cancel_reused_isolate`).
+Verify: immediate cancellation ends the intended worker, and cancelling an exited worker leaves
+its replacement running normally.

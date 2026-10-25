@@ -50,6 +50,7 @@ msrt_fault_div_overflow(a: i64, b: i64) -> !
 msrt_cleanup_push(f: CleanupFn, arg: *mut u8) -> usize
 msrt_cleanup_run(handle: usize)
 msrt_cleanup_discard(handle: usize)
+msrt_unwind_drops() -> u8
 msrt_cancelled() -> !
 msrt_guard_call( code: unsafe extern "C-unwind" fn(*mut u8), data: *mut u8, msg_out: *mut StrVal, ) -> u8
 msrt_io_write_stdout(s: *const StrVal)
@@ -688,6 +689,7 @@ msstd_process_forked_signal(h: *mut Handle<Forked>, force: u8)
 msstd_process_forked_close(h: *mut Handle<Forked>)
 msstd_process_ipc_child() -> *mut Handle<IpcLink>
 msstd_process_ipc_read(h: *mut Handle<IpcLink>, max: i64, out: *mut VecVal)
+msstd_process_ipc_wait_reader(h: *mut Handle<IpcLink>) -> u8
 msstd_process_ipc_write(h: *mut Handle<IpcLink>, data: *const VecVal) -> u8
 msstd_process_ipc_close(h: *mut Handle<IpcLink>)
 msstd_process_elapsed(out: *mut i64) -> u8

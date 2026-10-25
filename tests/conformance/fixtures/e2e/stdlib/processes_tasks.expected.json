@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "processes_tasks.ms::result waits while another task receives from the same child",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "processes_tasks.ms::a task cancelled in a channel read releases the link",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "processes_tasks.ms::cancelling a task inside commands().run kills the child",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "processes_tasks.ms::the liveness check sees a live child",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN processes_tasks.ms::result waits while another task receives from the same child\nPASS processes_tasks.ms::result waits while another task receives from the same child\nRUN processes_tasks.ms::a task cancelled in a channel read releases the link\nPASS processes_tasks.ms::a task cancelled in a channel read releases the link\nRUN processes_tasks.ms::cancelling a task inside commands().run kills the child\nPASS processes_tasks.ms::cancelling a task inside commands().run kills the child\nRUN processes_tasks.ms::the liveness check sees a live child\nPASS processes_tasks.ms::the liveness check sees a live child\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

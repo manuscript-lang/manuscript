@@ -47,6 +47,8 @@ extern def msstd_process_ipc_child() -> NativeLink
 
 extern def msstd_process_ipc_read(link: NativeLink, max: Int) -> Bytes
 
+extern def msstd_process_ipc_wait_reader(link: NativeLink) -> Bool
+
 extern def msstd_process_ipc_write(link: NativeLink, data: Bytes) -> Bool
 
 extern def msstd_process_ipc_close(link: NativeLink) -> Unit
@@ -55,6 +57,8 @@ extern def msstd_process_ipc_close(link: NativeLink) -> Unit
 let MESSAGE = 0
 let CLOSE = 1
 let RESULT = 2
+# Not a wire kind: `next_frame` waited for another task's read, so the caller re-checks the inbox.
+let RETRY = -2
 # The largest frame body, 16 MiB; a larger frame breaks the channel.
 let FRAME_LIMIT = 16777216
 
@@ -133,7 +137,8 @@ def decode[T](body: String) -> Result[T, ChannelError]:
         )
 
 # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
-# the pipe or is gone.
+# the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
+# frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
 def next_frame(
     link: NativeLink,
     inbox: Shared[Inbox]
@@ -165,6 +170,8 @@ def next_frame(
                 return error(ChannelError.Broken("a frame is not UTF-8"))
 
         inbox.put(state)
+        if msstd_process_ipc_wait_reader(link):
+            return ok(some(Frame(kind: RETRY, body: "")))
 
         let chunk = msstd_process_ipc_read(link, 65536)
         if chunk.is_empty():
@@ -184,13 +191,14 @@ def finish(inbox: Shared[Inbox], result: Optional[String]) -> Unit:
         state.result = result
     inbox.put(state)
 
-# Sends `close` from this end once.
-def close_end(link: NativeLink, inbox: Shared[Inbox]) -> Unit:
+# Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
+# the child: the write could wait forever on a full pipe the child never reads).
+def close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = True) -> Unit:
     var state = inbox.take()
     let first = not state.closed
     state.closed = True
     inbox.put(state)
-    if first:
+    if first and notify:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
 # One end of a process channel: JSON frames over the IPC pipe.
@@ -223,6 +231,13 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 return error(ChannelError.Broken("the other process exited"))
 
             let frame = next.get(Frame(kind: -1, body: ""))
+
+            if frame.kind == RETRY:
+                if self.inbox.get().finished:
+                    return ok(none)
+
+                continue
+
             if frame.kind == MESSAGE:
                 return ok(some(try decode[Out](frame.body)))
 
@@ -307,7 +322,7 @@ export type Open:
 
 # Closes the channel, then stops and joins the child.
 def stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) -> Unit:
-    close_end(link, inbox)
+    close_end(link, inbox, False)
     msstd_process_forked_close(native)
 
 # A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
@@ -328,7 +343,8 @@ export type Process[T, In = Unit, Out = Unit]:
 
 impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
-    # that ended first. Messages the child sent and the parent has not received are dropped.
+    # that ended first. Another task may receive from the channel meanwhile; one task reads the
+    # pipe at a time and the other waits. Messages the child sent and the parent has not received are dropped.
     def result() -> Result[T, ProcessError]:
         return wait_result[T](self.native, self.link, self.inbox)
 
@@ -352,11 +368,11 @@ impl Process[T, In, Out]:
     def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
-    # Asks the child's process group to stop (SIGTERM on Unix; Windows ends the group). Does not wait.
+    # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.
     def terminate() -> Unit:
         msstd_process_forked_signal(self.native, False)
 
-    # Kills the child's process group. Does not wait.
+    # Kills the child and the processes it started. Does not wait.
     def kill() -> Unit:
         msstd_process_forked_signal(self.native, True)
 

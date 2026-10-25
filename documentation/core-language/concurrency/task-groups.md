@@ -30,6 +30,7 @@ test "a group collects its results in start order":
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
 - Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
+- A task cancelled while it waits releases the values its functions own, as if it had returned: lists, strings and maps are freed, and `with` blocks close. A value held only in a `var` that a call is changing at that moment, or in a runtime-native resource without a `with` close, can outlive the task until the program ends.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
 - A fault in a task ends the program, as a fault anywhere does.
 

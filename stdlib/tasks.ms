@@ -282,7 +282,7 @@ impl Task[T, In, Out]:
 # Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
 # tasks that are running or uncollected.
 # `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
-# A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given.
+# A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
 # A fault in a task ends the program. A task owns the values its closure captures; return results instead of sharing them.
 export type TaskGroup[T, In = Unit, Out = Unit]:
