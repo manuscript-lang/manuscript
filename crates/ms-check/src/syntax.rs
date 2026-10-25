@@ -304,6 +304,9 @@ pub struct StmtFacts {
     pub falls_through: Option<bool>,
     /// A statement whose whole value is a plain `try`.
     pub plain_try: bool,
+    /// The statements a `for` over an `Iterator` stands for: every later pass reads these
+    /// instead of the loop.
+    pub expansion: Option<Rc<Vec<Stmt>>>,
 }
 
 /// Match arm facts.
@@ -353,9 +356,17 @@ pub struct Facts {
     pub type_refs: HashMap<NodeId, Ty>,
     /// Name expressions that stand for a constant's initializer call.
     pub const_use: HashSet<NodeId>,
+    /// The next node id for statements synthesized while checking.
+    pub next_node: u32,
 }
 
 impl Facts {
+    /// A fresh node id for a synthesized node.
+    pub fn fresh_id(&mut self) -> NodeId {
+        let id = NodeId(self.next_node);
+        self.next_node += 1;
+        id
+    }
     /// Fact of an expression.
     pub fn info(&self, id: NodeId) -> Option<&Info> {
         self.exprs.get(id.index()).and_then(|i| i.as_ref())
@@ -399,6 +410,7 @@ impl ModuleData {
     pub fn new(m: &Module, decls: Vec<DeclRef>, node_count: u32) -> ModuleData {
         let mut facts = Facts::default();
         facts.exprs.resize_with(node_count as usize, || None);
+        facts.next_node = node_count;
         ModuleData {
             file: n(&m.file),
             source: m.source.clone(),

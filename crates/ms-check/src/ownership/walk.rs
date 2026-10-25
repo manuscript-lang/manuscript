@@ -837,7 +837,11 @@ impl Walker<'_> {
             }
             StmtKind::For {
                 by_ref, iter, body, ..
-            } => self.for_stmt(s, *by_ref, iter, body),
+            } => match self.cx.m.stmt(s).expansion {
+                // A `for` over an `Iterator` is the loop the checker expanded it into.
+                Some(expansion) => self.block(&expansion),
+                None => self.for_stmt(s, *by_ref, iter, body),
+            },
             StmtKind::With { value, body, .. } => {
                 self.expr(value, Demand::Consume);
                 self.release_pending();

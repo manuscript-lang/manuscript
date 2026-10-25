@@ -27,7 +27,7 @@
 {"id":18,"jsonrpc":"2.0","result":null}
 {"id":19,"jsonrpc":"2.0","result":null}
 {"id":20,"jsonrpc":"2.0","result":[]}
-{"error":{"code":-32602,"message":"character outside line"},"id":21,"jsonrpc":"2.0"}
+{"id":21,"jsonrpc":"2.0","result":[{"filterText":"extern","insertTextFormat":1,"kind":14,"label":"extern","sortText":"05_extern","textEdit":{"newText":"extern ","range":{"end":{"character":6,"line":20},"start":{"character":0,"line":20}}}}]}
 #large
 #large
 {"id":24,"jsonrpc":"2.0","result":[]}

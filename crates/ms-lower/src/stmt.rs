@@ -206,7 +206,14 @@ impl<'a> FnLower<'a> {
                 return Ok(());
             }
             StmtKind::While { cond, body } => self.while_stmt(cond, body)?,
-            StmtKind::For { iter, body, .. } => self.for_stmt(s, iter, body)?,
+            StmtKind::For { iter, body, .. } => {
+                if let Some(expansion) = self.hir.stmt(s).expansion {
+                    // A `for` over an `Iterator` is the loop the checker expanded it into.
+                    self.stmts(&expansion)?;
+                } else {
+                    self.for_stmt(s, iter, body)?;
+                }
+            }
             StmtKind::With { value, body, .. } => {
                 self.with_stmt(s, value, body)?;
             }

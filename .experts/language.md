@@ -297,3 +297,10 @@ Verify: a new operation on a `String`, `List` or `Map` is a method, not a module
 Status: in flight (PR #1135, not yet on main as of this note). Decision: a value converts to an interface at a typed binding or argument (`let v: Shape = x`), and `Shape(value: x)` / `Shape(x)` fail with "cannot be constructed"; about 260 stdlib and fixture uses were migrated. Re-check the checker before relying on either spelling.
 
 Apply when: touching interface views, generic matching, or conversion diagnostics.
+
+### `for` walks `Iterator[T]` by expansion, not a new loop kind
+
+Decision: `Iterator[T]` (`var def next() -> Optional[T]`, `@std/core.ms`) makes a type iterable. The checker records the loop as `while True: if let x = it.next(): body else: break` in the statement's `expansion` fact (with a hidden `var` unless the iterable is a variable or field path, which advances in place and keeps its final state), and lowering and the ownership passes read that expansion, so no loop-specific lowering exists. Formatter, lint and LSP still see the written `for`; the LSP does not index the loop variable of an iterator loop. The hidden `var` lives to the end of the enclosing block, not the loop. A read-only method named `next` without `impl Iterator` is deliberately not iterable (nominal conformance).
+
+Apply when: adding iteration forms or changing what `for` accepts.
+Verify: `tests/e2e/testdata/stdlib/io-lines.ms` (break/continue, interface-typed iterator, temporary) and `reject/iterator-let-loop.ms`.
