@@ -6,10 +6,12 @@ use crate::rt;
 use crate::sys::{AsSock, Borrowed};
 use crate::tls::{self, TlsOptions};
 use crate::wait::{Deadline, Interest, Wait, wait_fd};
+use ms_rt::fault::with_cleanup;
 use socket2::Socket;
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, UdpSocket};
+use std::ops::Deref;
 
 use std::rc::Rc;
 use std::sync::Arc;
@@ -47,8 +49,12 @@ pub trait Io {
         Step::Done(0)
     }
     fn shutdown_write(&self) -> Result<(), NetErr>;
-    /// Stops all traffic; the descriptor stays open until the value is dropped.
+    /// Stops all traffic; the descriptor stays open until `release` or the value is dropped.
     fn shutdown_both(&self);
+    /// Closes the descriptor now. Only a closed connection with no operation parked on it may
+    /// call this; the stream is unusable afterwards. A stream shared with another owner keeps
+    /// it.
+    fn release(&self) {}
     fn tls_details(&self) -> Option<TlsDetails> {
         None
     }
@@ -59,14 +65,65 @@ pub trait Io {
     }
 }
 
+/// A socket that can be closed before its owner is dropped, so a closed connection frees its
+/// descriptor even while handles to it are alive (or a cancelled task never drops them).
+pub struct Owned<T>(UnsafeCell<Option<T>>);
+
+pub type OwnedSock = Owned<Socket>;
+
+impl<T> Owned<T> {
+    pub fn new(sock: T) -> Owned<T> {
+        Owned(UnsafeCell::new(Some(sock)))
+    }
+
+    /// Closes the descriptor. The caller guarantees nothing is using it.
+    pub fn release(&self) {
+        // SAFETY: tasks share one thread and no reference to the socket outlives an operation;
+        // owners release only with no operation parked and refuse new ones.
+        drop(unsafe { (*self.0.get()).take() });
+    }
+
+    /// The socket, if it was not released.
+    pub fn into_inner(self) -> Option<T> {
+        self.0.into_inner()
+    }
+}
+
+impl<T> Deref for Owned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        // SAFETY: see `release`.
+        unsafe { (*self.0.get()).as_ref() }.expect("socket used after it was released")
+    }
+}
+
+/// Runs `body`, which may park on a socket, counted in `busy`. A cancellation that leaves it
+/// still counts it out, and `idle` runs when the count reaches zero, so the close of an
+/// enclosing `with` can free the descriptor.
+fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
+    busy.set(busy.get() + 1);
+    let leave = || {
+        busy.set(busy.get() - 1);
+        if busy.get() == 0 {
+            idle();
+        }
+    };
+    let r = with_cleanup(&mut { leave }, body);
+    leave();
+    r
+}
+
 /// An unencrypted socket.
 pub struct Plain {
-    sock: Socket,
+    sock: OwnedSock,
 }
 
 impl Plain {
     pub fn new(sock: Socket) -> Plain {
-        Plain { sock }
+        Plain {
+            sock: OwnedSock::new(sock),
+        }
     }
 
     pub fn socket(&self) -> &Socket {
@@ -91,7 +148,7 @@ impl Io for Plain {
 
     fn read(&self, buf: &mut [u8]) -> Step {
         loop {
-            return match (&self.sock).read(buf) {
+            return match (&*self.sock).read(buf) {
                 Ok(0) if !buf.is_empty() => Step::Eof,
                 Ok(n) => Step::Done(n),
                 Err(e) if would_block(&e) => Step::WantRead,
@@ -103,7 +160,7 @@ impl Io for Plain {
 
     fn write(&self, data: &[u8]) -> Step {
         loop {
-            return match (&self.sock).write(data) {
+            return match (&*self.sock).write(data) {
                 Ok(n) => Step::Done(n),
                 Err(e) if would_block(&e) => Step::WantWrite,
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
@@ -120,6 +177,10 @@ impl Io for Plain {
 
     fn shutdown_both(&self) {
         let _ = self.sock.shutdown(std::net::Shutdown::Both);
+    }
+
+    fn release(&self) {
+        self.sock.release();
     }
 }
 
@@ -210,6 +271,8 @@ pub struct Connection {
     owner: Rc<Network>,
     io: Box<dyn Io>,
     closed: Cell<bool>,
+    /// Operations parked on `io`; the descriptor is released once a closed connection has none.
+    busy: Cell<u32>,
     local: String,
     peer: String,
 }
@@ -226,6 +289,7 @@ impl Connection {
             owner,
             io,
             closed: Cell::new(false),
+            busy: Cell::new(0),
             local,
             peer,
         }
@@ -247,11 +311,23 @@ impl Connection {
         self.closed.get()
     }
 
-    /// Closes the socket; later reads and writes report `Closed`. Idempotent.
+    /// Closes the socket; later reads and writes report `Closed`. Idempotent. The descriptor is
+    /// freed now, or when the last parked operation leaves.
     pub fn close(&self) {
         if !self.closed.replace(true) {
             self.io.shutdown_both();
+            self.release_if_idle();
         }
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.io.release();
+        }
+    }
+
+    fn parked<T>(&self, body: impl FnOnce() -> T) -> T {
+        parked(&self.busy, &|| self.release_if_idle(), body)
     }
 
     fn failure(&self, e: DriveError) -> IoErr {
@@ -302,7 +378,7 @@ impl Connection {
         if self.closed.get() {
             return Err(IoErr::Closed);
         }
-        let r = drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0);
+        let r = self.parked(|| drive(&*self.io, deadline, || self.io.read(buf), |n| n, || 0));
         match r {
             Ok(count) => Ok(count),
             Err(e) => {
@@ -357,7 +433,7 @@ impl Connection {
         let mut rest = data;
         while !rest.is_empty() {
             rt::check_cancel();
-            let r = drive(&*self.io, deadline, || self.io.write(rest), |n| n, || 0);
+            let r = self.parked(|| drive(&*self.io, deadline, || self.io.write(rest), |n| n, || 0));
             match r {
                 Ok(0) => return Err(IoErr::failed("short write")),
                 Ok(n) => rest = &rest[n..],
@@ -368,7 +444,7 @@ impl Connection {
             }
         }
         // TLS buffers records; push them out.
-        let r = drive(&*self.io, deadline, || self.io.flush(), |n| n, || 0);
+        let r = self.parked(|| drive(&*self.io, deadline, || self.io.flush(), |n| n, || 0));
         match r {
             Ok(_) => Ok(()),
             Err(e) => Err(self.failure(e)),
@@ -397,8 +473,10 @@ pub type Upgrade = Box<dyn Fn(Socket, Deadline) -> Result<Box<dyn Io>, NetErr>>;
 /// A listening socket.
 pub struct Listener {
     owner: Rc<Network>,
-    sock: Socket,
+    sock: OwnedSock,
     closed: Cell<bool>,
+    /// Accepts parked on `sock`; see `Connection::busy`.
+    busy: Cell<u32>,
     address: String,
     unix_path: Option<String>,
     upgrade: Option<Upgrade>,
@@ -431,8 +509,9 @@ impl Listener {
         };
         Listener {
             owner,
-            sock,
+            sock: OwnedSock::new(sock),
             closed: Cell::new(false),
+            busy: Cell::new(0),
             address,
             unix_path,
             upgrade,
@@ -457,6 +536,19 @@ impl Listener {
         if let Some(p) = &self.unix_path {
             let _ = std::fs::remove_file(p);
         }
+        self.release_if_idle();
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.sock.release();
+        }
+    }
+
+    fn parked_wait(&self, deadline: Deadline) -> Wait {
+        parked(&self.busy, &|| self.release_if_idle(), || {
+            wait_fd(self.sock.as_sock(), Interest::Read, deadline)
+        })
     }
 
     pub fn raw(&self) -> &Socket {
@@ -522,7 +614,7 @@ impl Listener {
                     return Ok(conn);
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                    if self.parked_wait(deadline) == Wait::TimedOut {
                         rt::check_cancel();
                         return Err(if self.closed.get() {
                             NetErr::Closed
@@ -569,8 +661,10 @@ pub struct Datagram {
 /// A connectionless socket.
 pub struct Datagrams {
     owner: Rc<Network>,
-    sock: UdpSocket,
+    sock: Owned<UdpSocket>,
     closed: Cell<bool>,
+    /// Calls parked on `sock`; see `Connection::busy`.
+    busy: Cell<u32>,
     address: String,
     /// Taken out for a receive, which can park; see ABI.md.
     scratch: Cell<Vec<u8>>,
@@ -587,8 +681,9 @@ impl Datagrams {
         let address = sock.local_addr().map(|a| a.to_string()).unwrap_or_default();
         Datagrams {
             owner,
-            sock,
+            sock: Owned::new(sock),
             closed: Cell::new(false),
+            busy: Cell::new(0),
             address,
             scratch: Cell::new(Vec::new()),
         }
@@ -599,9 +694,22 @@ impl Datagrams {
     }
 
     pub fn close(&self) {
-        // The descriptor stays open for in-flight calls; `shutdown` is not defined for UDP, so
-        // closing only marks the socket and later calls report `Closed`.
+        // `shutdown` is not defined for UDP, so a parked call is not woken: the descriptor is
+        // freed now, or when the last parked call returns.
         self.closed.set(true);
+        self.release_if_idle();
+    }
+
+    fn release_if_idle(&self) {
+        if self.closed.get() && self.busy.get() == 0 {
+            self.sock.release();
+        }
+    }
+
+    fn parked_wait(&self, interest: Interest, deadline: Deadline) -> Wait {
+        parked(&self.busy, &|| self.release_if_idle(), || {
+            wait_fd(self.sock.as_sock(), interest, deadline)
+        })
     }
 
     /// Waits for one datagram. A datagram longer than `max_bytes` is discarded with `LimitExceeded`.
@@ -649,7 +757,7 @@ impl Datagrams {
                     });
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Read, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Read, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                     if self.closed.get() {
@@ -698,7 +806,7 @@ impl Datagrams {
                 Ok(n) if n == data.len() => return Ok(()),
                 Ok(_) => return Err(NetErr::failed("partial datagram")),
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                    if wait_fd(self.sock.as_sock(), Interest::Write, deadline) == Wait::TimedOut {
+                    if self.parked_wait(Interest::Write, deadline) == Wait::TimedOut {
                         return Err(NetErr::Timeout);
                     }
                 }

@@ -111,6 +111,17 @@ test "results come back in start order":
         try expect_equal(all[1].name, "child")
         try expect_equal(all[0].sizes, [1, 2, 3])
 
+test "a group forgets a closed process":
+    with ProcessGroup[Job]() as group:
+        var first = group.spawn(describe) | try expect_ok
+        let second = group.spawn(describe) | try expect_ok
+        let kept = first.result() | try expect_ok
+        try expect_equal(kept.name, "child")
+        first.close()
+        first.close()
+        let all = group.results() | try expect_ok
+        try expect_equal(all.length(), 1)
+
 test "a Unit result crosses":
     with ProcessGroup[Unit]() as group:
         var child = group.spawn(quiet) | try expect_ok

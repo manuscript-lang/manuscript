@@ -92,3 +92,28 @@ b0:
     let (m, changed) = rewrite(&body, true);
     assert!(!changed, "{}", print_module(&m));
 }
+
+#[test]
+fn leaves_a_value_a_with_close_uses_to_that_close() {
+    let body = r#"
+fn @close(%s: str) -> unit {
+b0:
+  %u: unit = unit
+  ret %u
+}
+
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  %h: int = cleanup.push @close %t
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  drop %t
+  ret %r
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(!changed, "{}", print_module(&m));
+    assert_eq!(count(&m, "main", Op::CleanupPush), 1);
+}
