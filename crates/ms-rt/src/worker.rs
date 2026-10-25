@@ -341,12 +341,15 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
         crate::fault::fault(b"wait: no such worker");
     };
     let done = w.done.load(Ordering::Acquire);
-    // SAFETY: the token is this isolate's; parked once, then freed.
-    let cancelled = unsafe {
-        let woke = crate::task::msrt_token_park(done, -1, core::ptr::null_mut());
+    // SAFETY: the token is this isolate's; it is freed once the worker ended.
+    unsafe {
+        if crate::task::msrt_token_park(done, -1, core::ptr::null_mut()) != 0 {
+            // A stop request: unwind without joining, so the caller's cleanup can cancel the
+            // worker and wait again on the same token.
+            crate::fault::msrt_cancelled();
+        }
         crate::task::msrt_token_free(done);
-        woke != 0
-    };
+    }
     let mut report = crate::string::NO_STR;
     // SAFETY: `report` is writable.
     let status = unsafe { msrt_worker_join(handle as u64, &mut report) };
@@ -360,9 +363,6 @@ pub unsafe extern "C-unwind" fn msrt_worker_wait(handle: i64, out: *mut StrVal) 
     }
     // SAFETY: `out` is writable by contract.
     unsafe { *out = crate::string::from_bytes(&text) };
-    if cancelled {
-        crate::fault::msrt_cancelled();
-    }
 }
 
 #[cfg(test)]
