@@ -18,7 +18,7 @@ def expect_fs_error[T](
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-glob-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-glob-") | try expect_ok):
         let root = temporary.path()
         (fs.create_directory(path: f"{root}/sub", recursive: False) | try expect_ok)
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
@@ -62,7 +62,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-errors-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-errors-") | try expect_ok):
         let directory = f"{temporary.path()}/directory"
         let file = f"{temporary.path()}/file"
         let created = (
@@ -97,7 +97,7 @@ test "ordinary filesystem misuse retains typed cases":
             ) | try expect_fs_error(FileSystemError.AlreadyExists)
         )
 
-        with (fs.open(path: file, flags: "r", mode: 384) | try expect_ok) as reader:
+        with let reader = (fs.open(path: file, flags: "r", mode: 384) | try expect_ok):
             (reader.write("x") | try expect_fs_error(FileSystemError.InvalidInput))
             (
                 reader.seek(
@@ -110,7 +110,7 @@ test "ordinary filesystem misuse retains typed cases":
                 )
             )
 
-        with (fs.open(path: file, flags: "a", mode: 384) | try expect_ok) as writer:
+        with let writer = (fs.open(path: file, flags: "a", mode: 384) | try expect_ok):
             (writer.read(1) | try expect_fs_error(FileSystemError.InvalidInput))
             (writer.read_file() | try expect_fs_error(FileSystemError.InvalidInput))
 
@@ -118,7 +118,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""
 
-    with (fs.temporary("manuscript-stdlib-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-stdlib-") | try expect_ok):
         directory = temporary.path()
 
         let path = f"{directory}/data.txt"
@@ -142,7 +142,7 @@ test "filesystem scoped temporary directories and bounded file reads":
             5
         )
         (fs.list(path: directory) | try expect_ok).length() | try expect_equal(1)
-        with (files().open(path) | try expect_ok) as input:
+        with let input = (files().open(path) | try expect_ok):
             (input.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
 
     match fs.stat(path: directory, follow_links: True):
@@ -153,7 +153,7 @@ test "filesystem scoped temporary directories and bounded file reads":
 test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
-    with (fs.temporary("manuscript-handles-") | try expect_ok) as temporary:
+    with let temporary = (fs.temporary("manuscript-handles-") | try expect_ok):
         let path = f"{temporary.path()}/data.txt"
         let written = (
             fs.write_file(

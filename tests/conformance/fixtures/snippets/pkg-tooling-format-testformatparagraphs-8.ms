@@ -21,6 +21,6 @@ def work(enabled: Bool) -> Int:
 
         run(item)
 
-    with acquire() as resource:
+    with let resource = acquire():
         run(resource)
     return count

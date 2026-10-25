@@ -33,7 +33,7 @@ type Payload:
 test "logger writes typed escaped records and protects metadata":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, timestamp: False)
         let fields = Payload(
             9007199254740993, ok: True, Items([none, some(1)]), 0, "fake", 0
@@ -49,7 +49,7 @@ test "logger writes typed escaped records and protects metadata":
 test "non-object values are written under data":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, timestamp: False)
         try record(logger, LogLevel.Info, "n", 7)
         try record(logger, LogLevel.Warn, "l", ["a", "b"])
@@ -60,7 +60,7 @@ test "non-object values are written under data":
 test "levels filter methods and function values":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, LogLevel.Warn, False)
         try expect_false(
             (
@@ -109,7 +109,7 @@ type Request:
 test "child bindings snapshot values and merge without mutating inputs":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let root = try create(transport, timestamp: False)
         let logger = try bind(root, Service("api"))
         let child = try bind(logger, Request(7))
@@ -124,7 +124,7 @@ test "child bindings snapshot values and merge without mutating inputs":
 test "limits and unencodable values reject before writing":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let line = "{\"level\":30,\"msg\":\"x\"}\n"
         let logger = try create(
             transport, timestamp: False, max_bytes: (line.to_bytes().length())
@@ -173,15 +173,15 @@ test "transport closure and stream errors preserve identity":
 test "file transport appends and flushes with scoped cleanup":
     let fs = filesystem()
 
-    with try fs.temporary("manuscript-log-") as directory:
+    with let directory = try fs.temporary("manuscript-log-"):
         let path = f"{directory.path()}/events.ndjson"
 
-        with try file_transport(path) as transport:
+        with let transport = try file_transport(path):
             let logger = try create(transport, timestamp: False)
             try logger.info("first")
             try logger.flush()
 
-        with try file_transport(path) as transport:
+        with let transport = try file_transport(path):
             let logger = try create(transport, timestamp: False)
             try logger.warn("second")
 
@@ -206,7 +206,7 @@ test "file transport appends and flushes with scoped cleanup":
         )
 
 test "stdout transport accepts records and leaves stdout open":
-    with stdout_transport() as transport:
+    with let transport = stdout_transport():
         let logger = try create(transport, timestamp: False)
         try logger.info("stdout log")
         try logger.flush()
@@ -235,7 +235,7 @@ test "source transports receive complete records and close through their contrac
     let output = MemoryStream("".to_bytes(), 0, closed: False)
     let sink = CaptureTransport(output)
 
-    with Transport(sink) as transport:
+    with let transport = Transport(sink):
         let logger = try create(transport, timestamp: False)
         try logger.info("source transport")
         try logger.flush()
@@ -252,7 +252,7 @@ test "source transports receive complete records and close through their contrac
 test "log_json and child_json accept only JSON objects":
     let output = MemoryStream("".to_bytes(), 0, closed: False)
 
-    with stream_transport(WriteStream(output)) as transport:
+    with let transport = stream_transport(WriteStream(output)):
         let logger = try create(transport, timestamp: False)
         let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
 

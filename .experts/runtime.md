@@ -273,3 +273,10 @@ Evidence: [worker regressions](../crates/ms-rt/src/worker.rs)
 `cancelling_completed_worker_does_not_cancel_reused_isolate`).
 Verify: immediate cancellation ends the intended worker, and cancelling an exited worker leaves
 its replacement running normally.
+
+## Shared is changed only through a lock guard
+
+Decision (Chinmay, 2026-10-25): a `Shared` payload is changed with `with var guard = lock(box):` from `@std/sync.ms`, like Rust's `Arc<Mutex<T>>`; raw `take`/`put` were the manual lock that a cancellation left set (p13). The guard's close returns the payload on every exit, `lock` waits for a held guard, and the checker rejects `take`, `put` and `locked` outside `@std/sync.ms` and a `Shared` in a worker or process message (#1249). A `with var` binding registers its storage slot, so a fault or cancellation closes the value the block had reached.
+Apply when: adding shared state to the stdlib, or touching `with`, `Shared`, or cancellation cleanup.
+Evidence: [lock proposal](../proposals/shared-lock.md), [cancel regression](../tests/e2e/testdata/accept/shared-lock-survives-cancellation.ms).
+Verify: that fixture passes; without the slot in `crates/ms-lower/src/with.rs` `with-var-closes-final-value.ms` reports `[0]` for `[7]`.

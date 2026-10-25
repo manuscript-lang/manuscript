@@ -13,8 +13,8 @@ impl Closeable for Resource:
 export def main() -> Int:
     var output = stdout()
 
-    with Resource("parent", stdout()) as resource:
-        with Resource("child", stdout()) as child:
+    with let resource = Resource("parent", stdout()):
+        with let child = Resource("child", stdout()):
             let _ignored = output.write("ready\n")
             while True:
                 continue
