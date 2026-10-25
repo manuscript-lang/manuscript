@@ -253,3 +253,18 @@ readers before the caller can free or reuse the previous header. Readers never l
 so a signal interrupting the publishing thread cannot deadlock it. Teardown unpublishes first.
 Verify with `cargo +nightly miri test -p ms-rt cancellation_header_retirement_waits_for_readers`;
 keep header layout and shield semantics unchanged, and measure context-switch overhead.
+
+### Worker cancellation must follow startup and retirement
+
+Verified: a cancellation sent immediately after spawn was discarded before the worker published
+its isolate slot. A completed, unjoined worker retained that slot and could cancel a later worker
+that reused it. Keep the request in the worker object, and serialize slot publication, cancellation,
+and retirement before task teardown. Generation-checking the public worker handle alone does not
+protect the separately reused isolate slot.
+
+Apply when: changing worker startup, cancellation or isolate retirement.
+Evidence: [worker regressions](../crates/ms-rt/src/worker.rs)
+(`cancellation_immediately_after_spawn_is_remembered`,
+`cancelling_completed_worker_does_not_cancel_reused_isolate`).
+Verify: immediate cancellation ends the intended worker, and cancelling an exited worker leaves
+its replacement running normally.
