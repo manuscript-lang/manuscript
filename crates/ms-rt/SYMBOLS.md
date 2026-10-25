@@ -688,6 +688,7 @@ msstd_process_forked_signal(h: *mut Handle<Forked>, force: u8)
 msstd_process_forked_close(h: *mut Handle<Forked>)
 msstd_process_ipc_child() -> *mut Handle<IpcLink>
 msstd_process_ipc_read(h: *mut Handle<IpcLink>, max: i64, out: *mut VecVal)
+msstd_process_ipc_wait_reader(h: *mut Handle<IpcLink>) -> u8
 msstd_process_ipc_write(h: *mut Handle<IpcLink>, data: *const VecVal) -> u8
 msstd_process_ipc_close(h: *mut Handle<IpcLink>)
 msstd_process_elapsed(out: *mut i64) -> u8
