@@ -3,6 +3,7 @@
 //! [`crate::conn`].
 
 use crate::addr::{parse_port, split_host_port};
+use crate::conn::OwnedSock;
 use crate::dns::{self, HostConfig, Record};
 use crate::error::{NetErr, cannot_resolve, describe_io_error};
 use crate::ip::{Cidr, ip_text, normalize};
@@ -10,6 +11,7 @@ use crate::policy::{Policy, fold_host, host_ok, ip_ok};
 use crate::rt;
 use crate::sys::{self, AsSock};
 use crate::wait::{Deadline, Interest, Lane, Wait, blocking, wait_fd};
+use ms_rt::fault::with_cleanup;
 use socket2::{Domain, Protocol, SockAddr, Socket, Type};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -470,14 +472,17 @@ impl Network {
         sock.set_nonblocking(true)
             .map_err(|e| self.io_failure(&e))?;
         let addr = SockAddr::unix(path).map_err(|e| self.io_failure(&e))?;
+        let sock = OwnedSock::new(sock);
         match sock.connect(&addr) {
-            Ok(()) => Ok(sock),
+            Ok(()) => Ok(unwrap_sock(sock)),
             Err(e) if in_progress(&e) => {
-                finish_connect(&sock, deadline).map_err(|e| match e {
-                    ConnectError::Timeout => NetErr::Timeout,
-                    ConnectError::Io(e) => self.io_failure(&e),
-                })?;
-                Ok(sock)
+                with_cleanup(&mut || sock.release(), || finish_connect(&sock, deadline)).map_err(
+                    |e| match e {
+                        ConnectError::Timeout => NetErr::Timeout,
+                        ConnectError::Io(e) => self.io_failure(&e),
+                    },
+                )?;
+                Ok(unwrap_sock(sock))
             }
             Err(e) => Err(self.io_failure(&e)),
         }
@@ -633,6 +638,10 @@ pub enum ConnectError {
     Io(io::Error),
 }
 
+fn unwrap_sock(sock: OwnedSock) -> Socket {
+    sock.into_inner().expect("a socket that was not released")
+}
+
 fn in_progress(e: &io::Error) -> bool {
     sys::connect_in_progress(e)
 }
@@ -653,11 +662,13 @@ pub fn connect_nonblocking(addr: SocketAddr, deadline: Deadline) -> Result<Socke
         .map_err(ConnectError::Io)?;
     sock.set_nonblocking(true).map_err(ConnectError::Io)?;
     let _ = sock.set_tcp_nodelay(true);
+    let sock = OwnedSock::new(sock);
     match sock.connect(&addr.into()) {
-        Ok(()) => Ok(sock),
+        Ok(()) => Ok(unwrap_sock(sock)),
         Err(e) if in_progress(&e) => {
-            finish_connect(&sock, deadline)?;
-            Ok(sock)
+            // A cancellation skips the drop of `sock`; release it from the cleanup.
+            with_cleanup(&mut || sock.release(), || finish_connect(&sock, deadline))?;
+            Ok(unwrap_sock(sock))
         }
         Err(e) => Err(ConnectError::Io(e)),
     }

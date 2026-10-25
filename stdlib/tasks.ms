@@ -15,7 +15,7 @@ extern def msrt_scope_spawn(
 
 extern def msrt_scope_started() -> Unit
 
-extern def msrt_scope_join(handle: Int, keep: Int) -> Int
+extern def msrt_scope_join(scope: Int, handle: Int, keep: Int) -> Int
 
 extern def msrt_scope_wait(scope: Int) -> Int
 
@@ -222,9 +222,30 @@ def group_end[In, Out](
         transport: TaskTransport[In, Out](outgoing: down, incoming: up)
     )
 
-# Waits for the task `handle` and takes its result from `values`.
-def collect[T](handle: Int, values: Shared[List[T]]) -> Result[T, TaskError]:
-    try outcome(msrt_scope_join(handle, 0))
+# What a group keeps of a task until it is collected: enough to wait for it and close its channel.
+export type Entry[T, In, Out]:
+    # Internal state: the runtime handle of the task.
+    handle: Int
+    # Internal state: empty until the task returns, then its one result.
+    values: Shared[List[T]]
+    # Internal state: the group's end of the task's channel.
+    channel: Channel[In, Out]
+
+# Drops the entry of the collected task `handle`, so the group holds nothing for it.
+def forget[T, In, Out](registry: Shared[List[Entry[T, In, Out]]], handle: Int) -> Unit:
+    var entries = registry.take()
+
+    for index in range(0, entries.length()):
+        if entries[index].handle == handle:
+            entries.remove(index)
+            break
+
+    registry.put(entries)
+
+# Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
+# even when it has no result, so the runtime and the group let go of it.
+def collect[T](scope: Int, handle: Int, values: Shared[List[T]]) -> Result[T, TaskError]:
+    try outcome(msrt_scope_join(scope, handle, 0))
 
     var finished = values.take()
 
@@ -236,8 +257,12 @@ def collect[T](handle: Int, values: Shared[List[T]]) -> Result[T, TaskError]:
 
 # A started task that returns a `T`, with the group's end of its channel.
 export type Task[T, In = Unit, Out = Unit]:
+    # Internal state: the runtime scope of the task.
+    scope: Int
     # Internal state: the runtime handle of the task.
     handle: Int
+    # Internal state: the group's list of uncollected tasks.
+    registry: Shared[List[Entry[T, In, Out]]]
     # Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
     # The group's end of the task's channel: sends `In` to the task and receives the `Out` it sends.
@@ -246,12 +271,16 @@ export type Task[T, In = Unit, Out = Unit]:
 impl Task[T, In, Out]:
     # Waits for the task and returns its result, or why it has none. Takes the result, so call it once.
     def result() -> Result[T, TaskError]:
-        return collect(self.handle, self.values)
+        let collected = collect(self.scope, self.handle, self.values)
+        forget(self.registry, self.handle)
+        return collected
 
 # A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
 # Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
 # Open a group with `with`: leaving the block cancels tasks that are still running and waits for all of them.
 # Call `results`, `wait` or a task's `result` before the block ends to keep the work.
+# Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
+# tasks that are running or uncollected.
 # `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
 # A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
@@ -261,8 +290,8 @@ export type TaskGroup[T, In = Unit, Out = Unit]:
     timeout: Optional[Duration] = none
     # Internal state: the runtime scope that owns the tasks.
     scope: Int = msrt_scope_new()
-    # Internal state: the tasks in start order, changed through the shared handle so the group works as a `with` binding.
-    tasks: Shared[List[Task[T, In, Out]]] = share([])
+    # Internal state: the uncollected tasks in start order, changed through the shared handle so the group works as a `with` binding.
+    tasks: Shared[List[Entry[T, In, Out]]] = share([])
 
 impl TaskGroup[T, In, Out]:
     # Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
@@ -291,16 +320,24 @@ impl TaskGroup[T, In, Out]:
 
         # The group keeps a second handle on its end, so closing the group closes it.
         var started = self.tasks.take()
-        started.append(Task(handle, values, group_end(down, up)))
+        started.append(Entry(handle, values, group_end(down, up)))
         self.tasks.put(started)
-        return Task(handle, values, group_end(down, up))
+        return Task(self.scope, handle, self.tasks, values, group_end(down, up))
 
-    # Waits for every started task and returns their results in start order, or the first task's error.
+    # Waits for every uncollected task and returns their results in start order, or the first task's error.
+    # Tasks already collected with `result` are not included; the ones returned are collected.
     def results() -> Result[List[T], TaskError]:
-        let count = self.tasks.get().length()
+        if msrt_scope_wait(self.scope) == 3:
+            return error(TaskError.Closed)
+
         var values = List[T]()
-        for index in range(0, count):
-            values.append(try self.tasks.get().get(index).result())
+
+        while self.tasks.get().length() > 0:
+            let first = self.tasks.get().get(0)
+            let value = collect(self.scope, first.handle, first.values)
+            forget(self.tasks, first.handle)
+            values.append(try value)
+
         return ok(values)
 
     # Waits for every started task to end. Returns `TimedOut` or `Cancelled` if any task ended without a result.

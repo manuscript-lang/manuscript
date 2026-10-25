@@ -263,3 +263,21 @@ test "a second result call gives Closed":
         let task = group.spawn(lambda ch: square(2))
         task.result() | try expect_ok | try expect_equal(4)
         task.result() | try expect_error | try expect_equal(TaskError.Closed)
+
+test "a group forgets collected tasks":
+    with TaskGroup[Int]() as group:
+        let first = group.spawn(lambda ch: square(2))
+        let second = group.spawn(lambda ch: square(3))
+        let third = group.spawn(lambda ch: square(4))
+        second.result() | try expect_ok | try expect_equal(9)
+        group.results() | try expect_ok | try expect_equal([4, 16])
+        first.result() | try expect_error | try expect_equal(TaskError.Closed)
+        third.result() | try expect_error | try expect_equal(TaskError.Closed)
+        group.results() | try expect_ok | try expect_equal([])
+
+test "a group with a timeout collects many tasks":
+    with TaskGroup[Int](timeout: some(duration(3600000000000))) as group:
+        var total = 0
+        for i in range(0, 5000):
+            total += group.spawn(lambda ch: i).result().get(0)
+        total | try expect_equal(12497500)

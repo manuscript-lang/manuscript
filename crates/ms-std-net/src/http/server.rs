@@ -1079,6 +1079,10 @@ impl Server {
             if let Some(io) = &st.io {
                 io.shutdown_both();
             }
+            // Free the descriptor now: a handler task cancelled while parked never drops the
+            // `Rc<Conn>` it holds, and nothing reads the stream of a closed connection.
+            st.io = None;
+            st.tls_pending = None;
             st.phase = Phase::Closed;
             st.inbuf = Vec::new();
             st.outbuf = Vec::new();

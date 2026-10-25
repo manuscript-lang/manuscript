@@ -83,6 +83,7 @@ export type NetworkError:
     )
 
 # A connected stream socket, optionally protected by TLS.
+# Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
 export interface Connection:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
@@ -227,6 +228,7 @@ export type DnsRecord:
     port: Int
 
 # A listening socket that accepts incoming connections.
+# Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
 export interface Listener:
     # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.

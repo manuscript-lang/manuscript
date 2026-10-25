@@ -15,6 +15,7 @@ use crate::rt;
 use crate::tls::{self, TlsOptions};
 use crate::wait::Deadline;
 use flate2::write::GzDecoder;
+use ms_rt::fault::with_cleanup;
 use rustls::ClientConfig;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -806,7 +807,12 @@ impl Client {
         hop: &mut Hop<'_>,
         deadline: Deadline,
     ) -> Result<Exchanged, Fail> {
-        match self.exchange(&mut wire, hop, deadline) {
+        // A cancellation leaves by a jump that skips `wire`'s drop; close its connection so the
+        // descriptor is released.
+        let conn = wire.conn.clone();
+        match with_cleanup(&mut || conn.close(), || {
+            self.exchange(&mut wire, hop, deadline)
+        }) {
             Ok((head, added_gzip)) => Ok((head, wire, added_gzip)),
             Err(fail) => {
                 wire.discard();

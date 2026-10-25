@@ -94,12 +94,6 @@ pub const WAIT_WRITE: u32 = 2;
 pub const WAIT_HUP: u32 = 4;
 pub const WAIT_TIMEOUT: u32 = 8;
 
-/// Descriptors a task is parked on. The runtime parks one task per descriptor, so a second
-/// task waiting on the same one checks it between short sleeps instead.
-#[cfg(unix)]
-static PARKED: [core::sync::atomic::AtomicI32; 64] =
-    [const { core::sync::atomic::AtomicI32::new(-1) }; 64];
-
 /// Parks the running task until `fd` is ready for `events` (`WAIT_READ`, `WAIT_WRITE`) or the
 /// timeout (nanoseconds, negative for none) passes, so other tasks keep running. Returns the
 /// ready bits or `WAIT_TIMEOUT`; unwinds the program when a stop request ends the wait.
@@ -107,62 +101,12 @@ static PARKED: [core::sync::atomic::AtomicI32; 64] =
 pub fn task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 {
     /// The runtime's `WAIT_CANCELLED` bit.
     const WAIT_CANCELLED: u32 = 16;
-    if PARKED.iter().any(|p| p.load(Ordering::Relaxed) == fd) {
-        return wait_fd_in_slices(fd, events, timeout_ns);
-    }
-    let slot = PARKED.iter().find(|p| {
-        p.compare_exchange(-1, fd, Ordering::Relaxed, Ordering::Relaxed)
-            .is_ok()
-    });
     // SAFETY: parks the current task; no Rust borrow is held across the call.
     let got = unsafe { msrt_task_wait_fd(fd, events, timeout_ns) };
-    if let Some(slot) = slot {
-        slot.store(-1, Ordering::Relaxed);
-    }
     if got & WAIT_CANCELLED != 0 {
         cancelled();
     }
     got
-}
-
-/// `task_wait_fd` for a descriptor another task is parked on: checks it every 2 ms.
-#[cfg(unix)]
-#[allow(
-    clippy::unnecessary_cast,
-    reason = "timespec fields are not 64-bit on every target"
-)]
-fn wait_fd_in_slices(fd: i32, events: u32, timeout_ns: i64) -> u32 {
-    const SLICE_NS: i64 = 2_000_000;
-    let now = || {
-        let mut t = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        // SAFETY: `t` is writable.
-        unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut t) };
-        t.tv_sec as i64 * 1_000_000_000 + t.tv_nsec as i64
-    };
-    let deadline = (timeout_ns >= 0).then(|| now().saturating_add(timeout_ns));
-    let mut p = libc::pollfd {
-        fd,
-        events: if events & WAIT_WRITE != 0 {
-            libc::POLLOUT
-        } else {
-            libc::POLLIN
-        },
-        revents: 0,
-    };
-    loop {
-        // SAFETY: `p` is one valid entry.
-        if unsafe { libc::poll(&mut p, 1, 0) } > 0 {
-            return events;
-        }
-        let left = deadline.map_or(SLICE_NS, |d| d - now());
-        if left <= 0 {
-            return WAIT_TIMEOUT;
-        }
-        task_sleep(left.min(SLICE_NS));
-    }
 }
 
 /// Windows overlapped named pipes driven by the runtime poller: reads and writes park the task
