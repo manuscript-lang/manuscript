@@ -235,3 +235,79 @@ fn a_cut_off_chain_keeps_every_piece() {
         }
     }
 }
+
+const INTERP: &str = r#"module "main"
+file 0 "a.ms"
+extern @msrt_string_concat(str, str) -> str
+extern @msrt_int_to_string(int) -> str
+extern @msrt_string_empty() -> str
+entry @main
+
+fn @label(%0: str, %1: int) -> str inline(never) {
+b0:
+  %2: str = call.rt @msrt_int_to_string (%1)
+  %3: str = call.rt @msrt_string_concat (%0, %2)
+  drop %2
+  ret %3
+}
+
+fn @pair(%0: str, %1: int, %2: int) -> str inline(never) {
+b0:
+  %3: str = call.rt @msrt_int_to_string (%1)
+  %4: str = call.rt @msrt_string_concat (%3, %0)
+  drop %3
+  %5: str = call.rt @msrt_int_to_string (%2)
+  %6: str = call.rt @msrt_string_concat (%4, %5)
+  drop %4
+  drop %5
+  ret %6
+}
+
+fn @main() -> int export {
+b0:
+  %0: str = call.rt @msrt_string_empty ()
+  %n: int = iconst 7
+  %1: str = call @label (%0, %n)
+  %2: str = call @pair (%0, %n, %n)
+  drop %2
+  drop %1
+  drop %0
+  %5: int = iconst 0
+  ret %5
+}
+"#;
+
+/// `f"w{i}"` and `f"{a}:{b}"` pass their integers to one `string_fmtN` call instead of building
+/// a string for each.
+#[test]
+fn integer_interpolations_format_into_the_joined_string() {
+    let mut m = parse_module(INTERP).expect("parse");
+    verify_module(&m).expect("verify");
+    opt::optimize(&mut m, opt::Level::Speed, true);
+    verify_module(&m).expect("verify after");
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("call.rt @msrt_int_to_string").count(),
+        0,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("call.rt @msrt_string_concat").count(),
+        0,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("call.rt @msrt_string_fmt2 (").count(),
+        1,
+        "{text}"
+    );
+    assert_eq!(
+        text.matches("call.rt @msrt_string_fmt3 (").count(),
+        1,
+        "{text}"
+    );
+    // The masks: bit 1 for `w{i}`, bits 0 and 2 for `{a}:{b}`.
+    assert!(text.contains("iconst 2"), "{text}");
+    assert!(text.contains("iconst 5"), "{text}");
+    assert_eq!(text.matches("drop").count(), 3, "{text}");
+}
