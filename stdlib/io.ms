@@ -109,13 +109,8 @@ export def read_line(
 # terminators (`\n` or `\r\n`) and stops at end of input, at the first I/O error, or at a line
 # longer than `max_bytes`; `error()` then tells the last two apart from a clean end.
 #
-# Iterate a `var` so the loop advances it in place and `error()` can be read afterwards:
-#
-#     var reader = lines(stdin(), max_bytes: 1048576)
-#     for line in reader:
-#         handle(line)
-#     if let failure = reader.error():
-#         return error(failure)
+# Iterate a `var` reader with `for` so the loop advances it in place and `error()` can be read
+# afterwards; see "Read standard input line by line" in the common tasks guide.
 export type LineReader:
     # The stream being read.
     input: ReadStream
