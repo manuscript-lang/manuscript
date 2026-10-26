@@ -1143,7 +1143,7 @@ impl<'a> FnLower<'a> {
                 // Zipping a list with itself must not iterate its variable, which loop headers
                 // would consume while `other` is still read.
                 let same = other == recv.v;
-                let (lv, hidden) = self.list_source(Some(recv_expr).filter(|_| !same), recv)?;
+                let (lv, hidden) = self.list_source((!same).then_some(recv_expr), recv)?;
                 let acc = self.fresh_var(result);
                 let first = self.b.list_new(pair, other_len);
                 self.b.def_var(acc, first);
