@@ -423,6 +423,18 @@ impl Method {
     pub fn name(&self) -> Option<Name> {
         self.decl.as_ref().map(|d| d.name())
     }
+
+    /// The variables declared by the implementation and fixed by its receiver, and the type
+    /// parameters the method declares for itself (the trailing variables).
+    pub fn split_variables(&self) -> (&[Ty], &[Ty]) {
+        let own = self
+            .decl
+            .as_ref()
+            .and_then(|d| d.func())
+            .map_or(0, |f| f.type_params.len())
+            .min(self.variables.len());
+        self.variables.split_at(self.variables.len() - own)
+    }
 }
 
 impl Clone for Method {

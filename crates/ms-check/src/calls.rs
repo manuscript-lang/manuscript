@@ -347,6 +347,7 @@ impl Checker {
             }
             c = self.specialize_native_call(e, callee, args, c, expected);
             i.method = c.method.clone();
+            i.type_args = c.type_args.clone();
             if c.native_str() != "index" {
                 i.native = c.native;
             }

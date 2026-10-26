@@ -395,6 +395,38 @@ impl Checker {
         self.names.borrow_mut().insert(name, s);
     }
 
+    /// Declares the type parameters of an interface or native operation in the current scope and
+    /// records them as the operation's own variables (`owner/name`).
+    pub(crate) fn operation_variables(&mut self, owner: Name, method: &ms_syntax::ast::Method) {
+        let mut variables: Vec<Ty> = Vec::new();
+        for param in &method.func.type_params {
+            if self.scope.types.borrow().contains_key(&param.name) {
+                self.type_error(
+                    param.pos,
+                    format!(
+                        "type parameter {} shadows a type parameter of the receiver; choose a different name",
+                        param.name
+                    ),
+                );
+            }
+            let v: Ty = Rc::new(Type::new(
+                param.name,
+                n(&format!("{owner}/{}/{}", method.func.name, param.name)),
+                Kind::Variable,
+            ));
+            variables.push(v.clone());
+            self.scope.types.borrow_mut().insert(param.name, v);
+        }
+        for (i, param) in method.func.type_params.iter().enumerate() {
+            for bound in &param.bounds {
+                let t = self.resolve(Some(bound));
+                variables[i].bounds.borrow_mut().push(t);
+            }
+        }
+        self.type_defaults(&method.func.type_params, &variables);
+        stdlib::set_operation_variables(format!("{owner}/{}", method.func.name), variables);
+    }
+
     pub(crate) fn variable_scope(&self, vars: &[Ty]) -> Rc<Scope> {
         let s = Scope::new(None);
         for v in vars {
@@ -825,6 +857,8 @@ impl Checker {
                             ),
                         );
                     }
+                    self.scope = self.variable_scope(&s.variables());
+                    self.operation_variables(s.ty().id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
                     def.operations.borrow_mut().push(Operation {
                         name: m.func.name,

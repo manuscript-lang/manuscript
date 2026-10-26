@@ -340,6 +340,15 @@ impl Cx {
                 if let Some(def) = &t.def {
                     let ops = def.operations.borrow().clone();
                     for op in ops {
+                        // An operation with type parameters of its own is static dispatch only.
+                        if op
+                            .decl
+                            .as_ref()
+                            .and_then(|d| d.func())
+                            .is_some_and(|f| !f.type_params.is_empty())
+                        {
+                            continue;
+                        }
                         let sig = ct::sub(&op.ty, &subst);
                         let mut params = Vec::new();
                         for p in &sig.params {
