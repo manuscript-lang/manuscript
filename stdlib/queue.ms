@@ -85,15 +85,20 @@ impl PriorityQueue[T]:
         let order = self.compare(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
-    # Exchanges two heap entries.
-    var def swap(a: Int, b: Int) -> Unit:
-        let left = self.heap.get(a).clone()
-        self.heap.set(a, self.heap.get(b).clone())
-        self.heap.set(b, left)
+    # Reports whether a value waiting to be placed, with its enqueue order, dequeues before the entry at `b`.
+    def before_entry(value: T, order: Int, b: Int) -> Bool:
+        let result = self.compare(value, self.heap.get(b))
+        return result < 0 or (result == 0 and order < self.orders.get(b))
 
-        let left_order = self.orders.get(a)
-        self.orders.set(a, self.orders.get(b))
-        self.orders.set(b, left_order)
+    # Reports whether the entry at `a` dequeues before a value waiting to be placed.
+    def before_entry_at(a: Int, value: T, order: Int) -> Bool:
+        let result = self.compare(self.heap.get(a), value)
+        return result < 0 or (result == 0 and self.orders.get(a) < order)
+
+    # Copies the entry at `from` over the entry at `to`, which the caller is about to overwrite.
+    var def shift(from: Int, to: Int) -> Unit:
+        self.heap.set(to, self.heap.get(from).clone())
+        self.orders.set(to, self.orders.get(from))
 
     # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var def enqueue(value: T) -> Bool:
@@ -105,20 +110,23 @@ impl PriorityQueue[T]:
             if self.heap.length() >= limit:
                 return False
 
-        self.heap.append(value)
-        self.orders.append(self.next_order)
+        let order = self.next_order
         self.next_order += 1
+        self.heap.append(value.clone())
+        self.orders.append(order)
 
         var at = self.heap.length() - 1
 
         while at > 0:
             let parent = (at - 1) / 2
-            if not self.before(at, parent):
+            if not self.before_entry(value, order, parent):
                 break
 
-            self.swap(at, parent)
+            self.shift(parent, at)
             at = parent
 
+        self.heap.set(at, value)
+        self.orders.set(at, order)
         return True
 
     # Removes and returns the next value by priority, or `none` when empty.
@@ -133,11 +141,8 @@ impl PriorityQueue[T]:
         if count == 1:
             return some(top)
 
-        if let entry = last:
-            self.heap.set(0, entry)
-        if let order = last_order:
-            self.orders.set(0, order)
-
+        let entry = last.get()
+        let entry_order = last_order.get()
         let size = count - 1
         var at = 0
 
@@ -148,12 +153,14 @@ impl PriorityQueue[T]:
 
             if child + 1 < size and self.before(child + 1, child):
                 child += 1
-            if not self.before(child, at):
+            if not self.before_entry_at(child, entry, entry_order):
                 break
 
-            self.swap(child, at)
+            self.shift(child, at)
             at = child
 
+        self.heap.set(at, entry.clone())
+        self.orders.set(at, entry_order)
         return some(top)
 
     # Returns the next value by priority without removing it, or none when empty.
