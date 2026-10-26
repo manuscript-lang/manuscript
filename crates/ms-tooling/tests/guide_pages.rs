@@ -2,7 +2,8 @@
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::guide::{
-    cheatsheet, format_matches, index, module_names, page, search, standard_library,
+    cheatsheet, format_matches, index, mistake_entries, mistakes, module_names, page, search,
+    standard_library,
 };
 use std::sync::Arc;
 
@@ -251,4 +252,50 @@ fn cheatsheet_uses_the_current_with_syntax() {
     for line in text.lines().filter(|l| l.contains("`with ")) {
         assert!(!line.contains(" as "), "old with-as spelling: {line}");
     }
+}
+
+// Every listed mistake is real: `wrong` fails (or is silently accepted) as stated, `right` checks clean.
+#[test]
+fn common_mistakes_match_the_compiler() {
+    let entries = mistake_entries();
+    assert!(
+        entries.len() >= 10,
+        "mistakes list shrank to {}",
+        entries.len()
+    );
+    for m in entries {
+        let program = |text: &str| {
+            let filled = m.body.replace("{}", text).replace(";;", "\n    ");
+            let setup = m.setup.replace(";;", "\n");
+            format!("{setup}\nexport def main() -> Int:\n    {filled}\n    return 0\n")
+        };
+        let wrong = issues("mistake.ms", &program(&m.wrong));
+        match &m.diagnostic {
+            Some(fragment) => assert!(
+                wrong.iter().any(|d| d.contains(fragment.as_str())),
+                "`{}` should report {fragment:?}, got {wrong:?}",
+                m.wrong
+            ),
+            None => assert!(
+                wrong.is_empty(),
+                "`{}` should check clean: {wrong:?}",
+                m.wrong
+            ),
+        }
+        let right = issues("fixed.ms", &program(&m.right));
+        assert!(
+            right.is_empty(),
+            "`{}` should check clean: {right:?}",
+            m.right
+        );
+    }
+}
+
+#[test]
+fn common_mistakes_stay_short() {
+    assert!(
+        mistakes().len() <= 1600,
+        "mistakes section is {} bytes",
+        mistakes().len()
+    );
 }
