@@ -201,11 +201,14 @@ test "raw TLS listeners and clients handshake and report negotiated details":
     with let group = TaskGroup[Int]():
         let handle = listener
         group.spawn(lambda ch: serve_one_tls(handle))
+
         with let client = try net.connect_tls_config(
             listener.get().address(), client_tls, some(3.seconds)
         ):
             try client.write("ping", some(3.seconds))
-            try expect_equal((try client.read(some(4), some(3.seconds))).get(), "pong".to_bytes())
+            try expect_equal(
+                (try client.read(some(4), some(3.seconds))).get(), "pong".to_bytes()
+            )
 
             let info = try client.tls_info()
             try expect_false(info.version < 771)
@@ -231,12 +234,15 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
     with let group = TaskGroup[Int]():
         let handle = listener
         group.spawn(lambda ch: serve_one_tls(handle))
-        let refused = net.connect_tls(listener.get().address(), "stdlib.test", some(3.seconds))
+
+        let refused = net.connect_tls(
+            listener.get().address(), "stdlib.test", some(3.seconds)
+        )
         try expect_false(refused.is_ok())
+
         let served = try group.results()
 
     listener.get().close()
-
     with let plain = try net.listen("127.0.0.1:0"):
         with let client = try net.connect(plain.address(), some(2.seconds)):
             try expect_false(client.tls_info().is_ok())
