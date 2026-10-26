@@ -87,3 +87,15 @@ Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven me
 | Manuscript, 4 workers | 40.0k, 34.4k | 58.1k, 64.7k |
 
 A handler with real CPU work (`/top`) gains from the second core and passes Go's server. A handler that only writes three bytes loses 20-30%: the kernel wakes every worker for each connection and the workers contend for it, so keep one thread for such servers. Four workers on two CPUs add nothing and raise p99 (7.8 ms against 2.8 ms).
+
+## 2026-10-26, fetch on several cores
+
+`fetch.sh` gained a row that spreads the 8 connections over 2 worker threads (`ms/fetch <url> 8 <secs> 2`), one `Fetcher` task group per worker. Same machine and pinning as above (clients on CPUs 2-3), 3 s, two runs.
+
+| 8 MiB body, 8 connections | req/s |
+| --- | ---: |
+| Go `net/http` | 374, 385 |
+| Manuscript, tasks on one thread | 176, 143 |
+| Manuscript, 2 worker threads | 338, 351 |
+
+Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one worker fetched 70-84 req/s against 190-198 on the main thread, because each body buffer was mapped and faulted in again.
