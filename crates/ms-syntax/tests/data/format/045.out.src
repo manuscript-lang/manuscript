@@ -1,0 +1,12 @@
+def f(words: List[Int], word: Int, index: Int) -> Unit:
+    words.set(
+        word, bit_and(words.get(word), bit_not(shift_left(1, index % 64))), 1234567, 89
+    )
+    remainder = (
+        remainder
+        .slice(flow.pos, remainder.scalar_length())
+        .get("")
+        .trim_start()
+        .trim_end()
+        .concat("abcdefghijk")
+    )

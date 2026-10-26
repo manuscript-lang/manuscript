@@ -10,7 +10,8 @@
 
 ## Status
 
-- Implemented on branch `claude/project-thread-lgd5qy` (PR #1181): runtime isolates, `WorkerGroup`, checker rule, pipes, fixtures and docs. Open: macOS and Windows verification. Nothing merges until the whole feature works (owner, 2026-10-24).
+- Merged (PR #1181): runtime isolates, `WorkerGroup`, checker rule, pipes, fixtures and docs.
+- Measured 2026-10-26 (Linux, 4 cores, 8 MiB body, local Python server, release build): 40 `fetch` calls take 0.52 s in one worker and 0.32 s across 2, 4 or 8 workers; the server, not the client, bounds the parallel runs. `fetch` works inside a worker; the old note that worker networking was unsafe is removed.
 - Direction (Chinmay, 2026-10-24): `worker_threads`-style model; separate proposals for threads and processes; dedicated group type; `Channel` uppercase; no user-facing "sendable" concept; Linux, macOS and Windows in every stage; 2 GiB default arena per worker; channels are bidirectional and in memory for tasks and workers (socketpair only for processes); majority of the work in Manuscript, small general Rust primitives.
 - Reversed since the first draft: raw-memory moves between arenas (replaced by JSON frames) and a result-returning `results()` (replaced by channels both ways).
 - Siblings: `proposals/taskgroup.md` (landed: `stdlib/tasks.ms`), `proposals/child-processes.md` (same group shape), channels (`proposals/channels.md`, PR #1185).
@@ -158,7 +159,8 @@ flowchart LR
 
 - Whether `ms-std-net` reactors and similar thread-affine natives should be usable inside workers (default: fault).
 - Workers spawning workers (default: allowed, counted against the 256 cap).
-- Rust code in a worker (the Rust standard library's allocations, including the scheduler's `Vec`s) uses the system allocator on Linux, because process-wide caches (`OnceLock<Vec>` in `ms-std-net`) could otherwise point into an unmapped arena; macOS and Windows already use the system allocator for Rust code.
+- Rust code in a worker (the Rust standard library's allocations, including the scheduler's `Vec`s) uses the system allocator on Linux, because process-wide caches (`OnceLock<Vec>` in `ms-std-net`) could otherwise point into an unmapped arena. Large blocks (over the small-class limit) are system blocks anyway, so a worker's Rust code reuses them through the large free list as the main isolate does; before that, each 8 MiB fetch body was mapped and faulted in again (one worker 70 to 84 req/s against 190 on the main isolate, 199 after; two workers 378 against Go's client at about 366 on the same 2 client CPUs). macOS and Windows already use the system allocator for Rust code, whose per-thread arenas do not contend.
+- Small Rust blocks in a worker come from `worker_heap` (Linux): one never-unmapped reservation, per-thread free lists, any thread may free any block, an ended worker hands its lists to the next. musl's `malloc` has one global lock, which made two serving workers slower than one thread (`/health` 65-72k against 85-103k).
 
 ## Rejected ideas
 

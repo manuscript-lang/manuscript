@@ -6,7 +6,7 @@ type Folded:
     name: String
 
 impl Equal for Folded:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Folded) -> Bool:
         return True
 
 impl Hashable for Folded:
@@ -139,7 +139,6 @@ test "equals on built-in data":
     ("x".equals("x")) | try expect_true
     (1.equals(2) == False) | try expect_true
     (probe.equals(EqualProbe(n: 1))) | try expect_true
-    (probe.equals(1) == False) | try expect_true
 
     let bound = probe.equals
     (bound(EqualProbe(n: 1))) | try expect_true

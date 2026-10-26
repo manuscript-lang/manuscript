@@ -5,7 +5,7 @@ type Key:
     value: Int
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool: True
+    def equals(other: Key) -> Bool: True
 
 impl Hashable for Key:
     def hash() -> Int: 0

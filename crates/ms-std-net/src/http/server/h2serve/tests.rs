@@ -141,6 +141,7 @@ fn start(dispatch: Box<dyn Dispatch>, limits: Limits) -> (Rc<Network>, Rc<Server
     let options = Options {
         limits,
         tls: Some(server_tls()),
+        shared: false,
     };
     let server = Server::start(&net, "127.0.0.1:0", dispatch, options).unwrap();
     (net, server)

@@ -44,13 +44,10 @@ def stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     return ok(())
 
 def check_route(url: String, expected: String) -> Result[Unit, Error]:
-    let response = (
-        network().request(
-            method: HttpMethod.Get, url: url,
-            headers: (try text_headers(Map[String, String]())), body: "",
-            timeout: 2.seconds
-        ) | try expect_ok
-    )
+    let response = network().request(
+        method: HttpMethod.Get, url: url,
+        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+    ) | try expect_ok
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
         TextError("path or raw query changed")
     )
@@ -66,13 +63,10 @@ def check_route(url: String, expected: String) -> Result[Unit, Error]:
     return ok(())
 
 def check_rejected(url: String) -> Result[Unit, Error]:
-    let response = (
-        network().request(
-            method: HttpMethod.Get, url: url,
-            headers: (try text_headers(Map[String, String]())), body: "",
-            timeout: 2.seconds
-        ) | try expect_ok
-    )
+    let response = network().request(
+        method: HttpMethod.Get, url: url,
+        headers: (try text_headers(Map[String, String]())), body: "", timeout: 2.seconds
+    ) | try expect_ok
     if response.metadata().status != 400: return error(
         TextError("unsafe or invalid path was dispatched")
     )
@@ -90,20 +84,14 @@ def check_paths(base: String) -> Result[Unit, Error]:
     return ok(())
 
 test "buffered routes validate original input and decode once":
-    with let server = (
-        network().serve(
-            address: "127.0.0.1:0", handler: buffered(route)
-        ) | try expect_ok
-    ):
+    with let server = network().serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok:
         (try check_paths(f"http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    with let server = (
-        network().serve(
-            address: "127.0.0.1:0", handler: stream_route,
-            options: HttpServerOptions(tls: none)
-        ) | try expect_ok
-    ):
+    with let server = network().serve(
+        address: "127.0.0.1:0", handler: stream_route,
+        options: HttpServerOptions(tls: none)
+    ) | try expect_ok:
         (try check_paths(f"http://{server.address()}"))
 
 def expect_http_error[T](outcome: Result[T, HttpError]) -> Result[Unit, Error]:
@@ -119,25 +107,19 @@ def expect_http_error[T](outcome: Result[T, HttpError]) -> Result[Unit, Error]:
 test "buffered and reusable clients reject malformed ports as InvalidInput":
     let headers = (try text_headers(Map[String, String]()))
     let body = ""
-    (
-        network().request(
-            method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
-            body: body
-        ) | try expect_http_error
-    )
+    network().request(
+        method: HttpMethod.Get, url: "http://127.0.0.1:99999/", headers: headers,
+        body: body
+    ) | try expect_http_error
 
     let tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: False
     )
-    with let client = (
-        network().http_client(
-            HttpClientOptions(decompress: False, cookies: False, tls: tls)
-        ) | try expect_ok
-    ):
-        (
-            client.request(
-                method: HttpMethod.Get, url: "http://127.0.0.1:65536/",
-                headers: headers, body: body
-            ) | try expect_http_error
-        )
+    with let client = network().http_client(
+        HttpClientOptions(decompress: False, cookies: False, tls: tls)
+    ) | try expect_ok:
+        client.request(
+            method: HttpMethod.Get, url: "http://127.0.0.1:65536/", headers: headers,
+            body: body
+        ) | try expect_http_error

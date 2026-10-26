@@ -98,7 +98,7 @@ test "match expressions preserve returns and cleanup":
 
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-match-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-match-") | try expect_ok:
         let dir = temporary.path()
         let parsed = amount(text: "3", marker: f"{dir}/parsed")
         (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false

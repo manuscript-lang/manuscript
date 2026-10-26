@@ -14,7 +14,7 @@
 //! `s = s.concat(piece)` lowers to a concat and a drop of the old `s`. When the drop follows
 //! with no use of `s` in between, `string_append` consumes `s` and grows it in place.
 
-use crate::ir::{Block, ExternDef, Func, Imm, Inst, Mode, Module, Op, Param, Value};
+use crate::ir::{Block, ExternDef, Func, Imm, Inst, Loc, Mode, Module, Op, Param, Value};
 use crate::types::Ty;
 use std::collections::HashSet;
 
@@ -318,12 +318,25 @@ fn chain(
     chain(m, f, info, args[1], at, leaves, remove);
 }
 
+/// One fused root: the concat at `at` becomes a join of `leaves`, and `remove` holds the links
+/// and drops it absorbs.
+struct Fusion {
+    at: (usize, usize),
+    leaves: Vec<Piece>,
+    remove: HashSet<(usize, usize)>,
+}
+
+/// Fuses every chain that can be fused independently of the others in one scan. Each fusion
+/// would otherwise cost a rescan of the function, and a function with many interpolated
+/// strings would be quadratic.
 fn fuse_concat(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     let info = info(f);
+    let mut claimed: HashSet<(usize, usize)> = HashSet::new();
+    let mut fusions = Vec::new();
     for (bi, b) in f.blocks.iter().enumerate() {
         for (ii, inst) in b.insts.iter().enumerate().rev() {
-            if ext_name(m, inst) != Some(CONCAT) {
+            if ext_name(m, inst) != Some(CONCAT) || claimed.contains(&(bi, ii)) {
                 continue;
             }
             let mut leaves = Vec::new();
@@ -344,83 +357,124 @@ fn fuse_concat(m: &mut Module, fi: usize) -> bool {
                     .any(|&(db, di)| db != bi || di < ii),
                 Piece::Int(_) => false,
             });
-            if early {
+            if early || remove.iter().any(|r| claimed.contains(r)) {
                 continue;
             }
-            apply_concat(m, fi, (bi, ii), leaves, &remove);
-            return true;
+            claimed.insert((bi, ii));
+            claimed.extend(remove.iter().copied());
+            fusions.push(Fusion {
+                at: (bi, ii),
+                leaves,
+                remove,
+            });
         }
     }
-    false
+    if fusions.is_empty() {
+        return false;
+    }
+    apply_concats(m, fi, fusions);
+    true
 }
 
-fn apply_concat(
-    m: &mut Module,
-    fi: usize,
-    (bi, ii): (usize, usize),
-    leaves: Vec<Piece>,
-    remove: &HashSet<(usize, usize)>,
-) {
-    let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
-    let piece_params = leaves.iter().map(|p| Param {
-        ty: match p {
-            Piece::Int(_) => Ty::INT,
-            Piece::Str(_) => Ty::STR,
-        },
-        mode: Mode::Borrow,
-    });
-    let mut params = Vec::new();
-    if ints {
-        params.push(Param {
-            ty: Ty::INT,
+fn apply_concats(m: &mut Module, fi: usize, fusions: Vec<Fusion>) {
+    // Rewrite every root first, remembering where each mask constant goes.
+    let mut masks: Vec<((usize, usize), Value, i64, Loc)> = Vec::new();
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    for fusion in fusions {
+        let Fusion {
+            at: (bi, ii),
+            leaves,
+            remove,
+        } = fusion;
+        let ints = leaves.iter().any(|p| matches!(p, Piece::Int(_)));
+        let piece_params = leaves.iter().map(|p| Param {
+            ty: match p {
+                Piece::Int(_) => Ty::INT,
+                Piece::Str(_) => Ty::STR,
+            },
             mode: Mode::Borrow,
         });
-    }
-    params.extend(piece_params);
-    let ext = m.add_extern(ExternDef {
-        name: if ints {
-            fmt_name(leaves.len())
-        } else {
-            concat_name(leaves.len())
-        },
-        params,
-        ret: Ty::STR,
-        noreturn: false,
-        pure_: false,
-        fresh: true,
-    });
-    let f = &mut m.funcs[fi];
-    let mut mask = 0i64;
-    let mut args = Vec::new();
-    for (k, p) in leaves.iter().enumerate() {
-        match p {
-            Piece::Int(v) => {
-                mask |= 1 << k;
-                args.push(*v);
-            }
-            Piece::Str(v) => args.push(*v),
+        let mut params = Vec::new();
+        if ints {
+            params.push(Param {
+                ty: Ty::INT,
+                mode: Mode::Borrow,
+            });
         }
+        params.extend(piece_params);
+        let ext = m.add_extern(ExternDef {
+            name: if ints {
+                fmt_name(leaves.len())
+            } else {
+                concat_name(leaves.len())
+            },
+            params,
+            ret: Ty::STR,
+            noreturn: false,
+            pure_: false,
+            fresh: true,
+        });
+        let f = &mut m.funcs[fi];
+        let mut mask = 0i64;
+        let mut args = Vec::new();
+        for (k, p) in leaves.iter().enumerate() {
+            match p {
+                Piece::Int(v) => {
+                    mask |= 1 << k;
+                    args.push(*v);
+                }
+                Piece::Str(v) => args.push(*v),
+            }
+        }
+        let loc = f.blocks[bi].insts[ii].loc;
+        if ints {
+            let mv = f.new_value(Ty::INT);
+            args.insert(0, mv);
+            masks.push(((bi, ii), mv, mask, loc));
+        }
+        let root = &mut f.blocks[bi].insts[ii];
+        root.args = args;
+        root.imm = Imm::Ext(ext);
+        removed.extend(remove);
     }
-    let loc = f.blocks[bi].insts[ii].loc;
-    let mask_val = ints.then(|| f.new_value(Ty::INT));
-    if let Some(mv) = mask_val {
-        args.insert(0, mv);
+    // The mask constant goes right before its root: positions shift by the removals before it.
+    let f = &mut m.funcs[fi];
+    masks.sort_by_key(|&(at, ..)| std::cmp::Reverse(at));
+    let mut gone: Vec<Vec<bool>> = f
+        .blocks
+        .iter()
+        .map(|b| vec![false; b.insts.len()])
+        .collect();
+    for &(b, k) in &removed {
+        gone[b][k] = true;
     }
-    let root = &mut f.blocks[bi].insts[ii];
-    root.args = args;
-    root.imm = Imm::Ext(ext);
-    // The root moves up by the removals before it in its block; the mask constant goes right
-    // before it afterwards.
-    let shift = (0..ii).filter(|&k| remove.contains(&(bi, k))).count();
+    // `before[b][k]`: removals in block `b` ahead of position `k`.
+    let before: Vec<Vec<u32>> = gone
+        .iter()
+        .map(|g| {
+            let mut n = 0;
+            g.iter()
+                .map(|&x| {
+                    let at = n;
+                    n += x as u32;
+                    at
+                })
+                .collect()
+        })
+        .collect();
+    let shifts: Vec<usize> = masks
+        .iter()
+        .map(|&((bi, ii), ..)| before[bi][ii] as usize)
+        .collect();
     for (b, blk) in f.blocks.iter_mut().enumerate() {
         let mut k = 0usize;
         blk.insts.retain(|_| {
-            let keep = !remove.contains(&(b, k));
+            let keep = !gone[b][k];
             k += 1;
             keep
         });
     }
-    if let Some(mv) = mask_val {
+    for (&((bi, ii), mv, mask, loc), shift) in masks.iter().zip(shifts) {
         f.blocks[bi].insts.insert(
             ii - shift,
             Inst {

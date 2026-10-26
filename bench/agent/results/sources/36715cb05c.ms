@@ -550,12 +550,10 @@ def instruction(var a: Asm, ln: Int, name: String, rest: String) -> Result[
     if not shape_ok(opc, ops):
         return error(AsmError(msg: f"invalid operands for '{name}'"))
 
-    (
-        a.items.append(
-            Item(
-                ln: ln, kind: 0, opc: opc, addr: a.ninstr, ops: ops,
-                exprs: List[String](), vals: List[Int](), cnt: 0
-            )
+    a.items.append(
+        Item(
+            ln: ln, kind: 0, opc: opc, addr: a.ninstr, ops: ops, exprs: List[String](),
+            vals: List[Int](), cnt: 0
         )
     )
     a.ninstr += 1
@@ -570,12 +568,10 @@ def data_word(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
     if words == 0:
         return error(AsmError(msg: "wrong number of operands for '.word'"))
 
-    (
-        a.items.append(
-            Item(
-                ln: ln, kind: 1, opc: 0, addr: a.dcount, ops: List[Operand](),
-                exprs: exprs, vals: List[Int](), cnt: 0
-            )
+    a.items.append(
+        Item(
+            ln: ln, kind: 1, opc: 0, addr: a.dcount, ops: List[Operand](), exprs: exprs,
+            vals: List[Int](), cnt: 0
         )
     )
     a.dcount += words
@@ -592,12 +588,10 @@ def data_string(var a: Asm, ln: Int, zero_term: Bool, rest: String) -> Result[
         vals.append(0)
 
     let words = vals.length()
-    (
-        a.items.append(
-            Item(
-                ln: ln, kind: 2, opc: 0, addr: a.dcount, ops: List[Operand](),
-                exprs: List[String](), vals: vals, cnt: 0
-            )
+    a.items.append(
+        Item(
+            ln: ln, kind: 2, opc: 0, addr: a.dcount, ops: List[Operand](),
+            exprs: List[String](), vals: vals, cnt: 0
         )
     )
     a.dcount += words
@@ -621,12 +615,10 @@ def data_space(var a: Asm, ln: Int, rest: String) -> Result[Int, AsmError]:
 
     var fills = List[String]()
     fills.append(fill)
-    (
-        a.items.append(
-            Item(
-                ln: ln, kind: 3, opc: 0, addr: a.dcount, ops: List[Operand](),
-                exprs: fills, vals: List[Int](), cnt: count
-            )
+    a.items.append(
+        Item(
+            ln: ln, kind: 3, opc: 0, addr: a.dcount, ops: List[Operand](), exprs: fills,
+            vals: List[Int](), cnt: count
         )
     )
     a.dcount += count

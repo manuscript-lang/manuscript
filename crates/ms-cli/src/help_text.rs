@@ -21,7 +21,7 @@ Commands:
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  guide          Print the language cheat sheet
+  guide          Print the language cheat sheet and common mistakes
   help           Show help for a command
   version        Print the compiler version
 
@@ -338,8 +338,8 @@ Examples:
 
 pub const HELP_GUIDE: &str = r#"Usage: ms guide
 
-Print the language cheat sheet: syntax, types, errors, and a checked example
-program. Look symbols up with ms search_symbol.
+Print the language cheat sheet: syntax, types, errors, a checked example
+program, and common mistakes beside their fixes. Look symbols up with ms search_symbol.
 
 Options:
   -h, --help  Show this help

@@ -206,7 +206,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::LParen && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket) {
         return false;
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::RBracket) {
+    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
         return false;
     }
     if previous == Tok::Minus
@@ -440,7 +440,8 @@ fn layout_token(kind: Tok) -> bool {
 }
 
 fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
-    let mut source = group_statement_expressions(file, source)?;
+    let source = group_statement_expressions(file, source, true)?;
+    let mut source = group_statement_expressions(file, &source, false)?;
     let mut module = parse(file, &source)?;
     let mut tokens = lex(file, &source)?.tokens;
     if let Some(compact) = compact_callback_suites(&module, &tokens, &source) {
@@ -600,6 +601,13 @@ fn suite_expression(mut e: &Expr) -> bool {
         e = operand;
     }
     matches!(e.kind, ExprKind::Lambda(_) | ExprKind::Match { .. })
+}
+
+fn is_arith(k: Tok) -> bool {
+    matches!(
+        k,
+        Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash | Tok::Percent
+    )
 }
 
 fn is_open(k: Tok) -> bool {
@@ -1223,7 +1231,7 @@ fn trim_trailing_comma<'n>(_: &Layout, nodes: &'n [Node]) -> &'n [Node] {
 
 /// Ordinary newlines cannot split ungrouped expressions. Adds grouping only
 /// around a statement's complete value, retaining its precedence and inline suite.
-fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String> {
+fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PResult<String> {
     let module = parse(file, source)?;
     let lexed = lex(file, source)?;
     let tokens = &lexed.tokens;
@@ -1248,13 +1256,65 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
         starts: HashMap<u32, usize>,
         pairs: HashMap<usize, usize>,
         insert: HashMap<usize, String>,
+        remove: Vec<(usize, usize, String)>,
+        strip: bool,
     }
     impl G<'_> {
+        /// Parentheses around a whole method chain only add a line; the
+        /// layout pass restores them when the chain cannot hug its last call.
+        fn unwrap_chain(&mut self, start: usize) {
+            let tokens = self.tokens;
+            let Some(&close) = self.pairs.get(&start) else {
+                return;
+            };
+            if tokens[start].kind != Tok::LParen {
+                return;
+            }
+            let after = tokens.get(close + 1).map(|t| t.kind);
+            if !matches!(after, None | Some(Tok::Newline | Tok::Colon | Tok::Eof)) {
+                return;
+            }
+            let (mut depth, mut dots) = (0, 0);
+            for t in &tokens[start + 1..close] {
+                match t.kind {
+                    k if is_open(k) => depth += 1,
+                    Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
+                    Tok::Dot if depth == 0 => dots += 1,
+                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Lambda | Tok::Def => return,
+                    k if depth == 0
+                        && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
+                    {
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+            let inner = &self.source[tokens[start].hi as usize..tokens[close].lo as usize];
+            if dots >= 1 && !inner.contains('#') && tokens[start + 1].kind != Tok::Dot {
+                let mut flat = String::new();
+                let mut code: Vec<Token> = Vec::new();
+                for t in &tokens[start + 1..close] {
+                    code.push(*t);
+                    if code.len() > 1 && token_space(&code, code.len() - 1) {
+                        flat.push(' ');
+                    }
+                    flat.push_str(&self.source[t.lo as usize..t.hi as usize]);
+                }
+                self.remove
+                    .push((tokens[start].lo as usize, tokens[close].hi as usize, flat));
+            }
+        }
+
         fn wrap(&mut self, start: usize) {
+            if self.strip {
+                return self.unwrap_chain(start);
+            }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
+            let mut last_call = None;
             while end < tokens.len() {
                 if let Some(&close) = self.pairs.get(&end) {
+                    last_call = (tokens[end].kind == Tok::LParen).then_some((end, close));
                     end = close + 1;
                     continue;
                 }
@@ -1295,11 +1355,30 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
                 }
                 flat.push_str(&self.source[t.lo as usize..t.hi as usize]);
             }
-            let mut width = tokens[start].pos.column as usize - 1 + flat.chars().count();
+            let column = tokens[start].pos.column as usize - 1;
+            let mut width = column + flat.chars().count();
             if end < tokens.len() && tokens[end].kind == Tok::Colon {
                 width += 1; // The condition's suite colon occupies a column too.
             }
-            if width > WIDTH && (booleans + operators > 0 || dots >= 2) {
+            // A chain whose last call can open on the first line breaks inside
+            // that call, so its opening parenthesis stays on the line.
+            let hugs = booleans + operators == 0
+                && last_call.is_some_and(|(open, close)| {
+                    let mut head = column;
+                    let mut code: Vec<Token> = Vec::new();
+                    for t in &tokens[start..=open] {
+                        if layout_token(t.kind) {
+                            continue;
+                        }
+                        code.push(*t);
+                        if code.len() > 1 && token_space(&code, code.len() - 1) {
+                            head += 1;
+                        }
+                        head += (t.hi - t.lo) as usize;
+                    }
+                    close + 1 == end && head <= WIDTH
+                });
+            if width > WIDTH && !hugs && (booleans + operators > 0 || dots >= 2) {
                 self.insert.entry(from).or_default().push('(');
                 self.insert.entry(to).or_default().insert(0, ')');
             }
@@ -1366,6 +1445,8 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
         starts,
         pairs,
         insert: HashMap::new(),
+        remove: Vec::new(),
+        strip,
     };
     for d in &module.decls {
         // A constant's synthetic statement starts at its initializer, which
@@ -1377,6 +1458,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
             g.wrap(start);
         }
         visit::walk_decl(&mut g, d);
+    }
+    if strip {
+        let mut result = source.to_string();
+        g.remove.sort_unstable_by(|a, b| b.cmp(a));
+        for (from, to, flat) in &g.remove {
+            result.replace_range(*from..*to, flat);
+        }
+        return Ok(result);
     }
     let mut offsets: Vec<usize> = g.insert.keys().copied().collect();
     offsets.sort_unstable_by(|a, b| b.cmp(a));

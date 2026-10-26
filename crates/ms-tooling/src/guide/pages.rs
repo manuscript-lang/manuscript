@@ -16,6 +16,56 @@ pub fn cheatsheet() -> &'static str {
     include_str!("../../data/cheatsheet.md")
 }
 
+/// One checked agent mistake: `wrong` and `right` replace `{}` in `body`.
+pub struct Mistake {
+    pub wrong: String,
+    pub right: String,
+    pub setup: String,
+    pub body: String,
+    /// A fragment of the diagnostic `wrong` produces, or `None` when it checks clean.
+    pub diagnostic: Option<String>,
+}
+
+/// The common-mistakes entries from `data/mistakes.txt`.
+pub fn mistake_entries() -> Vec<Mistake> {
+    let field = |block: &str, key: &str| {
+        let prefix = format!("{key}: ");
+        let line = block.lines().find_map(|line| line.strip_prefix(&prefix));
+        line.map(str::to_string)
+    };
+    let mut entries = Vec::new();
+    let text = include_str!("../../data/mistakes.txt");
+    for block in text.split("\n\n") {
+        let block: String = block
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let Some(wrong) = field(&block, "wrong") else {
+            continue;
+        };
+        let diagnostic = field(&block, "diag").filter(|d| d != "-");
+        entries.push(Mistake {
+            wrong,
+            right: field(&block, "right").expect("mistake without right"),
+            setup: field(&block, "setup").unwrap_or_default(),
+            body: field(&block, "body").unwrap_or_else(|| "{}".to_string()),
+            diagnostic,
+        });
+    }
+    entries
+}
+
+/// The mistakes section of `ms guide`: each wrong form beside its fix.
+pub fn mistakes() -> String {
+    let show = |text: &str| text.replace(";;", "; ");
+    let mut out = String::from("\n## Common mistakes\n\n");
+    for m in mistake_entries() {
+        out.push_str(&format!("- `{}` -> `{}`\n", show(&m.wrong), show(&m.right)));
+    }
+    out
+}
+
 pub(crate) fn short_name(path: &str) -> &str {
     let path = path.strip_prefix("@std/").unwrap_or(path);
     path.strip_suffix(".ms").unwrap_or(path)

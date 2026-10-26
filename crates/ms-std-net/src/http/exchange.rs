@@ -826,7 +826,11 @@ mod tests {
 
     fn start(limits: Limits) -> (Rc<Network>, Rc<Server>) {
         let net = Network::new_root();
-        let options = Options { limits, tls: None };
+        let options = Options {
+            limits,
+            tls: None,
+            shared: false,
+        };
         let server = Server::start(&net, "127.0.0.1:0", Box::new(Streamer), options).unwrap();
         (net, server)
     }

@@ -356,3 +356,51 @@ fn a_cut_off_chain_keeps_every_piece() {
         }
     }
 }
+
+/// `n` interpolations `f"v{r}"` in one function, each folding its length into `r`.
+fn many_interpolations(n: usize) -> String {
+    let mut s = String::from(
+        r#"module "main"
+file 0 "a.ms"
+extern @msrt_int_to_string(int) -> str fresh
+extern @msrt_string_concat(str, str) -> str fresh
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: int = iconst 0
+"#,
+    );
+    let (mut v, mut acc) = (1, 0);
+    for _ in 0..n {
+        s.push_str(&format!(
+            "  %{v}: str = str \"v\"\n  %{}: str = call.rt @msrt_int_to_string (%{acc})\n  %{}: str = call.rt @msrt_string_concat (%{v}, %{})\n  drop %{}\n  %{}: int = str.len %{}\n  drop %{}\n",
+            v + 1,
+            v + 2,
+            v + 1,
+            v + 1,
+            v + 3,
+            v + 2,
+            v + 2
+        ));
+        acc = v + 3;
+        v += 4;
+    }
+    s.push_str(&format!("  ret %{acc}\n}}\n"));
+    s
+}
+
+/// Each fusion used to rescan and rewrite the whole function, so many interpolations in one
+/// function were quadratic.
+#[test]
+fn many_fusions_in_one_function_take_linear_time() {
+    let n = 12_000;
+    let mut m = parse_module(&many_interpolations(n)).expect("parse");
+    verify_module(&m).expect("verify");
+    let start = std::time::Instant::now();
+    ms_mir::opt::strfuse::run(&mut m);
+    assert!(start.elapsed().as_secs() < 20, "took {:?}", start.elapsed());
+    verify_module(&m).expect("verify after");
+    let text = print_module(&m);
+    assert_eq!(text.matches("@msrt_string_fmt2 (").count(), n, "{text}");
+}

@@ -11,7 +11,7 @@ export def bench_path_url_math() -> Unit:
         lambda () -> Int:
             var n = 0
             for i in range(0, 50000):
-                n += (join(["/a", "b/../c", "d.txt"]) | normalize | .length())
+                n += join(["/a", "b/../c", "d.txt"]) | normalize | .length()
             return n
     )
 
