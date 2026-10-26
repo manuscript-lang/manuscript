@@ -149,13 +149,21 @@ test "a handler that sends nothing answers 204":
     r.route(HttpMethod.Get, "/n", lambda exchange, params: ok(())).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
 
-def whole_response(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+def whole_response(
+    exchange: HttpExchange,
+    params: RouteParams
+) -> Result[Unit, HttpError]:
     let body = "" if exchange.path() == "/empty" else "done"
+
     try reply(exchange, text(200, body))
+
     for extra in ["extra", ""]:
         let written = exchange.write(extra)
         if written.is_ok(): return error(HttpError.Failed("write after send succeeded"))
-        if written.err() != IoError.InvalidInput: return error(HttpError.Failed("wrong write error"))
+        if written.err() != IoError.InvalidInput: return error(
+            HttpError.Failed("wrong write error")
+        )
+
     return ok(())
 
 test "a whole in-process response rejects subsequent writes":

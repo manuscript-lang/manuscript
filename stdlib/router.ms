@@ -524,9 +524,12 @@ impl HttpExchange for TestExchange:
 
     def send(status: Int, headers: HttpHeaders, body: Bytes) -> Result[Unit, HttpError]:
         try self.send_headers(status, headers)
+
         with var guard = lock(self.state):
             guard.value.complete = True
-            if self.request.method.text() == "HEAD" or not has_body(status): return ok(())
+            if self.request.method.text() == "HEAD" or not has_body(status): return ok(
+                ()
+            )
 
             guard.value.body.append_bytes(body)
             return ok(())
@@ -544,7 +547,9 @@ impl HttpExchange for TestExchange:
     def write_bytes(data: Bytes) -> Result[Unit, IoError]:
         with var guard = lock(self.state):
             if guard.value.closed: return error(IoError.Closed)
-            if not guard.value.sent or guard.value.complete: return error(IoError.InvalidInput)
+            if not guard.value.sent or guard.value.complete: return error(
+                IoError.InvalidInput
+            )
             if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
                 return error(IoError.InvalidInput)
 
