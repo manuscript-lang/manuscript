@@ -125,12 +125,6 @@ pub fn desugar_inherent_impls(module: &Module) -> (Vec<Decl>, Vec<InherentError>
         let contract_name = n(&format!("{name}{INHERENT_SUFFIX}"));
         let mut methods: Vec<Method> = Vec::with_capacity(imp.methods.len());
         for method in &imp.methods {
-            if !method.func.type_params.is_empty() {
-                errors.push(InherentError {
-                    pos: method.pos,
-                    message: format!("method {} declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument", method.func.name),
-                });
-            }
             let mut signature = method.clone();
             signature.func.body = Vec::new();
             for p in &mut signature.func.params {

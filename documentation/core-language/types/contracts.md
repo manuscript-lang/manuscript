@@ -16,7 +16,7 @@ interface Payments:
 
 Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `def reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
 
-`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. Source methods cannot declare their own type parameters yet; use a generic function taking the receiver.
+`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
 
 ```manuscript
 interface Increment:
@@ -32,7 +32,7 @@ impl Increment for Offset:
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var def` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. Operations and methods declare no generic parameters of their own.
+After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var def` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
@@ -72,7 +72,7 @@ Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `D
 - Separate modules may define the same local pair; extensions never propagate through imports.
 - Views, bound methods, and specialized generics keep the implementation selected where they were created; a raw concrete value carries no extra conformance into another module.
 - A `Map` or `Set` whose key type has a local `Equal` or `Hashable` keeps the implementations of the module that created it, including when another module adds, removes, or looks up keys; a collection created where the type has none keeps structural equality.
-- Receivers must be source-defined nominal records or alternatives. Standard-library receivers, interfaces, bare type parameters, specialization, generic operations, and implementation inheritance are unsupported.
+- Receivers must be source-defined nominal records or alternatives. Standard-library receivers, interfaces, bare type parameters, specialization, and implementation inheritance are unsupported.
 - Contracts may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
 - Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](records.md#public-data-surfaces).
 - Same-named operations from different interfaces need an [interface-typed binding](#selecting-an-operation).
@@ -118,6 +118,21 @@ impl ReadValue[Int] for Box[Int]:
 ```
 
 `ReadValue[Int]` and `ReadValue[String]` on one receiver are distinct pairs but share `get`, so dispatch needs an interface-typed binding. Specialization follows the [finite-application rules](generics.md#finite-recursive-applications).
+
+## Generic operations
+
+An interface operation, an implementation method and an inherent method may declare type parameters after their name. The implementation repeats the interface operation's parameters in the same order with the same bounds, and its signature must match once they are renamed.
+
+```manuscript
+interface Ranked[T]:
+    def best_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+
+impl Ranked[Int] for Scores:
+    def best_by[K: Comparable](key: Callable[[Int], K]) -> Optional[Int]:
+        ...
+```
+
+A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/lists.ms`).
 
 ## Interface conversion
 

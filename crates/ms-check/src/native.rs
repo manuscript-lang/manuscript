@@ -70,17 +70,22 @@ impl Checker {
         }
         // Implementations have already specialized their receiver variables. They
         // dispatch through the contract, rather than native receiver operations.
+        // A source or interface operation with type parameters of its own is specialized here too.
+        let generic = |m: &crate::types::Method| {
+            !m.variables.is_empty() && (m.native.as_str().is_empty() || m.native == "contract")
+        };
         if methods.len() != 1
-            || methods[0].contract.is_some()
-            || methods[0].native.as_str().is_empty()
-            || methods[0].native == "contract"
+            || (!generic(&methods[0])
+                && (methods[0].contract.is_some()
+                    || methods[0].native.as_str().is_empty()
+                    || methods[0].native == "contract"))
         {
             return None;
         }
         let m = methods[0].clone();
         let info = Info {
             ty: Some(m.ty.clone()),
-            native: Some(m.native),
+            native: (!m.native.as_str().is_empty()).then_some(m.native),
             method: Some(m),
             no_return: receiver.no_return,
             ..Info::default()
@@ -127,6 +132,9 @@ impl Checker {
                 Some(&mut context),
             );
             supplied = vars.iter().map(|v| subst.get(&v.id).cloned()).collect();
+        }
+        if method.native.as_str().is_empty() || method.native == "contract" {
+            info.type_args = supplied.clone();
         }
         if !vars.is_empty() || applied {
             info.ty =

@@ -585,7 +585,9 @@ impl<'a> FnLower<'a> {
         if !ct::unify(&declared.receiver, &rt, &vars, &mut subst) {
             return Err(Error::new("cannot bind method receiver type"));
         }
-        for (i, v) in m.variables.iter().enumerate() {
+        // The method's own type parameters come last; the call's type arguments bind them in order.
+        let own = declared.variables.len() - c.func.func().map_or(0, |f| f.type_params.len());
+        for (i, v) in declared.variables[own..].iter().enumerate() {
             if let (false, Some(Some(a))) = (subst.contains_key(&v.id), view.type_args.get(i)) {
                 subst.insert(v.id, ct::sub(a, &self.subst));
             }

@@ -7,21 +7,32 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "declaration List reuses a prelude name; rename it, because List always refers to the standard declaration",
         "position": {
           "file": "pkg-parser-testemptyfunctiondeclarations-2.ms",
-          "line": 7,
-          "column": 9,
-          "offset": 234
+          "line": 4,
+          "column": 1,
+          "offset": 193
+        }
+      },
+      {
+        "code": "MS3012",
+        "phase": "type",
+        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+        "position": {
+          "file": "pkg-parser-testemptyfunctiondeclarations-2.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 212
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:7:9: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:4:1: resolution: declaration List reuses a prelude name; rename it, because List always refers to the standard declaration\n<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:6:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
