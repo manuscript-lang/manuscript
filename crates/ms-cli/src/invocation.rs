@@ -540,31 +540,39 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
 
 /// `--help` scanning: a flag value is not a help request, even if spelled `--help`.
 pub fn requests_help(args: &[String]) -> bool {
-    const VALUE_FLAGS: &[&str] = &[
-        "-o",
-        "--output",
-        "--out-dir",
-        "--build-type",
-        "--limit",
-        "--timeout",
-        "--filter",
-        "--test",
-        "--match",
-        "--exclude",
-        "--repeat",
-        "--shuffle",
-        "--top",
-        "--link",
-    ];
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
             "--" => return false,
             "-h" | "--help" => return true,
-            flag if VALUE_FLAGS.contains(&flag) => i += 1,
+            flag if VALUE_OPTIONS.contains(&flag) || ["--limit", "--explain"].contains(&flag) => {
+                i += 1;
+            }
             _ => {}
         }
         i += 1;
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn help_scanning_respects_option_values_and_the_separator() {
+        for flag in VALUE_OPTIONS.iter().chain(["--limit", "--explain"].iter()) {
+            for value in ["-h", "--help"] {
+                let args = [flag.to_string(), value.to_string()];
+                assert!(!requests_help(&args), "{args:?}");
+                assert!(requests_help(&[
+                    args[0].clone(),
+                    args[1].clone(),
+                    "--help".into()
+                ]));
+            }
+        }
+        assert!(!requests_help(&["--".into(), "--help".into()]));
+        assert!(requests_help(&["--entity=--help".into(), "--help".into()]));
+    }
 }

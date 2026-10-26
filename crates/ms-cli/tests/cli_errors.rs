@@ -27,3 +27,18 @@ fn path_in_command_position_suggests_run() {
     assert_eq!(status, 2);
     assert!(err.contains("ms run main.ms"), "{err}");
 }
+
+#[test]
+fn help_spelling_as_an_option_value_is_validated_as_a_value() {
+    for args in [
+        ["diagram", "main.ms", "--view", "--help"],
+        ["diagram", "main.ms", "--format", "-h"],
+        ["diagram", "main.ms", "--depth", "--help"],
+        ["review", "main.ms", "--format", "--help"],
+        ["review", "main.ms", "--explain", "--help"],
+    ] {
+        let (status, err) = ms(&args);
+        assert_eq!(status, 2, "{args:?}: {err}");
+        assert!(!err.is_empty(), "{args:?} must report its invalid value");
+    }
+}
