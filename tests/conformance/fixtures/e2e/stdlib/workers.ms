@@ -291,12 +291,12 @@ test "a worker that uses the network ends cleanly":
 
 def fetches_page() -> Unit:
     var ch = worker_channel[Int, String]()
+
     if let address = ch.receive().get(none):
         var total = 0
         for round in range(0, 3):
             if let response = fetch(f"http://{address}/page"):
                 total += response.body.length()
-
         ch.send(total)
 
 def page(request: HttpRequest) -> HttpResponse:
@@ -305,9 +305,11 @@ def page(request: HttpRequest) -> HttpResponse:
 test "workers fetch from the starter's server at the same time":
     let handler = buffered(page)
     let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
+
     with let server = acquired:
         with let group = WorkerGroup[String, Int]():
             var workers: List[Worker[String, Int]] = []
+
             for i in range(0, 4):
                 var worker = group.spawn(fetches_page).get(none)
                 try expect_ok(worker.channel.send(server.address()))
@@ -322,6 +324,7 @@ test "workers fetch from the starter's server at the same time":
 def doubles_bytes() -> Unit:
     var ch = worker_channel[Int, Int]()
     let raw = worker_bytes()
+
     while True:
         if let data = raw.receive().get(none):
             let _sent = raw.send(data.concat(data))
@@ -336,6 +339,7 @@ test "bytes cross a worker pipe without JSON":
         let small = "abc".to_bytes()
         try expect_ok(raw.send(big))
         try expect_ok(raw.send(small))
+
         let first = raw.receive().get(none).get("".to_bytes())
         let second = raw.receive().get(none).get("".to_bytes())
         try expect_equal(first.length(), 600000)
@@ -356,6 +360,7 @@ test "tasks joining clones of one worker all see its outcome":
         let worker = workers.spawn(naps).get(none)
         let first_copy = worker.clone()
         let second_copy = worker.clone()
+
         with let tasks = TaskGroup[Int]():
             let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))
