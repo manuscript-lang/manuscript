@@ -153,16 +153,12 @@ def transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: St
         return reject(var ledger, from_id, "error: same account")
 
     if let amount = parse_amount(amount_text):
-        let source = ledger.accounts.get(from_id).get(
-            Account(
-                balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False
-            )
-        )
-        let target = ledger.accounts.get(to_id).get(
-            Account(
-                balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False
-            )
-        )
+        let source = ledger.accounts.get(
+            from_id
+        ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False))
+        let target = ledger.accounts.get(
+            to_id
+        ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False))
         if source.frozen:
             return reject(var ledger, from_id, f"error: account frozen {from_id}")
         if target.frozen:
@@ -202,11 +198,9 @@ def report(var ledger: Ledger) -> List[String]:
     )
 
     for id in ids:
-        let account = ledger.accounts.get(id).get(
-            Account(
-                balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False
-            )
-        )
+        let account = ledger.accounts.get(
+            id
+        ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False))
         total += account.balance
         lines.append(
             f"{id} balance={account.balance} limit={account.limit} ops={account.ops} rejected={account.rejected} frozen={yes_no(account.frozen)}"

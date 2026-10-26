@@ -47,7 +47,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
 
-    with let server = net.serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok:
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: echo, options: options
+    ) | try expect_ok:
         let url = f"http://{server.address()}/"
         let response = net.request(
             method: HttpMethod.Get, url: url,
@@ -60,9 +62,9 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 or response.body != "hello".to_bytes()
             )
         )
-        response.metadata().headers.text("X-Test") | try expect_ok | try expect_equal(
-            some(["manuscript"])
-        )
+        response.metadata().headers.text(
+            "X-Test"
+        ) | try expect_ok | try expect_equal(some(["manuscript"]))
 
         let client_options = HttpClientOptions(
             decompress: True, cookies: True, tls: tls_options()
@@ -95,7 +97,9 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
-    with let server = net.serve(address: "127.0.0.1:0", handler: echo, options: options) | try expect_ok:
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: echo, options: options
+    ) | try expect_ok:
         let client_options = WebSocketOptions(
             max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
             compression: False

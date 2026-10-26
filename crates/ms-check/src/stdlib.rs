@@ -146,7 +146,7 @@ fn read_bindings() -> Result<Bindings, String> {
 
 /// The bundled source modules that extend native standard types (List operations, Bytes codecs); their
 /// methods apply to every program.
-const EXTENSION_MODULES: [&str; 2] = ["@std/lists.ms", "@std/bytecodecs.ms"];
+const EXTENSION_MODULES: [&str; 2] = ["@std/collections.ms+source", "@std/bytecodecs.ms"];
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -678,6 +678,74 @@ fn has_inherent_body(module: &Module) -> bool {
     })
 }
 
+/// Whether a top-level declaration carries an implementation body.
+fn decl_has_body(d: &Decl) -> bool {
+    match &d.kind {
+        DeclKind::Fn(f) => !f.body.is_empty(),
+        DeclKind::Const(_) => true,
+        DeclKind::Test(t) => !t.body.is_empty(),
+        DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
+        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
+    }
+}
+
+/// Splits a file that has both native operations (an inherent `impl` with bodyless methods) and
+/// bodies into a native module and a source module named `<file>+source`. The source half takes
+/// the bodied declarations and the interfaces only they implement; the rest stays native. Source
+/// methods on a native type are written through an interface, so a bodied inherent method is an
+/// error. Returns `None` for any other file.
+fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
+    let bodyless_inherent = |d: &Decl| {
+        matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()
+            && i.methods.iter().any(|m| m.func.body.is_empty()))
+    };
+    if !parsed.decls.iter().any(bodyless_inherent) || !parsed.decls.iter().any(decl_has_body) {
+        return Ok(None);
+    }
+    let implements = |d: &Decl, name: Name| matches!(&d.kind, DeclKind::Impl(i) if i.contract.as_ref().is_some_and(|c| n(c.name()) == name));
+    let mut native = Vec::new();
+    let mut source = Vec::new();
+    for d in &parsed.decls {
+        let to_source = match &d.kind {
+            DeclKind::Impl(i) if i.contract.is_none() && decl_has_body(d) => {
+                return Err(format!(
+                    "source methods on native types must be declared through an interface: {}",
+                    position_text(n(&parsed.file), d.pos)
+                ));
+            }
+            DeclKind::Interface(i) => {
+                let name = i.name;
+                parsed.decls.iter().any(|x| implements(x, name))
+                    && parsed
+                        .decls
+                        .iter()
+                        .filter(|x| implements(x, name))
+                        .all(decl_has_body)
+            }
+            _ => decl_has_body(d),
+        };
+        if to_source {
+            source.push(d.clone());
+        } else {
+            native.push(d.clone());
+        }
+    }
+    let half = |file: Arc<str>, decls: Vec<Decl>| Module {
+        file,
+        source: parsed.source.clone(),
+        imports: parsed.imports.clone(),
+        decls,
+        omitted: parsed.omitted.clone(),
+        recovered: parsed.recovered.clone(),
+        node_count: parsed.node_count,
+    };
+    let source_file: Arc<str> = Arc::from(format!("{}+source", parsed.file).as_str());
+    Ok(Some((
+        half(parsed.file.clone(), native),
+        half(source_file, source),
+    )))
+}
+
 fn load() -> Result<(), String> {
     let bindings = read_bindings()?;
     world(|w| w.runtime_symbols = bindings.runtime_symbols.clone());
@@ -686,6 +754,14 @@ fn load() -> Result<(), String> {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
         let parsed =
             ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))?;
+        // A file that declares native operations and also has bodies keeps the native declarations
+        // under its own name and checks the bodies as a source module named `<file>+source`.
+        if let Some((native, source)) = split_mixed(&parsed)? {
+            let decls = fold_inherent_impls(&native)?;
+            modules.push(Rc::new(ModuleData::new(&native, decls, native.node_count)));
+            modules.push(crate::load_module(&source));
+            continue;
+        }
         // A module with implementation bodies is checked like user source, so its inherent
         // methods take the same desugaring and become ordinary methods wherever the type is used.
         if has_inherent_body(&parsed) {

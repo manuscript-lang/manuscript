@@ -37,6 +37,6 @@ Several inputs share one document; see [analysis selection](../implementation.md
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
 
-`ms explain <code>` prints a code's family and usual repair (`--json` for structured output).
+`ms guide <code>` prints a code's family and usual repair (`--json` for structured output).
 
 Rules are defined by [type checking](../../contributing/compiler/frontend/type-checker.md) and [scope and capture checking](../../contributing/compiler/frontend/scope-checker.md).

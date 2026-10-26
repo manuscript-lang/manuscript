@@ -21,8 +21,7 @@ Commands:
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  guide          Print the language cheat sheet and common mistakes
-  explain        Explain a diagnostic code and its usual repair
+  guide          Print the language cheat sheet, or explain diagnostic codes
   help           Show help for a command
   version        Print the compiler version
 
@@ -156,7 +155,7 @@ Options:
   --fail-fast         Stop after the first failed test
   --repeat <count>     Run the selected tests count times
   --shuffle <seed>     Shuffle with a reproducible integer seed
-  --runs <count>       Cases per property test from @std/property.ms (default 100)
+  --runs <count>       Cases per property test from @std/test/property.ms (default 100)
   --seed <seed>        Start property tests at this integer seed to replay a failure
   --fuzz <duration>    Run each property for this long, with fresh seeds, instead of a fixed case count; disables the default --timeout
   --watch              Rebuild and rerun after each saved source change
@@ -337,30 +336,22 @@ Examples:
   ms search_symbol json.parse
 "#;
 
-pub const HELP_GUIDE: &str = r#"Usage: ms guide
+pub const HELP_GUIDE: &str = r#"Usage: ms guide [code...] [--json]
 
 Print the language cheat sheet: syntax, types, errors, a checked example
 program, and common mistakes beside their fixes. Look symbols up with ms search_symbol.
 
+With diagnostic codes from ms check --json, print each code's rule family and
+usual repair instead. Apply the diagnostic's own fix field first when it has one.
+
 Options:
+  --json      Emit versioned JSON (with codes)
   -h, --help  Show this help
 
 Examples:
   ms guide
-"#;
-
-pub const HELP_EXPLAIN: &str = r#"Usage: ms explain <code>... [--json]
-
-Explain a diagnostic code from ms check --json: its rule family and the usual
-repair. Apply the diagnostic's own fix field first when it has one.
-
-Options:
-  --json      Emit versioned JSON
-  -h, --help  Show this help
-
-Examples:
-  ms explain MS3060
-  ms explain MS2001 MS3050 --json
+  ms guide MS3060
+  ms guide MS2001 MS3050 --json
 "#;
 
 pub const HELP_HELP: &str = r#"Usage: ms help [command]

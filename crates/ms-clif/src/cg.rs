@@ -589,6 +589,15 @@ fn compile_with_isa(
     flags
         .set("unwind_info", "false")
         .map_err(|e| e.to_string())?;
+    // Windows commits stack one guard page at a time, so a frame larger than a page that is not
+    // probed in order faults with no diagnostic. Inline probing needs no `__rust_probestack`
+    // symbol, which this runtime does not provide.
+    flags
+        .set("enable_probestack", "true")
+        .map_err(|e| e.to_string())?;
+    flags
+        .set("probestack_strategy", "inline")
+        .map_err(|e| e.to_string())?;
     let isa = isa_builder
         .finish(settings::Flags::new(flags))
         .map_err(|e| e.to_string())?;

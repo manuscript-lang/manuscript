@@ -95,6 +95,8 @@ pub fn site_files() -> BTreeMap<String, Vec<u8>> {
     for module in modules {
         let name = module.path.strip_prefix("@std/").unwrap_or(&module.path);
         let name = name.strip_suffix(".ms").unwrap_or(name);
+        // A module in a stdlib subdirectory (`test/property`) gets one flat page (`test-property`).
+        let name = name.replace('/', "-");
         let body = render(module, true);
         files.insert(
             format!("documentation/standard-library/reference/{name}.md"),

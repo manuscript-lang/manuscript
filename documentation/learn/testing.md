@@ -80,11 +80,11 @@ ms test ms.toml --repeat 10 --shuffle 42
 
 ## Property tests and fuzzing
 
-A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
+A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/test/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/property.ms" import check, ints, lists
+from "@std/test/property.ms" import check, ints, lists
 from "@std/testing.ms" import expect_equal
 
 test "reversing twice restores a list":

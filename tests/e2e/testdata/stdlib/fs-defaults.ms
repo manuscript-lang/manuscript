@@ -94,12 +94,12 @@ test "filesystem file copies default to no replacement and retain byte limits":
         let limited: Result[Unit, FileSystemError] = error(
             FileSystemError.LimitExceeded
         )
-        fs.copy_file(source, f"{temporary.path()}/limited", max_bytes: 0) | try expect_equal(
-            limited
-        )
-        fs.copy_file(source, f"{temporary.path()}/limited", max_bytes: 6) | try expect_equal(
-            limited
-        )
+        fs.copy_file(
+            source, f"{temporary.path()}/limited", max_bytes: 0
+        ) | try expect_equal(limited)
+        fs.copy_file(
+            source, f"{temporary.path()}/limited", max_bytes: 6
+        ) | try expect_equal(limited)
 
         let invalid: Result[Unit, FileSystemError] = error(FileSystemError.InvalidInput)
         (
