@@ -254,7 +254,7 @@ def wordfreq(n: Int) -> Int:
 
     while i < n:
         let k = (i * 7919) % 5003
-        m.add(k, m.get(k).get(0) + 1)
+        m.add(k, m.get_or(k, 0) + 1)
         i += 1
 
     return m.length()

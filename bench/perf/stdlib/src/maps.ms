@@ -16,7 +16,7 @@ export def bench_map_set() -> Unit:
 
             var n = 0
             for i in range(0, 100000):
-                n += m.get(i).get(0)
+                n += m.get_or(i, 0)
             return n
     )
 
@@ -30,7 +30,7 @@ export def bench_map_set() -> Unit:
 
             var n = 0
             for i in range(0, 100000):
-                n += m.get(Cell(x: i, y: i * 2)).get(0)
+                n += m.get_or(Cell(x: i, y: i * 2), 0)
             return n
     )
 
@@ -45,7 +45,7 @@ export def bench_map_set() -> Unit:
 
             var n = 0
             for k in keys:
-                n += m.get(k).get(0)
+                n += m.get_or(k, 0)
             return n
     )
 
@@ -95,7 +95,7 @@ export def bench_map_set() -> Unit:
 
             var n = 0
             for k in keys:
-                n += m.get(k).get("").length()
+                n += m.get_or(k, "").length()
             return n
     )
 
