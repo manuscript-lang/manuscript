@@ -960,7 +960,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
             native,
         };
     if name == "clone"
-        && (matches!(t.kind, Kind::Record | Kind::Alternative)
+        && (matches!(t.kind, Kind::Record | Kind::Alternative | Kind::Function)
             || (t.kind == Kind::Variable && t.bounds().iter().any(|b| b.is_std("Clonable")))
             || (t.kind == Kind::Primitive && t.id.as_str() == "String")
             || t.is_std("List")
@@ -971,7 +971,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
         let mut owner = t.clone();
         if matches!(
             t.kind,
-            Kind::Record | Kind::Alternative | Kind::Primitive | Kind::Variable
+            Kind::Record | Kind::Alternative | Kind::Function | Kind::Primitive | Kind::Variable
         ) {
             owner = stdlib::standard_symbol("CloneOperations")?.ty();
         }
