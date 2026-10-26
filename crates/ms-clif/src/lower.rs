@@ -1856,6 +1856,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let x = self.a(inst, 0)[0];
                 self.b.ins().sqrt(x)
             }],
+            Op::FFloor => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().floor(x)
+            }],
+            Op::FCeil => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().ceil(x)
+            }],
+            Op::FTrunc => vec![{
+                let x = self.a(inst, 0)[0];
+                self.b.ins().trunc(x)
+            }],
             Op::FAbs => vec![{
                 let x = self.a(inst, 0)[0];
                 self.b.ins().fabs(x)

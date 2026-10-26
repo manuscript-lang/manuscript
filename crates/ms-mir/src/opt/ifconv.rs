@@ -174,6 +174,9 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
         | Op::FDiv
         | Op::FNeg
         | Op::FSqrt
+        | Op::FFloor
+        | Op::FCeil
+        | Op::FTrunc
         | Op::FAbs
         | Op::I2F
         | Op::F32Round

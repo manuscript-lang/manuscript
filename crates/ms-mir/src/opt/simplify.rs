@@ -511,11 +511,15 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             }
             _ => Act::Keep,
         },
-        Op::FNeg | Op::FSqrt | Op::FAbs => match env.cf(a(0)) {
+        Op::FNeg | Op::FSqrt | Op::FAbs | Op::FFloor | Op::FCeil | Op::FTrunc => match env.cf(a(0))
+        {
             Some(p) => {
                 let r = match inst.op {
                     Op::FNeg => -p,
                     Op::FSqrt => p.sqrt(),
+                    Op::FFloor => p.floor(),
+                    Op::FCeil => p.ceil(),
+                    Op::FTrunc => p.trunc(),
                     _ => p.abs(),
                 };
                 Act::Const(K::F(r.to_bits()))

@@ -143,6 +143,26 @@ impl<'a> FnLower<'a> {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
+            // Float rounding and square root are single instructions.
+            if let Some(op) = match symbol {
+                "msstd_math_sqrt" => Some(ms_mir::ir::Op::FSqrt),
+                "msstd_math_floor" => Some(ms_mir::ir::Op::FFloor),
+                "msstd_math_ceil" => Some(ms_mir::ir::Op::FCeil),
+                "msstd_math_truncate" => Some(ms_mir::ir::Op::FTrunc),
+                _ => None,
+            } {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let x = self.borrow(args[0].val);
+                self.at(e.pos);
+                let v = self
+                    .b
+                    .emit(op, &[x], ms_mir::ir::Imm::None, Some(MTy::FLOAT))
+                    .expect("float op");
+                return Ok(Val { v, own: false });
+            }
             // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
             if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
                 matches!(
