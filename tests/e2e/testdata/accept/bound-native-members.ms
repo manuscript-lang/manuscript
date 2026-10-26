@@ -87,3 +87,38 @@ test "negative split cap faults":
             let ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")
+
+test "size and shape methods as values":
+    let xs = [10, 20, 30]
+    var m = Map[String, Int]()
+    m["a"] = 1
+
+    let s = Set([1, 2])
+    let length = xs.length
+    let is_empty = xs.is_empty
+    let keys = xs.keys
+    let entries = xs.entries
+    let windows = xs.windows
+    let chunks = xs.chunks
+    let map_length = m.length
+    let map_is_empty = m.is_empty
+    let map_entries = m.entries
+    let set_length = s.length
+    let set_is_empty = s.is_empty
+    (length() == 3) | try expect_true
+    (is_empty() == False) | try expect_true
+    (keys().length() == 3) | try expect_true
+    (entries().length() == 3) | try expect_true
+    (windows(2).length() == 2) | try expect_true
+    (chunks(2).length() == 2) | try expect_true
+    (map_length() == 1) | try expect_true
+    (map_is_empty() == False) | try expect_true
+    (map_entries().length() == 1) | try expect_true
+    (set_length() == 2) | try expect_true
+    (set_is_empty() == False) | try expect_true
+
+test "sorted as a value":
+    let sort = [3, 1, 2].sorted
+    let ordered = sort(compare: lambda a, b: a - b)
+    (ordered.get(index: 0) == 1) | try expect_true
+    (ordered.get(index: 2) == 3) | try expect_true

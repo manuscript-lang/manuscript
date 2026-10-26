@@ -1244,7 +1244,9 @@ impl<'a> FnLower<'a> {
                     let elem = self.mty(&loop_var.ty)?;
                     let list = self.b.m.types.list(elem);
                     it = match self.b.m.types.kind(ity).clone() {
-                        TyKind::Obj(n, _) if n == "Map" => self.map_entries(iter, it, list)?,
+                        TyKind::Obj(n, _) if n == "Map" => {
+                            self.map_entries(Some(iter), it, list)?
+                        }
                         _ => {
                             let sym = crate::rtcall::method_symbol(self.b.m, ity, "values")
                                 .ok_or_else(|| Error::new("no values for a set"))?;

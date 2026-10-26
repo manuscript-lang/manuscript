@@ -869,7 +869,7 @@ impl<'a> FnLower<'a> {
     /// `map.entries()`: a list of fresh `MapEntry` records.
     pub(crate) fn map_entries(
         &mut self,
-        recv_expr: &ms_syntax::ast::Expr,
+        recv_expr: Option<&ms_syntax::ast::Expr>,
         recv: Val,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -879,7 +879,7 @@ impl<'a> FnLower<'a> {
         let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
             return Err(Error::new("entries without a record type"));
         };
-        let (mv, hidden) = self.list_source(Some(recv_expr), recv)?;
+        let (mv, hidden) = self.list_source(recv_expr, recv)?;
         let acc: Var = self.fresh_var(result);
         let empty = self.b.list_lit(entry, &[]);
         self.b.def_var(acc, empty);
@@ -905,7 +905,7 @@ impl<'a> FnLower<'a> {
     /// `list.entries()`: `ListEntry` records pairing each index with its element.
     pub(crate) fn list_entries(
         &mut self,
-        recv_expr: &ms_syntax::ast::Expr,
+        recv_expr: Option<&ms_syntax::ast::Expr>,
         recv: Val,
         result: MTy,
     ) -> Result<Val, Error> {
@@ -915,7 +915,7 @@ impl<'a> FnLower<'a> {
         let TyKind::Rec(rid) = self.b.m.types.kind(entry).clone() else {
             return Err(Error::new("entries without a record type"));
         };
-        let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
         let acc = self.fresh_var(result);
         let n = {
             let l = self.b.use_var(lv);

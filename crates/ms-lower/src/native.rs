@@ -1089,29 +1089,15 @@ impl<'a> FnLower<'a> {
             }
             (TyKind::Obj(n, _), "entries") if n == "Map" => {
                 let result = self.emty(e)?;
-                self.map_entries(recv_expr, recv, result)
+                self.map_entries(Some(recv_expr), recv, result)
             }
             (TyKind::List(_), "list_keys") => {
                 let result = self.emty(e)?;
-                let r = self.borrow(recv);
-                let n = self.b.list_len(r);
-                let acc = self.fresh_var(result);
-                let first = self.b.list_new(MTy::INT, n);
-                self.b.def_var(acc, first);
-                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
-                self.each_element(lv, &mut |s, i, _| {
-                    let cur = s.b.use_var(acc);
-                    let next = s.b.list_push(cur, i);
-                    s.b.def_var(acc, next);
-                    Ok(None)
-                })?;
-                self.release_source(lv, hidden);
-                let out = self.b.use_var(acc);
-                Ok(Val { v: out, own: true })
+                self.list_keys(Some(recv_expr), recv, result)
             }
             (TyKind::List(_), "list_entries") => {
                 let result = self.emty(e)?;
-                self.list_entries(recv_expr, recv, result)
+                self.list_entries(Some(recv_expr), recv, result)
             }
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
@@ -1180,20 +1166,8 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                let chunks = name == "list_chunks";
                 let result = self.emty(e)?;
-                let TyKind::List(inner) = self.b.m.types.kind(result).clone() else {
-                    return Err(Error::new("pieces without a list result"));
-                };
-                let d = self.type_desc(elem);
-                let od = self.type_desc(inner);
-                let r = self.borrow(recv);
-                let size = self.borrow(args[0].val);
-                let step = if chunks { size } else { self.b.iconst(1) };
-                let short = self.b.bconst(chunks);
-                let out =
-                    self.call_runtime("msrt_list_pieces", &[r, d, od, size, step, short], result)?;
-                Ok(Val { v: out, own: true })
+                self.list_pieces(name == "list_chunks", elem, recv, &args, result)
             }
             (TyKind::List(elem), "get") => {
                 // Arguments arrive in written order; the names say which is which.
@@ -1368,24 +1342,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: true })
             }
             (TyKind::List(elem), "sorted") => {
-                let f = args
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| Error::new("sorted without comparator"))?;
-                if !self.is_fn(f.val.v) {
-                    return Err(Error::new(
-                        "sorted takes a comparator function; omit compare to sort in natural order",
-                    ));
-                }
-                let ft = self.ty_of(f.val.v);
-                let fvar = self.fresh_var(ft);
-                let fo = self.owned(f.val);
-                self.b.def_var(fvar, fo);
-                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
-                let r = self.list_sorted(lv, fvar, elem);
-                self.release_source(lv, hidden);
-                self.release_source(fvar, true);
-                r
+                self.list_sorted_call(Some(recv_expr), recv, elem, args)
             }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
                 let out = self.emty(e)?;
@@ -1595,6 +1552,9 @@ impl<'a> FnLower<'a> {
         if let Some(sym) = hash_algorithm_symbol(m.native.as_str()) {
             return self.hash_algorithm_call(sym, recv, args, result);
         }
+        if let Some(v) = self.bound_intrinsic(m, recv, args, result)? {
+            return Ok(v);
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1605,6 +1565,68 @@ impl<'a> FnLower<'a> {
                 ))
             })?;
         self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// The size and shape methods that a direct call lowers inline, as a bound method value:
+    /// `xs.length`, `m.is_empty`, `xs.keys`, `xs.entries`, `xs.chunks`, `xs.windows`.
+    fn bound_intrinsic(
+        &mut self,
+        m: &ct::MethodRef,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Option<Val>, Error> {
+        let rty = self.ty_of(recv.v);
+        let native = m.native.as_str();
+        let name = native.rsplit('/').next().unwrap_or(native);
+        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
+            name.strip_prefix("map_")
+                .or_else(|| name.strip_prefix("set_"))
+                .unwrap_or(name)
+        } else {
+            name
+        };
+        let kind = self.b.m.types.kind(rty).clone();
+        let v = match (kind, name) {
+            (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
+                let r = self.borrow(recv);
+                let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
+                if name == "length" {
+                    Val { v: len, own: false }
+                } else {
+                    let z = self.b.iconst(0);
+                    let v = self.b.icmp(ms_mir::ir::Cc::Eq, len, z);
+                    Val { v, own: false }
+                }
+            }
+            (TyKind::List(_) | TyKind::Bytes, "length") => {
+                let r = self.borrow(recv);
+                Val {
+                    v: self.b.list_len(r),
+                    own: false,
+                }
+            }
+            (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
+                let r = self.borrow(recv);
+                let n = self.b.list_len(r);
+                let z = self.b.iconst(0);
+                Val {
+                    v: self.b.icmp(ms_mir::ir::Cc::Eq, n, z),
+                    own: false,
+                }
+            }
+            (TyKind::Obj(n, _), "entries") if n == "Map" => self.map_entries(None, recv, result)?,
+            (TyKind::List(elem), "sorted") => {
+                self.list_sorted_call(None, recv, elem, args.to_vec())?
+            }
+            (TyKind::List(_), "list_keys") => self.list_keys(None, recv, result)?,
+            (TyKind::List(_), "list_entries") => self.list_entries(None, recv, result)?,
+            (TyKind::List(elem), "list_chunks" | "list_windows") => {
+                self.list_pieces(name == "list_chunks", elem, recv, args, result)?
+            }
+            _ => return Ok(None),
+        };
+        Ok(Some(v))
     }
 
     /// A `HashAlgorithm` operation: the algorithm is the receiver's case index, the first runtime argument.
@@ -1677,6 +1699,80 @@ impl<'a> FnLower<'a> {
             let v = self.b.use_var(var);
             self.drop_value(v);
         }
+    }
+
+    /// `sorted(compare)`: a stable sort of a copy ordered by the comparator's sign.
+    fn list_sorted_call(
+        &mut self,
+        recv_expr: Option<&Expr>,
+        recv: Val,
+        elem: MTy,
+        args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let f = args
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::new("sorted without comparator"))?;
+        if !self.is_fn(f.val.v) {
+            return Err(Error::new(
+                "sorted takes a comparator function; omit compare to sort in natural order",
+            ));
+        }
+        let ft = self.ty_of(f.val.v);
+        let fvar = self.fresh_var(ft);
+        let fo = self.owned(f.val);
+        self.b.def_var(fvar, fo);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        let r = self.list_sorted(lv, fvar, elem);
+        self.release_source(lv, hidden);
+        self.release_source(fvar, true);
+        r
+    }
+
+    /// The indexes of a list: `0..length`.
+    fn list_keys(
+        &mut self,
+        recv_expr: Option<&Expr>,
+        recv: Val,
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let r = self.borrow(recv);
+        let n = self.b.list_len(r);
+        let acc = self.fresh_var(result);
+        let first = self.b.list_new(MTy::INT, n);
+        self.b.def_var(acc, first);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        self.each_element(lv, &mut |s, i, _| {
+            let cur = s.b.use_var(acc);
+            let next = s.b.list_push(cur, i);
+            s.b.def_var(acc, next);
+            Ok(None)
+        })?;
+        self.release_source(lv, hidden);
+        let out = self.b.use_var(acc);
+        Ok(Val { v: out, own: true })
+    }
+
+    /// `chunks(size)` (steps by `size`, keeps a short tail) or `windows(size)` (steps by one).
+    fn list_pieces(
+        &mut self,
+        chunks: bool,
+        elem: MTy,
+        recv: Val,
+        args: &[NArg],
+        result: MTy,
+    ) -> Result<Val, Error> {
+        let TyKind::List(inner) = self.b.m.types.kind(result).clone() else {
+            return Err(Error::new("pieces without a list result"));
+        };
+        let d = self.type_desc(elem);
+        let od = self.type_desc(inner);
+        let r = self.borrow(recv);
+        let size = self.borrow(args[0].val);
+        let step = if chunks { size } else { self.b.iconst(1) };
+        let short = self.b.bconst(chunks);
+        let out = self.call_runtime("msrt_list_pieces", &[r, d, od, size, step, short], result)?;
+        Ok(Val { v: out, own: true })
     }
 
     /// A stable merge sort of a copy (the runtime's), ordered by the comparator's sign.
