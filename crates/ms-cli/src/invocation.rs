@@ -480,7 +480,10 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         if !inv.test_filter.is_empty() {
             test_args.push(format!("--filter={}", inv.test_filter));
         }
-        test_args.append(&mut inv.arguments);
+        if !inv.arguments.is_empty() {
+            test_args.push("--".to_string());
+            test_args.append(&mut inv.arguments);
+        }
         inv.arguments = test_args;
     }
     if inv.watch && inv.structured {

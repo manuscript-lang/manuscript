@@ -71,6 +71,10 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
     while index < args.len() {
         let arg = &args[index];
         match arg.as_str() {
+            "--" => {
+                index += 1;
+                break;
+            }
             "--list" => options.list = true,
             "--fail-fast" => options.fail_fast = true,
             _ => {
@@ -721,6 +725,15 @@ mod tests {
         );
         assert!(parse_options(&args(&["--repeat=0"])).is_err());
         assert!(parse_options(&args(&["--match=("])).is_err());
+    }
+
+    #[test]
+    fn separator_preserves_program_options() {
+        let options =
+            parse_options(&args(&["--repeat=2", "--", "--list", "--repeat=3", "--"])).unwrap();
+        assert_eq!(options.repeat, 2);
+        assert!(!options.list);
+        assert_eq!(options.program, ["--list", "--repeat=3", "--"]);
     }
 
     #[test]
