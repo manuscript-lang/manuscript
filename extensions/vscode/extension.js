@@ -97,17 +97,13 @@ async function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('manuscript.profile', async () => {
     const editor = await savedEditor();
     if (!editor) return;
-    const selected = vscode.window.showQuickPick ? await vscode.window.showQuickPick(['CPU profile', 'Heap profile', 'Execution trace'], { title: 'Choose profiler' }) : 'CPU profile';
-    if (!selected) return;
-    const flag = { 'CPU profile': '--cpu-profile', 'Heap profile': '--heap-profile', 'Execution trace': '--trace' }[selected];
-    const extension = selected === 'Execution trace' ? 'out' : 'pprof';
-    const destination = await vscode.window.showSaveDialog({ title: `Save ${selected.toLowerCase()} (choose a new file)`, filters: { [selected]: [extension] } });
+    const destination = await vscode.window.showSaveDialog({ title: 'Save sampling profile (choose a new directory)' });
     if (!destination) return;
     try {
       const target = await targetFor(editor.document.uri.fsPath);
       const terminal = vscode.window.createTerminal({
-        name: `Manuscript ${selected.toLowerCase()}`, shellPath: command,
-        shellArgs: ['run', target, flag, destination.fsPath], cwd: path.dirname(target),
+        name: 'Manuscript sampling profile', shellPath: command,
+        shellArgs: ['profile', target, '--out-dir', destination.fsPath], cwd: path.dirname(target),
       });
       terminal.show();
     } catch (error) { vscode.window.showErrorMessage(error.message); }
