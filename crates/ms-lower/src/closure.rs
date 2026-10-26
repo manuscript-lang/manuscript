@@ -1334,6 +1334,8 @@ pub(crate) fn build_lambda(
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();
     result?;
+    // Frames of callees inlined into the closure return to this file, not the callee's.
+    f.loc = ms_mir::ir::Loc::new(file, job.expr.pos.line, job.expr.pos.column);
     f.compact_blocks();
     m.funcs[func.index()] = f;
     Ok(())
