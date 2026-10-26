@@ -1,6 +1,15 @@
 from "@std/core.ms" import Closeable
 from "@std/shared.ms" import Shared
-from "@std/time.ms" import duration, sleep
+
+extern def msrt_channel_token() -> Int
+
+extern def msrt_channel_park(token: Int) -> Unit
+
+extern def msrt_waitq_push(key: Int, token: Int) -> Unit
+
+extern def msrt_waitq_wake(key: Int) -> Int
+
+extern def msrt_waitq_remove(key: Int, token: Int) -> Int
 
 # The locked payload of a `Shared`, held until the `with` block that opened it ends. Change the
 # payload through `value`.
@@ -19,16 +28,36 @@ impl Closeable for SharedGuard[T]:
         if self.held:
             self.held = False
             self.box.put(self.value)
+            msrt_waitq_wake(self.box.id())
+
+# A waiting task's place in the queue of a box. Closing it matters only when the wait was cut short.
+type Ticket:
+    # The box the task waits for.
+    key: Int
+    # The token the task parks on.
+    token: Int
+    # False once the park returned normally.
+    parked: Bool
+
+impl Closeable for Ticket:
+    # A task cancelled while parked leaves the queue, or, when a release had already chosen it,
+    # passes that wake on so it is not lost.
+    var def close() -> Unit:
+        if self.parked:
+            if msrt_waitq_remove(self.key, self.token) == 0:
+                msrt_waitq_wake(self.key)
 
 # Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
 # and stops waiting if the task is cancelled. Use it with `with var`, which closes the guard:
 # `with var guard = lock(box):` then change `guard.value`.
 export def lock[T](box: Shared[T]) -> SharedGuard[T]:
-    var wait = 50000
-
     while box.locked():
-        sleep(duration(wait))
-        if wait < 1000000:
-            wait = wait * 2
+        let key = box.id()
+        let token = msrt_channel_token()
+        msrt_waitq_push(key, token)
+
+        with var ticket = Ticket(key: key, token: token, parked: True):
+            msrt_channel_park(token)
+            ticket.parked = False
 
     return SharedGuard[T](box: box, value: box.take(), held: True)

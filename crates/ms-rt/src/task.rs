@@ -1644,6 +1644,7 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
 /// live-block count.
 pub fn teardown() {
     fault::retire_hdr();
+    crate::channel::reset_wait_queues();
     // SAFETY: callers hold the global lock or run after main returned; no task is mid-switch.
     unsafe {
         let mut s = sched();

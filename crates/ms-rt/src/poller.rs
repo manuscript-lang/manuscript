@@ -208,8 +208,8 @@ mod imp {
             revents: 0,
         };
         let ts = libc::timespec {
-            tv_sec: (ns / 1_000_000_000) as libc::time_t,
-            tv_nsec: (ns % 1_000_000_000) as libc::c_long,
+            tv_sec: (ns / 1_000_000_000) as _,
+            tv_nsec: (ns % 1_000_000_000) as _,
         };
         // SAFETY: `fd` and `ts` are live locals; an interrupted or failed wait just returns early
         // and the caller polls without blocking next.

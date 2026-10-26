@@ -3,7 +3,7 @@
 # Copying a `Shared[T]` shares the payload instead of duplicating it; the payload is freed when
 # the last holder is dropped. `get` reads the payload. To change it, `lock` it from
 # `@std/sync.ms` with `with`: the guard holds the payload for the block and returns it when the
-# block ends, however it ends. `take`, `put` and `locked` are the primitives `lock` is built on;
+# block ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
 # calling them elsewhere is rejected.
 export type Shared[T]: ...
 
@@ -14,6 +14,10 @@ impl Shared[T]:
     # Reads the shared payload in place; the result borrows from this `Shared`.
     # Faults while the payload is taken.
     def get() -> ref T: ...
+
+    # The identity of this box, the same for every copy of the handle. Only `lock` in
+    # `@std/sync.ms` may call this; it keys the queue of tasks waiting for the box.
+    def id() -> Int: ...
 
     # Whether the payload is out. Only `lock` in `@std/sync.ms` may call this.
     def locked() -> Bool: ...
