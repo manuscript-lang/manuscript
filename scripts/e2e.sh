@@ -23,7 +23,7 @@ if [ -n "$exe" ]; then
 fi
 
 cargo xtask runtime >/dev/null
-cargo build --locked -q -p ms-cli
+cargo build --locked -q -p ms-cli --target-dir "$repository/target"
 
 if [ "$#" -gt 0 ]; then
     fixtures=$*

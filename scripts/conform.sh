@@ -16,7 +16,7 @@ exe=
 if [ "$host" = windows ]; then exe=.exe; fi
 
 cargo xtask runtime >/dev/null
-cargo build --locked -q -p ms-cli -p ms-conform
+cargo build --locked -q -p ms-cli -p ms-conform --target-dir "$repository/target"
 
 mkdir -p .artifacts
 allow=.artifacts/conform-expect-fail.txt
