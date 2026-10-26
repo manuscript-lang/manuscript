@@ -20,6 +20,9 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--exclude",
     "--repeat",
     "--shuffle",
+    "--runs",
+    "--seed",
+    "--fuzz",
     "--format",
     "--view",
     "--entity",
@@ -185,7 +188,8 @@ fn parse_options(
                 inv.build_type_set = true;
             }
             "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
-            "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" => {
+            "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" | "--runs" | "--seed"
+            | "--fuzz" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
@@ -205,6 +209,21 @@ fn parse_options(
                 }
                 if flag == "--shuffle" && value.parse::<i64>().is_err() {
                     return Err(usage_error(io, "invalid --shuffle; use an integer seed"));
+                }
+                if flag == "--runs" && !value.parse::<i64>().is_ok_and(|n| n > 0) {
+                    return Err(usage_error(io, "invalid --runs; use a positive integer"));
+                }
+                if flag == "--seed" && value.parse::<i64>().is_err() {
+                    return Err(usage_error(io, "invalid --seed; use an integer seed"));
+                }
+                if flag == "--fuzz" && !crate::duration::parse(value).is_some_and(|n| n > 0) {
+                    return Err(usage_error(
+                        io,
+                        format!(
+                            "invalid --fuzz {}; use a positive duration such as 30s or 5m",
+                            quote(value)
+                        ),
+                    ));
                 }
                 inv.test_options.push(format!("{flag}={value}"));
             }
