@@ -131,7 +131,10 @@ fn entry_must_be_an_exported_main() {
         let source = write(&dir, "main.ms", text);
         let (status, _, err) = ms(&backend, &["run", &source]);
         assert_eq!(status, 1, "{text}");
-        assert!(err.contains("entry must export fn main() Int; "), "{err}");
+        assert!(
+            err.contains("entry must export def main() -> Int; "),
+            "{err}"
+        );
         assert!(err.contains(expected), "{expected} missing in {err}");
     }
 }

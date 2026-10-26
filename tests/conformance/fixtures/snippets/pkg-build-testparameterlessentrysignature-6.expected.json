@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 1,
     "stdout": "",
-    "stderr": "<DIR>/pkg-build-testparameterlessentrysignature-6.ms:4:8: type: entry must export fn main() Int; main returns Unit, so declare its result type Int and return an exit status, e.g. 'return 0'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    "stderr": "<DIR>/pkg-build-testparameterlessentrysignature-6.ms:4:8: type: entry must export def main() -> Int; main returns Unit, so declare its result type Int and return an exit status, e.g. 'return 0'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }

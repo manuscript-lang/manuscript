@@ -126,7 +126,7 @@ fn project_aliases_and_discovered_tests() {
 }
 
 #[test]
-fn entry_diagnostics_keep_go_wording() {
+fn entry_diagnostics_name_the_required_signature() {
     let dir = scratch("entry");
     let entry = write(
         &dir,
@@ -140,7 +140,7 @@ fn entry_diagnostics_keep_go_wording() {
     let issue = &checked.diagnostics[0];
     assert_eq!(
         issue.message,
-        "entry must export fn main() Int; main returns String, so declare its result type Int and return an exit status, e.g. 'return 0'"
+        "entry must export def main() -> Int; main returns String, so declare its result type Int and return an exit status, e.g. 'return 0'"
     );
     // Without the entry requirement the same file checks.
     let fine = check_graph(

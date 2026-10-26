@@ -110,9 +110,9 @@ pub fn missing_arms(cases: &[Case], seen: &HashSet<Name>) -> String {
         .filter(|c| !seen.contains(&c.name))
         .map(|c| {
             if c.fields.is_empty() {
-                format!("'{}:'", c.name)
+                format!("'case {}:'", c.name)
             } else {
-                format!("'{}({}):'", c.name, names_of(&c.fields).join(", "))
+                format!("'case {}({}):'", c.name, names_of(&c.fields).join(", "))
             }
         })
         .collect();
@@ -705,7 +705,7 @@ impl Checker {
                         .map(|s| s.to_string())
                         .collect::<Vec<_>>(),
                 );
-                return format!("{message}; unknown standard module {path}{hint}");
+                return format!("unknown standard module {path}{hint}");
             }
             exports.extend(
                 stdlib::standard_exports(pn.as_str())
