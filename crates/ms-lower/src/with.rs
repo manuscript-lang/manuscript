@@ -209,6 +209,29 @@ impl FnLower<'_> {
         // Like the cleanup stack on a fault, a stop request that arrives while the close runs
         // must not interrupt it.
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        if let CloseKind::Func {
+            fid,
+            writes_back: true,
+        } = &closer.kind
+            && self.b.m.needs_drop(l.ty)
+        {
+            // The block is over, so the close works on the binding's own value: no copy of what
+            // it holds. The scope still drops the value the close leaves behind.
+            let slot = match l.slot {
+                Some(p) => p,
+                None => {
+                    let moved = self.local_take(&l);
+                    self.put_slot(moved)
+                }
+            };
+            self.b.call(*fid, &[slot]);
+            if l.slot.is_none() {
+                let after = self.take_slot(slot, l.ty);
+                self.local_put(&l, after);
+            }
+            let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+            return;
+        }
         close_call(&mut self.b, &closer.kind, v, l.ty);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }

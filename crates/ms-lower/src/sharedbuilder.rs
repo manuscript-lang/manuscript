@@ -242,8 +242,14 @@ impl<'a> FnLower<'a> {
                 let arg = args
                     .first()
                     .ok_or_else(|| Error::new("put without a value"))?;
-                let owned = self.owned(arg.val);
-                self.b.emit(Op::Put, &[value, owned], Imm::None, None);
+                // `put` moves the argument bitwise: its one caller, `SharedGuard.close`, clears `held`
+                // first, and the glue of a closed guard neither copies nor drops its `value`.
+                let moved = if arg.val.own || !self.needs_drop(value_ty) {
+                    arg.val.v
+                } else {
+                    self.b.move_out(arg.val.v)
+                };
+                self.b.emit(Op::Put, &[value, moved], Imm::None, None);
                 let no = self.b.bconst(false);
                 self.b.emit(Op::Store, &[taken, no], Imm::None, None);
                 let _ = result;
