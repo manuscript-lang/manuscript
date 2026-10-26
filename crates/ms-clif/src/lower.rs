@@ -536,6 +536,39 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Splits `vs` into per-field slices for a record type.
+    /// For a `SharedGuard` (fields `box`, `value`, `held`): the `held` flag and the leaf index of
+    /// `value`. A closed guard handed its payload back to the box without a copy, so its stale
+    /// `value` is neither dropped nor copied.
+    fn guard_held(&self, ty: Ty, vs: &[Value]) -> Option<(Value, usize)> {
+        let m = self.g.m;
+        let TyKind::Rec(r) = m.types.kind(ty) else {
+            return None;
+        };
+        let def = &m.records[r.index()];
+        let names: Vec<&str> = def.fields.iter().map(|f| f.0.as_str()).collect();
+        if !def.name.starts_with("SharedGuard[") || names != ["box", "value", "held"] {
+            return None;
+        }
+        let fields = self.fields_of(ty);
+        Some((vs[fields[2].1], fields[1].1))
+    }
+
+    /// `copy_value` of `vs` when `flag` is set; otherwise `vs` as they are (a payload nobody reads).
+    fn copy_if(&mut self, flag: Value, ty: Ty, vs: &[Value]) -> Vs {
+        let leaves = self.g.lay.leaves(ty);
+        let join = self.b.create_block();
+        for l in &leaves {
+            self.b.append_block_param(join, leaf_type(*l));
+        }
+        let yes = self.b.create_block();
+        self.b.ins().brif(flag, yes, &[], join, &bargs(vs));
+        self.b.switch_to_block(yes);
+        let c = self.copy_value(ty, vs);
+        self.b.ins().jump(join, &bargs(&c));
+        self.b.switch_to_block(join);
+        self.b.block_params(join).to_vec()
+    }
+
     fn fields_of(&self, ty: Ty) -> Vec<(Ty, usize, usize)> {
         let m = self.g.m;
         let TyKind::Rec(r) = m.types.kind(ty) else {
@@ -617,9 +650,17 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.rt_call("msrt_slot_drop", &[d, slot]);
             }
             TyKind::Rec(_) => {
+                let held = self.guard_held(ty, vs);
                 for (fty, at, w) in self.fields_of(ty) {
-                    if m.needs_drop(fty) {
-                        self.drop_value(fty, &vs[at..at + w]);
+                    if !m.needs_drop(fty) {
+                        continue;
+                    }
+                    match held {
+                        Some((flag, value_at)) if at == value_at => {
+                            let part = vs[at..at + w].to_vec();
+                            self.if_then(flag, |s| s.drop_value(fty, &part));
+                        }
+                        _ => self.drop_value(fty, &vs[at..at + w]),
                     }
                 }
             }
@@ -964,9 +1005,16 @@ impl<'a, 'm> Lower<'a, 'm> {
         match m.types.kind(ty).clone() {
             TyKind::Bytes | TyKind::List(_) => self.list_copy(ty, vs),
             TyKind::Rec(_) => {
+                let held = self.guard_held(ty, vs);
                 let mut out = Vec::new();
                 for (fty, at, w) in self.fields_of(ty) {
-                    out.extend(self.copy_value(fty, &vs[at..at + w]));
+                    let part = &vs[at..at + w];
+                    match held {
+                        Some((flag, value_at)) if at == value_at && m.needs_drop(fty) => {
+                            out.extend(self.copy_if(flag, fty, part));
+                        }
+                        _ => out.extend(self.copy_value(fty, part)),
+                    }
                 }
                 out
             }
