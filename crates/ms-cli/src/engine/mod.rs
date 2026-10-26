@@ -155,7 +155,10 @@ impl Failure {
     pub fn report(&self, io: &mut Io) -> i32 {
         for issue in self.in_source_order() {
             let mut issue = issue.clone();
-            if !self.source_root.is_empty() && !issue.file.starts_with('/') {
+            if !self.source_root.is_empty()
+                && !issue.file.starts_with('/')
+                && !std::path::Path::new(&*issue.file).is_absolute()
+            {
                 issue.file = format!("{}/{}", self.source_root, issue.file).into();
             }
             let _ = writeln!(io.stderr, "{issue}");
