@@ -1,8 +1,12 @@
 from "@std/testing.ms" import expect_equal, expect_true
-from "@std/http.ms" import headers, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
+from "@std/http.ms" import headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
 from "@std/io.ms" import read_all
 from "@std/net.ms" import network
-from "@std/router.ms" import RouteParams, Router, RouterError
+from "@std/log.ms" import create, LogError, Transport
+from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
+from "@std/bytes.ms" import Bytes
+from "@std/router.ms" import access_log, request_id, RouteParams, Router, RouterError
 from "@std/sse.ms" import body_stream
 
 def get(path: String) -> HttpRequest:
@@ -88,18 +92,19 @@ test "invalid and duplicate patterns are rejected":
     r.route(HttpMethod.Post, "/a/:y", say("y")).get()
 
 def tag(label: String) -> Callable[
-    [HttpExchange, Callable[[], Result[Unit, HttpError]]], Result[Unit, HttpError]
+    [HttpExchange, Callable[[HttpExchange], Result[Unit, HttpError]]],
+    Result[Unit, HttpError]
 ]:
     return lambda exchange, next: tagged(label.clone(), exchange, next)
 
 def tagged(
     label: String,
     exchange: HttpExchange,
-    next: Callable[[], Result[Unit, HttpError]]
+    next: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
     let seen = exchange.headers()
     try seen.append("X-Trail", label.to_bytes())
-    return next()
+    return next(exchange)
 
 def trail(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
     let values = exchange.headers().text("X-Trail").get(none).get([])
@@ -119,7 +124,7 @@ test "middleware also wraps the 404 answer":
 
 def refuse(
     exchange: HttpExchange,
-    next: Callable[[], Result[Unit, HttpError]]
+    next: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
     return reply(exchange, text(401, "no"))
 
@@ -187,3 +192,98 @@ test "mount rejects a trailing slash and a clashing route":
     try expect_true(r.mount("/api", api).is_error())
     r.mount("/", api).get()
     try expect_equal(body_of(try r.call(get("/x"))), "x")
+
+type Answer:
+    name: String
+    count: Int
+
+def answer(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    return reply(exchange, try json(201, Answer(name: "ok", count: 2)))
+
+def moved(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    return reply(exchange, try redirect("/elsewhere"))
+
+test "json and redirect build responses":
+    var r = Router()
+    r.route(HttpMethod.Get, "/j", answer).get()
+    r.route(HttpMethod.Get, "/m", moved).get()
+
+    let sent = try r.call(get("/j"))
+    try expect_equal(sent.status, 201)
+    try expect_equal(body_of(sent), "{\"name\":\"ok\",\"count\":2}")
+    try expect_equal(
+        sent.headers.text("Content-Type").get(none).get([]).join(","),
+        "application/json"
+    )
+
+    let moved_to = try r.call(get("/m"))
+    try expect_equal(moved_to.status, 303)
+    try expect_equal(
+        moved_to.headers.text("Location").get(none).get([]).join(","), "/elsewhere"
+    )
+
+def echo_id(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    let seen = exchange.headers().text("X-Request-Id").get(none).get([])
+    return reply(exchange, text(200, seen.join(",")))
+
+def id_of(response: HttpResponse) -> String:
+    return response.headers.text("X-Request-Id").get(none).get([]).join(",")
+
+test "request_id keeps a usable id and makes one otherwise":
+    var r = Router()
+    r.use(request_id())
+    r.route(HttpMethod.Get, "/i", echo_id).get()
+
+    let fresh = try r.call(get("/i"))
+    try expect_equal(id_of(fresh).length(), 36)
+    try expect_equal(body_of(fresh), id_of(fresh))
+
+    let incoming = get("/i")
+    incoming.headers.append("X-Request-Id", "abc-123".to_bytes()).get()
+
+    let kept = try r.call(incoming)
+    try expect_equal(id_of(kept), "abc-123")
+    try expect_equal(body_of(kept), "abc-123")
+
+    let bad = get("/i")
+    bad.headers.append("X-Request-Id", "has space".to_bytes()).get()
+    try expect_equal(id_of(try r.call(bad)).length(), 36)
+    try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
+
+type Sink:
+    lines: Shared[List[String]]
+
+impl Transport for Sink:
+    var def write(data: String) -> Result[Unit, LogError]:
+        with var guard = lock(self.lines):
+            guard.value.append(data.clone())
+        return ok(())
+
+    var def write_bytes(data: Bytes) -> Result[Unit, LogError]:
+        return self.write(data.decode_utf8().get(""))
+
+    var def flush() -> Result[Unit, LogError]:
+        return ok(())
+
+    var def close() -> Unit:
+        return ()
+
+def logged(lines: Shared[List[String]]) -> String:
+    with var guard = lock(lines):
+        return guard.value.join("")
+
+test "access_log writes one record per request":
+    let lines = share(List[String]())
+    let logger = (create(Sink(lines: lines), timestamp: some(False))).get()
+    var r = Router()
+    r.use(access_log(logger))
+    r.route(HttpMethod.Get, "/a", say("hello")).get()
+    try expect_equal((try r.call(get("/a"))).status, 200)
+    try expect_equal((try r.call(get("/nope"))).status, 404)
+
+    let text_out = logged(lines)
+    try expect_true(text_out.contains("\"path\":\"/a\""))
+    try expect_true(text_out.contains("\"status\":200"))
+    try expect_true(text_out.contains("\"bytes\":5"))
+    try expect_true(text_out.contains("\"status\":404"))
+    try expect_equal(text_out.lines().length(), 2)

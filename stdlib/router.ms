@@ -13,6 +13,9 @@ from "@std/http.ms" import (
 )
 from "@std/io.ms" import IoError
 from "@std/net.ms" import WebSocket, WebSocketError
+from "@std/log.ms" import Logger, LogLevel, record
+from "@std/random.ms" import entropy, uuid_v4
+from "@std/time.ms" import clock
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 
@@ -79,6 +82,16 @@ export type Route:
     pattern: String
     # The pattern split at `/` into segments, in path order.
     segments: List[Segment]
+    # Middleware of the routers this route was mounted through, outermost first.
+    around: List[
+        Callable[
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
+            Result[Unit, HttpError]
+        ]
+    ]
     # Runs when the route matches, with the values the pattern captured.
     handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
 
@@ -93,7 +106,10 @@ export type Router:
     # Middleware in the order it wraps requests: the first one added runs outermost.
     middleware: List[
         Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
             Result[Unit, HttpError]
         ]
     ] = []
@@ -108,7 +124,7 @@ impl Router:
         handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
     ) -> Result[Unit, RouterError]:
         let segments = try parse_pattern(pattern.clone())
-        return insert(var self.routes, method.text(), pattern, segments, handler)
+        return insert(var self.routes, method.text(), pattern, segments, [], handler)
 
     # Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
     # The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
@@ -126,18 +142,23 @@ impl Router:
             let pattern = base + tail if not (base + tail).is_empty() else "/"
 
             let segments = try parse_pattern(pattern.clone())
-            let wrapped = wrap(routes.middleware.clone(), source.handler)
+            let around = routes.middleware.concat(source.around)
             try insert(
-                var self.routes, source.method.clone(), pattern, segments, wrapped
+                var self.routes, source.method.clone(), pattern, segments, around,
+                source.handler
             )
 
         return ok(())
 
     # Adds middleware around every route and around the 404, 405 and OPTIONS answers.
-    # It receives the exchange and a continuation that runs the rest of the chain.
+    # It receives the exchange and a continuation that runs the rest of the chain with the exchange
+    # it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
     var def use(
         middleware: Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
             Result[Unit, HttpError]
         ]
     ) -> Unit:
@@ -149,11 +170,23 @@ impl Router:
     def handler() -> Callable[[HttpExchange], Result[Unit, HttpError]]:
         let routes = self.routes.clone()
         let middleware = self.middleware.clone()
-        return lambda exchange: dispatch(routes, middleware, exchange)
+        return lambda exchange: dispatch(routes.clone(), middleware.clone(), exchange)
 
 # Adds a route unless one with the same method and shape exists.
 def insert(
-    var routes: List[Route], token: String, pattern: String, segments: List[Segment],
+    var routes: List[Route],
+    token: String,
+    pattern: String,
+    segments: List[Segment],
+    around: List[
+        Callable[
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
+            Result[Unit, HttpError]
+        ]
+    ],
     handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
 ) -> Result[Unit, RouterError]:
     let shape = shape_of(segments)
@@ -162,24 +195,15 @@ def insert(
             return error(RouterError.Duplicate(token, pattern.clone()))
     routes.append(
         Route(
-            method: token, pattern: pattern, segments: segments, handler: handler
+            method: token, pattern: pattern, segments: segments, around: around,
+            handler: handler
         )
     )
     return ok(())
 
-# The handler that runs `handler` inside `middleware`.
-def wrap(
-    middleware: List[
-        Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
-            Result[Unit, HttpError]
-        ]
-    ],
-    handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
-) -> Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]:
-    return lambda exchange, params: through(
-        middleware, exchange, lambda: handler(exchange, params)
-    )
+# The end of a chain held by value so a closure can own it.
+type Tail:
+    last: Callable[[HttpExchange], Result[Unit, HttpError]]
 
 # Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that is not last.
 def parse_pattern(pattern: String) -> Result[List[Segment], RouterError]:
@@ -314,7 +338,10 @@ def dispatch(
     routes: List[Route],
     middleware: List[
         Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
             Result[Unit, HttpError]
         ]
     ],
@@ -322,37 +349,60 @@ def dispatch(
 ) -> Result[Unit, HttpError]:
     let method = exchange.method().text()
     let found = lookup(routes, method, split_path(exchange.path()))
-    let last = lambda: finish(routes, method, found, exchange)
-    return chain(middleware, 0, exchange, last)
-
-# Runs `last` inside `middleware`.
-def through(
-    middleware: List[
-        Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
-            Result[Unit, HttpError]
-        ]
-    ],
-    exchange: HttpExchange,
-    last: Callable[[], Result[Unit, HttpError]]
-) -> Result[Unit, HttpError]:
-    return chain(middleware, 0, exchange, last)
+    return chain(middleware, 0, exchange, final_step(routes, method, found))
 
 def chain(
     middleware: List[
         Callable[
-            [HttpExchange, Callable[[], Result[Unit, HttpError]]],
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
             Result[Unit, HttpError]
         ]
     ],
     at: Int,
     exchange: HttpExchange,
-    last: Callable[[], Result[Unit, HttpError]]
+    last: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
-    if at >= middleware.length(): return last()
+    if at >= middleware.length(): return last(exchange)
 
-    let next = lambda: chain(middleware, at + 1, exchange, last)
-    return middleware[at](exchange, next)
+    return middleware[at](exchange, next_step(middleware, at + 1, last))
+
+# The end of the chain: the matched route, or the 404, 405 or OPTIONS answer.
+def final_step(
+    routes: List[Route],
+    method: String,
+    found: Lookup
+) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
+    return lambda exchange: finish(
+        routes.clone(), method.clone(), found.clone(), exchange
+    )
+
+# The continuation handed to the middleware at `at - 1`.
+def next_step(
+    middleware: List[
+        Callable[
+            [
+                HttpExchange,
+                Callable[[HttpExchange], Result[Unit, HttpError]]
+            ],
+            Result[Unit, HttpError]
+        ]
+    ],
+    at: Int,
+    last: Callable[[HttpExchange], Result[Unit, HttpError]]
+) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
+    let rest = Tail(last: last)
+    return lambda exchange: chain(middleware.clone(), at, exchange, rest.last)
+
+# The end of a route's own middleware: its handler.
+def route_step(
+    routes: List[Route],
+    index: Int,
+    params: RouteParams
+) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
+    return lambda exchange: routes[index].handler(exchange, params)
 
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 def finish(
@@ -361,7 +411,12 @@ def finish(
     found: Lookup,
     exchange: HttpExchange
 ) -> Result[Unit, HttpError]:
-    if let index = found.found: return routes[index].handler(exchange, found.params)
+    if let index = found.found:
+        let around = routes[index].around.clone()
+        return chain(
+            around, 0, exchange, route_step(routes.clone(), index, found.params.clone())
+        )
+
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 
     let response = text(405 if method != "OPTIONS" else 204, "")
@@ -497,3 +552,171 @@ impl HttpExchange for TestExchange:
 # Whether a response with this status may carry a body.
 def has_body(status: Int) -> Bool:
     return status >= 200 and status != 204 and status != 304
+
+# What a wrapped exchange has sent so far.
+type TapState:
+    status: Int
+    bytes: Int
+
+# An exchange that passes everything to `inner`, adds `extra` to the headers of its response, and counts the status and body bytes sent.
+type Tap:
+    inner: HttpExchange
+    extra: HttpHeaders
+    state: Shared[TapState]
+
+def new_tap(inner: HttpExchange, extra: HttpHeaders) -> Tap:
+    return Tap(inner: inner, extra: extra, state: share(TapState(status: 0, bytes: 0)))
+
+def counted(state: Shared[TapState], status: Int, bytes: Int) -> Unit:
+    with var guard = lock(state):
+        if status != 0: guard.value.status = status
+        guard.value.bytes += bytes
+
+def snapshot(state: Shared[TapState]) -> TapState:
+    with var guard = lock(state):
+        return TapState(status: guard.value.status, bytes: guard.value.bytes)
+
+# `sent` plus the `extra` headers it does not already have.
+def with_extra(sent: HttpHeaders, extra: HttpHeaders) -> HttpHeaders:
+    let all = sent.clone()
+    for name in extra.names():
+        if all.values(name).is_none():
+            for value in extra.values(name).get([]):
+                all.append(name, value).get(())
+    return all
+
+impl HttpExchange for Tap:
+    def close() -> Unit:
+        self.inner.close()
+
+    def headers() -> HttpHeaders:
+        return self.inner.headers()
+
+    def method() -> HttpMethod:
+        return self.inner.method()
+
+    def path() -> String:
+        return self.inner.path()
+
+    def protocol() -> String:
+        return self.inner.protocol()
+
+    def query() -> String:
+        return self.inner.query()
+
+    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+        return self.inner.read(max_bytes)
+
+    def send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]:
+        try self.inner.send_headers(status, with_extra(headers, self.extra))
+        counted(self.state, status, 0)
+        return ok(())
+
+    def send(status: Int, headers: HttpHeaders, body: Bytes) -> Result[Unit, HttpError]:
+        try self.inner.send(status, with_extra(headers, self.extra), body)
+        counted(self.state, status, body.length())
+        return ok(())
+
+    def upgrade(
+        allowed_origins: List[String],
+        subprotocols: List[String],
+        max_message_bytes: Optional[Int] = none
+    ) -> Result[WebSocket, WebSocketError]:
+        return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
+
+    def write(data: String) -> Result[Unit, IoError]:
+        try self.inner.write(data)
+        counted(self.state, 0, data.byte_length())
+        return ok(())
+
+    def write_bytes(data: Bytes) -> Result[Unit, IoError]:
+        try self.inner.write_bytes(data)
+        counted(self.state, 0, data.length())
+        return ok(())
+
+# Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
+# printable ASCII characters, otherwise a new UUID. The id is set on the request headers, where
+# handlers and later middleware read it, and added to the response as `X-Request-Id`.
+export def request_id() -> Callable[
+    [HttpExchange, Callable[[HttpExchange], Result[Unit, HttpError]]],
+    Result[Unit, HttpError]
+]:
+    return lambda exchange, next: with_request_id(exchange, next)
+
+def with_request_id(
+    exchange: HttpExchange,
+    next: Callable[[HttpExchange], Result[Unit, HttpError]]
+) -> Result[Unit, HttpError]:
+    let request = exchange.headers()
+    let given = try request.text("X-Request-Id")
+    var id = ""
+    if let values = given: id = values.first().get("")
+
+    if not usable_id(id):
+        id = try new_id()
+        request.remove("X-Request-Id")
+        try request.append("X-Request-Id", id.to_bytes())
+
+    let extra = headers()
+    try extra.append("X-Request-Id", id.to_bytes())
+    return next(new_tap(exchange, extra))
+
+def usable_id(id: String) -> Bool:
+    return (
+        id.length() >= 1
+        and id.length() <= 128
+        and id.scalar_values().all(lambda c: (c > 32 and c < 127))
+    )
+
+def new_id() -> Result[String, HttpError]:
+    let made = uuid_v4(entropy())
+    if made.is_error(): return error(HttpError.Failed(made.err().message()))
+
+    return ok(made.get().clone())
+
+# One request as `access_log` writes it.
+type AccessEntry:
+    method: String
+    path: String
+    protocol: String
+    status: Int
+    bytes: Int
+    duration_ms: Int
+
+# Middleware that writes one Info record named `request` to `logger` after each request, with
+# the method, path, protocol, response status, body bytes written and duration in milliseconds.
+# A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
+# logging failure never fails the request.
+export def access_log(logger: Logger) -> Callable[
+    [HttpExchange, Callable[[HttpExchange], Result[Unit, HttpError]]],
+    Result[Unit, HttpError]
+]:
+    return lambda exchange, next: with_access_log(logger, exchange, next)
+
+def with_access_log(
+    logger: Logger,
+    exchange: HttpExchange,
+    next: Callable[[HttpExchange], Result[Unit, HttpError]]
+) -> Result[Unit, HttpError]:
+    let started = clock().now()
+    let method = exchange.method().text()
+    let path = exchange.path()
+    let protocol = exchange.protocol()
+    let tap = new_tap(exchange, headers())
+    let state = tap.state
+    let result = next(tap)
+    let sent = snapshot(state)
+    let status = answered(sent.status, result.is_ok())
+    let entry = AccessEntry(
+        method: method, path: path, protocol: protocol, status: status,
+        bytes: sent.bytes,
+        duration_ms: clock().now().difference(started).to_milliseconds()
+    )
+    let logged = record(logger, LogLevel.Info, "request", entry)
+    return result
+
+def answered(status: Int, succeeded: Bool) -> Int:
+    if status != 0: return status
+    if succeeded: return 204
+
+    return 500
