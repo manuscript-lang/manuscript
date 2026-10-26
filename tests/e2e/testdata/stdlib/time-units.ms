@@ -40,3 +40,15 @@ test "durations read as human spans in interpolation and to_string":
     try expect_equal(f"{seconds(-2)}", "-2s")
     try expect_equal(duration(nanoseconds: 0).to_string(), "0s")
     try expect_equal(f"{hours(1).add(seconds(5))}", "1h0m5s")
+
+test "extreme durations format, including the minimum":
+    try expect_equal(
+        duration(nanoseconds: 9223372036854775807).to_string(),
+        "2562047h47m16.854775807s"
+    )
+    try expect_equal(
+        duration(nanoseconds: -9223372036854775807 - 1).to_string(),
+        "-2562047h47m16.854775808s"
+    )
+    try expect_equal(f"{nanoseconds(-1500)}", "-1.5µs")
+    try expect_equal(f"{nanoseconds(-999999999)}", "-999.999999ms")

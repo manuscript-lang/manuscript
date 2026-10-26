@@ -229,7 +229,7 @@ export interface JsonEncode:
 #   alternatives follow the ordinary rules, so `ok(5)` is `{"ok":{"value":5}}`.
 # - A `JsonValue` is written as stored, so parsed documents mix with typed data.
 # - A type that implements `JsonEncode` is written as the `JsonValue` its `to_json` returns, instead of any rule above.
-# - Strings are UTF-8 JSON strings; `<`, `>` and `&` are written as Unicode escapes.
+# - Strings are UTF-8 JSON strings; only quotes, backslashes and control characters are escaped, so `<`, `>` and `&` stay as written.
 # - Values are read when `stringify` runs, so later mutation does not change the text. A value reachable
 #   from itself returns `InvalidData`; shared but acyclic values are written each time they appear.
 #

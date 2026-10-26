@@ -68,3 +68,8 @@ test "semver ignores build metadata and compares huge numeric identifiers":
     let large = (parse(text: "1.0.0-100000000000000000000") | try expect_ok)
     compare(left: small, right: large) | try expect_equal(-1)
     (SemverError.OutOfRange.message() | try expect_equal("semver: value out of range"))
+
+test "semver keeps hyphens in pre-release and rejects extra plus signs":
+    let version = (parse(text: "1.2.3-alpha-1") | try expect_ok)
+    format(version: version) | try expect_equal("1.2.3-alpha-1")
+    (try failure(parse(text: "1.2.3+a+b"))) | try expect_equal(SemverError.InvalidData)
