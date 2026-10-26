@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
 from "@std/process.ms" import control, ProcessError
-from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher
+from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher, join
 from "@std/time.ms" import milliseconds, sleep
 from "@std/tasks.ms" import TaskGroup
 from "@std/shared.ms" import Shared, share
@@ -118,7 +118,11 @@ test "polling and native watchers report a created file and close":
             path: root, recursive: False, interval: milliseconds(20)
         ):
             try fs.write_file(path: f"{root}/a.txt", data: "x", replace: False)
-            try expect_true(saw(try polling.next(), f"{root}/a.txt", "rename"))
+            try expect_true(
+                saw(
+                    try polling.next(), join([root.clone(), "a.txt"]), "rename"
+                )
+            )
 
         with let native = try fs.watch_native(
             path: root, recursive: False, overflow: "error"
@@ -128,7 +132,9 @@ test "polling and native watchers report a created file and close":
             var found = False
             for attempt in [1, 2, 3, 4, 5, 6]:
                 if not found:
-                    found = saw(try native.next(), f"{root}/b.txt", "rename")
+                    found = saw(
+                        try native.next(), join([root.clone(), "b.txt"]), "rename"
+                    )
             try expect_true(found)
 
 test "native watcher max_entries counts the paths under the root":
@@ -206,5 +212,5 @@ test "recursive native watch sees a file in a new subdirectory":
             for i in [1, 2, 3, 4, 5, 6, 7, 8]:
                 if not seen:
                     for e in try w.next():
-                        if e.path == f"{r}/d/f": seen = True
+                        if e.path == join([r.clone(), "d", "f"]): seen = True
             try expect_true(seen)
