@@ -95,6 +95,12 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
             return 2;
         }
     };
+    // Subcommands parse options again; retain the target's positional meaning.
+    let input = if target.starts_with('-') {
+        format!("./{target}")
+    } else {
+        target.clone()
+    };
     let mut steps: Vec<Step> = Vec::new();
     let mut ok = true;
     let mut record = |io: &mut Io, step: Step, steps: &mut Vec<Step>| {
@@ -111,13 +117,13 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
         step.reason = reason.to_string();
         step
     };
-    let check = run_step("check", &["check", &target, "--json"], engine, io);
+    let check = run_step("check", &["check", &input, "--json"], engine, io);
     let check_passed = check.status == "passed";
     record(io, check, &mut steps);
-    let format = run_step("fmt", &["fmt", &target, "--check", "--json"], engine, io);
+    let format = run_step("fmt", &["fmt", &input, "--check", "--json"], engine, io);
     record(io, format, &mut steps);
     if check_passed {
-        let lint = run_step("lint", &["lint", &target, "--json"], engine, io);
+        let lint = run_step("lint", &["lint", &input, "--json"], engine, io);
         record(io, lint, &mut steps);
     } else {
         record(io, skip("lint", "check failed"), &mut steps);
@@ -127,7 +133,7 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
     } else if !check_passed {
         record(io, skip("test", "check failed"), &mut steps);
     } else {
-        let test = run_step("test", &["test", &target, "--json"], engine, io);
+        let test = run_step("test", &["test", &input, "--json"], engine, io);
         record(io, test, &mut steps);
     }
     let status = i32::from(!ok);
