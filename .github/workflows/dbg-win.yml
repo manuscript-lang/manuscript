@@ -36,12 +36,20 @@ jobs:
           arch: amd64
       - run: cargo xtask runtime
       - run: cargo build --locked -p ms-cli
-      - name: Variants
+      - name: Cases
         run: |
-          for f in dbg/win/v*.ms; do
-            echo "=== $f"
-            timeout 40 target/debug/ms.exe run "$f" --build-type Debug 2>&1 | tail -20 || echo "exit/timeout: $?"
-          done
-      - name: Original fixture
-        run: |
-          timeout 60 target/debug/ms.exe run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms --build-type Release 2>&1 | tail -20 || echo "exit/timeout: $?"
+          run() { # label build-type file
+            start=$(date +%s)
+            timeout 50 target/debug/ms.exe run "$3" --build-type "$2" > out.txt 2>&1
+            code=$?
+            echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start )) lines=$(wc -l < out.txt)" >> summary.txt
+            tail -3 out.txt | sed "s/^/    /" >> summary.txt
+          }
+          run orig Debug tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms
+          run orig Release tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms
+          run v3 Release dbg/win/v3_timeout_slow.ms
+          run v4 Release dbg/win/v4_grace_slow.ms
+          run hello Release examples/hello/main.ms
+      - name: Summary
+        if: always()
+        run: cat summary.txt
