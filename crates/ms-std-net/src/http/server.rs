@@ -136,6 +136,8 @@ pub(super) struct ConnSt {
     pub interest: Ev,
     pub registered: bool,
     pub h2: Option<Box<h2serve::H2Conn>>,
+    /// The task running this connection's HTTP/1 request (`0`: none).
+    pub task: u64,
 }
 
 pub struct Conn {
@@ -919,6 +921,7 @@ impl Server {
                 interest: Ev::IN,
                 registered: false,
                 h2: None,
+                task: 0,
             }),
         });
         {
@@ -1043,11 +1046,13 @@ impl Server {
     pub(super) fn close_conn(&self, conn: &Rc<Conn>, reactor: &Reactor) {
         // Handlers parked on an HTTP/2 connection wake to find their stream gone.
         h2serve::wake_waiters(conn);
-        let queued = {
+        let (queued, running) = {
             let mut st = conn.st.borrow_mut();
             if matches!(st.phase, Phase::Closed) {
                 return;
             }
+            let mut running = st.h2.as_ref().map_or(Vec::new(), |h| h.running());
+            running.push(st.task);
             let queued = usize::from(matches!(st.phase, Phase::Queued(_)))
                 + st.h2.as_ref().map_or(0, |h| h.queued());
             if st.registered {
@@ -1065,8 +1070,12 @@ impl Server {
             st.inbuf = Vec::new();
             st.outbuf = Vec::new();
             st.h2 = None;
-            queued
+            (queued, running)
         };
+        // Handlers still running on the connection have no one to answer.
+        for task in running {
+            rt::cancel_task(task);
+        }
         if queued > 0 {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(queued);
@@ -1080,6 +1089,12 @@ impl Server {
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
         if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(conn, reactor);
+            return;
+        }
+        if flags.contains(Ev::HUP) && matches!(conn.st.borrow().phase, Phase::Busy) {
+            // The peer is gone while the handler runs: cancel it, and leave the stream to it.
+            let task = conn.st.borrow().task;
+            rt::cancel_task(task);
             return;
         }
         if matches!(conn.st.borrow().phase, Phase::H2) {
@@ -1483,7 +1498,9 @@ impl Server {
             }
         };
         self.detach(conn, reactor);
+        conn.st.borrow_mut().task = rt::current_task();
         super::exchange::run(self, conn, pending);
+        conn.st.borrow_mut().task = 0;
         {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);

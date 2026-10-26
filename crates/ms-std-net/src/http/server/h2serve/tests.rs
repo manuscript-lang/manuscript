@@ -37,6 +37,8 @@ fn client_tls(alpn: &[&str]) -> Arc<rustls::ClientConfig> {
     .unwrap()
 }
 
+static HANG_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Buffered handler.
 struct App;
 
@@ -46,6 +48,13 @@ impl Handle for App {
         let body = match r.path.as_str() {
             "/fault" => return Outcome::Fault("boom".into()),
             "/cancel" => return Outcome::Cancelled,
+            "/hang" => {
+                // Parks until the stream is reset, which cancels this task and ends the park.
+                let token = crate::rt::Token::new();
+                let got = token.park(-1);
+                HANG_CANCELLED.store(got & 16 != 0, std::sync::atomic::Ordering::SeqCst);
+                return Outcome::Cancelled;
+            }
             "/size" => format!("{}", r.body.len()).into_bytes(),
             "/big" => vec![b'x'; 300_000],
             "/cookie" => {
@@ -721,4 +730,26 @@ fn drops_a_peer_that_floods_pings_without_reading() {
     });
     let bytes = closed_after.expect("server kept answering pings it could not deliver");
     assert!(bytes < 32 << 20, "closed only after {bytes} bytes");
+}
+
+#[test]
+fn a_reset_stream_cancels_its_running_handler() {
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
+    let addr = server.address().to_string();
+    HANG_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
+    let after = with_client(move || {
+        let mut c = Client::connect(&addr, big_window());
+        let id = c.get("/hang");
+        c.flush();
+        // Let the handler start waiting, then reset its stream.
+        std::thread::sleep(Duration::from_millis(200));
+        c.core.send_rst(id, error_code::CANCEL);
+        c.flush();
+        // The wait ends at once, not after the request timeout.
+        std::thread::sleep(Duration::from_millis(300));
+        let other = c.get("/ok");
+        c.response(other)
+    });
+    assert!(HANG_CANCELLED.load(std::sync::atomic::Ordering::SeqCst));
+    assert_eq!(after.status, "200");
 }

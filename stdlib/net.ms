@@ -358,6 +358,7 @@ export interface Network:
     # Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
     # A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns Failed.
     # Returns PermissionDenied when a restricted network disallows listening, and InvalidInput for invalid options. Close the server to stop it.
+    # A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end, `tasks.cancelled()` turns true, and its cleanups run. A client that half-closes its end after sending the request counts as disconnected.
     # A faulting handler does not release the heap values its frames own, so each fault leaks memory until the server exits (about 1 MB per fault when the handler holds a 1 MB string). Return an error response for expected failures instead of faulting.
     def serve(
         address: String,
