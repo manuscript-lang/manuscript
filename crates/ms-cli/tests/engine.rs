@@ -67,6 +67,43 @@ fn run_returns_the_program_status() {
 }
 
 #[test]
+fn run_json_reports_native_build_failures() {
+    let dir = scratch("run-json-build-error");
+    let source = write(&dir, "main.ms", MAIN);
+    let missing = dir.join("missing.o");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let (status, stdout, stderr) = ms(
+        &backend,
+        &[
+            "run",
+            &source,
+            "--json",
+            "--link",
+            missing.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(status, 1, "{stdout}{stderr}");
+    let document = ms_json::parse(&stdout).unwrap();
+    assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
+    assert_eq!(document.get("exit_code").unwrap().as_i64(), Some(1));
+    assert_eq!(
+        document.get("reason").unwrap().as_str(),
+        Some("build_error")
+    );
+    let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].get("code").unwrap().as_str(), Some("MSN001"));
+    assert!(
+        diagnostics[0]
+            .get("message")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("does not name a file")
+    );
+}
+
+#[test]
 fn build_writes_an_executable_and_reports_it() {
     let dir = scratch("build");
     let source = write(&dir, "main.ms", MAIN);

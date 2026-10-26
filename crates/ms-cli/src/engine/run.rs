@@ -7,7 +7,7 @@ use ms_build::Lower;
 
 use super::{Engine, TempDir, compile};
 use crate::backend::{BackendResult, Io, RunRequest};
-use crate::diagnostic::CommandDiagnostic;
+use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{EXIT_FAULT, Fault};
 use crate::json::Json;
 use crate::process::{Stops, exit_code, wait_supervised, wait_with_signals};
@@ -42,8 +42,13 @@ pub(super) fn run<L: Lower>(
     let directory = match TempDir::create("manuscript-run-") {
         Ok(directory) => directory,
         Err(error) => {
-            let _ = writeln!(io.stderr, "{error}");
-            return Ok(1);
+            return Ok(report_error(
+                request,
+                &compiled.source_root,
+                "execution",
+                &error.to_string(),
+                io,
+            ));
         }
     };
     let executable = directory.0.join("program");
@@ -53,8 +58,13 @@ pub(super) fn run<L: Lower>(
         request.build_type,
         &request.link,
     ) {
-        let _ = writeln!(io.stderr, "{message}");
-        return Ok(1);
+        return Ok(report_error(
+            request,
+            &compiled.source_root,
+            "build",
+            &message,
+            io,
+        ));
     }
     if request.json {
         return run_structured(&compiled.source_root, &executable, request, io);
@@ -88,6 +98,31 @@ fn document(source_root: &str, exit: i32, stdout: &str, stderr: &str) -> Json {
         .with("stderr", Json::str(stderr))
 }
 
+fn report_error(
+    request: &RunRequest,
+    source_root: &str,
+    phase: &str,
+    message: &str,
+    io: &mut Io,
+) -> i32 {
+    if !request.json {
+        let _ = writeln!(io.stderr, "{message}");
+        return 1;
+    }
+    let diagnostic = CommandDiagnostic {
+        code: "MSN001".into(),
+        phase: phase.into(),
+        message: message.into(),
+        position: Position::new(&request.filename, 1, 1),
+        end: None,
+        fix: None,
+    };
+    let result = document(source_root, 1, "", "")
+        .with("reason", Json::str(format!("{phase}_error")))
+        .with("diagnostics", Json::Arr(vec![diagnostic.to_json()]));
+    emit_json(io, &result, 1)
+}
+
 /// Runs the program with its output captured and reports one document: the exit status, the
 /// output, and, when the program ended in a runtime fault, the fault as structured data.
 fn run_structured(
@@ -106,8 +141,13 @@ fn run_structured(
     let mut child = match spawned {
         Ok(child) => child,
         Err(error) => {
-            let _ = writeln!(io.stderr, "{error}");
-            return Ok(1);
+            return Ok(report_error(
+                request,
+                source_root,
+                "execution",
+                &error.to_string(),
+                io,
+            ));
         }
     };
     let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
@@ -131,8 +171,13 @@ fn run_structured(
     let status = match waited {
         Ok(waited) => exit_code(waited.status),
         Err(error) => {
-            let _ = writeln!(io.stderr, "{error}");
-            return Ok(1);
+            return Ok(report_error(
+                request,
+                source_root,
+                "execution",
+                &error.to_string(),
+                io,
+            ));
         }
     };
     let (out, err) = (
