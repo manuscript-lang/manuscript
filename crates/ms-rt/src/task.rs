@@ -1712,6 +1712,7 @@ pub fn teardown() {
         s.remote_tokens = 0;
         s.peer_tokens = 0;
         isolate::clear_posts();
+        crate::scope::teardown();
     }
 }
 
