@@ -131,13 +131,14 @@ fn main() {
     let t = Instant::now();
     let mut h = BinaryHeap::new();
     x = 1;
-    for _ in 0..p {
+    // The enqueue number breaks ties, so equal priorities dequeue in enqueue order like PriorityQueue.
+    for i in 0..p {
         x = next_rand(x);
-        h.push(Reverse(x));
+        h.push(Reverse((x, i)));
     }
     sum = 0;
     for _ in 0..p {
-        sum += h.pop().unwrap().0;
+        sum += h.pop().unwrap().0 .0;
     }
     report("pq_int_enqueue_dequeue", p * 2, t);
     total += sum;

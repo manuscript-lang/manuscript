@@ -559,3 +559,34 @@ fn replaced_list_loses_the_byte_range() {
     // are no longer known to be bytes and the addition can overflow.
     assert_eq!(count(&m, "iadd.chk"), 1, "{}", print_module(&m));
 }
+
+/// Reading a list field twice from one record yields one list, so a bound tested on the first
+/// read covers the second.
+#[test]
+fn repeated_field_reads_share_one_list_for_bounds_proofs() {
+    let src = std::fs::read_to_string(dir("fixtures-opt").join("field_list_walk.mir")).unwrap();
+    let before = parse(&src);
+    let mut after = before.clone();
+    opt::simplify::run(&mut after);
+    range::run(&mut after);
+    verify_module(&after).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&after)));
+    assert_eq!(count(&before, "list.get"), 1);
+    assert_eq!(count(&after, "list.get.u"), 1, "{}", print_module(&after));
+    assert_eq!(count(&after, "list.get"), 0, "{}", print_module(&after));
+    assert_eq!(exec(&before), exec(&after));
+}
+
+/// A record that comes back from a call has a list of unknown length, whatever the list it went
+/// in with: its length must not be folded from the record built before the loop.
+#[test]
+fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
+    let src = std::fs::read_to_string(dir("fixtures-opt").join("field_list_opaque.mir")).unwrap();
+    let before = parse(&src);
+    let want = exec(&before);
+    assert_eq!(want.0, Ok(3));
+    let mut after = before.clone();
+    opt::simplify::run(&mut after);
+    range::run(&mut after);
+    verify_module(&after).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&after)));
+    assert_eq!(exec(&after), want, "{}", print_module(&after));
+}

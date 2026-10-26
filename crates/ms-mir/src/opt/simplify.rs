@@ -10,7 +10,7 @@
 use crate::ir::*;
 use crate::types::Ty;
 use crate::verify::dominators;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
@@ -42,6 +42,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
+        c |= put_takes(f);
         c |= branches(f);
         c |= cse(m, f);
         c |= dce(m, f);
@@ -998,8 +999,11 @@ fn cse(m: &Module, f: &mut Func) -> bool {
                 inst.op,
                 Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk | Op::SRemChk
             );
-            if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int)
-                || m.needs_drop(ty)
+            // A field read is a borrowed view of an immutable record value, so repeating it
+            // yields the same view even when the field's type owns heap data.
+            let view = inst.op == Op::RecGet;
+            if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int || view)
+                || (m.needs_drop(ty) && !view)
             {
                 continue;
             }
@@ -1088,6 +1092,50 @@ fn roundtrips(f: &mut Func) -> bool {
         }
     }
     changed
+}
+
+/// A value put into a slot and taken straight back out (inlining a callee that receives its
+/// argument through a slot leaves `put S, v; r = take S`) is `v` itself: the pair is deleted and
+/// `r` renamed to `v`, which is then a value the analyses can follow. `put` consumes `v`, so `r`
+/// takes over its one owning use, and only pure instructions may sit between the two.
+fn put_takes(f: &mut Func) -> bool {
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (pi, put) in b.insts.iter().enumerate() {
+            if put.op != Op::Put {
+                continue;
+            }
+            let (slot, v) = (put.args[0], put.args[1]);
+            for (ti, take) in b.insts.iter().enumerate().skip(pi + 1) {
+                if take.op == Op::Take && take.args[0] == slot {
+                    if let Some(r) = take.res
+                        && f.ty(r) == f.ty(v)
+                    {
+                        subst.insert(r, v);
+                        removed.insert((bi, pi));
+                        removed.insert((bi, ti));
+                    }
+                    break;
+                }
+                if take.args.contains(&slot) || !take.op.info().effects.is_pure() {
+                    break;
+                }
+            }
+        }
+    }
+    if removed.is_empty() {
+        return false;
+    }
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            k += 1;
+            !removed.contains(&(bi, k - 1))
+        });
+    }
+    apply_subst(f, &subst);
+    true
 }
 
 /// The instruction indexes of the sequence starting with the `take` at `at`:
