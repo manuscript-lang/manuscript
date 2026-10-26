@@ -1665,6 +1665,11 @@ pub fn teardown() {
         if s.epfd >= 0 {
             crate::poller::close(s.epfd);
         }
+        // The isolate's pool owns mappings too. Its thread-local state has no destructor,
+        // so a worker that exits must release the cached stacks as well as active ones.
+        for base in core::mem::take(&mut s.pool) {
+            stack::destroy(base as *mut u8, DEFAULT_STACK);
+        }
         s.cur = null_mut();
         s.main = null_mut();
         s.ready = VecDeque::new();
@@ -1764,6 +1769,42 @@ mod tests {
     }
 
     unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}
+
+    #[test]
+    #[cfg(unix)]
+    fn teardown_unmaps_pooled_task_stacks() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the entry ignores its argument and the test joins the task once.
+        unsafe {
+            let h = msrt_task_spawn(long_wait, null_mut(), 0, 0);
+            msrt_task_cancel(h);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            let pooled = sched().pool.clone();
+            assert!(
+                !pooled.is_empty(),
+                "the completed stack must enter the pool"
+            );
+            teardown();
+            for base in pooled {
+                let mut resident = 0u8;
+                // Querying an unmapped address fails; no access to its contents is made.
+                assert_eq!(
+                    libc::mincore(
+                        base as *mut core::ffi::c_void,
+                        4096,
+                        (&raw mut resident).cast()
+                    ),
+                    -1,
+                    "teardown left a task stack mapped"
+                );
+                assert_eq!(
+                    std::io::Error::last_os_error().raw_os_error(),
+                    Some(libc::ENOMEM)
+                );
+            }
+        }
+    }
 
     unsafe extern "C-unwind" fn long_wait(_: *mut u8) {
         // SAFETY: called on a live task; the test cancels it after checking the heap.
