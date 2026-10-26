@@ -1338,8 +1338,10 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
                         start += 1;
                     }
                 }
-                StmtKind::With { .. } => start += 1,
-                StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
+                StmtKind::Bind { .. }
+                | StmtKind::Assign { .. }
+                | StmtKind::For { .. }
+                | StmtKind::With { .. } => {
                     let target = if matches!(s.kind, StmtKind::For { .. }) {
                         Tok::In
                     } else {
