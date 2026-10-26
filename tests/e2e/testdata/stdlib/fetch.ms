@@ -1,5 +1,5 @@
 from "@std/testing.ms" import expect_equal
-from "@std/fetch.ms" import FetchBody, FetchOptions, FetcherOptions, check_status, read_json, fetch, fetcher, json_body
+from "@std/fetch.ms" import FetchBody, FetchOptions, FetcherOptions, fetch, fetcher, json_body
 from "@std/http.ms" import HttpError, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, headers, buffered
 from "@std/net.ms" import network
 from "@std/time.ms" import milliseconds, sleep
@@ -65,18 +65,14 @@ test "fetch posts text and JSON bodies with default content types":
         let url = f"http://{server.address()}/echo"
         let text = try fetch(
             url,
-            some(
-                FetchOptions(
-                    method: HttpMethod.Post, body: FetchBody.Text("hi")
-                )
+            FetchOptions(
+                method: HttpMethod.Post, body: FetchBody.Text("hi")
             )
         )
         try expect_equal(try text.text(), "POST|text/plain; charset=utf-8|hi")
 
         let body = try json_body(Greeting(name: "ada"))
-        let sent = try fetch(
-            url, some(FetchOptions(method: HttpMethod.Post, body: body))
-        )
+        let sent = try fetch(url, FetchOptions(method: HttpMethod.Post, body: body))
         try expect_equal(
             try sent.text(), "POST|application/json|" + "{\"name\":\"ada\"}"
         )
@@ -84,7 +80,7 @@ test "fetch posts text and JSON bodies with default content types":
 test "fetch decodes JSON":
     with let server = try network().serve("127.0.0.1:0", buffered(json_route)):
         let response = try fetch(f"http://{server.address()}/")
-        let greeting = try read_json[Greeting](response)
+        let greeting = try response.json[Greeting]()
         try expect_equal(greeting.name, "ada")
 
 def json_route(request: HttpRequest) -> HttpResponse:
@@ -106,10 +102,8 @@ test "fetch does not restore Content-Type after a redirect drops its body":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let response = try fetch(
             f"http://{server.address()}/chain",
-            some(
-                FetchOptions(
-                    method: HttpMethod.Post, body: FetchBody.Text("hello")
-                )
+            FetchOptions(
+                method: HttpMethod.Post, body: FetchBody.Text("hello")
             )
         )
         try expect_equal(response.head.status, 200)
@@ -119,21 +113,21 @@ test "error statuses are ordinary responses and check_status rejects them":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let response = try fetch(f"http://{server.address()}/missing")
         try expect_equal(response.ok(), False)
-        try expect_equal(check_status(response).is_error(), True)
+        try expect_equal(response.check_status().is_error(), True)
 
 test "fetch enforces max_response_bytes":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/big"
-        let small = fetch(url, some(FetchOptions(max_response_bytes: some(4))))
+        let small = fetch(url, FetchOptions(max_response_bytes: some(4)))
         try expect_equal(small.is_error(), True)
 
-        let whole = try fetch(url, some(FetchOptions(max_response_bytes: some(10))))
+        let whole = try fetch(url, FetchOptions(max_response_bytes: some(10)))
         try expect_equal(whole.body.length(), 10)
 
 test "fetch times out a slow response":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
         let url = f"http://{server.address()}/slow"
-        let slow = fetch(url, some(FetchOptions(timeout: some(milliseconds(200)))))
+        let slow = fetch(url, FetchOptions(timeout: some(milliseconds(200))))
         try expect_equal(slow.is_error(), True)
         try expect_equal(slow.err().message(), "HTTP: operation timed out")
 
@@ -161,7 +155,7 @@ test "Fetcher.stream returns the body incrementally and reuses the client":
 
 test "a closed Fetcher returns Closed":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
-        let client = try fetcher()
+        var client = try fetcher()
         client.close()
 
         let sent = client.fetch(f"http://{server.address()}/big")

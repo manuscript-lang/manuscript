@@ -8,7 +8,7 @@ def boom(xs: List[Int]) -> Int:
 
 def describe(error: TaskError) -> String:
     match error:
-        case Faulted(message): return "faulted: " + message.split("\n").get(0)
+        case Faulted(report): return "faulted: " + report.split("\n").get(0)
         case _: return "other error"
 
 def say(text: String) -> Unit:

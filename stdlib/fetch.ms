@@ -1,5 +1,6 @@
 # Fetch-style HTTP client implemented in Manuscript over `@std/http.ms` and `@std/json.ms`.
 from "@std/bytes.ms" import Bytes
+from "@std/core.ms" import Closeable
 from "@std/http.ms" import HttpClient, HttpClientOptions, HttpError, HttpHeaders, HttpMethod, HttpResponseMetadata, ResponseBody, headers
 from "@std/io.ms" import IoError
 from "@std/json.ms" import JsonError, parse, stringify
@@ -66,7 +67,7 @@ export def json_body[T](value: T) -> Result[FetchBody, FetchError]:
     let text = try stringify(value).map_error(json_failure)
     return ok(FetchBody.JsonText(text))
 
-# Per-request settings. Every field has a default, so `FetchOptions()` is a plain GET with a 30 second deadline and a 16 MiB response cap.
+# Per-request settings. Every field has a default, so `FetchOptions()` (the default) is a plain GET with a 30 second deadline and a 16 MiB response cap; set only the fields that differ, as in `FetchOptions(method: HttpMethod.Post)`.
 export type FetchOptions:
     # The request method; defaults to Get. Extension tokens use the Custom case.
     method: HttpMethod = HttpMethod.Get
@@ -112,64 +113,55 @@ impl FetchResponse:
 
         return error(FetchError.InvalidText)
 
-# Decodes the response body as JSON into `T`; use `JsonValue` for untyped data.
-export def read_json[T](response: FetchResponse) -> Result[T, FetchError]:
-    let text = try response.text()
-    return parse[T](text).map_error(json_failure)
+    # Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
+    def json[T](ignore_unknown_fields: Bool = True) -> Result[T, FetchError]:
+        let text = try self.text()
+        return parse[T](text, ignore_unknown_fields: ignore_unknown_fields).map_error(
+            json_failure
+        )
 
-# Returns the response when its status is 200 through 299, otherwise `Status`.
-export def check_status(response: FetchResponse) -> Result[FetchResponse, FetchError]:
-    if response.ok(): return ok(response)
+    # Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
+    def check_status() -> Result[Unit, FetchError]:
+        if self.ok(): return ok(())
 
-    return error(FetchError.Status(response.head.status))
+        return error(FetchError.Status(self.head.status))
 
-# A reusable client with connection pooling. Close it when done.
-export interface Fetcher:
-    # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
-    def close() -> Unit
+# A reusable client with connection pooling. Open it with `with`, or close it when done.
+export type Fetcher:
+    # Internal state: the pooled HTTP client every request goes through.
+    client: HttpClient
+
+impl Fetcher:
     # Sends the request and buffers the response body.
     # A `Raw` or `Text` body is resent on redirects that keep it.
     def fetch(
         url: String,
-        options: Optional[FetchOptions] = none
-    ) -> Result[FetchResponse, FetchError]
-    # Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so pass none for long streams.
-    def stream(
-        url: String,
-        options: Optional[FetchOptions] = none
-    ) -> Result[ResponseBody, FetchError]
-
-type ClientFetcher:
-    client: HttpClient
-
-impl Fetcher for ClientFetcher:
-    def close() -> Unit:
-        self.client.close()
-
-    def fetch(
-        url: String,
-        options: Optional[FetchOptions] = none
+        options: FetchOptions = FetchOptions()
     ) -> Result[FetchResponse, FetchError]:
-        let settings = resolve(options)
         let started = clock().now()
-        let body = try self.stream(url, some(settings.clone()))
-        return drain(body, settings, started)
+        let body = try self.stream(url, options.clone())
+        return drain(body, options, started)
 
+    # Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
     def stream(
         url: String,
-        options: Optional[FetchOptions] = none
+        options: FetchOptions = FetchOptions()
     ) -> Result[ResponseBody, FetchError]:
-        let settings = resolve(options)
-        let sent = outgoing(settings)
+        let sent = outgoing(options)
         return (
             self
             .client
             .request_bytes(
-                settings.method.clone(), url, sent.headers, sent.body,
-                settings.max_response_bytes, settings.timeout
+                options.method.clone(), url, sent.headers, sent.body,
+                options.max_response_bytes, options.timeout
             )
             .map_error(http_failure)
         )
+
+impl Closeable for Fetcher:
+    # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.
+    var def close() -> Unit:
+        self.client.close()
 
 # Reads the body to its end within the options' size limit, then closes it.
 def drain(
@@ -204,12 +196,6 @@ def io_failure(cause: IoError) -> FetchError:
 
 def http_failure(cause: HttpError) -> FetchError:
     return FetchError.Http(cause)
-
-def resolve(options: Optional[FetchOptions]) -> FetchOptions:
-    if let given = options:
-        return given.clone()
-
-    return FetchOptions()
 
 type Outgoing:
     headers: HttpHeaders
@@ -262,13 +248,13 @@ export def fetcher(
         cookies: options.cookies, tls: options.tls.clone()
     )
     let client = try net.http_client(settings).map_error(http_failure)
-    return ok(ClientFetcher(client: client))
+    return ok(Fetcher(client: client))
 
 # Performs one buffered request on a one-shot client.
 # Redirects are followed up to 20 times, the body is limited to 16 MiB, and the exchange to 30 seconds; override them in `options`.
 export def fetch(
     url: String,
-    options: Optional[FetchOptions] = none
+    options: FetchOptions = FetchOptions()
 ) -> Result[FetchResponse, FetchError]:
     with let client = try fetcher():
         return client.fetch(url, options)

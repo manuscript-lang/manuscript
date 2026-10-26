@@ -7,7 +7,7 @@ from "@std/time.ms" import clock, duration
 from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
 
 def worker(url: String, nanos: Int) -> Int:
-    let f = fetcher().get()
+    var f = fetcher().get()
     let started = clock().now()
     var n = 0
 

@@ -75,3 +75,11 @@ Decision: `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponen
 Apply when: giving a native a `Result` whose error comes only from a constant argument, or adding a sized-number codec.
 Evidence: [text-padding fixture](../tests/e2e/testdata/stdlib/text-padding.ms), [binary fixture](../tests/e2e/testdata/stdlib/binary.ms), `bytes.read_int32_le` and `bytes.append_int32_le` in `bench/perf/stdlib/src/binarybench.ms`.
 Verify: `ms test tests/e2e/testdata/stdlib/binary.ms tests/e2e/testdata/stdlib/text-padding.ms`; `make stdlib-bench BENCHFILTER=bytes.`.
+
+### Options records as plain defaults; fetch helpers are methods
+
+Decision: a function that takes a settings record declares it `options: FetchOptions = FetchOptions()`, never `Optional[FetchOptions] = none`, so callers write `fetch(url, FetchOptions(method: HttpMethod.Post))` without `some(...)`. Interface operations cannot carry such a default (the checker only allows `= none` there, and the bundled-module exemption hides the error until lowering, #1510), so a type that needs one is a record with methods, not a single-implementation interface: `Fetcher` is a record wrapping `HttpClient` with `impl Closeable`. Since source methods take type parameters (#1475), `read_json[T](response)` became `FetchResponse.json[T]()` and `check_status(response)` became `response.check_status() -> Result[Unit, FetchError]`; the proposal's free functions were workarounds for the missing feature. The same pass renamed `Worker.join` to `wait` (the stdlib's one verb for "wait for an end": `Subprocess.wait`, `Process.wait`, `HttpServer.wait`, `TaskGroup.wait`) and `TaskError.Faulted(message)` to `Faulted(report)`, matching `WorkerError`.
+
+Apply when: adding a parameter that is a record of settings, choosing between an interface and a record for a type with one implementation, or naming the operation that waits for work to end.
+Evidence: [fetch.ms](../stdlib/fetch.ms), [fetch fixture](../tests/e2e/testdata/stdlib/fetch.ms), [workers fixture](../tests/conformance/fixtures/e2e/stdlib/workers.ms).
+Verify: `ms test tests/e2e/testdata/stdlib/fetch.ms tests/conformance/fixtures/e2e/stdlib/workers.ms`; `ms search_symbol read_json` finds no declaration.

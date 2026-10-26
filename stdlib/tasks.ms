@@ -60,7 +60,7 @@ export type TaskError:
     # The task faulted in a group that contains faults. Carries the fault report.
     case Faulted(
         # The fault report from the task: its message and stack.
-        message: String
+        report: String
     )
 
 impl Error for TaskError:
@@ -70,7 +70,7 @@ impl Error for TaskError:
             case TimedOut: return "task: timed out"
             case Cancelled: return "task: cancelled"
             case Closed: return "task: closed"
-            case Faulted(message): return "task: fault: " + message
+            case Faulted(report): return "task: fault: " + report
 
 # Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
 # A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.

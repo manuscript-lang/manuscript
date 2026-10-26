@@ -125,7 +125,7 @@ test "handles of a closed worker group answer instead of faulting":
         kept = some(group.spawn(waits).get())
     if let worker = kept:
         var w = worker
-        try expect_equal(w.join().is_ok(), False)
+        try expect_equal(w.wait().is_ok(), False)
         try expect_equal(w.channel.send(1).is_ok(), False)
         w.cancel()
 
@@ -144,6 +144,6 @@ test "the worker limit refuses extra workers and frees slots when they end":
         for i in range(0, started.length()):
             started[i].cancel()
         for i in range(0, started.length()):
-            let ended = started[i].join()
+            let ended = started[i].wait()
         let again = group.spawn(waits)
         try expect_equal(again.is_ok(), True)
