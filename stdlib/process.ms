@@ -305,6 +305,37 @@ impl Error for CommandError:
             case OutputLimit: return "command: output limit exceeded"
             case Failed(message): return message.clone()
 
+# A child program, its arguments, input and limits, assembled step by step. Arguments are separate list items passed to the program as they are, never joined into one string and never parsed by a shell, so spaces, quotes, `;` and `$` in an argument are plain text.
+# `Command("git").arg("log").arg(user_text)` cannot turn `user_text` into a second command; there is no entry point that takes a shell command line.
+export type Command:
+    # The program to start, searched on the PATH. It is not a command line: put each argument in `arguments`.
+    program: String
+    # Arguments after the program name, one list item each.
+    arguments: List[String] = []
+    # Bytes written to the program's standard input.
+    input: Bytes = "".to_bytes()
+    # Output bound across both streams; none means the runtime default.
+    max_output_bytes: Optional[Int] = none
+    # Time allowed before the program is killed; none waits without a bound.
+    timeout: Optional[Duration] = none
+
+impl Command:
+    # Appends one argument, passed to the program unchanged.
+    var def arg(value: String) -> Unit:
+        self.arguments.append(value)
+
+    # Appends each value as its own argument, in order.
+    var def args(values: List[String]) -> Unit:
+        for value in values:
+            self.arguments.append(value.clone())
+
+    # Runs the program directly, without a shell, and waits for it, as `Commands.run` does.
+    def run() -> Result[CommandOutput, CommandError]:
+        return commands().run(
+            self.program.clone(), self.arguments.clone(), self.input.clone(),
+            self.max_output_bytes, self.timeout
+        )
+
 # Returns child-process operations for the current host.
 export def commands() -> Commands:
     return msstd_process_commands()

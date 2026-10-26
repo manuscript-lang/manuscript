@@ -111,7 +111,7 @@ def saw(events: List[FileEvent], path: String, kind: String) -> Bool:
 test "polling and native watchers report a created file and close":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-watch-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-watch-") | try expect_ok:
         let root = temporary.path()
 
         with let polling = try fs.watch(
@@ -140,7 +140,7 @@ test "polling and native watchers report a created file and close":
 test "native watcher max_entries counts the paths under the root":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-me-") | try expect_ok):
+    with let t = fs.temporary("ms-me-") | try expect_ok:
         try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
         try expect_fs_error(
             fs.watch_native(
@@ -163,7 +163,7 @@ def wait_next(w: Shared[FileWatcher]) -> Int:
 test "close wakes a pending native next with Closed":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch_native(
                 path: t.path(), recursive: False, overflow: "error"
@@ -182,7 +182,7 @@ test "close wakes a pending native next with Closed":
 test "a group timeout cancels a task waiting on a watcher":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch(
                 path: t.path(), recursive: False, interval: milliseconds(20)
@@ -201,7 +201,7 @@ test "a group timeout cancels a task waiting on a watcher":
 test "recursive native watch sees a file in a new subdirectory":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let r = t.path()
 
         with let w = try fs.watch_native(path: r, recursive: True, overflow: "error"):

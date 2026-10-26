@@ -71,7 +71,12 @@ pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
             "ms guide takes no arguments; use 'ms search_symbol' to look symbols up",
         );
     }
-    let _ = write!(io.stdout, "{}", ms_tooling::guide::cheatsheet());
+    let _ = write!(
+        io.stdout,
+        "{}{}",
+        ms_tooling::guide::cheatsheet(),
+        ms_tooling::guide::mistakes()
+    );
     0
 }
 

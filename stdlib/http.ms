@@ -301,6 +301,8 @@ export type HttpServerOptions:
     grace: Optional[Duration] = none
     # Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
     tls: Optional[TlsOptions] = none
+    # True shares the listening socket with every other server of the process that serves the same address text with `shared` set, so workers on several threads each run `serve` and accept from one port. The first server binds; the port closes with the last. It works the same on Linux, macOS and Windows.
+    shared: Bool = False
 
 # Streaming response body returned by reusable HTTP client operations.
 # Metadata remains available after close and shares one mutable header object.

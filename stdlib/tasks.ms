@@ -161,6 +161,25 @@ def close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) -> Uni
         receiving.value.clear()
         receiving.value.wake()
 
+# Removes this wait's token on every exit without disturbing other tasks on the lane.
+type WaitTicket[T]:
+    # The lane holding this wait's token.
+    lane: Shared[Lane[T]]
+    # The token that this wait registered.
+    token: Int
+
+impl Closeable for WaitTicket[T]:
+    # A normal wake already cleared the entry. Cancellation must remove it here instead.
+    var def close() -> Unit:
+        with var lane = lock(self.lane):
+            for index in range(0, lane.value.waiting.length()):
+                if lane.value.waiting[index] == self.token:
+                    lane.value.waiting.remove(index)
+                    break
+
+            if lane.value.waiting.is_empty():
+                lane.value.waiting = List[Int]()
+
 # One end of a channel between tasks on the runtime thread. Values move from one end to the other;
 # a task that must wait parks until the other end posts its token.
 type TaskTransport[In, Out]:
@@ -186,7 +205,8 @@ impl TaskTransport[In, Out]:
                 token = msrt_channel_token()
                 lane.value.waiting.append(token)
 
-            msrt_channel_park(token)
+            with let ticket = WaitTicket[In](lane: self.outgoing, token: token):
+                msrt_channel_park(token)
 
         return ok(())
 
@@ -218,7 +238,8 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
                 token = msrt_channel_token()
                 lane.value.waiting.append(token)
 
-            msrt_channel_park(token)
+            with let ticket = WaitTicket[Out](lane: self.incoming, token: token):
+                msrt_channel_park(token)
 
         return ok(none)
 

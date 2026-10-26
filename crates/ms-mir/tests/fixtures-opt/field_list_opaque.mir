@@ -1,0 +1,39 @@
+module "field_list_opaque"
+entry @main
+record Box { items: list<int> }
+fn @push(%p: ptr, %v: int) -> unit {
+b0:
+  %b: Box = take Box %p
+  %l: list<int> = rec.get Box.items %b
+  %m: list<int> = move.out %l
+  %n: list<int> = list.push %m, %v
+  %b2: Box = rec.fill Box.items %b, %n
+  put %p, %b2
+  %u: unit = unit
+  ret %u
+}
+fn @main() -> int {
+b0:
+  %cap: int = iconst 0
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  %three: int = iconst 3
+  %e: list<int> = list.new %cap
+  %b0: Box = rec.new Box %e
+  br head(%zero, %b0)
+head(%i: int, %box: own Box):
+  %more: bool = icmp.lt %i, %three
+  br_if %more, body(), done()
+body:
+  %s: ptr = slot Box
+  put %s, %box
+  %r: unit = call @push (%s, %i)
+  %next: Box = take Box %s
+  %i1: int = iadd %i, %one
+  br head(%i1, %next)
+done:
+  %l: list<int> = rec.get Box.items %box
+  %n: int = list.len %l
+  drop %box
+  ret %n
+}

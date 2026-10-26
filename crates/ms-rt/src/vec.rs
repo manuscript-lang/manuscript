@@ -967,15 +967,7 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
-        let sepb = string::bytes(sep);
-        let mut b = Vec::new();
-        for i in 0..v.len {
-            if i > 0 {
-                b.extend_from_slice(sepb);
-            }
-            b.extend_from_slice(string::bytes((v.ptr as *const StrVal).add(i)));
-        }
-        *out = string::from_buf(b);
+        *out = string::join_strings(v.ptr as *const StrVal, v.len, string::bytes(sep));
     }
 }
 

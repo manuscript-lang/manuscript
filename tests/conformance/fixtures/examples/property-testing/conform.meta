@@ -1,0 +1,3 @@
+# conform: tags=closures,generics,lists,modules,projects,stdlib-io,stdlib-property,stdlib-testing,testing,tier-io,try-result
+# conform: phase=test
+# conform: origin=examples/property-testing

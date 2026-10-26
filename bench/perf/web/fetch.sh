@@ -26,5 +26,8 @@ for file in small big; do
     url=http://127.0.0.1:18950/$file
     echo "$file connections=$conns go $( (on "$LOAD_CPUS" "$W/go/fetch" get "$url" $conns "$SECS") )"
     echo "$file connections=$conns ms $( (on "$LOAD_CPUS" "$W/ms/fetch" "$url" $conns "$SECS") )"
+    if [ "$conns" = 8 ]; then
+      echo "$file connections=$conns ms threads=2 $( (on "$LOAD_CPUS" "$W/ms/fetch" "$url" $conns "$SECS" 2) )"
+    fi
   done
 done

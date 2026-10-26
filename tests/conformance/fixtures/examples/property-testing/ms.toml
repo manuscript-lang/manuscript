@@ -1,0 +1,4 @@
+[project]
+name = "property-testing"
+source = "./src"
+entry = "./src/main.ms"

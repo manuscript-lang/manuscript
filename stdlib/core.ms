@@ -88,7 +88,8 @@ impl Optional[T]:
     # Reports whether this value is absent.
     def is_none() -> Bool: ...
 
-    # Returns the payload, or `default` when this is `none`. Without a default, `none` raises a fault.
+    # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
+    # Without a default, `none` raises a fault.
     def get(default: Optional[T] = none) -> ref T: ...
 
     # Transforms a present payload; none remains absent.
@@ -130,10 +131,11 @@ impl Result[T, E]:
     # Reports whether this result contains an expected error.
     def is_error() -> Bool: ...
 
-    # Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
+    # Returns the successful payload, or `default` when this is an error; pass a default or propagate with `try` unless failure is a bug.
+    # Without a default, an error raises a fault.
     def get(default: Optional[T] = none) -> ref T: ...
 
-    # Returns the error payload; faults when this is successful.
+    # Returns the error payload; check `is_error()` first, because a successful result raises a fault.
     def err() -> ref E: ...
 
     # Returns the successful payload, or calls create once with the original error and returns its value.

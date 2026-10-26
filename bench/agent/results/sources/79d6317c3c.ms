@@ -366,10 +366,8 @@ def quote_block(lines: List[String], i: Int) -> Step:
         j += 1
 
     let parsed = parse_blocks(inner)
-    let html = (
-        "<blockquote>\n"
-        .concat(render_blocks(parsed.blocks.clone()))
-        .concat("</blockquote>\n")
+    let html = "<blockquote>\n".concat(render_blocks(parsed.blocks.clone())).concat(
+        "</blockquote>\n"
     )
     return Step(block: Html(text: html), next: j)
 
@@ -552,11 +550,8 @@ def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
 
     var body = ""
     for blocks in items:
-        body = (
-            body
-            .concat("<li>")
-            .concat(item_html(blocks, not loose))
-            .concat("</li>\n")
+        body = body.concat("<li>").concat(item_html(blocks, not loose)).concat(
+            "</li>\n"
         )
 
     var open = "<ul>\n"
@@ -682,11 +677,8 @@ def table_at(lines: List[String], i: Int) -> Optional[Step]:
     var html = "<table>\n<thead>\n<tr>\n"
 
     for c in range(0, heads.length()):
-        html = (
-            html
-            .concat("<th")
-            .concat(align_attr(align_of(aligns.get(c))))
-            .concat(">")
+        html = html.concat("<th").concat(align_attr(align_of(aligns.get(c)))).concat(
+            ">"
         )
         html = html.concat(inline(heads.get(c))).concat("</th>\n")
 
@@ -1162,10 +1154,8 @@ def render_node(node: Node) -> String:
             return "<code>".concat(esc(value)).concat("</code>")
         case Emph(strong, children):
             if strong:
-                return (
-                    "<strong>"
-                    .concat(render_nodes(children.clone()))
-                    .concat("</strong>")
+                return "<strong>".concat(render_nodes(children.clone())).concat(
+                    "</strong>"
                 )
 
             return "<em>".concat(render_nodes(children.clone())).concat("</em>")
