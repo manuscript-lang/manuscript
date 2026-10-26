@@ -167,6 +167,8 @@ struct Sched {
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
+    /// Flows of control that only wait for the isolate's main task (not tasks of the program).
+    waiting_roots: usize,
     tokens: Vec<Token>,
     free_tokens: Vec<usize>,
     /// Live tokens still expecting a post from another thread.
@@ -198,6 +200,7 @@ crate::isolate_static! {
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
+    waiting_roots: 0,
     tokens: Vec::new(),
     free_tokens: Vec::new(),
     remote_tokens: 0,
@@ -347,6 +350,7 @@ mod stack {
     /// below them and the header page at the slot's base; null on failure. Address space only:
     /// pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
+        // SAFETY: single threaded scheduler; the slot is unused.
         let base = unsafe { take_slot() };
         if base.is_null() {
             return base;
@@ -1044,8 +1048,10 @@ pub unsafe fn run_main_task(entry: Entry) {
         let h = msrt_task_spawn(entry, done as usize as *mut u8, SPAWN_DETACHED, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
+        sched().waiting_roots += 1;
         let mut value = 0;
         while msrt_token_park(done, -1, &mut value) != 0 {}
+        sched().waiting_roots -= 1;
         fault::msrt_shield_exit();
         msrt_token_free(done);
     }
@@ -1063,8 +1069,10 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         let h = msrt_task_spawn(entry, arg, 0, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
+        sched().waiting_roots += 1;
         let mut msg = crate::string::NO_STR;
         let status = msrt_task_join(h, &mut msg);
+        sched().waiting_roots -= 1;
         fault::msrt_shield_exit();
         let fatal = core::mem::take(&mut *FATAL.ptr());
         if !fatal.is_empty() {
@@ -1215,14 +1223,15 @@ pub unsafe extern "C-unwind" fn msrt_task_current() -> u64 {
     unsafe { (*ensure_init()).handle }
 }
 
-/// Number of tasks that exist (running, runnable, waiting, or finished but not yet joined).
+/// Number of tasks that exist (running, runnable, waiting, or finished but not yet joined),
+/// not counting the flow that only waits for the isolate's main task.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
     // SAFETY: single threaded scheduler.
     unsafe {
         ensure_init();
     }
-    sched().live
+    sched().live - sched().waiting_roots
 }
 
 /// Requests cancellation of a task: a parked task wakes with `WAIT_CANCELLED`, and the task's

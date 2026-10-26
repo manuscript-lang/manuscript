@@ -65,7 +65,7 @@ pub(crate) fn lossy_name(name: &[u8]) -> Vec<u8> {
 
 /// `readBounded`: reads to end of file, failing when more than `max` bytes arrive.
 pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
-    read_limited(fd, max, true)
+    read_limited(fd, max, true, None)
 }
 
 /// Parks the task until `fd` can be read, so a pipe with no data yet neither stalls the other
@@ -92,11 +92,24 @@ pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::
 
 /// `read_bounded`; `cancellable` checks for a stop request between reads, which a blocking-pool
 /// thread must not do. A cancellable read of a pipe or device also waits for it to be readable.
-fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fail> {
+/// `stat` is the descriptor's metadata when the caller already has it. A regular file is read
+/// straight into a buffer sized from its length, so the usual read takes two system calls.
+fn read_limited(
+    fd: sys::Fd,
+    max: i64,
+    cancellable: bool,
+    stat: Option<sys::Stat>,
+) -> Result<Vec<u8>, Fail> {
     const CHUNK: usize = 32 * 1024;
-    let mut out: Vec<u8> = Vec::new();
-    let mut buf = alloc::vec![0u8; (max.min(CHUNK as i64 - 1) as usize) + 1];
-    let waits = cancellable && sys::fstat(fd).is_ok_and(|st| sys::is_pollable(&st));
+    let st = stat.or_else(|| sys::fstat(fd).ok());
+    let waits = cancellable && st.as_ref().is_some_and(sys::is_pollable);
+    let known = st
+        .as_ref()
+        .filter(|st| st.is_regular())
+        .map_or(0, |st| st.size.clamp(0, max) as usize);
+    let first = if known > 0 { known + 1 } else { CHUNK };
+    let mut out = alloc::vec![0u8; first.min(max as usize + 1)];
+    let mut len = 0usize;
     loop {
         if cancellable {
             poll_cancel();
@@ -104,13 +117,12 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
         if waits {
             wait_readable(fd);
         }
-        let remaining = max - out.len() as i64;
-        let want = if remaining < buf.len() as i64 {
-            remaining as usize + 1
-        } else {
-            buf.len()
-        };
-        let n = match sys::read(fd, &mut buf[..want]) {
+        let remaining = max - len as i64;
+        if len == out.len() {
+            out.resize(len * 2, 0);
+        }
+        let want = (out.len() - len).min(remaining as usize + 1);
+        let n = match sys::read(fd, &mut out[len..len + want]) {
             Ok(n) => n,
             Err(_) => return Err(read_failure(false)),
         };
@@ -118,9 +130,10 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
             return Err(read_failure(true));
         }
         if n == 0 {
+            out.truncate(len);
             return Ok(out);
         }
-        out.extend_from_slice(&buf[..n]);
+        len += n;
     }
 }
 
@@ -138,12 +151,11 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     let fd = open_waitless(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
     drop(p);
     let read = || {
-        if let Ok(st) = sys::fstat(fd)
-            && sys::is_dir(&st)
-        {
+        let st = sys::fstat(fd).ok();
+        if st.as_ref().is_some_and(sys::is_dir) {
             return Err(Fail::invalid());
         }
-        read_bounded(fd, max)
+        read_limited(fd, max, true, st)
     };
     // Cancellation abandons Rust frames, so the ordinary close below does not run. The pool
     // job above is shielded; this path can park on a pipe or device and needs runtime cleanup.
@@ -265,7 +277,7 @@ fn read_job(job: &(Vec<u8>, i64), _: &[u8]) -> Offloaded<Vec<u8>> {
         Some(Err(e)) => return Offloaded::Done(Err(e)),
         Some(Ok(fd)) => fd,
     };
-    let result = read_limited(fd, *max, false);
+    let result = read_limited(fd, *max, false, None);
     let _ = sys::close(fd);
     Offloaded::Done(result)
 }
