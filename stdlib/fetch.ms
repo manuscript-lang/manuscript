@@ -1,5 +1,5 @@
 # Fetch-style HTTP client implemented in Manuscript over `@std/http.ms` and `@std/json.ms`.
-from "@std/bytes.ms" import Bytes, BytesBuilder
+from "@std/bytes.ms" import Bytes, join
 from "@std/http.ms" import HttpClient, HttpClientOptions, HttpError, HttpHeaders, HttpMethod, HttpResponseMetadata, ResponseBody, headers
 from "@std/io.ms" import IoError
 from "@std/json.ms" import JsonError, parse, stringify
@@ -179,27 +179,35 @@ def drain(
 ) -> Result[FetchResponse, FetchError]:
     with let open = body:
         let metadata = open.metadata()
-        var out = BytesBuilder()
+        var parts: List[Bytes] = []
         var total = 0
 
         while True:
-            let read = open.read()
+            let step = (
+                try open
+                .read()
+                .map_error(
+                    lambda cause: read_failure(
+                        cause, options, started
+                    )
+                )
+            )
 
-            if let step = read:
-                if let bytes = step:
-                    total += bytes.length()
-                    if limit_exceeded(options.max_response_bytes, total):
-                        return error(FetchError.Http(HttpError.LimitExceeded))
+            if let bytes = step:
+                total += bytes.length()
+                if limit_exceeded(options.max_response_bytes, total):
+                    return error(FetchError.Http(HttpError.LimitExceeded))
 
-                    out.append_bytes(bytes)
-                else:
-                    let whole = out.build()
-                    return ok(FetchResponse(head: metadata, body: whole))
+                parts.append(bytes)
             else:
-                if expired(options.timeout, started):
-                    return error(FetchError.Http(HttpError.Timeout))
+                return ok(FetchResponse(head: metadata, body: join(parts)))
 
-                return error(FetchError.Io(read.err().clone()))
+# Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
+def read_failure(cause: IoError, options: FetchOptions, started: Instant) -> FetchError:
+    if expired(options.timeout, started):
+        return FetchError.Http(HttpError.Timeout)
+
+    return FetchError.Io(cause)
 
 def json_failure(cause: JsonError) -> FetchError:
     return FetchError.Json(cause)

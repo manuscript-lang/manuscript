@@ -1590,6 +1590,41 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
     }
 }
 
+/// `bytes.join(parts)`: the parts end to end in one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) {
+    // SAFETY: caller contract; the list holds `Bytes` values inline.
+    unsafe {
+        let list = &*parts;
+        let items: &[VecVal] = if list.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(list.ptr.cast::<VecVal>(), list.len)
+        };
+        let total = items.iter().fold(0usize, |sum, part| {
+            sum.checked_add(part.len)
+                .unwrap_or_else(|| fault::fault(b"bytes size overflow"))
+        });
+        if total == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let p = alloc::alloc(total);
+        let mut at = 0;
+        for part in items {
+            if part.len > 0 {
+                core::ptr::copy_nonoverlapping(part.ptr, p.add(at), part.len);
+                at += part.len;
+            }
+        }
+        *out = VecVal {
+            ptr: p,
+            len: total,
+            cap: total,
+        };
+    }
+}
+
 /// `Bytes(values)`: each element must be 0..=255.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {

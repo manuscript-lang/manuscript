@@ -281,6 +281,7 @@ msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_with_value( b: *const VecVal, index: i64, value: i64, out: *mut VecVal, )
 msrt_bytes_concat( a: *const VecVal, b: *const VecVal, out: *mut VecVal, )
 msrt_bytes_split( b: *const VecVal, sep: *const VecVal, has_max: u8, max: i64, out: *mut VecVal, )
+msrt_bytes_join(parts: *const VecVal, out: *mut VecVal)
 msrt_bytes_values(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal)
 msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8

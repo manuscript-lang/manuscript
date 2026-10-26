@@ -56,6 +56,9 @@ impl Bytes:
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     def decode_utf8() -> Optional[String]: ...
 
+# Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
+export def join(parts: List[Bytes]) -> Bytes: ...
+
 # Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
 export def values(data: Bytes) -> List[Int]: ...
 

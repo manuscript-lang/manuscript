@@ -133,6 +133,17 @@ impl AbiType for Vec<&str> {
 impl IntoAbi for Vec<u8> {
     type Raw = VecVal;
     fn into_raw(self) -> VecVal {
+        // A large buffer is a system block, which the runtime frees like its own large blocks,
+        // so it changes hands without a copy. Small ones live in arenas that Rust code may not use.
+        #[cfg(all(unix, not(any(test, feature = "stats"))))]
+        if self.capacity() > crate::alloc::MAX_SMALL {
+            let mut v = core::mem::ManuallyDrop::new(self);
+            return VecVal {
+                ptr: v.as_mut_ptr(),
+                len: v.len(),
+                cap: v.capacity(),
+            };
+        }
         let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
         // SAFETY: `write_bytes` initializes `v`.
         unsafe {
