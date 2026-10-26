@@ -415,6 +415,52 @@ b0:
 }
 
 #[test]
+fn removes_the_box_of_a_scalar_interface_argument_that_is_only_loaded_back() {
+    // The interpreter has no pointer behind `iface.data`, so this runs the pass without `check`.
+    let mut m = load(
+        "module \"boxed_argument\"
+iface Area { area() -> int }
+vtable @v_int: Area for int { @area_int }
+entry @main
+fn @area_int(%self: ptr) -> int method {
+b0:
+  %r: int = iconst 12
+  ret %r
+}
+fn @unboxed(%x: int) -> int {
+b0:
+  %s: dyn Area = iface.new @v_int %x
+  %p: ptr = iface.data %s
+  %v: int = load int %p
+  drop %s
+  %r: int = iadd %v, %v
+  ret %r
+}
+fn @kept(%x: int) -> int {
+b0:
+  %s: dyn Area = iface.new @v_int %x
+  %a: int = call.method Area.area (%s)
+  drop %s
+  ret %a
+}
+fn @main() -> int {
+b0:
+  %x: int = iconst 21
+  %k: int = call @kept(%x)
+  ret %k
+}",
+    );
+    simplify::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+    let text = func_text(&m, "unboxed");
+    assert!(
+        !text.contains("iface.new") && !text.contains("drop") && !text.contains("load"),
+        "{text}"
+    );
+    assert_eq!(count(&func_text(&m, "kept"), "iface.new"), 1);
+}
+
+#[test]
 fn folds_scalar_optional_constructors_and_readers() {
     let m = check(
         "module \"known_optional\"

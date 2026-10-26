@@ -891,6 +891,9 @@ impl<'a> Tr<'a> {
             Opcode::Fneg => format!("fneg double {a}"),
             Opcode::Fabs => format!("call double @llvm.fabs.f64(double {a})"),
             Opcode::Sqrt => format!("call double @llvm.sqrt.f64(double {a})"),
+            Opcode::Floor => format!("call double @llvm.floor.f64(double {a})"),
+            Opcode::Ceil => format!("call double @llvm.ceil.f64(double {a})"),
+            Opcode::Trunc => format!("call double @llvm.trunc.f64(double {a})"),
             Opcode::Uextend => format!("zext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Sextend => format!("sext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Ireduce => format!("trunc {} {a} to {}", llty(t), llty(rt)),
@@ -1154,6 +1157,9 @@ impl LlvmModule {
              declare ptr @llvm.frameaddress.p0(i32)\n\
              declare double @llvm.fabs.f64(double)\n\
              declare double @llvm.sqrt.f64(double)\n\
+             declare double @llvm.floor.f64(double)\n\
+             declare double @llvm.ceil.f64(double)\n\
+             declare double @llvm.trunc.f64(double)\n\
              declare i64 @llvm.fptosi.sat.i64.f64(double)\n",
         );
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
