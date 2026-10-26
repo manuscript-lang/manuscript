@@ -124,3 +124,28 @@ b0:
         print_module(&m)
     );
 }
+
+#[test]
+fn leaves_a_value_taken_from_a_caller_slot_to_the_caller() {
+    let body = r#"
+fn @hold(%slot: ptr) -> int {
+b0:
+  %s: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %s
+  ret %r
+}
+
+fn @main() -> int {
+b0:
+  %z: int = iconst 0
+  ret %z
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    // The slot still holds the value while the call runs and its owner drops it on unwind;
+    // registering it here too would drop it twice.
+    assert!(!changed, "{}", print_module(&m));
+    assert_eq!(count(&m, "hold", Op::CleanupPush), 0);
+}

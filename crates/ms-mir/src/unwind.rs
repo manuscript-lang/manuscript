@@ -261,14 +261,20 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let rc = |v: Value| m.needs_drop(f.ty(v));
+    let slot_params: BTreeSet<u32> = f.blocks[0].params.iter().map(|p| p.value.0).collect();
     let mut owned_def = vec![false; f.values.len()];
     for b in &f.blocks {
         for p in &b.params {
             owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
         }
         for i in &b.insts {
+            // A value taken out of a slot the caller passed in stays the caller's: the slot still
+            // holds it while the call runs, and the caller (or its owner) drops it. Dropping it
+            // here too would drop it twice.
+            let from_caller_slot =
+                i.op == Op::Take && i.args.first().is_some_and(|a| slot_params.contains(&a.0));
             if let (Some(r), Some(Mode::Own)) = (i.res, m.result_mode(f, i)) {
-                owned_def[r.index()] = true;
+                owned_def[r.index()] = !from_caller_slot;
             }
         }
     }
