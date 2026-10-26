@@ -325,6 +325,13 @@ const METHODS: &[MethodRow] = &[
     ("http", "ResponseBody", "read", "msrt_http_body_read", &[]),
     (
         "http",
+        "ResponseBody",
+        "read_all",
+        "msrt_http_body_read_all",
+        &[],
+    ),
+    (
+        "http",
         "HttpExchange",
         "close",
         "msrt_http_exchange_close",
