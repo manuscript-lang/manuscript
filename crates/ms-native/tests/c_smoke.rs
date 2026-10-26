@@ -47,12 +47,6 @@ printf '#!/bin/sh\nexit 0\n' > "$out"
 chmod +x "$out"
 "#,
     );
-    executable(
-        &root,
-        "bin/go",
-        "#!/bin/sh\nprintf 'BenchmarkFixture 1\\n'\n",
-    );
-    std::fs::create_dir_all(script.parent().unwrap().join("go")).unwrap();
     let path = std::env::join_paths(
         std::iter::once(root.join("bin"))
             .chain(std::env::split_paths(&std::env::var_os("PATH").unwrap())),
