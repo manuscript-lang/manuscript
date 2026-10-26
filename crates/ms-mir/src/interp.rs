@@ -644,6 +644,9 @@ impl<'m> Interp<'m> {
             Op::FDiv => set!(Val::Float(flt!(0) / flt!(1))),
             Op::FNeg => set!(Val::Float(-flt!(0))),
             Op::FSqrt => set!(Val::Float(flt!(0).sqrt())),
+            Op::FFloor => set!(Val::Float(flt!(0).floor())),
+            Op::FCeil => set!(Val::Float(flt!(0).ceil())),
+            Op::FTrunc => set!(Val::Float(flt!(0).trunc())),
             Op::FAbs => set!(Val::Float(flt!(0).abs())),
             Op::I2F => {
                 let x = int!(0);

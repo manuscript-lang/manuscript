@@ -589,7 +589,7 @@ impl Verifier<'_> {
                     "operands and result must be one float type",
                 )
             }
-            Op::FNeg | Op::FSqrt | Op::FAbs => {
+            Op::FNeg | Op::FSqrt | Op::FAbs | Op::FFloor | Op::FCeil | Op::FTrunc => {
                 arity(1)?;
                 want(
                     m.types.is_float(t(0)) && res == Some(t(0)),
