@@ -5,7 +5,7 @@ type K:
     v: Float
 
 impl Equal for K:
-    def equals(other: Equal) -> Bool:
+    def equals(other: K) -> Bool:
         return True
 
 def f() -> Int:

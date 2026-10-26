@@ -14,11 +14,16 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 ```manuscript
 interface Equal:
-    def equals(other: Equal) -> Bool
+    def equals(other: Self) -> Bool
+
+interface Comparable:
+    def compare(other: Self) -> Int
 
 interface Hashable:
     def hash() -> Int
 ```
+
+`Self` is the implementing type. An implementation writes its own type for `other`, as `impl Equal for CustomerKey` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface and values of different types are unequal (`equals` is false, `compare` is zero). `Self` is allowed only as a whole parameter type of an interface operation.
 
 `==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
 
@@ -52,10 +57,8 @@ type CustomerKey:
     label: String
 
 impl Equal for CustomerKey:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case CustomerKey(value): return self.id == value.id
-            case _: return False
+    def equals(other: CustomerKey) -> Bool:
+        return self.id == other.id
 
 impl Hashable for CustomerKey:
     def hash() -> Int: self.id
