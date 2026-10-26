@@ -13,8 +13,8 @@ use ms_rt::fault::{
 #[cfg(unix)]
 use ms_rt::task::msrt_task_forget_fd;
 use ms_rt::task::{
-    msrt_task_current, msrt_task_set_prepark, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd,
-    msrt_token_free, msrt_token_new, msrt_token_park, msrt_token_post,
+    msrt_task_current, msrt_task_sleep, msrt_task_spawn, msrt_task_wait_fd, msrt_token_free,
+    msrt_token_new, msrt_token_park, msrt_token_post,
 };
 
 /// Registers `f(arg)` on the running task's cleanup stack: it runs if a fault or cancellation
@@ -101,13 +101,51 @@ pub fn sleep(ns: i64) -> u32 {
     unsafe { msrt_task_sleep(ns) }
 }
 
-/// Makes every park of a task (including `time.sleep` and other natives' waits) first hand the
-/// server reactor role on, so a request handler that waits does not stall the other requests.
-pub fn install_prepark_hook() {
-    unsafe extern "C-unwind" fn hook() {
-        crate::http::server::give_up_reactor_role();
+/// A runtime scope that owns request tasks and contains their faults.
+pub struct Scope(i64);
+
+impl Scope {
+    pub fn new() -> Scope {
+        let id = ms_rt::scope::msrt_scope_new();
+        ms_rt::scope::msrt_scope_contain(id);
+        Scope(id)
     }
-    msrt_task_set_prepark(Some(hook));
+
+    /// Starts `entry(arg)` as a task of the scope, cancelled after `limit_ns` (negative: no
+    /// limit); the task frees itself when it ends. Returns its handle, or `None` when closed.
+    ///
+    /// # Safety
+    /// `arg` must be valid for `entry`, which owns it.
+    pub unsafe fn spawn(
+        &self,
+        entry: unsafe extern "C-unwind" fn(*mut u8),
+        arg: *mut u8,
+        limit_ns: i64,
+    ) -> Option<u64> {
+        // SAFETY: forwarded contract.
+        unsafe { ms_rt::scope::spawn_native(self.0, entry, arg, limit_ns) }
+    }
+
+    /// Whether the running task was started in this scope.
+    pub fn contains_current(&self) -> bool {
+        ms_rt::scope::current() == self.0
+    }
+
+    /// Cancels the tasks still running and waits for them.
+    pub fn close(&self) {
+        ms_rt::scope::msrt_scope_close(self.0)
+    }
+}
+
+impl Default for Scope {
+    fn default() -> Scope {
+        Scope::new()
+    }
+}
+
+/// Whether the running task was started by any [`Scope::spawn`].
+pub fn in_scope_task() -> bool {
+    ms_rt::scope::current() != 0
 }
 
 /// A runtime park token (`msrt_token_*`) posted from the runtime thread; freed on drop.

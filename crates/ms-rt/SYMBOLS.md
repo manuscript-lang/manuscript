@@ -217,7 +217,6 @@ msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
 msrt_pipe_close(end: i64)
 msrt_task_yield()
-msrt_task_set_prepark(hook: Option<unsafe extern "C-unwind" fn()>)
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
 msrt_task_sleep(ns: i64) -> u32
 msrt_task_current() -> u64

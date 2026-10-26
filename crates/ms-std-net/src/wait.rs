@@ -104,7 +104,6 @@ pub fn wait_fd(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait
 
 fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
     rt::check_cancel();
-    crate::http::server::give_up_reactor_role();
     let events = match interest {
         Interest::Read => 1,
         Interest::Write => 2,
@@ -124,7 +123,6 @@ fn wait_task(fd: Borrowed<'_>, interest: Interest, deadline: Deadline) -> Wait {
 /// cancellation when a stop was requested.
 pub fn wait_token(token: &rt::Token, deadline: Deadline) -> Wait {
     rt::check_cancel();
-    crate::http::server::give_up_reactor_role();
     let got = token.park(timeout_ns(deadline));
     if got & 16 != 0 {
         rt::cancelled();
@@ -166,7 +164,6 @@ pub fn sleep(d: Duration) {
         return;
     }
     rt::check_cancel();
-    crate::http::server::give_up_reactor_role();
     if rt::sleep(d.as_nanos().min(i64::MAX as u128) as i64) & 16 != 0 {
         rt::cancelled();
     }
@@ -185,7 +182,6 @@ pub fn blocking<I: Send + Sync + 'static, O: Send + 'static>(
         return Some(f(&input));
     }
     rt::check_cancel();
-    crate::http::server::give_up_reactor_role();
     let timeout = deadline
         .remaining()
         .map_or(-1, |left| left.as_nanos().min(i64::MAX as u128) as i64);

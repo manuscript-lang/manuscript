@@ -58,7 +58,7 @@ pub struct Exchange {
 }
 
 /// Runs the streaming handler for a queued request.
-pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: Box<Pending>) {
+pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
     let Some(server_rc) = server.rc() else { return };
     let reactor_rc = Reactor::get();
     let Pending {
@@ -113,9 +113,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, reactor: &Reactor, pending: 
             h2: None,
         }),
     });
-    server.enter_handler(reactor);
     let outcome = server.dispatch.streaming(exchange.clone());
-    server.leave_handler(reactor);
     let late = timeout.is_some_and(|t| started.elapsed() > t);
     exchange.finish(outcome, late);
 }
