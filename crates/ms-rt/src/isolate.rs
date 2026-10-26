@@ -40,7 +40,13 @@ static IDLE: Mutex<IdleCount> = Mutex::new(IdleCount { live: 0, idle: 0 });
 static DEADLOCK: AtomicBool = AtomicBool::new(false);
 static MAIN_INBOX: Mutex<Option<Arc<Inbox>>> = Mutex::new(None);
 
-static REGISTRY: Mutex<Vec<Option<Arc<Inbox>>>> = Mutex::new(Vec::new());
+struct Slot {
+    inbox: Option<Arc<Inbox>>,
+    /// Token generations outlive an isolate so a late post cannot reach its replacement.
+    token_generations: Vec<u32>,
+}
+
+static REGISTRY: Mutex<Vec<Slot>> = Mutex::new(Vec::new());
 
 crate::isolate_static! {
     static CURRENT: Option<(usize, Arc<Inbox>)> = None;
@@ -97,17 +103,20 @@ fn current() -> &'static (usize, Arc<Inbox>) {
             idle: AtomicBool::new(false),
         });
         let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
-        let slot = match reg.iter().position(Option::is_none) {
+        let slot = match reg.iter().position(|slot| slot.inbox.is_none()) {
             Some(i) => i,
             None => {
                 if reg.len() >= MAX_ISOLATES {
                     crate::fault::fatal(b"too many isolates");
                 }
-                reg.push(None);
+                reg.push(Slot {
+                    inbox: None,
+                    token_generations: Vec::new(),
+                });
                 reg.len() - 1
             }
         };
-        reg[slot] = Some(inbox.clone());
+        reg[slot].inbox = Some(inbox.clone());
         (slot, inbox)
     })
 }
@@ -121,8 +130,21 @@ pub fn set_wake(wake: Option<Box<dyn Fn() + Send + Sync>>) {
 pub fn unregister() {
     // SAFETY: this isolate's state.
     if let Some((slot, _)) = unsafe { (*CURRENT.ptr()).take() } {
-        REGISTRY.lock().unwrap_or_else(|e| e.into_inner())[slot] = None;
+        REGISTRY.lock().unwrap_or_else(|e| e.into_inner())[slot].inbox = None;
     }
+}
+
+/// Transfers the namespace's last generations to a newly initialized scheduler.
+pub(crate) fn take_token_generations() -> Vec<u32> {
+    let slot = id();
+    let mut reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
+    core::mem::take(&mut reg[slot].token_generations)
+}
+
+/// Retains only generation numbers when a scheduler ends; values and waiters are not retained.
+pub(crate) fn save_token_generations(generations: Vec<u32>) {
+    let slot = id();
+    REGISTRY.lock().unwrap_or_else(|e| e.into_inner())[slot].token_generations = generations;
 }
 
 /// Queues a post for the token `id` on its isolate and interrupts that isolate's poller.
@@ -131,8 +153,8 @@ pub fn post_remote(id: u64, value: u64) {
     let slot = (id >> ID_SHIFT) as usize;
     let inbox = {
         let reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
-        match reg.get(slot) {
-            Some(Some(i)) => i.clone(),
+        match reg.get(slot).and_then(|slot| slot.inbox.as_ref()) {
+            Some(i) => i.clone(),
             _ => return,
         }
     };
@@ -194,8 +216,8 @@ pub fn publish_hdr(hdr: *mut Hdr) {
 pub fn raise_cancel(slot: usize, sig: u8) {
     let inbox = {
         let reg = REGISTRY.lock().unwrap_or_else(|e| e.into_inner());
-        match reg.get(slot) {
-            Some(Some(i)) => i.clone(),
+        match reg.get(slot).and_then(|slot| slot.inbox.as_ref()) {
+            Some(i) => i.clone(),
             _ => return,
         }
     };
