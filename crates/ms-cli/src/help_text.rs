@@ -155,6 +155,9 @@ Options:
   --fail-fast         Stop after the first failed test
   --repeat <count>     Run the selected tests count times
   --shuffle <seed>     Shuffle with a reproducible integer seed
+  --runs <count>       Cases per property test from @std/property.ms (default 100)
+  --seed <seed>        Start property tests at this integer seed to replay a failure
+  --fuzz <duration>    Run each property for this long, with fresh seeds, instead of a fixed case count; disables the default --timeout
   --watch              Rebuild and rerun after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
@@ -163,6 +166,8 @@ Options:
 
 Examples:
   ms test test.ms
+  ms test ms.toml --fuzz 30s
+  ms test ms.toml --seed 1234 --filter "sorting"
   ms test ms.toml --build-type Debug
   ms test ms.toml --filter "nick collisions" --timeout 10s
 "#;

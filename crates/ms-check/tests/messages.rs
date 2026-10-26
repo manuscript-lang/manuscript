@@ -522,3 +522,14 @@ fn sequential_and_distinct_locks_are_accepted() {
     );
     assert_eq!(check_messages(&source), Vec::<String>::new());
 }
+
+#[test]
+fn key_holding_shared_state_is_not_hashable() {
+    let got = first_message(
+        "from \"@std/shared.ms\" import Shared\ntype K:\n    cell: Shared[Int]\nimpl Equal for K:\n    def equals(other: K) -> Bool: return True\nimpl Hashable for K:\n    def hash() -> Int: return 1\nexport def main() -> Int:\n    let s = Set[K]()\n    return 0\n",
+    );
+    assert!(
+        got.starts_with("K does not satisfy Hashable; it holds a Shared handle"),
+        "{got}"
+    );
+}

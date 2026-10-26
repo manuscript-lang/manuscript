@@ -39,3 +39,47 @@ test "sorting in place by a descending comparator reverses the key order":
         if list[i - 1].key < list[i].key:
             ordered = False
     try expect_equal(ordered, True)
+
+def shaped(count: Int, shape: Int) -> List[Entry]:
+    var out: List[Entry] = []
+
+    for i in range(0, count):
+        if shape == 0:
+            out.append(Entry(key: i / 7, id: i))
+        elif shape == 1:
+            out.append(Entry(key: (count - i) / 7, id: i))
+        else:
+            out.append(Entry(key: (i % 2) * 3 + i / 50, id: i))
+
+    return out
+
+test "ascending, descending and interleaved inputs sort stably at every size":
+    for shape in range(0, 3):
+        for count in [0, 1, 2, 3, 12, 13, 24, 25, 100, 127, 128, 129, 1000]:
+            let sorted = shaped(count, shape).sorted(
+                compare: lambda (a: Entry, b: Entry) -> Int: (
+                    a.key
+                    - b.key
+                )
+            )
+            var ordered = True
+            var seen = 0
+
+            for i in range(0, sorted.length()):
+                seen += sorted[i].id
+
+                if i > 0:
+                    let before = sorted[i - 1]
+                    let after = sorted[i]
+                    if (
+                        before.key > after.key
+                        or (
+                            before.key == after.key
+                            and before.id > after.id
+                        )
+                    ):
+                        ordered = False
+
+            try expect_equal(ordered, True)
+            try expect_equal(sorted.length(), count)
+            try expect_equal(seen, count * (count - 1) / 2)

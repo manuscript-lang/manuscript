@@ -186,12 +186,10 @@ def cmd_cancel(var shop: Shop, parts: List[String]) -> Unit:
 
     for line in order.lines:
         shop.stock.add(line.sku, shop.stock.get_or(line.sku, 0) + line.qty)
-    (
-        shop.orders.add(
-            id,
-            Order(
-                status: "cancelled", total: order.total, lines: order.lines.clone()
-            )
+    shop.orders.add(
+        id,
+        Order(
+            status: "cancelled", total: order.total, lines: order.lines.clone()
         )
     )
     emit("ok")
@@ -217,15 +215,8 @@ def cmd_ship(var shop: Shop, parts: List[String]) -> Unit:
         emit(f"error: order {id} is cancelled")
         return
 
-    (
-        shop
-        .orders
-        .add(
-            id,
-            Order(
-                status: "shipped", total: order.total, lines: order.lines.clone()
-            )
-        )
+    shop.orders.add(
+        id, Order(status: "shipped", total: order.total, lines: order.lines.clone())
     )
     emit("ok")
 

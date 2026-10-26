@@ -45,7 +45,7 @@ test "logger writes typed escaped records and protects metadata":
             try expect_equal((try written(path)), some(expected))
             try logger.flush()
 
-        (file.append_file("x") | try expect_ok)
+        file.append_file("x") | try expect_ok
 
 test "non-object values are written under data":
     with let directory = try filesystem().temporary("manuscript-log-"):
@@ -256,7 +256,7 @@ impl Transport for CaptureTransport:
 test "source transports receive complete records and close through their contract":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-log-transport-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-log-transport-") | try expect_ok:
         let path = f"{temporary.path()}/records.ndjson"
 
         with let logger = try create(CaptureTransport(path.clone()), timestamp: False):

@@ -686,13 +686,9 @@ def parse_params(m: Machine, spec: Value, form: String) -> Result[Params, Fail]:
     return ok(Params(names: names, rest: rest))
 
 def make_closure(var m: Machine, name: String, p: Params, body: Value, env: Int) -> Value:
-    (
-        m
-        .clos
-        .append(
-            Closure(
-                name: name, params: p.names.clone(), rest: p.rest, body: body, env: env
-            )
+    m.clos.append(
+        Closure(
+            name: name, params: p.names.clone(), rest: p.rest, body: body, env: env
         )
     )
     return mk(TAG_CLO, m.clos.length() - 1, "")

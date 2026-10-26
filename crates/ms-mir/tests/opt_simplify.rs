@@ -678,3 +678,56 @@ fn integer_to_float32_constants_round_once() {
     assert_eq!(observe(&m).0, Ok(0));
     assert!(!func_text(&m, "main").contains("i2f"));
 }
+
+#[test]
+fn a_value_put_into_a_slot_and_taken_straight_back_is_the_value() {
+    let m = check(
+        r#"module "put_take"
+entry @main
+fn @make() -> list<int> {
+b0:
+  %one: int = iconst 1
+  %l: list<int> = list.lit %one
+  ret %l
+}
+fn @main() -> int {
+b0:
+  %l: list<int> = call @make ()
+  %s: ptr = slot list<int>
+  put %s, %l
+  %c: list<int> = take list<int> %s
+  %n: int = list.len %c
+  drop %c
+  ret %n
+}
+"#,
+    );
+    assert_eq!(observe(&m).0, Ok(1));
+    let text = func_text(&m, "main");
+    assert!(!text.contains("put") && !text.contains("take"), "{text}");
+}
+
+#[test]
+fn a_slot_read_between_the_put_and_the_take_keeps_both() {
+    let m = check(
+        r#"module "put_take_read"
+entry @main
+fn @peek(%p: ptr) -> int {
+b0:
+  %v: int = load int %p
+  ret %v
+}
+fn @main() -> int {
+b0:
+  %one: int = iconst 1
+  %s: ptr = slot int
+  put %s, %one
+  %r: int = call @peek (%s)
+  %c: int = take int %s
+  %t: int = iadd %r, %c
+  ret %t
+}
+"#,
+    );
+    assert_eq!(observe(&m).0, Ok(2));
+}

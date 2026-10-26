@@ -58,7 +58,7 @@ fn optional_get_without_default_is_reported() {
 }
 
 fn recursive(source: &str) -> usize {
-    codes(source).iter().filter(|c| *c == "MSL111").count()
+    codes(source).iter().filter(|c| *c == "MSL112").count()
 }
 
 #[test]

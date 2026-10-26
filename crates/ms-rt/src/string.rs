@@ -1170,6 +1170,69 @@ fn count_matches(text: &[u8], old: &[u8]) -> usize {
     n
 }
 
+/// Copies `n` non-overlapping bytes; up to 16 bytes go through overlapping word moves instead of a call
+/// into `memcpy`, which costs more than the copy for the short pieces words and fields split into.
+///
+/// # Safety
+/// `src..src+n` is readable and `dst..dst+n` writable.
+#[inline(always)]
+unsafe fn copy_bytes(dst: *mut u8, src: *const u8, n: usize) {
+    // SAFETY: caller contract; each branch reads and writes only inside the `n` bytes.
+    unsafe {
+        match n {
+            0 => {}
+            1..=3 => {
+                let (a, b, c) = (*src, *src.add(n / 2), *src.add(n - 1));
+                *dst = a;
+                *dst.add(n / 2) = b;
+                *dst.add(n - 1) = c;
+            }
+            4..=7 => {
+                let a = src.cast::<u32>().read_unaligned();
+                let b = src.add(n - 4).cast::<u32>().read_unaligned();
+                dst.cast::<u32>().write_unaligned(a);
+                dst.add(n - 4).cast::<u32>().write_unaligned(b);
+            }
+            8..=16 => {
+                let a = src.cast::<u64>().read_unaligned();
+                let b = src.add(n - 8).cast::<u64>().read_unaligned();
+                dst.cast::<u64>().write_unaligned(a);
+                dst.add(n - 8).cast::<u64>().write_unaligned(b);
+            }
+            _ => core::ptr::copy_nonoverlapping(src, dst, n),
+        }
+    }
+}
+
+/// The strings `items[..n]` joined by `sep` with one allocation (none when the result is short).
+///
+/// # Safety
+/// `items` points at `n` live strings.
+pub unsafe fn join_strings(items: *const StrVal, n: usize, sep: &[u8]) -> StrVal {
+    // SAFETY: caller contract; the second loop writes exactly the `total` bytes counted by the first.
+    unsafe {
+        let total =
+            (0..n).map(|i| (*items.add(i)).len()).sum::<usize>() + sep.len() * n.saturating_sub(1);
+        let mut small = [0u8; STR_INLINE_MAX];
+        let heap = (total > STR_INLINE_MAX).then(|| alloc_str(total));
+        let start = heap.as_ref().map_or(small.as_mut_ptr(), |s| s.ptr_word);
+        let mut dst = start;
+        for i in 0..n {
+            if i > 0 {
+                copy_bytes(dst, sep.as_ptr(), sep.len());
+                dst = dst.add(sep.len());
+            }
+            let b = bytes(items.add(i));
+            copy_bytes(dst, b.as_ptr(), b.len());
+            dst = dst.add(b.len());
+        }
+        match heap {
+            Some(s) => s,
+            None => from_bytes(&small[..total]),
+        }
+    }
+}
+
 /// Replace the first `n` occurrences (n < 0 means all).
 fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     let mut out = Vec::with_capacity(text.len());
@@ -1273,9 +1336,9 @@ fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal 
         let f = Needle::new(old);
         for _ in 0..matches {
             let p = f.find(&text[i..]).unwrap_or(0);
-            core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, p);
+            copy_bytes(dst, text[i..].as_ptr(), p);
             dst = dst.add(p);
-            core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+            copy_bytes(dst, new.as_ptr(), new.len());
             dst = dst.add(new.len());
             i += p + old.len();
         }
@@ -1295,6 +1358,50 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     unsafe { replace_limited(s, old, new, 1).write_to(out) }
 }
 
+/// Replaces every occurrence of a non-empty `old` by a `new` no longer than it, in one search pass: the
+/// result cannot exceed the text, so it is written into a text-sized block and trimmed afterwards.
+///
+/// # Safety
+/// `s` is live and `old` is non-empty.
+unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal {
+    // SAFETY: caller passes a live string; the block holds `text.len() + 1` bytes and the loop writes
+    // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
+    unsafe {
+        let text = bytes(s);
+        let f = Needle::new(old);
+        let Some(first) = f.find(text) else {
+            // Nothing to replace: share the unchanged input.
+            return cloned(&*s);
+        };
+        let buf = alloc::alloc(text.len() + 1);
+        let mut dst = buf;
+        let mut i = 0;
+        let mut at = first;
+        loop {
+            copy_bytes(dst, text[i..].as_ptr(), at);
+            dst = dst.add(at);
+            copy_bytes(dst, new.as_ptr(), new.len());
+            dst = dst.add(new.len());
+            i += at + old.len();
+            match f.find(&text[i..]) {
+                Some(p) => at = p,
+                None => break,
+            }
+        }
+        let rest = text.len() - i;
+        core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, rest);
+        let len = dst.add(rest).offset_from(buf) as usize;
+        if len < 2 || len <= STR_INLINE_MAX {
+            let r = from_bytes(core::slice::from_raw_parts(buf, len));
+            alloc::free(buf);
+            return r;
+        }
+        let ptr = alloc::realloc(buf, len + 1);
+        *ptr.add(len) = 0;
+        StrVal::owned(ptr, len)
+    }
+}
+
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_replace(
@@ -1306,6 +1413,9 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
+        if !o.is_empty() && n.len() <= o.len() {
+            return replace_shrinking(s, o, n).write_to(out);
+        }
         let count = if o.is_empty() {
             utf8::count(text) + 1
         } else {
@@ -2306,6 +2416,46 @@ mod tests {
             crate::vec::drop_list(&mut views, &crate::desc::msrt_desc_string);
             crate::vec::drop_list(&mut copies, &crate::desc::msrt_desc_string);
             release(&s);
+        }
+    }
+
+    #[test]
+    fn copy_bytes_copies_exactly_the_requested_bytes() {
+        for n in 0..40usize {
+            let src: Vec<u8> = (0..n as u8).map(|i| i + 1).collect();
+            let mut dst = vec![0xAAu8; n + 8];
+            // SAFETY: both buffers hold at least `n` bytes.
+            unsafe { copy_bytes(dst.as_mut_ptr().add(4), src.as_ptr(), n) };
+            assert_eq!(&dst[4..4 + n], &src[..], "copied {n}");
+            assert!(
+                dst[..4].iter().chain(&dst[4 + n..]).all(|&b| b == 0xAA),
+                "overran at {n}"
+            );
+        }
+    }
+
+    #[test]
+    fn join_strings_matches_a_plain_join() {
+        let _g = crate::testutil::lock();
+        for count in 0..5usize {
+            for len in [0usize, 1, 5, 7, 8, 15, 16, 17, 40] {
+                for sep in ["", ",", ", ", "-----------------"] {
+                    let parts: Vec<StrVal> = (0..count)
+                        .map(|i| from_bytes(&vec![b'a' + i as u8; len]))
+                        .collect();
+                    let want = (0..count)
+                        .map(|i| String::from_utf8(vec![b'a' + i as u8; len]).unwrap())
+                        .collect::<Vec<_>>()
+                        .join(sep);
+                    // SAFETY: `parts` holds `count` live strings.
+                    let got = unsafe { join_strings(parts.as_ptr(), count, sep.as_bytes()) };
+                    assert_eq!(
+                        unsafe { bytes(&got) },
+                        want.as_bytes(),
+                        "{count}x{len} by {sep:?}"
+                    );
+                }
+            }
         }
     }
 

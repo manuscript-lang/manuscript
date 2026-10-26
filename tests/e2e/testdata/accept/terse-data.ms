@@ -6,7 +6,7 @@ def first[T](left: T, right: T) -> T: left
 
 def size(values: Map[String, Int]) -> Int: values.length()
 
-def optional_size(values: Optional[Map[String, Int]]) -> Int: (values.get().length())
+def optional_size(values: Optional[Map[String, Int]]) -> Int: values.get().length()
 
 def mark(var log: List[Int], value: Int) -> Int:
     log.append(value)

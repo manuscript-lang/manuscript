@@ -71,15 +71,11 @@ impl Ledger:
         if self.accounts.contains(id):
             return f"error: account exists {id}"
 
-        (
-            self
-            .accounts
-            .add(
-                id,
-                Account(
-                    limit: limit_text.parse_int().get(0), balance: 0, ops: 0,
-                    rejected: 0, frozen: False
-                )
+        self.accounts.add(
+            id,
+            Account(
+                limit: limit_text.parse_int().get(0), balance: 0, ops: 0, rejected: 0,
+                frozen: False
             )
         )
         return "ok"

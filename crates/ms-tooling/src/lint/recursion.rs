@@ -1,4 +1,4 @@
-//! Functions that call themselves on every path (`MSL111`): no `return`, `try`
+//! Functions that call themselves on every path (`MSL112`): no `return`, `try`
 //! or fault leaves the function before the recursive call, so it never finishes.
 
 use super::{Finding, finding, module_file};
@@ -26,7 +26,7 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
         let scan = Scan { module, own };
         if !func.external && !func.body.is_empty() && scan.block(&func.body) == Outcome::Recursed {
             findings.push(finding(
-                "MSL111",
+                "MSL112",
                 format!(
                     "{} calls itself on every path, so it never returns; add a base case that returns before the recursive call",
                     func.name.as_str()
