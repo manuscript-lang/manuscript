@@ -224,7 +224,6 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | --- | --- |
 | MSL001 | Trailing whitespace |
 | MSL002 | Missing final newline |
-| MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
 | MSL104 | Discarded `Result`: handle with `if let`, propagate with `try`, or bind `let _ignored = operation()`. See [Result handling](../core-language/errors/results.md) |
