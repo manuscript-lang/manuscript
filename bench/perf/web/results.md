@@ -74,3 +74,16 @@ The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn b
 | 8 MiB, 8 | 221 | 90 |
 
 Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven memory-copy passes per body byte; now three). Callgrind over 20 fetches of 8 MiB: 1.18G to 0.52G instructions. `/io` (whole-file read and write) went from 676 to 756 req/s, with `/health` beside it from 26k to 40k req/s and its p99 from 11 to 5.8 ms: reads per request 40 to 5, writes 19 to 4. A 30-route router served 41k-46k requests per second before it stopped cloning its routes on each request, and 80k-83k after.
+
+## 2026-10-26, server on several cores
+
+`server <port> <dir> <threads>` starts that many workers, each running `serve` with `HttpServerOptions(shared: True)` on one shared listener. Server on CPUs 0-1, 64 keep-alive connections from CPUs 2-3, 4 s per row, shared 4-CPU Linux VM (+/-10% between runs); two runs each.
+
+| Server | `/top?n=10` req/s | `/health` req/s |
+| --- | ---: | ---: |
+| Go `net/http` | 34.4k, 37.5k | 85.1k, 84.6k |
+| Manuscript, 1 thread | 23.9k, 25.1k | 85.4k, 103.6k |
+| Manuscript, 2 workers | 38.6k, 39.1k | 64.7k, 72.1k |
+| Manuscript, 4 workers | 40.0k, 34.4k | 58.1k, 64.7k |
+
+A handler with real CPU work (`/top`) gains from the second core and passes Go's server. A handler that only writes three bytes loses 20-30%: the kernel wakes every worker for each connection and the workers contend for it, so keep one thread for such servers. Four workers on two CPUs add nothing and raise p99 (7.8 ms against 2.8 ms).
