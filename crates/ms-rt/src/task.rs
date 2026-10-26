@@ -67,7 +67,7 @@ const MIN_STACK: usize = 128 << 10;
 const GUARD: usize = 64 << 10;
 #[cfg(unix)]
 const HDR_PAGE: usize = 4096;
-const STACK_POOL: usize = 512;
+const STACK_POOL: usize = 1024;
 /// Most slots one address-space reservation holds (stack creation reserves in batches).
 #[cfg(unix)]
 const CARVE_MAX: usize = 16;
