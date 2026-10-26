@@ -645,7 +645,15 @@ impl<'m> Interp<'m> {
             Op::FNeg => set!(Val::Float(-flt!(0))),
             Op::FSqrt => set!(Val::Float(flt!(0).sqrt())),
             Op::FAbs => set!(Val::Float(flt!(0).abs())),
-            Op::I2F => set!(Val::Float(int!(0) as f64)),
+            Op::I2F => {
+                let x = int!(0);
+                let value = if inst.res.is_some_and(|r| f.ty(r) == Ty::FLOAT32) {
+                    (x as f32) as f64
+                } else {
+                    x as f64
+                };
+                set!(Val::Float(value));
+            }
             Op::F2IOpt => {
                 let x = flt!(0);
                 let ok = x.is_finite() && (-I64_RANGE..I64_RANGE).contains(&x);

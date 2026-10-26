@@ -522,9 +522,14 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             }
             None => Act::Keep,
         },
-        Op::I2F => env
-            .ci(a(0))
-            .map_or(Act::Keep, |p| Act::Const(K::F((p as f64).to_bits()))),
+        Op::I2F => env.ci(a(0)).map_or(Act::Keep, |p| {
+            let value = if inst.res.is_some_and(|r| f.ty(r) == Ty::FLOAT32) {
+                (p as f32) as f64
+            } else {
+                p as f64
+            };
+            Act::Const(K::F(value.to_bits()))
+        }),
         Op::B2I => env.ci(a(0)).map_or(Act::Keep, |p| Act::Const(K::I(p))),
         Op::OptIsSome => match env.defs.get(&a(0)) {
             Some((Op::OptSome | Op::OptView, _, _)) => Act::Const(K::B(true)),

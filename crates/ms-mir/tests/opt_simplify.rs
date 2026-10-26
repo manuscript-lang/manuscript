@@ -625,3 +625,10 @@ fn strength_reduction_preserves_integer_types() {
         }
     }
 }
+
+#[test]
+fn integer_to_float32_constants_round_once() {
+    let m = check(&std::fs::read_to_string(root().join("fixtures/int_to_float32.mir")).unwrap());
+    assert_eq!(observe(&m).0, Ok(0));
+    assert!(!func_text(&m, "main").contains("i2f"));
+}

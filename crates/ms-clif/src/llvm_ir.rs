@@ -896,7 +896,7 @@ impl<'a> Tr<'a> {
             Opcode::Ireduce => format!("trunc {} {a} to {}", llty(t), llty(rt)),
             Opcode::Fdemote => format!("fptrunc double {a} to float"),
             Opcode::Fpromote => format!("fpext float {a} to double"),
-            Opcode::FcvtFromSint => format!("sitofp {} {a} to double", llty(t)),
+            Opcode::FcvtFromSint => format!("sitofp {} {a} to {}", llty(t), llty(rt)),
             Opcode::FcvtToSintSat => {
                 format!("call {0} @llvm.fptosi.sat.{0}.f64(double {a})", llty(rt))
             }
