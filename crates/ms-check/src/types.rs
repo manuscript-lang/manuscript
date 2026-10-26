@@ -594,16 +594,6 @@ pub fn test_outcome() -> Ty {
 /// Substitution of type variables by id.
 pub type Subst = HashMap<Name, Ty>;
 
-/// A `Callable[[...], R]` parameter has a synthetic positional name (`_0`, `_1`);
-/// parameter names are not part of identity for it.
-fn names_match(a: Name, b: Name) -> bool {
-    let synthetic = |n: Name| {
-        let s = n.as_str();
-        s.len() > 1 && s.starts_with('_') && s[1..].bytes().all(|c| c.is_ascii_digit())
-    };
-    a == b || synthetic(a) || synthetic(b)
-}
-
 /// Structural identity.
 pub fn same(a: &Ty, b: &Ty) -> bool {
     if Rc::ptr_eq(a, b) && a.args.is_empty() && a.params.is_empty() {
@@ -623,7 +613,7 @@ pub fn same(a: &Ty, b: &Ty) -> bool {
     }
     if a.kind == Kind::Function {
         for (p, q) in a.params.iter().zip(&b.params) {
-            if !names_match(p.name, q.name) || !same(&p.ty, &q.ty) {
+            if !same(&p.ty, &q.ty) {
                 return false;
             }
         }
@@ -940,7 +930,7 @@ pub fn unify(pattern: &Ty, actual: &Ty, vars: &VarSet, bindings: &mut Subst) -> 
     }
     if pattern.kind == Kind::Function {
         for (p, q) in pattern.params.iter().zip(&actual.params) {
-            if !names_match(p.name, q.name) || !unify(&p.ty, &q.ty, vars, bindings) {
+            if !unify(&p.ty, &q.ty, vars, bindings) {
                 return false;
             }
         }
