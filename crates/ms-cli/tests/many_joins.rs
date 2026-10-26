@@ -21,7 +21,8 @@ fn many_joins_in_one_function() {
         expected += value(i) % 11 + if value(i) > 10 { value(j) } else { 0 };
     }
     source.push_str("    stdout().write(f\"{t}\\n\").get()\n    return 0\n");
-    let dir = std::env::temp_dir().join(format!("ms-many-joins-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("ms-build-debug-many-joins-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("main.ms");
     std::fs::write(&path, source).unwrap();
@@ -29,16 +30,22 @@ fn many_joins_in_one_function() {
         .arg("run")
         .arg(&path)
         .args(["--build-type", "Debug"])
+        .env("TMPDIR", &dir)
+        .env("TMP", &dir)
+        .env("TEMP", &dir)
         .output()
         .unwrap();
-    let _ = std::fs::remove_dir_all(&dir);
     assert!(
         out.status.success(),
-        "{}",
-        String::from_utf8_lossy(&out.stderr)
+        "ms run failed: {}\nstdout:\n{}\nstderr:\n{}\nfixture: {}",
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr),
+        dir.display()
     );
     assert_eq!(
         String::from_utf8_lossy(&out.stdout),
         format!("{expected}\n")
     );
+    let _ = std::fs::remove_dir_all(&dir);
 }
