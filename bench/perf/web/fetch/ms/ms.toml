@@ -1,0 +1,4 @@
+[project]
+name = "fetchbench"
+source = "./src"
+entry = "./src/main.ms"
