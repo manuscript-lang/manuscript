@@ -145,6 +145,17 @@ pub unsafe fn spawn_native(
     Some(handle)
 }
 
+/// Changes the running task's time limit: cancelled `limit_ns` from now, never when negative.
+pub fn limit_current(limit_ns: i64) {
+    task::limit_current(limit_ns)
+}
+
+/// Forgets a cancel aimed at the running task, for a task that caught it with a guard and goes on.
+/// A stop request (SIGINT/SIGTERM) is not affected.
+pub fn acknowledge_cancel() {
+    crate::fault::set_live_task_cancel(0)
+}
+
 /// The scope the running task was started in by [`spawn_native`], or 0.
 pub fn current() -> i64 {
     task::current_scope()

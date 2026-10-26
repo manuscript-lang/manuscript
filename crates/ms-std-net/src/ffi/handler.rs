@@ -53,7 +53,11 @@ fn guarded<T>(mut call: impl FnMut()) -> Option<Outcome<T>> {
     let status = unsafe { msrt_guard_call(run, (&raw mut dynamic).cast(), &mut message) };
     match status {
         0 => None,
-        2 => Some(Outcome::Cancelled),
+        2 => {
+            // The task goes on to answer the request: a cancel aimed at it ends with the handler.
+            ms_rt::scope::acknowledge_cancel();
+            Some(Outcome::Cancelled)
+        }
         _ => {
             let text = if message.ptr_word.is_null() && message.is_static() {
                 "fault".to_string()

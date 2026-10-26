@@ -101,6 +101,32 @@ pub fn sleep(ns: i64) -> u32 {
     unsafe { msrt_task_sleep(ns) }
 }
 
+/// Holds SIGINT/SIGTERM back from the running task until [`stop_unshield`]. A cancel aimed at
+/// the task itself (its scope closed, its time limit passed) still applies.
+pub fn stop_shield() {
+    ms_rt::fault::stop_shield_enter()
+}
+
+/// Ends one [`stop_shield`].
+pub fn stop_unshield() {
+    ms_rt::fault::stop_shield_exit()
+}
+
+/// Cancels the running task at `deadline` (none: never), replacing any earlier limit.
+pub fn limit_current_until(deadline: Option<std::time::Instant>) {
+    let ns = deadline.map_or(-1, |at| {
+        at.saturating_duration_since(std::time::Instant::now())
+            .as_nanos()
+            .min(i64::MAX as u128) as i64
+    });
+    ms_rt::scope::limit_current(ns)
+}
+
+/// Forgets a cancel aimed at the running task, which caught it and goes on.
+pub fn acknowledge_cancel() {
+    ms_rt::scope::acknowledge_cancel()
+}
+
 /// A runtime scope that owns request tasks and contains their faults.
 pub struct Scope(i64);
 

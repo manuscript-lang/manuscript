@@ -17,6 +17,10 @@ pub struct Hdr {
     pub limit: usize,
     /// Non-zero (the signal number) once a stop was requested and not shielded.
     pub cancel: AtomicU8,
+    /// Nesting depth of the task's stop shields: like `shield`, but only SIGINT/SIGTERM is held
+    /// back; a cancel aimed at the task itself (its group closed, its time limit passed) applies.
+    /// Sits in the padding after `cancel`, so the block stays 16 bytes.
+    pub stop_shield: core::sync::atomic::AtomicU16,
     /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
     pub shield: core::sync::atomic::AtomicU32,
@@ -28,6 +32,7 @@ impl Hdr {
             limit,
             cancel: AtomicU8::new(0),
             shield: core::sync::atomic::AtomicU32::new(0),
+            stop_shield: core::sync::atomic::AtomicU16::new(0),
         }
     }
 }
@@ -71,7 +76,9 @@ impl PublishedHdr {
         if !hdr.is_null() {
             // SAFETY: publication cannot finish retiring this header until this reader exits.
             unsafe {
-                if (*hdr).shield.load(Ordering::Relaxed) == 0 {
+                if (*hdr).shield.load(Ordering::Relaxed) == 0
+                    && (*hdr).stop_shield.load(Ordering::Relaxed) == 0
+                {
                     (*hdr).cancel.store(sig, Ordering::Relaxed);
                 }
             }
@@ -260,7 +267,14 @@ crate::isolate_static! {
 pub(crate) fn unshielded_cancel_flag() -> u8 {
     // SAFETY: single threaded access.
     let task = unsafe { *TASK_CANCEL.ptr() };
-    crate::isolate::pending_cancel().max(task)
+    // SAFETY: the running task's block is live.
+    let held = unsafe { (*cur_hdr()).stop_shield.load(Ordering::Relaxed) } > 0;
+    let stop = if held {
+        0
+    } else {
+        crate::isolate::pending_cancel()
+    };
+    stop.max(task)
 }
 
 /// Records a stop request aimed at the running task.
@@ -319,6 +333,17 @@ impl Ctx {
         };
         // SAFETY: the block lives as long as its stack.
         unsafe { (*hdr).shield.load(Ordering::Relaxed) > 0 }
+    }
+
+    /// Whether the task holds a stop shield.
+    pub(crate) fn stop_shielded(&self) -> bool {
+        let hdr = if self.hdr.is_null() {
+            ROOT_HDR.ptr()
+        } else {
+            self.hdr
+        };
+        // SAFETY: the block lives as long as its stack.
+        unsafe { (*hdr).stop_shield.load(Ordering::Relaxed) > 0 }
     }
 
     /// The task's block (null for the root task before it ever ran).
@@ -869,6 +894,30 @@ pub extern "C" fn msrt_shield_enter() {
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_shield_exit() {
     SHIELD.set(SHIELD.get().saturating_sub(1));
+    if SHIELD.get() == 0 {
+        cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
+    }
+}
+
+/// Holds back SIGINT/SIGTERM from the running task until the matching [`stop_shield_exit`],
+/// while a cancel aimed at the task itself still applies. A request handler uses it to finish
+/// within the server's grace period.
+pub fn stop_shield_enter() {
+    // SAFETY: the running task's block is live.
+    unsafe { (*cur_hdr()).stop_shield.fetch_add(1, Ordering::Relaxed) };
+    if SHIELD.get() == 0 {
+        cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
+    }
+}
+
+/// Ends one [`stop_shield_enter`]; a stop request that arrived meanwhile applies again.
+pub fn stop_shield_exit() {
+    // SAFETY: the running task's block is live.
+    let _ = unsafe {
+        (*cur_hdr())
+            .stop_shield
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1))
+    };
     if SHIELD.get() == 0 {
         cancel_flag().store(unshielded_cancel_flag(), Ordering::Relaxed);
     }
