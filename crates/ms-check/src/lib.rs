@@ -8,6 +8,7 @@ pub mod callbacks;
 pub mod calls;
 pub mod checker;
 pub mod constants;
+pub mod constfaults;
 pub mod contracts;
 pub mod editor;
 pub mod effects;

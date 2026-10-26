@@ -2,6 +2,7 @@
 
 use crate::checker::{Checker, Scope};
 use crate::hints::*;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
@@ -232,11 +233,13 @@ impl Checker {
                     captured.insert(b.uid, b.clone());
                 }
                 if !b.mutable {
-                    self.type_error(
+                    let fix = suggestions::let_to_var(&self.m().source, b.decl);
+                    self.type_error_with_fix(
                         s.pos,
                         format!(
                             "cannot assign immutable binding {name}; declare it with 'var {name} = ...' instead of 'let'"
                         ),
+                        fix,
                     );
                 }
                 let i = self.expression(value, Some(&b.ty));
@@ -488,12 +491,14 @@ impl Checker {
             Expr {
                 id: id(self),
                 pos: iter.pos,
+                end: iter.pos,
                 kind: ExprKind::Name(hidden),
             }
         };
         let callee = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Member {
                 left: Box::new(holder),
                 name: n("next"),
@@ -502,6 +507,7 @@ impl Checker {
         let call = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Call {
                 callee: Box::new(callee),
                 args: Vec::new(),
@@ -531,6 +537,7 @@ impl Checker {
         let forever = Expr {
             id: id(self),
             pos,
+            end: pos,
             kind: ExprKind::Bool(true),
         };
         expansion.push(Stmt {
@@ -561,6 +568,7 @@ impl Checker {
     ) -> (bool, bool) {
         let i = self.expression(value, None);
         let t = i.t();
+        let held = self.begin_lock(s, value, &t);
         if !is_invalid_id(&t) && !self.closeable(&t) {
             let msg = self.with_not_closeable_message(&t);
             self.type_error(s.pos, msg);
@@ -600,6 +608,9 @@ impl Checker {
             .loop_binding = Some(b);
         let (fall, br) = self.block(body, false);
         self.scope = old;
+        if held {
+            self.held_locks.pop();
+        }
         (!i.no_return && fall, i.breaks || br)
     }
 
@@ -1256,6 +1267,7 @@ impl Checker {
             return info;
         }
         if list {
+            self.constant_index(e, left, right);
             info.ty = Some(rt.args[0].clone());
         } else if map {
             info.ty = Some(rt.args[1].clone());

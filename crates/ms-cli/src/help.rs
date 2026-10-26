@@ -21,6 +21,7 @@ pub const COMMAND_NAMES: &[&str] = &[
     "lsp",
     "search_symbol",
     "guide",
+    "explain",
     "help",
     "version",
 ];
@@ -44,6 +45,7 @@ pub fn command_help(command: &str) -> Option<String> {
         "lsp" => t::HELP_LSP,
         "search_symbol" => t::HELP_SEARCH_SYMBOL,
         "guide" => t::HELP_GUIDE,
+        "explain" => t::HELP_EXPLAIN,
         "help" => t::HELP_HELP,
         "version" => t::HELP_VERSION,
         _ => return None,

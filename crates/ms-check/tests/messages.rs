@@ -420,6 +420,110 @@ fn generic_callback_arity_mismatch_keeps_its_hint() {
 }
 
 #[test]
+fn constant_faults_are_compile_errors() {
+    let cases = [
+        ("1 / 0", "division by zero always faults"),
+        ("7 % (2 - 2)", "division by zero always faults"),
+        ("9223372036854775807 + 1", "overflows Int and always faults"),
+        ("4611686018427387904 * 2", "overflows Int and always faults"),
+        (
+            "-9223372036854775807 - 2",
+            "overflows Int and always faults",
+        ),
+        (
+            "[1, 2][2]",
+            "index 2 is outside this list literal of 2 element(s)",
+        ),
+        (
+            "[1, 2][-3]",
+            "index -3 is outside this list literal of 2 element(s)",
+        ),
+    ];
+    for (expr, want) in cases {
+        let source = format!("export def main() -> Int:\n    return {expr}\n");
+        let got = first_message(&source);
+        assert!(got.contains(want), "{expr}: {got}");
+    }
+}
+
+#[test]
+fn in_range_constants_and_runtime_operands_are_accepted() {
+    for expr in [
+        "9223372036854775806 + 1",
+        "-9223372036854775808",
+        "[1, 2][-2]",
+        "[1, 2][1]",
+        "8 / 2 % 3",
+    ] {
+        let source = format!("export def main() -> Int:\n    return {expr}\n");
+        let file: Arc<str> = Arc::from("t.ms");
+        let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+        let program = ms_check::check(
+            vec![ms_check::load_module(&module)],
+            ImportMap::default(),
+            CheckOptions::default(),
+        );
+        assert!(
+            program.diagnostics.is_empty(),
+            "{expr}: {:?}",
+            program.diagnostics
+        );
+    }
+}
+
+const LOCK_HEADER: &str = "from \"@std/shared.ms\" import Shared, share
+from \"@std/sync.ms\" import lock
+";
+
+fn check_messages(source: &str) -> Vec<String> {
+    let file: Arc<str> = Arc::from("t.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    )
+    .diagnostics
+    .iter()
+    .map(|d| d.message.clone())
+    .collect()
+}
+
+#[test]
+fn locking_a_shared_inside_its_own_guard_is_rejected() {
+    let source = format!(
+        "{LOCK_HEADER}export def main() -> Int:
+    let box = share(1)
+    with var outer = lock(box):
+        with var inner = lock(box):
+            inner.value += 1
+        outer.value += 1
+    return 0
+"
+    );
+    let found = check_messages(&source);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].contains("box is already locked"), "{found:?}");
+}
+
+#[test]
+fn sequential_and_distinct_locks_are_accepted() {
+    let source = format!(
+        "{LOCK_HEADER}export def main() -> Int:
+    let a = share(1)
+    let b = share(2)
+    with var one = lock(a):
+        with var two = lock(b):
+            two.value += one.value
+    with var again = lock(a):
+        again.value += 1
+    return 0
+"
+    );
+    assert_eq!(check_messages(&source), Vec::<String>::new());
+}
+
+#[test]
 fn key_holding_shared_state_is_not_hashable() {
     let got = first_message(
         "from \"@std/shared.ms\" import Shared\ntype K:\n    cell: Shared[Int]\nimpl Equal for K:\n    def equals(other: K) -> Bool: return True\nimpl Hashable for K:\n    def hash() -> Int: return 1\nexport def main() -> Int:\n    let s = Set[K]()\n    return 0\n",

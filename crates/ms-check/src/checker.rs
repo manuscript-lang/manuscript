@@ -196,6 +196,8 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
+    /// `(function, place)` of each `lock` guard whose `with` block is being checked.
+    pub(crate) held_locks: Vec<(usize, String)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -238,6 +240,7 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
+            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,
@@ -303,12 +306,10 @@ impl Checker {
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
         if phase == Phase::Resolution
-            && let Some((_, rest)) = message.split_once("; add: import ")
+            && message.starts_with("Decimal literal requires")
+            && self.import_reported("Decimal", pos)
         {
-            let name = rest.split(" from ").next().unwrap_or("");
-            if self.import_reported(name, pos) {
-                return;
-            }
+            return;
         }
         if let Some(m) = &self.module {
             for span in &m.recovered {
@@ -1017,6 +1018,7 @@ impl Checker {
             uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
             ty: t,
             mutable,
+            decl: pos,
             function: self.function,
         });
         self.scope.bindings.borrow_mut().insert(name, b.clone());
