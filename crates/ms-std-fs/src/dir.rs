@@ -4,7 +4,7 @@ use crate::ops;
 use crate::ops::poll_cancel;
 use crate::sys::{self, CPath};
 use alloc::vec::Vec;
-use ms_rt_abi::{STATUS_CLOSED, STATUS_UNSUPPORTED};
+use ms_rt_abi::STATUS_CLOSED;
 
 /// One entry of a directory cursor.
 pub struct Item {
@@ -59,12 +59,9 @@ impl Directory {
             Ok(None) => return Ok(None),
             Err(e) => return Err(Fail::errno(e, "readdirent", &self.path)),
         };
-        if core::str::from_utf8(&name).is_err() {
-            return Err(Fail::status(STATUS_UNSUPPORTED));
-        }
         let (directory, symlink) = ops::entry_kind(&self.path, &name, kind);
         Ok(Some(Item {
-            name,
+            name: ops::lossy_name(&name),
             directory,
             symlink,
         }))

@@ -90,12 +90,13 @@ pub fn glob(root: &[u8], pattern: &[u8], max: i64) -> Res<Vec<Vec<u8>>> {
         if rel == b"." {
             return Ok(());
         }
-        let text = utf8(rel)?;
+        let rel = ops::lossy_name(rel);
+        let text = utf8(&rel)?;
         if compiled.matches(text) {
             if items.len() as i64 >= max {
                 return Err(limit_exceeded());
             }
-            items.push(rel.to_vec());
+            items.push(rel);
         }
         Ok(())
     })?;
@@ -681,11 +682,8 @@ impl GlobState {
         }
         self.remaining -= 1;
         let mut info = lstat(p)?;
-        let rel = relative(root, p);
-        let name = path::base(p);
-        if core::str::from_utf8(&rel).is_err() || core::str::from_utf8(&name).is_err() {
-            return Err(Fail::status(STATUS_UNSUPPORTED));
-        }
+        let rel = ops::lossy_name(&relative(root, p));
+        let name = ops::lossy_name(&path::base(p));
         let value = PathEntry {
             path: rel.clone(),
             name,

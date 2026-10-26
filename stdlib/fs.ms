@@ -65,7 +65,7 @@ export type FileSystemError:
     case NotEmpty
     # The operating system refused access to the path or operation.
     case PermissionDenied
-    # The host or filesystem cannot perform the operation, or a file name is not valid UTF-8.
+    # The host or filesystem cannot perform the operation, or a link target or canonical path is not valid UTF-8.
     case Unsupported
     # The file, directory, or watcher was already closed.
     case Closed
@@ -184,6 +184,7 @@ export interface FileSystem:
     # Creates a symbolic link at `path` pointing to `target`.
     def create_link(path: String, target: String) -> Result[Unit, FileSystemError]
     # Lists a directory, optionally limiting the number of returned entries.
+    # A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `glob_entries`, `stat` names and directory cursors.
     def list(
         path: String,
         max_entries: Optional[Int] = none
