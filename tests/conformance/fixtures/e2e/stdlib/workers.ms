@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/fetch.ms" import fetch
-from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse
+from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
 from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
@@ -347,6 +347,46 @@ test "bytes cross a worker pipe without JSON":
         try expect_equal(second.decode_utf8().get(""), "abcabc")
         worker.channel.close()
         try expect_ok(worker.join())
+
+def serves_shared() -> Unit:
+    var ch = worker_channel[String, String]()
+
+    if let address = ch.receive().get(none):
+        let options = HttpServerOptions(shared: True)
+
+        if let acquired = network().serve(
+            address: address, handler: buffered(page), options: options
+        ):
+            with let server = acquired:
+                ch.send(server.address())
+
+                let _stopped = ch.receive()
+                server.close()
+
+test "workers serve one port with a shared listener":
+    with let group = WorkerGroup[String, String]():
+        var workers: List[Worker[String, String]] = []
+        var first = ""
+
+        for i in range(0, 3):
+            var worker = group.spawn(serves_shared).get(none)
+            try expect_ok(worker.channel.send("127.0.0.1:0"))
+
+            let address = worker.channel.receive().get(none).get("")
+            if i == 0:
+                first = address.clone()
+            try expect_equal(address, first)
+            workers.append(worker)
+
+        var total = 0
+        for i in range(0, 12):
+            if let response = fetch(f"http://{first}/page"):
+                total += response.body.length()
+        try expect_equal(total, 12 * 65536)
+
+        for i in range(0, 3):
+            try expect_ok(workers[i].channel.send("stop"))
+            try expect_ok(workers[i].join())
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w
