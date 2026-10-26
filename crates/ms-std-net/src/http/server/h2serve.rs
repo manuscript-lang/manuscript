@@ -81,6 +81,8 @@ struct H2Stream {
     out: Option<Outgoing>,
     started: Instant,
     deadline: Option<Instant>,
+    /// The task running the stream's handler (`0`: none).
+    task: u64,
 }
 
 impl H2Stream {
@@ -95,6 +97,7 @@ impl H2Stream {
             out: None,
             started,
             deadline: timeout.map(|t| started + t),
+            task: 0,
         }
     }
 }
@@ -132,6 +135,11 @@ impl H2Conn {
             .values()
             .filter(|s| s.stage == Stage::Queued)
             .count()
+    }
+
+    /// The tasks running handlers of streams.
+    pub(in crate::http) fn running(&self) -> Vec<u64> {
+        self.streams.values().map(|s| s.task).collect()
     }
 
     fn is_idle(&self) -> bool {
@@ -593,6 +601,7 @@ impl Server {
     }
 
     fn h2_reset(&self, conn: &Rc<Conn>, id: u32) {
+        let mut task = 0;
         let was_queued = with_h2(conn, |h| {
             let Some(s) = h.streams.get_mut(&id) else {
                 return false;
@@ -600,7 +609,8 @@ impl Server {
             s.reset = true;
             s.remote_done = true;
             if s.stage == Stage::Running {
-                // The handler notices and cleans up.
+                // The handler is cancelled and cleans up.
+                task = s.task;
                 return false;
             }
             let queued = s.stage == Stage::Queued;
@@ -608,6 +618,7 @@ impl Server {
             queued
         })
         .unwrap_or(false);
+        crate::rt::cancel_task(task);
         if was_queued {
             let mut s = self.st.borrow_mut();
             s.admitted = s.admitted.saturating_sub(1);
@@ -674,6 +685,11 @@ fn response_head(
 /// Runs the streaming handler for a queued stream.
 fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started: Instant) {
     let Some(server_rc) = server.rc() else { return };
+    with_h2(conn, |h| {
+        if let Some(s) = h.streams.get_mut(&id) {
+            s.task = crate::rt::current_task();
+        }
+    });
     let timeout = server.limits.timeout;
     let exchange = Rc::new(Exchange {
         server: server_rc,

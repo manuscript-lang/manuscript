@@ -122,6 +122,15 @@ pub fn limit_current_until(deadline: Option<std::time::Instant>) {
     ms_rt::scope::limit_current(ns)
 }
 
+/// Cancels task `handle` (a handle that no longer exists is ignored). The running task is not
+/// cancelled: it is the one asking, and finishes its own work.
+pub fn cancel_task(handle: u64) {
+    if handle != 0 && handle != current_task() {
+        // SAFETY: plain scheduler call on the runtime thread.
+        unsafe { ms_rt::task::msrt_task_cancel(handle) }
+    }
+}
+
 /// Forgets a cancel aimed at the running task, which caught it and goes on.
 pub fn acknowledge_cancel() {
     ms_rt::scope::acknowledge_cancel()
