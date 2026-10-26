@@ -232,6 +232,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 | MSL110 | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
+| MSL111 | `while True` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 
