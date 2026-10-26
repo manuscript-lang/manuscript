@@ -24,6 +24,7 @@ abi_record! {
         pub grace: OptInt,
         pub tls_present: u8,
         pub tls: TlsOptionsWire,
+        pub shared: u8,
     }
 }
 
@@ -101,6 +102,7 @@ native! {
                 Options {
                     limits,
                     tls,
+                    shared: opts.shared != 0,
                 },
             )
             .map_err(HttpErr::from)

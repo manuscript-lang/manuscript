@@ -61,6 +61,19 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 
 The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn before any runs), so every request paid `mmap`, `mprotect` and two `munmap` calls. With 512 the cost left is about 7% on the shortest handlers (`/health` median 107k against 114k).
 
+## 2026-10-26, large-block reuse and inline file calls
+
+`sh bench/perf/web/run.sh 3` before and after this change, shared 4-CPU Linux VM (±10% between runs). Zeroed large buffers (`vec![0; n]`) bypassed the runtime's block cache and faulted in fresh pages on every file read, blocking-pool jobs mapped a new block for every large result, and a single-task program still sent each file call through the pool.
+
+| Measurement | before | after |
+| --- | ---: | ---: |
+| `/io` req/s | 863–944 | 1,232–1,265 |
+| `/health` req/s during `/io` | 46.4k | 75.5k |
+| Resident memory after load | 70.9 MB | 54.5 MB |
+| `/health` req/s | 122.5k–123.7k | 108.5k–109.7k |
+
+`/health` is within the run-to-run noise of this host; Go measured 105k–106k in the first run.
+
 ## 2026-10-26, fetch client
 
 `sh bench/perf/web/fetch.sh 2`: Manuscript's `fetch` (one `Fetcher`, N tasks) and Go's `net/http` client against one Go file server on CPUs 0-1, clients on CPUs 2-3, shared 4-CPU Linux VM (+/-10% between runs). The Manuscript runtime uses one thread, Go's client two cores.
@@ -85,3 +98,40 @@ Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven me
 | 8 | 255-365 | 104-126 | 150-155 |
 
 User CPU for 3 s at 8 connections: 1.47 s before, 0.12 s after (the rest is kernel receive and page faults). The Manuscript client still runs on one core, Go's on two.
+
+## 2026-10-26, server on several cores
+
+`server <port> <dir> <threads>` starts that many workers, each running `serve` with `HttpServerOptions(shared: True)` on one shared listener. Server on CPUs 0-1, 64 keep-alive connections from CPUs 2-3, 4 s per row, shared 4-CPU Linux VM (+/-10% between runs); two runs each.
+
+| Server | `/top?n=10` req/s | `/health` req/s |
+| --- | ---: | ---: |
+| Go `net/http` | 34.4k, 37.5k | 85.1k, 84.6k |
+| Manuscript, 1 thread | 26.3k, 25.1k | 118.3k, 105.7k |
+| Manuscript, 2 workers | 58.1k, 56.9k | 140.7k, 136.1k |
+| Manuscript, 4 workers (2 CPUs) | 59.1k, 61.4k | 150.7k, 139.9k |
+
+A first run of this table had 2 workers at 38.6k/39.1k on `/top` and 65-72k on `/health`, below one thread: Rust code in a worker allocated through musl's `malloc`, which has one process-wide lock, and a `futex` trace showed the two workers handing that lock back and forth. Workers now allocate small Rust blocks from a process-wide heap that is never unmapped, with per-thread free lists (`worker_heap` in `ms-rt/src/alloc.rs`).
+
+## 2026-10-26, fetch on several cores
+
+`fetch.sh` gained a row that spreads the 8 connections over 2 worker threads (`ms/fetch <url> 8 <secs> 2`), one `Fetcher` task group per worker. Same machine and pinning as above (clients on CPUs 2-3), 3 s, two runs.
+
+| 8 MiB body, 8 connections | req/s |
+| --- | ---: |
+| Go `net/http` | 424, 437 |
+| Manuscript, tasks on one thread | 165, 151 |
+| Manuscript, 2 worker threads | 371, 374 |
+
+Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one worker fetched 70-84 req/s against 190-198 on the main thread, because each body buffer was mapped and faulted in again.
+
+## 2026-10-26, fetch on several cores after in-place bodies (#1503)
+
+`sh bench/perf/web/fetch.sh 3`, tree with #1495 and #1503, same machine and pinning (server CPUs 0-1, clients CPUs 2-3), two runs.
+
+| Body, connections | Go req/s | Manuscript, tasks on one thread | Manuscript, 2 worker threads |
+| --- | ---: | ---: | ---: |
+| 3 bytes, 8 | 38.8k, 39.9k | 53.7k, 54.9k | 49.8k, 45.7k |
+| 8 MiB, 1 | 268, 242 | 260, 252 | |
+| 8 MiB, 8 | 425, 363 | 237, 202 | 590, 479 |
+
+With the body received in place, two worker threads put the 8 MiB case 35-39% above Go's client on the same two CPUs. For tiny bodies the extra thread costs 7-15%, so keep one thread there.

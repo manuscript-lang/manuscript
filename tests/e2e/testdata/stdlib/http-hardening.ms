@@ -16,14 +16,14 @@ def slow_route(request: HttpRequest) -> HttpResponse:
 test "serve ends a connection that trickles its request head":
     let net = network()
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: buffered(ok_route),
-            options: HttpServerOptions(timeout: 400.milliseconds)
-        ) | try expect_ok
-    ):
-        with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
-            client.write("GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds) | try expect_ok
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: buffered(ok_route),
+        options: HttpServerOptions(timeout: 400.milliseconds)
+    ) | try expect_ok:
+        with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
+            client.write(
+                "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds
+            ) | try expect_ok
 
             # One byte every 100 ms never completes the head; the budget still runs out.
             var sent = 0
@@ -53,13 +53,11 @@ test "serve ends a connection that trickles its request head":
 test "close cancels a handler that outlives the grace period":
     let net = network()
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: buffered(slow_route),
-            options: HttpServerOptions(grace: 200.milliseconds)
-        ) | try expect_ok
-    ):
-        with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: buffered(slow_route),
+        options: HttpServerOptions(grace: 200.milliseconds)
+    ) | try expect_ok:
+        with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
             client.write("GET / HTTP/1.1\r\nHost: t\r\n\r\n", 2.seconds) | try expect_ok
             sleep(100.milliseconds)
             server.close()
@@ -74,7 +72,7 @@ test "close cancels a handler that outlives the grace period":
                 )
 
 def expect_file_reply(conn: Connection) -> Result[Unit, Error]:
-    let reply = (conn.read(timeout: 10.seconds) | try expect_ok)
+    let reply = conn.read(timeout: 10.seconds) | try expect_ok
     let text = reply.get(Bytes([])).decode_utf8().get("")
     if not text.starts_with("HTTP/1.1 200"): return error(
         TextError(f"file handler failed: {text}")
@@ -85,7 +83,7 @@ def expect_file_reply(conn: Connection) -> Result[Unit, Error]:
 test "serve answers requests while handlers read and write files":
     let net = network()
     let fs = filesystem()
-    let dir = (fs.temporary("ms-http-io") | try expect_ok)
+    let dir = fs.temporary("ms-http-io") | try expect_ok
     let root = dir.path()
     let payload = ("0123456789abcdef".repeat(262144) | try expect_ok).to_bytes()
 
@@ -101,13 +99,11 @@ test "serve answers requests while handlers read and write files":
 
         return HttpResponse(200, headers(), f"{read.get().length()}".to_bytes())
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: buffered(io_route)
-        ) | try expect_ok
-    ):
-        with let a = (net.connect(server.address(), 2.seconds) | try expect_ok):
-            with let b = (net.connect(server.address(), 2.seconds) | try expect_ok):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: buffered(io_route)
+    ) | try expect_ok:
+        with let a = net.connect(server.address(), 2.seconds) | try expect_ok:
+            with let b = net.connect(server.address(), 2.seconds) | try expect_ok:
                 a.write(
                     "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
                     2.seconds
@@ -127,18 +123,16 @@ def oversized(exchange: HttpExchange) -> Result[Unit, HttpError]:
 test "serve answers 500 when a whole response exceeds max_response_bytes":
     let net = network()
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: oversized,
-            options: HttpServerOptions(max_response_bytes: some(100))
-        ) | try expect_ok
-    ):
-        with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: oversized,
+        options: HttpServerOptions(max_response_bytes: some(100))
+    ) | try expect_ok:
+        with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
             client.write(
                 "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
             ) | try expect_ok
 
-            let reply_bytes = (client.read(timeout: 3.seconds) | try expect_ok)
+            let reply_bytes = client.read(timeout: 3.seconds) | try expect_ok
             let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
             if not head.starts_with("HTTP/1.1 500"): return error(
                 TextError(f"expected a 500 reply, got: {head}")

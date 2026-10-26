@@ -30,10 +30,8 @@ test "try preserves empty errors and skips success effects":
     visits.length() | try expect_equal(1)
 
 test "try can change the success type":
-    (
-        text(Result[Int, TextError].error(TextError("failed")))
-        .err()
-        .text | try expect_equal("failed")
+    text(Result[Int, TextError].error(TextError("failed"))).err().text | try expect_equal(
+        "failed"
     )
     text(Result[Int, TextError].ok(42)).get() | try expect_equal("42")
 
@@ -90,7 +88,7 @@ test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-tail-") | try expect_ok:
         let first = f"{temporary.path()}/first"
         let second = f"{temporary.path()}/second"
         tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(

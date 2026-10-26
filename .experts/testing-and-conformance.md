@@ -10,6 +10,13 @@ Apply when: deciding where a regression test belongs.
 Evidence: [conformance corpus](../tests/conformance/README.md), [development checks](../documentation/contributing/development.md), [Makefile](../Makefile).
 Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conform`) pass.
 
+Verified: putting assertion formatting and close work in a recursively called test destructor
+can overflow a native host's test stack before reaching the intended deferred-drop state.
+Keep that work in a non-inlined leaf helper; retain the full depth, pending-link assertions,
+and exact destructor counts. The [channel lease regressions](../crates/ms-rt/src/channel.rs)
+cover both zero and nonzero pending links. Apply a controlled stack budget to the test
+executable only, after building normally, so the experiment does not constrain rustc itself.
+
 ### C drivers must execute against the production runtime
 
 Verified: the native C smoke harness compiled and linked with obsolete one-word string return/message declarations, then aborted at its first call. The adjacent benchmark also retained a six-word map after `MapVal` grew to seven words. Successful linking cannot check C declarations against Rust exports.

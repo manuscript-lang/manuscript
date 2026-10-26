@@ -78,6 +78,43 @@ ms test ms.toml --repeat 10 --shuffle 42
 - Each repetition starts a fresh root execution; globals and external fixtures stay shared. `--shuffle` takes a seed.
 - `--fail-fast` leaves remaining tests `not_run` in JSON.
 
+## Property tests and fuzzing
+
+A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/test/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+from "@std/test/property.ms" import check, ints, lists
+from "@std/testing.ms" import expect_equal
+
+test "reversing twice restores a list":
+    try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))
+```
+
+When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
+
+```text
+FAIL test.ms::small sums: property 'small sums' failed after 3 cases (case seed 2039066943738375196; rerun with --seed 2039066943738375196)
+counterexample: [50]
+expected true, got false
+```
+
+- Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
+- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(lambda n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
+- Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `none`, `bools` toward `False`.
+- A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
+- A `panic` inside a property ends the test process before it can shrink; return errors with `expect_*` and `try`, and use `expect_fault` for faults you expect.
+
+`ms test` controls property runs from the command line:
+
+```sh
+ms test ms.toml --runs 1000          # cases per property
+ms test ms.toml --seed 2039066943738375196   # replay a reported failure
+ms test ms.toml --fuzz 30s           # keep generating fresh cases for 30s per property
+```
+
+`--fuzz` replaces the case count with a time budget for each `check` call and prints the starting seed to standard error, so a fault that kills the process can still be replayed with `--seed`. It disables the default 60s `--timeout` unless you pass one. An explicit `seed:` argument to `check` overrides `--seed`. The [property-testing example](https://github.com/manuscript-lang/manuscript/tree/main/examples/property-testing) shows a project with several properties.
+
 All assertions return `Result`, so use `try`:
 
 - `expect_some`, `expect_ok`, `expect_error` yield the checked payload.

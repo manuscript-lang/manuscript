@@ -4,7 +4,7 @@
 from "@std/io.ms" import read_line, ReadStream, stdin
 
 def limit() -> Int:
-    return 1 / 0
+    return 1 / "".byte_length()
 
 def probe(input: ReadStream) -> Bool:
     if let line = read_line(input, limit()):

@@ -19,4 +19,4 @@ Run several pieces of work at once with a `TaskGroup`, or spread CPU-bound work 
 
 Each group owns the work it starts until its `with` block ends. Collect results or join before leaving the block to finish the work; leaving early cancels or stops it. Tasks move values through channels; workers and processes serialize messages as JSON. Their cleanup and failure behavior differ: read the relevant guide before choosing a boundary.
 
-`Channel[Send, Receive]` presents typed `send`, `receive` and `close` operations. Its `Transport[Send, Receive]` supplies the underlying task queue, worker queue or process pipe; see the [channel API](../../standard-library/reference/channels.md).
+`Channel[In, Out]` sends `In` and receives `Out` through typed `send`, `receive` and `close` operations. Its `Transport[In, Out]` supplies the underlying task queue, worker queue or process pipe; see the [channel API](../../standard-library/reference/channels.md).

@@ -36,7 +36,7 @@ def run(workers: Int, jobs: Int, n: Int) -> Result[Int, Error]:
             if let value = try handles[job % workers].channel.receive():
                 total += value
         for i in 0..workers:
-            try handles[i].join()
+            try handles[i].wait()
 
     return ok(total)
 

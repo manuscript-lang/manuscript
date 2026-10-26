@@ -15,6 +15,21 @@
           "line": 21,
           "column": 23,
           "offset": 626
+        },
+        "fix": {
+          "position": {
+            "file": "seed-0169.ms",
+            "line": 21,
+            "column": 23,
+            "offset": 626
+          },
+          "end": {
+            "file": "seed-0169.ms",
+            "line": 21,
+            "column": 24,
+            "offset": 627
+          },
+          "replacement": "f\"{5}\""
         }
       }
     ],

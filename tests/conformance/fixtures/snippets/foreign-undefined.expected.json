@@ -15,6 +15,21 @@
           "line": 5,
           "column": 13,
           "offset": 142
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-undefined.ms",
+            "line": 5,
+            "column": 13,
+            "offset": 142
+          },
+          "end": {
+            "file": "foreign-undefined.ms",
+            "line": 5,
+            "column": 22,
+            "offset": 151
+          },
+          "replacement": "none"
         }
       }
     ],

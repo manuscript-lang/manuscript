@@ -29,7 +29,7 @@
             "file": "bound-native-members.ms",
             "line": 21,
             "column": 12,
-            "offset": 759
+            "offset": 760
           }
         },
         {
@@ -40,20 +40,20 @@
             "file": "bound-native-members.ms",
             "line": 49,
             "column": 20,
-            "offset": 1614
+            "offset": 1615
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 46,
               "column": 5,
-              "offset": 1521
+              "offset": 1522
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 46,
               "column": 8,
-              "offset": 1524
+              "offset": 1525
             },
             "replacement": "var"
           }
@@ -66,7 +66,7 @@
             "file": "bound-native-members.ms",
             "line": 58,
             "column": 5,
-            "offset": 1825
+            "offset": 1826
           }
         },
         {
@@ -77,20 +77,20 @@
             "file": "bound-native-members.ms",
             "line": 65,
             "column": 31,
-            "offset": 2091
+            "offset": 2092
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 5,
-              "offset": 2017
+              "offset": 2018
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 8,
-              "offset": 2020
+              "offset": 2021
             },
             "replacement": "var"
           }
@@ -103,20 +103,20 @@
             "file": "bound-native-members.ms",
             "line": 66,
             "column": 22,
-            "offset": 2116
+            "offset": 2117
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 5,
-              "offset": 2017
+              "offset": 2018
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 8,
-              "offset": 2020
+              "offset": 2021
             },
             "replacement": "var"
           }
@@ -129,7 +129,7 @@
             "file": "bound-native-members.ms",
             "line": 66,
             "column": 22,
-            "offset": 2116
+            "offset": 2117
           }
         },
         {
@@ -140,20 +140,20 @@
             "file": "bound-native-members.ms",
             "line": 70,
             "column": 23,
-            "offset": 2263
+            "offset": 2264
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 5,
-              "offset": 2017
+              "offset": 2018
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 8,
-              "offset": 2020
+              "offset": 2021
             },
             "replacement": "var"
           }
@@ -166,20 +166,20 @@
             "file": "bound-native-members.ms",
             "line": 70,
             "column": 31,
-            "offset": 2271
+            "offset": 2272
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 5,
-              "offset": 2017
+              "offset": 2018
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 64,
               "column": 8,
-              "offset": 2020
+              "offset": 2021
             },
             "replacement": "var"
           }
@@ -192,20 +192,20 @@
             "file": "bound-native-members.ms",
             "line": 76,
             "column": 22,
-            "offset": 2444
+            "offset": 2445
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 5,
-              "offset": 2359
+              "offset": 2360
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 8,
-              "offset": 2362
+              "offset": 2363
             },
             "replacement": "var"
           }
@@ -218,20 +218,20 @@
             "file": "bound-native-members.ms",
             "line": 77,
             "column": 23,
-            "offset": 2486
+            "offset": 2487
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 75,
               "column": 5,
-              "offset": 2399
+              "offset": 2400
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 75,
               "column": 8,
-              "offset": 2402
+              "offset": 2403
             },
             "replacement": "var"
           }
@@ -244,20 +244,20 @@
             "file": "bound-native-members.ms",
             "line": 77,
             "column": 31,
-            "offset": 2494
+            "offset": 2495
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 75,
               "column": 5,
-              "offset": 2399
+              "offset": 2400
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 75,
               "column": 8,
-              "offset": 2402
+              "offset": 2403
             },
             "replacement": "var"
           }
@@ -270,20 +270,20 @@
             "file": "bound-native-members.ms",
             "line": 78,
             "column": 23,
-            "offset": 2574
+            "offset": 2575
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 5,
-              "offset": 2359
+              "offset": 2360
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 8,
-              "offset": 2362
+              "offset": 2363
             },
             "replacement": "var"
           }
@@ -296,20 +296,20 @@
             "file": "bound-native-members.ms",
             "line": 78,
             "column": 31,
-            "offset": 2582
+            "offset": 2583
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 5,
-              "offset": 2359
+              "offset": 2360
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 74,
               "column": 8,
-              "offset": 2362
+              "offset": 2363
             },
             "replacement": "var"
           }
@@ -322,20 +322,20 @@
             "file": "bound-native-members.ms",
             "line": 84,
             "column": 5,
-            "offset": 2740
+            "offset": 2741
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 83,
               "column": 5,
-              "offset": 2704
+              "offset": 2705
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 83,
               "column": 8,
-              "offset": 2707
+              "offset": 2708
             },
             "replacement": "var"
           }
@@ -348,20 +348,20 @@
             "file": "bound-native-members.ms",
             "line": 86,
             "column": 18,
-            "offset": 2773
+            "offset": 2774
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
               "line": 83,
               "column": 5,
-              "offset": 2704
+              "offset": 2705
             },
             "end": {
               "file": "bound-native-members.ms",
               "line": 83,
               "column": 8,
-              "offset": 2707
+              "offset": 2708
             },
             "replacement": "var"
           }

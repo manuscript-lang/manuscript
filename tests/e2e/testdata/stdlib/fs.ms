@@ -18,27 +18,21 @@ def expect_fs_error[T](
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-glob-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-glob-") | try expect_ok:
         let root = temporary.path()
-        (fs.create_directory(path: f"{root}/sub", recursive: False) | try expect_ok)
+        fs.create_directory(path: f"{root}/sub", recursive: False) | try expect_ok
         for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-            (
-                fs.write_file(
-                    path: f"{root}/{name}", data: "", replace: False
-                ) | try expect_ok
-            )
+            fs.write_file(
+                path: f"{root}/{name}", data: "", replace: False
+            ) | try expect_ok
 
-        let matches = (fs.glob(path: root, pattern: "**/*.{txt,md}") | try expect_ok)
+        let matches = fs.glob(path: root, pattern: "**/*.{txt,md}") | try expect_ok
         matches | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
-        (
-            fs.glob(
-                path: root, pattern: "**/*.{txt,md}", max_entries: 2
-            ) | try expect_fs_error(FileSystemError.LimitExceeded)
-        )
-        (
-            fs.glob(path: root, pattern: "{a.txt,[}") | try expect_fs_error(
-                FileSystemError.InvalidInput
-            )
+        fs.glob(
+            path: root, pattern: "**/*.{txt,md}", max_entries: 2
+        ) | try expect_fs_error(FileSystemError.LimitExceeded)
+        fs.glob(path: root, pattern: "{a.txt,[}") | try expect_fs_error(
+            FileSystemError.InvalidInput
         )
 
         let options = GlobOptions(
@@ -62,71 +56,53 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 test "ordinary filesystem misuse retains typed cases":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-errors-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-errors-") | try expect_ok:
         let directory = f"{temporary.path()}/directory"
         let file = f"{temporary.path()}/file"
-        let created = (
-            fs.create_directory(
-                path: directory, recursive: False
-            ) | try expect_ok
+        let created = fs.create_directory(
+            path: directory, recursive: False
+        ) | try expect_ok
+        let child = fs.write_file(
+            path: f"{directory}/child", data: "x", replace: False
+        ) | try expect_ok
+        let written = fs.write_file(
+            path: file, data: "abc", replace: False
+        ) | try expect_ok
+        fs.remove(path: directory, recursive: False) | try expect_fs_error(
+            FileSystemError.NotEmpty
         )
-        let child = (
-            fs.write_file(
-                path: f"{directory}/child", data: "x", replace: False
-            ) | try expect_ok
+        fs.list(path: file) | try expect_fs_error(FileSystemError.InvalidInput)
+        fs.read_file(path: directory) | try expect_fs_error(
+            FileSystemError.InvalidInput
         )
-        let written = (
-            fs.write_file(
-                path: file, data: "abc", replace: False
-            ) | try expect_ok
+        fs.create_directory(path: file, recursive: False) | try expect_fs_error(
+            FileSystemError.AlreadyExists
         )
-        (
-            fs.remove(
-                path: directory, recursive: False
-            ) | try expect_fs_error(FileSystemError.NotEmpty)
-        )
-        (fs.list(path: file) | try expect_fs_error(FileSystemError.InvalidInput))
-        (
-            fs.read_file(path: directory) | try expect_fs_error(
+
+        with let reader = fs.open(path: file, flags: "r", mode: 384) | try expect_ok:
+            reader.write("x") | try expect_fs_error(FileSystemError.InvalidInput)
+            reader.seek(offset: -1, origin: 0) | try expect_fs_error(
                 FileSystemError.InvalidInput
             )
-        )
-        (
-            fs.create_directory(
-                path: file, recursive: False
-            ) | try expect_fs_error(FileSystemError.AlreadyExists)
-        )
-
-        with let reader = (fs.open(path: file, flags: "r", mode: 384) | try expect_ok):
-            (reader.write("x") | try expect_fs_error(FileSystemError.InvalidInput))
-            (
-                reader.seek(
-                    offset: -1, origin: 0
-                ) | try expect_fs_error(FileSystemError.InvalidInput)
-            )
-            (
-                reader.seek(offset: 0, origin: 3) | try expect_fs_error(
-                    FileSystemError.InvalidInput
-                )
+            reader.seek(offset: 0, origin: 3) | try expect_fs_error(
+                FileSystemError.InvalidInput
             )
 
-        with let writer = (fs.open(path: file, flags: "a", mode: 384) | try expect_ok):
-            (writer.read(1) | try expect_fs_error(FileSystemError.InvalidInput))
-            (writer.read_file() | try expect_fs_error(FileSystemError.InvalidInput))
+        with let writer = fs.open(path: file, flags: "a", mode: 384) | try expect_ok:
+            writer.read(1) | try expect_fs_error(FileSystemError.InvalidInput)
+            writer.read_file() | try expect_fs_error(FileSystemError.InvalidInput)
 
 test "filesystem scoped temporary directories and bounded file reads":
     let fs = filesystem()
     var directory = ""
 
-    with let temporary = (fs.temporary("manuscript-stdlib-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-stdlib-") | try expect_ok:
         directory = temporary.path()
 
         let path = f"{directory}/data.txt"
-        let written = (
-            fs.write_file(
-                path: path, data: "hello", replace: False
-            ) | try expect_ok
-        )
+        let written = fs.write_file(
+            path: path, data: "hello", replace: False
+        ) | try expect_ok
         fs.read_file(path: path, max_bytes: 5) | try expect_ok | try expect_equal(
             "hello".to_bytes()
         )
@@ -142,7 +118,7 @@ test "filesystem scoped temporary directories and bounded file reads":
             5
         )
         (fs.list(path: directory) | try expect_ok).length() | try expect_equal(1)
-        with let input = (files().open(path) | try expect_ok):
+        with let input = files().open(path) | try expect_ok:
             (input.read(5) | try expect_ok).get() | try expect_equal("hello".to_bytes())
 
     match fs.stat(path: directory, follow_links: True):
@@ -153,23 +129,21 @@ test "filesystem scoped temporary directories and bounded file reads":
 test "file handles positional I/O stream adapters and closed errors":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-handles-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-handles-") | try expect_ok:
         let path = f"{temporary.path()}/data.txt"
-        let written = (
-            fs.write_file(
-                path: path, data: "abcdef", replace: False
-            ) | try expect_ok
-        )
-        let handle = (fs.open(path: path, flags: "r+", mode: 384) | try expect_ok)
+        let written = fs.write_file(
+            path: path, data: "abcdef", replace: False
+        ) | try expect_ok
+        let handle = fs.open(path: path, flags: "r+", mode: 384) | try expect_ok
         handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
             "cd".to_bytes()
         )
-        (handle.write_at(offset: 1, data: "XY") | try expect_ok)
+        handle.write_at(offset: 1, data: "XY") | try expect_ok
 
-        let resized = (handle.truncate(4) | try expect_ok)
+        let resized = handle.truncate(4) | try expect_ok
         (handle.stat() | try expect_ok).size | try expect_equal(4)
 
-        let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
+        let sought = handle.seek(offset: 0, origin: 0) | try expect_ok
         read_all(input: handle.reader()) | try expect_ok | try expect_equal(
             "aXYd".to_bytes()
         )

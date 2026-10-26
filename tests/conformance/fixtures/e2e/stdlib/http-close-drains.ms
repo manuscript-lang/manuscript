@@ -6,10 +6,10 @@ from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/process.ms" import control
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def handle(request: HttpRequest) -> HttpResponse:
-    sleep(duration(300000000))
+    sleep(nanoseconds(300000000))
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export def main() -> Int:
@@ -19,7 +19,7 @@ export def main() -> Int:
                 let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
                 # Let the handler start.
-                sleep(duration(50000000))
+                sleep(nanoseconds(50000000))
 
                 let start = control().monotonic_time()
                 server.close()
@@ -28,7 +28,7 @@ export def main() -> Int:
                 var text = ""
 
                 while True:
-                    if let chunk = conn.read(timeout: duration(5000000000)):
+                    if let chunk = conn.read(timeout: nanoseconds(5000000000)):
                         if let data = chunk:
                             text = f"{text}{data.decode_utf8().get("?")}"
                             continue

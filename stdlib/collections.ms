@@ -19,7 +19,8 @@ impl List[T]:
     # Returns a deep copy with independent list and nested value storage.
     def clone() -> List[T]: ...
 
-    # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
+    # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`; pass one for indexes that may miss, or use `first()` and `last()`.
+    # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
     def get(index: Int, default: Optional[T] = none) -> ref T: ...
 
     # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
@@ -54,6 +55,14 @@ impl List[T]:
     # Invalid indexes fault.
     var def set(index: Int, value: T) -> Unit: ...
 
+    # Stores value at index in place and returns the element that was there, moving both without copying.
+    # Negative indexes count from the end; invalid indexes fault.
+    var def replace(index: Int, value: T) -> T: ...
+
+    # Exchanges the elements at i and j in place without copying them; equal indexes change nothing.
+    # Negative indexes count from the end; invalid indexes fault.
+    var def swap(i: Int, j: Int) -> Unit: ...
+
     # Removes an element in place; negative indexes count from the end.
     # Invalid indexes fault.
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
@@ -86,7 +95,7 @@ impl List[T]:
     def partition(predicate: Callable[[T], Bool]) -> Partition[T]: ...
 
     # Reverses this list in place.
-    var def reverse_in_place() -> Unit: ...
+    var def reverse() -> Unit: ...
 
     # Returns an independent reversed copy, including nested values.
     def reversed() -> List[T]: ...
@@ -436,3 +445,161 @@ impl SetBuilder[T]:
 
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export def flatten[T](lists: List[List[T]]) -> List[T]: ...
+
+# List operations written in Manuscript. Each interface gathers the operations that need a bound on the element type;
+# a List[T] has them only when T meets the bound. They apply wherever List is used, without an import.
+interface ListIntSum:
+    def sum() -> Int
+
+impl ListIntSum for List[Int]:
+    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
+    # Example: `[1, 2, 3].sum()` is `6`.
+    def sum() -> Int:
+        var total: Int = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListFloatSum:
+    def sum() -> Float
+
+impl ListFloatSum for List[Float]:
+    # Adds the elements left to right with `+` in binary64 arithmetic; an empty list sums to 0.0.
+    # Example: `[1.5, 2.5].sum()` is `4.0`.
+    def sum() -> Float:
+        var total: Float = 0.0
+        for x in self:
+            total += x
+        return total
+
+interface ListInt8Sum:
+    def sum() -> Int8
+
+impl ListInt8Sum for List[Int8]:
+    # Adds the elements left to right with `+`, so Int8 overflow faults; an empty list sums to 0.
+    def sum() -> Int8:
+        var total: Int8 = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListInt16Sum:
+    def sum() -> Int16
+
+impl ListInt16Sum for List[Int16]:
+    # Adds the elements left to right with `+`, so Int16 overflow faults; an empty list sums to 0.
+    def sum() -> Int16:
+        var total: Int16 = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListInt32Sum:
+    def sum() -> Int32
+
+impl ListInt32Sum for List[Int32]:
+    # Adds the elements left to right with `+`, so Int32 overflow faults; an empty list sums to 0.
+    def sum() -> Int32:
+        var total: Int32 = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListFloat32Sum:
+    def sum() -> Float32
+
+impl ListFloat32Sum for List[Float32]:
+    # Adds the elements left to right with `+` in binary32 arithmetic; an empty list sums to 0.0.
+    def sum() -> Float32:
+        var total: Float32 = 0.0
+        for x in self:
+            total += x
+        return total
+
+interface ListOrder[T: Comparable]:
+    def sorted() -> List[T]
+    var def sort() -> Unit
+
+impl ListOrder[T] for List[T]:
+    # Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
+    # Float orders NaN above every other value.
+    # Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
+    def sorted() -> List[T]:
+        return self.sorted(lambda a, b: a.compare(b))
+
+    # Sorts the list in place, stably, in the same order as `sorted()`.
+    # Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
+    var def sort() -> Unit:
+        self.sort(lambda a, b: a.compare(b))
+
+interface ListExtremes[T: Comparable & Clonable]:
+    def min() -> Optional[T]
+    def max() -> Optional[T]
+
+impl ListExtremes[T] for List[T]:
+    # Returns a copy of the least element, or none for an empty list; the first of equal elements wins.
+    # Example: `[3, 1, 2].min()` is `some(1)`; `List[Int]().min()` is `none`.
+    def min() -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        for i in 1..self.length():
+            if self[i].compare(self[at]) < 0:
+                at = i
+        return some(self[at].clone())
+
+    # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
+    # Example: `[3, 1, 2].max()` is `some(3)`.
+    def max() -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        for i in 1..self.length():
+            if self[i].compare(self[at]) > 0:
+                at = i
+        return some(self[at].clone())
+
+interface ListKeyedExtremes[T: Clonable]:
+    def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+    def min_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+
+impl ListKeyedExtremes[T] for List[T]:
+    # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    # Returns a copy of the element, like `find`.
+    # Example: `["bb", "a", "ccc"].max_by(lambda (w: String) -> Int: w.length())` is `some("ccc")`.
+    def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        var best = key(self[0])
+
+        for i in 1..self.length():
+            let k = key(self[i])
+
+            if k.compare(best) > 0:
+                at = i
+                best = k
+
+        return some(self[at].clone())
+
+    # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    # Returns a copy of the element, like `find`.
+    # Example: `["bb", "a", "ccc"].min_by(lambda (w: String) -> Int: w.length())` is `some("a")`.
+    def min_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        var best = key(self[0])
+
+        for i in 1..self.length():
+            let k = key(self[i])
+
+            if k.compare(best) < 0:
+                at = i
+                best = k
+
+        return some(self[at].clone())

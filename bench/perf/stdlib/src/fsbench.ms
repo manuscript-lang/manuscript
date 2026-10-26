@@ -12,13 +12,7 @@ def run(fs: FileSystem, root: String) -> Unit:
         lambda () -> Int:
             var n = 0
             for i in range(0, 200):
-                if (
-                    fs
-                    .write_file_bytes(
-                        f"{root}/f{i}.bin", data, replace: True
-                    )
-                    .is_ok()
-                ):
+                if fs.write_file_bytes(f"{root}/f{i}.bin", data, replace: True).is_ok():
                     n += 1
             return n
     )

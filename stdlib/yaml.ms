@@ -271,11 +271,9 @@ def digit_text(text: String) -> Bool:
 
 def numeric(text: String) -> Bool:
     var clean = text.clone()
-    if clean.starts_with("+") or clean.starts_with("-"): clean = (
-        clean
-        .slice(1, clean.scalar_length())
-        .get("")
-    )
+    if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
+        1, clean.scalar_length()
+    ).get("")
     if (clean == ".inf" or clean == ".Inf" or clean == ".INF"): return True
     if (text == ".nan" or text == ".NaN" or text == ".NAN"): return True
 
@@ -297,11 +295,9 @@ def numeric(text: String) -> Bool:
 
     if exponent.length() == 2:
         var power = exponent.last().get()
-        if power.starts_with("+") or power.starts_with("-"): power = (
-            power
-            .slice(1, power.scalar_length())
-            .get("")
-        )
+        if power.starts_with("+") or power.starts_with("-"): power = power.slice(
+            1, power.scalar_length()
+        ).get("")
         if not digit_text(power): return False
 
     let mantissa = exponent.first().get().split(".")
@@ -551,7 +547,7 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
         advance(var flow)
 
     # Slice once: appending each character to a string is quadratic on long scalars.
-    var text = (flow.chars.slice(start, flow.pos).get([]).join("").trim())
+    var text = flow.chars.slice(start, flow.pos).get([]).join("").trim()
     if flow.delimited: text = fold_plain(text)
     if key: return ok(YamlValue.StringValue(text))
 
@@ -573,7 +569,7 @@ def plain_boundary(text: String, colon: Bool) -> Int:
     var offset = 0
 
     while True:
-        let rest = (text.slice_scalars(offset, text.scalar_length()).get(""))
+        let rest = text.slice_scalars(offset, text.scalar_length()).get("")
         let found = rest.index_of(marker).get(-1)
         if found < 0: return -1
 
@@ -776,11 +772,11 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
         + 1
     )
 
-    for c in (header.slice(1, header.scalar_length()).get("").split("")):
+    for c in header.slice(1, header.scalar_length()).get("").split(""):
         offset += 1
 
         if (c == "+" or c == "-") and mode == "": mode = c
-        elif "123456789".contains(c) and explicit == 0: explicit = (c.parse_int().get())
+        elif "123456789".contains(c) and explicit == 0: explicit = c.parse_int().get()
         else: return error(
             YamlError.InvalidData(
                 line: header_line, column: header_column + offset,
@@ -875,7 +871,7 @@ def block_string(var context: Context, header: String, base: Int) -> Result[
             and pieces.get(-1 - trailing, default: "x") == ""
         ): trailing += 1
         if trailing == pieces.length(): trailing -= 1
-        result = (result.slice(0, (result.scalar_length() - trailing)).get(""))
+        result = result.slice(0, (result.scalar_length() - trailing)).get("")
         if (mode != "-" and content and final_break): result = result.concat("\n")
 
     return ok(YamlValue.StringValue(result))
@@ -892,12 +888,9 @@ def block_value(
             context: context.clone(), delimited: False
         )
         anchor = try anchor_name(var flow)
-        remainder = (
-            remainder
-            .slice(flow.pos, remainder.scalar_length())
-            .get("")
-            .trim_start()
-        )
+        remainder = remainder.slice(
+            flow.pos, remainder.scalar_length()
+        ).get("").trim_start()
 
     var result = YamlValue.Null
 
@@ -1017,13 +1010,9 @@ def sequence_items(
         if line_indent < base: break
         if line_indent != base or not sequence(line.trim_start()): break
 
-        let item = (
-            line
-            .trim_start()
-            .slice(1, (line.trim_start().scalar_length()))
-            .get("")
-            .trim_start()
-        )
+        let item = line.trim_start().slice(
+            1, (line.trim_start().scalar_length())
+        ).get("").trim_start()
         let chain = nested_columns(line, base)
 
         if chain.length() > 0:
@@ -1038,19 +1027,13 @@ def sequence_items(
                 frames.append([])
                 level += 1
 
-            (
-                context
-                .lines
-                .set(
-                    context.index,
-                    pad(innermost).concat(
-                        (
-                            line
-                            .slice(
-                                innermost, line.scalar_length()
-                            )
-                            .get("")
-                        )
+            context.lines.set(
+                context.index,
+                pad(innermost).concat(
+                    (
+                        line
+                        .slice(innermost, line.scalar_length())
+                        .get("")
                     )
                 )
             )
@@ -1079,17 +1062,14 @@ def sequence_items(
         elif sequence(item) or boundary(item, colon: True) >= 0:
             # Treat a compact mapping/sequence as a virtual indented first line.
             # Its column follows the indicator, so extra spaces move the nested base.
-            let marker = (
-                line
-                .trim_start()
-                .slice(1, (line.trim_start().scalar_length()))
-                .get("")
-            )
+            let marker = line.trim_start().slice(
+                1, (line.trim_start().scalar_length())
+            ).get("")
             var gap = indent(marker)
             if gap == 0: gap = 1
 
             let column = base + 1 + gap
-            (context.lines.set(context.index, pad(column).concat(item)))
+            context.lines.set(context.index, pad(column).concat(item))
             values.append(try block(var context, column, (depth + 1)))
         else:
             context.index += 1
@@ -1171,12 +1151,9 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
 
             explicit.add(name.clone())
 
-            let text = (
-                content
-                .slice(colon + 1, content.scalar_length())
-                .get("")
-                .trim_start()
-            )
+            let text = content.slice(
+                colon + 1, content.scalar_length()
+            ).get("").trim_start()
             let key_line = context.index + 1
             context.index += 1
 
@@ -1236,12 +1213,10 @@ export def parse(
         YamlError.LimitExceeded
     )
 
-    var normalized = (text.replace("\r\n", "\n").replace("\r", "\n"))
-    if normalized.starts_with(f"\u{feff}"): normalized = (
-        normalized
-        .slice(1, normalized.scalar_length())
-        .get("")
-    )
+    var normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    if normalized.starts_with(f"\u{feff}"): normalized = normalized.slice(
+        1, normalized.scalar_length()
+    ).get("")
     for code in normalized.scalar_values():
         if (
             (code < 32 and code != 9 and code != 10)
@@ -1288,10 +1263,8 @@ export def parse(
     ):
         let line = context.lines.get(context.index)
         let rest = line.slice(4, line.scalar_length()).get("")
-        if not rest.trim().starts_with("#"): (
-            context
-            .lines
-            .splice(context.index, 1, ["---", rest])
+        if not rest.trim().starts_with("#"): context.lines.splice(
+            context.index, 1, ["---", rest]
         )
 
     if (

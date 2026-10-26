@@ -902,12 +902,10 @@ def directive(var st: St, var mk: Mk, num: Int, text: String, word: String) -> R
             if f.in_else:
                 return error(fatal(num, "extraneous 'else'"))
 
-            (
-                mk.frames.set(
-                    mk.frames.length() - 1,
-                    Frame(
-                        parent: f.parent, cond: f.cond, in_else: True, line: f.line
-                    )
+            mk.frames.set(
+                mk.frames.length() - 1,
+                Frame(
+                    parent: f.parent, cond: f.cond, in_else: True, line: f.line
                 )
             )
 
@@ -953,27 +951,17 @@ def assign(var st: St, num: Int, cs: List[String], eq: Int) -> Result[Unit, Fata
         if let old = st.vars.get(name):
             if old.simple:
                 let v = try expand(var st, plain(num), [], value_raw)
-                (
-                    st.vars.add(
-                        name,
-                        Var(
-                            value: join_sep(old.value, v), simple: True, cmd: False
-                        )
+                st.vars.add(
+                    name,
+                    Var(
+                        value: join_sep(old.value, v), simple: True, cmd: False
                     )
                 )
             else:
-                (
-                    st
-                    .vars
-                    .add(
-                        name,
-                        Var(
-                            value: join_sep(
-                                old.value, value_raw
-                            ),
-                            simple: False,
-                            cmd: False
-                        )
+                st.vars.add(
+                    name,
+                    Var(
+                        value: join_sep(old.value, value_raw), simple: False, cmd: False
                     )
                 )
         else:
@@ -1046,14 +1034,10 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
 
     for t in r.targets:
         if t.contains("%"):
-            (
-                mk
-                .pats
-                .append(
-                    PatRule(
-                        pattern: t, normal: r.normal.clone(), order: r.order.clone(),
-                        recipe: r.recipe.clone()
-                    )
+            mk.pats.append(
+                PatRule(
+                    pattern: t, normal: r.normal.clone(), order: r.order.clone(),
+                    recipe: r.recipe.clone()
                 )
             )
         elif let old = mk.rules.get(t).clone():
@@ -1074,15 +1058,11 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
 
             mk.rules.add(t, e)
         else:
-            (
-                mk
-                .rules
-                .add(
-                    t,
-                    Explicit(
-                        name: t, normal: r.normal.clone(), order: r.order.clone(),
-                        recipe: r.recipe.clone()
-                    )
+            mk.rules.add(
+                t,
+                Explicit(
+                    name: t, normal: r.normal.clone(), order: r.order.clone(),
+                    recipe: r.recipe.clone()
                 )
             )
 
@@ -1521,14 +1501,10 @@ def set_vars(var st: St, args: List[String]) -> List[String]:
         let e = index_of(cs, "=")
 
         if e > 0:
-            (
-                st
-                .vars
-                .add(
-                    cs.take(e).join(""),
-                    Var(
-                        value: cs.drop(e + 1).join(""), simple: False, cmd: True
-                    )
+            st.vars.add(
+                cs.take(e).join(""),
+                Var(
+                    value: cs.drop(e + 1).join(""), simple: False, cmd: True
                 )
             )
         else:

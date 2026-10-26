@@ -146,7 +146,7 @@ fn read_bindings() -> Result<Bindings, String> {
 
 /// The bundled source modules that extend native standard types (List operations, Bytes codecs); their
 /// methods apply to every program.
-const EXTENSION_MODULES: [&str; 2] = ["@std/lists.ms", "@std/bytecodecs.ms"];
+const EXTENSION_MODULES: [&str; 2] = ["@std/collections.ms+source", "@std/bytes.ms+source"];
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -662,7 +662,7 @@ fn fold_inherent_impls(module: &Module) -> Result<Vec<DeclRef>, String> {
 
 fn has_implementation(d: &DeclRef) -> bool {
     let own = match &d.decl().kind {
-        DeclKind::Fn(f) => !f.body.is_empty(),
+        DeclKind::Fn(f) => !f.body.is_empty() || f.external,
         DeclKind::Const(_) => true,
         DeclKind::Test(t) => !t.body.is_empty(),
         _ => false,
@@ -678,6 +678,261 @@ fn has_inherent_body(module: &Module) -> bool {
     })
 }
 
+/// Whether a top-level declaration carries an implementation body.
+fn decl_has_body(d: &Decl) -> bool {
+    match &d.kind {
+        DeclKind::Fn(f) => !f.body.is_empty() || f.external,
+        DeclKind::Const(_) => true,
+        DeclKind::Test(t) => !t.body.is_empty(),
+        DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
+        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
+    }
+}
+
+fn fresh(ids: &mut u32) -> NodeId {
+    *ids += 1;
+    NodeId(*ids - 1)
+}
+
+fn renumber_type(t: &TypeRef, ids: &mut u32) -> Result<TypeRef, String> {
+    let kind = match &t.kind {
+        TypeKind::Named { name, args } => TypeKind::Named {
+            name: *name,
+            args: args
+                .iter()
+                .map(|a| renumber_type(a, ids))
+                .collect::<Result<_, _>>()?,
+        },
+        TypeKind::Fn { params, result } => TypeKind::Fn {
+            params: params
+                .iter()
+                .map(|p| renumber_param(p, ids))
+                .collect::<Result<_, _>>()?,
+            result: Box::new(renumber_type(result, ids)?),
+        },
+    };
+    Ok(TypeRef {
+        id: fresh(ids),
+        pos: t.pos,
+        kind,
+    })
+}
+
+fn renumber_param(
+    p: &ms_syntax::ast::Param,
+    ids: &mut u32,
+) -> Result<ms_syntax::ast::Param, String> {
+    if p.default.is_some() {
+        return Err(format!(
+            "a source method on a native type cannot have a default argument; declare it through an interface: {}",
+            position_text(n(""), p.pos)
+        ));
+    }
+    let ty = match &p.ty {
+        Some(t) => Some(renumber_type(t, ids)?),
+        None => None,
+    };
+    Ok(ms_syntax::ast::Param {
+        id: fresh(ids),
+        pos: p.pos,
+        name: p.name,
+        ty,
+        default: None,
+        mutable: p.mutable,
+    })
+}
+
+/// The interface and contract `impl` a bodied inherent `impl Receiver[T]:` becomes in the source
+/// half: `impl Receiver[T]:` cannot declare operations on a type the half does not own, so its
+/// methods are declared by a generated unexported interface that the receiver implements.
+fn interface_for_inherent(
+    parsed: &Module,
+    d: &Decl,
+    i: &ImplDecl,
+    ids: &mut u32,
+    used: &mut Vec<String>,
+) -> Result<(Decl, Decl), String> {
+    let at = || position_text(n(&parsed.file), d.pos);
+    let TypeKind::Named { name, args } = &i.receiver.kind else {
+        return Err(format!("an inherent impl must name a type: {}", at()));
+    };
+    let mut params = Vec::new();
+    for a in args {
+        let TypeKind::Named { name, args } = &a.kind else {
+            return Err(format!(
+                "inherent impl must repeat the type parameters: {}",
+                at()
+            ));
+        };
+        if !args.is_empty() {
+            return Err(format!(
+                "inherent impl must repeat the type parameters: {}",
+                at()
+            ));
+        }
+        params.push(TypeParam {
+            id: fresh(ids),
+            pos: a.pos,
+            name: *name,
+            bounds: Vec::new(),
+            default: None,
+        });
+    }
+    let base = format!("{}SourceMethods", name.as_str().replace('.', "_"));
+    let mut interface_name = base.clone();
+    while used.contains(&interface_name) {
+        interface_name = format!("{base}{}", used.len());
+    }
+    used.push(interface_name.clone());
+    let interface_name = ms_syntax::Symbol::intern(&interface_name);
+    let mut methods = Vec::new();
+    for m in &i.methods {
+        let mut type_params = Vec::new();
+        for t in &m.func.type_params {
+            type_params.push(TypeParam {
+                id: fresh(ids),
+                pos: t.pos,
+                name: t.name,
+                bounds: t
+                    .bounds
+                    .iter()
+                    .map(|b| renumber_type(b, ids))
+                    .collect::<Result<_, _>>()?,
+                default: match &t.default {
+                    Some(t) => Some(renumber_type(t, ids)?),
+                    None => None,
+                },
+            });
+        }
+        let func = Func {
+            name: m.func.name,
+            type_params,
+            params: m
+                .func
+                .params
+                .iter()
+                .map(|p| renumber_param(p, ids))
+                .collect::<Result<_, _>>()?,
+            result: renumber_type(&m.func.result, ids)?,
+            result_ref: m.func.result_ref,
+            body: Vec::new(),
+            external: false,
+        };
+        methods.push(Method {
+            id: fresh(ids),
+            pos: m.pos,
+            func,
+            mutating: m.mutating,
+        });
+    }
+    let contract = TypeRef {
+        id: fresh(ids),
+        pos: i.receiver.pos,
+        kind: TypeKind::Named {
+            name: interface_name,
+            args: args
+                .iter()
+                .map(|a| renumber_type(a, ids))
+                .collect::<Result<_, _>>()?,
+        },
+    };
+    let interface = Decl {
+        id: fresh(ids),
+        pos: d.pos,
+        export: false,
+        synthetic: false,
+        kind: DeclKind::Interface(InterfaceDecl {
+            name: interface_name,
+            type_params: params,
+            methods,
+        }),
+    };
+    let implementation = Decl {
+        id: fresh(ids),
+        pos: d.pos,
+        export: false,
+        synthetic: false,
+        kind: DeclKind::Impl(ImplDecl {
+            contract: Some(contract),
+            receiver: i.receiver.clone(),
+            methods: i.methods.clone(),
+        }),
+    };
+    Ok((interface, implementation))
+}
+
+/// Splits a file that has both native operations (an inherent `impl` with bodyless methods) and
+/// bodies into a native module and a source module named `<file>+source`. The source half takes
+/// the bodied declarations and the interfaces only they implement; the rest stays native. Source
+/// methods on a native type are written through an interface, so a bodied inherent method is an
+/// error. Returns `None` for any other file.
+fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
+    let bodyless_inherent = |d: &Decl| {
+        matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()
+            && i.methods.iter().any(|m| m.func.body.is_empty()))
+    };
+    if !parsed.decls.iter().any(bodyless_inherent) || !parsed.decls.iter().any(decl_has_body) {
+        return Ok(None);
+    }
+    let implements = |d: &Decl, name: Name| matches!(&d.kind, DeclKind::Impl(i) if i.contract.as_ref().is_some_and(|c| n(c.name()) == name));
+    let mut native = Vec::new();
+    let mut source = Vec::new();
+    let mut ids = parsed.node_count;
+    let mut used: Vec<String> = Vec::new();
+    for d in &parsed.decls {
+        let to_source = match &d.kind {
+            DeclKind::Impl(i) if i.contract.is_none() && decl_has_body(d) => {
+                let (interface, implementation) =
+                    interface_for_inherent(parsed, d, i, &mut ids, &mut used)?;
+                source.push(interface);
+                source.push(implementation);
+                continue;
+            }
+            DeclKind::Interface(i) => {
+                let name = i.name;
+                parsed.decls.iter().any(|x| implements(x, name))
+                    && parsed
+                        .decls
+                        .iter()
+                        .filter(|x| implements(x, name))
+                        .all(decl_has_body)
+            }
+            _ => decl_has_body(d),
+        };
+        if to_source {
+            source.push(d.clone());
+        } else {
+            native.push(d.clone());
+        }
+    }
+    // The source half names the native half's types by importing its own file; the native half
+    // does not import itself.
+    let half = |file: Arc<str>, decls: Vec<Decl>, own: bool| Module {
+        imports: parsed
+            .imports
+            .iter()
+            .filter(|i| own || *i.path != *parsed.file)
+            .cloned()
+            .collect(),
+        file,
+        source: parsed.source.clone(),
+        decls,
+        omitted: parsed.omitted.clone(),
+        recovered: parsed.recovered.clone(),
+        node_count: parsed.node_count,
+    };
+    let mut source_half = half(
+        Arc::from(format!("{}+source", parsed.file).as_str()),
+        source,
+        true,
+    );
+    source_half.node_count = ids;
+    Ok(Some((
+        half(parsed.file.clone(), native, false),
+        source_half,
+    )))
+}
+
 fn load() -> Result<(), String> {
     let bindings = read_bindings()?;
     world(|w| w.runtime_symbols = bindings.runtime_symbols.clone());
@@ -686,6 +941,14 @@ fn load() -> Result<(), String> {
         let file: Arc<str> = Arc::from(format!("@std/{name}").as_str());
         let parsed =
             ms_syntax::parser::parse(&file, source).map_err(|d| format!("parse {file}: {d}"))?;
+        // A file that declares native operations and also has bodies keeps the native declarations
+        // under its own name and checks the bodies as a source module named `<file>+source`.
+        if let Some((native, source)) = split_mixed(&parsed)? {
+            let decls = fold_inherent_impls(&native)?;
+            modules.push(Rc::new(ModuleData::new(&native, decls, native.node_count)));
+            modules.push(crate::load_module(&source));
+            continue;
+        }
         // A module with implementation bodies is checked like user source, so its inherent
         // methods take the same desugaring and become ordinary methods wherever the type is used.
         if has_inherent_body(&parsed) {
@@ -1035,10 +1298,12 @@ impl Loader<'_> {
                         );
                     }
                     self.c.scope = self.c.variable_scope(&vars);
+                    self.c.declare_self(&s.ty());
                     self.c.operation_variables(s.id, method);
                     let ty = self
                         .c
                         .signature(&method.func.params, Some(&method.func.result));
+                    self.c.check_self_use(&ty, method.pos);
                     def.operations.borrow_mut().push(Operation {
                         name: method.func.name,
                         ty,
@@ -1289,5 +1554,47 @@ impl Loader<'_> {
             return Err(format!("invalid standard defaults: {}", text.join("; ")));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn halves(text: &str) -> Result<Option<(Module, Module)>, String> {
+        let file: Arc<str> = Arc::from("@std/t.ms");
+        split_mixed(&ms_syntax::parser::parse(&file, text).expect("parses"))
+    }
+
+    #[test]
+    fn a_bodied_inherent_impl_becomes_an_interface_and_a_contract_impl() {
+        let text = "export type Box[T]: ...\n\nimpl Box[T]:\n    def native() -> Int: ...\n\nimpl Box[T]:\n    def size() -> Int:\n        return 1\n";
+        let (native, source) = halves(text).unwrap().expect("mixed");
+        assert_eq!(native.file.as_ref(), "@std/t.ms");
+        assert_eq!(source.file.as_ref(), "@std/t.ms+source");
+        assert_eq!(native.decls.len(), 2);
+        let kinds: Vec<&str> = source
+            .decls
+            .iter()
+            .map(|d| match &d.kind {
+                DeclKind::Interface(_) => "interface",
+                DeclKind::Impl(i) if i.contract.is_some() => "contract impl",
+                _ => "other",
+            })
+            .collect();
+        assert_eq!(kinds, ["interface", "contract impl"]);
+    }
+
+    #[test]
+    fn a_default_argument_on_a_source_method_is_rejected() {
+        let text = "export type Box: ...\n\nimpl Box:\n    def native() -> Int: ...\n\nimpl Box:\n    def size(n: Int = 1) -> Int:\n        return n\n";
+        let error = halves(text).unwrap_err();
+        assert!(error.contains("default argument"), "{error}");
+    }
+
+    #[test]
+    fn a_file_without_bodies_is_not_split() {
+        let text = "export type Box: ...\n\nimpl Box:\n    def native() -> Int: ...\n";
+        assert!(halves(text).unwrap().is_none());
     }
 }

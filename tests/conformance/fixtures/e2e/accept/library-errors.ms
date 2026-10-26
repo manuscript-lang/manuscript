@@ -388,8 +388,8 @@ def check_missing_file() -> Result[Unit, Error]:
     match fs.stat(path: missing, follow_links: True):
         case ok(_):
             return fail(message: "missing file stat succeeded")
-        case error(cause):
-            try expect_equal(cause.message(), "filesystem: file or directory not found")
+        case error(stat_cause):
+            try expect_equal(stat_cause.message(), "filesystem: file or directory not found")
 
     let removed = try fs.remove(path: directory, recursive: False)
     return ok(())

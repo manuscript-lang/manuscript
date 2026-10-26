@@ -159,10 +159,8 @@ def answer_mx(socket: Shared[DatagramSocket]) -> Result[Int, NetworkError]:
             116, 0
         ]
     )
-    (
-        try socket.get().send_bytes(
-            header.concat(question).concat(record).concat(name), query.sender, 2.seconds
-        )
+    try socket.get().send_bytes(
+        header.concat(question).concat(record).concat(name), query.sender, 2.seconds
     )
     return ok(1)
 

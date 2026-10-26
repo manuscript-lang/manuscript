@@ -3,7 +3,7 @@ from "@std/core.ms" import TextError, panic
 from "@std/core.ms" import category, ErrorCategory
 from "@std/fs.ms" import FileSystemError
 from "@std/process.ms" import SystemError
-from "@std/process.ms" import ProcessError, CommandError
+from "@std/process.ms" import ControlError, CommandError
 from "@std/net.ms" import NetworkError
 from "@std/http.ms" import HttpError
 from "@std/io.ms" import IoError
@@ -42,7 +42,7 @@ def yaml_error(cause: Error) -> Result[YamlError, Error]:
 test "shared categories keep exact standard domain values":
     (is_missing(FileSystemError.NotFound)) | try expect_true
     (is_missing(SystemError.NotFound)) | try expect_true
-    (is_missing(ProcessError.NotFound)) | try expect_true
+    (is_missing(ControlError.NotFound)) | try expect_true
     category(IoError.Unavailable) | try expect_equal(some(ErrorCategory.Unavailable))
     category(JsonError.InvalidData) | try expect_equal(some(ErrorCategory.InvalidData))
     category(FileSystemError.AlreadyExists) | try expect_equal(

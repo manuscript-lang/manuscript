@@ -598,3 +598,101 @@ fn a_closure_that_escapes_the_callee_is_kept_correct() {
     let m = inlined(&src);
     assert_eq!(outcome(&before), outcome(&m), "{}", print_module(&m));
 }
+
+fn indirect_calls(m: &Module) -> usize {
+    m.funcs
+        .iter()
+        .flat_map(|f| f.blocks.iter())
+        .flat_map(|b| b.insts.iter())
+        .filter(|i| i.op == Op::CallInd)
+        .count()
+}
+
+/// A reader of the `key` closure field of `Holder`, and two constructors.
+fn holder_program(second: &str) -> String {
+    format!(
+        r#"module "holder"
+entry @main
+record Holder {{ key: fn(int) -> int }}
+fn @double(%env: ptr, %x: int) -> int closure() {{
+b0:
+  %r: int = iadd.chk %x, %x
+  ret %r
+}}
+fn @negate(%env: ptr, %x: int) -> int closure() {{
+b0:
+  %z: int = iconst 0
+  %r: int = isub.chk %z, %x
+  ret %r
+}}
+fn @apply(%h: Holder, %x: int) -> int {{
+b0:
+  %f: fn(int) -> int = rec.get Holder.key %h
+  %r: int = call.ind (%f, %x)
+  ret %r
+}}
+fn @main() -> int {{
+b0:
+  %f: fn(int) -> int = closure.new @double
+  %h: Holder = rec.new Holder %f
+{second}
+  %x: int = iconst 21
+  %a: int = call @apply (%h, %x)
+  %b: int = call @apply (%g, %x)
+  %r: int = iadd.chk %a, %b
+  drop %h
+  drop %g
+  ret %r
+}}
+"#
+    )
+}
+
+#[test]
+fn a_closure_field_that_every_constructor_sets_to_the_same_code_is_called_directly() {
+    let src = holder_program(
+        "  %f2: fn(int) -> int = closure.new @double\n  %g: Holder = rec.new Holder %f2",
+    );
+    let before = outcome(&module(&src));
+    let mut m = module(&src);
+    opt::inline::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+    assert_eq!(outcome(&m), before);
+    assert_eq!(before.0, Ok(84));
+    assert_eq!(indirect_calls(&m), 0, "{}", print_module(&m));
+}
+
+#[test]
+fn a_closure_field_set_to_different_code_keeps_its_indirect_call() {
+    let src = holder_program(
+        "  %f2: fn(int) -> int = closure.new @negate\n  %g: Holder = rec.new Holder %f2",
+    );
+    let before = outcome(&module(&src));
+    let mut m = module(&src);
+    opt::inline::run(&mut m);
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&m)));
+    assert_eq!(outcome(&m), before);
+    assert_eq!(before.0, Ok(21));
+    assert_eq!(indirect_calls(&m), 2, "{}", print_module(&m));
+}
+
+/// Thousands of inlinable calls in one block take linear time: each split moves only the
+/// instructions since the previous one.
+#[test]
+fn many_calls_in_one_block_inline_in_linear_time() {
+    let n = 20_000;
+    let mut src = String::from(
+        "module \"main\"\nfile 0 \"a.ms\"\nentry @main\n\n\
+         fn @id(%0: int) -> int {\nb0:\n  ret %0\n}\n\nfn @main() -> int export {\nb0:\n  %0: int = iconst 1\n",
+    );
+    for i in 1..=n {
+        src.push_str(&format!("  %{i}: int = call @id (%{})\n", i - 1));
+    }
+    src.push_str(&format!("  ret %{n}\n}}\n"));
+    let mut m = module(&src);
+    let start = std::time::Instant::now();
+    ms_mir::opt::inline::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("verify after");
+    assert!(!print_module(&m).contains("call @id"));
+}

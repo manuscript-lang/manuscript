@@ -55,6 +55,14 @@ struct Options {
     repeat: usize,
     shuffle: Option<i64>,
     timeout: Option<Duration>,
+    /// Whether `--timeout` was given, so `--fuzz` knows not to replace it.
+    timeout_set: bool,
+    /// Cases per property (`MS_TEST_RUNS` for `@std/test/property.ms`).
+    runs: Option<u64>,
+    /// First property case seed (`MS_TEST_SEED`).
+    seed: Option<i64>,
+    /// Per-property time budget (`MS_TEST_FUZZ_MS`); properties then run until it expires.
+    fuzz: Option<Duration>,
     /// Arguments for the programs under test.
     program: Vec<String>,
 }
@@ -100,7 +108,35 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
                                 .map_err(|_| "invalid --shuffle; use an integer seed")?,
                         );
                     }
+                    "--runs" => {
+                        options.runs = Some(
+                            value
+                                .parse::<u64>()
+                                .ok()
+                                .filter(|n| *n > 0)
+                                .ok_or("invalid --runs; use a positive integer")?,
+                        );
+                    }
+                    "--seed" => {
+                        options.seed = Some(
+                            value
+                                .parse::<i64>()
+                                .map_err(|_| "invalid --seed; use an integer seed")?,
+                        );
+                    }
+                    "--fuzz" => {
+                        let nanos = crate::duration::parse(value)
+                            .filter(|n| *n > 0)
+                            .ok_or_else(|| {
+                                format!(
+                                    "invalid --fuzz {value:?}; use a positive duration such as 30s or 5m"
+                                )
+                            })?;
+                        options.fuzz =
+                            Some(Duration::from_nanos(nanos.min(u64::MAX as i128) as u64));
+                    }
                     "--timeout" => {
+                        options.timeout_set = true;
                         let nanos = crate::duration::parse(value)
                             .filter(|n| *n >= 0)
                             .ok_or_else(|| {
@@ -119,6 +155,10 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
     }
     for pattern in [&options.matching, &options.exclude] {
         crate::regexp::validate(pattern)?;
+    }
+    // A fuzz budget applies to every property in a test, so the default limit would cut it short.
+    if options.fuzz.is_some() && !options.timeout_set {
+        options.timeout = None;
     }
     options.program = args[index..].to_vec();
     Ok(options)
@@ -412,10 +452,21 @@ impl Runner<'_> {
     /// Run test `index` in its own process.
     fn run_one(&self, index: usize, out: &mut Out) -> Ran {
         let stops = Stops::catch();
-        let spawned = Command::new(self.executable)
+        let mut command = Command::new(self.executable);
+        command
             .arg(index.to_string())
             .args(&self.options.program)
-            .current_dir(self.working)
+            .current_dir(self.working);
+        if let Some(runs) = self.options.runs {
+            command.env("MS_TEST_RUNS", runs.to_string());
+        }
+        if let Some(seed) = self.options.seed {
+            command.env("MS_TEST_SEED", seed.to_string());
+        }
+        if let Some(fuzz) = self.options.fuzz {
+            command.env("MS_TEST_FUZZ_MS", fuzz.as_millis().to_string());
+        }
+        let spawned = command
             .stdin(Stdio::inherit())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -715,6 +766,20 @@ mod tests {
         assert_eq!(options.repeat, 3);
         assert_eq!(options.timeout, Some(Duration::from_secs(2)));
         assert_eq!(options.program, ["x", "--list"]);
+    }
+
+    #[test]
+    fn property_options_are_read_and_fuzz_replaces_the_default_timeout() {
+        let options = parse_options(&args(&["--runs=500", "--seed=-7", "--fuzz=30s"])).unwrap();
+        assert_eq!(options.runs, Some(500));
+        assert_eq!(options.seed, Some(-7));
+        assert_eq!(options.fuzz, Some(Duration::from_secs(30)));
+        assert_eq!(options.timeout, None);
+        let explicit = parse_options(&args(&["--fuzz=30s", "--timeout=5m"])).unwrap();
+        assert_eq!(explicit.timeout, Some(Duration::from_secs(300)));
+        assert!(parse_options(&args(&["--runs=0"])).is_err());
+        assert!(parse_options(&args(&["--seed=x"])).is_err());
+        assert!(parse_options(&args(&["--fuzz=0s"])).is_err());
     }
 
     #[test]

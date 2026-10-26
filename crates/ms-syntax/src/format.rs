@@ -206,7 +206,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
     if current == Tok::LParen && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket) {
         return false;
     }
-    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::RBracket) {
+    if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
         return false;
     }
     if previous == Tok::Minus
@@ -440,7 +440,8 @@ fn layout_token(kind: Tok) -> bool {
 }
 
 fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
-    let mut source = group_statement_expressions(file, source)?;
+    let source = group_statement_expressions(file, source, true)?;
+    let mut source = group_statement_expressions(file, &source, false)?;
     let mut module = parse(file, &source)?;
     let mut tokens = lex(file, &source)?.tokens;
     if let Some(compact) = compact_callback_suites(&module, &tokens, &source) {
@@ -488,14 +489,25 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
     }
     let mut output = String::new();
     let mut offset = 0usize;
-    for node in &nodes {
+    for (index, node) in nodes.iter().enumerate() {
         let Some(gid) = node.group else { continue };
         let g = &layout.groups[gid];
         output.push_str(&source[offset..g.open.lo as usize]);
         let line = output.rsplit('\n').next().unwrap_or("");
         let indent = indent_of(line);
         let column = line.chars().count();
-        output.push_str(&layout.group(gid, indent, column, 0));
+        // Only a method call in a chain counts what follows it; other groups
+        // (type arguments, clause patterns) keep their own line.
+        let chained = g.open.kind == Tok::LParen
+            && index >= 2
+            && nodes[index - 1].tok.kind == Tok::Name
+            && nodes[index - 2].tok.kind == Tok::Dot;
+        let following = if chained {
+            layout.following_width(&nodes[index + 1..], true)
+        } else {
+            0
+        };
+        output.push_str(&layout.group(gid, indent, column, following));
         offset = g.close.hi as usize;
     }
     output.push_str(&source[offset..]);
@@ -600,6 +612,13 @@ fn suite_expression(mut e: &Expr) -> bool {
         e = operand;
     }
     matches!(e.kind, ExprKind::Lambda(_) | ExprKind::Match { .. })
+}
+
+fn is_arith(k: Tok) -> bool {
+    matches!(
+        k,
+        Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash | Tok::Percent
+    )
 }
 
 fn is_open(k: Tok) -> bool {
@@ -998,6 +1017,35 @@ impl<'a> Layout<'a> {
         indent_of(self.lines[line as usize - 1])
     }
 
+    /// Width of the text after a group on its line, up to the next group that
+    /// has its own continuation boundary: its contents must not force this
+    /// group (such as a list before a map callback) to expand as well.
+    fn following_width(&self, rest: &[Node], clause: bool) -> usize {
+        let mut tail: Vec<Node> = Vec::new();
+        for next in rest {
+            if matches!(next.tok.kind, Tok::Newline | Tok::Comment)
+                || (clause && next.tok.kind == Tok::Colon)
+            {
+                break;
+            }
+            let mut next = *next;
+            if let Some(ng) = next.group
+                && !self.groups[ng].nodes.is_empty()
+                && !(clause && self.groups[ng].nodes.len() <= 2)
+            {
+                next.group = None;
+                tail.push(next);
+                break;
+            }
+            tail.push(next);
+        }
+        let mut following = self.flat(&tail).chars().count();
+        if tail.first().is_some_and(|t| t.space) {
+            following += 1;
+        }
+        following
+    }
+
     fn sequence(&self, nodes: &[Node], indent: usize, column: usize, prefix: bool) -> String {
         struct W {
             out: String,
@@ -1076,29 +1124,7 @@ impl<'a> Layout<'a> {
                 w.write(" ");
             }
             if let Some(gid) = node.group {
-                let mut tail: Vec<Node> = Vec::new();
-                for next in &nodes[index + 1..] {
-                    if next.tok.kind == Tok::Newline || next.tok.kind == Tok::Comment {
-                        break;
-                    }
-                    let mut next = *next;
-                    if let Some(ng) = next.group
-                        && !self.groups[ng].nodes.is_empty()
-                    {
-                        // The next group has its own continuation
-                        // boundary. Its contents must not force this group
-                        // (such as a list before a map callback) to
-                        // expand as well.
-                        next.group = None;
-                        tail.push(next);
-                        break;
-                    }
-                    tail.push(next);
-                }
-                let mut following = self.flat(&tail).chars().count();
-                if tail.first().is_some_and(|t| t.space) {
-                    following += 1;
-                }
+                let following = self.following_width(&nodes[index + 1..], false);
                 let text = self.group(gid, w.line_indent, w.column, following);
                 w.write(&text);
                 last_line = self.groups[gid].close.pos.line;
@@ -1223,7 +1249,7 @@ fn trim_trailing_comma<'n>(_: &Layout, nodes: &'n [Node]) -> &'n [Node] {
 
 /// Ordinary newlines cannot split ungrouped expressions. Adds grouping only
 /// around a statement's complete value, retaining its precedence and inline suite.
-fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String> {
+fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PResult<String> {
     let module = parse(file, source)?;
     let lexed = lex(file, source)?;
     let tokens = &lexed.tokens;
@@ -1248,13 +1274,79 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
         starts: HashMap<u32, usize>,
         pairs: HashMap<usize, usize>,
         insert: HashMap<usize, String>,
+        remove: Vec<(usize, usize, String)>,
+        strip: bool,
     }
     impl G<'_> {
+        /// Parentheses around a whole method chain only add a line; the
+        /// layout pass restores them when the chain cannot hug its last call.
+        fn unwrap_chain(&mut self, start: usize) {
+            let tokens = self.tokens;
+            let Some(&close) = self.pairs.get(&start) else {
+                return;
+            };
+            if tokens[start].kind != Tok::LParen {
+                return;
+            }
+            let before = start.checked_sub(1).map(|i| tokens[i].kind);
+            if !matches!(
+                before,
+                None | Some(Tok::Assign | Tok::Return | Tok::Newline | Tok::Indent | Tok::Dedent)
+            ) {
+                return;
+            }
+            let after = tokens.get(close + 1).map(|t| t.kind);
+            if !matches!(
+                after,
+                None | Some(Tok::Newline | Tok::Dedent | Tok::Colon | Tok::Eof)
+            ) {
+                return;
+            }
+            let (mut depth, mut dots) = (0, 0);
+            for t in &tokens[start + 1..close] {
+                match t.kind {
+                    k if is_open(k) => depth += 1,
+                    Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
+                    Tok::Dot if depth == 0 => dots += 1,
+                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Lambda | Tok::Def => return,
+                    Tok::If | Tok::Else => return,
+                    k if depth == 0
+                        && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
+                    {
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+            let inner = &self.source[tokens[start].hi as usize..tokens[close].lo as usize];
+            if dots >= 1 && !inner.contains('#') && tokens[start + 1].kind != Tok::Dot {
+                let mut flat = String::new();
+                let mut code: Vec<Token> = Vec::new();
+                for t in &tokens[start + 1..close] {
+                    code.push(*t);
+                    if code.len() > 1 && token_space(&code, code.len() - 1) {
+                        flat.push(' ');
+                    }
+                    flat.push_str(&self.source[t.lo as usize..t.hi as usize]);
+                }
+                self.remove
+                    .push((tokens[start].lo as usize, tokens[close].hi as usize, flat));
+            }
+        }
+
         fn wrap(&mut self, start: usize) {
+            if self.strip {
+                return;
+            }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
+            let mut calls: Vec<(usize, usize)> = Vec::new();
             while end < tokens.len() {
                 if let Some(&close) = self.pairs.get(&end) {
+                    // A call with a trivial argument gains nothing from breaking.
+                    if tokens[end].kind == Tok::LParen && close > end + 3 {
+                        calls.push((end, close));
+                    }
                     end = close + 1;
                     continue;
                 }
@@ -1295,11 +1387,30 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
                 }
                 flat.push_str(&self.source[t.lo as usize..t.hi as usize]);
             }
-            let mut width = tokens[start].pos.column as usize - 1 + flat.chars().count();
+            let column = tokens[start].pos.column as usize - 1;
+            let mut width = column + flat.chars().count();
             if end < tokens.len() && tokens[end].kind == Tok::Colon {
                 width += 1; // The condition's suite colon occupies a column too.
             }
-            if width > WIDTH && (booleans + operators > 0 || dots >= 2) {
+            // A chain breaks inside a call whose opening parenthesis still fits
+            // on the first line, rather than wrapping the whole chain.
+            let hugs = booleans + operators == 0
+                && calls.iter().any(|&(open, _)| {
+                    let mut head = column;
+                    let mut code: Vec<Token> = Vec::new();
+                    for t in &tokens[start..=open] {
+                        if layout_token(t.kind) {
+                            continue;
+                        }
+                        code.push(*t);
+                        if code.len() > 1 && token_space(&code, code.len() - 1) {
+                            head += 1;
+                        }
+                        head += (t.hi - t.lo) as usize;
+                    }
+                    head <= WIDTH
+                });
+            if width > WIDTH && !hugs && (booleans + operators > 0 || dots >= 2) {
                 self.insert.entry(from).or_default().push('(');
                 self.insert.entry(to).or_default().insert(0, ')');
             }
@@ -1366,7 +1477,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
         starts,
         pairs,
         insert: HashMap::new(),
+        remove: Vec::new(),
+        strip,
     };
+    if strip {
+        for start in 0..tokens.len() {
+            g.unwrap_chain(start);
+        }
+    }
     for d in &module.decls {
         // A constant's synthetic statement starts at its initializer, which
         // may be text, so it bypasses the keyword and text-statement handling.
@@ -1377,6 +1495,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str) -> PResult<String>
             g.wrap(start);
         }
         visit::walk_decl(&mut g, d);
+    }
+    if strip {
+        let mut result = source.to_string();
+        g.remove.sort_unstable_by(|a, b| b.cmp(a));
+        for (from, to, flat) in &g.remove {
+            result.replace_range(*from..*to, flat);
+        }
+        return Ok(result);
     }
     let mut offsets: Vec<usize> = g.insert.keys().copied().collect();
     offsets.sort_unstable_by(|a, b| b.cmp(a));

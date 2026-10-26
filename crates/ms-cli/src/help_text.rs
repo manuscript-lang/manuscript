@@ -21,7 +21,7 @@ Commands:
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  guide          Print the language cheat sheet
+  guide          Print the language cheat sheet, or explain diagnostic codes
   help           Show help for a command
   version        Print the compiler version
 
@@ -155,6 +155,9 @@ Options:
   --fail-fast         Stop after the first failed test
   --repeat <count>     Run the selected tests count times
   --shuffle <seed>     Shuffle with a reproducible integer seed
+  --runs <count>       Cases per property test from @std/test/property.ms (default 100)
+  --seed <seed>        Start property tests at this integer seed to replay a failure
+  --fuzz <duration>    Run each property for this long, with fresh seeds, instead of a fixed case count; disables the default --timeout
   --watch              Rebuild and rerun after each saved source change
   --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive)
   --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
@@ -163,6 +166,8 @@ Options:
 
 Examples:
   ms test test.ms
+  ms test ms.toml --fuzz 30s
+  ms test ms.toml --seed 1234 --filter "sorting"
   ms test ms.toml --build-type Debug
   ms test ms.toml --filter "nick collisions" --timeout 10s
 "#;
@@ -331,16 +336,22 @@ Examples:
   ms search_symbol json.parse
 "#;
 
-pub const HELP_GUIDE: &str = r#"Usage: ms guide
+pub const HELP_GUIDE: &str = r#"Usage: ms guide [code...] [--json]
 
-Print the language cheat sheet: syntax, types, errors, and a checked example
-program. Look symbols up with ms search_symbol.
+Print the language cheat sheet: syntax, types, errors, a checked example
+program, and common mistakes beside their fixes. Look symbols up with ms search_symbol.
+
+With diagnostic codes from ms check --json, print each code's rule family and
+usual repair instead. Apply the diagnostic's own fix field first when it has one.
 
 Options:
+  --json      Emit versioned JSON (with codes)
   -h, --help  Show this help
 
 Examples:
   ms guide
+  ms guide MS3060
+  ms guide MS2001 MS3050 --json
 "#;
 
 pub const HELP_HELP: &str = r#"Usage: ms help [command]

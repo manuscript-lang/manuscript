@@ -45,6 +45,12 @@ pub struct Outcome {
     pub getters: HashMap<NodeId, Vec<Name>>,
 }
 
+/// A call operand whose description is written only if a diagnostic needs it.
+enum Operand<'e> {
+    Receiver(&'e Expr),
+    Argument(&'e Expr),
+}
+
 /// A `return` that hands back a part of a read-only parameter.
 struct Lend {
     slot: Slot,
@@ -236,6 +242,11 @@ struct Walker<'a> {
 }
 
 /// A fix that inserts `text` at `pos`.
+/// `.clone()` after the written expression `e`; none for a synthetic one.
+fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
+    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{COPY}()")))
+}
+
 fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
     DiagnosticFix {
         pos,
@@ -771,6 +782,14 @@ impl Walker<'_> {
             end: None,
             fix: None,
         });
+    }
+
+    /// Reports like `error_fix`, when a fix could be built.
+    fn error_fix_opt(&mut self, pos: Pos, message: impl Into<String>, fix: Option<DiagnosticFix>) {
+        match fix {
+            Some(fix) => self.error_fix(pos, message, fix),
+            None => self.error(pos, message),
+        }
     }
 
     /// Reports like `error`, with a machine-applicable fix.
@@ -1949,9 +1968,10 @@ impl Walker<'_> {
         let name = b.name;
         let var_param = parameter.is_some() && perm == Perm::Mutable;
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{COPY}()` instead"),
+                copy_after(e),
             );
             self.record(e.id, b, Access::Move);
             return;
@@ -1970,9 +1990,10 @@ impl Walker<'_> {
             self.record(e.id, b, Access::Move);
             return;
         } else if var_param || (receiver && perm == Perm::Mutable) {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
+                copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
@@ -2105,13 +2126,13 @@ impl Walker<'_> {
         }
         // Evaluate in order. What an operand keeps hold of for the whole call
         // is checked against the others afterwards.
-        let mut operands: Vec<(String, Vec<(Place, bool)>)> = Vec::new();
+        let mut operands: Vec<(Operand, Vec<(Place, bool)>)> = Vec::new();
         let reported = self.diags.len();
         if let Some(r) = receiver_expr {
             let mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             let held = self.held(r, mode);
             self.receiver(r, mode);
-            operands.push((format!("the receiver `{}`", self.expr_text(r)), held));
+            operands.push((Operand::Receiver(r), held));
         } else {
             self.expr(callee, Demand::Read);
         }
@@ -2119,7 +2140,7 @@ impl Walker<'_> {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
             held.extend(self.argument(a, mode, &modes));
-            operands.push((format!("argument `{}`", self.expr_text(&a.value)), held));
+            operands.push((Operand::Argument(&a.value), held));
         }
         // An operand that already failed its own check is not reported twice.
         if self.diags.len() == reported {
@@ -2154,7 +2175,7 @@ impl Walker<'_> {
                         "`{name}` borrows its result from `{from}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"
                     )
                 };
-                self.error(e.pos, msg);
+                self.error_fix_opt(e.pos, msg, copy_after(e));
             }
         }
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
@@ -2170,9 +2191,10 @@ impl Walker<'_> {
                 return;
             }
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("`{name}` borrows its result from `{recv}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"),
+                copy_after(e),
             );
         }
     }
@@ -2255,7 +2277,16 @@ impl Walker<'_> {
     }
 
     /// A changed place may not overlap another operand of the same call.
-    fn check_overlap(&mut self, pos: Pos, name: &str, operands: &[(String, Vec<(Place, bool)>)]) {
+    /// An operand's description, built only for a diagnostic: spelling a long call chain on every
+    /// call would be quadratic in the chain.
+    fn operand_text(&self, o: &Operand) -> String {
+        match o {
+            Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
+        }
+    }
+
+    fn check_overlap(&mut self, pos: Pos, name: &str, operands: &[(Operand, Vec<(Place, bool)>)]) {
         for (i, (label, log)) in operands.iter().enumerate() {
             for (place, write) in log {
                 if !*write {
@@ -2265,6 +2296,7 @@ impl Walker<'_> {
                     *j != i && other.iter().any(|(q, _)| q.overlaps(place))
                 });
                 if let Some((_, (other, _))) = clash {
+                    let (label, other) = (self.operand_text(label), self.operand_text(other));
                     self.error(
                         pos,
                         format!("{label} of `{name}` is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or copy one first"),
@@ -2434,18 +2466,20 @@ impl Walker<'_> {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),
+                copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
+                copy_after(e),
             );
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));

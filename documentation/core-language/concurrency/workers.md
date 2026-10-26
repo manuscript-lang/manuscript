@@ -32,7 +32,7 @@ test "a worker answers over its channel":
         try expect_ok(worker.channel.send(12))
         try expect_equal(worker.channel.receive(), ok(some(144)))
         worker.channel.close()
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 ```
 
 ## How workers run
@@ -42,16 +42,31 @@ test "a worker answers over its channel":
 - When the starter and its workers all wait on each other (the starter in `receive` or `result()`, a worker in `receive`, with no timer, descriptor wait or blocking call pending anywhere), the program stops with a deadlock fault on the main isolate instead of hanging, as it does within one isolate.
 - Every worker has its own memory (2 GiB of address space, reserved lazily), scheduler and task tree. Tasks inside a worker run cooperatively, as in the main program.
 - Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: True` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
-- `worker.join()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
-- Manuscript faults caught by the worker runtime are reported through `join()` as `WorkerError.Faulted(report)`, with the fault's message and stack. Worker threads are not a process-crash isolation boundary. A cancelled worker gives `WorkerError.Cancelled`.
+- `worker.wait()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
+- Manuscript faults caught by the worker runtime are reported through `wait()` as `WorkerError.Faulted(report)`, with the fault's message and stack. Worker threads are not a process-crash isolation boundary. A cancelled worker gives `WorkerError.Cancelled`.
 - Leaving the `with` block cancels workers that are still running, closes their channels and waits for them.
 - At most 256 workers run at once; past that `spawn` returns `WorkerError.NotStarted`.
 
 ## What a worker may use
 
-Use workers for CPU-bound work. Worker networking has known alpha limitations and is not currently safe to rely on. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
+Use workers for CPU-bound work. A worker may use the network: HTTP `fetch` and connections run on the worker's own thread, so several workers download in parallel (four workers fetching from one server at once are covered by the conformance fixture `workers.ms`). To move large `Bytes` between a worker and its starter, use the raw pipe as a `Channel[Bytes, Bytes]` (`worker.bytes()` on the starter, `worker_bytes()` in the worker): each `send` is copied once into the other side's memory with no JSON. Read each message with the kind that was sent, because bytes and channel messages share one ordered queue. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
 
 Send plain serializable data. Messages reconstruct values through JSON; acceptance by the checker does not establish transfer suitability or preserve shared identity. Do not use worker messages to transfer live resources.
+
+## Serving on several cores
+
+Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: True)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
+
+```manuscript
+def serve_loop() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let options = HttpServerOptions(shared: True)
+    if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
+        with let server = acquired:
+            let _stopped = server.wait()
+```
+
+Start one worker per core with `group.spawn(serve_loop)`. Measured with a CPU-bound handler on two server cores: one thread 23k requests per second, two workers 45k. A handler runs on the worker that accepted the connection and shares no memory with the other workers.
 
 ## Cost
 

@@ -87,13 +87,14 @@ export def main() -> Int:
 
 Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
 
-- List: `append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, `reverse_in_place`.
+- List: `append`, `prepend`, `insert`, `set`, `replace`, `swap`, `remove`, `splice`, `fill`, `copy_within`, `reverse`.
 - Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.
 - Set: `add`, `remove`, `clear`.
 
 List details:
 
 - `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
+- `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both move elements without copying them, so they take an element out of a list of owned values (`items.replace(0, none)` on a `List[Optional[T]]`) and reorder it without `.clone()`. Both accept negative indexes and fault on invalid ones.
 - `insert(index:, value:)` places before `index`, valid from `-length()` to `length()` (which appends).
 - `pop()` returns the last element as `some(value)`, or `none` when empty.
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
@@ -120,7 +121,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 
 | Receiver | Removed spelling | Use | Result |
 | --- | --- | --- | --- |
-| List | `with_value`, `without`, `with_values`, `reverse` | `set`, `remove`, `splice`, `reverse_in_place` | Same List |
+| List | `with_value`, `without`, `with_values`, `reverse_in_place` | `set`, `remove`, `splice`, `reverse` | Same List |
 | Map | `with_entry`, `without` | `add`, `remove` | Same Map |
 | Map | `with_default`, `with_default_from` | `add_default`, `add_default_from` | Same Map |
 | Set | `with_value`, `without` | `add`, `remove` | Same Set |

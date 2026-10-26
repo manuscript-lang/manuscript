@@ -6,8 +6,9 @@
 //! by a copy of the list and a call to a generated merge sort that calls the closure's code
 //! directly, so the backend can inline it into the merge loop.
 //!
-//! The generated sort is the runtime's `merge_sort_word` step for step: it makes the same
-//! comparator calls in the same order, which is observable when the comparator has effects.
+//! The generated sort is stable, like the runtime's, which is its whole contract: equal elements
+//! keep their order. It merges from two lists in turn instead of copying every merged slice back,
+//! so it calls a comparator with effects in a different order than the runtime sort does.
 
 use crate::builder::FuncBuilder;
 use crate::ir::{
@@ -382,8 +383,8 @@ fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
         f,
         Op::Call,
         vec![
-            out,
             buf,
+            out,
             zero_v.expect("zero"),
             len_v.expect("len"),
             env_v.expect("env"),
@@ -397,8 +398,10 @@ fn rewrite(f: &mut Func, bi: usize, ii: usize, sort: FuncId, elem: Ty) {
         .splice(ii..=ii, [copy_out, copy_buf, len, zero, env, run, drop_buf]);
 }
 
-/// Builds `sort(items, buf, lo, hi, env)`: stable merge sort of `items[lo..hi]` using `buf`
-/// of the same length for scratch, ordering by the sign of `g(env, a, b)`.
+/// Builds `sort(src, dst, lo, hi, env)`: stable merge sort that leaves `dst[lo..hi]` sorted by the
+/// sign of `g(env, a, b)`. Both lists hold the same elements in `lo..hi` on entry; `src` is
+/// scratch and holds unspecified elements there afterwards. Each level sorts its halves into the
+/// other list and merges them back, so no level copies the slice.
 fn build(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     let list_ty = m.types.list(elem);
     let p = |ty| Param {
@@ -410,7 +413,8 @@ fn build(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     let id = m.add_func(Func::new(&name, params.clone(), Ty::UNIT));
     let mut b = FuncBuilder::new(m, &name, params, Ty::UNIT);
     let args = b.params();
-    let (items, buf, lo, hi, env) = (args[0], args[1], args[2], args[3], args[4]);
+    // `buf` is the list the merge reads from and `items` the list it writes.
+    let (buf, items, lo, hi, env) = (args[0], args[1], args[2], args[3], args[4]);
 
     let one = b.iconst(1);
     let at = |b: &mut FuncBuilder, list: Value, i: Value| {
@@ -511,44 +515,44 @@ fn build(m: &mut Module, g: FuncId, elem: Ty) -> FuncId {
     let mid = b.binop(Op::IAdd, lo, half);
     b.call(id, &[items, buf, lo, mid, env]);
     b.call(id, &[items, buf, mid, hi, env]);
-    let pm = at(&mut b, items, mid);
+    let pm = at(&mut b, buf, mid);
     let a = load(&mut b, pm);
     let mm1 = b.binop(Op::ISub, mid, one);
-    let pmm = at(&mut b, items, mm1);
+    let pmm = at(&mut b, buf, mm1);
     let c = load(&mut b, pmm);
     let unordered = less(&mut b, a, c);
     let (merge, finish) = (b.new_block(), b.new_block());
     b.br_if(unordered, merge, &[], finish, &[]);
     b.seal_block(merge);
     b.seal_block(finish);
+    // The halves are already in order: the result is the slice as the halves left it.
     b.switch_to(finish);
-    let u = b.unit();
-    b.ret(Some(u));
-
-    // Copy the slice to the buffer.
-    b.switch_to(merge);
     let kv = int(&mut b);
     b.def_var(kv, lo);
-    let (copy_head, copy_body, merged) = (b.new_block(), b.new_block(), b.new_block());
+    let (copy_head, copy_body, copied) = (b.new_block(), b.new_block(), b.new_block());
     b.br(copy_head, &[]);
     b.switch_to(copy_head);
     let k = b.use_var(kv);
     let go = b.icmp(Cc::Lt, k, hi);
-    b.br_if(go, copy_body, &[], merged, &[]);
+    b.br_if(go, copy_body, &[], copied, &[]);
     b.seal_block(copy_body);
-    b.seal_block(merged);
+    b.seal_block(copied);
     b.switch_to(copy_body);
     let k = b.use_var(kv);
-    let src = at(&mut b, items, k);
-    let v = load(&mut b, src);
-    let dst = at(&mut b, buf, k);
-    store(&mut b, dst, v);
+    let from = at(&mut b, buf, k);
+    let v = load(&mut b, from);
+    let to = at(&mut b, items, k);
+    store(&mut b, to, v);
     let k1 = b.binop(Op::IAdd, k, one);
     b.def_var(kv, k1);
     b.br(copy_head, &[]);
     b.seal_block(copy_head);
+    b.switch_to(copied);
+    let u = b.unit();
+    b.ret(Some(u));
 
     // Merge from both ends at once, two output slots per step.
+    let merged = merge;
     b.switch_to(merged);
     let (lv, lev, rv, rev, sv) = (
         int(&mut b),

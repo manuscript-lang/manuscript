@@ -74,7 +74,7 @@ def display_name(name: Optional[String], create: Callable[[], String]) -> String
     return name.get_or_else(create)
 ```
 
-Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; use `get` only when absence is a programming error:
+Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
 
 ```manuscript
 def greet(name: Optional[String]) -> String:

@@ -14,6 +14,7 @@ from "./htmlbench.ms" import bench_html
 from "./numbers.ms" import bench_numbers
 from "./hostbench.ms" import bench_host
 from "./fsbench.ms" import bench_fs
+from "./concbench.ms" import bench_conc
 
 # Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`.
 # Run with bench/perf/stdlib-bench.sh. Add a case with one `bench(...)` call in the matching module file.
@@ -34,4 +35,5 @@ export def main() -> Int:
     bench_numbers()
     bench_host()
     bench_fs()
+    bench_conc()
     return 0

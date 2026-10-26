@@ -192,13 +192,13 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    for text in [
+    for malformed in [
         "a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
         "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
-        let cause = match parse(text: text):
-            case ok(_): return fail(f"malformed multiline scalar accepted: {text}")
+        let cause = match parse(text: malformed):
+            case ok(_): return fail(f"malformed multiline scalar accepted: {malformed}")
             case error(cause): cause
 
         match cause:

@@ -37,7 +37,7 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     chain_1.add(key: "X-Test", value: ["manuscript"])
 
     let headers = (try list_headers(chain_1))
-    let started = (try exchange.send_headers(status: 201, headers: headers))
+    let started = try exchange.send_headers(status: 201, headers: headers)
     let written = (try http_result(exchange.write("hello")))
     return ok(())
 
@@ -47,48 +47,35 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
         max_requests: 4, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: echo, options: options
-        ) | try expect_ok
-    ):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: echo, options: options
+    ) | try expect_ok:
         let url = f"http://{server.address()}/"
-        let response = (
-            net.request(
-                method: HttpMethod.Get, url: url,
-                headers: (try text_headers(Map[String, String]())), body: "",
-                timeout: 2.seconds
-            ) | try expect_ok
-        )
+        let response = net.request(
+            method: HttpMethod.Get, url: url,
+            headers: (try text_headers(Map[String, String]())), body: "",
+            timeout: 2.seconds
+        ) | try expect_ok
         try expect_false(
             (
                 response.metadata().status != 201
                 or response.body != "hello".to_bytes()
             )
         )
-        (
-            response.metadata().headers.text(
-                "X-Test"
-            ) | try expect_ok | try expect_equal(some(["manuscript"]))
-        )
+        response.metadata().headers.text(
+            "X-Test"
+        ) | try expect_ok | try expect_equal(some(["manuscript"]))
 
         let client_options = HttpClientOptions(
             decompress: True, cookies: True, tls: tls_options()
         )
 
-        with let client = (net.http_client(client_options) | try expect_ok):
-            with let body = (
-                client.request(
-                    method: HttpMethod.Get,
-                    url: url,
-                    headers: (
-                        try text_headers(Map[String, String]())
-                    ),
-                    body: "",
-                    max_response_bytes: 5,
-                    timeout: 2.seconds
-                ) | try expect_ok
-            ):
+        with let client = net.http_client(client_options) | try expect_ok:
+            with let body = client.request(
+                method: HttpMethod.Get, url: url,
+                headers: (try text_headers(Map[String, String]())), body: "",
+                max_response_bytes: 5, timeout: 2.seconds
+            ) | try expect_ok:
                 body.metadata().status | try expect_equal(201)
                 (body.read(5) | try expect_ok).get() | try expect_equal(
                     "hello".to_bytes()
@@ -110,32 +97,28 @@ test "WebSocket negotiates a protocol and echoes a text frame":
     let net = network()
     let options = HttpServerOptions(timeout: 3.seconds, grace: 0.seconds, tls: none)
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: echo, options: options
-        ) | try expect_ok
-    ):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: echo, options: options
+    ) | try expect_ok:
         let client_options = WebSocketOptions(
             max_message_bytes: 1024, timeout: 2.seconds, tls: tls_options(),
             compression: False
         )
 
-        with let socket = (
-            net.web_socket(
-                url: f"ws://{server.address()}/ws",
-                headers: (try text_headers(Map[String, String]())),
-                subprotocols: ["echo"], options: client_options
-            ) | try expect_ok
-        ):
+        with let socket = net.web_socket(
+            url: f"ws://{server.address()}/ws",
+            headers: (try text_headers(Map[String, String]())), subprotocols: ["echo"],
+            options: client_options
+        ) | try expect_ok:
             socket.subprotocol() | try expect_equal("echo")
 
-            let sent = (socket.send(data: "é🙂") | try expect_ok)
+            let sent = socket.send(data: "é🙂") | try expect_ok
             let message = (socket.receive() | try expect_ok).get()
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
 def report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let hosts = (try exchange.headers().text("Host")).get([])
-    let started = (try exchange.send_headers(status: 200, headers: headers()))
+    let started = try exchange.send_headers(status: 200, headers: headers())
     let written = (try http_result(exchange.write(hosts.join(","))))
     return ok(())
 
@@ -145,18 +128,14 @@ test "HTTP streaming handlers see the Host request header":
         max_requests: 2, timeout: 3.seconds, grace: 0.seconds, tls: none
     )
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: report_host, options: options
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: report_host, options: options
+    ) | try expect_ok:
+        let response = net.request(
+            method: HttpMethod.Get, url: f"http://{server.address()}/",
+            headers: (try text_headers(Map[String, String]())), body: "",
+            timeout: 2.seconds
         ) | try expect_ok
-    ):
-        let response = (
-            net.request(
-                method: HttpMethod.Get, url: f"http://{server.address()}/",
-                headers: (try text_headers(Map[String, String]())), body: "",
-                timeout: 2.seconds
-            ) | try expect_ok
-        )
         response.body | try expect_equal(server.address().to_bytes())
 
 test "HTTP requests reject an empty method":

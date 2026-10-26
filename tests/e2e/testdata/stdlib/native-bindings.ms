@@ -1,14 +1,14 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
-from "@std/process.ms" import control, ProcessError
+from "@std/process.ms" import control, ControlError
 from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher, join
 from "@std/time.ms" import milliseconds, sleep
 from "@std/tasks.ms" import TaskGroup
 from "@std/shared.ms" import Shared, share
 
 def expect_process_error[T](
-    outcome: Result[T, ProcessError],
-    expected: ProcessError
+    outcome: Result[T, ControlError],
+    expected: ControlError
 ) -> Result[Unit, Error]:
     match outcome:
         case ok(_): return error(TextError("process misuse succeeded"))
@@ -46,10 +46,10 @@ test "process usage records report this process":
 test "set_identity and set_groups validate input and apply or refuse":
     let process = control()
     try expect_process_error(
-        process.set_identity(kind: "nope", id: 0), ProcessError.InvalidInput
+        process.set_identity(kind: "nope", id: 0), ControlError.InvalidInput
     )
     try expect_process_error(
-        process.set_groups(groups: [-1]), ProcessError.InvalidInput
+        process.set_groups(groups: [-1]), ControlError.InvalidInput
     )
 
     let info = try process.info()
@@ -57,10 +57,10 @@ test "set_identity and set_groups validate input and apply or refuse":
     if info.uid < 0:
         # Windows has no ids.
         try expect_process_error(
-            process.set_identity(kind: "uid", id: 0), ProcessError.Unsupported
+            process.set_identity(kind: "uid", id: 0), ControlError.Unsupported
         )
         try expect_process_error(
-            process.set_groups(groups: [0]), ProcessError.Unsupported
+            process.set_groups(groups: [0]), ControlError.Unsupported
         )
     else:
         # Setting the identity it already has changes nothing and needs no privilege.
@@ -75,7 +75,7 @@ test "set_identity and set_groups validate input and apply or refuse":
             try process.set_groups(groups: groups)
         else:
             try expect_process_error(
-                process.set_groups(groups: groups), ProcessError.PermissionDenied
+                process.set_groups(groups: groups), ControlError.PermissionDenied
             )
 
 test "replace rejects invalid programs before leaving this process":
@@ -88,11 +88,11 @@ test "replace rejects invalid programs before leaving this process":
 
     if info.uid < 0:
         # Windows has no exec.
-        try expect_process_error(empty, ProcessError.Unsupported)
-        try expect_process_error(missing, ProcessError.Unsupported)
+        try expect_process_error(empty, ControlError.Unsupported)
+        try expect_process_error(missing, ControlError.Unsupported)
     else:
-        try expect_process_error(empty, ProcessError.InvalidInput)
-        try expect_process_error(missing, ProcessError.NotFound)
+        try expect_process_error(empty, ControlError.InvalidInput)
+        try expect_process_error(missing, ControlError.NotFound)
 
 test "stat_filesystem describes the filesystem under a path":
     let fs = filesystem()
@@ -111,7 +111,7 @@ def saw(events: List[FileEvent], path: String, kind: String) -> Bool:
 test "polling and native watchers report a created file and close":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-watch-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-watch-") | try expect_ok:
         let root = temporary.path()
 
         with let polling = try fs.watch(
@@ -140,7 +140,7 @@ test "polling and native watchers report a created file and close":
 test "native watcher max_entries counts the paths under the root":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-me-") | try expect_ok):
+    with let t = fs.temporary("ms-me-") | try expect_ok:
         try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
         try expect_fs_error(
             fs.watch_native(
@@ -163,7 +163,7 @@ def wait_next(w: Shared[FileWatcher]) -> Int:
 test "close wakes a pending native next with Closed":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch_native(
                 path: t.path(), recursive: False, overflow: "error"
@@ -182,7 +182,7 @@ test "close wakes a pending native next with Closed":
 test "a group timeout cancels a task waiting on a watcher":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch(
                 path: t.path(), recursive: False, interval: milliseconds(20)
@@ -201,7 +201,7 @@ test "a group timeout cancels a task waiting on a watcher":
 test "recursive native watch sees a file in a new subdirectory":
     let fs = filesystem()
 
-    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+    with let t = fs.temporary("ms-r2-") | try expect_ok:
         let r = t.path()
 
         with let w = try fs.watch_native(path: r, recursive: True, overflow: "error"):

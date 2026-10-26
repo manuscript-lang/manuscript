@@ -1,9 +1,11 @@
-# Benchmark server: main <port> <data-dir>. The Go server in ../go answers the same requests.
+# Benchmark server: main <port> <data-dir> [threads]. With threads above 1, that many workers each serve the port from one shared listener. The Go server in ../go answers the same requests.
 from "@std/bytes.ms" import Bytes
 from "@std/fs.ms" import filesystem
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
+from "@std/collections.ms" import range
+from "@std/http.ms" import headers, HttpRequest, HttpResponse, HttpServerOptions, buffered
 from "@std/net.ms" import network
 from "@std/process.ms" import arguments
+from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
 
 def score(id: Int) -> Int:
     return id * 7919 % 1000
@@ -84,12 +86,8 @@ def write_and_read(path: String, payload: Bytes) -> Result[Bytes, Error]:
     try fs.write_file_bytes(path, payload, replace: True)
     return ok(try fs.read_file(path))
 
-export def main() -> Int:
-    let args = arguments()
-    if args.length() != 2:
-        return 2
-
-    let dir = args.get(1)
+# Serves the benchmark endpoints on 127.0.0.1:<port> until the server stops.
+def serve_here(port: String, dir: String, ready: Bool) -> Int:
     var text = "0123456789abcdef"
     var i = 0
 
@@ -112,11 +110,45 @@ export def main() -> Int:
 
         return reply(404, "not found\n")
 
+    let options = HttpServerOptions(shared: True)
+
     if let acquired = network().serve(
-        address: f"127.0.0.1:{args.get(0)}", handler: buffered(handler)
+        address: f"127.0.0.1:{port}", handler: buffered(handler), options: options
     ):
         with let server = acquired:
+            if ready:
+                var ch = worker_channel[Int, Int]()
+                ch.send(1)
+
             let _ignored = server.wait()
             return 0
 
     return 1
+
+# One serving thread of a multi-threaded run; the starter waits for its signal that the port is open.
+def serve_worker() -> Unit:
+    let args = arguments()
+    let _code = serve_here(args.get(0), args.get(1), True)
+
+export def main() -> Int:
+    let args = arguments()
+    if args.length() < 2 or args.length() > 3:
+        return 2
+
+    var threads = 1
+    if args.length() == 3:
+        threads = args.get(2).parse_int().get(1)
+    if threads <= 1:
+        return serve_here(args.get(0), args.get(1), False)
+
+    with let group = WorkerGroup[Int, Int]():
+        var workers: List[Worker[Int, Int]] = []
+
+        for i in range(0, threads):
+            var worker = group.spawn(serve_worker).get(none)
+            let _ready = worker.channel.receive()
+            workers.append(worker)
+
+        let _stopped = workers[0].wait()
+
+    return 0

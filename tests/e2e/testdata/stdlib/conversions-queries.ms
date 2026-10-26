@@ -125,11 +125,9 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let nested_result: Optional[Result[Int, TextError]] = some(
         error(TextError("nested"))
     )
-    (
-        nested_result.ok_or(
-            TextError("absent")
-        ).to_optional().get().err().message() | try expect_equal("nested")
-    )
+    nested_result.ok_or(
+        TextError("absent")
+    ).to_optional().get().err().message() | try expect_equal("nested")
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []
@@ -205,7 +203,7 @@ test "Map find returns fresh entry shells with copied payloads":
     counter.calls | try expect_equal(2)
     original.key = "other"
     original.value = Counter(9)
-    (not (source.contains("b")) or source.get("b").get().calls != 2) | try expect_false
+    (not (source.contains("b")) or source["b"].calls != 2) | try expect_false
     try expect_equal(source.find(lambda k, v: True).get().key, "b")
     try expect_true((source.find(lambda k, v: False).is_none()))
 
@@ -306,10 +304,8 @@ type Key:
     label: String
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Key(value): return self.id == value.id
-            case _: return False
+    def equals(other: Key) -> Bool:
+        return self.id == other.id
 
 impl Hashable for Key:
     def hash() -> Int: 0

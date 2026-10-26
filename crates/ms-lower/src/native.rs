@@ -6,7 +6,7 @@ use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value, VtableDef};
+use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -708,15 +708,8 @@ impl<'a> FnLower<'a> {
                 for s in &sigs {
                     methods.push(build(self.b.m, &s.name, &s.params, s.ret));
                 }
-                self.b.m.vtables.push(VtableDef {
-                    name: key.clone(),
-                    iface,
-                    methods,
-                    data_ty: MTy::UNIT,
-                });
-                let id = ms_mir::ir::VtableId(self.b.m.vtables.len() as u32 - 1);
-                self.cx.vtables.insert(key, id);
-                id
+                self.cx
+                    .intern_vtable(self.b.m, key, iface, methods, MTy::UNIT)
             }
         };
         let u = self.b.unit();
@@ -1617,21 +1610,12 @@ impl<'a> FnLower<'a> {
         )
     }
 
-    /// `equals` of data with built-in equality: boxes the receiver as the argument's `Equal`
-    /// and dispatches, so both sides compare as the interface value would.
-    fn equals_value(&mut self, concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
-        let want = self.ty_of(other.v);
-        let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
-            return Err(Error::new("equals without an interface argument"));
-        };
-        let boxed = self.fit_ty(recv, concrete, want)?;
-        let v = self.b.call_method(iface, 0, boxed.v, &[other.v]);
-        if boxed.own {
-            self.drop_value(boxed.v);
-        }
-        if other.own {
-            self.drop_value(other.v);
-        }
+    /// `equals` of data with built-in equality: the equality `==` selects, against another
+    /// value of the same type.
+    fn equals_value(&mut self, _concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
+        let t = self.ty_of(recv.v);
+        // `equal` borrows both operands, so owned temporaries are released with the statement.
+        let v = self.equal(t, recv, other)?;
         Ok(Val { v, own: false })
     }
 
@@ -2471,11 +2455,12 @@ impl<'a> FnLower<'a> {
             name,
             "append"
                 | "set"
+                | "replace"
                 | "prepend"
                 | "insert"
                 | "remove"
                 | "pop"
-                | "reverse_in_place"
+                | "reverse"
                 | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
@@ -2526,6 +2511,31 @@ impl<'a> FnLower<'a> {
                 self.check_index(2, i, r, n, false);
                 let v = self.element_value(&args[1]);
                 Ok((self.b.list_set(old, i, v), None))
+            }
+            "replace" => {
+                // The element moves out through a slot and the new value moves in; nothing is copied.
+                let idx = self.borrow(args[0].val);
+                let v = self.element_value(&args[1]);
+                let list = self.put_slot(old);
+                let incoming = self.put_slot(v);
+                let outgoing = self
+                    .b
+                    .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(elem), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime(
+                    "msrt_list_replace",
+                    &[list, d, idx, incoming, outgoing],
+                    MTy::UNIT,
+                )?;
+                let new = self.take_slot(list, lt);
+                let old_element = self.take_slot(outgoing, elem);
+                Ok((
+                    new,
+                    Some(Val {
+                        v: old_element,
+                        own: true,
+                    }),
+                ))
             }
             "prepend" | "insert" | "remove" => {
                 let n = self.b.list_len(old);
@@ -2618,7 +2628,7 @@ impl<'a> FnLower<'a> {
                 self.release_source(fvar, true);
                 Ok((r.v, None))
             }
-            "reverse_in_place" => {
+            "reverse" => {
                 let var = self.fresh_var(lt);
                 self.b.def_var(var, old);
                 let r = self.list_reversed(var, elem)?;

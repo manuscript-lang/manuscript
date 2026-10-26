@@ -1,7 +1,7 @@
 //! `@std/process` natives. Symbols are `msstd_process_<name>`.
 //!
 //! Fallible functions return a `STATUS_*` code (`0` ok) and write results only on success; for
-//! `STATUS_FAILED` the Go-style text comes from `msstd_process_failure_message`. `ProcessError`
+//! `STATUS_FAILED` the Go-style text comes from `msstd_process_failure_message`. `ControlError`
 //! maps to the shared statuses (`InvalidInput`, `InvalidData`, `LimitExceeded`, `NotFound`,
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and `CommandError` to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
@@ -427,7 +427,7 @@ native! {
         }
     }
 
-    /// `uptime()` as `Result[Duration, ProcessError]`: the nanoseconds since the runtime started.
+    /// `uptime()` as `Result[Duration, ControlError]`: the nanoseconds since the runtime started.
     fn msstd_process_elapsed() -> Result<i64, StatusCode> {
         Ok(uptime_ns())
     }

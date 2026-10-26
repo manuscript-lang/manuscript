@@ -236,7 +236,9 @@ mod imp {
         for ev in s.events.iter() {
             if ev.token() == WAKE_TOKEN {
                 let mut drain = [0u8; 64];
-                while matches!(s.wake_rx.read(&mut drain), Ok(n) if n > 0) {}
+                // A short read emptied the pipe; a later wake-up is a new event, so another
+                // read to see `WouldBlock` would only cost a system call.
+                while matches!(s.wake_rx.read(&mut drain), Ok(n) if n == drain.len()) {}
                 continue;
             }
             out[count] = Ready {

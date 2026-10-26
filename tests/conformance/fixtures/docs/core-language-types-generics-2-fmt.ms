@@ -5,7 +5,7 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Key) -> Bool:
         return True
 
 def accepts(value: Equal) -> Unit:

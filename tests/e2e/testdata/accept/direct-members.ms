@@ -5,10 +5,8 @@ type Point:
     y: Int
 
 impl Equal for Point:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Point(value): return self.x == value.x
-            case _: return False
+    def equals(other: Point) -> Bool:
+        return self.x == other.x
 
 def contains_generic[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value)
@@ -32,7 +30,7 @@ test "map and set members":
     m.add("b", 3)
 
     let updated = m
-    try expect_equal(updated.get("a").get(), 2)
+    try expect_equal(updated["a"], 2)
     try expect_false(updated.get("z").is_some())
     try expect_false(not updated.contains("b"))
 

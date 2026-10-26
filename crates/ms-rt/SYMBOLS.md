@@ -215,6 +215,8 @@ msrt_pipe_new() -> i64
 msrt_pipe_peer(end: i64) -> i64
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
+msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_close(end: i64)
 msrt_task_yield()
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
@@ -244,8 +246,10 @@ msrt_list_insert( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, 
 msrt_list_insert_copy( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
+msrt_list_replace( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *mut u8, out: *mut u8, )
+msrt_list_swap( v: *mut VecVal, d: *const TypeDesc, i: i64, j: i64, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
-msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc)
+msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc)
 msrt_list_reversed( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_splice( v: *mut VecVal, d: *const TypeDesc, start: i64, count: i64, replacement: *mut VecVal, )
 msrt_list_fill( v: *mut VecVal, d: *const TypeDesc, value: *const u8, start: i64, end: i64, )

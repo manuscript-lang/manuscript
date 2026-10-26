@@ -8,7 +8,7 @@ from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/tasks.ms" import cancelled
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 type Reporter:
     name: String
@@ -21,7 +21,7 @@ impl Closeable for Reporter:
 
 def handle(request: HttpRequest) -> HttpResponse:
     with let reporter = Reporter("handler"):
-        sleep(duration(30000000000))
+        sleep(nanoseconds(30000000000))
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
 export def main() -> Int:
@@ -31,9 +31,9 @@ export def main() -> Int:
                 let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
                 # Let the handler start, then leave without waiting for the response.
-                sleep(duration(100000000))
+                sleep(nanoseconds(100000000))
                 conn.close()
-                sleep(duration(500000000))
+                sleep(nanoseconds(500000000))
 
                 let _done = stdout().write("done\n")
                 server.close()

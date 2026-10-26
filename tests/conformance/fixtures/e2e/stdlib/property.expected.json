@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "property.ms::a true property passes",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "property.ms::a failing list property shrinks to the smallest list",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "property.ms::a failing integer property shrinks toward the boundary",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "property.ms::negative values shrink toward zero",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "property.ms::strings shrink to the offending character",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "property.ms::pairs shrink both components",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "property.ms::optionals shrink toward the failing payload",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "property.ms::filtered generators only produce kept values",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "property.ms::zip and flat_map compose generators",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "property.ms::mapped, one_of, element_of, constant, floats and bools compose",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "property.ms::the same seed reproduces the same failure",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN property.ms::a true property passes\nPASS property.ms::a true property passes\nRUN property.ms::a failing list property shrinks to the smallest list\nPASS property.ms::a failing list property shrinks to the smallest list\nRUN property.ms::a failing integer property shrinks toward the boundary\nPASS property.ms::a failing integer property shrinks toward the boundary\nRUN property.ms::negative values shrink toward zero\nPASS property.ms::negative values shrink toward zero\nRUN property.ms::strings shrink to the offending character\nPASS property.ms::strings shrink to the offending character\nRUN property.ms::pairs shrink both components\nPASS property.ms::pairs shrink both components\nRUN property.ms::optionals shrink toward the failing payload\nPASS property.ms::optionals shrink toward the failing payload\nRUN property.ms::filtered generators only produce kept values\nPASS property.ms::filtered generators only produce kept values\nRUN property.ms::zip and flat_map compose generators\nPASS property.ms::zip and flat_map compose generators\nRUN property.ms::mapped, one_of, element_of, constant, floats and bools compose\nPASS property.ms::mapped, one_of, element_of, constant, floats and bools compose\nRUN property.ms::the same seed reproduces the same failure\nPASS property.ms::the same seed reproduces the same failure\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}
