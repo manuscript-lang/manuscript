@@ -90,11 +90,6 @@ impl PriorityQueue[T]:
         let result = self.compare(value, self.heap.get(b))
         return result < 0 or (result == 0 and order < self.orders.get(b))
 
-    # Reports whether the entry at `a` dequeues before a value waiting to be placed.
-    def before_entry_at(a: Int, value: T, order: Int) -> Bool:
-        let result = self.compare(self.heap.get(a), value)
-        return result < 0 or (result == 0 and self.orders.get(a) < order)
-
     # Copies the entry at `from` over the entry at `to`, which the caller is about to overwrite.
     var def shift(from: Int, to: Int) -> Unit:
         self.heap.set(to, self.heap.get(from).clone())
@@ -146,6 +141,8 @@ impl PriorityQueue[T]:
         let size = count - 1
         var at = 0
 
+        # Move the hole to the bottom along the earlier child, then lift the displaced entry back up:
+        # one comparison per level on the way down instead of two.
         while True:
             var child = at * 2 + 1
             if child >= size:
@@ -153,11 +150,16 @@ impl PriorityQueue[T]:
 
             if child + 1 < size and self.before(child + 1, child):
                 child += 1
-            if not self.before_entry_at(child, entry, entry_order):
-                break
-
             self.shift(child, at)
             at = child
+
+        while at > 0:
+            let parent = (at - 1) / 2
+            if not self.before_entry(entry, entry_order, parent):
+                break
+
+            self.shift(parent, at)
+            at = parent
 
         self.heap.set(at, entry.clone())
         self.orders.set(at, entry_order)
