@@ -495,12 +495,27 @@ impl HttpExchange for TestExchange:
         return self.request.query.clone()
 
     def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+        let requested = max_bytes.get(65536)
+        if requested <= 0: return error(IoError.InvalidInput)
+
+        let max = 65536 if requested > 65536 else requested
+
         with var guard = lock(self.state):
             if guard.value.closed: return error(IoError.Closed)
 
             let chunk = guard.value.unread.clone()
             guard.value.unread = none
-            return ok(chunk)
+
+            if let bytes = chunk:
+                if bytes.length() == 0: return ok(none)
+
+                let n = max if max < bytes.length() else bytes.length()
+
+                if n < bytes.length():
+                    guard.value.unread = some(bytes.slice(n, bytes.length()).get())
+                return ok(some(bytes.slice(0, n).get()))
+
+            return ok(none)
 
     def send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]:
         if status < 200 or status > 599: return error(HttpError.InvalidInput)
