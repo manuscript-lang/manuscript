@@ -94,9 +94,21 @@ pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::
 /// thread must not do. A cancellable read of a pipe or device also waits for it to be readable.
 fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fail> {
     const CHUNK: usize = 32 * 1024;
-    let mut out: Vec<u8> = Vec::new();
-    let mut buf = alloc::vec![0u8; (max.min(CHUNK as i64 - 1) as usize) + 1];
-    let waits = cancellable && sys::fstat(fd).is_ok_and(|st| sys::is_pollable(&st));
+    const LARGEST_READ: usize = 1 << 20;
+    // A regular file of known size is read into one buffer of that size (plus a byte to see the
+    // end), usually with a single read, instead of through a chunk buffer and copies.
+    let stat = sys::fstat(fd).ok();
+    let known = stat
+        .as_ref()
+        .filter(|st| st.is_regular())
+        .map(|st| st.size.max(0));
+    let first = match known {
+        Some(size) => (size.min(max).min(1 << 28) as usize).saturating_add(1),
+        None => (max.min(CHUNK as i64 - 1) as usize) + 1,
+    };
+    let mut out = alloc::vec![0u8; first];
+    let mut filled = 0usize;
+    let waits = cancellable && stat.as_ref().is_some_and(sys::is_pollable);
     loop {
         if cancellable {
             poll_cancel();
@@ -104,13 +116,21 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
         if waits {
             wait_readable(fd);
         }
-        let remaining = max - out.len() as i64;
-        let want = if remaining < buf.len() as i64 {
+        let remaining = max - filled as i64;
+        if filled == out.len() {
+            // Full and not at the end: double, within the one byte past `max` that detects excess.
+            let grown = (out.len() * 2)
+                .max(CHUNK)
+                .min((max as usize).saturating_add(1));
+            out.resize(grown, 0);
+        }
+        let room = (out.len() - filled).min(LARGEST_READ);
+        let want = if remaining < room as i64 {
             remaining as usize + 1
         } else {
-            buf.len()
+            room
         };
-        let n = match sys::read(fd, &mut buf[..want]) {
+        let n = match sys::read(fd, &mut out[filled..filled + want]) {
             Ok(n) => n,
             Err(_) => return Err(read_failure(false)),
         };
@@ -118,9 +138,10 @@ fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fai
             return Err(read_failure(true));
         }
         if n == 0 {
+            out.truncate(filled);
             return Ok(out);
         }
-        out.extend_from_slice(&buf[..n]);
+        filled += n;
     }
 }
 
@@ -166,7 +187,9 @@ fn write_all(fd: sys::Fd, mut data: &[u8], path: &[u8], cancellable: bool) -> Re
         if cancellable {
             poll_cancel();
         }
-        let end = data.len().min(65536);
+        // A pool job cannot be cancelled, so it hands the kernel large writes; a cancellable
+        // write stays in small steps so the check above runs between them.
+        let end = data.len().min(if cancellable { 65536 } else { 1 << 20 });
         let n = sys::write(fd, &data[..end]).map_err(|e| Fail::errno(e, "write", path))?;
         if n == 0 {
             return Err(Fail::failed("short write"));
