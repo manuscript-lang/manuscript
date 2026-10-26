@@ -33,3 +33,28 @@ fn chain() {
     assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
     assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
 }
+
+#[test]
+fn a_match_over_many_cases_checks_in_linear_time() {
+    // Naming a case used to substitute the type arguments of every case of the alternative, so
+    // each arm cost the number of cases: 4000 arms took 1.2 s and 16 000 about 20 s.
+    let cases = 8_000;
+    let mut source = String::from("type E:\n");
+    for i in 0..cases {
+        source.push_str(&format!("    case C{i}(x: Int)\n"));
+    }
+    source.push_str("\ndef g(e: E) -> Int:\n    match e:\n");
+    for i in 0..cases {
+        source.push_str(&format!("        case C{i}(x): return x + {i}\n"));
+    }
+    let file: Arc<str> = Arc::from("cases.ms");
+    let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+    let start = std::time::Instant::now();
+    let result = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    assert!(result.diagnostics.is_empty(), "{:?}", result.diagnostics);
+}
