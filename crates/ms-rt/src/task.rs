@@ -1509,6 +1509,24 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
             poller_fd();
         }
         let mut s = sched();
+        if s.tokens.is_empty() {
+            // Registry slots can be reused by later isolates. Resume their generation history,
+            // but recreate only vacant slots, never another isolate's values or waiters.
+            for gen_ in isolate::take_token_generations() {
+                let idx = s.tokens.len();
+                s.tokens.push(Token {
+                    gen_,
+                    live: false,
+                    remote: false,
+                    peer: false,
+                    waiter: 0,
+                    posted: None,
+                });
+                if gen_ < GEN_MASK {
+                    s.free_tokens.push(idx);
+                }
+            }
+        }
         let idx = match s.free_tokens.pop() {
             Some(i) => i,
             None => {
@@ -1524,10 +1542,7 @@ pub unsafe extern "C-unwind" fn msrt_token_new(flags: u32) -> u64 {
             }
         };
         let k = &mut s.tokens[idx];
-        k.gen_ = k.gen_.wrapping_add(1) & GEN_MASK;
-        if k.gen_ == 0 {
-            k.gen_ = 1;
-        }
+        k.gen_ += 1;
         k.live = true;
         k.remote = remote;
         k.peer = remote && flags & TOKEN_PEER != 0;
@@ -1634,11 +1649,15 @@ pub unsafe extern "C-unwind" fn msrt_token_free(id: u64) {
         k.posted = None;
         let remote = std::mem::replace(&mut k.remote, false);
         let peer = core::mem::take(&mut k.peer);
+        let reusable = k.gen_ < GEN_MASK;
         if remote {
             s.remote_tokens -= 1;
             s.peer_tokens -= usize::from(peer);
         }
-        s.free_tokens.push((id & 0xffff_ffff) as usize - 1);
+        // Retire an exhausted slot instead of wrapping back to a still-stale id.
+        if reusable {
+            s.free_tokens.push((id & 0xffff_ffff) as usize - 1);
+        }
     }
 }
 
@@ -1665,6 +1684,11 @@ pub fn teardown() {
         if s.epfd >= 0 {
             crate::poller::close(s.epfd);
         }
+        // The isolate's pool owns mappings too. Its thread-local state has no destructor,
+        // so a worker that exits must release the cached stacks as well as active ones.
+        for base in core::mem::take(&mut s.pool) {
+            stack::destroy(base as *mut u8, DEFAULT_STACK);
+        }
         s.cur = null_mut();
         s.main = null_mut();
         s.ready = VecDeque::new();
@@ -1680,11 +1704,15 @@ pub fn teardown() {
         s.zombie_stack = (0, 0);
         s.zombie_task = null_mut();
         s.live = 0;
+        if !s.tokens.is_empty() {
+            isolate::save_token_generations(s.tokens.iter().map(|token| token.gen_).collect());
+        }
         s.tokens = Vec::new();
         s.free_tokens = Vec::new();
         s.remote_tokens = 0;
         s.peer_tokens = 0;
         isolate::clear_posts();
+        crate::scope::teardown();
     }
 }
 
@@ -1764,6 +1792,54 @@ mod tests {
     }
 
     unsafe extern "C-unwind" fn returns(_: *mut ms_rt_abi::Closure) {}
+
+    #[test]
+    #[cfg(unix)]
+    fn teardown_unmaps_pooled_task_stacks() {
+        let _g = lock();
+        teardown();
+        // SAFETY: the entry ignores its argument and the test joins the task once.
+        unsafe {
+            let h = msrt_task_spawn(long_wait, null_mut(), 0, 0);
+            msrt_task_cancel(h);
+            assert_eq!(msrt_task_join(h, null_mut()), 0);
+            let pooled = sched().pool.clone();
+            assert!(
+                !pooled.is_empty(),
+                "the completed stack must enter the pool"
+            );
+            let page_size = libc::sysconf(libc::_SC_PAGESIZE);
+            assert!(page_size > 0);
+            let page_size = page_size as usize;
+            for &base in &pooled {
+                assert_eq!(
+                    libc::msync(base as *mut core::ffi::c_void, page_size, libc::MS_ASYNC),
+                    0,
+                    "the control stack must still be mapped before teardown"
+                );
+            }
+            teardown();
+            for base in pooled {
+                // Darwin mincore reports residency even for holes. msync checks mappings:
+                // an unmapped page must fail with ENOMEM on both Darwin and Linux.
+                for offset in (0..STACK_SLOT).step_by(page_size) {
+                    assert_eq!(
+                        libc::msync(
+                            (base + offset) as *mut core::ffi::c_void,
+                            page_size,
+                            libc::MS_ASYNC
+                        ),
+                        -1,
+                        "teardown left a task stack page mapped"
+                    );
+                    assert_eq!(
+                        std::io::Error::last_os_error().raw_os_error(),
+                        Some(libc::ENOMEM)
+                    );
+                }
+            }
+        }
+    }
 
     unsafe extern "C-unwind" fn long_wait(_: *mut u8) {
         // SAFETY: called on a live task; the test cancels it after checking the heap.
@@ -2035,6 +2111,27 @@ mod tests {
             msrt_token_free(new);
         }
         teardown();
+    }
+
+    #[test]
+    fn an_exhausted_token_generation_does_not_revive_a_stale_id() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the runtime lock and own both tokens.
+        unsafe {
+            let old = msrt_token_new(0);
+            // Exercise the last generation without spending a million cycles reaching it.
+            let slot = (old as u32 as usize) - 1;
+            sched().tokens[slot].gen_ = GEN_MASK;
+            let generation_mask = u64::from(GEN_MASK) << 32;
+            msrt_token_free((old & !generation_mask) | generation_mask);
+            let new = msrt_token_new(0);
+            msrt_token_post(old, 42);
+            let result = msrt_token_park(new, 1_000_000, null_mut());
+            msrt_token_free(new);
+            teardown();
+            assert_eq!(result, WAIT_TIMEOUT, "a stale post reached a wrapped token");
+        }
     }
 
     #[test]

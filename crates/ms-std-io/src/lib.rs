@@ -15,7 +15,9 @@ mod accumulate;
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_rt::ffi::{Global, Handed, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native};
+use ms_rt::ffi::{
+    Global, Handed, IntoAbi, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native,
+};
 use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
 use stream::{IoFail, IoRes, Stream};
@@ -31,6 +33,22 @@ fn status<T>(r: IoRes<T>) -> Result<T, StatusCode> {
 /// Like [`status`], with end of stream (`None`) as `STATUS_NONE`.
 fn chunk(r: IoRes<Option<Vec<u8>>>) -> Result<Vec<u8>, StatusCode> {
     status(r)?.ok_or(StatusCode(STATUS_NONE))
+}
+
+/// A line read: built in place from the read-ahead buffer, or collected from several reads.
+pub enum Line {
+    Made(StrVal),
+    Bytes(Text),
+}
+
+impl IntoAbi for Line {
+    type Raw = StrVal;
+    fn into_raw(self) -> StrVal {
+        match self {
+            Line::Made(s) => s,
+            Line::Bytes(t) => t.into_raw(),
+        }
+    }
 }
 
 /// The standard-input handle `stdin()` returns while nothing else holds it. Programs call
@@ -102,9 +120,13 @@ native! {
         h: ObjMut<Stream>,
         has_max: bool,
         max: i64,
-    ) -> Result<Text, StatusCode> {
+    ) -> Result<Line, StatusCode> {
         let mut h = h;
-        chunk(h.read_line(optional(has_max, max))).map(Text)
+        let max = optional(has_max, max);
+        if let Some(line) = h.read_buffered_line(max, ms_rt::ffi::new_string_bytes) {
+            return status(line).map(Line::Made);
+        }
+        chunk(h.read_line(max)).map(|b| Line::Bytes(Text(b)))
     }
 
     fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]) -> Result<(), StatusCode> {

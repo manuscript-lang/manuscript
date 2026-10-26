@@ -240,6 +240,13 @@ pub fn receiver_requirements(key: &str) -> Vec<ReceiverRequirement> {
     })
 }
 
+/// Records the type variables an operation declares for itself (`Receiver id/name`).
+pub(crate) fn set_operation_variables(key: String, variables: Vec<Ty>) {
+    world(|w| {
+        w.operation_variables.insert(key, variables);
+    });
+}
+
 /// The operation's own type variables (`Receiver id/name`).
 pub fn operation_variables(key: &str) -> Vec<Ty> {
     world(|w| w.operation_variables.get(key).cloned().unwrap_or_default())
@@ -1028,33 +1035,7 @@ impl Loader<'_> {
                         );
                     }
                     self.c.scope = self.c.variable_scope(&vars);
-                    let mut variables: Vec<Ty> = Vec::new();
-                    for param in &method.func.type_params {
-                        if self.c.scope.types.borrow().contains_key(&param.name) {
-                            self.c.type_error(
-                                param.pos,
-                                "native method variable shadows receiver variable",
-                            );
-                        }
-                        let v: Ty = Rc::new(Type::new(
-                            param.name,
-                            n(&format!("{}/{}/{}", s.id, method.func.name, param.name)),
-                            Kind::Variable,
-                        ));
-                        variables.push(v.clone());
-                        self.c.scope.types.borrow_mut().insert(param.name, v);
-                    }
-                    for (i, param) in method.func.type_params.iter().enumerate() {
-                        for bound in &param.bounds {
-                            let t = self.c.resolve(Some(bound));
-                            variables[i].bounds.borrow_mut().push(t);
-                        }
-                    }
-                    self.c.type_defaults(&method.func.type_params, &variables);
-                    world(|w| {
-                        w.operation_variables
-                            .insert(format!("{}/{}", s.id, method.func.name), variables.clone());
-                    });
+                    self.c.operation_variables(s.id, method);
                     let ty = self
                         .c
                         .signature(&method.func.params, Some(&method.func.result));

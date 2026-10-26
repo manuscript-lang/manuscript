@@ -291,6 +291,17 @@ fn wait_for(log: &Log, entry: &str) -> bool {
 }
 
 #[test]
+fn custom_method_case_does_not_discard_response_bodies() {
+    let (address, _, _) = serve(|req, _| ok(req.method().as_bytes().to_vec()));
+    let (_net, c) = client(ClientOptions::default());
+    for method in ["head", "Head"] {
+        let body = c.send(request(method, &address, "/")).unwrap();
+        assert_eq!(body.protocol, "HTTP/2.0");
+        assert_eq!(text(&body), method);
+    }
+}
+
+#[test]
 fn gets_with_http2_headers() {
     let (address, accepted, _) = serve(|req, _| ok(req.dump()));
     let (_net, c) = client(ClientOptions::default());

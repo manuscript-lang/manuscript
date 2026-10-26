@@ -36,6 +36,8 @@ pub(super) struct ExSt {
     pub minor: u8,
     pub is_head: bool,
     pub sent: bool,
+    /// A successful whole-response send forbids later streaming writes.
+    pub response_complete: bool,
     pub status: i64,
     /// Staged response headers (handler headers), written with the first body bytes.
     pub staged: Headers,
@@ -103,6 +105,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             expect_continue,
             minor: head.minor,
             sent: false,
+            response_complete: false,
             status: 0,
             staged: Headers::new(),
             head_written: false,
@@ -349,6 +352,7 @@ impl Exchange {
         // length and type the body would have had.
         if body.is_empty() || bodyless {
             let mut st = self.st.borrow_mut();
+            st.response_complete = true;
             if st.is_head && server::body_allowed(st.status) && !body.is_empty() {
                 st.staged
                     .set("Content-Length", body.len().to_string().into_bytes());
@@ -376,7 +380,9 @@ impl Exchange {
             IoErr::Closed => HttpErr::Closed,
             IoErr::Failed(m) => HttpErr::Failed(m),
             _ => HttpErr::Failed("response write failed".into()),
-        })
+        })?;
+        self.st.borrow_mut().response_complete = true;
+        Ok(())
     }
 
     /// Builds and sends the response head with the first body bytes.
@@ -438,7 +444,7 @@ impl Exchange {
             let st = self.st.borrow();
             (st.sent, st.status, st.is_head, st.remaining_write)
         };
-        if !sent {
+        if !sent || self.st.borrow().response_complete {
             return Err(IoErr::InvalidInput);
         }
         if data.len() > remaining {
@@ -773,6 +779,17 @@ mod tests {
                         return Ok(());
                     }
                     "/nobody" => return Ok(()),
+                    "/whole" | "/whole-empty" => {
+                        let body = if ex.path() == "/whole" {
+                            &b"done"[..]
+                        } else {
+                            &[][..]
+                        };
+                        ex.send_response(200, &Headers::new(), body)?;
+                        assert_eq!(ex.write(b"extra"), Err(IoErr::InvalidInput));
+                        assert_eq!(ex.write(b""), Err(IoErr::InvalidInput));
+                        return Ok(());
+                    }
                     "/err" => return Err(HttpErr::Failed("nope".into())),
                     "/headers" => {
                         assert_eq!(
@@ -812,6 +829,24 @@ mod tests {
         let options = Options { limits, tls: None };
         let server = Server::start(&net, "127.0.0.1:0", Box::new(Streamer), options).unwrap();
         (net, server)
+    }
+
+    #[test]
+    fn whole_response_rejects_subsequent_writes() {
+        let (_net, server) = start(Limits::default());
+        for path in ["/whole", "/whole-empty"] {
+            let addr = server.address().to_string();
+            let text = with_client(move || {
+                raw(
+                    &addr,
+                    format!("GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+                        .as_bytes(),
+                )
+            });
+            assert!(text.starts_with("HTTP/1.1 200 OK"), "{text}");
+            let body = text.split_once("\r\n\r\n").unwrap().1;
+            assert_eq!(body, if path == "/whole" { "done" } else { "" });
+        }
     }
 
     #[test]

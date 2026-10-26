@@ -379,6 +379,38 @@ impl Stream {
         }
     }
 
+    /// The buffered case of [`Stream::read_line`]: when a whole line shorter than `max` is
+    /// already read ahead, `make` builds the result straight from its bytes (no intermediate
+    /// copy). `None` means the line is not fully buffered, or the call needs `read_line`'s
+    /// error and refill paths.
+    pub fn read_buffered_line<R>(
+        &mut self,
+        max: Option<i64>,
+        make: impl FnOnce(&[u8]) -> R,
+    ) -> Option<IoRes<R>> {
+        if self.closed || self.no_read {
+            return None;
+        }
+        let max = match max {
+            None => i64::MAX,
+            Some(v) if v <= 0 => return None,
+            Some(v) => v,
+        } as u64;
+        poll_cancel();
+        let avail = self.available();
+        let i = find_newline(avail)?;
+        let mut line = &avail[..i];
+        if line_length(line) >= max {
+            return None;
+        }
+        if line.last() == Some(&b'\r') {
+            line = &line[..line.len() - 1];
+        }
+        let made = core::str::from_utf8(line).is_ok().then(|| make(line));
+        self.consume(i + 1);
+        Some(made.ok_or(IoFail::status(STATUS_INVALID_DATA)))
+    }
+
     /// `ioReadLine`: one line without its ending, `None` at end of stream.
     pub fn read_line(&mut self, max: Option<i64>) -> IoRes<Option<Vec<u8>>> {
         if self.closed {
@@ -398,9 +430,10 @@ impl Stream {
         {
             let line = self.available()[..i].to_vec();
             self.consume(i + 1);
-            return finish_line(line).map(Some);
+            return finish_line(line, true).map(Some);
         }
         let mut b: Vec<u8> = Vec::new();
+        let mut terminated = false;
         loop {
             let mut chunk = self.take_pending();
             if chunk.is_empty() {
@@ -420,6 +453,7 @@ impl Stream {
                 if line_length(&b) >= max {
                     return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
                 }
+                terminated = true;
                 break;
             }
             b.extend_from_slice(&chunk);
@@ -427,7 +461,7 @@ impl Stream {
                 return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
             }
         }
-        finish_line(b).map(Some)
+        finish_line(b, terminated).map(Some)
     }
 }
 
@@ -467,8 +501,8 @@ fn line_length(line: &[u8]) -> u64 {
     }
 }
 
-fn finish_line(mut line: Vec<u8>) -> IoRes<Vec<u8>> {
-    if line.last() == Some(&b'\r') {
+fn finish_line(mut line: Vec<u8>, terminated: bool) -> IoRes<Vec<u8>> {
+    if terminated && line.last() == Some(&b'\r') {
         line.pop();
     }
     if core::str::from_utf8(&line).is_err() {
@@ -533,6 +567,33 @@ mod tests {
         input.close().unwrap();
         assert_eq!(input.read(None).unwrap_err().status, STATUS_CLOSED);
         assert_eq!(output.write(b"x").unwrap_err().status, STATUS_CLOSED);
+    }
+
+    #[test]
+    fn buffered_line_builds_in_place_and_defers_the_rest() {
+        let (r, w) = pipe();
+        let mut input = Stream::new(r, true, b"pipe");
+        let mut output = Stream::new(w, true, b"pipe");
+        output
+            .write(b"one\r\ntwo\nlong line here\n\xff\nlast")
+            .unwrap();
+        output.close().unwrap();
+        // Nothing is read ahead yet, so the buffered path declines.
+        assert!(input.read_buffered_line(None, <[u8]>::to_vec).is_none());
+        assert_eq!(input.read_line(None).unwrap().unwrap(), b"one");
+        let two = input.read_buffered_line(None, <[u8]>::to_vec);
+        assert_eq!(two.unwrap().unwrap(), b"two");
+        // A nonpositive limit and a line at or over the limit are left to read_line.
+        assert!(input.read_buffered_line(Some(0), <[u8]>::to_vec).is_none());
+        assert!(input.read_buffered_line(Some(14), <[u8]>::to_vec).is_none());
+        let long = input.read_buffered_line(Some(15), <[u8]>::to_vec);
+        assert_eq!(long.unwrap().unwrap(), b"long line here");
+        // Invalid text is an error and the line is consumed.
+        let bad = input.read_buffered_line(None, <[u8]>::to_vec);
+        assert_eq!(bad.unwrap().unwrap_err().status, STATUS_INVALID_DATA);
+        // The last line has no newline yet: not buffered.
+        assert!(input.read_buffered_line(None, <[u8]>::to_vec).is_none());
+        assert_eq!(input.read_line(None).unwrap().unwrap(), b"last");
     }
 
     #[test]
@@ -606,6 +667,21 @@ mod tests {
         {
             let mut f = Stream::open(b"/proc/self/status").unwrap();
             assert!(f.read(None).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn an_unterminated_carriage_return_is_line_content() {
+        for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
+            let (r, w) = pipe();
+            let mut input = Stream::new(r, true, b"pipe");
+            let mut output = Stream::new(w, true, b"pipe");
+            output.write(b"first\n").unwrap();
+            output.write(text).unwrap();
+            output.close().unwrap();
+            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
+            assert_eq!(input.read_line(None).unwrap().unwrap(), text);
+            assert_eq!(input.read_line(None).unwrap(), None);
         }
     }
 }

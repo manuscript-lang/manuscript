@@ -1222,10 +1222,8 @@ impl Optional[T]:
     def or_else(create: Callable[[], Optional[T]]) -> Optional[T]: ...
     def ok_or[E: Error = MissingValue](cause: Optional[E] = none) -> Result[T, E]: ...
     def ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]: ...
-type	9	9	196	method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument
-type	10	9	260	method and_then declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument
-type	12	9	410	method ok_or declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument
-type	13	9	497	method ok_or_else declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argumentdef helper(left: Int, right: Int) -> Int:
+resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
+type	5	1	57	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesdef helper(left: Int, right: Int) -> Int:
     return left + right
 export def defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: Callable[[Int], Int] = (lambda (value: Int) -> Int:
     return value + 1
@@ -3273,7 +3271,8 @@ let NAMES: List[String] = ["a"]
 impl List[T]:
     def map[U](transform: Callable[[T], U]) -> List[U]: ...
     def length() -> Int: ...
-type	3	9	40	method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argumenttype Optional[T]:
+resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declaration
+type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Optional[T]:
     case none
     case some(value: T)
 impl Optional[T]:
@@ -6348,7 +6347,7 @@ impl B:
 impl B:
     def m[U](u: U) -> U:
         return u
-type	4	9	35	method m declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argumenttype B:
+type B:
     x: Int
 impl B:
     def m() -> Int:

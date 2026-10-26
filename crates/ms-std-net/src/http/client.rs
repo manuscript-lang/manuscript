@@ -1379,6 +1379,10 @@ impl BodyState {
     fn next_raw(&mut self, deadline: Deadline, max: usize) -> Result<Option<Vec<u8>>, IoErr> {
         let mut out = Vec::new();
         loop {
+            // Chunk sizes and trailers can keep input readable without producing body bytes.
+            if deadline.expired() {
+                return Err(IoErr::Failed("context deadline exceeded".into()));
+            }
             if !out.is_empty() {
                 return Ok(Some(out));
             }
@@ -1524,7 +1528,7 @@ fn h2_next(
 
 /// Body framing of an HTTP/2 response: it ends with the stream.
 fn h2_framing(head: &ResponseHead, method: &str, stream: &H2Stream) -> Framing {
-    let bodiless = method.eq_ignore_ascii_case("HEAD") || matches!(head.status, 204 | 304);
+    let bodiless = method == "HEAD" || matches!(head.status, 204 | 304);
     if bodiless || stream.drained() {
         Framing::None
     } else {
@@ -2030,6 +2034,28 @@ mod tests {
     }
 
     #[test]
+    fn custom_method_case_does_not_discard_response_bodies() {
+        let (address, _) = serve(|s, _| {
+            while let Some(request) = read_request(s) {
+                let method = request.split_whitespace().next().unwrap();
+                reply(
+                    s,
+                    &format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{method}",
+                        method.len()
+                    ),
+                );
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        for method in ["head", "Head"] {
+            let mut sent = request(method, &address, "/");
+            sent.deadline = Deadline::after(Duration::from_secs(2));
+            assert_eq!(text(&c.send(sent).unwrap()), method);
+        }
+    }
+
+    #[test]
     fn body_framing_follows_go() {
         let (address, _) = serve(|s, _| {
             let request = read_request(s).unwrap();
@@ -2378,6 +2404,30 @@ mod tests {
     }
 
     /// A deadline that passes while the body is still arriving is a timeout, not bad data.
+    #[test]
+    fn body_deadline_applies_while_trailers_are_always_readable() {
+        let (address, _) = serve(|s, _| {
+            read_request(s).unwrap();
+            reply(
+                s,
+                "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n",
+            );
+            let trailers = b"X: trailer\r\n".repeat(16384);
+            s.set_write_timeout(Some(Duration::from_secs(1))).unwrap();
+            let started = Instant::now();
+            while started.elapsed() < Duration::from_secs(1) {
+                if s.write_all(&trailers).is_err() {
+                    return;
+                }
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut sent = request("GET", &address, "/trailers");
+        sent.deadline = Deadline::after(Duration::from_millis(100));
+        let body = c.send(sent).unwrap();
+        assert!(matches!(body.read_all(), Err(ReadAll::Timeout)));
+    }
+
     #[test]
     fn body_deadline_is_a_timeout() {
         let (address, _) = serve(|s, _| {

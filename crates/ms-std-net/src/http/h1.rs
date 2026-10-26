@@ -222,7 +222,7 @@ pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
 
 /// Response body framing for a request made with `method`.
 pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'static str> {
-    if method.eq_ignore_ascii_case("HEAD")
+    if method == "HEAD"
         || (100..200).contains(&head.status)
         || head.status == 204
         || head.status == 304
@@ -754,6 +754,8 @@ mod tests {
         let h = parse("HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::Length(3)));
         assert_eq!(response_framing(&h, "HEAD"), Ok(Framing::None));
+        assert_eq!(response_framing(&h, "head"), Ok(Framing::Length(3)));
+        assert_eq!(response_framing(&h, "Head"), Ok(Framing::Length(3)));
         let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::Chunked));
         let h = parse("HTTP/1.1 204 No Content\r\n\r\n");

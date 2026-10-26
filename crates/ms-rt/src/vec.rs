@@ -1779,6 +1779,19 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
 pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) {
     // SAFETY: caller contract.
     unsafe {
+        let v = &mut *b;
+        // A long text takes over the builder's buffer (NUL terminated, trimmed when much of it
+        // is spare) instead of copying it.
+        if v.len > STR_INLINE_MAX && v.len <= string::MAX_BYTES {
+            let mut ptr = v.ptr;
+            if v.cap == v.len || v.cap > v.len + (v.len >> 2) + 1 {
+                ptr = alloc::realloc(ptr, v.len + 1);
+            }
+            *ptr.add(v.len) = 0;
+            out.write(StrVal::owned(ptr, v.len));
+            *v = EMPTY;
+            return;
+        }
         let s = from_bytes(bslice(b));
         msrt_bytes_drop(b);
         out.write(s);
@@ -1807,6 +1820,31 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strbuilder_freeze_adopts_long_buffers() {
+        for len in [0usize, 1, 15, 16, 17, 100, 5000] {
+            for cap_extra in [0usize, 1, len, 10 * len + 7] {
+                // SAFETY: the builder is a fresh owned buffer that freeze consumes.
+                unsafe {
+                    let mut b = EMPTY;
+                    let want: Vec<u8> = (0..len).map(|i| b'a' + (i % 26) as u8).collect();
+                    reserve(&mut b, &desc::msrt_desc_bool, len + cap_extra);
+                    core::ptr::copy_nonoverlapping(want.as_ptr(), b.ptr, len);
+                    b.len = len;
+                    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+                    msrt_strbuilder_freeze(&mut b, out.as_mut_ptr());
+                    let s = out.assume_init();
+                    assert_eq!(string::bytes(&s), &want[..]);
+                    if len > STR_INLINE_MAX {
+                        assert_eq!(*string::bytes(&s).as_ptr().add(len), 0);
+                    }
+                    assert!(b.ptr.is_null());
+                    string::release(&s);
+                }
+            }
+        }
+    }
 
     unsafe extern "C-unwind" fn cmp_high(_env: *mut u8, a: *const u8, b: *const u8) -> i64 {
         // SAFETY: the sort passes pointers to live word slots.

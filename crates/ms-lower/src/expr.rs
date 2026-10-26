@@ -67,7 +67,7 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
+    pub(crate) fn expr_value(&mut self, e: &Expr) -> Result<Val, Error> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }

@@ -33,6 +33,8 @@ const NUM_LARGE: usize = 49;
 const LARGE_MIN_SHIFT: usize = 12;
 /// The largest block kept in a large free list.
 const LARGE_MAX: usize = 16 << 20;
+/// Smallest system block that grows by remapping rather than by copying.
+const REMAP_MIN: usize = 128 << 10;
 /// Bytes the large free lists may hold before further frees go back to the system.
 const LARGE_CACHE_LIMIT: usize = 64 << 20;
 
@@ -563,7 +565,12 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     } else {
         // SAFETY: `p` came from malloc/realloc.
         let old = unsafe { sys::malloc_usable_size(p.cast()) };
-        if old > LARGE_MAX && new_size > LARGE_MAX {
+        // Growing a big block with no cached block to move into: let the system remap its
+        // pages instead of copying them into fresh (page-faulting) memory.
+        let uncached = new_size > old
+            && old >= REMAP_MIN
+            && (new_size > LARGE_MAX || s.large_free[large_class_up(new_size)].is_null());
+        if (old > LARGE_MAX && new_size > LARGE_MAX) || uncached {
             // SAFETY: `p` came from malloc/realloc.
             let q = unsafe { sys::realloc(p.cast(), new_size) } as *mut u8;
             if q.is_null() {
@@ -666,6 +673,33 @@ mod tests {
         let e = alloc(40);
         // SAFETY: `e` is live.
         unsafe { free(e) };
+        assert_eq!(live_blocks(), before);
+    }
+
+    #[test]
+    fn growing_a_big_block_keeps_its_bytes() {
+        let _g = lock();
+        let before = live_blocks();
+        let mut size = REMAP_MIN;
+        let mut p = alloc(size);
+        // SAFETY: each block is live and holds `size` bytes when written and read.
+        unsafe {
+            for i in 0..size {
+                *p.add(i) = (i % 251) as u8;
+            }
+            for _ in 0..6 {
+                let old = size;
+                size *= 2;
+                p = realloc(p, size);
+                for i in (0..old).step_by(97) {
+                    assert_eq!(*p.add(i), (i % 251) as u8);
+                }
+                for i in old..size {
+                    *p.add(i) = (i % 251) as u8;
+                }
+            }
+            free(p);
+        }
         assert_eq!(live_blocks(), before);
     }
 
