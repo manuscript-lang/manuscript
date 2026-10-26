@@ -38,6 +38,7 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
+        c |= known_ifaces(m, f);
         c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
@@ -152,6 +153,82 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
         changed = true;
     }
     changed
+}
+
+/// Removes the box of an interface value built in the same function from a payload that needs
+/// no drop when nothing but `iface.data` reads, `load`s of the payload type and drops touch it:
+/// `a.compare(b)` on an element type inlines to a load of the boxed argument, so each load
+/// becomes the payload operand and the allocation, the pointer and the drops are deleted.
+fn known_ifaces(m: &Module, f: &mut Func) -> bool {
+    let mut boxed: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::IfaceNew, [x], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && !m.needs_drop(f.ty(*x))
+        {
+            boxed.insert(r, *x);
+        }
+    }
+    if boxed.is_empty() {
+        return false;
+    }
+    let mut pointers: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::IfaceData, [b], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && boxed.contains_key(b)
+        {
+            pointers.insert(r, *b);
+        }
+    }
+    let uses = f.use_counts();
+    let mut handled: HashMap<Value, u32> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        match (i.op, i.args.as_slice()) {
+            (Op::Drop | Op::IfaceData, [b]) if boxed.contains_key(b) => {
+                *handled.entry(*b).or_default() += 1;
+            }
+            (Op::Load, [p]) => {
+                if let (Some(b), Some(r)) = (pointers.get(p), i.res)
+                    && f.ty(r) == f.ty(boxed[b])
+                {
+                    *handled.entry(*p).or_default() += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    let plain = |v: &Value| handled.get(v).copied().unwrap_or(0) == uses[v.index()];
+    boxed.retain(|b, _| {
+        plain(b)
+            && pointers
+                .iter()
+                .filter(|(_, owner)| *owner == b)
+                .all(|(p, _)| plain(p))
+    });
+    if boxed.is_empty() {
+        return false;
+    }
+    pointers.retain(|_, b| boxed.contains_key(b));
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::Load, [p], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && let Some(b) = pointers.get(p)
+        {
+            subst.insert(r, boxed[b]);
+        }
+    }
+    for b in &mut f.blocks {
+        b.insts.retain(|i| {
+            let dropped = i.op == Op::Drop && i.args.first().is_some_and(|a| boxed.contains_key(a));
+            let defines = i
+                .res
+                .is_some_and(|r| boxed.contains_key(&r) || pointers.contains_key(&r));
+            let reads =
+                i.op == Op::Load && i.args.first().is_some_and(|a| pointers.contains_key(a));
+            !(dropped || defines || reads)
+        });
+    }
+    apply_subst(f, &subst);
+    true
 }
 
 /// Folds reads of a `list.lit` whose elements need no drop and that is only read: `list.len`
