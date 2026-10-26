@@ -120,6 +120,8 @@ fn compute_standard_library() -> Vec<ApiModule> {
     let mut sources = HashMap::new();
     for (name, text) in stdlib::SOURCES {
         let file = n(&format!("@std/{name}"));
+        // The source half of a mixed module shares its file's text.
+        sources.insert(n(&format!("{file}+source")), Source::new(Arc::from(*text)));
         sources.insert(file, Source::new(Arc::from(*text)));
     }
     let sources = Sources(sources);
