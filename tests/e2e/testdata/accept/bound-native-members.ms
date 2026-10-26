@@ -181,3 +181,8 @@ test "numeric and optional members as values":
     (is_nan() == False) | try expect_true
     (is_finite()) | try expect_true
     (hash() == n.hash()) | try expect_true
+
+test "native calls pass as Equal":
+    (same("a".to_bytes(), "a".to_bytes())) | try expect_true
+    (same("ab".slice(start: 0, end: 1), "ab".slice(start: 0, end: 1))) | try expect_true
+    ("a".to_bytes().equals("a".to_bytes())) | try expect_true

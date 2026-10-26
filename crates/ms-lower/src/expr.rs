@@ -17,18 +17,33 @@ impl<'a> FnLower<'a> {
 
     /// The checked type of an expression under the instance substitution.
     pub fn ety(&self, e: &Expr) -> ct::Ty {
-        ct::sub(&self.hir.ty(e), &self.subst)
+        ct::sub(&self.value_ty(e), &self.subst)
     }
 
     /// The MIR type of an expression.
     pub fn emty(&mut self, e: &Expr) -> Result<MTy, Error> {
-        let t = self.hir.ty(e);
+        let t = self.value_ty(e);
         self.mty(&t)
+    }
+
+    /// The type of the value an expression computes: while it is lowered ahead of a conversion
+    /// to an interface, its own type rather than the interface.
+    fn value_ty(&self, e: &Expr) -> ct::Ty {
+        match self.hir.info(e).error_source {
+            Some(src) if self.converting == Some(e as *const Expr) => src,
+            _ => self.hir.ty(e),
+        }
     }
 
     /// Lowers an expression, converting at an Error boundary the checker marked.
     pub fn expr(&mut self, e: &Expr) -> Result<Val, Error> {
-        let x = self.expr_value(e)?;
+        let saved = self.converting;
+        if self.hir.info(e).error_source.is_some() {
+            self.converting = Some(e as *const Expr);
+        }
+        let x = self.expr_value(e);
+        self.converting = saved;
+        let x = x?;
         let x = match self.hir.info(e).wrap_some {
             Some(_) if !self.dead => {
                 let o = self.owned(x);
@@ -82,7 +97,7 @@ impl<'a> FnLower<'a> {
             },
             ExprKind::List(items) => self.list_literal(e, items),
             ExprKind::Map(entries) => {
-                let t = self.literal_ty(e)?;
+                let t = self.emty(e)?;
                 self.map_literal(t, entries)
             }
             ExprKind::Unary { op, operand } => self.unary(e, *op, operand),
@@ -145,11 +160,7 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- literals
 
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
-        // A literal converted to an interface keeps its own type until the conversion.
-        let t = match self.hir.info(e).error_source {
-            Some(src) => ct::sub(&src, &self.subst),
-            None => self.ety(e),
-        };
+        let t = self.ety(e);
         match t.id.as_str() {
             "Int" | "Int8" | "Int16" | "Int32" | "Int64" => {
                 let n: i128 = parse_int(text)
@@ -192,16 +203,8 @@ impl<'a> FnLower<'a> {
         }
     }
 
-    /// The type a literal builds: its own, before any conversion to an interface.
-    fn literal_ty(&mut self, e: &Expr) -> Result<MTy, Error> {
-        match self.hir.info(e).error_source {
-            Some(src) => self.mty(&ct::sub(&src, &self.subst)),
-            None => self.emty(e),
-        }
-    }
-
     fn list_literal(&mut self, e: &Expr, items: &[Expr]) -> Result<Val, Error> {
-        let lt = self.literal_ty(e)?;
+        let lt = self.emty(e)?;
         let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("list literal of a non-list type"));
         };
