@@ -4,7 +4,8 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../../.." && pwd)
 target=${CARGO_TARGET_DIR:-$root/target}
-(cd "$root" && cargo build -q --release -p ms-native)
+case "$target" in /*) ;; *) target="$root/$target" ;; esac
+(cd "$root" && cargo build -q --release --locked -p ms-native --target-dir "$target")
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 cc -O2 -fno-omit-frame-pointer -o "$work/bench" "$here/bench.c" "$target/release/libms_native.a" -lpthread -ldl -lm
