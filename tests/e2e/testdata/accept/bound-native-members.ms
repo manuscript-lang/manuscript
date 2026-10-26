@@ -153,3 +153,9 @@ test "built-in data passes as Equal":
     (same(1, 2) == False) | try expect_true
     (same(EqualProbe(n: 1), EqualProbe(n: 1))) | try expect_true
     (same(EqualProbe(n: 1), 1) == False) | try expect_true
+
+test "list and map literals pass as Equal":
+    (same([1, 2], [1, 2])) | try expect_true
+    (same([1, 2], [1]) == False) | try expect_true
+    (same({"a": 1}, {"a": 1})) | try expect_true
+    (same({"a": [1]}, {"a": [2]}) == False) | try expect_true
