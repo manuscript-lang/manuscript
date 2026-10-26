@@ -159,7 +159,7 @@ flowchart LR
 
 - Whether `ms-std-net` reactors and similar thread-affine natives should be usable inside workers (default: fault).
 - Workers spawning workers (default: allowed, counted against the 256 cap).
-- Rust code in a worker (the Rust standard library's allocations, including the scheduler's `Vec`s) uses the system allocator on Linux, because process-wide caches (`OnceLock<Vec>` in `ms-std-net`) could otherwise point into an unmapped arena; macOS and Windows already use the system allocator for Rust code.
+- Rust code in a worker (the Rust standard library's allocations, including the scheduler's `Vec`s) uses the system allocator on Linux, because process-wide caches (`OnceLock<Vec>` in `ms-std-net`) could otherwise point into an unmapped arena. Large blocks (over the small-class limit) are system blocks anyway, so a worker's Rust code reuses them through the large free list as the main isolate does; before that, each 8 MiB fetch body was mapped and faulted in again (one worker 70 to 84 req/s against 190 on the main isolate, 199 after; two workers 378 against Go's client at about 366 on the same 2 client CPUs). macOS and Windows already use the system allocator for Rust code.
 
 ## Rejected ideas
 

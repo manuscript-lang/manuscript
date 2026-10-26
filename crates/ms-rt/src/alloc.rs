@@ -803,13 +803,16 @@ mod std_heap {
     /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
     /// library out of the arena so leak checks see only program allocations. A worker's arena
     /// ends with the worker, and Rust code can keep what it allocates in process-wide state
-    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator.
+    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator
+    /// for small blocks. Large blocks are system blocks in any case, and the worker keeps freed ones
+    /// for reuse (as the main isolate does), so an 8 MiB body buffer is not mapped and faulted in
+    /// again by every request.
     #[inline(always)]
     fn arena_ok(layout: Layout) -> bool {
         !cfg!(feature = "stats")
             && layout.align() <= 16
             && has_arena()
-            && !crate::isolate::is_worker()
+            && (!crate::isolate::is_worker() || layout.size() > MAX_SMALL)
     }
 
     /// Whether `p` is a small block of any isolate's arena.
