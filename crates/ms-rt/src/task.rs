@@ -1416,10 +1416,7 @@ pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
                     crate::string::release_opt(&msg);
                     report
                 };
-                let last = &mut *LAST_FAULT.ptr();
-                if last.is_empty() || !keep {
-                    *last = report;
-                }
+                set_fault_report(report);
                 4
             }
             _ if *TIMED_OUT.ptr() => 1,
@@ -1432,6 +1429,12 @@ pub(crate) unsafe fn join_closure(handle: u64, keep: bool) -> u8 {
 pub(crate) fn take_fault_report() -> Vec<u8> {
     // SAFETY: single threaded scheduler.
     unsafe { core::mem::take(&mut *LAST_FAULT.ptr()) }
+}
+
+/// Publishes the report of a completed join or wait, after any scheduler switches it made.
+pub(crate) fn set_fault_report(report: Vec<u8>) {
+    // SAFETY: single threaded scheduler.
+    unsafe { *LAST_FAULT.ptr() = report };
 }
 
 crate::isolate_static! {

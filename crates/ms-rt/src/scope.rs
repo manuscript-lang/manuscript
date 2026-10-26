@@ -201,9 +201,16 @@ pub extern "C-unwind" fn msrt_scope_wait(scope: i64) -> i64 {
         return 3;
     }
     let mut worst = 0;
+    let mut first_fault = None;
     for handle in tasks_of(scope) {
         // SAFETY: single threaded scheduler.
         let outcome = unsafe { task::join_closure(handle, true) };
+        if outcome == 4 {
+            // A later join may switch to another scope's waiter. Keep our report on this
+            // stack until all our tasks have ended, rather than in the shared delivery slot.
+            let report = task::take_fault_report();
+            first_fault.get_or_insert(report);
+        }
         worst = match (worst, outcome) {
             (_, 3) => worst,
             (4, _) => 4,
@@ -211,6 +218,9 @@ pub extern "C-unwind" fn msrt_scope_wait(scope: i64) -> i64 {
             (1, _) | (_, 1) => 1,
             (_, o) => worst.max(o),
         };
+    }
+    if let Some(report) = first_fault {
+        task::set_fault_report(report);
     }
     i64::from(worst)
 }
@@ -225,7 +235,10 @@ pub extern "C-unwind" fn msrt_scope_close(scope: i64) {
     }
     for handle in handles {
         // SAFETY: single threaded scheduler.
-        unsafe { task::join_closure(handle, false) };
+        if unsafe { task::join_closure(handle, false) } == 4 {
+            // Close discards uncollected faults instead of publishing them to a later wait.
+            task::take_fault_report();
+        }
     }
     if find(scope).is_some() {
         scopes()[((scope & 0xffff_ffff) - 1) as usize] = None;
@@ -236,6 +249,88 @@ pub extern "C-unwind" fn msrt_scope_close(scope: i64) {
 mod tests {
     use super::*;
     use crate::testutil::lock;
+
+    unsafe extern "C-unwind" fn first_fault(_: *mut Closure) {
+        crate::fault::fault(b"first scope fault");
+    }
+
+    unsafe extern "C-unwind" fn second_fault(_: *mut Closure) {
+        crate::fault::fault(b"second scope fault");
+    }
+
+    unsafe extern "C" fn drop_closure(obj: *mut ms_rt_abi::Obj) {
+        // SAFETY: the test closure has no captures and owns this allocation.
+        unsafe { crate::alloc::free(obj.cast()) };
+    }
+
+    fn spawn_entry(scope: i64, code: unsafe extern "C-unwind" fn(*mut Closure)) {
+        // SAFETY: the scope retains the capture-free closure until the task ends.
+        unsafe {
+            let closure = crate::obj::new_obj(size_of::<Closure>(), drop_closure).cast::<Closure>();
+            (*closure).code = code as *const u8;
+            assert!(msrt_scope_spawn(scope, closure, -1, -1) > 0);
+            crate::obj::release(closure.cast());
+        }
+    }
+
+    #[test]
+    fn a_closed_scopes_fault_does_not_replace_a_later_wait_report() {
+        let _g = lock();
+        task::teardown();
+        let first = msrt_scope_new();
+        msrt_scope_contain(first);
+        spawn_entry(first, first_fault);
+        assert_eq!(msrt_scope_wait(first), 4);
+        assert_eq!(task::take_fault_report(), b"first scope fault");
+        // Closing collects the uncollected fault; its discarded report must not escape.
+        msrt_scope_close(first);
+        assert!(task::take_fault_report().is_empty());
+
+        let second = msrt_scope_new();
+        msrt_scope_contain(second);
+        spawn_entry(second, second_fault);
+        assert_eq!(msrt_scope_wait(second), 4);
+        let report = task::take_fault_report();
+        msrt_scope_close(second);
+        task::teardown();
+        assert_eq!(report, b"second scope fault");
+    }
+
+    static OTHER_SCOPE: crate::global::Process<i64> = crate::global::Process::new(0);
+    static OTHER_REPORT: crate::global::Process<Vec<u8>> = crate::global::Process::new(Vec::new());
+
+    unsafe extern "C-unwind" fn wait_other_scope(_: *mut Closure) {
+        // SAFETY: the test holds the runtime lock and keeps the other scope open.
+        unsafe {
+            assert_eq!(msrt_scope_wait(*OTHER_SCOPE.ptr()), 4);
+            *OTHER_REPORT.ptr() = task::take_fault_report();
+        }
+    }
+
+    #[test]
+    fn interleaved_scope_waits_keep_their_own_first_fault() {
+        let _g = lock();
+        task::teardown();
+        let first = msrt_scope_new();
+        let second = msrt_scope_new();
+        msrt_scope_contain(first);
+        msrt_scope_contain(second);
+        // The first wait sees its first fault, then switches to a task waiting on the other scope.
+        spawn_entry(first, first_fault);
+        spawn_entry(first, wait_other_scope);
+        spawn_entry(second, second_fault);
+        // SAFETY: tests hold the runtime lock; the nested waiter runs before these scopes close.
+        unsafe { *OTHER_SCOPE.ptr() = second };
+        assert_eq!(msrt_scope_wait(first), 4);
+        let first_report = task::take_fault_report();
+        // SAFETY: the nested waiter has finished, under the runtime lock.
+        let second_report = unsafe { core::mem::take(&mut *OTHER_REPORT.ptr()) };
+        msrt_scope_close(first);
+        msrt_scope_close(second);
+        task::teardown();
+        assert_eq!(first_report, b"first scope fault");
+        assert_eq!(second_report, b"second scope fault");
+    }
 
     unsafe extern "C-unwind" fn nap(arg: *mut u8) {
         // SAFETY: called from a running task.
