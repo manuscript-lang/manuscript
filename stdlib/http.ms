@@ -315,6 +315,9 @@ export interface ResponseBody:
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
     def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    # Reads the rest of the body into one value, with `read`'s limit and error rules.
+    # A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
+    def read_all() -> Result[Bytes, IoError]
 
 # Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
 export def from_io(error: IoError) -> HttpError:

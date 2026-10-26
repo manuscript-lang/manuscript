@@ -1,5 +1,5 @@
 # Fetch-style HTTP client implemented in Manuscript over `@std/http.ms` and `@std/json.ms`.
-from "@std/bytes.ms" import Bytes, join
+from "@std/bytes.ms" import Bytes
 from "@std/http.ms" import HttpClient, HttpClientOptions, HttpError, HttpHeaders, HttpMethod, HttpResponseMetadata, ResponseBody, headers
 from "@std/io.ms" import IoError
 from "@std/json.ms" import JsonError, parse, stringify
@@ -179,28 +179,15 @@ def drain(
 ) -> Result[FetchResponse, FetchError]:
     with let open = body:
         let metadata = open.metadata()
-        var parts: List[Bytes] = []
-        var total = 0
+        let whole = (
+            try open
+            .read_all()
+            .map_error(lambda cause: read_failure(cause, options, started))
+        )
+        if limit_exceeded(options.max_response_bytes, whole.length()):
+            return error(FetchError.Http(HttpError.LimitExceeded))
 
-        while True:
-            let step = (
-                try open
-                .read()
-                .map_error(
-                    lambda cause: read_failure(
-                        cause, options, started
-                    )
-                )
-            )
-
-            if let bytes = step:
-                total += bytes.length()
-                if limit_exceeded(options.max_response_bytes, total):
-                    return error(FetchError.Http(HttpError.LimitExceeded))
-
-                parts.append(bytes)
-            else:
-                return ok(FetchResponse(head: metadata, body: join(parts)))
+        return ok(FetchResponse(head: metadata, body: whole))
 
 # Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
 def read_failure(cause: IoError, options: FetchOptions, started: Instant) -> FetchError:

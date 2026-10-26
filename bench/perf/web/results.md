@@ -75,6 +75,16 @@ The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn b
 
 Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven memory-copy passes per body byte; now three). Callgrind over 20 fetches of 8 MiB: 1.18G to 0.52G instructions. `/io` (whole-file read and write) went from 676 to 756 req/s, with `/health` beside it from 26k to 40k req/s and its p99 from 11 to 5.8 ms: reads per request 40 to 5, writes 19 to 4. A 30-route router served 41k-46k requests per second before it stopped cloning its routes on each request, and 80k-83k after.
 
+## 2026-10-26, fetch bodies received in place
+
+`ResponseBody.read_all()` receives a fixed-length HTTP/1 body straight into the result buffer, and `fetch` uses it. `sh bench/perf/web/fetch.sh` style run, 8 MiB body, client on CPUs 2-3, three rounds on the shared VM (+/-10%):
+
+| Connections | Go req/s | Manuscript before | Manuscript after |
+| --- | ---: | ---: | ---: |
+| 1 | 158-207 | 120-136 | 138-146 |
+| 8 | 255-365 | 104-126 | 150-155 |
+
+User CPU for 3 s at 8 connections: 1.47 s before, 0.12 s after (the rest is kernel receive and page faults). The Manuscript client still runs on one core, Go's on two.
 ## 2026-10-26, server on several cores
 
 `server <port> <dir> <threads>` starts that many workers, each running `serve` with `HttpServerOptions(shared: True)` on one shared listener. Server on CPUs 0-1, 64 keep-alive connections from CPUs 2-3, 4 s per row, shared 4-CPU Linux VM (+/-10% between runs); two runs each.
