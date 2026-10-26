@@ -335,7 +335,9 @@ impl Cx {
                 let ty = m.types.iface(id);
                 self.tycache.insert(key.to_string(), ty);
                 self.contracts.insert(id, t.clone());
-                let subst = ct::substitution(t);
+                let mut subst = ct::substitution(t);
+                // `Self` in an operation is the interface value itself.
+                subst.insert(ms_check::self_variable(t.id).id, t.clone());
                 let mut methods = Vec::new();
                 if let Some(def) = &t.def {
                     let ops = def.operations.borrow().clone();
@@ -349,6 +351,12 @@ impl Cx {
                         {
                             continue;
                         }
+                        let self_params = op
+                            .ty
+                            .params
+                            .iter()
+                            .map(|p| p.ty.id.as_str().ends_with("/Self"))
+                            .collect();
                         let sig = ct::sub(&op.ty, &subst);
                         let mut params = Vec::new();
                         for p in &sig.params {
@@ -365,6 +373,7 @@ impl Cx {
                             params,
                             ret,
                             ret_borrowed,
+                            self_params,
                         });
                     }
                 }

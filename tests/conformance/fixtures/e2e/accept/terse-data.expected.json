@@ -50,25 +50,25 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`a` is moved here but used again at 80:57; a value has one owner, so pass `a.clone()` to keep the original, or move it only at its last use",
+          "message": "`a` is moved here but used again at 78:57; a value has one owner, so pass `a.clone()` to keep the original, or move it only at its last use",
           "position": {
             "file": "terse-data.ms",
-            "line": 79,
+            "line": 77,
             "column": 19,
-            "offset": 2581
+            "offset": 2504
           },
           "fix": {
             "position": {
               "file": "terse-data.ms",
-              "line": 79,
+              "line": 77,
               "column": 20,
-              "offset": 2582
+              "offset": 2505
             },
             "end": {
               "file": "terse-data.ms",
-              "line": 79,
+              "line": 77,
               "column": 20,
-              "offset": 2582
+              "offset": 2505
             },
             "replacement": ".clone()"
           }

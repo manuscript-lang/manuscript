@@ -1617,21 +1617,12 @@ impl<'a> FnLower<'a> {
         )
     }
 
-    /// `equals` of data with built-in equality: boxes the receiver as the argument's `Equal`
-    /// and dispatches, so both sides compare as the interface value would.
-    fn equals_value(&mut self, concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
-        let want = self.ty_of(other.v);
-        let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
-            return Err(Error::new("equals without an interface argument"));
-        };
-        let boxed = self.fit_ty(recv, concrete, want)?;
-        let v = self.b.call_method(iface, 0, boxed.v, &[other.v]);
-        if boxed.own {
-            self.drop_value(boxed.v);
-        }
-        if other.own {
-            self.drop_value(other.v);
-        }
+    /// `equals` of data with built-in equality: the equality `==` selects, against another
+    /// value of the same type.
+    fn equals_value(&mut self, _concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
+        let t = self.ty_of(recv.v);
+        // `equal` borrows both operands, so owned temporaries are released with the statement.
+        let v = self.equal(t, recv, other)?;
         Ok(Val { v, own: false })
     }
 

@@ -59,15 +59,7 @@ impl FnLower<'_> {
             .ok_or_else(|| Error::new("compare without declaration"))?;
         let c = self.callable_of_decl(im.module, Some(decl.id()))?;
         let fid = self.cx.function_for(self.b.m, &c, &ct::Subst::new())?;
-        let want = {
-            let other = c
-                .parameters
-                .first()
-                .ok_or_else(|| Error::new("compare without a parameter"))?;
-            self.mty(&other.ty)?
-        };
-        let other = self.fit_ty(Val { v: b, own: false }, concrete, want)?;
-        let other = other.v;
+        let other = b;
         let recv = if self.cx.var_positions(&c).contains(&0) {
             // A changing receiver is lent as a slot holding a copy that is dropped afterwards.
             let t = self.ty_of(a);
@@ -83,7 +75,6 @@ impl FnLower<'_> {
         };
         let first = recv.map_or(a, |(slot, _)| slot);
         let r = self.b.call(fid, &[first, other]);
-        self.drop_value(other);
         if let Some((slot, t)) = recv {
             let back = self.move_out(slot, t);
             self.drop_value(back);

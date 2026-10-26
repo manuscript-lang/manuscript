@@ -6,13 +6,11 @@ from "./helper.ms" import insert, insert_bound
 from "@std/testing.ms" import expect_equal
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Key(other): return (
-                self.code == other.code
-                or self.code == -other.code
-            )
-            case _: return False
+    def equals(other: Key) -> Bool:
+        return (
+            self.code == other.code
+            or self.code == -other.code
+        )
 
 impl Hashable for Key:
     def hash() -> Int: 0
