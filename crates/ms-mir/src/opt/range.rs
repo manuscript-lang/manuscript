@@ -47,7 +47,7 @@
 
 use crate::ir::*;
 use crate::types::{Ty, TyKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Whether bounded loop counters are assumed not to overflow (see the module docs).
 pub const ASSUME_BOUNDED_COUNTERS: bool = true;
@@ -186,7 +186,7 @@ struct Fa<'a> {
     base: Vec<Option<Itv>>,
     envs: Vec<Env>,
     widen: Vec<u32>,
-    lenof: HashMap<Value, Value>,
+    lenof: LenOf,
     lengths: Vec<Value>,
     byte_lists: Vec<bool>,
     /// Block and index of the block parameter that defines a value.
@@ -197,6 +197,20 @@ struct Fa<'a> {
     /// dominating code (a chain of many loops would otherwise make the pass quadratic).
     last_read: Vec<u32>,
     rpo_pos: Vec<u32>,
+}
+
+/// The length origin of each `list.len` result. Queried at every proof step, so a table
+/// indexed by value, not a hash map.
+struct LenOf(Vec<Option<Value>>);
+
+impl LenOf {
+    fn insert(&mut self, v: Value, origin: Value) {
+        self.0[v.index()] = Some(origin);
+    }
+
+    fn get(&self, v: &Value) -> Option<&Value> {
+        self.0[v.index()].as_ref()
+    }
 }
 
 /// A list length can flow through replacement and block arguments without its
@@ -384,7 +398,7 @@ impl<'a> Fa<'a> {
         let lengths = length_origins(m, f);
         let byte_lists = byte_lists(m, f);
         let mut defs = vec![None; f.values.len()];
-        let mut lenof = HashMap::new();
+        let mut lenof = LenOf(vec![None; f.values.len()]);
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, i) in b.insts.iter().enumerate() {
                 if let Some(r) = i.res {
@@ -475,7 +489,17 @@ impl<'a> Fa<'a> {
         let pos = self.rpo_pos[bi];
         let live = |v: &Value| self.last_read[self.class(*v)] >= pos;
         env.itv.retain(|v, _| live(v));
-        env.rels.retain(|(a, b, _)| live(a) || live(b));
+        // `a < b` serves a proof that reaches `b` from a live value and goes on from there, so it
+        // stays when `b` is live or when `b` starts another kept relation. `0 < len` for every
+        // earlier version of a list would otherwise outlive the lists.
+        let starts: HashSet<usize> = env
+            .rels
+            .iter()
+            .filter(|(_, b, _)| live(b))
+            .map(|(a, ..)| self.class(*a))
+            .collect();
+        env.rels
+            .retain(|(a, b, _)| live(b) || (live(a) && starts.contains(&self.class(*b))));
     }
 
     fn def_inst(&self, v: Value) -> Option<&'a Inst> {
