@@ -479,6 +479,26 @@ impl Checker {
             None if name == "worker_channel" => sig.result_ty().args.clone(),
             _ => return,
         };
+        for t in &messages {
+            let custom = |t: &Ty| {
+                self.p.methods.iter().any(|m| {
+                    m.contract
+                        .as_ref()
+                        .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                        && type_key(&m.receiver) == type_key(t)
+                })
+            };
+            if let Some(bad) = without_json_form(t, &custom, &mut Vec::new()) {
+                self.type_error(
+                    e.pos,
+                    format!(
+                        "a worker or process message crosses as JSON, and {} has no JSON form, so it would be dropped silently; send plain data (numbers, text, lists, maps, records) instead",
+                        show(&Some(bad.clone()))
+                    ),
+                );
+                break;
+            }
+        }
         if messages.iter().any(|t| mentions_shared(t, &mut Vec::new())) {
             self.type_error(
                 e.pos,
@@ -867,6 +887,66 @@ fn mentions_shared(t: &Ty, visiting: &mut Vec<Name>) -> bool {
                         .iter()
                         .any(|f| mentions_shared(&sub(&f.ty, &s), visiting))
                 });
+        }
+    }
+    visiting.pop();
+    found
+}
+
+/// The first type inside `t` that the JSON codec cannot write or read: a function, an interface or
+/// a resource handle, or a map whose key has no JSON text. Such a field would be omitted on the
+/// way across, so a worker message may not hold one. A type with a `JsonEncode` implementation
+/// chooses its own form.
+fn without_json_form(t: &Ty, custom: &dyn Fn(&Ty) -> bool, visiting: &mut Vec<Name>) -> Option<Ty> {
+    if t.kind == Kind::Variable || t.is_source_type("@std/json.ms", "JsonValue") || custom(t) {
+        return None;
+    }
+    if matches!(t.kind, Kind::Function | Kind::Contract) {
+        return Some(t.clone());
+    }
+    let container = ["List", "Set", "Map", "Optional"];
+    if t.kind == Kind::Native && !container.iter().any(|n| t.is_std(n)) {
+        let known = ["Bytes", "BigInt", "Timestamp", "Decimal", "Duration"];
+        let net = ["Url", "IpAddress", "Cidr"];
+        let ok = known.iter().any(|n| t.is_std(n))
+            || net.iter().any(|n| t.is_source_type("@std/net.ms", n));
+        return if ok { None } else { Some(t.clone()) };
+    }
+    if t.is_std("Map") {
+        let key = &t.args[0];
+        let keyable = matches!(key.id.as_str(), "String" | "Int" | "Bool" | "Float")
+            || key.is_std("Duration")
+            || key.is_std("Timestamp")
+            || key.is_std("Decimal")
+            || (key.kind == Kind::Alternative
+                && !key.is_std("Optional")
+                && !cases(key).is_empty()
+                && cases(key).iter().all(|c| c.fields.is_empty()));
+        if !keyable {
+            return Some(key.clone());
+        }
+    }
+    if visiting.contains(&t.id) {
+        return None;
+    }
+    visiting.push(t.id);
+    let mut found = t
+        .args
+        .iter()
+        .find_map(|a| without_json_form(a, custom, visiting));
+    if found.is_none() && matches!(t.kind, Kind::Record | Kind::Alternative) {
+        found = fields(t)
+            .iter()
+            .find_map(|f| without_json_form(&f.ty, custom, visiting));
+        if found.is_none()
+            && let Some(def) = &t.def
+        {
+            let s = substitution(t);
+            found = def.cases.borrow().iter().find_map(|case| {
+                case.fields
+                    .iter()
+                    .find_map(|f| without_json_form(&sub(&f.ty, &s), custom, visiting))
+            });
         }
     }
     visiting.pop();

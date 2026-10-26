@@ -19,7 +19,8 @@ impl List[T]:
     # Returns a deep copy with independent list and nested value storage.
     def clone() -> List[T]: ...
 
-    # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
+    # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`; pass one for indexes that may miss, or use `first()` and `last()`.
+    # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
     def get(index: Int, default: Optional[T] = none) -> ref T: ...
 
     # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
