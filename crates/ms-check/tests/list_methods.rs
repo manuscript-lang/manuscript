@@ -1,4 +1,4 @@
-//! List operations written in Manuscript (`stdlib/lists.ms`) load with the standard library
+//! List operations written in Manuscript (`stdlib/collections.ms`) load with the standard library
 //! and apply to a `List[T]` only when `T` meets the operation's bound (#1285).
 
 use ms_check::{CheckOptions, ImportMap};

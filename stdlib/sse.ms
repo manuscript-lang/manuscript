@@ -176,11 +176,9 @@ def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, S
 
     if not decoder.started:
         decoder.started = True
-        if bytes.starts_with(f"\u{feff}".to_bytes()): bytes = (
-            bytes
-            .slice(3, bytes.length())
-            .get()
-        )
+        if bytes.starts_with(f"\u{feff}".to_bytes()): bytes = bytes.slice(
+            3, bytes.length()
+        ).get()
 
     if bytes.is_empty():
         dispatch(var decoder, var events)

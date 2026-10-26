@@ -67,7 +67,10 @@ const MIN_STACK: usize = 128 << 10;
 const GUARD: usize = 64 << 10;
 #[cfg(unix)]
 const HDR_PAGE: usize = 4096;
-const STACK_POOL: usize = 512;
+const STACK_POOL: usize = 1024;
+/// Most slots one address-space reservation holds (stack creation reserves in batches).
+#[cfg(unix)]
+const CARVE_MAX: usize = 16;
 /// Address space reserved for a task a group starts (committed lazily).
 const TASK_GROUP_STACK: usize = 16 << 20;
 const NO_DEADLINE: i64 = i64::MAX;
@@ -155,10 +158,19 @@ struct Sched {
     fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
     epfd: i32,
-    pool: Vec<usize>,
+    /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length, whose guard it has.
+    pool: Vec<(usize, usize)>,
+    /// Unused aligned stack slots of the last reservation: next slot address and the end.
+    #[cfg(unix)]
+    carve: (usize, usize),
+    /// How many slots the next reservation holds; doubles up to `CARVE_MAX`.
+    #[cfg(unix)]
+    carve_batch: usize,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
+    /// Flows of control that only wait for the isolate's main task (not tasks of the program).
+    waiting_roots: usize,
     tokens: Vec<Token>,
     free_tokens: Vec<usize>,
     /// Live tokens still expecting a post from another thread.
@@ -185,9 +197,14 @@ crate::isolate_static! {
     fd_waiting: 0,
     epfd: -1,
     pool: Vec::new(),
+    #[cfg(unix)]
+    carve: (0, 0),
+    #[cfg(unix)]
+    carve_batch: 1,
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
+    waiting_roots: 0,
     tokens: Vec::new(),
     free_tokens: Vec::new(),
     remote_tokens: 0,
@@ -337,29 +354,54 @@ mod stack {
     /// below them and the header page at the slot's base; null on failure. Address space only:
     /// pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
-        let raw = sys::map_anon(2 * STACK_SLOT);
-        if raw.is_null() {
-            return raw;
+        // SAFETY: single threaded scheduler; the slot is unused.
+        let base = unsafe { take_slot() };
+        if base.is_null() {
+            return base;
         }
-        let start = raw as usize;
-        let base = start.next_multiple_of(STACK_SLOT);
-        let end = start + 2 * STACK_SLOT;
-        // SAFETY: trims the unaligned head and tail of the reservation and guards the gap
-        // between the header page and the stack, all inside the fresh mapping.
+        // SAFETY: guards the gap between the header page and the stack inside the slot.
         unsafe {
-            if base > start {
-                sys::unmap(start as *mut u8, base - start);
-            }
-            if end > base + STACK_SLOT {
-                sys::unmap((base + STACK_SLOT) as *mut u8, end - base - STACK_SLOT);
-            }
             let len = len.min(DEFAULT_STACK);
-            sys::guard(
-                (base + HDR_PAGE) as *mut u8,
-                STACK_SLOT - len + GUARD - HDR_PAGE,
-            );
+            sys::guard(base.add(HDR_PAGE), STACK_SLOT - len + GUARD - HDR_PAGE);
         }
-        base as *mut u8
+        base
+    }
+
+    /// The next aligned slot. Address space is reserved in batches that double up to
+    /// `CARVE_MAX`, so most stacks cost no `mmap` or trimming `munmap` of their own.
+    unsafe fn take_slot() -> *mut u8 {
+        let mut s = sched();
+        if s.carve.0 == s.carve.1 {
+            let mut count = s.carve_batch;
+            let mut raw = sys::map_anon((count + 1) * STACK_SLOT);
+            if raw.is_null() && count > 1 {
+                count = 1;
+                raw = sys::map_anon(2 * STACK_SLOT);
+            }
+            if raw.is_null() {
+                return raw;
+            }
+            let start = raw as usize;
+            let base = start.next_multiple_of(STACK_SLOT);
+            let end = start + (count + 1) * STACK_SLOT;
+            // SAFETY: trims the unaligned head and tail of the fresh reservation.
+            unsafe {
+                if base > start {
+                    sys::unmap(start as *mut u8, base - start);
+                }
+                if end > base + count * STACK_SLOT {
+                    sys::unmap(
+                        (base + count * STACK_SLOT) as *mut u8,
+                        end - base - count * STACK_SLOT,
+                    );
+                }
+            }
+            s.carve = (base, base + count * STACK_SLOT);
+            s.carve_batch = (s.carve_batch * 2).min(CARVE_MAX);
+        }
+        let slot = s.carve.0;
+        s.carve.0 += STACK_SLOT;
+        slot as *mut u8
     }
 
     pub unsafe fn destroy(base: *mut u8, _len: usize) {
@@ -532,10 +574,8 @@ unsafe fn ensure_init() -> *mut Task {
 
 unsafe fn alloc_stack(len: usize) -> *mut u8 {
     let mut s = sched();
-    if len == DEFAULT_STACK
-        && let Some(base) = s.pool.pop()
-    {
-        return base as *mut u8;
+    if let Some(at) = s.pool.iter().rposition(|&(_, pooled)| pooled == len) {
+        return s.pool.swap_remove(at).0 as *mut u8;
     }
     // SAFETY: the lowest pages of the fresh mapping become the guard.
     unsafe {
@@ -549,8 +589,8 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
 
 unsafe fn release_stack(base: usize, len: usize) {
     let mut s = sched();
-    if stack::POOLED && len == DEFAULT_STACK && s.pool.len() < STACK_POOL {
-        s.pool.push(base);
+    if stack::POOLED && s.pool.len() < STACK_POOL {
+        s.pool.push((base, len));
         return;
     }
     // SAFETY: the stack came from `alloc_stack` and no task runs on it.
@@ -1012,8 +1052,10 @@ pub unsafe fn run_main_task(entry: Entry) {
         let h = msrt_task_spawn(entry, done as usize as *mut u8, SPAWN_DETACHED, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
+        sched().waiting_roots += 1;
         let mut value = 0;
         while msrt_token_park(done, -1, &mut value) != 0 {}
+        sched().waiting_roots -= 1;
         fault::msrt_shield_exit();
         msrt_token_free(done);
     }
@@ -1031,8 +1073,10 @@ pub unsafe fn run_worker_task(entry: Entry, arg: *mut u8) -> (u8, Vec<u8>) {
         let h = msrt_task_spawn(entry, arg, 0, ROOT_STACK);
         sched().main = lookup(h);
         fault::msrt_shield_enter();
+        sched().waiting_roots += 1;
         let mut msg = crate::string::NO_STR;
         let status = msrt_task_join(h, &mut msg);
+        sched().waiting_roots -= 1;
         fault::msrt_shield_exit();
         let fatal = core::mem::take(&mut *FATAL.ptr());
         if !fatal.is_empty() {
@@ -1183,14 +1227,15 @@ pub unsafe extern "C-unwind" fn msrt_task_current() -> u64 {
     unsafe { (*ensure_init()).handle }
 }
 
-/// Number of tasks that exist (running, runnable, waiting, or finished but not yet joined).
+/// Number of tasks that exist (running, runnable, waiting, or finished but not yet joined),
+/// not counting the flow that only waits for the isolate's main task.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_task_count() -> usize {
     // SAFETY: single threaded scheduler.
     unsafe {
         ensure_init();
     }
-    sched().live
+    sched().live - sched().waiting_roots
 }
 
 /// Requests cancellation of a task: a parked task wakes with `WAIT_CANCELLED`, and the task's
@@ -1686,8 +1731,18 @@ pub fn teardown() {
         }
         // The isolate's pool owns mappings too. Its thread-local state has no destructor,
         // so a worker that exits must release the cached stacks as well as active ones.
-        for base in core::mem::take(&mut s.pool) {
-            stack::destroy(base as *mut u8, DEFAULT_STACK);
+        for (base, len) in core::mem::take(&mut s.pool) {
+            stack::destroy(base as *mut u8, len);
+        }
+        #[cfg(unix)]
+        {
+            // Slots reserved in a batch and never handed out.
+            let (mut next, end) = core::mem::take(&mut s.carve);
+            while next < end {
+                stack::destroy(next as *mut u8, DEFAULT_STACK);
+                next += STACK_SLOT;
+            }
+            s.carve_batch = 1;
         }
         s.cur = null_mut();
         s.main = null_mut();
@@ -1803,7 +1858,11 @@ mod tests {
             let h = msrt_task_spawn(long_wait, null_mut(), 0, 0);
             msrt_task_cancel(h);
             assert_eq!(msrt_task_join(h, null_mut()), 0);
-            let pooled = sched().pool.clone();
+            let pooled = sched()
+                .pool
+                .iter()
+                .map(|&(base, _)| base)
+                .collect::<Vec<_>>();
             assert!(
                 !pooled.is_empty(),
                 "the completed stack must enter the pool"

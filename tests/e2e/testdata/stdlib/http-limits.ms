@@ -10,7 +10,9 @@ def ok_route(request: HttpRequest) -> HttpResponse:
 test "serve caps the request header block":
     let net = network()
 
-    with let server = net.serve(address: "127.0.0.1:0", handler: buffered(ok_route)) | try expect_ok:
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: buffered(ok_route)
+    ) | try expect_ok:
         with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
             let filler = "a".repeat(2000000) | try expect_ok
             let head = f"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"

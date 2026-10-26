@@ -148,15 +148,10 @@ impl Fetcher:
         options: FetchOptions = FetchOptions()
     ) -> Result[ResponseBody, FetchError]:
         let sent = outgoing(options)
-        return (
-            self
-            .client
-            .request_bytes(
-                options.method.clone(), url, sent.headers, sent.body,
-                options.max_response_bytes, options.timeout
-            )
-            .map_error(http_failure)
-        )
+        return self.client.request_bytes(
+            options.method.clone(), url, sent.headers, sent.body,
+            options.max_response_bytes, options.timeout
+        ).map_error(http_failure)
 
 impl Closeable for Fetcher:
     # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.

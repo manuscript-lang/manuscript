@@ -30,10 +30,8 @@ test "try preserves empty errors and skips success effects":
     visits.length() | try expect_equal(1)
 
 test "try can change the success type":
-    (
-        text(Result[Int, TextError].error(TextError("failed")))
-        .err()
-        .text | try expect_equal("failed")
+    text(Result[Int, TextError].error(TextError("failed"))).err().text | try expect_equal(
+        "failed"
     )
     text(Result[Int, TextError].ok(42)).get() | try expect_equal("42")
 

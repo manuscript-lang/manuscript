@@ -21,7 +21,9 @@ test "serve ends a connection that trickles its request head":
         options: HttpServerOptions(timeout: 400.milliseconds)
     ) | try expect_ok:
         with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
-            client.write("GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds) | try expect_ok
+            client.write(
+                "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ", 2.seconds
+            ) | try expect_ok
 
             # One byte every 100 ms never completes the head; the budget still runs out.
             var sent = 0
@@ -97,7 +99,9 @@ test "serve answers requests while handlers read and write files":
 
         return HttpResponse(200, headers(), f"{read.get().length()}".to_bytes())
 
-    with let server = net.serve(address: "127.0.0.1:0", handler: buffered(io_route)) | try expect_ok:
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: buffered(io_route)
+    ) | try expect_ok:
         with let a = net.connect(server.address(), 2.seconds) | try expect_ok:
             with let b = net.connect(server.address(), 2.seconds) | try expect_ok:
                 a.write(
