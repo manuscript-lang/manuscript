@@ -60,3 +60,16 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 | task per request, stack pool 32 (spike) | 32k–33k | 32k–33k | 15k–17k |
 
 The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn before any runs), so every request paid `mmap`, `mprotect` and two `munmap` calls. With 512 the cost left is about 7% on the shortest handlers (`/health` median 107k against 114k).
+
+## 2026-10-26, large-block reuse and inline file calls
+
+`sh bench/perf/web/run.sh 3` before and after this change, shared 4-CPU Linux VM (±10% between runs). Zeroed large buffers (`vec![0; n]`) bypassed the runtime's block cache and faulted in fresh pages on every file read, blocking-pool jobs mapped a new block for every large result, and a single-task program still sent each file call through the pool.
+
+| Measurement | before | after |
+| --- | ---: | ---: |
+| `/io` req/s | 863–944 | 1,232–1,265 |
+| `/health` req/s during `/io` | 46.4k | 75.5k |
+| Resident memory after load | 70.9 MB | 54.5 MB |
+| `/health` req/s | 122.5k–123.7k | 108.5k–109.7k |
+
+`/health` is within the run-to-run noise of this host; Go measured 105k–106k in the first run.

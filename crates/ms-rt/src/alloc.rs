@@ -35,6 +35,73 @@ const LARGE_MIN_SHIFT: usize = 12;
 const LARGE_MAX: usize = 16 << 20;
 /// Bytes the large free lists may hold before further frees go back to the system.
 const LARGE_CACHE_LIMIT: usize = 64 << 20;
+/// Most blocks of one large class a thread keeps for itself; further frees go to the shared
+/// lists, where threads without an arena (blocking-pool jobs, workers) find them.
+const LOCAL_PER_CLASS: u8 = 4;
+
+/// Freed large blocks for threads that have no arena of their own: a pool job reads a file into
+/// a block that the runtime thread frees, so without a way back every such block would be mapped
+/// anew, and faulted in page by page.
+struct Shared {
+    free: [*mut u8; NUM_LARGE],
+    /// Usable bytes held in `free`.
+    cached: usize,
+}
+
+// SAFETY: the lists link blocks that no thread uses; the lock guards the lists.
+unsafe impl Send for Shared {}
+
+static SHARED: std::sync::Mutex<Shared> = std::sync::Mutex::new(Shared {
+    free: [null_mut(); NUM_LARGE],
+    cached: 0,
+});
+
+fn shared() -> std::sync::MutexGuard<'static, Shared> {
+    SHARED.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// A cached block with at least `size` usable bytes for a thread without an arena, or null.
+pub fn shared_take(size: usize) -> *mut u8 {
+    if size <= MAX_SMALL || size > LARGE_MAX {
+        return null_mut();
+    }
+    let class = large_class_up(size);
+    let mut cache = shared();
+    let head = cache.free[class];
+    if head.is_null() {
+        return head;
+    }
+    // SAFETY: cached blocks store the next pointer in their first word and have at least
+    // `large_size(class)` usable bytes.
+    unsafe {
+        cache.free[class] = *(head as *mut *mut u8);
+        cache.cached -= sys::malloc_usable_size(head.cast());
+    }
+    head
+}
+
+/// Keeps the system block `p` for [`shared_take`]; false when it is not a large block or the
+/// lists are full, and the caller frees it.
+///
+/// # Safety
+/// `p` is a live system block that nothing else uses.
+pub unsafe fn shared_put(p: *mut u8) -> bool {
+    // SAFETY: a live system block.
+    let usable = unsafe { sys::malloc_usable_size(p.cast()) };
+    if !(1 << LARGE_MIN_SHIFT..=LARGE_MAX).contains(&usable) {
+        return false;
+    }
+    let mut cache = shared();
+    if cache.cached + usable > LARGE_CACHE_LIMIT {
+        return false;
+    }
+    let class = large_class_down(usable);
+    // SAFETY: the block holds at least 4 KiB, so its first word can hold the link.
+    unsafe { *(p as *mut *mut u8) = cache.free[class] };
+    cache.free[class] = p;
+    cache.cached += usable;
+    true
+}
 
 /// Size of large class `class`: 4, 5, 6, 7 times 1 KiB, then doubling.
 const fn large_size(class: usize) -> usize {
@@ -93,6 +160,8 @@ struct State {
     bump: [*mut u8; NUM_CLASSES],
     bump_end: [*mut u8; NUM_CLASSES],
     large_free: [*mut u8; NUM_LARGE],
+    /// Blocks held in each `large_free` list.
+    large_count: [u8; NUM_LARGE],
     /// Usable bytes held in `large_free`.
     large_cached: usize,
     /// The arena is mapped (or mapping failed and the system allocator serves everything).
@@ -144,6 +213,7 @@ static STATE: State = State {
     bump: [null_mut(); NUM_CLASSES],
     bump_end: [null_mut(); NUM_CLASSES],
     large_free: [null_mut(); NUM_LARGE],
+    large_count: [0; NUM_LARGE],
     large_cached: 0,
     initialized: false,
     claimed: false,
@@ -226,6 +296,7 @@ pub fn release_arena() {
         }
         s.large_free[class] = null_mut();
     }
+    s.large_count = [0; NUM_LARGE];
     s.large_cached = 0;
     s.free = [null_mut(); NUM_CLASSES];
     s.bump = [null_mut(); NUM_CLASSES];
@@ -408,6 +479,7 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
             // at least `large_size(class)` usable bytes.
             unsafe {
                 s.large_free[class] = *(head as *mut *mut u8);
+                s.large_count[class] -= 1;
                 s.large_cached -= sys::malloc_usable_size(head.cast());
             }
             #[cfg(any(test, feature = "stats"))]
@@ -417,6 +489,14 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
             return head;
         }
         request = large_size(class);
+        let shared = shared_take(size);
+        if !shared.is_null() {
+            #[cfg(any(test, feature = "stats"))]
+            {
+                s.live += 1;
+            }
+            return shared;
+        }
     }
     // SAFETY: plain malloc.
     let p = unsafe { sys::malloc(request) } as *mut u8;
@@ -428,6 +508,45 @@ fn alloc_large(s: &mut State, size: usize) -> *mut u8 {
         s.live += 1;
     }
     p
+}
+
+/// The size a large block of `size` bytes is requested from the system with, so that freeing it
+/// files it under the class that a later request of the same size looks in.
+pub fn large_request(size: usize) -> usize {
+    if size > MAX_SMALL && size <= LARGE_MAX {
+        large_size(large_class_up(size))
+    } else {
+        size
+    }
+}
+
+/// A zeroed large block taken from the free lists, or null when none is cached. The system's
+/// lazily zeroed pages cost a page fault per page on first use, more than clearing a block that
+/// is already mapped.
+pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
+    if size <= MAX_SMALL || size > LARGE_MAX {
+        return null_mut();
+    }
+    // SAFETY: single threaded access to the allocator state.
+    let s = unsafe { &mut *STATE.ptr() };
+    let class = large_class_up(size);
+    let head = s.large_free[class];
+    if head.is_null() {
+        return head;
+    }
+    // SAFETY: cached blocks store the next pointer in their first word and have at least
+    // `large_size(class)` usable bytes, so `size` bytes are writable.
+    unsafe {
+        s.large_free[class] = *(head as *mut *mut u8);
+        s.large_count[class] -= 1;
+        s.large_cached -= sys::malloc_usable_size(head.cast());
+        core::ptr::write_bytes(head, 0, size);
+    }
+    #[cfg(any(test, feature = "stats"))]
+    {
+        s.live += 1;
+    }
+    head
 }
 
 /// Allocates zeroed memory.
@@ -486,17 +605,23 @@ pub unsafe fn free(p: *mut u8) {
 unsafe fn free_large(s: &mut State, p: *mut u8) {
     // SAFETY: `p` is a live system block.
     let usable = unsafe { sys::malloc_usable_size(p.cast()) };
+    let class = large_class_down(usable.max(1 << LARGE_MIN_SHIFT));
     if (1 << LARGE_MIN_SHIFT..=LARGE_MAX).contains(&usable)
         && s.large_cached + usable <= LARGE_CACHE_LIMIT
+        && s.large_count[class] < LOCAL_PER_CLASS
     {
-        let class = large_class_down(usable);
         // SAFETY: the block holds at least 4 KiB, so its first word can hold the link.
         unsafe { *(p as *mut *mut u8) = s.large_free[class] };
         s.large_free[class] = p;
+        s.large_count[class] += 1;
         s.large_cached += usable;
     } else {
-        // SAFETY: `p` is a live system block.
-        unsafe { sys::free(p.cast()) };
+        // SAFETY: `p` is a live system block that nothing else uses.
+        let kept = unsafe { shared_put(p) };
+        if !kept {
+            // SAFETY: `p` is a live system block.
+            unsafe { sys::free(p.cast()) };
+        }
     }
 }
 
@@ -762,7 +887,7 @@ pub struct StdHeap;
 
 #[cfg(target_os = "linux")]
 mod std_heap {
-    use super::{MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena};
+    use super::{LARGE_MAX, MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena};
     use core::alloc::{GlobalAlloc, Layout};
     use std::alloc::System;
 
@@ -776,6 +901,13 @@ mod std_heap {
             && layout.align() <= 16
             && has_arena()
             && !crate::isolate::is_worker()
+    }
+
+    /// The size of a large request from a thread without an arena that the shared lists serve.
+    #[inline(always)]
+    fn shared_size(layout: Layout) -> Option<usize> {
+        (layout.align() <= 16 && layout.size() > MAX_SMALL && layout.size() <= LARGE_MAX)
+            .then_some(layout.size())
     }
 
     /// Whether `p` is a small block of any isolate's arena.
@@ -793,6 +925,19 @@ mod std_heap {
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
             if arena_ok(layout) {
                 super::alloc(layout.size())
+            } else if let Some(size) = shared_size(layout) {
+                let cached = super::shared_take(size);
+                if !cached.is_null() {
+                    return cached;
+                }
+                // SAFETY: forwarded; the size is rounded so that freeing files the block under
+                // the class that the next request of this size reads.
+                unsafe {
+                    System.alloc(Layout::from_size_align_unchecked(
+                        super::large_request(size),
+                        16,
+                    ))
+                }
             } else {
                 // SAFETY: forwarded.
                 unsafe { System.alloc(layout) }
@@ -801,11 +946,32 @@ mod std_heap {
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-            if arena_ok(layout) && layout.size() <= MAX_SMALL {
-                super::alloc_zeroed(layout.size())
-            } else {
-                // SAFETY: forwarded; the system allocator hands out lazily zeroed pages for big blocks.
-                unsafe { System.alloc_zeroed(layout) }
+            if arena_ok(layout) {
+                if layout.size() <= MAX_SMALL {
+                    return super::alloc_zeroed(layout.size());
+                }
+                let cached = super::alloc_zeroed_cached(layout.size());
+                if !cached.is_null() {
+                    return cached;
+                }
+            }
+            if let Some(size) = shared_size(layout) {
+                let cached = super::shared_take(size);
+                if !cached.is_null() {
+                    // SAFETY: a cached block has at least `size` writable bytes.
+                    unsafe { core::ptr::write_bytes(cached, 0, size) };
+                    return cached;
+                }
+            }
+            // SAFETY: forwarded; the system allocator hands out lazily zeroed pages for big blocks.
+            // A request rounded to its class lands in the free list that the next request reads.
+            unsafe {
+                match Layout::from_size_align(super::large_request(layout.size()), layout.align()) {
+                    Ok(rounded) if arena_ok(layout) || shared_size(layout).is_some() => {
+                        System.alloc_zeroed(rounded)
+                    }
+                    _ => System.alloc_zeroed(layout),
+                }
             }
         }
 
@@ -820,8 +986,13 @@ mod std_heap {
                 // fault the next block in again.
                 unsafe { super::free(p) };
             } else {
-                // SAFETY: not an arena block, so the system allocator produced it.
-                unsafe { System.dealloc(p, layout) };
+                // SAFETY: not an arena block, so the system allocator produced it; a large one
+                // is kept for the next thread without an arena to reuse.
+                unsafe {
+                    if shared_size(layout).is_none() || !super::shared_put(p) {
+                        System.dealloc(p, layout);
+                    }
+                }
             }
         }
 
