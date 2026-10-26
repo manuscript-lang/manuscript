@@ -3,7 +3,7 @@
 from "@std/channels.ms" import Channel
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 # A task cancelled while parked in a channel send or receive must not drop the channel end twice:
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.
@@ -24,16 +24,16 @@ def sender(ch: Channel[Int, Int]) -> Int:
 def cancel_receiver() -> Unit:
     with let group = TaskGroup[Int, Int, Int]():
         group.spawn(receiver)
-        sleep(duration(1000000))
+        sleep(nanoseconds(1000000))
 
 def cancel_sender() -> Unit:
     with let group = TaskGroup[Int, Int, Int]():
         group.spawn(sender)
-        sleep(duration(1000000))
+        sleep(nanoseconds(1000000))
 
 def timeout_receiver() -> Unit:
     with let group = TaskGroup[Int, Int, Int]():
-        let task = group.spawn(receiver, timeout: some(duration(1000000)))
+        let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
         task.result()
 
 def churn() -> Int:

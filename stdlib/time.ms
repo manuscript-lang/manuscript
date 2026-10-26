@@ -276,10 +276,6 @@ export interface WallClock:
     # It can jump when the system clock is adjusted, so use Clock for elapsed time.
     def now() -> Timestamp
 
-# Constructs a duration from a number of nanoseconds.
-export def duration(nanoseconds: Int) -> Duration:
-    return msstd_time_duration(nanoseconds)
-
 # Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
 def duration_decimal(whole: Int, frac: Int, width: Int) -> String:
     if frac == 0:
@@ -301,29 +297,29 @@ def duration_decimal(whole: Int, frac: Int, width: Int) -> String:
 
     return f"{whole}.{digits}"
 
-# Constructs a duration from a number of nanoseconds, like `duration`.
+# Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be negative.
 export def nanoseconds(n: Int) -> Duration:
-    return duration(nanoseconds: n)
+    return msstd_time_duration(n)
 
 # Constructs a duration of `n` microseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export def microseconds(n: Int) -> Duration:
-    return duration(nanoseconds: n * 1000)
+    return nanoseconds(n * 1000)
 
 # Constructs a duration of `n` milliseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export def milliseconds(n: Int) -> Duration:
-    return duration(nanoseconds: n * 1000000)
+    return nanoseconds(n * 1000000)
 
 # Constructs a duration of `n` seconds, as in `sleep(seconds(2))`; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export def seconds(n: Int) -> Duration:
-    return duration(nanoseconds: n * 1000000000)
+    return nanoseconds(n * 1000000000)
 
 # Constructs a duration of `n` minutes, as in `clock().now().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export def minutes(n: Int) -> Duration:
-    return duration(nanoseconds: n * 60000000000)
+    return nanoseconds(n * 60000000000)
 
 # Constructs a duration of `n` hours; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export def hours(n: Int) -> Duration:
-    return duration(nanoseconds: n * 3600000000000)
+    return nanoseconds(n * 3600000000000)
 
 # Parses an RFC 3339 timestamp with an explicit time zone.
 export def parse_timestamp(text: String) -> Result[Timestamp, TimeError]:

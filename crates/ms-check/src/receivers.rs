@@ -58,7 +58,7 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("chunks", "collections/list_chunks"),
             ("windows", "collections/list_windows"),
             ("partition", "collections/partition"),
-            ("reverse_in_place", "collections/reverse_in_place"),
+            ("reverse", "collections/reverse"),
             ("reversed", "collections/reversed"),
             ("sorted", "collections/sorted"),
             ("sort", "collections/sort"),

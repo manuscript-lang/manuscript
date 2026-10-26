@@ -2453,14 +2453,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append"
-                | "set"
-                | "prepend"
-                | "insert"
-                | "remove"
-                | "pop"
-                | "reverse_in_place"
-                | "sort"
+            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse" | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
@@ -2602,7 +2595,7 @@ impl<'a> FnLower<'a> {
                 self.release_source(fvar, true);
                 Ok((r.v, None))
             }
-            "reverse_in_place" => {
+            "reverse" => {
                 let var = self.fresh_var(lt);
                 self.b.def_var(var, old);
                 let r = self.list_reversed(var, elem)?;

@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/tasks.ms" import Task, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_true
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
 
 # Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
@@ -14,15 +14,15 @@ def quick() -> Int:
     return 7
 
 def slow() -> Int:
-    sleep(duration(10000000000))
+    sleep(nanoseconds(10000000000))
     return 1
 
 def deaf(ch: Channel[Unit, Int]) -> Int:
-    sleep(duration(10000000000))
+    sleep(nanoseconds(10000000000))
     return 1
 
 def mute(ch: Channel[Int, Unit]) -> Int:
-    sleep(duration(10000000000))
+    sleep(nanoseconds(10000000000))
     return 1
 
 def waits() -> Unit:
@@ -83,24 +83,24 @@ test "spawning into a closed group never runs the task":
     try expect_equal(t.channel.send(()).is_ok(), False)
 
 test "a zero timeout cancels the task instead of running it":
-    with let group = TaskGroup[Int](timeout: some(duration(0))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(0))):
         let t = group.spawn(lambda ch: quick())
         try expect_equal(t.result().is_ok(), False)
     with let group = TaskGroup[Int]():
-        let t = group.spawn(lambda ch: quick(), timeout: some(duration(0)))
+        let t = group.spawn(lambda ch: quick(), timeout: some(nanoseconds(0)))
         try expect_equal(t.result().is_ok(), False)
 
 test "a task waiting on a task of another group sees it time out":
     var seen = 0
     with let a = TaskGroup[Int]():
-        with let b = TaskGroup[Int](timeout: some(duration(50000000))):
+        with let b = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
             let tb = b.spawn(lambda ch: slow())
             let waiting = a.spawn(lambda ch: waiter(tb))
             seen = waiting.result().get(-1)
     try expect_equal(seen, "task: timed out".length())
 
 test "a send to a task cancelled by its group ends with closed":
-    with let group = TaskGroup[Int, Int, Unit](timeout: some(duration(100000000))):
+    with let group = TaskGroup[Int, Int, Unit](timeout: some(nanoseconds(100000000))):
         var t = group.spawn(deaf)
         var sent = 0
         var stopped = False
@@ -113,7 +113,7 @@ test "a send to a task cancelled by its group ends with closed":
         try expect_equal(stopped, True)
 
 test "a receive from a task cancelled by its group ends with none":
-    with let group = TaskGroup[Int, Unit, Int](timeout: some(duration(100000000))):
+    with let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(100000000))):
         var t = group.spawn(mute)
         let r = t.channel.receive()
         try expect_equal(r.is_ok(), True)

@@ -833,11 +833,11 @@ def forward[T](item: T) -> T: item
 export def main() -> Int:
     return panic(message: "profile failure")
 resolution	1	30	29	unknown standard module @std/faults.ms
-resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import duration, sleep
+resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import nanoseconds, sleep
 from "@std/io.ms" import stdout
 export def main() -> Int:
     stdout().write(data: "ready\n")
-    sleep(duration(nanoseconds: 60000000000))
+    sleep(nanoseconds(60000000000))
     return 0
 import stdout from "@std/io.ms"
 
@@ -5868,10 +5868,10 @@ test "third=after":
 export def helper() -> Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, duration
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, nanoseconds
 
 test "timeout":
-    sleep(duration(nanoseconds: 1000000000))
+    sleep(nanoseconds(1000000000))
 
 test "after":
     return ()
@@ -6645,8 +6645,8 @@ export def main() -> Int:
 
 type	25	33	572	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
 type	27	10	638	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
-    let minimum = duration(-9223372036854775808)
-    let maximum = duration(9223372036854775807)
+    let minimum = nanoseconds(-9223372036854775808)
+    let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
 parse	1	6	5	expected text in double quotes, found '%'test "continues after numeric faults":
     let valid = 1

@@ -5,7 +5,7 @@
 from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 from "@std/channels.ms" import Channel
 
 type Box:
@@ -17,7 +17,7 @@ type Pair:
     b: Map[String, List[Int]]
 
 def nap() -> Unit:
-    sleep(duration(10000000000))
+    sleep(nanoseconds(10000000000))
 
 def t_record() -> Int:
     var b = Box(
@@ -158,7 +158,7 @@ def t_while_sleep() -> Int:
     return n
 
 def run_one(which: Int) -> Unit:
-    with let group = TaskGroup[Int](timeout: some(duration(1000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
         if which == 0: group.spawn(lambda ch: t_var_reassign())
         elif which == 1: group.spawn(lambda ch: t_var_list_swap())
         elif which == 2: group.spawn(lambda ch: t_partial())

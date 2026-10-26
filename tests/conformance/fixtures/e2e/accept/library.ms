@@ -169,7 +169,7 @@ test "expanded packages run through compiler":
     ([3, 1, 2]).sorted(compare: compare) | try expect_equal([1, 2, 3])
 
     var flipped = [1, 2]
-    flipped.reverse_in_place()
+    flipped.reverse()
     flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":

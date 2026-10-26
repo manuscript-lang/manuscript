@@ -2,7 +2,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/process.ms" import control
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def send_one(ch: Channel[Int, Unit]) -> Result[Unit, ChannelError]:
     var end = ch
@@ -44,7 +44,7 @@ def close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) -> Unit:
         let sent = task.result()
         var end = ch
         end.send(task.channel.clone())
-        sleep(duration(1000000000))
+        sleep(nanoseconds(1000000000))
 
 test "collected buffered channels close with their group":
     var group = TaskGroup[Result[Unit, ChannelError], Unit, Int]()
@@ -146,7 +146,7 @@ test "return cleanup closes a collected channels retained end":
 
 test "cancellation cleanup closes collected channels retained outside the task":
     with let outer = TaskGroup[Unit, Unit, Channel[Unit, Int]]():
-        var task = outer.spawn(close_on_cancel, timeout: some(duration(20000000)))
+        var task = outer.spawn(close_on_cancel, timeout: some(nanoseconds(20000000)))
 
         if var end = task.channel.receive() | try expect_ok:
             task.result() | try expect_error | try expect_equal(TaskError.TimedOut)

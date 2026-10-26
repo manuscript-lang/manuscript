@@ -87,7 +87,7 @@ export def main() -> Int:
 
 Mutators update the receiver in place and return Unit; a `let` binding cannot be mutated, so declare the collection with `var`.
 
-- List: `append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, `reverse_in_place`.
+- List: `append`, `prepend`, `insert`, `set`, `remove`, `splice`, `fill`, `copy_within`, `reverse`.
 - Map: `add`, `remove`, `add_default`, `add_default_from`, `merge`, `clear`. Removing an absent key is a no-op.
 - Set: `add`, `remove`, `clear`.
 
@@ -120,7 +120,7 @@ These removed spellings looked like copies but mutated. Labels and return types 
 
 | Receiver | Removed spelling | Use | Result |
 | --- | --- | --- | --- |
-| List | `with_value`, `without`, `with_values`, `reverse` | `set`, `remove`, `splice`, `reverse_in_place` | Same List |
+| List | `with_value`, `without`, `with_values`, `reverse_in_place` | `set`, `remove`, `splice`, `reverse` | Same List |
 | Map | `with_entry`, `without` | `add`, `remove` | Same Map |
 | Map | `with_default`, `with_default_from` | `add_default`, `add_default_from` | Same Map |
 | Set | `with_value`, `without` | `add`, `remove` | Same Set |

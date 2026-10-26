@@ -27,7 +27,7 @@ def each(f: Callable[[Int], Unit]) -> Unit:
 
 test "a method value that changes its receiver borrows the variable":
     var xs = [1, 2, 3]
-    let reverse = xs.reverse_in_place
+    let reverse = xs.reverse
     reverse()
 
     let add = xs.append

@@ -35,7 +35,7 @@ test "a child process answers messages on its channel":
 
 ## How processes run
 
-- `spawn(entry)` starts your executable again in a new process, at `entry` instead of `main`. No state is copied from the parent: the child starts fresh, and `entry` receives only its channel. It returns `Result[Process[T, In, Out], CommandError]`.
+- `spawn(entry)` starts your executable again in a new process, at `entry` instead of `main`. No state is copied from the parent: the child starts fresh, and `entry` receives only its channel. It returns `Result[Process[T, In, Out], ProcessError]`; a child the host refuses to start is `ProcessError.NotStarted(cause)`, with the command runner's reason inside.
 - `entry` must name a top-level `def`. A lambda is rejected, because the values it captures cannot move to another process.
 - `In`, `Out` and `T` cross as JSON, so they are copied. Use plain data: records, alternatives, lists, maps, strings and supported numbers. `Unit` works too. Transport uses ordinary `stringify`, not opt-in strict encoding; a type parameter alone does not guarantee a lossless JSON round trip. Check send, receive and result errors.
 - The channel behaves as a task channel: `send` waits while the pipe is full, `receive` gives `ok(none)` once the other end closed and everything it sent was read, and `close` closes this end. A child that exits without closing its end gives `ChannelError.Broken`.
