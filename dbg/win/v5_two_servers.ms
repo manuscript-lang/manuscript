@@ -1,5 +1,6 @@
 from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
 from "@std/io.ms" import stdout
+from "@std/fs.ms" import filesystem
 from "@std/net.ms" import network
 from "@std/time.ms" import nanoseconds, sleep
 
@@ -9,7 +10,7 @@ def handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 def say(text: String) -> Unit:
-    let _w = stdout().write(f"{text}\n")
+    let _w = filesystem().append_file("trace.txt", f"{text}\n")
 
 def fetch(address: String, path: String) -> String:
     say("connect")
