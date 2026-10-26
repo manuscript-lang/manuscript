@@ -1,7 +1,7 @@
 # conform: tags=decimal,faults,match,modules,mutation,optional,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/decimal.ms" import Decimal
 
 test "list elements read before a later match assigns them":

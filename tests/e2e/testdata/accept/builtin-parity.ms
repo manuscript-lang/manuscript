@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/math.ms" import from_int
 from "@std/string.ms" import compile
 from "@std/collections.ms" import filled, range_by, map_from_entries

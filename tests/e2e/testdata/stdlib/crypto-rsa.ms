@@ -11,7 +11,7 @@ from "@std/crypto.ms" import (
     rsa_decrypt
 )
 from "@std/bytes.ms" import Bytes
-from "@std/testing.ms" import expect_equal, expect_true, expect_false
+from "@std/test.ms" import expect_equal, expect_true, expect_false
 
 def widened_sign(key: Bytes) -> Result[Bytes, Error]:
     return rsa_sign(key, HashAlgorithm.Sha256, "message".to_bytes())

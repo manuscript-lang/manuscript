@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_ok
+from "@std/test.ms" import expect_ok
 from "@std/core.ms" import TextError
 from "@std/net.ms" import network
 from "@std/time.ms" import sleep

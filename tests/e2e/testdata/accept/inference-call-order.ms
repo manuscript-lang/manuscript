@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def identity[T](value: T) -> T: value
 

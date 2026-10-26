@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interpolation,lists,modules,mutation,optional,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/list-parity.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/collections.ms" import range
 
 test "List count calls the predicate once per element":

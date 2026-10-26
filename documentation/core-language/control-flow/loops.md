@@ -61,7 +61,7 @@ Increment the counter before any `continue` that would skip its update.
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/collections.ms" import range_by
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)

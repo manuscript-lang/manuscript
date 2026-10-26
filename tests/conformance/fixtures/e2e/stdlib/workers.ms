@@ -8,7 +8,7 @@ from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpSer
 from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel
 

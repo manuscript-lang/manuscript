@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding expect_false; add: from \"@std/testing.ms\" import expect_false",
+        "message": "unknown binding expect_false; add: from \"@std/test.ms\" import expect_false",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-2.ms",
           "line": 5,
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/testing.ms\" import expect_false\n"
+          "replacement": "from \"@std/test.ms\" import expect_false\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-2.ms:5:9: resolution: unknown binding expect_false; add: from \"@std/testing.ms\" import expect_false\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-2.ms:5:9: resolution: unknown binding expect_false; add: from \"@std/test.ms\" import expect_false\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -5,13 +5,13 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. Assertions in `@std/testing.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name":` block runs under `ms test` and passes when it finishes normally. Assertions in `@std/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def add(a: Int, b: Int) -> Int:
     return a + b
@@ -52,7 +52,7 @@ ms test ms.toml --json
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/json.ms" import parse, JsonError
-from "@std/testing.ms" import expect_equal, expect_ok, expect_error, expect_some
+from "@std/test.ms" import expect_equal, expect_ok, expect_error, expect_some
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -85,7 +85,7 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/test/property.ms" import check, ints, lists
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))
@@ -134,11 +134,11 @@ This runs the application entry point, not its test blocks. Put the workload you
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T` implements `TestHooks` from `@std/test.ms`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import TestHooks, expect_equal
+from "@std/test.ms" import TestHooks, expect_equal
 
 type Counter:
     count: Int

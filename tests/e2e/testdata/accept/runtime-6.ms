@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_not_equal
+from "@std/test.ms" import expect_equal, expect_not_equal
 from "@std/decimal.ms" import Decimal
 
 def quotient(value: Int, divisor: Int) -> Int:

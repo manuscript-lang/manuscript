@@ -383,8 +383,8 @@ impl<'a> FnLower<'a> {
                 let (ity, want) = (self.ety(e), self.emty(e)?);
                 self.handle_interface(&ity, want, module, make, constant)
             }
-            other if other.starts_with("testing/") => {
-                self.testing_native(e, view, &other["testing/".len()..])
+            other if other.starts_with("test/") => {
+                self.testing_native(e, view, &other["test/".len()..])
             }
             other => {
                 if !self.has_native_call(other) {

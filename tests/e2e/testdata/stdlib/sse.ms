@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/collections.ms" import range
 from "@std/sse.ms" import decoder, reader, next_event, SseError, SseEvent, SseLimits
 from "@std/bytes.ms" import Bytes, BytesBuilder

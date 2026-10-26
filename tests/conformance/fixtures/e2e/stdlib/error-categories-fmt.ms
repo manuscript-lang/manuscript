@@ -1,7 +1,7 @@
 # conform: tags=aliasing,alternatives,control-flow,formatter,interfaces,lists,match,modules,optional,parser,records,stdlib-collections,stdlib-crypto,stdlib-errors,stdlib-fs,stdlib-http,stdlib-io,stdlib-json,stdlib-log,stdlib-net,stdlib-numbers,stdlib-process,stdlib-sse,stdlib-system,stdlib-testing,stdlib-toml,stdlib-yaml,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/error-categories.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/core.ms" import TextError
 from "@std/core.ms" import category, ErrorCategory
 from "@std/fs.ms" import FileSystemError

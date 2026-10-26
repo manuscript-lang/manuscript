@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-methods.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Counter:
     n: Int

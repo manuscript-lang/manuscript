@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true, expect_false
+from "@std/test.ms" import expect_equal, expect_true, expect_false
 
 type Item:
     name: String

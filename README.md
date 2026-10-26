@@ -8,7 +8,7 @@ Manuscript is a statically typed, natively compiled language built from the grou
 
 ```manuscript
 from "@std/json.ms" import parse
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Order:
     customer: String
@@ -183,7 +183,7 @@ There is no `async`, no `await`, no function coloring. A group inside `with` own
 
 ```manuscript
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square(n: Int) -> Int:
     return n * n

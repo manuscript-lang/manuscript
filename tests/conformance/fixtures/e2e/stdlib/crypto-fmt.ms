@@ -1,7 +1,7 @@
 # conform: tags=aliasing,control-flow,formatter,match,modules,parser,stdlib-bytes,stdlib-crypto,stdlib-encoding,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/crypto.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "@std/crypto.ms" import (
     sha256,
     sha384,

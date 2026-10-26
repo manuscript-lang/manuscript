@@ -1,6 +1,6 @@
 from "@std/core.ms" import TextError
 from "@std/core.ms" import panic
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/json.ms" import JsonLimits
 
 type Counter:

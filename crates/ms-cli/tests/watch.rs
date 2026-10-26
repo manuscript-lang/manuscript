@@ -117,7 +117,7 @@ fn test_reruns_after_each_change() {
     let source = dir.join("sample_test.ms");
     let tests = |expected: i32| {
         format!(
-            "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
+            "from \"@std/test.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
         )
     };
     std::fs::write(&source, tests(3)).unwrap();

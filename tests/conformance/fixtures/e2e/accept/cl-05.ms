@@ -1,7 +1,7 @@
 # conform: tags=closures,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-05.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def increase(value: Int) -> Int:
     return value + 1

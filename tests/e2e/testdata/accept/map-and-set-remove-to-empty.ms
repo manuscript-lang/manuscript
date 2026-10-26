@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, fail
+from "@std/test.ms" import expect_equal, fail
 
 test "maps and sets keep distinct keys after removal to empty":
     var m = Map[String, Int]()

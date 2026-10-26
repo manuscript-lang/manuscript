@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 from "@std/collections.ms" import range
 
 type Point:

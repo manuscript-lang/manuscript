@@ -290,7 +290,7 @@ fn library_projects_have_no_executable_entry() {
     assert!(!err.contains("lock"), "{err}");
 }
 
-const TESTS: &str = "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
+const TESTS: &str = "from \"@std/test.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n\ntest \"fails\":\n    try expect_equal(1 + 1, 3)\n\ntest \"passes too\":\n    try expect_equal(2 * 2, 4)\n";
 
 #[test]
 fn native_lowering_runs_real_programs() {

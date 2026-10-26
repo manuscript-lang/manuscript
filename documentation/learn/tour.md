@@ -29,7 +29,7 @@ Complete examples below use `test` blocks: save as `example.ms` and run `ms test
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "unread message count":
     let customer = "Sam"
@@ -90,7 +90,7 @@ Count with an exclusive range:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "count five iterations":
     var total = 0
@@ -135,7 +135,7 @@ let affordable = discounted.filter(lambda (value: Int) -> Bool:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Todo:
     title: String
@@ -216,7 +216,7 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
     return transform(value)
@@ -237,7 +237,7 @@ Prepare a value before a borrowing closure uses it. Non-escaping closures borrow
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Reading:
     celsius: Int
@@ -265,7 +265,7 @@ Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, 
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 interface Increment:
     var def increment() -> Unit
@@ -292,7 +292,7 @@ A type's own methods go in `impl Counter:`, without an interface:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Counter:
     value: Int

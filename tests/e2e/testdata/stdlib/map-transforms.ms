@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 
 type Counter:
     count: Int

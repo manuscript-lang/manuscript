@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/html.ms" import parse
 from "@std/crypto.ms" import sha256, sha512
 from "@std/random.ms" import entropy, secure_int, uuid_v4, shuffle, choice, float

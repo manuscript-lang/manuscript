@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,generics,interfaces,interpolation,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/function-impl.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 interface Apply[T]:
     def apply(value: Int) -> T

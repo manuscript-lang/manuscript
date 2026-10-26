@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 def insert[T: Hashable](var values: Set[T], value: T) -> Unit: values.add(value)
 

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,numbers,parser,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/primitive-list-append-and-range-keep-semantics.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 test "primitive list loops":
     var ints = List[Int]()
