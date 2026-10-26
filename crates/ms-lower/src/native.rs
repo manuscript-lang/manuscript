@@ -6,7 +6,7 @@ use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value, VtableDef};
+use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -708,15 +708,8 @@ impl<'a> FnLower<'a> {
                 for s in &sigs {
                     methods.push(build(self.b.m, &s.name, &s.params, s.ret));
                 }
-                self.b.m.vtables.push(VtableDef {
-                    name: key.clone(),
-                    iface,
-                    methods,
-                    data_ty: MTy::UNIT,
-                });
-                let id = ms_mir::ir::VtableId(self.b.m.vtables.len() as u32 - 1);
-                self.cx.vtables.insert(key, id);
-                id
+                self.cx
+                    .intern_vtable(self.b.m, key, iface, methods, MTy::UNIT)
             }
         };
         let u = self.b.unit();

@@ -9,6 +9,26 @@ use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, Vta
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 
 impl Cx {
+    /// Adds a finished table under `key` and returns its id.
+    pub(crate) fn intern_vtable(
+        &mut self,
+        m: &mut Module,
+        key: String,
+        iface: IfaceId,
+        methods: Vec<ms_mir::ir::FuncId>,
+        data_ty: MTy,
+    ) -> VtableId {
+        let id = VtableId(m.vtables.len() as u32);
+        m.vtables.push(VtableDef {
+            name: key.clone(),
+            iface,
+            methods,
+            data_ty,
+        });
+        self.vtables.insert(key, id);
+        id
+    }
+
     /// The table of `concrete`'s methods for the interface, created on first use.
     pub(crate) fn vtable_id(
         &mut self,
@@ -46,25 +66,11 @@ impl Cx {
         {
             let f =
                 build_builtin_compare(m, &sigs[0], data_ty, sym, VtableId(m.vtables.len() as u32));
-            m.vtables.push(VtableDef {
-                name: key.clone(),
-                iface,
-                methods: vec![f],
-                data_ty,
-            });
-            let id = VtableId(m.vtables.len() as u32 - 1);
-            self.vtables.insert(key, id);
-            return Ok(id);
+            return Ok(self.intern_vtable(m, key, iface, vec![f], data_ty));
         }
         // Reserve the table's id: wrappers test for it, and building a callee can create tables.
         let own = VtableId(m.vtables.len() as u32);
-        m.vtables.push(VtableDef {
-            name: key.clone(),
-            iface,
-            methods: Vec::new(),
-            data_ty,
-        });
-        self.vtables.insert(key.clone(), own);
+        self.intern_vtable(m, key.clone(), iface, Vec::new(), data_ty);
         let mut methods = Vec::new();
         for s in &sigs {
             let mut found = None;
@@ -632,15 +638,7 @@ impl Cx {
             let f = b.into_func();
             methods.push(m.add_func(f));
         }
-        m.vtables.push(VtableDef {
-            name: key.clone(),
-            iface,
-            methods,
-            data_ty: MTy::STR,
-        });
-        let id = VtableId(m.vtables.len() as u32 - 1);
-        self.vtables.insert(key, id);
-        id
+        self.intern_vtable(m, key, iface, methods, MTy::STR)
     }
 }
 
