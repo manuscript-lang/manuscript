@@ -90,6 +90,9 @@ pub(crate) struct FnLower<'a> {
     pub split_iter_for: Option<*const ms_syntax::ast::Expr>,
     /// The `for` iterable whose `String.chars` call becomes a byte scan (see `chars_loop`).
     pub chars_iter_for: Option<*const ms_syntax::ast::Expr>,
+    /// The expression being lowered before its conversion to an interface: its own type, not the
+    /// interface the checker recorded for it, is the type of its value.
+    pub converting: Option<*const ms_syntax::ast::Expr>,
     /// The scanned `for` iterable came from `String.scalar_values`: it yields scalar values.
     pub scalars_scan: bool,
     /// Exclusive borrows in scope: the place each names.
@@ -395,6 +398,7 @@ impl<'a> FnLower<'a> {
             err_slot: None,
             split_iter_for: None,
             chars_iter_for: None,
+            converting: None,
             scalars_scan: false,
             aliases: HashMap::new(),
             scope_override: None,

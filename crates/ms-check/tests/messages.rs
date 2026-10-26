@@ -203,6 +203,16 @@ fn a_failed_bound_in_a_signature_is_reported_once() {
 }
 
 #[test]
+fn none_into_an_interface_still_asks_for_a_type_argument() {
+    let got = messages("export def main() -> Int:\n    let r: Equal = none\n    return 0\n");
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].starts_with("cannot infer constructor type argument T"),
+        "{got:?}"
+    );
+}
+
+#[test]
 fn borrowed_spellings_name_the_manuscript_one() {
     let cases = [
         (

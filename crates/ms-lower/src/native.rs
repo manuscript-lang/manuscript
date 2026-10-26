@@ -856,10 +856,9 @@ impl<'a> FnLower<'a> {
 
     /// `to_int8()` ... `to_float64()`: widening is exact, narrowing an integer yields an
     /// optional, and a float conversion rounds to the target.
-    fn numeric_conversion(&mut self, e: &Expr, recv: Val) -> Result<Val, Error> {
+    fn numeric_conversion(&mut self, result: MTy, recv: Val) -> Result<Val, Error> {
         let x = self.borrow(recv);
         let from = self.ty_of(x);
-        let result = self.emty(e)?;
         let types = &self.b.m.types;
         let v = if let Some(inner) = self.b.m.opt_inner(result) {
             self.b.inarrow_opt(x, inner)
@@ -1033,6 +1032,23 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.time_field(m, recv)? {
             return Ok(v);
         }
+        let pos = e.pos;
+        let result = self.emty(e)?;
+        self.native_method_tail(m, Some(recv_expr), pos, result, recv, args)
+    }
+
+    /// The part of a native method call that needs only the receiver, the arguments and the
+    /// result type, so a bound method value reaches it without a call expression.
+    pub(crate) fn native_method_tail(
+        &mut self,
+        m: &ct::MethodRef,
+        recv_expr: Option<&Expr>,
+        pos: ms_syntax::Pos,
+        result: MTy,
+        recv: Val,
+        mut args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let native = m.native.as_str();
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
         if matches!(
@@ -1040,7 +1056,7 @@ impl<'a> FnLower<'a> {
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
         ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
         {
-            return self.numeric_conversion(e, recv);
+            return self.numeric_conversion(result, recv);
         }
         // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
         let recv_nums = {
@@ -1060,7 +1076,6 @@ impl<'a> FnLower<'a> {
             .name()
             .and_then(|n| crate::rtcall::typed_method_symbol(&m.receiver, n.as_str()))
         {
-            let result = self.emty(e)?;
             return self.rt_method(&sym, recv, &m.ty.params, &args, result);
         }
         let name = native.rsplit('/').next().unwrap_or(native);
@@ -1085,21 +1100,13 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::Obj(n, _), "get_or") if n == "Map" => {
-                let result = self.emty(e)?;
                 self.map_get_or(recv, &m.ty.params, &args, result)
             }
             (TyKind::Obj(n, _), "entries") if n == "Map" => {
-                let result = self.emty(e)?;
-                self.map_entries(Some(recv_expr), recv, result)
+                self.map_entries(recv_expr, recv, result)
             }
-            (TyKind::List(_), "list_keys") => {
-                let result = self.emty(e)?;
-                self.list_keys(Some(recv_expr), recv, result)
-            }
-            (TyKind::List(_), "list_entries") => {
-                let result = self.emty(e)?;
-                self.list_entries(Some(recv_expr), recv, result)
-            }
+            (TyKind::List(_), "list_keys") => self.list_keys(recv_expr, recv, result),
+            (TyKind::List(_), "list_entries") => self.list_entries(recv_expr, recv, result),
             (TyKind::List(_) | TyKind::Bytes, "length") => {
                 let r = self.borrow(recv);
                 let v = self.b.list_len(r);
@@ -1113,7 +1120,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::List(elem), "reversed") => {
-                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
+                let (lv, hidden) = self.list_source(recv_expr, recv)?;
                 let r = self.list_reversed(lv, elem);
                 self.release_source(lv, hidden);
                 r
@@ -1131,7 +1138,6 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(_), "list_zip") => {
-                let result = self.emty(e)?;
                 let TyKind::List(pair) = self.b.m.types.kind(result).clone() else {
                     return Err(Error::new("zip without a list result"));
                 };
@@ -1143,7 +1149,7 @@ impl<'a> FnLower<'a> {
                 // Zipping a list with itself must not iterate its variable, which loop headers
                 // would consume while `other` is still read.
                 let same = other == recv.v;
-                let (lv, hidden) = self.list_source((!same).then_some(recv_expr), recv)?;
+                let (lv, hidden) = self.list_source(if same { None } else { recv_expr }, recv)?;
                 let acc = self.fresh_var(result);
                 let first = self.b.list_new(pair, other_len);
                 self.b.def_var(acc, first);
@@ -1170,7 +1176,6 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: out, own: true })
             }
             (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                let result = self.emty(e)?;
                 self.list_pieces(name == "list_chunks", elem, recv, &args, result)
             }
             (TyKind::List(elem), "get") => {
@@ -1200,7 +1205,6 @@ impl<'a> FnLower<'a> {
                 let negated = self.b.binop(ms_mir::ir::Op::ISubChk, zero, x);
                 let v = self.b.select(neg, negated, x);
                 // A narrower receiver keeps its type; the range check faults on its minimum.
-                let result = self.emty(e)?;
                 let v = if self.b.m.types.int_bits(result).is_some_and(|b| b < 64) {
                     let narrow = self.b.conv(v, result);
                     self.b.narrow_chk(narrow)
@@ -1223,7 +1227,6 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.call_runtime("msstd_math_sign", &[x], MTy::FLOAT)?
                 };
-                let result = self.emty(e)?;
                 let v = if result == MTy::FLOAT32 {
                     self.b.conv(v, result)
                 } else {
@@ -1233,7 +1236,6 @@ impl<'a> FnLower<'a> {
             }
             (TyKind::Int, "to_decimal") => {
                 let n = self.borrow(recv);
-                let result = self.emty(e)?;
                 let v = self.call_runtime("msstd_decimal_from_int", &[n], result)?;
                 Ok(Val { v, own: false })
             }
@@ -1306,15 +1308,15 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: false })
             }
             (TyKind::Opt(inner), _) if opt_method(name) => {
-                let out = self.emty(e)?;
-                self.optional_method(out, e.pos, name, recv, inner, args)
+                let out = result;
+                self.optional_method(out, pos, name, recv, inner, args)
             }
             (
                 TyKind::Alt(a),
                 "get" | "err" | "get_or_else" | "or_else" | "map_error" | "map" | "and_then"
                 | "to_optional",
             ) => {
-                let out = self.emty(e)?;
+                let out = result;
                 self.result_method(out, name, recv, a, args)
             }
             (TyKind::Alt(a), "is_ok" | "is_error") => self.result_state(name, recv, a),
@@ -1345,20 +1347,18 @@ impl<'a> FnLower<'a> {
                 }
                 Ok(Val { v, own: true })
             }
-            (TyKind::List(elem), "sorted") => {
-                self.list_sorted_call(Some(recv_expr), recv, elem, args)
-            }
+            (TyKind::List(elem), "sorted") => self.list_sorted_call(recv_expr, recv, elem, args),
             (_, "equals") if args.len() == 1 => {
-                let concrete = self.hir.ty(recv_expr);
+                let concrete = recv_expr.map_or_else(|| m.receiver.clone(), |r| self.hir.ty(r));
                 self.equals_value(&concrete, recv, args[0].val)
             }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
-                let out = self.emty(e)?;
-                self.iterate_method(out, name, Some(recv_expr), recv, args)
+                let out = result;
+                self.iterate_method(out, name, recv_expr, recv, args)
             }
             (TyKind::List(_), _) if is_higher_order(name) => {
-                let out = self.emty(e)?;
-                self.list_higher(name, out, Some(recv_expr), recv, args)
+                let out = result;
+                self.list_higher(name, out, recv_expr, recv, args)
             }
             _ => {
                 let Some(sym) = crate::rtcall::method_symbol(self.b.m, rty, native) else {
@@ -1367,7 +1367,6 @@ impl<'a> FnLower<'a> {
                         ms_mir::print::ty_str(self.b.m, rty)
                     )));
                 };
-                let result = self.emty(e)?;
                 self.rt_method(&sym, recv, &m.ty.params, &args, result)
             }
         }
@@ -1560,22 +1559,17 @@ impl<'a> FnLower<'a> {
         if let Some(sym) = hash_algorithm_symbol(m.native.as_str()) {
             return self.hash_algorithm_call(sym, recv, args, result);
         }
-        if let Some(v) = self.bound_intrinsic(m, recv, args, result)? {
-            return Ok(v);
+        if m.native.as_str() == "hash" && !matches!(self.b.m.types.kind(rty), TyKind::Str) {
+            return self.structural_hash(recv);
         }
-        if name == "equals" && args.len() == 1 {
-            return self.equals_value(&m.receiver, recv, args[0].val);
-        }
-        let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
-            .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
-            .ok_or_else(|| {
-                Error::new(format!(
-                    "unsupported native method value {} on {}",
-                    m.native,
-                    ms_mir::print::ty_str(self.b.m, rty)
-                ))
-            })?;
-        self.rt_method(&sym, recv, &m.ty.params, args, result)
+        self.native_method_tail(
+            m,
+            None,
+            ms_syntax::Pos::default(),
+            result,
+            recv,
+            args.to_vec(),
+        )
     }
 
     /// `equals` of data with built-in equality: boxes the receiver as the argument's `Equal`
@@ -1594,68 +1588,6 @@ impl<'a> FnLower<'a> {
             self.drop_value(other.v);
         }
         Ok(Val { v, own: false })
-    }
-
-    /// The size and shape methods that a direct call lowers inline, as a bound method value:
-    /// `xs.length`, `m.is_empty`, `xs.keys`, `xs.entries`, `xs.chunks`, `xs.windows`.
-    fn bound_intrinsic(
-        &mut self,
-        m: &ct::MethodRef,
-        recv: Val,
-        args: &[NArg],
-        result: MTy,
-    ) -> Result<Option<Val>, Error> {
-        let rty = self.ty_of(recv.v);
-        let native = m.native.as_str();
-        let name = native.rsplit('/').next().unwrap_or(native);
-        let name = if crate::mapset::is_map_or_set(self.b.m, rty) {
-            name.strip_prefix("map_")
-                .or_else(|| name.strip_prefix("set_"))
-                .unwrap_or(name)
-        } else {
-            name
-        };
-        let kind = self.b.m.types.kind(rty).clone();
-        let v = match (kind, name) {
-            (TyKind::Obj(n, _), "length" | "is_empty") if n == "Map" || n == "Set" => {
-                let r = self.borrow(recv);
-                let len = self.call_runtime("msrt_map_length", &[r], MTy::INT)?;
-                if name == "length" {
-                    Val { v: len, own: false }
-                } else {
-                    let z = self.b.iconst(0);
-                    let v = self.b.icmp(ms_mir::ir::Cc::Eq, len, z);
-                    Val { v, own: false }
-                }
-            }
-            (TyKind::List(_) | TyKind::Bytes, "length") => {
-                let r = self.borrow(recv);
-                Val {
-                    v: self.b.list_len(r),
-                    own: false,
-                }
-            }
-            (TyKind::List(_) | TyKind::Bytes, "is_empty") => {
-                let r = self.borrow(recv);
-                let n = self.b.list_len(r);
-                let z = self.b.iconst(0);
-                Val {
-                    v: self.b.icmp(ms_mir::ir::Cc::Eq, n, z),
-                    own: false,
-                }
-            }
-            (TyKind::Obj(n, _), "entries") if n == "Map" => self.map_entries(None, recv, result)?,
-            (TyKind::List(elem), "sorted") => {
-                self.list_sorted_call(None, recv, elem, args.to_vec())?
-            }
-            (TyKind::List(_), "list_keys") => self.list_keys(None, recv, result)?,
-            (TyKind::List(_), "list_entries") => self.list_entries(None, recv, result)?,
-            (TyKind::List(elem), "list_chunks" | "list_windows") => {
-                self.list_pieces(name == "list_chunks", elem, recv, args, result)?
-            }
-            _ => return Ok(None),
-        };
-        Ok(Some(v))
     }
 
     /// A `HashAlgorithm` operation: the algorithm is the receiver's case index, the first runtime argument.
