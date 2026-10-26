@@ -196,7 +196,7 @@ export type HttpClientOptions:
     max_redirects: Optional[Int] = none
     # Number of idle connections kept for reuse. Must be nonnegative; none sets no explicit cap.
     max_idle_connections: Optional[Int] = none
-    # Largest accepted size of a response header block, in bytes. Must be positive; none sets no cap.
+    # Largest accepted size of a response header block, in bytes. Must be positive; none uses the default of 1 MiB.
     max_header_bytes: Optional[Int] = none
     # How long an idle pooled connection is kept before it is closed. none never expires it, and a negative duration is rejected.
     idle_timeout: Optional[Duration] = none

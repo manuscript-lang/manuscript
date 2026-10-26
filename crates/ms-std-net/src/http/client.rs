@@ -31,6 +31,9 @@ const USER_AGENT_H2: &str = USER_AGENT;
 
 /// Largest read from a connection and from a request-body source.
 const READ_BUF: usize = 64 * 1024;
+/// Largest response header block when the options set no cap.
+const DEFAULT_MAX_HEADER_BYTES: usize = 1 << 20;
+
 /// Response bytes read from a redirect's body so its connection can be reused.
 const SLURP: usize = 2 << 10;
 /// Idle connections kept per host when the caller sets no cap.
@@ -1038,6 +1041,9 @@ impl Client {
             }
         }
         let head = self.read_head(wire, deadline)?;
+        if let Err(reason) = h1::response_framing(&head, hop.method) {
+            return Err(Fail::Err(HttpErr::Failed(format!("http: {reason}"))));
+        }
         Ok((head, wants_gzip))
     }
 
@@ -1081,9 +1087,15 @@ impl Client {
         let limit = self
             .opts
             .max_header_bytes
-            .map_or(usize::MAX, |n| n.min(usize::MAX as u64) as usize);
+            .map_or(DEFAULT_MAX_HEADER_BYTES, |n| {
+                n.min(usize::MAX as u64) as usize
+            });
         let mut read_any = false;
         loop {
+            // Data that is always ready never makes a read wait, so the clock needs its own check.
+            if deadline.expired() {
+                return Err(Fail::Err(HttpErr::Timeout));
+            }
             match h1::parse_response(wire.pending(), limit) {
                 Parsed::Complete(head) => {
                     wire.consume(head.length);
@@ -2280,6 +2292,38 @@ mod tests {
             .to_string();
         match c.send(request("GET", &refused, "/")) {
             Err(HttpErr::Failed(m)) => assert_eq!(m, "connection refused"),
+            other => panic!("{:?}", other.map(|b| b.status)),
+        }
+    }
+
+    #[test]
+    fn refuses_conflicting_content_length_and_endless_headers() {
+        let (address, _) = serve(|s, i| {
+            let _ = read_request(s);
+            if i == 0 {
+                reply(
+                    s,
+                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Length: 3\r\n\r\nabc",
+                );
+                return;
+            }
+            // Header bytes with no end: the default cap and the deadline must both stop the read.
+            let _ = s.write_all(b"HTTP/1.1 200 OK\r\nX: ");
+            let filler = [b'a'; 65536];
+            while s.write_all(&filler).is_ok() {}
+        });
+        let (_net, c) = client(ClientOptions::default());
+        match c.send(request("GET", &address, "/")) {
+            Err(HttpErr::Failed(m)) => assert_eq!(m, "http: invalid Content-Length"),
+            other => panic!("{:?}", other.map(|b| b.status)),
+        }
+        match c.send(request("GET", &address, "/")) {
+            Err(HttpErr::Failed(m)) => assert_eq!(
+                m,
+                format!(
+                    "http: server response headers exceeded {DEFAULT_MAX_HEADER_BYTES} bytes; aborted"
+                )
+            ),
             other => panic!("{:?}", other.map(|b| b.status)),
         }
     }
