@@ -82,7 +82,7 @@ impl<'a> FnLower<'a> {
             },
             ExprKind::List(items) => self.list_literal(e, items),
             ExprKind::Map(entries) => {
-                let t = self.emty(e)?;
+                let t = self.literal_ty(e)?;
                 self.map_literal(t, entries)
             }
             ExprKind::Unary { op, operand } => self.unary(e, *op, operand),
@@ -192,8 +192,16 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// The type a literal builds: its own, before any conversion to an interface.
+    fn literal_ty(&mut self, e: &Expr) -> Result<MTy, Error> {
+        match self.hir.info(e).error_source {
+            Some(src) => self.mty(&ct::sub(&src, &self.subst)),
+            None => self.emty(e),
+        }
+    }
+
     fn list_literal(&mut self, e: &Expr, items: &[Expr]) -> Result<Val, Error> {
-        let lt = self.emty(e)?;
+        let lt = self.literal_ty(e)?;
         let TyKind::List(elem) = self.b.m.types.kind(lt).clone() else {
             return Err(Error::new("list literal of a non-list type"));
         };
