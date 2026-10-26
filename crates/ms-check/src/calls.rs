@@ -746,7 +746,15 @@ impl Checker {
             let a = match a {
                 Some(a) => a,
                 None => {
-                    if !self.argument_failed_inference(args) {
+                    // A different expected type is reported as a mismatch (or was reported
+                    // already, when it is invalid), so this would only restate it.
+                    let elsewhere = expected.is_some_and(|e| {
+                        e.id != t.id
+                            && ((invalid_ty(e) && self.unknown_type)
+                                || (e.kind != Kind::Variable
+                                    && inference_type_known(e, &self.inference_variables)))
+                    });
+                    if !elsewhere && !self.argument_failed_inference(args) {
                         self.type_error(
                             pos,
                             format!("cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding", v.name),

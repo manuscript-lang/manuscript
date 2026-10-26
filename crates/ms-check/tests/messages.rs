@@ -161,3 +161,43 @@ fn var_parameter_def_is_not_a_function_value() {
             .collect::<Vec<_>>()
     );
 }
+
+fn messages(source: &str) -> Vec<String> {
+    let file: Arc<str> = Arc::from("t.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    let program = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    );
+    program
+        .diagnostics
+        .iter()
+        .map(|d| d.message.clone())
+        .collect()
+}
+
+#[test]
+fn none_where_a_plain_value_is_expected_is_one_mismatch() {
+    let got = messages("export def main() -> Int:\n    var x: Int = none\n    return x\n");
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(got[0].starts_with("expected Int, found none"), "{got:?}");
+    assert!(!got[0].contains("<invalid>"), "{got:?}");
+}
+
+#[test]
+fn none_under_an_unknown_type_adds_no_inference_error() {
+    let got = messages("export def main() -> Int:\n    let y: Option[Int] = none\n    return 0\n");
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(got[0].contains("unknown type Option"), "{got:?}");
+}
+
+#[test]
+fn a_failed_bound_in_a_signature_is_reported_once() {
+    let got = messages("def f() -> Result[Int, String]: ok(1)\nexport def main() -> Int: 0\n");
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].starts_with("String does not satisfy Error"),
+        "{got:?}"
+    );
+}

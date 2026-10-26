@@ -1705,8 +1705,7 @@ type	1	1	0	reachable fallthrough in function returning Int; end every path with 
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Int = value) -> Int: ...
 resolution	1	20	19	unknown binding value; declare it with 'let value = ...' before use, define 'def value(...) -> T:', or import it from a module
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Bool = none) -> Bool: ...
-type	1	21	20	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
-type	1	21	20	expected Bool, found Optional[<invalid>]; Optional[<invalid>] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match
+type	1	21	20	expected Bool, found none; none is absent, so it fits only an Optional position: declare the target Optional[Bool] or give a value
 type	1	1	0	reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)def f[T](value: T, copy: T = value) -> T: ...
 type	1	1	0	reachable fallthrough in function returning T; end every path with 'return <T>' (or make the last branch return)def f[T](value: T, flag: Bool = True) -> T: ...
 type	1	1	0	reachable fallthrough in function returning T; end every path with 'return <T>' (or make the last branch return)def f[T](value: T, flag: Int = 1 + 1) -> T: ...
@@ -1764,8 +1763,7 @@ def one() -> Int:
 impl Equal for Key:
     def equals(other: Equal) -> Bool: return True
 def keys() -> Map[Key, Int]: return Map[Key, Int]()
-type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it
-type	5	1	92	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
+type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
 type State:
     value: Int
 impl TestHooks for State:
@@ -3042,8 +3040,7 @@ def f() -> Result[Int, Error]:
     try operation()
     return ok(1)
 type	1	39	38	Int does not satisfy Error; use a type that implements it
-type	3	5	80	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it
-type	1	1	0	Int does not satisfy Error; use a type that implements itdef operation() -> Result[Unit, Error]: ok(())
+type	3	5	80	try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for itdef operation() -> Result[Unit, Error]: ok(())
 def f() -> Unit:
     try operation()
 type	3	5	68	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'def operation() -> Unit: ()

@@ -746,6 +746,11 @@ impl Checker {
 
     /// Adds a view hint only when the expected type itself is an interface.
     pub(crate) fn assignment_mismatch(&mut self, actual: &Ty, expected: &Ty) -> String {
+        if actual.is_std("Optional") && actual.args.len() == 1 && actual.args[0].id == "<invalid>" {
+            return format!(
+                "expected {expected}, found none; none is absent, so it fits only an Optional position: declare the target Optional[{expected}] or give a value"
+            );
+        }
         let message = format_mismatch(actual, expected);
         for hint in [
             label_mismatch_hint(actual, expected),

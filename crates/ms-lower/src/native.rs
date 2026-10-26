@@ -1345,6 +1345,10 @@ impl<'a> FnLower<'a> {
             (TyKind::List(elem), "sorted") => {
                 self.list_sorted_call(Some(recv_expr), recv, elem, args)
             }
+            (_, "equals") if args.len() == 1 => {
+                let concrete = self.hir.ty(recv_expr);
+                self.equals_value(&concrete, recv, args[0].val)
+            }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
                 let out = self.emty(e)?;
                 self.iterate_method(out, name, Some(recv_expr), recv, args)
@@ -1556,6 +1560,9 @@ impl<'a> FnLower<'a> {
         if let Some(v) = self.bound_intrinsic(m, recv, args, result)? {
             return Ok(v);
         }
+        if name == "equals" && args.len() == 1 {
+            return self.equals_value(&m.receiver, recv, args[0].val);
+        }
         let sym = crate::rtcall::typed_method_symbol(&m.receiver, &name)
             .or_else(|| crate::rtcall::method_symbol(self.b.m, rty, m.native.as_str()))
             .ok_or_else(|| {
@@ -1566,6 +1573,24 @@ impl<'a> FnLower<'a> {
                 ))
             })?;
         self.rt_method(&sym, recv, &m.ty.params, args, result)
+    }
+
+    /// `equals` of data with built-in equality: boxes the receiver as the argument's `Equal`
+    /// and dispatches, so both sides compare as the interface value would.
+    fn equals_value(&mut self, concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
+        let want = self.ty_of(other.v);
+        let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
+            return Err(Error::new("equals without an interface argument"));
+        };
+        let boxed = self.fit_ty(recv, concrete, want)?;
+        let v = self.b.call_method(iface, 0, boxed.v, &[other.v]);
+        if boxed.own {
+            self.drop_value(boxed.v);
+        }
+        if other.own {
+            self.drop_value(other.v);
+        }
+        Ok(Val { v, own: false })
     }
 
     /// The size and shape methods that a direct call lowers inline, as a bound method value:

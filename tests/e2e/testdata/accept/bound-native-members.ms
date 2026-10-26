@@ -122,3 +122,34 @@ test "sorted as a value":
     let ordered = sort(compare: lambda a, b: a - b)
     (ordered.get(index: 0) == 1) | try expect_true
     (ordered.get(index: 2) == 3) | try expect_true
+
+type EqualProbe:
+    n: Int
+
+def same(a: Equal, b: Equal) -> Bool:
+    return a.equals(b)
+
+test "equals on built-in data":
+    let xs = [1, 2]
+    let ys = [1, 2]
+    let other = [9]
+    let probe = EqualProbe(n: 1)
+    (xs.equals(ys)) | try expect_true
+    (xs.equals(other) == False) | try expect_true
+    ("x".equals("x")) | try expect_true
+    (1.equals(2) == False) | try expect_true
+    (probe.equals(EqualProbe(n: 1))) | try expect_true
+    (probe.equals(1) == False) | try expect_true
+
+    let bound = probe.equals
+    (bound(EqualProbe(n: 1))) | try expect_true
+    (bound(EqualProbe(n: 2)) == False) | try expect_true
+
+    let text = "x".equals
+    (text("x")) | try expect_true
+
+test "built-in data passes as Equal":
+    (same(1, 1)) | try expect_true
+    (same(1, 2) == False) | try expect_true
+    (same(EqualProbe(n: 1), EqualProbe(n: 1))) | try expect_true
+    (same(EqualProbe(n: 1), 1) == False) | try expect_true
