@@ -4,8 +4,8 @@ use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
 use ms_rt::ffi::{
-    Bytes, BytesArray, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
-    abi_record, native,
+    Bytes, BytesVec, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList, abi_record,
+    native,
 };
 
 abi_record! {
@@ -40,8 +40,8 @@ abi_record! {
         pub version: i64,
         pub cipher_suite: i64,
         pub alpn: Str,
+        pub peer_certificates: BytesVec,
         pub verified: u8,
-        pub peer_certificates: BytesArray,
     }
 }
 
@@ -119,8 +119,8 @@ native! {
             version: d.version,
             cipher_suite: d.cipher_suite,
             alpn: Str::new(&d.alpn),
+            peer_certificates: BytesVec::new(&d.peer_certificates),
             verified: u8::from(d.verified),
-            peer_certificates: BytesArray::new(&d.peer_certificates),
         })
     }
 
