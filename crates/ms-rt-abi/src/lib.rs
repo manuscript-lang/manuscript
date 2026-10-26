@@ -468,7 +468,7 @@ pub const STATUS_ALREADY_EXISTS: u8 = 6;
 pub const STATUS_NOT_EMPTY: u8 = 7;
 /// `FileSystemError.PermissionDenied`.
 pub const STATUS_PERMISSION_DENIED: u8 = 8;
-/// `FileSystemError.Unsupported`, `ProcessError.Unsupported`.
+/// `FileSystemError.Unsupported`, `ControlError.Unsupported`.
 pub const STATUS_UNSUPPORTED: u8 = 9;
 /// `IoError.Closed`, `FileSystemError.Closed`.
 pub const STATUS_CLOSED: u8 = 10;
