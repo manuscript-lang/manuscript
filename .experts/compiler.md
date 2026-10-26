@@ -73,6 +73,10 @@ Verified: an integer converted to `Float32` must round directly to binary32. Con
 Evidence: [integer conversion regression](../tests/e2e/testdata/accept/int-float32-rounding.ms), [MIR conversion fixture](../crates/ms-mir/tests/fixtures/int_to_float32.mir).
 Verify: run the source fixture in Debug and Release; both constant and variable conversions, both signs, and ties to even must agree.
 
+Verified: Cranelift defaults its optimization level to `none`. Adding a conditional backend setting must preserve forwarding of the profile's `opt_level`; otherwise `speed` and `speed_and_size` silently stop applying. Validate the compile API with every supported level and a rejected unknown level, rather than testing only the new setting's selection predicate.
+Evidence: [backend settings and compile regression](../crates/ms-clif/src/cg.rs), [profile options](../crates/ms-clif/src/lib.rs).
+Verify: `cargo nextest run -p ms-clif`; preserve the long-Debug-function allocator selection.
+
 ### Native omissions are declared in the standard declaration
 
 Verified: defaults for native functions, methods, and constructor fields are written in the standard `.ms` declaration and checked as ordinary expressions. Constructor omission follows source metadata, application implementations inherit standard interface default permissions and receive concrete values, and native compositions pass `some(n)` through source-defined streams. Inferring permission or default expressions from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.

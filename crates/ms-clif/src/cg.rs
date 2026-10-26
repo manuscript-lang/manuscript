@@ -563,6 +563,9 @@ fn compile_with_isa(
 ) -> Result<crate::Parts, Error> {
     let arm64_coff = windows_arm64(isa_builder.triple());
     let mut flags = settings::builder();
+    flags
+        .set("opt_level", opts.opt_level)
+        .map_err(|e| e.to_string())?;
     if single_pass(m, opts) {
         // The backtracking allocator is quadratic in a function's size and Debug builds keep owned
         // values live to scope end, so a very long function takes seconds; the single-pass
@@ -1120,6 +1123,35 @@ fn emit_main(
 #[cfg(test)]
 mod target_tests {
     use super::*;
+
+    #[test]
+    fn compile_honors_the_requested_optimization_level() {
+        let m = ms_mir::parse::parse_module(
+            "module \"levels\"\nfn @identity(%x: int) -> int export {\nb0:\n  ret %x\n}\n",
+        )
+        .unwrap();
+        for opt_level in ["none", "speed", "speed_and_size"] {
+            compile(
+                &m,
+                &Options {
+                    opt_level,
+                    ..Options::default()
+                },
+            )
+            .unwrap();
+        }
+        assert!(
+            compile(
+                &m,
+                &Options {
+                    opt_level: "invalid",
+                    ..Options::default()
+                },
+            )
+            .is_err(),
+            "an unknown Cranelift optimization level must be rejected"
+        );
+    }
 
     #[test]
     fn long_debug_functions_use_the_single_pass_allocator() {
