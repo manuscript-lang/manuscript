@@ -216,9 +216,7 @@ test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
     let root = parse(text: text) | try expect_ok | try entries
     root["name"] | try expect_equal(YamlValue.StringValue("é🙂"))
-    root["large"] | try expect_equal(
-        YamlValue.NumberValue("9007199254740993")
-    )
+    root["large"] | try expect_equal(YamlValue.NumberValue("9007199254740993"))
     root["boolean"] | try expect_equal(YamlValue.BoolValue(True))
     root["legacy"] | try expect_equal(YamlValue.StringValue("yes"))
     root["date"] | try expect_equal(YamlValue.StringValue("2024-02-29"))
@@ -282,16 +280,10 @@ test "YAML flow collections quotes escapes comments and multiline values":
         )
     )
     try expect_false(
-        (
-            root["url"] != YamlValue.StringValue(
-                "https://example.org/#fragment"
-            )
-        )
+        (root["url"] != YamlValue.StringValue("https://example.org/#fragment"))
     )
     (try items(root.get("multiline").get())).length() | try expect_equal(3)
-    root["text"] | try expect_equal(
-        YamlValue.StringValue("a long continued sentence")
-    )
+    root["text"] | try expect_equal(YamlValue.StringValue("a long continued sentence"))
     parse(text: "'literal\\n'") | try expect_ok | try expect_equal(
         YamlValue.StringValue("literal\\n")
     )
@@ -354,7 +346,7 @@ test "YAML documents BOM CRLF empty input and version directive":
             text: f"\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n"
         ) | try expect_ok
     )
-    (try entries(root))["a"] | try expect_equal(YamlValue.NumberValue("1"))
+    (try entries(root)) ["a"] | try expect_equal(YamlValue.NumberValue("1"))
     parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null)
     parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
     (try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
@@ -521,11 +513,7 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
         )
     )
     try expect_false(
-        (
-            folded["run"] != YamlValue.StringValue(
-                "util/check.sh --flag value"
-            )
-        )
+        (folded["run"] != YamlValue.StringValue("util/check.sh --flag value"))
     )
     folded["next"] | try expect_equal(YamlValue.NumberValue("1"))
 
@@ -631,7 +619,7 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     let first = (try entries(list.first().get()))
     first["b"] | try expect_equal(YamlValue.NumberValue("2"))
     (try items(list.get(1).clone())).length() | try expect_equal(2)
-    (try entries(list.last().get()))["d"] | try expect_equal(
+    (try entries(list.last().get())) ["d"] | try expect_equal(
         YamlValue.NumberValue("4")
     )
 

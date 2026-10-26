@@ -31,11 +31,7 @@ test "TOML scalars quoted keys comments exact integers and dates":
     root["bin"] | try expect_equal(TomlValue.IntValue(10))
     root["float"] | try expect_equal(TomlValue.FloatValue(-1250.0))
     try expect_false(
-        (
-            root["stamp"] != TomlValue.DateTimeValue(
-                "1979-05-27 07:32:00-07:00"
-            )
-        )
+        (root["stamp"] != TomlValue.DateTimeValue("1979-05-27 07:32:00-07:00"))
     )
     root["date"] | try expect_equal(TomlValue.DateTimeValue("2024-02-29"))
     root["time"] | try expect_equal(TomlValue.DateTimeValue("07:32:00.123"))
@@ -51,9 +47,7 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
         )
     )
     root["basic"] | try expect_equal(TomlValue.StringValue("hello world!"))
-    root["literal"] | try expect_equal(
-        TomlValue.StringValue("raw\\text\nnext")
-    )
+    root["literal"] | try expect_equal(TomlValue.StringValue("raw\\text\nnext"))
 
     let array = (try items(root.get("array").get()))
     array.length() | try expect_equal(3)
@@ -90,10 +84,10 @@ test "TOML implicit parents dotted keys and arrays of tables":
                         "meta"
                     ).get()
                 )
-            )["stock"] != TomlValue.IntValue(3)
+            ) ["stock"] != TomlValue.IntValue(3)
         )
     )
-    (try items((try entries(products.last().get()))["variants"])).length() | try expect_equal(
+    (try items((try entries(products.last().get())) ["variants"])).length() | try expect_equal(
         2
     )
 
