@@ -252,8 +252,8 @@ crate::isolate_static! {
     static FAULTING: bool = false;
 }
 crate::isolate_static! {
-    /// Set while a cancellation unwinds a guarded task: its frames are abandoned, so drop
-    /// cleanups registered by generated code release what the frames own.
+    /// Set while a cancellation or a fault unwinds a guarded task: its frames are abandoned,
+    /// so drop cleanups registered by generated code release what the frames own.
     static UNWIND_DROPS: bool = false;
 }
 crate::isolate_static! {
@@ -974,6 +974,12 @@ pub fn fault_vec(mut report: Vec<u8>) -> ! {
     describe_frames(&mut report, frame_pointer());
     // SAFETY: single threaded; a fault inside a cleanup action finishes this report.
     unsafe { *PRIMARY.ptr() = Some(report) };
+    #[cfg(not(test))]
+    // SAFETY: single threaded access. A fault that leaves a guarded task abandons its frames,
+    // so drop cleanups release what they own; an unguarded fault ends the process.
+    unsafe {
+        *UNWIND_DROPS.ptr() = guard_active();
+    }
     while run_one_cleanup() {}
     finish_report(None)
 }
@@ -1220,8 +1226,9 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
     }
 }
 
-/// Whether the cleanup stack is running because a cancellation leaves a guarded task. Generated
-/// drop cleanups act only then: a fault ends the process and process exit needs no frees.
+/// Whether the cleanup stack is running because a cancellation or a fault leaves a guarded task.
+/// Generated drop cleanups act only then: an unguarded fault ends the process and process exit
+/// needs no frees.
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_unwind_drops() -> u8 {
     // SAFETY: single threaded access.
