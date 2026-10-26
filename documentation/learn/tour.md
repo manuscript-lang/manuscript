@@ -307,6 +307,8 @@ test "own methods":
     try expect_equal(counter.value, 1)
 ```
 
+`Self` names the receiver's type in these signatures, so a method that builds a new value writes `def with_value(value: Int) -> Self` instead of repeating the type.
+
 Use an interface when callers should depend on behavior rather than on the type. Free functions that mutate an argument are called as `reset(var counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
 
 ## Files and cleanup

@@ -344,6 +344,10 @@ impl Checker {
                     s.module != this.current_file() && !extends_native
                 })
         };
+        self.scope
+            .types
+            .borrow_mut()
+            .insert(n("Self"), receiver.clone());
         for (index, method) in imp.methods.iter().enumerate() {
             if !seen.insert(method.func.name) {
                 self.type_error(
@@ -457,6 +461,7 @@ impl Checker {
             }
             self.p.methods.push(Rc::new(m));
         }
+        self.scope.types.borrow_mut().remove(&n("Self"));
         for op in &ops {
             if seen.contains(&op.name) {
                 continue;
