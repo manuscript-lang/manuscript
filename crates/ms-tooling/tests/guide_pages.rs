@@ -243,3 +243,12 @@ fn search_rejects_noise_and_empty_queries() {
     assert!(search("zzqxjv", 5).is_empty());
     assert!(format_matches("zzqxjv", &[]).contains("No standard-library match"));
 }
+
+/// `with` binds its resource with `let` or `var`; the removed `with expr as name:` spelling must not return.
+#[test]
+fn cheatsheet_uses_the_current_with_syntax() {
+    let text = cheatsheet();
+    for line in text.lines().filter(|l| l.contains("`with ")) {
+        assert!(!line.contains(" as "), "old with-as spelling: {line}");
+    }
+}
