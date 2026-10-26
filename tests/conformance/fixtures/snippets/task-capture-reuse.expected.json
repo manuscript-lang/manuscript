@@ -15,6 +15,21 @@
           "line": 8,
           "column": 21,
           "offset": 258
+        },
+        "fix": {
+          "position": {
+            "file": "task-capture-reuse.ms",
+            "line": 8,
+            "column": 43,
+            "offset": 280
+          },
+          "end": {
+            "file": "task-capture-reuse.ms",
+            "line": 8,
+            "column": 43,
+            "offset": 280
+          },
+          "replacement": ".clone()"
         }
       }
     ],

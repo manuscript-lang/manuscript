@@ -84,3 +84,26 @@ fn explain_names_the_family_and_repair() {
     let (status, text) = ms(&["explain", "MS9999"], &dir);
     assert_eq!(status, Some(1), "{text}");
 }
+
+#[test]
+fn fix_wraps_expressions_to_convert_types() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-wrap-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "def say(text: String) -> Unit:\n    return ()\n\n\
+        export def main() -> Int:\n    let n = 3\n    let m = 4\n    let a: Float = n\n    let b: Float = n + m\n    let d: Float = 7\n    let e = 1.5 * n\n    say(text: n + 1)\n    return 0\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("let a: Float = n.to_float()"), "{fixed}");
+    assert!(
+        fixed.contains("let b: Float = (n + m).to_float()"),
+        "{fixed}"
+    );
+    assert!(fixed.contains("let d: Float = 7.0"), "{fixed}");
+    assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
+    assert!(fixed.contains("say(text: f\"{n + 1}\")"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

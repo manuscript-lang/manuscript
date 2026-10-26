@@ -491,12 +491,14 @@ impl Checker {
             Expr {
                 id: id(self),
                 pos: iter.pos,
+                end: iter.pos,
                 kind: ExprKind::Name(hidden),
             }
         };
         let callee = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Member {
                 left: Box::new(holder),
                 name: n("next"),
@@ -505,6 +507,7 @@ impl Checker {
         let call = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Call {
                 callee: Box::new(callee),
                 args: Vec::new(),
@@ -534,6 +537,7 @@ impl Checker {
         let forever = Expr {
             id: id(self),
             pos,
+            end: pos,
             kind: ExprKind::Bool(true),
         };
         expansion.push(Stmt {

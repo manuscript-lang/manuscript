@@ -5,6 +5,7 @@
 //! the diagnostic also carries it as a `DiagnosticFix`.
 
 use crate::checker::Checker;
+use ms_syntax::ast::{Expr, ExprKind};
 use ms_syntax::{DiagnosticFix, Phase, Pos};
 
 /// The single replacement a `did you mean` hint names, if exactly one.
@@ -99,6 +100,88 @@ pub(crate) fn drop_case_parens(source: &str, pos: Pos, name: &str) -> Option<Dia
         end,
         replacement: String::new(),
     })
+}
+
+/// The source text of the written expression `e`, with its range.
+fn expr_range<'s>(source: &'s str, e: &Expr) -> Option<(Pos, Pos, &'s str)> {
+    let (start, end) = (e.start(), e.end);
+    if end.offset <= start.offset {
+        return None;
+    }
+    let text = source.get(start.offset as usize..end.offset as usize)?;
+    Some((start, end, text))
+}
+
+/// Rewrites the expression `e` into `build(text, atomic)`, where `atomic`
+/// says a `.method()` suffix binds to all of `text` without parentheses.
+pub(crate) fn rewrite_expr(
+    source: &str,
+    e: &Expr,
+    build: impl Fn(&str, bool) -> Option<String>,
+) -> Option<DiagnosticFix> {
+    let (pos, end, text) = expr_range(source, e)?;
+    let atomic = matches!(
+        e.kind,
+        ExprKind::Name(_)
+            | ExprKind::Member { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Apply { .. }
+            | ExprKind::List(_)
+            | ExprKind::Map(_)
+    );
+    Some(DiagnosticFix {
+        pos,
+        end,
+        replacement: build(text, atomic)?,
+    })
+}
+
+/// `value.suffix` for the expression `e`.
+pub(crate) fn append_call(source: &str, e: &Expr, call: &str) -> Option<DiagnosticFix> {
+    rewrite_expr(source, e, |text, atomic| {
+        Some(if atomic {
+            format!("{text}.{call}")
+        } else {
+            format!("({text}).{call}")
+        })
+    })
+}
+
+/// `f"{value}"` for the expression `e`, unless its text would not nest.
+pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    rewrite_expr(source, e, |text, _| {
+        (!text.contains(['"', '{', '}', '\n'])).then(|| format!("f\"{{{text}}}\""))
+    })
+}
+
+/// Converts the Int expression `e` to Float: `3` becomes `3.0`, else `.to_float()`.
+pub(crate) fn to_float(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    float_literal(source, e).or_else(|| append_call(source, e, "to_float()"))
+}
+
+/// `3` becomes `3.0` for a plain decimal Int literal.
+fn float_literal(source: &str, e: &Expr) -> Option<DiagnosticFix> {
+    if !matches!(e.kind, ExprKind::Number(_)) {
+        return None;
+    }
+    rewrite_expr(source, e, |text, _| {
+        (!text.is_empty() && text.bytes().all(|b| b.is_ascii_digit())).then(|| format!("{text}.0"))
+    })
+}
+
+/// The conversion fix for an `actual` value used where `expected` is required.
+pub(crate) fn conversion_fix(
+    source: &str,
+    e: &Expr,
+    actual: &str,
+    expected: &str,
+) -> Option<DiagnosticFix> {
+    match (actual, expected) {
+        ("Int", "Float") => to_float(source, e),
+        ("Int" | "Float" | "Bool", "String") => interpolate(source, e),
+        _ => None,
+    }
 }
 
 impl Checker {
