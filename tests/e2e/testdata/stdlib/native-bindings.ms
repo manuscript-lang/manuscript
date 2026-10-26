@@ -68,7 +68,13 @@ test "set_identity and set_groups validate input and apply or refuse":
         try process.set_identity(kind: "egid", id: info.effective_gid)
 
         let groups = try process.groups()
-        try process.set_groups(groups: groups)
+
+        if info.effective_uid == 0:
+            try process.set_groups(groups: groups)
+        else:
+            try expect_process_error(
+                process.set_groups(groups: groups), ProcessError.PermissionDenied
+            )
 
 test "replace rejects invalid programs before leaving this process":
     let process = control()
