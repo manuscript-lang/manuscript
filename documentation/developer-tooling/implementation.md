@@ -125,7 +125,7 @@ Two small commands answer what the compiler commands do not and print only what 
 | Command | Behavior |
 | --- | --- |
 | `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10; `--json`). Project matches print `file:line:column`, type, description, and up to five uses; standard matches print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
-| `ms guide` | The language cheat sheet (under 2.5 KB) with a checked example program |
+| `ms guide` | The language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
 
