@@ -5,7 +5,7 @@ from "@std/testing.ms" import expect_contains, expect_fault
 from "@std/core.ms" import panic
 
 def failed_initializer() -> Never:
-    let impossible: Int = panic(message: "initializer cannot return")
+    let _impossible: Int = panic(message: "initializer cannot return")
 
 def returned_failure() -> Int:
     return panic(message: "result cannot return")
@@ -18,14 +18,14 @@ test "Never faults propagate through initializers and returned values":
     try expect_contains(
         try expect_fault(
             lambda:
-                let impossible = failed_initializer()
+                let _impossible = failed_initializer()
         ),
         "initializer cannot return"
     )
     try expect_contains(
         try expect_fault(
             lambda:
-                let impossible = returned_failure()
+                let _impossible = returned_failure()
         ),
         "result cannot return"
     )

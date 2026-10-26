@@ -121,37 +121,37 @@ def verify_archive() -> Result[Unit, Error]:
 test "expanded packages run through compiler":
     match verify_json():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "json failed")
 
     match verify_encoding():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "encoding failed")
 
     match verify_url():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "url failed")
 
     match verify_binary():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "binary failed")
 
     match verify_compression():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "compression failed")
 
     match verify_archive():
         case ok(_):
-            let verified = ()
+            let _verified = ()
         case error(_):
             return fail(message: "archive failed")
 

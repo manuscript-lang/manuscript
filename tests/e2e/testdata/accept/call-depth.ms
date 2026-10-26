@@ -26,7 +26,7 @@ def bounded(n: Int, limit: Int) -> Int:
 test "runaway recursion is a fault":
     let message = try expect_fault(
         lambda:
-            let ignored = runaway(0)
+            let _ignored = runaway(0)
     )
     message | try expect_contains("call depth limit exceeded")
 
@@ -34,7 +34,7 @@ test "runaway method recursion faults like function recursion":
     let walker = Walker(step: 1, limit: -1)
     let message = try expect_fault(
         lambda:
-            let ignored = walker.walk(n: 0)
+            let _ignored = walker.walk(n: 0)
     )
     message | try expect_contains("call depth limit exceeded")
 

@@ -7,7 +7,7 @@ from "@std/io.ms" import stdout
 from "@std/collections.ms" import range
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let i1 = (995046 - (((-441650) * (-48)) - (46 - 0)))

@@ -20,7 +20,7 @@ def read_whole(path: String) -> Int:
 def open_then_read(path: String) -> Int:
     let opened = filesystem().open(path, "r", 420)
     if let file = opened:
-        let data = file.read_file()
+        let _data = file.read_file()
         file.close()
         return 1
 
@@ -29,7 +29,7 @@ def open_then_read(path: String) -> Int:
 def open_io_then_read(path: String) -> Int:
     let opened = files().open(path)
     if let file = opened:
-        let data = file.read()
+        let _data = file.read()
         file.close()
         return 1
 

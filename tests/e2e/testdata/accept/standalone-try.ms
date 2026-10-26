@@ -15,7 +15,7 @@ impl Error for Failure:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for State:
     var def close() -> Unit:
-        let written = filesystem().write_file(self.marker, "closed", True)
+        let _written = filesystem().write_file(self.marker, "closed", True)
 
 def operation(var state: State, fail: Bool) -> Result[Unit, Failure]:
     state.calls += 1

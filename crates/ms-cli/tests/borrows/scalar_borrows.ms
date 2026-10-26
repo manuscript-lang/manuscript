@@ -5,9 +5,9 @@ type Box:
     xs: List[Int]
 
 def bump(var b: Box) -> Unit:
-    var n = b.n
-    n += 1
-    n = n * 2
+    var _n = b.n
+    _n += 1
+    _n = _n * 2
 
 export def main() -> Int:
     var b = Box(n: 1, xs: [1])
@@ -19,8 +19,8 @@ export def main() -> Int:
         x += 1
 
     var cs = [1, 2, 3]
-    var first = cs[0]
-    first += 10
+    var _first = cs[0]
+    _first += 10
 
     let before = b.n
     var scratch = before

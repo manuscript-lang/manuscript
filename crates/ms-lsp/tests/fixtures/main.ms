@@ -51,7 +51,7 @@ def describe(p: Point) -> String:
     return f"norm is {n} at {p.x}"
 
 export def main() -> Int:
-    let p = Point(x: 1, y: 2)
+    let _p = Point(x: 1, y: 2)
     let values = [1, 2, 3]
     for v in values:
         say(f"{v}")

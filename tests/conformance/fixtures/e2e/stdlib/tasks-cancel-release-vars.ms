@@ -80,7 +80,7 @@ def t_match() -> Int:
 def t_chan(ch: Channel[Unit, Unit]) -> Int:
     var c = ch
     let held = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
-    let got = c.receive()
+    let _got = c.receive()
     return held.length()
 
 def t_nested(depth: Int) -> Int:
@@ -148,11 +148,11 @@ def t_loop_break() -> Int:
 
 def t_while_sleep() -> Int:
     var n = 0
-    var buf = "bufxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    var _buf = "bufxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
     while True:
         n += 1
-        buf = f"{buf}{n}"
+        _buf = f"{_buf}{n}"
         nap()
 
     return n

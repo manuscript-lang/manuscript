@@ -18,7 +18,7 @@ test "a difference comparator sorts by value":
 
 test "a difference comparator still faults when a subtraction overflows":
     let wide = [9223372036854775807, -9223372036854775807, 0]
-    (try expect_fault(lambda: let ignored = ascending(wide))) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = ascending(wide))) | try expect_contains(
         "Int overflow"
     )
 

@@ -46,7 +46,7 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         ):
             match try socket_result(result: socket.receive()):
                 case some(message):
-                    let sent = try socket_result(
+                    let _sent = try socket_result(
                         result: socket.send_bytes(
                             data: message.data, text: message.text
                         )
@@ -57,8 +57,8 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         return ok(())
 
     let fields = headers()
-    let appended = try fields.append("X-Test", "stream".to_bytes())
-    let started = try exchange.send_headers(status: 200, headers: fields)
+    let _appended = try fields.append("X-Test", "stream".to_bytes())
+    let _started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript"):
         case ok(_):
@@ -121,7 +121,7 @@ def exercise() -> Result[Unit, Error]:
         ):
             socket.subprotocol() | try expect_equal("echo")
 
-            let sent = try socket_result(result: socket.send(data: "echo me"))
+            let _sent = try socket_result(result: socket.send(data: "echo me"))
 
             match try socket_result(result: socket.receive()):
                 case some(message):

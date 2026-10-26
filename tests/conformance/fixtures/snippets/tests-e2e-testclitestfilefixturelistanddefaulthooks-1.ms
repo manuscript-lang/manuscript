@@ -5,7 +5,7 @@ from "@std/testing.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 
 def println(message: String) -> Unit:
-    let written = stdout().write(f"{message}\n").get()
+    let _written = stdout().write(f"{message}\n").get()
 
 type State:
     value: Int

@@ -22,11 +22,11 @@ from "@std/math.ms" import (
 from "@std/math.ms" import max_int, min_int
 
 def shift_too_far() -> Unit:
-    let value = shift_left(1, 64)
+    let _value = shift_left(1, 64)
     return ()
 
 def shift_negative() -> Unit:
-    let value = shift_right(1, -1)
+    let _value = shift_right(1, -1)
     return ()
 
 test "bitwise operators follow two's complement":
@@ -43,8 +43,8 @@ test "shifts distinguish arithmetic from logical":
     try expect_equal(shift_right_unsigned(8, 2), 2)
 
 test "shift counts outside 0 through 63 fault":
-    let first = try expect_fault(shift_too_far)
-    let second = try expect_fault(shift_negative)
+    let _first = try expect_fault(shift_too_far)
+    let _second = try expect_fault(shift_negative)
 
 test "rotation and bit counts":
     try expect_equal(rotate_left(1, 64), 1)

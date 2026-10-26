@@ -23,10 +23,12 @@ fn issues(file: &str, source: &str) -> Vec<String> {
                 ImportMap::default(),
                 CheckOptions::default(),
             );
+            // The guide's fragments bind names only to show a rule; unread bindings are not their claim.
             program
                 .diagnostics
                 .iter()
                 .map(|d| d.message.clone())
+                .filter(|m| !m.contains("is never read"))
                 .collect()
         })
         .unwrap()

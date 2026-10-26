@@ -3013,6 +3013,6 @@ def fat(n: Int) -> Int:
 test "stack exhaustion is reported as a stack overflow":
     let message = try expect_fault(
         lambda:
-            let ignored = fat(0)
+            let _ignored = fat(0)
     )
     message | try expect_contains("stack overflow")

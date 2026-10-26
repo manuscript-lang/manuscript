@@ -49,7 +49,7 @@ fn required_lambda_can_replace_a_defaulted_callable() {
 fn required_native_function_can_replace_a_defaulted_callable() {
     lower(
         "native",
-        "from \"@std/math.ms\" import floor\ndef original(value: Float = 7.0) -> Float: value\nexport def main() -> Int:\n    var callback = original\n    callback = floor\n    let result = callback(3.5)\n    return 0\n",
+        "from \"@std/math.ms\" import floor\ndef original(value: Float = 7.0) -> Float: value\nexport def main() -> Int:\n    var callback = original\n    callback = floor\n    let _result = callback(3.5)\n    return 0\n",
     );
 }
 

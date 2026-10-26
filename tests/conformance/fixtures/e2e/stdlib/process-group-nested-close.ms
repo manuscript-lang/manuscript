@@ -19,15 +19,15 @@ def leaf(ch: Channel[Unit, Unit]) -> Int:
 
 def middle(ch: Channel[Unit, Unit]) -> Int:
     with let group = ProcessGroup[Int]():
-        var g = group.spawn(leaf).get()
-        var spin = 0
+        var _g = group.spawn(leaf).get()
+        var _spin = 0
         while True:
-            spin += 1
+            _spin += 1
     return 0
 
 def top(ch: Channel[Unit, Unit]) -> Int:
     with let group = ProcessGroup[Int]():
-        var m = group.spawn(middle).get()
+        var _m = group.spawn(middle).get()
         var c = ch
         c.send(())
         sleep(nanoseconds(300000000))

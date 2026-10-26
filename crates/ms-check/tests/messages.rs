@@ -567,3 +567,44 @@ fn sibling_scopes_and_underscore_names_may_reuse_names() {
 ";
     assert_eq!(check_messages(source), Vec::<String>::new());
 }
+
+#[test]
+fn unread_bindings_are_errors() {
+    let source = "export def main() -> Int:
+    let m = Map[String, Int]()
+    if let n = m.get(\"a\"):
+        return 1
+    let unused = 2
+    let _ignored = 3
+    return 0
+";
+    let found = check_messages(source);
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert!(
+        found[0].contains("local binding n is never read"),
+        "{found:?}"
+    );
+    assert!(
+        found[1].contains("local binding unused is never read"),
+        "{found:?}"
+    );
+}
+
+#[test]
+fn a_borrow_that_is_only_written_and_total_updates_are_not_unread() {
+    let source = "export def main() -> Int:
+    var m = Map[String, Int]()
+    m.add(\"a\", 1)
+    if var n = m.get(\"a\"):
+        n += 1
+    var total = 0
+    total = total + 2
+    return m.get(\"a\").get(0)
+";
+    let found = check_messages(source);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(
+        found[0].contains("local binding total is never read"),
+        "{found:?}"
+    );
+}

@@ -20,14 +20,14 @@ export def main() -> Int:
         let bad = group.spawn(lambda ch: boom([1]))
         let good = group.spawn(lambda ch: 7)
         match bad.result():
-            case ok(value): say("unexpected result")
+            case ok(_value): say("unexpected result")
             case error(reason): say(describe(reason))
         match good.result():
             case ok(value): say(f"good {value}")
-            case error(other): say("good failed")
+            case error(_other): say("good failed")
     with let group = TaskGroup[Int](contain_faults: True):
         group.spawn(lambda ch: boom([1]))
         match group.wait():
-            case ok(unit): say("wait ok")
+            case ok(_unit): say("wait ok")
             case error(reason): say(describe(reason))
     return 0

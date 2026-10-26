@@ -41,7 +41,7 @@ def close_on_return() -> Result[Channel[Unit, Int], Error]:
 def close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) -> Unit:
     with let group = TaskGroup[Result[Unit, ChannelError], Unit, Int]():
         let task = group.spawn(send_one)
-        let sent = task.result()
+        let _sent = task.result()
         var end = ch
         end.send(task.channel.clone())
         sleep(nanoseconds(1000000000))

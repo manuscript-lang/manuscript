@@ -1,4 +1,4 @@
-//! `MSL101` (unread bindings) for the borrow forms of `if var`.
+//! Lint findings that need a checked program.
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::lint::lint_program;
@@ -17,29 +17,6 @@ fn codes(source: &str) -> Vec<String> {
         .iter()
         .map(|f| f.code.to_string())
         .collect()
-}
-
-#[test]
-fn if_var_borrow_that_is_only_written_is_not_unread() {
-    let source = "export def main() -> Int:
-    var m = Map[String, Int]()
-    m.add(\"a\", 1)
-    if var n = m.get(\"a\"):
-        n += 1
-    return m.get(\"a\").get(0)
-";
-    assert!(!codes(source).contains(&"MSL101".to_string()));
-}
-
-#[test]
-fn if_let_binding_that_is_never_read_is_still_reported() {
-    let source = "export def main() -> Int:
-    let m = Map[String, Int]()
-    if let n = m.get(\"a\"):
-        return 1
-    return 0
-";
-    assert!(codes(source).contains(&"MSL101".to_string()));
 }
 
 #[test]

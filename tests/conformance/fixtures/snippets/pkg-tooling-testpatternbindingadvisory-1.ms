@@ -10,4 +10,4 @@ type Envelope:
 
 def use(value: Envelope) -> Int:
     match value:
-        case Pair(payload, NotFound): return 1
+        case Pair(_payload, NotFound): return 1

@@ -7,7 +7,7 @@ def apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)
 
 def first() -> Unit:
     let offset = 7
-    let result = apply(
+    let _result = apply(
         value: 1,
         transform: lambda outer: apply(
             value: 2, transform: lambda inner: (outer + inner + offset)

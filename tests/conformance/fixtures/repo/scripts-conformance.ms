@@ -158,7 +158,7 @@ export def main() -> Int:
     match run(arguments()):
         case ok(_): return 0
         case error(cause):
-            let written = stdout().write(f"{cause.message()}\n")
+            let _written = stdout().write(f"{cause.message()}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":

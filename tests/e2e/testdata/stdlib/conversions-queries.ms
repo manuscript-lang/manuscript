@@ -554,5 +554,5 @@ test "ok_or without a cause records the calling file and line":
     let missing_port = find_port(none)
 
     match missing_port.err():
-        case MissingValue(found): ()
+        case MissingValue(_found): ()
         case _: return fail("default cause is not MissingValue")

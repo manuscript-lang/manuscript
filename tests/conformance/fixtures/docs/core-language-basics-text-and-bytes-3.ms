@@ -7,6 +7,6 @@ def text[T](value: T) -> String:
 test "string conversion":
     let count = 3
     let convert: Callable[[], String] = count.to_string
-    let direct = count.to_string()
-    let bound = convert()
-    let embedded = f"{count}"
+    let _direct = count.to_string()
+    let _bound = convert()
+    let _embedded = f"{count}"
