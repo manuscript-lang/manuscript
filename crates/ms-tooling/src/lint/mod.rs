@@ -5,6 +5,7 @@ mod bindings;
 mod faults;
 mod matches;
 mod patterns;
+mod recursion;
 mod results;
 
 use ms_check::{ModuleData, Program};
@@ -14,7 +15,7 @@ use std::sync::Arc;
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL110`.
+    /// Stable rule code, `MSL001`..`MSL111`.
     pub code: &'static str,
     /// Human-readable message.
     pub message: String,
@@ -83,6 +84,7 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         bindings::lint(program, module, &mut findings);
         results::lint(module, &mut findings);
         faults::lint(module, &mut findings);
+        recursion::lint(program, module, &mut findings);
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }
