@@ -38,18 +38,19 @@ jobs:
       - run: cargo build --locked -p ms-cli
       - name: Cases
         run: |
+          set +e
           run() { # label build-type file
             start=$(date +%s)
-            timeout 50 target/debug/ms.exe run "$3" --build-type "$2" > out.txt 2>&1
+            timeout 40 target/debug/ms.exe run "$3" --build-type "$2" > out.txt 2>&1
             code=$?
             echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start )) lines=$(wc -l < out.txt)" >> summary.txt
-            tail -3 out.txt | sed "s/^/    /" >> summary.txt
+            tail -8 out.txt | cut -c1-150 | sed "s/^/    /" >> summary.txt
           }
+          run v5 Debug dbg/win/v5_two_servers.ms
+          run v6 Debug dbg/win/v6_two_servers_fast.ms
           run orig Debug tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms
-          run orig Release tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms
-          run v3 Release dbg/win/v3_timeout_slow.ms
-          run v4 Release dbg/win/v4_grace_slow.ms
-          run hello Release examples/hello/ms.toml
+          run v5 Release dbg/win/v5_two_servers.ms
+          exit 0
       - name: Summary
         if: always()
         run: cat summary.txt
