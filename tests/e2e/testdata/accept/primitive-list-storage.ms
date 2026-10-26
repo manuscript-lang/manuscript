@@ -56,7 +56,7 @@ test "Float Bool and String preserve mutation traversal and width":
     booleans.prepend(False)
 
     var strings = ["a", "b", "c"]
-    strings.reverse_in_place()
+    strings.reverse()
     try expect_false(
         not (booleans == [False, False, True] and strings == ["c", "b", "a"])
     )

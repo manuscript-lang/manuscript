@@ -9,7 +9,7 @@ from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel
 
 type Job:
@@ -56,7 +56,7 @@ def reads_stdin() -> Unit:
 
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 5000000))
+    sleep(nanoseconds(5000000))
     ch.send(1)
 
 def wait_forever() -> Unit:
@@ -81,7 +81,7 @@ def spin_then_wait() -> Unit:
     let got = ch.receive()
 
 def sleep_long() -> Unit:
-    sleep(duration(nanoseconds: 60000000000))
+    sleep(nanoseconds(60000000000))
 
 def sum_until_closed() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -215,7 +215,7 @@ test "standard input stays with the main thread":
 
 def delayed_send() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 150000000))
+    sleep(nanoseconds(150000000))
     ch.send(1)
 
 def quick() -> Unit:
@@ -227,7 +227,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
         try expect_ok(a.wait())
 
         var b = group.spawn(delayed_send).get(none)
-        sleep(duration(nanoseconds: 30000000))
+        sleep(nanoseconds(30000000))
         a.cancel()
         try expect_equal(b.channel.receive(), ok(some(1)))
         try expect_ok(b.wait())
@@ -259,7 +259,7 @@ test "a fault in a task a worker started is the worker's fault":
 
 def sleeps_long() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 30000000000))
+    sleep(nanoseconds(30000000000))
 
 def joins_nested() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -271,7 +271,7 @@ def joins_nested() -> Unit:
 test "cancelling a worker that is joining another ends it as cancelled":
     with let group = WorkerGroup[Int, Int]():
         var outer = group.spawn(joins_nested).get(none)
-        sleep(duration(nanoseconds: 50000000))
+        sleep(nanoseconds(50000000))
         outer.cancel()
 
         let outcome = outer.wait()
@@ -323,7 +323,7 @@ test "workers fetch from the starter's server at the same time":
 
 def doubles_bytes() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let raw = worker_bytes()
+    var raw = worker_bytes()
 
     while True:
         if let data = raw.receive().get(none):
@@ -334,7 +334,7 @@ def doubles_bytes() -> Unit:
 test "bytes cross a worker pipe without JSON":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(doubles_bytes).get(none)
-        let raw = worker.bytes()
+        var raw = worker.bytes()
         let big = "0123456789".repeat(30000).get("").to_bytes()
         let small = "abc".to_bytes()
         try expect_ok(raw.send(big))

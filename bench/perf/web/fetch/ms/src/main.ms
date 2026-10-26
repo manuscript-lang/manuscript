@@ -3,7 +3,7 @@ from "@std/fetch.ms" import fetcher, FetchOptions
 from "@std/io.ms" import stdout
 from "@std/process.ms" import arguments
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import clock, duration
+from "@std/time.ms" import clock, nanoseconds
 from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
 
 def worker(url: String, nanos: Int) -> Int:
@@ -11,7 +11,7 @@ def worker(url: String, nanos: Int) -> Int:
     let started = clock().now()
     var n = 0
 
-    while clock().now().difference(started).compare(duration(nanos)) < 0:
+    while clock().now().difference(started).compare(nanoseconds(nanos)) < 0:
         if let r = f.fetch(url):
             n += r.body.length()
             n -= r.body.length() - 1

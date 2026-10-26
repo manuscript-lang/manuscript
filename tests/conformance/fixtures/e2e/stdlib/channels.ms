@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
     var c = ch
@@ -123,14 +123,14 @@ test "an end used after closing it gives Closed":
         task.channel.close()
 
 test "a task cancelled while it waits closes its end":
-    with let group = TaskGroup[Int, Unit, Int](timeout: some(duration(20000000))):
+    with let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(20000000))):
         var task = group.spawn(wait_for_one)
         try expect_equal(drain(var task.channel), ["end"])
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 
 test "a task cancelled before it first ran closes its end":
     with let group = TaskGroup[Int, Unit, Int]():
-        var task = group.spawn(produce, timeout: some(duration(0)))
+        var task = group.spawn(produce, timeout: some(nanoseconds(0)))
         try expect_equal(drain(var task.channel), ["end"])
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 

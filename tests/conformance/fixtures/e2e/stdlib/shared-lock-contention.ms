@@ -6,13 +6,13 @@ from "@std/io.ms" import stdout
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def bump(box: Shared[Int], n: Int) -> Int:
     for i in range(0, 50):
         with var g = lock(box):
             g.value = g.value + 1
-            sleep(duration(nanoseconds: 20000))
+            sleep(nanoseconds(20000))
 
     return n
 

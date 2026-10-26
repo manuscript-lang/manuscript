@@ -520,7 +520,7 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeD
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -543,7 +543,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reversed(
     // SAFETY: caller contract.
     unsafe {
         copy_list(v, &*d, out);
-        msrt_list_reverse_in_place(out, d);
+        msrt_list_reverse(out, d);
     }
 }
 

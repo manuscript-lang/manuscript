@@ -5,7 +5,7 @@ from "@std/io.ms" import stdout
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def holder(box: Shared[Int], chan: Channel[Unit, Unit]) -> Int:
     var ch = chan.clone()
@@ -23,7 +23,7 @@ export def main() -> Int:
 
     with let g = TaskGroup[Int, Unit, Unit]():
         g.spawn(lambda ch: holder(box, ch))
-        sleep(duration(nanoseconds: 1000000))
+        sleep(nanoseconds(1000000))
 
         let w = g.spawn(lambda ch: waiter(box))
         stdout().write("waiting\n")

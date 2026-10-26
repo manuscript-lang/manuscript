@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 const PROGRAM: &str = r#"from "@std/io.ms" import terminal, TerminalEvent, EraseRegion
 from "@std/io.ms" import stdout
-from "@std/time.ms" import duration
+from "@std/time.ms" import nanoseconds
 
 def describe(e: TerminalEvent) -> String:
     match e:
@@ -29,7 +29,7 @@ export def main() -> Int:
                 stdout().write(f"size {size.columns}x{size.rows}\r\n")
             var done = False
             while not done:
-                let next = term.next_event(duration(5000000000))
+                let next = term.next_event(nanoseconds(5000000000))
                 if let maybe = next:
                     if let e = maybe:
                         stdout().write(describe(e.clone()) + "\r\n")

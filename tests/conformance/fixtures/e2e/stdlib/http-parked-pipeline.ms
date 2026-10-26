@@ -7,11 +7,11 @@ from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/process.ms" import control
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def handle(request: HttpRequest) -> HttpResponse:
     if request.path == "/slow":
-        sleep(duration(200000000))
+        sleep(nanoseconds(200000000))
     return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 def exchange(address: String) -> String:
@@ -19,7 +19,7 @@ def exchange(address: String) -> String:
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         # The slow handler is parked by now; the second request arrives while it waits.
-        sleep(duration(50000000))
+        sleep(nanoseconds(50000000))
 
         let _second = conn.write(
             "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
@@ -27,7 +27,7 @@ def exchange(address: String) -> String:
         var text = ""
 
         while True:
-            if let chunk = conn.read(timeout: duration(5000000000)):
+            if let chunk = conn.read(timeout: nanoseconds(5000000000)):
                 if let data = chunk:
                     text = f"{text}{data.decode_utf8().get("?")}"
                     continue

@@ -3,7 +3,7 @@ from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 type Counter:
     value: Int
@@ -17,7 +17,7 @@ impl Closeable for Counter:
 def count_then_wait(log: Shared[List[Int]]) -> Int:
     with var counter = Counter(value: 0, log: log):
         counter.value = 7
-        sleep(duration(5000000000))
+        sleep(nanoseconds(5000000000))
 
     return 0
 
@@ -31,7 +31,7 @@ test "a cancelled with var block closes the value it had reached":
     let log: Shared[List[Int]] = share([])
     let mine = log
 
-    with let group = TaskGroup[Int](timeout: some(duration(20000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
         group.spawn(lambda ch: count_then_wait(mine))
 
         let ignored = group.wait()

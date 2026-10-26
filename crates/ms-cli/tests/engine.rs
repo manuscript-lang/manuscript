@@ -529,7 +529,7 @@ fn native_http_handlers_sleep_without_blocking_other_requests() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import buffered, headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        sleep(duration(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle)):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import buffered, headers, HttpRequest, HttpResponse\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, nanoseconds\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    if request.path == \"/slow\":\n        sleep(nanoseconds(500000000))\n    return HttpResponse(200, headers(), request.path.to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle)):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);
@@ -703,7 +703,7 @@ fn native_stdout_flush_reaches_a_pipe_immediately() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\nexport def main() -> Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(duration(3000000000))\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, nanoseconds\n\nexport def main() -> Int:\n    stdout().write(\"first\\n\").get()\n    stdout().flush().get()\n    sleep(nanoseconds(3000000000))\n    return 0\n",
     );
     let exe = dir.join("flush");
     let backend = Engine::new(Native);
@@ -754,7 +754,7 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     let source = write(
         &dir,
         "main.ms",
-        "from \"@std/http.ms\" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, duration\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    sleep(duration(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle), options: HttpServerOptions(grace: duration(10000000000))):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
+        "from \"@std/http.ms\" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions\nfrom \"@std/net.ms\" import network\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/time.ms\" import sleep, nanoseconds\n\ndef handle(request: HttpRequest) -> HttpResponse:\n    sleep(nanoseconds(600000000))\n    return HttpResponse(200, headers(), \"done\".to_bytes())\n\nexport def main() -> Int:\n    if let acquired = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle), options: HttpServerOptions(grace: nanoseconds(10000000000))):\n        with let server = acquired:\n            stdout().write(f\"{server.address()}\\n\").get()\n            stdout().flush().get()\n            let _ignored = server.wait()\n            return 0\n    return 1\n",
     );
     let exe = dir.join("server");
     let backend = Engine::new(Native);

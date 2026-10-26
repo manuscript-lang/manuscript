@@ -183,13 +183,13 @@ fn server_cleanup_finishes_before_the_synchronous_farewell() {
 
 /// A program joining a long-running worker: a stop request must cancel the worker, not wait it out.
 const JOINER: &str = r#"from "@std/io.ms" import stdout
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import WorkerGroup, worker_channel
 
 def long() -> Unit:
     var ch = worker_channel[Int, Int]()
     for i in 0..600:
-        sleep(duration(nanoseconds: 100000000))
+        sleep(nanoseconds(100000000))
 
 export def main() -> Int:
     with let group = WorkerGroup[Int, Int]():

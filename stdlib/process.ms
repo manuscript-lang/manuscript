@@ -306,7 +306,7 @@ impl Error for CommandError:
             case Failed(message): return message.clone()
 
 # A child program, its arguments, input and limits, assembled step by step. Arguments are separate list items passed to the program as they are, never joined into one string and never parsed by a shell, so spaces, quotes, `;` and `$` in an argument are plain text.
-# `Command("git").arg("log").arg(user_text)` cannot turn `user_text` into a second command; there is no entry point that takes a shell command line.
+# After `var git = Command("git")`, `git.arg("log")` and `git.arg(user_text)` cannot turn `user_text` into a second command; there is no entry point that takes a shell command line.
 export type Command:
     # The program to start, searched on the PATH. It is not a command line: put each argument in `arguments`.
     program: String

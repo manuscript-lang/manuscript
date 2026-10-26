@@ -3,7 +3,7 @@
 from "@std/core.ms" import Closeable
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup, cancelled
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def say(text: String) -> Unit:
     stdout().write(text + "\n")
@@ -18,7 +18,7 @@ impl Closeable for Reporter:
 
 def sleep_with_reporter() -> Int:
     with let reporter = Reporter("timeout"):
-        sleep(duration(60000000000))
+        sleep(nanoseconds(60000000000))
     return 0
 
 def returns_normally() -> Int:
@@ -33,7 +33,7 @@ export def main() -> Int:
         group.spawn(lambda ch: returns_normally())
         group.results()
 
-    with let group = TaskGroup[Int](timeout: some(duration(20000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
         group.spawn(lambda ch: sleep_with_reporter())
         group.wait()
 

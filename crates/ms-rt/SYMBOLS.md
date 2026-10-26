@@ -247,7 +247,7 @@ msrt_list_insert_copy( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
-msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc)
+msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc)
 msrt_list_reversed( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_splice( v: *mut VecVal, d: *const TypeDesc, start: i64, count: i64, replacement: *mut VecVal, )
 msrt_list_fill( v: *mut VecVal, d: *const TypeDesc, value: *const u8, start: i64, end: i64, )

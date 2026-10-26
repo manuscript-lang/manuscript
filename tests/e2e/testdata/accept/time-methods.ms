@@ -1,8 +1,8 @@
 from "@std/testing.ms" import expect_equal, expect_false
-from "@std/time.ms" import duration, clock, wall_clock, timestamp, parse_timestamp, TimeError
+from "@std/time.ms" import nanoseconds, clock, wall_clock, timestamp, parse_timestamp, TimeError
 
 test "duration arithmetic and conversion":
-    let interval = duration(1500000000)
+    let interval = nanoseconds(1500000000)
     try expect_false(
         (
             interval.to_nanoseconds() != 1500000000
@@ -18,7 +18,7 @@ test "duration arithmetic and conversion":
         )
     )
 
-    let negative = duration(-1500001)
+    let negative = nanoseconds(-1500001)
     try expect_false(
         (
             negative.to_microseconds() != -1500
@@ -34,7 +34,7 @@ test "duration arithmetic and conversion":
     )
     try expect_false(
         (
-            duration(-7).divide(3) != duration(-2)
+            nanoseconds(-7).divide(3) != nanoseconds(-2)
             or interval.negate().abs() != interval
         )
     )
@@ -55,7 +55,7 @@ test "monotonic instant methods":
     try expect_false(
         (
             later.difference(start) != 2.seconds
-            or start.difference(later) != duration((-2000000000))
+            or start.difference(later) != nanoseconds((-2000000000))
         )
     )
     try expect_false(
@@ -65,7 +65,7 @@ test "monotonic instant methods":
             or start.compare(start) != 0
         )
     )
-    try expect_equal(later.shift(duration(-2000000000)), start)
+    try expect_equal(later.shift(nanoseconds(-2000000000)), start)
 
 test "timestamp methods and expected range failures":
     let value = try timestamp(-1, 500000000)
@@ -99,7 +99,7 @@ test "timestamp methods and expected range failures":
     )
 
     let maximum = try timestamp(253402300799, 999999999)
-    let shifted = maximum.shift(duration(1))
+    let shifted = maximum.shift(nanoseconds(1))
     try expect_false(shifted.is_ok())
     try expect_equal(shifted.err(), TimeError.OutOfRange)
 
