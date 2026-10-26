@@ -517,7 +517,29 @@ pub fn resident_bytes() -> Res<i64> {
     Ok(pages * page)
 }
 
-#[cfg(all(unix, not(target_os = "linux")))]
+/// Resident set size in bytes (`proc_pidinfo` task info).
+#[cfg(target_os = "macos")]
+pub fn resident_bytes() -> Res<i64> {
+    // SAFETY: a zeroed `proc_taskinfo` is a valid out buffer.
+    let mut info: libc::proc_taskinfo = unsafe { core::mem::zeroed() };
+    let size = core::mem::size_of::<libc::proc_taskinfo>() as libc::c_int;
+    // SAFETY: `info` is writable for `size` bytes.
+    let got = unsafe {
+        libc::proc_pidinfo(
+            libc::getpid(),
+            libc::PROC_PIDTASKINFO,
+            0,
+            (&mut info as *mut libc::proc_taskinfo).cast(),
+            size,
+        )
+    };
+    if got != size {
+        return Err(Fail::failed("proc_pidinfo failed"));
+    }
+    Ok(info.pti_resident_size as i64)
+}
+
+#[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]
 pub fn resident_bytes() -> Res<i64> {
     Err(Fail::status(STATUS_UNSUPPORTED))
 }
@@ -591,14 +613,17 @@ mod tests {
             ms_rt_abi::STATUS_INVALID_INPUT
         );
         assert!(!working_directory().unwrap().is_empty());
-        if cfg!(target_os = "linux") {
+        if cfg!(any(target_os = "linux", target_os = "macos")) {
             assert!(resident_bytes().unwrap() > 0);
-            assert!(available_memory().unwrap() > 0);
+            assert!(memory_usage().unwrap()[4] > 0);
         } else {
             assert_eq!(
                 resident_bytes().unwrap_err().status,
                 ms_rt_abi::STATUS_UNSUPPORTED
             );
+        }
+        if cfg!(target_os = "linux") {
+            assert!(available_memory().unwrap() > 0);
         }
         assert_eq!(
             set_identity(b"nope", 0).unwrap_err().status,

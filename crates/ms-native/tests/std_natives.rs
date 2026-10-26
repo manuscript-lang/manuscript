@@ -417,7 +417,7 @@ mod fs_io {
         let r = st(&root);
         let overflow = st("error");
         let mut h: *mut ms_rt::ffi::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
-        let (mut paths, mut kinds) = (empty(), empty());
+        let mut events = empty();
         // SAFETY: valid runtime strings, live handles and writable outputs throughout.
         unsafe {
             assert_eq!(msstd_fs_create_directory(r, 1), STATUS_OK);
@@ -431,11 +431,11 @@ mod fs_io {
             );
             let file = st(&std::format!("{root}/x"));
             assert_eq!(msstd_fs_write_file(file, &vec_of(b"1"), 0), STATUS_OK);
-            assert_eq!(msstd_fs_watch_next(h, &mut paths, &mut kinds), STATUS_OK);
-            assert_eq!((paths.len, contents(&kinds)), (1, vec![1]));
+            assert_eq!(msstd_fs_watch_next(h, &mut events), STATUS_OK);
+            assert_eq!(events.len, 1);
             msstd_fs_watch_close(h);
             assert_eq!(
-                msstd_fs_watch_next(h, &mut paths, &mut kinds),
+                msstd_fs_watch_next(h, &mut events),
                 ms_rt_abi::STATUS_CLOSED
             );
             ms_rt::glue::release(h.cast());

@@ -6,6 +6,9 @@ from "@std/net.ms" import parse_certificates, verify_certificates, CertificateIn
 from "@std/http.ms" import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions
 from "@std/net.ms" import network
 from "@std/time.ms" import timestamp
+from "@std/shared.ms" import Shared, share
+from "@std/tasks.ms" import TaskGroup
+from "@std/net.ms" import Listener, Connection
 from "./support/certificates.ms" import certificate, private_key
 
 def hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
@@ -165,3 +168,75 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
             ):
                 try expect_equal(response.metadata().protocol, "HTTP/2.0")
                 try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
+
+def answer_ping(connection: Connection) -> Int:
+    let ping = connection.read(some(4), some(3.seconds))
+    let pong = connection.write("pong", some(3.seconds))
+    connection.close()
+    if ping.is_error() or pong.is_error():
+        return 0
+
+    return 1
+
+def serve_one_tls(listener: Shared[Listener]) -> Int:
+    match listener.get().accept(some(3.seconds)):
+        case ok(connection): return answer_ping(connection)
+        case error(_): return 0
+
+test "raw TLS listeners and clients handshake and report negotiated details":
+    let net = network()
+    let server_tls = TlsOptions(
+        server_name: "", roots_pem: "", certificate_pem: certificate(),
+        private_key_pem: private_key(), alpn: ["http/1.1"],
+        require_client_certificate: False
+    )
+    let client_tls = TlsOptions(
+        server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
+        private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: False
+    )
+    let listener: Shared[Listener] = share(
+        try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
+    )
+
+    with let group = TaskGroup[Int]():
+        let handle = listener
+        group.spawn(lambda ch: serve_one_tls(handle))
+        with let client = try net.connect_tls_config(
+            listener.get().address(), client_tls, some(3.seconds)
+        ):
+            try client.write("ping", some(3.seconds))
+            try expect_equal((try client.read(some(4), some(3.seconds))).get(), "pong".to_bytes())
+
+            let info = try client.tls_info()
+            try expect_false(info.version < 771)
+            try expect_equal(info.alpn, "http/1.1")
+            try expect_false(not info.verified)
+            try expect_equal(info.peer_certificates.length(), 1)
+
+        let served = try group.results()
+        try expect_equal(served[0], 1)
+
+    listener.get().close()
+
+test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
+    let net = network()
+    let server_tls = TlsOptions(
+        server_name: "", roots_pem: "", certificate_pem: certificate(),
+        private_key_pem: private_key(), alpn: [], require_client_certificate: False
+    )
+    let listener: Shared[Listener] = share(
+        try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
+    )
+
+    with let group = TaskGroup[Int]():
+        let handle = listener
+        group.spawn(lambda ch: serve_one_tls(handle))
+        let refused = net.connect_tls(listener.get().address(), "stdlib.test", some(3.seconds))
+        try expect_false(refused.is_ok())
+        let served = try group.results()
+
+    listener.get().close()
+
+    with let plain = try net.listen("127.0.0.1:0"):
+        with let client = try net.connect(plain.address(), some(2.seconds)):
+            try expect_false(client.tls_info().is_ok())

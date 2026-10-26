@@ -88,6 +88,34 @@ const METHODS: &[MethodRow] = &[
     (
         "net",
         "Network",
+        "connect_tls",
+        "msrt_net_network_connect_tls",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
+        "connect_tls_config",
+        "msrt_net_network_connect_tls_config",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
+        "listen_tls",
+        "msrt_net_network_listen_tls",
+        &[],
+    ),
+    (
+        "net",
+        "Connection",
+        "tls_info",
+        "msrt_net_connection_tls_info",
+        &[],
+    ),
+    (
+        "net",
+        "Network",
         "listen_unix",
         "msrt_net_network_listen_unix",
         &[],
@@ -577,6 +605,36 @@ const METHODS: &[MethodRow] = &[
     ),
     ("fs", "FileSystem", "copy", "msstd_fs_copy", &[]),
     ("fs", "FileSystem", "list", "msstd_fs_list", &[]),
+    ("fs", "FileSystem", "set_times", "msstd_fs_set_times", &[]),
+    (
+        "fs",
+        "FileHandle",
+        "set_times",
+        "msstd_fs_file_set_times",
+        &[],
+    ),
+    (
+        "fs",
+        "FileHandle",
+        "read_lines",
+        "msstd_fs_file_read_lines",
+        &[],
+    ),
+    (
+        "fs",
+        "FileSystem",
+        "stat_filesystem",
+        "msstd_fs_stat_filesystem",
+        &[],
+    ),
+    ("fs", "FileSystem", "watch", "msstd_fs_watch", &[]),
+    (
+        "fs",
+        "FileSystem",
+        "watch_native",
+        "msstd_fs_watch_native",
+        &[],
+    ),
     ("fs", "Directory", "read", "msstd_fs_directory_read", &[]),
     ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
     ("fs", "Directory", "close", "msstd_fs_directory_close", &[]),
@@ -769,6 +827,50 @@ const METHODS: &[MethodRow] = &[
         "ProcessControl",
         "info",
         "msstd_process_info_record",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "cpu_usage",
+        "msstd_process_cpu_usage",
+        &[],
+    ),
+    ("fs", "FileWatcher", "next", "msstd_fs_watch_next", &[]),
+    ("fs", "FileWatcher", "close", "msstd_fs_watch_close", &[]),
+    (
+        "process",
+        "ProcessControl",
+        "replace",
+        "msstd_process_replace",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "set_identity",
+        "msstd_process_set_identity",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "set_groups",
+        "msstd_process_set_groups",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "memory_usage",
+        "msstd_process_memory_usage",
+        &[],
+    ),
+    (
+        "process",
+        "ProcessControl",
+        "resource_usage",
+        "msstd_process_resource_usage",
         &[],
     ),
     ("system", "System", "info", "msstd_system_info_record", &[]),
@@ -1173,6 +1275,11 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
             },
         );
     }
+    // The runtime takes a map argument as two parallel lists.
+    let mut lists = Vec::new();
+    if sym == "msstd_process_replace" {
+        lists = fl.split_map_argument(&mut decl, &mut nargs, 2, ["env_names", "env_values"])?;
+    }
     if matches!(sym.as_str(), "msstd_fs_glob_entries" | "msstd_fs_copy") {
         let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
         fl.emit_return(Some(r));
@@ -1182,6 +1289,9 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         Some(recv) => fl.rt_method(sym, recv, &decl, &nargs, job.ret)?,
         None => fl.rt_function(sym, &decl, &nargs, job.ret)?,
     };
+    for list in lists {
+        fl.drop_value(list);
+    }
     let r = fit_result(fl, r, job.ret)?;
     fl.emit_return(Some(r));
     Ok(())
@@ -1241,6 +1351,50 @@ fn load_handle(
 }
 
 impl FnLower<'_> {
+    /// Replaces the map argument at `at` by its keys and values as two lists named `names`, typed
+    /// like the argument before it. The lists are owned by the caller, which drops them after the
+    /// call.
+    fn split_map_argument(
+        &mut self,
+        decl: &mut Vec<ct::Param>,
+        nargs: &mut Vec<NArg>,
+        at: usize,
+        names: [&str; 2],
+    ) -> Result<Vec<ms_mir::ir::Value>, Error> {
+        let map = nargs[at].val;
+        let map_ty = self.ty_of(map.v);
+        let list_ty = self.ty_of(nargs[at - 1].val.v);
+        let list_decl = decl[at - 1].ty.clone();
+        let mut lists = Vec::new();
+        let mut split = Vec::new();
+        for (name, method) in names.into_iter().zip(["keys", "values"]) {
+            let sym = crate::rtcall::method_symbol(self.b.m, map_ty, method)
+                .ok_or_else(|| Error::new(format!("no {method} for a map")))?;
+            let list = self.rt_method(&sym, map, &[], &[], list_ty)?;
+            lists.push(list.v);
+            split.push((ct::n(name), list));
+        }
+        decl.splice(
+            at..=at,
+            split.iter().map(|(name, _)| ct::Param {
+                name: *name,
+                ty: list_decl.clone(),
+            }),
+        );
+        nargs.splice(
+            at..=at,
+            split.into_iter().map(|(name, val)| NArg {
+                name,
+                val: Val {
+                    v: val.v,
+                    own: false,
+                },
+                wrapped: false,
+            }),
+        );
+        Ok(lists)
+    }
+
     /// `RawTerminal.next_event(timeout)`: the runtime answers a status and keeps the event for
     /// the `msstd_terminal_event_*` getters.
     fn terminal_next_event(
@@ -1598,5 +1752,72 @@ impl FnLower<'_> {
         let low = self.b.binop(Op::And, raw, mask);
         let zero = self.b.iconst(0);
         Ok(self.b.icmp(ms_mir::ir::Cc::Ne, low, zero))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{METHODS, UNIT_DATA};
+    use std::collections::BTreeSet;
+
+    /// The `(interface, method)` pairs each standard module declares, read from its source.
+    fn declared(source: &str) -> Vec<(String, String)> {
+        let mut found = Vec::new();
+        let mut current: Option<String> = None;
+        for line in source.lines() {
+            if let Some(rest) = line.strip_prefix("export interface ") {
+                current = rest.split([':', '[']).next().map(|n| n.trim().to_string());
+            } else if !line.starts_with(' ') && !line.is_empty() && !line.starts_with('#') {
+                current = None;
+            } else if let (Some(iface), Some(rest)) = (&current, line.strip_prefix("    def ")) {
+                let name: String = rest
+                    .chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect();
+                found.push((iface.clone(), name));
+            }
+        }
+        found
+    }
+
+    /// An interface the runtime implements has a binding for every operation it declares, so an
+    /// operation added to `stdlib/*.ms` cannot compile into a forwarder that only faults.
+    #[test]
+    fn every_native_interface_method_is_bound() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../stdlib");
+        let native: BTreeSet<(&str, &str)> = METHODS
+            .iter()
+            .map(|(module, iface, ..)| (*module, *iface))
+            .chain(UNIT_DATA.iter().copied())
+            .filter(|(module, _)| !module.starts_with("path"))
+            .collect();
+        let bound: BTreeSet<(&str, &str, &str)> = METHODS
+            .iter()
+            .map(|(module, iface, op, ..)| (*module, *iface, *op))
+            .collect();
+        // Module names are not file names (`system` is declared in `process.ms`), so every
+        // standard source is read and an interface is found by its name.
+        let mut declarations = Vec::new();
+        for entry in std::fs::read_dir(&dir).expect("read stdlib") {
+            let path = entry.expect("stdlib entry").path();
+            if path.extension().is_some_and(|e| e == "ms") {
+                let source = std::fs::read_to_string(&path).expect("read stdlib source");
+                declarations.extend(declared(&source));
+            }
+        }
+        let mut missing = Vec::new();
+        for (module, iface) in &native {
+            for (name, op) in &declarations {
+                if name == iface && !bound.contains(&(*module, *iface, op.as_str())) {
+                    missing.push(format!("{module}.{iface}.{op}"));
+                }
+            }
+        }
+        missing.sort();
+        missing.dedup();
+        assert!(
+            missing.is_empty(),
+            "native interface methods without a METHODS row: {missing:?}"
+        );
     }
 }

@@ -35,13 +35,13 @@ impl TlsOptionsWire {
 }
 
 abi_record! {
-    /// Negotiated TLS state of a connection.
+    /// Negotiated TLS state of a connection, in the field order of `TlsInfo`.
     pub struct TlsInfoWire {
         pub version: i64,
         pub cipher_suite: i64,
         pub alpn: Str,
-        pub verified: u8,
         pub peer_certificates: BytesArray,
+        pub verified: u8,
     }
 }
 

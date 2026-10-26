@@ -394,7 +394,7 @@ msstd_fs_chmod(path: *const StrVal, mode: i64, follow: u8) -> u8
 msstd_fs_access(path: *const StrVal, mode: i64) -> u8
 msstd_fs_chown(path: *const StrVal, uid: i64, gid: i64, follow: u8) -> u8
 msstd_fs_truncate(path: *const StrVal, size: i64) -> u8
-msstd_fs_set_times( path: *const StrVal, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, follow: u8, ) -> u8
+msstd_fs_set_times( path: *const StrVal, accessed: *const Timestamp, modified: *const Timestamp, follow: u8, ) -> u8
 msstd_fs_file_open( path: *const StrVal, flags: i64, mode: i64, out: *mut *mut FileHandle, ) -> u8
 msstd_fs_open( path: *const StrVal, flags: *const StrVal, mode: i64, out: *mut *mut FileHandle, ) -> u8
 msstd_fs_file_reader(h: *mut FileHandle) -> *mut Handle<stream::Stream>
@@ -412,7 +412,7 @@ msstd_fs_file_sync(h: *mut FileHandle) -> u8
 msstd_fs_file_data_sync(h: *mut FileHandle) -> u8
 msstd_fs_file_chmod(h: *mut FileHandle, mode: i64) -> u8
 msstd_fs_file_chown(h: *mut FileHandle, uid: i64, gid: i64) -> u8
-msstd_fs_file_set_times( h: *mut FileHandle, accessed_seconds: i64, accessed_nanos: i64, modified_seconds: i64, modified_nanos: i64, ) -> u8
+msstd_fs_file_set_times( h: *mut FileHandle, accessed: *const Timestamp, modified: *const Timestamp, ) -> u8
 msstd_fs_file_read_lines( h: *mut FileHandle, max_bytes: i64, max_lines: i64, out: *mut VecVal, ) -> u8
 msstd_fs_file_path(h: *mut FileHandle, out: *mut StrVal)
 msstd_fs_directory_open( path: *const StrVal, out: *mut *mut DirHandle, ) -> u8
@@ -429,7 +429,7 @@ msstd_fs_glob_entries( path: *const StrVal, patterns: *const VecVal, exclude: *c
 msstd_fs_constants(names: *mut VecVal, values: *mut VecVal)
 msstd_fs_watch( path: *const StrVal, recursive: u8, interval_ns: i64, has_max: u8, max: i64, out: *mut *mut WatchHandle, ) -> u8
 msstd_fs_watch_native( path: *const StrVal, recursive: u8, has_max: u8, max: i64, has_events: u8, events: i64, overflow: *const StrVal, out: *mut *mut WatchHandle, ) -> u8
-msstd_fs_watch_next( h: *mut WatchHandle, paths: *mut VecVal, kinds: *mut VecVal, ) -> u8
+msstd_fs_watch_next( h: *mut WatchHandle, out: *mut VecVal, ) -> u8
 msstd_fs_watch_close(h: *mut WatchHandle)
 msrt_html_escape(text: *const StrVal, out: *mut StrVal)
 msrt_html_unescape(text: *const StrVal, out: *mut StrVal)
@@ -674,6 +674,7 @@ msstd_process_watch_signals( signals: *const VecVal, has_capacity: u8, capacity:
 msstd_process_signal_next(h: *mut SignalHandle, out: *mut i64) -> u8
 msstd_process_signal_close(h: *mut SignalHandle)
 msstd_process_memory_usage(out: *mut MemoryOut) -> u8
+msstd_process_cpu_usage(out: *mut CpuOut) -> u8
 msstd_process_info(out: *mut InfoOut) -> u8
 msstd_process_replace( program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
 msstd_process_command_run( program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8

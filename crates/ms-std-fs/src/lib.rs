@@ -135,6 +135,23 @@ abi_record! {
 }
 
 abi_record! {
+    /// A `Timestamp` at the layout the compiler gives the native time type.
+    #[derive(Clone, Copy)]
+    pub struct Timestamp {
+        pub seconds: i64,
+        pub nanos: i64,
+    }
+}
+
+abi_record! {
+    /// One `FileEvent`: the path, then `rename` or `change`.
+    pub struct EventOut {
+        pub path: Str,
+        pub kind: Str,
+    }
+}
+
+abi_record! {
     /// One `PathEntry`: the path, then the nested `DirectoryEntry`'s name and two flag bytes.
     pub struct PathEntryOut {
         pub path: Str,
@@ -257,16 +274,14 @@ native! {
 
     fn msstd_fs_set_times(
         path: &str,
-        accessed_seconds: i64,
-        accessed_nanos: i64,
-        modified_seconds: i64,
-        modified_nanos: i64,
+        accessed: &Timestamp,
+        modified: &Timestamp,
         follow: bool,
     ) -> Result<(), StatusCode> {
         fs_status(ops::set_times(
             path.as_bytes(),
-            (accessed_seconds, accessed_nanos),
-            (modified_seconds, modified_nanos),
+            (accessed.seconds, accessed.nanos),
+            (modified.seconds, modified.nanos),
             follow,
         ))
     }
@@ -395,15 +410,13 @@ native! {
 
     fn msstd_fs_file_set_times(
         h: ObjMut<Stream>,
-        accessed_seconds: i64,
-        accessed_nanos: i64,
-        modified_seconds: i64,
-        modified_nanos: i64,
+        accessed: &Timestamp,
+        modified: &Timestamp,
     ) -> Result<(), StatusCode> {
         let mut h = h;
         fs_status(h.set_times(
-            (accessed_seconds, accessed_nanos),
-            (modified_seconds, modified_nanos),
+            (accessed.seconds, accessed.nanos),
+            (modified.seconds, modified.nanos),
         ))
     }
 
@@ -606,17 +619,17 @@ native! {
         fs_status(native).map(|n| Object(watch::Watcher::native(n)))
     }
 
-    /// Waits for activity. The results are a `List[String]` of paths and one byte per event
-    /// (1 `rename`, 0 `change`). `STATUS_CLOSED` after close, `STATUS_LIMIT_EXCEEDED` on overflow.
+    /// Waits for activity and returns the `List[FileEvent]`. `STATUS_CLOSED` after close,
+    /// `STATUS_LIMIT_EXCEEDED` on overflow.
     fn msstd_fs_watch_next(
         h: ObjMut<watch::Watcher>,
-    ) -> Result<(TextList, Vec<u8>), StatusCode> {
+    ) -> Result<RecList<EventOut>, StatusCode> {
         let mut h = h;
         let events = fs_status(h.wait())?;
-        Ok((
-            TextList(events.iter().map(|e| e.path.clone()).collect()),
-            events.iter().map(|e| u8::from(e.rename)).collect(),
-        ))
+        Ok(RecList::new(events.iter().map(|e| EventOut {
+            path: Str::from_bytes(&e.path),
+            kind: Str::new(if e.rename { "rename" } else { "change" }),
+        })))
     }
 
     fn msstd_fs_watch_close(h: ObjMut<watch::Watcher>) -> () {
