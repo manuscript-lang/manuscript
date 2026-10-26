@@ -10,7 +10,7 @@ from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import duration, sleep
-from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_channel
+from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel
 
 type Job:
     id: Int
@@ -318,6 +318,31 @@ test "workers fetch from the starter's server at the same time":
                 try expect_ok(workers[i].join())
 
         server.close()
+
+def doubles_bytes() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let raw = worker_bytes()
+    while True:
+        if let data = raw.receive().get(none):
+            let _sent = raw.send(data.concat(data))
+        else:
+            return
+
+test "bytes cross a worker pipe without JSON":
+    with let group = WorkerGroup[Int, Int]():
+        var worker = group.spawn(doubles_bytes).get(none)
+        let raw = worker.bytes()
+        let big = "0123456789".repeat(30000).get("").to_bytes()
+        let small = "abc".to_bytes()
+        try expect_ok(raw.send(big))
+        try expect_ok(raw.send(small))
+        let first = raw.receive().get(none).get("".to_bytes())
+        let second = raw.receive().get(none).get("".to_bytes())
+        try expect_equal(first.length(), 600000)
+        try expect_equal(first.slice(300000, 300010), big.slice(0, 10))
+        try expect_equal(second.decode_utf8().get(""), "abcabc")
+        worker.channel.close()
+        try expect_ok(worker.join())
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w
