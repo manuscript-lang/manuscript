@@ -302,6 +302,13 @@ impl Walker<'_> {
             self.expr(e, Demand::Consume);
             return;
         }
+        // Each branch of a conditional or match expression is a returned value of its own.
+        if let ExprKind::Match { scrutinee, arms } = &e.kind
+            && arms.iter().all(|a| a.value.is_some())
+        {
+            self.match_expr(e, scrutinee, arms, Demand::Consume, true);
+            return;
+        }
         let saved = (self.ret_expr, self.ret_hit);
         let mark = self.lends.len();
         // `return some(part)` in a `ref Optional[T]` function lends the part itself.
@@ -1831,7 +1838,7 @@ impl Walker<'_> {
                 self.lambda(e, l, escaping);
             }
             ExprKind::Call { callee, args } => self.call(e, callee, args, d),
-            ExprKind::Match { scrutinee, arms } => self.match_expr(e, scrutinee, arms, d),
+            ExprKind::Match { scrutinee, arms } => self.match_expr(e, scrutinee, arms, d, false),
         }
         self.temporary(e, d);
     }
@@ -2213,7 +2220,7 @@ impl Walker<'_> {
 
     // ---------------------------------------------------------- match
 
-    fn match_expr(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm], d: Demand) {
+    fn match_expr(&mut self, e: &Expr, scrutinee: &Expr, arms: &[Arm], d: Demand, returning: bool) {
         let source = self.scrutinee(e.id, scrutinee);
         self.release_pending();
         let entry = self.active.clone();
@@ -2227,7 +2234,11 @@ impl Walker<'_> {
             self.block(&arm.body);
             // `block` ended its own declarations; the arm bindings end here.
             if let Some(v) = &arm.value {
-                self.expr(v, d);
+                if returning {
+                    self.returned(v);
+                } else {
+                    self.expr(v, d);
+                }
                 self.release_pending();
             }
             let ended: Vec<usize> = self.declared.drain(mark..).collect();
