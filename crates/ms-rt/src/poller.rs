@@ -197,9 +197,36 @@ mod imp {
         }
     }
 
-    pub unsafe fn wait(_: i32, timeout_ms: i32, out: &mut [Ready; 64]) -> Option<usize> {
+    /// Waits until the poller's descriptor has events or `ns` nanoseconds pass. `epoll_wait`
+    /// counts whole milliseconds and rounds up, so a shorter timer would sleep a millisecond;
+    /// `ppoll` on the epoll descriptor takes a `timespec`.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn sleep_until_ready(poll: &Poll, ns: i64) {
+        let mut fd = libc::pollfd {
+            fd: poll.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let ts = libc::timespec {
+            tv_sec: (ns / 1_000_000_000) as libc::time_t,
+            tv_nsec: (ns % 1_000_000_000) as libc::c_long,
+        };
+        // SAFETY: `fd` and `ts` are live locals; an interrupted or failed wait just returns early
+        // and the caller polls without blocking next.
+        unsafe { libc::ppoll(&mut fd, 1, &ts, core::ptr::null()) };
+    }
+
+    pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
-        let timeout = (timeout_ms >= 0).then(|| Duration::from_millis(timeout_ms as u64));
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        let timeout = if timeout_ns > 0 {
+            sleep_until_ready(&s.poll, timeout_ns);
+            Some(Duration::ZERO)
+        } else {
+            (timeout_ns == 0).then_some(Duration::ZERO)
+        };
+        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        let timeout = (timeout_ns >= 0).then(|| Duration::from_nanos(timeout_ns as u64));
         match s.poll.poll(&mut s.events, timeout) {
             Ok(()) => {}
             Err(e) if e.kind() == ErrorKind::Interrupted => return None,
@@ -507,9 +534,10 @@ mod imp {
             .retain(|&h| h != handle);
     }
 
-    pub unsafe fn wait(_: i32, timeout_ms: i32, out: &mut [Ready; 64]) -> Option<usize> {
+    pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
-        let timeout = (timeout_ms >= 0).then(|| Duration::from_millis(timeout_ms as u64));
+        // The completion port waits in whole milliseconds, rounded up.
+        let timeout = (timeout_ns >= 0).then(|| Duration::from_nanos(timeout_ns as u64));
         if s.poll.poll(&mut s.events, timeout).is_err() {
             fault::fault(b"I/O poller failed");
         }

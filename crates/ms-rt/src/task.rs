@@ -717,13 +717,14 @@ unsafe fn cancel_all_waiters() -> bool {
     woke
 }
 
-/// Delivers descriptor readiness, waiting at most `timeout_ms` milliseconds (0 never blocks).
-unsafe fn poll_ready(timeout_ms: i32) {
+/// Delivers descriptor readiness, waiting at most `timeout_ns` nanoseconds (0 never blocks, -1
+/// waits for an event).
+unsafe fn poll_ready(timeout_ns: i64) {
     let s = sched();
     let mut ready = [crate::poller::Ready { fd: 0, bits: 0 }; 64];
     // SAFETY: the poller owns its registrations; handles are checked before waking tasks.
     unsafe {
-        let Some(n) = crate::poller::wait(poller_fd(), timeout_ms, &mut ready) else {
+        let Some(n) = crate::poller::wait(poller_fd(), timeout_ns, &mut ready) else {
             return;
         };
         for ev in ready.iter().take(n) {
@@ -790,15 +791,14 @@ unsafe fn reactor_wait() {
             if !s.ready.is_empty() {
                 return;
             }
-            let mut timeout_ms = -1;
+            let mut timeout_ns = -1;
             while let Some(&Reverse((deadline, h))) = s.timers.peek() {
                 let t = lookup(h);
                 if t.is_null() || (*t).state != State::Waiting || (*t).deadline != deadline {
                     s.timers.pop();
                     continue;
                 }
-                let ns = (deadline - now).max(0);
-                timeout_ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
+                timeout_ns = (deadline - now).max(0);
                 break;
             }
             while let Some(&Reverse((deadline, h))) = s.kills.peek() {
@@ -808,16 +808,15 @@ unsafe fn reactor_wait() {
                     continue;
                 }
                 let ns = (deadline - now).max(0);
-                let ms = ((ns + 999_999) / 1_000_000).min(i32::MAX as i64) as i32;
-                timeout_ms = if timeout_ms < 0 {
-                    ms
+                timeout_ns = if timeout_ns < 0 {
+                    ns
                 } else {
-                    timeout_ms.min(ms)
+                    timeout_ns.min(ns)
                 };
                 break;
             }
             let mut parked = false;
-            if timeout_ms < 0 && s.fd_waiting == 0 {
+            if timeout_ns < 0 && s.fd_waiting == 0 {
                 if s.remote_tokens == 0 {
                     fault::fault(b"deadlock: every task is waiting and nothing can wake them; a wait has no matching completion, timer, I/O or cancellation");
                 }
@@ -828,7 +827,7 @@ unsafe fn reactor_wait() {
                 abandon_wait();
                 fault::fault(CROSS_ISOLATE_DEADLOCK);
             }
-            poll_ready(timeout_ms);
+            poll_ready(timeout_ns);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
                 fault::fault(CROSS_ISOLATE_DEADLOCK);
@@ -1807,6 +1806,36 @@ mod tests {
                 "teardown must release the deadline heap"
             );
         }
+    }
+
+    unsafe extern "C-unwind" fn short_sleeps(_: *mut u8) {
+        for _ in 0..100 {
+            // SAFETY: called from a running task.
+            unsafe { msrt_task_sleep(100_000) };
+        }
+    }
+
+    /// A timer shorter than a millisecond must not wait a whole one (the poll timeout used to
+    /// round up): 100 sleeps of 100 us take about 10 ms, and at least 100 ms when rounded up.
+    #[test]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn sleeps_shorter_than_a_millisecond_are_not_rounded_up() {
+        let _g = lock();
+        teardown();
+        let mut best = u64::MAX;
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            // The best of a few runs, so a loaded machine does not fail the test.
+            for _ in 0..3 {
+                let start = std::time::Instant::now();
+                let h = msrt_task_spawn(short_sleeps, null_mut(), 0, 0);
+                assert_eq!(msrt_task_join(h, null_mut()), 0);
+                best = best.min(start.elapsed().as_millis() as u64);
+            }
+        }
+        teardown();
+        assert!(best < 80, "100 sleeps of 100 us took {best} ms");
     }
 
     unsafe extern "C-unwind" fn busy(_: *mut u8) {
