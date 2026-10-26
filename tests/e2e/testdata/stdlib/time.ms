@@ -1,4 +1,5 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/collections.ms" import range
+from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/time.ms" import (
     timestamp,
     parse_timestamp,
@@ -8,7 +9,9 @@ from "@std/time.ms" import (
     TimeError,
     clock,
     wall_clock,
-    sleep
+    sleep,
+    microseconds,
+    milliseconds
 )
 
 test "timestamps preserve nanoseconds and shift across epoch":
@@ -76,3 +79,13 @@ test "calendar rejects unknown zones and impossible dates":
     let bad_date: Result[Timestamp, TimeError] = error(TimeError.OutOfRange)
     try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
     try expect_false(local_zone() == "")
+
+test "sub-millisecond sleeps are not rounded up to a millisecond":
+    let monotonic = clock()
+    let start = monotonic.now()
+    for round in range(0, 500):
+        sleep(microseconds(50))
+
+    # Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.
+    let elapsed = monotonic.now().difference(start)
+    try expect_true(elapsed.compare(milliseconds(400)) < 0)
