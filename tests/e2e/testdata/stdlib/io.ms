@@ -29,3 +29,15 @@ test "streams enforce byte limits and preserve original errors":
 
     let closed: Result[Bytes, IoError] = error(IoError.Closed)
     try expect_equal(read_all(reader), closed)
+
+test "native line reads reject buffered lines after the shared file is closed":
+    let fs = filesystem()
+    with let directory = try fs.temporary("manuscript-closed-lines-"):
+        let path = f"{directory.path()}/lines.txt"
+        try fs.write_file(path, "first\nsecond\nlast")
+        let handle = try fs.open(path, "r", 384)
+        let input = handle.reader()
+        try expect_equal((try read_line(input)), some("first"))
+        handle.close()
+        let closed: Result[Optional[String], IoError] = error(IoError.Closed)
+        try expect_equal(read_line(input), closed)

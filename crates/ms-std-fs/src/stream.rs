@@ -381,6 +381,13 @@ impl Stream {
 
     /// `ioReadLine`: one line without its ending, `None` at end of stream.
     pub fn read_line(&mut self, max: Option<i64>) -> IoRes<Option<Vec<u8>>> {
+        if self.closed {
+            return Err(IoFail::status(STATUS_CLOSED));
+        }
+        poll_cancel();
+        if self.no_read {
+            return Err(IoFail::status(STATUS_INVALID_INPUT));
+        }
         let max = match max {
             None => i64::MAX,
             Some(v) if v <= 0 => return Err(IoFail::status(STATUS_INVALID_INPUT)),
@@ -543,6 +550,22 @@ mod tests {
         assert_eq!(input.read(Some(2)).unwrap().unwrap(), b"re");
         assert_eq!(input.read(None).unwrap().unwrap(), b"st");
         assert_eq!(input.read(None).unwrap(), None);
+    }
+
+    #[test]
+    fn a_closed_stream_rejects_lines_already_read_ahead() {
+        for trailing in [b"second\n".as_slice(), b"last"] {
+            let (r, w) = pipe();
+            let mut input = Stream::new(r, true, b"pipe");
+            let mut output = Stream::new(w, true, b"pipe");
+            output.write(b"first\n").unwrap();
+            output.write(trailing).unwrap();
+            output.close().unwrap();
+            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
+            assert_eq!(input.available(), trailing);
+            input.close().unwrap();
+            assert_eq!(input.read_line(None).unwrap_err().status, STATUS_CLOSED);
+        }
     }
 
     #[test]
