@@ -48,7 +48,7 @@
     "commands": [
       {
         "command": "manuscript.profile",
-        "title": "Manuscript: Capture profile or trace"
+        "title": "Manuscript: Capture sampling profile"
       },
       {
         "command": "manuscript.restartServer",
