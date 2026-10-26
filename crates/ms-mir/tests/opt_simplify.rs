@@ -583,3 +583,45 @@ fn merges_a_long_chain_of_blocks_in_one_sweep() {
         start.elapsed()
     );
 }
+
+#[test]
+fn strength_reduction_preserves_integer_types() {
+    for ty in ["int", "int8", "int16", "int32"] {
+        for x in [-7, -2, 0, 6, 63] {
+            for (body, eliminated, replacement) in [
+                (
+                    format!("  %r: {ty} = imul %x, %two\n  %wide: int = conv %r"),
+                    "imul",
+                    "shl",
+                ),
+                (
+                    format!("  %r: {ty} = imul %two, %x\n  %wide: int = conv %r"),
+                    "imul",
+                    "shl",
+                ),
+                (
+                    format!(
+                        "  %rem: {ty} = srem.chk %x, %two\n  %zero: {ty} = iconst 0\n  %r: bool = icmp.eq %rem, %zero\n  %wide: int = b2i %r"
+                    ),
+                    "srem",
+                    "and",
+                ),
+                (
+                    format!(
+                        "  %rem: {ty} = srem %x, %two\n  %zero: {ty} = iconst 0\n  %r: bool = icmp.ne %rem, %zero\n  %wide: int = b2i %r"
+                    ),
+                    "srem",
+                    "and",
+                ),
+            ] {
+                let src = format!(
+                    "module \"sized_strength\"\nentry @main\nfn @reduce(%x: {ty}) -> int {{\nb0:\n  %two: {ty} = iconst 2\n{body}\n  ret %wide\n}}\nfn @main() -> int {{\nb0:\n  %x: {ty} = iconst {x}\n  %r: int = call @reduce(%x)\n  ret %r\n}}"
+                );
+                let m = check(&src);
+                let reduced = func_text(&m, "reduce");
+                assert!(!reduced.contains(eliminated), "{ty}: {reduced}");
+                assert!(reduced.contains(replacement), "{ty}: {reduced}");
+            }
+        }
+    }
+}
