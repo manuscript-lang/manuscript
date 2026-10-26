@@ -472,16 +472,34 @@ impl<'a> Needle<'a> {
         }
     }
 
+    /// Matches in text are usually a few bytes apart (words, fields), where the vector
+    /// searchers' per-call setup costs more than the scan: the first [`NEAR`] bytes are scanned
+    /// as words before the long haystack goes to them.
     #[inline]
     fn find(&self, hay: &[u8]) -> Option<usize> {
         match self {
             Needle::Byte(b) if hay.len() < SHORT_HAY => memchr_short(*b, hay),
-            Needle::Byte(b) => memchr(*b, hay),
+            Needle::Byte(b) => {
+                if let Some(i) = memchr_short(*b, &hay[..NEAR]) {
+                    return Some(i);
+                }
+                memchr(*b, &hay[NEAR..]).map(|i| i + NEAR)
+            }
             Needle::Bytes(f) if hay.len() < SHORT_HAY => find_short(hay, f.needle()),
-            Needle::Bytes(f) => f.find(hay),
+            Needle::Bytes(f) => {
+                // A match starting before `NEAR` ends inside this window.
+                let near = (NEAR + f.needle().len() - 1).min(hay.len());
+                if let Some(i) = find_short(&hay[..near], f.needle()) {
+                    return Some(i);
+                }
+                f.find(&hay[NEAR..]).map(|i| i + NEAR)
+            }
         }
     }
 }
+
+/// Bytes scanned as words before a long haystack goes to a vector searcher (below [`SHORT_HAY`]).
+const NEAR: usize = 16;
 
 /// Haystacks shorter than this are scanned byte by byte: the vector searchers' setup costs more
 /// than the scan.
@@ -2197,6 +2215,27 @@ mod tests {
             let mut none = d.alias();
             msrt_string_concat3(&e, &e, &e, &mut none);
             assert_eq!(none.len(), 0);
+        }
+    }
+
+    #[test]
+    fn needle_find_matches_a_naive_search_near_the_window_edge() {
+        let mut seed = 0x9e37_79b9_7f4a_7c15u64;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for len in 0..80usize {
+            for nlen in 1..=5usize {
+                for _ in 0..20 {
+                    let hay: Vec<u8> = (0..len).map(|_| b'a' + (next() % 3) as u8).collect();
+                    let needle: Vec<u8> = (0..nlen).map(|_| b'a' + (next() % 3) as u8).collect();
+                    let naive = hay.windows(nlen).position(|w| w == &needle[..]);
+                    assert_eq!(Needle::new(&needle).find(&hay), naive, "{hay:?} {needle:?}");
+                }
+            }
         }
     }
 
