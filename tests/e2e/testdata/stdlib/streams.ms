@@ -1,5 +1,5 @@
 from "@std/streams.ms" import from_bytes, map, take, concat, tee, map_writer, digest
-from "@std/io.ms" import read_all, copy
+from "@std/io.ms" import read_all, copy, IoError, read_line
 from "@std/archive.ms" import CompressionFormat
 from "@std/crypto.ms" import HashAlgorithm, sha256
 from "@std/bytes.ms" import Bytes
@@ -81,3 +81,28 @@ test "compression streams round trip all formats":
 
     let garbage = CompressionFormat.Gzip.decompress_stream(from_bytes(text.clone()))
     if read_all(garbage).is_ok(): return panic("invalid data")
+
+test "take rejects a negative limit and read_line counts the terminator":
+    var negative = take(from_bytes("abc".to_bytes()), -1)
+    let failed = negative.read()
+    if failed.is_ok() or failed.err() != IoError.InvalidInput: return panic(
+        "negative take"
+    )
+
+    var zero = take(from_bytes("abc".to_bytes()), 0)
+    if (zero.read() | try expect_ok).is_some(): return panic("zero take")
+
+    var terminated = from_bytes("abc\nx".to_bytes())
+    if read_line(terminated, some(3)).is_ok(): return panic(
+        "terminated line at the limit"
+    )
+
+    var roomy = from_bytes("abc\nx".to_bytes())
+    if (read_line(roomy, some(4)) | try expect_ok) != some("abc"): return panic(
+        "line under the limit"
+    )
+
+    var unterminated = from_bytes("abc".to_bytes())
+    if (read_line(unterminated, some(3)) | try expect_ok) != some("abc"): return panic(
+        "final line at the limit"
+    )
