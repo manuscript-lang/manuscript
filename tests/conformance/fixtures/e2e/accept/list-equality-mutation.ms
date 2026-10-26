@@ -9,12 +9,10 @@ type Element:
     on_equal: Callable[[], Unit]
 
 impl Equal for Element:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Element) -> Bool:
         self.on_equal()
 
-        match other:
-            case Element(value): return self.id == value.id
-            case _: return False
+        return self.id == other.id
 
 type Visits:
     count: Int

@@ -9,6 +9,26 @@ use ms_mir::ir::{FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, Vta
 use ms_mir::types::{IfaceId, Ty as MTy, TyKind};
 
 impl Cx {
+    /// Adds a finished table under `key` and returns its id.
+    pub(crate) fn intern_vtable(
+        &mut self,
+        m: &mut Module,
+        key: String,
+        iface: IfaceId,
+        methods: Vec<ms_mir::ir::FuncId>,
+        data_ty: MTy,
+    ) -> VtableId {
+        let id = VtableId(m.vtables.len() as u32);
+        m.vtables.push(VtableDef {
+            name: key.clone(),
+            iface,
+            methods,
+            data_ty,
+        });
+        self.vtables.insert(key, id);
+        id
+    }
+
     /// The table of `concrete`'s methods for the interface, created on first use.
     pub(crate) fn vtable_id(
         &mut self,
@@ -46,16 +66,11 @@ impl Cx {
         {
             let f =
                 build_builtin_compare(m, &sigs[0], data_ty, sym, VtableId(m.vtables.len() as u32));
-            m.vtables.push(VtableDef {
-                name: key.clone(),
-                iface,
-                methods: vec![f],
-                data_ty,
-            });
-            let id = VtableId(m.vtables.len() as u32 - 1);
-            self.vtables.insert(key, id);
-            return Ok(id);
+            return Ok(self.intern_vtable(m, key, iface, vec![f], data_ty));
         }
+        // Reserve the table's id: wrappers test for it, and building a callee can create tables.
+        let own = VtableId(m.vtables.len() as u32);
+        self.intern_vtable(m, key.clone(), iface, Vec::new(), data_ty);
         let mut methods = Vec::new();
         for s in &sigs {
             let mut found = None;
@@ -81,15 +96,8 @@ impl Cx {
                 found = Some((mm.module, decl.id(), subst, mm.native));
                 break;
             }
-            if found.is_none()
-                && s.name == "compare"
-                && matches!(data_ty, MTy::INT | MTy::FLOAT | MTy::STR)
-            {
-                methods.push(self.scalar_compare(m, iface, data_ty, key.as_str()));
-                continue;
-            }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
-                methods.push(self.builtin_equals(m, iface, data_ty, scope, key.as_str())?);
+                methods.push(self.builtin_equals(m, iface, data_ty, scope, own, key.as_str())?);
                 continue;
             }
             let (module, id, subst, native) = found.ok_or_else(|| {
@@ -172,21 +180,45 @@ impl Cx {
                     .expect("load")
             };
             let mut call_args = vec![recv];
-            call_args.extend_from_slice(&args[1..]);
+            // A `Self` argument is an interface value holding the implementing type: another type
+            // is unequal (`False`) and has no order (a fault) and the same type passes its data.
+            for (i, arg) in args[1..].iter().enumerate() {
+                if !s.self_params.get(i).copied().unwrap_or(false) {
+                    call_args.push(*arg);
+                    continue;
+                }
+                let hit = b
+                    .emit(Op::IfaceIs, &[*arg], Imm::Vtable(own), Some(MTy::BOOL))
+                    .expect("test");
+                let (same, differ) = (b.new_block(), b.new_block());
+                b.br_if(hit, same, &[], differ, &[]);
+                b.seal_block(same);
+                b.seal_block(differ);
+                b.switch_to(differ);
+                if s.ret == MTy::BOOL {
+                    let no = b.bconst(false);
+                    b.ret(Some(no));
+                } else {
+                    // An order between different types would contradict `equals`.
+                    let msg = b.m.add_string("compared values of different types");
+                    b.fault(ms_mir::ir::FaultKind::Message(msg));
+                }
+                b.switch_to(same);
+                let data = b
+                    .emit(Op::IfaceData, &[*arg], Imm::None, Some(MTy::PTR))
+                    .expect("data");
+                let inner = b
+                    .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+                    .expect("load");
+                call_args.push(inner);
+            }
             let r = b.call(callee, &call_args);
             b.ret(Some(r));
             let f = b.into_func();
             methods.push(m.add_func(f));
         }
-        m.vtables.push(VtableDef {
-            name: key.clone(),
-            iface,
-            methods,
-            data_ty,
-        });
-        let id = VtableId(m.vtables.len() as u32 - 1);
-        self.vtables.insert(key, id);
-        Ok(id)
+        m.vtables[own.0 as usize].methods = methods;
+        Ok(own)
     }
 }
 
@@ -200,10 +232,9 @@ impl Cx {
         iface: IfaceId,
         data_ty: MTy,
         scope: ct::Name,
+        vt: VtableId,
         key: &str,
     ) -> Result<ms_mir::ir::FuncId, Error> {
-        // The table being built gets the next id.
-        let vt = VtableId(m.vtables.len() as u32);
         let scope = self.glue_scope(m, data_ty, scope);
         let other_ty = m.ifaces[iface.index()].methods[0].params[0];
         let ps = vec![
@@ -245,74 +276,6 @@ impl Cx {
         let f = b.into_func();
         Ok(m.add_func(f))
     }
-
-    /// `compare` of a built-in scalar: the sign of the order against another value of the same
-    /// type, and `0` against any other type.
-    fn scalar_compare(
-        &mut self,
-        m: &mut Module,
-        iface: IfaceId,
-        data_ty: MTy,
-        key: &str,
-    ) -> ms_mir::ir::FuncId {
-        // The table being built gets the next id.
-        let vt = VtableId(m.vtables.len() as u32);
-        let other_ty = m.ifaces[iface.index()].methods[0].params[0];
-        let ps = vec![
-            Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            },
-            Param {
-                ty: other_ty,
-                mode: Mode::Borrow,
-            },
-        ];
-        let mut b = FuncBuilder::new(m, &format!("vt.compare.{key}"), ps, MTy::INT);
-        b.func_mut().kind = FuncKind::Method;
-        b.func_mut().linkage = Linkage::Internal;
-        let (this, other) = (b.params()[0], b.params()[1]);
-        let hit = b
-            .emit(Op::IfaceIs, &[other], Imm::Vtable(vt), Some(MTy::BOOL))
-            .expect("test");
-        let (same, differ) = (b.new_block(), b.new_block());
-        b.br_if(hit, same, &[], differ, &[]);
-        b.seal_block(same);
-        b.seal_block(differ);
-        b.switch_to(differ);
-        let zero = b.iconst(0);
-        b.ret(Some(zero));
-        b.switch_to(same);
-        let a = b
-            .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
-            .expect("load");
-        let data = b
-            .emit(Op::IfaceData, &[other], Imm::None, Some(MTy::PTR))
-            .expect("data");
-        let c = b
-            .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
-            .expect("load");
-        let r = if b.m.types.is_int(data_ty) {
-            let (lt, gt) = (
-                b.icmp(ms_mir::ir::Cc::Lt, a, c),
-                b.icmp(ms_mir::ir::Cc::Gt, a, c),
-            );
-            let (one, zero, minus) = (b.iconst(1), b.iconst(0), b.iconst(-1));
-            let upper = b.select(gt, one, zero);
-            b.select(lt, minus, upper)
-        } else {
-            let sym = if b.m.types.is_float(data_ty) {
-                "msrt_float_compare"
-            } else {
-                "msrt_string_compare"
-            };
-            let ext = crate::text::runtime_fn(b.m, sym, &[data_ty, data_ty], MTy::INT);
-            b.call_rt(ext, &[a, c])
-        };
-        b.ret(Some(r));
-        let f = b.into_func();
-        m.add_func(f)
-    }
 }
 
 impl Cx {
@@ -352,24 +315,14 @@ impl Cx {
         Ok(Some(self.function_in(m, &c, &subst, scope)?))
     }
 
-    /// The source-declared `equals` of `concrete` (an `impl Equal`) and the interface of its argument.
+    /// The source-declared `equals` of `concrete` (an `impl Equal`), taking another `concrete`.
     pub(crate) fn user_equals(
         &mut self,
         m: &mut Module,
         concrete: &ct::Ty,
         scope: ct::Name,
-    ) -> Result<Option<(ms_mir::ir::FuncId, IfaceId)>, Error> {
-        let Some(f) = self.user_method(m, concrete, "equals", scope)? else {
-            return Ok(None);
-        };
-        let params = &m.funcs[f.index()].params;
-        let [_, other] = params.as_slice() else {
-            return Ok(None);
-        };
-        let TyKind::Iface(iface) = m.types.kind(other.ty).clone() else {
-            return Ok(None);
-        };
-        Ok(Some((f, iface)))
+    ) -> Result<Option<ms_mir::ir::FuncId>, Error> {
+        self.user_method(m, concrete, "equals", scope)
     }
 
     /// The source-declared `hash` of `concrete` (an `impl Hashable`).
@@ -611,15 +564,7 @@ impl Cx {
             let f = b.into_func();
             methods.push(m.add_func(f));
         }
-        m.vtables.push(VtableDef {
-            name: key.clone(),
-            iface,
-            methods,
-            data_ty: MTy::STR,
-        });
-        let id = VtableId(m.vtables.len() as u32 - 1);
-        self.vtables.insert(key, id);
-        id
+        self.intern_vtable(m, key, iface, methods, MTy::STR)
     }
 }
 
@@ -643,8 +588,8 @@ fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
     }
 }
 
-/// `compare(other)` of a built-in type: the sign of the comparison, or `0` when `other` holds
-/// another type.
+/// `compare(other)` of a built-in type: the sign of the comparison; a value of
+/// another type faults.
 fn build_builtin_compare(
     m: &mut Module,
     sig: &ms_mir::types::MethodSig,
@@ -679,7 +624,8 @@ fn build_builtin_compare(
     b.seal_block(same);
     b.seal_block(other);
     b.switch_to(other);
-    b.ret(Some(zero));
+    let msg = b.m.add_string("compared values of different types");
+    b.fault(ms_mir::ir::FaultKind::Message(msg));
     b.switch_to(same);
     let me = b
         .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))

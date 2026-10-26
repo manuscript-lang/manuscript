@@ -9,10 +9,8 @@ type Version:
     major: Int
 
 impl Comparable for Version:
-    def compare(other: Comparable) -> Int:
-        match other:
-            case Version(value): return self.major - value.major
-            case _: return 0
+    def compare(other: Version) -> Int:
+        return self.major - other.major
 
 def larger[T: Comparable](left: T, right: T) -> T:
     return max(left, right)

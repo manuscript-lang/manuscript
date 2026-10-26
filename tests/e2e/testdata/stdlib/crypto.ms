@@ -47,12 +47,8 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         )
     )
 
-    let mac = (
-        try HashAlgorithm
-        .Sha256
-        .hmac(
-            "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
-        )
+    let mac = try HashAlgorithm.Sha256.hmac(
+        "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
     )
     try expect_false(
         (
@@ -117,10 +113,8 @@ test "additional hash algorithms match published vectors":
     try expect_equal(HashAlgorithm.Sha3_512.digest(abc).length(), 64)
 
 test "key derivation supports PBKDF2 and HKDF across hashes":
-    let pbkdf2 = (
-        try HashAlgorithm
-        .Sha1
-        .derive_key("password".to_bytes(), "salt".to_bytes(), 1, 20)
+    let pbkdf2 = try HashAlgorithm.Sha1.derive_key(
+        "password".to_bytes(), "salt".to_bytes(), 1, 20
     )
     try expect_equal(hex_encode(pbkdf2), "0c60c80f961f0e71f3a9b524af6012062fe037a6")
 

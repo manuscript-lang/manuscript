@@ -77,15 +77,11 @@ type Ranked:
     unexpected: List[Int] = []
 
 impl Comparable for Ranked:
-    def compare(other: Comparable) -> Int:
-        match other:
-            case Ranked(value):
-                if self.rank < value.rank: return -9223372036854775808
-                if self.rank > value.rank: return 9223372036854775807
+    def compare(other: Ranked) -> Int:
+        if self.rank < other.rank: return -9223372036854775808
+        if self.rank > other.rank: return 9223372036854775807
 
-                return 0
-            case _:
-                return 0
+        return 0
 
 test "extrema use comparator signs without negating Int minimum":
     let low = Ranked(1)

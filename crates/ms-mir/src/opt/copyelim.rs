@@ -341,6 +341,12 @@ fn borrow_local_copies(m: &mut Module, fi: usize) -> bool {
             if composite && unstable[bi][j] > unstable[bi][i + 1] {
                 continue;
             }
+            if matches!(kind, TyKind::Fn(..))
+                && field_root(f, &defs, v).is_some_and(|r| consumes(r, bi, i, j))
+            {
+                // A closure read out of a record dies with the record.
+                continue;
+            }
             let c_uses = at[c.index()]
                 .iter()
                 .filter(|&&(bx, k)| bx == bi && k > i && k < j)
@@ -710,6 +716,21 @@ fn str_source(f: &Func, defs: &[Option<(usize, usize)>], v: Value) -> Option<Opt
         Op::ListGet | Op::ListGetU | Op::ListGetNn => Some(Some(def.args[0])),
         _ => None,
     }
+}
+
+/// The owner at the end of the field projections that produced `v`, or `None` when `v` is not
+/// a projection.
+fn field_root(f: &Func, defs: &[Option<(usize, usize)>], mut v: Value) -> Option<Value> {
+    let mut root = None;
+    while let Some((db, di)) = defs[v.index()] {
+        let def = &f.blocks[db].insts[di];
+        if def.op != Op::RecGet {
+            break;
+        }
+        v = def.args[0];
+        root = Some(v);
+    }
+    root
 }
 
 /// Removes the instructions at the (block, index) positions in `dead`.

@@ -179,7 +179,7 @@ test "list methods mutate explicit clones and remain typed":
     chain_7.copy_within(target: 1, start: 0, end: 3)
     (chain_7 | try expect_equal([3, 3, 1, 2]))
     original.keys() | try expect_equal([0, 1, 2, 3])
-    (original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3)))
+    original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3))
     original.to_set().values() | try expect_equal([3, 1, 2])
     try expect_equal(
         [[1, 2], [], [3]].flat_map(transform: lambda value: value), [1, 2, 3]
@@ -246,7 +246,7 @@ test "set algebra and enumeration preserve source values":
     left.union(other: right).values() | try expect_equal([1, 2, 3, 4])
     left.intersection(other: right).values() | try expect_equal([3])
     left.difference(other: right).values() | try expect_equal([1, 2])
-    (left.symmetric_difference(other: right).values() | try expect_equal([1, 2, 4]))
+    left.symmetric_difference(other: right).values() | try expect_equal([1, 2, 4])
     ([3].to_set().is_subset_of(other: left)) | try expect_true
     (left.is_superset_of(other: [1, 3].to_set())) | try expect_true
     (not left.is_subset_of(other: right)) | try expect_true
@@ -381,7 +381,7 @@ test "grouping and lazy map defaults":
 
     var chain_9 = original.clone()
     chain_9.add_default(key: "b", value: 2)
-    (chain_9.values() | try expect_equal([1, 2]))
+    chain_9.values() | try expect_equal([1, 2])
 
     var chain_10 = original.clone()
     chain_10.add_default_from(key: "c", create: default_value)

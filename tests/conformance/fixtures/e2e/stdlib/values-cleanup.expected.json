@@ -24,79 +24,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`dir` is moved here but used again at 37:23; a value has one owner, so pass `dir.clone()` to keep the original, or move it only at its last use",
+          "message": "Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly",
           "position": {
             "file": "values-cleanup.ms",
-            "line": 36,
-            "column": 19,
-            "offset": 1240
-          },
-          "fix": {
-            "position": {
-              "file": "values-cleanup.ms",
-              "line": 36,
-              "column": 22,
-              "offset": 1243
-            },
-            "end": {
-              "file": "values-cleanup.ms",
-              "line": 36,
-              "column": 22,
-              "offset": 1243
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "`first` is moved here but used again at 78:51; a value has one owner, so pass `first.clone()` to keep the original, or move it only at its last use",
-          "position": {
-            "file": "values-cleanup.ms",
-            "line": 76,
-            "column": 13,
-            "offset": 2721
-          },
-          "fix": {
-            "position": {
-              "file": "values-cleanup.ms",
-              "line": 76,
-              "column": 18,
-              "offset": 2726
-            },
-            "end": {
-              "file": "values-cleanup.ms",
-              "line": 76,
-              "column": 18,
-              "offset": 2726
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "`dir` is moved here but used again at 86:47; a value has one owner, so pass `dir.clone()` to keep the original, or move it only at its last use",
-          "position": {
-            "file": "values-cleanup.ms",
-            "line": 85,
-            "column": 32,
-            "offset": 3071
-          },
-          "fix": {
-            "position": {
-              "file": "values-cleanup.ms",
-              "line": 85,
-              "column": 35,
-              "offset": 3074
-            },
-            "end": {
-              "file": "values-cleanup.ms",
-              "line": 85,
-              "column": 35,
-              "offset": 3074
-            },
-            "replacement": ".clone()"
+            "line": 60,
+            "column": 16,
+            "offset": 2159
           }
         }
       ]
@@ -105,18 +38,6 @@
       "completed",
       "diagnostics",
       "diagnostics[].code",
-      "diagnostics[].fix",
-      "diagnostics[].fix.end",
-      "diagnostics[].fix.end.column",
-      "diagnostics[].fix.end.file",
-      "diagnostics[].fix.end.line",
-      "diagnostics[].fix.end.offset",
-      "diagnostics[].fix.position",
-      "diagnostics[].fix.position.column",
-      "diagnostics[].fix.position.file",
-      "diagnostics[].fix.position.line",
-      "diagnostics[].fix.position.offset",
-      "diagnostics[].fix.replacement",
       "diagnostics[].message",
       "diagnostics[].phase",
       "diagnostics[].position",

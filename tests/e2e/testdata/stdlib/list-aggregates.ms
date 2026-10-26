@@ -5,15 +5,11 @@ type Version:
     label: String
 
 impl Comparable for Version:
-    def compare(other: Comparable) -> Int:
-        match other:
-            case Version(value):
-                if self.major < value.major: return -1
-                if self.major > value.major: return 1
+    def compare(other: Version) -> Int:
+        if self.major < other.major: return -1
+        if self.major > other.major: return 1
 
-                return 0
-            case _:
-                return 0
+        return 0
 
 def ordered[T: Comparable](values: List[T]) -> List[T]:
     return values.sorted()

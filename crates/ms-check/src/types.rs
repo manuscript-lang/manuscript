@@ -832,8 +832,28 @@ pub fn cases(t: &Ty) -> Vec<Case> {
 }
 
 /// One case by name.
+///
+/// Only the named case has its type arguments substituted: building every case to pick one made
+/// a match with many arms quadratic.
 pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
-    cases(t).into_iter().find(|c| c.name == name)
+    let def = t.def.as_ref()?;
+    let cs = def.cases.borrow();
+    let c = cs.iter().find(|c| c.name == name)?;
+    let mut s = Subst::new();
+    if !c.fields.is_empty() {
+        bind_type_arguments(t, &mut s);
+    }
+    Some(Case {
+        name: c.name,
+        fields: c
+            .fields
+            .iter()
+            .map(|p| Param {
+                name: p.name,
+                ty: sub(&p.ty, &s),
+            })
+            .collect(),
+    })
 }
 
 /// Constructor inputs and omission permissions.

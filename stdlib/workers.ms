@@ -15,6 +15,7 @@
 #         else:
 #             return
 # ```
+from "@std/bytes.ms" import Bytes
 from "@std/channels.ms" import Channel, ChannelError, Transport
 from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
@@ -29,6 +30,10 @@ extern def msrt_pipe_peer(end: Int) -> Int
 extern def msrt_pipe_send(end: Int, message: String) -> Int
 
 extern def msrt_pipe_receive(end: Int) -> Result[String, PipeEnd]
+
+extern def msrt_pipe_send_bytes(end: Int, message: Bytes) -> Int
+
+extern def msrt_pipe_receive_bytes(end: Int) -> Result[Bytes, PipeEnd]
 
 extern def msrt_pipe_close(end: Int) -> Unit
 
@@ -125,12 +130,39 @@ export def worker_channel[Send, Receive]() -> Channel[Send, Receive]:
         transport: WorkerTransport[Send, Receive](end: msrt_worker_end())
     )
 
+# One end of a worker's pipe for raw `Bytes`: each send is copied once into the other side's memory,
+# with no JSON encoding. It shares the pipe, and so the order and the 16-message room, with the
+# channel on the same end; read each message with the kind that was sent.
+export type WorkerBytes:
+    # Internal state: the pipe end.
+    end: Int
+
+impl WorkerBytes:
+    # Sends `data` to the other side, waiting while 16 messages are unread.
+    def send(data: Bytes) -> Result[Unit, ChannelError]:
+        if msrt_pipe_send_bytes(self.end, data) != 0:
+            return error(ChannelError.Closed)
+
+        return ok(())
+
+    # Returns the next message, or none once the other side ended and everything was read.
+    def receive() -> Result[Optional[Bytes], ChannelError]:
+        match msrt_pipe_receive_bytes(self.end):
+            case ok(data): return ok(some(data))
+            case error(why): return stopped(why)
+
+# Returns the worker's end of the pipe for raw bytes. Call it on a worker's thread.
+export def worker_bytes() -> WorkerBytes:
+    return WorkerBytes(end: msrt_worker_end())
+
 # A started worker, with the group's end of its channel.
 export type Worker[In, Out]:
     # Internal state: the runtime handle of the worker.
     handle: Int
     # The group's end of the worker's channel: sends `In` to the worker and receives the `Out` it sends.
     channel: Channel[In, Out]
+    # Internal state: the group's pipe end, shared with `channel`.
+    end: Int
     # Internal state: empty until the worker was collected, then how it ended.
     ended: Shared[List[Result[Unit, WorkerError]]]
 
@@ -150,6 +182,10 @@ impl Worker[In, Out]:
             let outcome = outcome_of(report)
             held.value.append(outcome.clone())
             return outcome
+
+    # Returns the group's end of the pipe for raw `Bytes`, to move large payloads without JSON.
+    def bytes() -> WorkerBytes:
+        return WorkerBytes(end: self.end)
 
     # Asks the worker to stop: its next wait or check for cancellation unwinds it.
     def cancel() -> Unit:
@@ -191,7 +227,7 @@ impl WorkerGroup[In, Out]:
 
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
         let ended: Shared[List[Result[Unit, WorkerError]]] = share([])
-        let worker = Worker(handle, channel, ended)
+        let worker = Worker(handle, channel, near, ended)
         with var started = lock(self.workers):
             started.value.append(worker.clone())
         return ok(worker)

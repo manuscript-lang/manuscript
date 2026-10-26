@@ -45,6 +45,12 @@ pub struct Outcome {
     pub getters: HashMap<NodeId, Vec<Name>>,
 }
 
+/// A call operand whose description is written only if a diagnostic needs it.
+enum Operand<'e> {
+    Receiver(&'e Expr),
+    Argument(&'e Expr),
+}
+
 /// A `return` that hands back a part of a read-only parameter.
 struct Lend {
     slot: Slot,
@@ -2063,13 +2069,13 @@ impl Walker<'_> {
         }
         // Evaluate in order. What an operand keeps hold of for the whole call
         // is checked against the others afterwards.
-        let mut operands: Vec<(String, Vec<(Place, bool)>)> = Vec::new();
+        let mut operands: Vec<(Operand, Vec<(Place, bool)>)> = Vec::new();
         let reported = self.diags.len();
         if let Some(r) = receiver_expr {
             let mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             let held = self.held(r, mode);
             self.receiver(r, mode);
-            operands.push((format!("the receiver `{}`", self.expr_text(r)), held));
+            operands.push((Operand::Receiver(r), held));
         } else {
             self.expr(callee, Demand::Read);
         }
@@ -2077,7 +2083,7 @@ impl Walker<'_> {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
             held.extend(self.argument(a, mode, &modes));
-            operands.push((format!("argument `{}`", self.expr_text(&a.value)), held));
+            operands.push((Operand::Argument(&a.value), held));
         }
         // An operand that already failed its own check is not reported twice.
         if self.diags.len() == reported {
@@ -2214,7 +2220,16 @@ impl Walker<'_> {
     }
 
     /// A changed place may not overlap another operand of the same call.
-    fn check_overlap(&mut self, pos: Pos, name: &str, operands: &[(String, Vec<(Place, bool)>)]) {
+    /// An operand's description, built only for a diagnostic: spelling a long call chain on every
+    /// call would be quadratic in the chain.
+    fn operand_text(&self, o: &Operand) -> String {
+        match o {
+            Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
+        }
+    }
+
+    fn check_overlap(&mut self, pos: Pos, name: &str, operands: &[(Operand, Vec<(Place, bool)>)]) {
         for (i, (label, log)) in operands.iter().enumerate() {
             for (place, write) in log {
                 if !*write {
@@ -2224,6 +2239,7 @@ impl Walker<'_> {
                     *j != i && other.iter().any(|(q, _)| q.overlaps(place))
                 });
                 if let Some((_, (other, _))) = clash {
+                    let (label, other) = (self.operand_text(label), self.operand_text(other));
                     self.error(
                         pos,
                         format!("{label} of `{name}` is changed in place but overlaps {other}; a changed value cannot also be read or changed through another operand, so pass distinct variables or copy one first"),

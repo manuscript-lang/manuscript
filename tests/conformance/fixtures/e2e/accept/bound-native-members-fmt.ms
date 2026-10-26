@@ -9,7 +9,7 @@ type Folded:
     name: String
 
 impl Equal for Folded:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Folded) -> Bool:
         return True
 
 impl Hashable for Folded:

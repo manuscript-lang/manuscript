@@ -84,7 +84,7 @@ test "presence retains written argument order and cleanup":
 
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-presence-") | try expect_ok:
         let first = f"{temporary.path()}/first"
         let second = f"{temporary.path()}/second"
         with_cleanup(var input, first.clone()) | try expect_true
@@ -96,11 +96,11 @@ test "presence retains written argument order and cleanup":
 test "presence and text reads share buffered consumption":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-presence-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-presence-") | try expect_ok:
         let path = f"{temporary.path()}/lines"
         let written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
 
-        with let handle = (fs.open(path, "r", 384) | try expect_ok):
+        with let handle = fs.open(path, "r", 384) | try expect_ok:
             let input = handle.reader()
             present(input) | try expect_true
             (try read_line(input)) | try expect_equal(some("λ"))

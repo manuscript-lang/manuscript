@@ -5,10 +5,8 @@ from "./domain.ms" import Key
 from "./helpers.ms" import add_generic, remove_generic
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Key(value): return self.label == value.label
-            case _: return False
+    def equals(other: Key) -> Bool:
+        return self.label == other.label
 
 impl Hashable for Key:
     def hash() -> Int: self.label.scalar_length()

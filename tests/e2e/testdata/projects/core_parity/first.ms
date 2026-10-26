@@ -10,10 +10,8 @@ from "./helpers.ms" import (
 )
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Key(value): return self.id == value.id
-            case _: return False
+    def equals(other: Key) -> Bool:
+        return self.id == other.id
 
 impl Hashable for Key:
     def hash() -> Int: self.id

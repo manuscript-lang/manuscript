@@ -310,7 +310,7 @@ impl Equal for Data:
     def compare() -> Unit:
         return
 type	4	9	55	extra operation compare; Equal declares: equals (remove it or add it to the interface)
-type	3	1	26	missing implementation operation equals; add fn equals(other: Equal) -> Bool to this impltype First:
+type	3	1	26	missing implementation operation equals; add fn equals(other: Data) -> Bool to this impltype First:
     case Ready(value: Int)
 type Second:
     case Ready(value: Int)
@@ -1088,7 +1088,8 @@ impl Equal for K:
 def f() -> Int:
     let s = Set[K]()
     return 0
-type	7	13	125	K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements itdef helper() -> Int:
+type	4	9	47	implementation operation signature does not match contract; equals must be declared as fn equals(other: K) -> Bool
+type	7	13	125	K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements itdef helper() -> Int:
     return 1
 def f() -> Int:
     helper = 2
@@ -1761,7 +1762,8 @@ def one() -> Int:
 impl Equal for Key:
     def equals(other: Equal) -> Bool: return True
 def keys() -> Map[Key, Int]: return Map[Key, Int]()
-type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
+type	4	9	50	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Bool
+type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
 type State:
     value: Int
 impl TestHooks for State:
@@ -2421,8 +2423,7 @@ def probe() -> Int:
     values.add(Key(1), 10)
     values.add(Key(2), 20)
     return values.length()
-type	9	5	193	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
-type	10	5	220	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itdef lookup[T: Hashable](key: T, value: T) -> T:
+type	4	9	53	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Booldef lookup[T: Hashable](key: T, value: T) -> T:
     let values = Map[T, T]()
     values.add(key, value)
     return values.get(key).get()
