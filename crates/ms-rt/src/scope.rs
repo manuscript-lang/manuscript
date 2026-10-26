@@ -44,6 +44,16 @@ fn tasks_of(id: i64) -> Vec<u64> {
         .unwrap_or_default()
 }
 
+/// Releases this isolate's scope tables after the scheduler and its tasks have retired.
+/// Runtime TLS has no destructor, so closing the groups alone leaves their table storage behind.
+pub(crate) fn teardown() {
+    // SAFETY: the scheduler's teardown runs on the isolate thread after its tasks are gone.
+    unsafe {
+        *SCOPES.ptr() = Vec::new();
+        *GENERATIONS.ptr() = Vec::new();
+    }
+}
+
 /// Creates a scope and returns its id.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_scope_new() -> i64 {
