@@ -7,20 +7,9 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3080",
-        "phase": "type",
-        "message": "cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding",
-        "position": {
-          "file": "pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms",
-          "line": 4,
-          "column": 21,
-          "offset": 183
-        }
-      },
-      {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Bool, found Optional[<invalid>]; Optional[<invalid>] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
+        "message": "expected Bool, found none; none is absent, so it fits only an Optional position: declare the target Optional[Bool] or give a value",
         "position": {
           "file": "pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms",
           "line": 4,
@@ -43,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:21: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:21: type: expected Bool, found Optional[<invalid>]; Optional[<invalid>] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:21: type: expected Bool, found none; none is absent, so it fits only an Optional position: declare the target Optional[Bool] or give a value\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

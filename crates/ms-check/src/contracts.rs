@@ -778,6 +778,10 @@ impl Checker {
                 if !self.satisfies(actual, &bound) {
                     let msg =
                         self.unsatisfied_message(actual, &bound, "use a type that implements it");
+                    if self.in_declaration_checks && self.reported_bounds.contains(&msg) {
+                        continue;
+                    }
+                    self.reported_bounds.insert(msg.clone());
                     self.type_error(pos, msg);
                 }
             }
@@ -786,6 +790,12 @@ impl Checker {
 
     /// Well-formedness and visibility checks of a module's declarations.
     pub(crate) fn declaration_checks(&mut self, module: &ModRef) {
+        self.in_declaration_checks = true;
+        self.declaration_checks_inner(module);
+        self.in_declaration_checks = false;
+    }
+
+    fn declaration_checks_inner(&mut self, module: &ModRef) {
         for d in &module.decls {
             if matches!(d.decl().kind, DeclKind::Test(_) | DeclKind::Impl(_)) {
                 continue;

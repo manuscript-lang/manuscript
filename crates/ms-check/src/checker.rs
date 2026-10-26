@@ -200,6 +200,10 @@ pub struct Checker {
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
     pub(crate) unresolved_constructors: HashSet<Pos>,
+    /// Failed-bound messages reported while resolving written types, so the later
+    /// declaration well-formedness pass does not restate them at the declaration.
+    pub(crate) reported_bounds: HashSet<String>,
+    pub(crate) in_declaration_checks: bool,
     pub(crate) label_mismatch: bool,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
@@ -238,6 +242,8 @@ impl Checker {
             rejected_names: HashSet::new(),
             unknown_type: false,
             unresolved_constructors: HashSet::new(),
+            reported_bounds: HashSet::new(),
+            in_declaration_checks: false,
             label_mismatch: false,
             call_name: String::new(),
             call_pos: None,

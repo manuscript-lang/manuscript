@@ -88,6 +88,10 @@ impl Cx {
                 methods.push(self.scalar_compare(m, iface, data_ty, key.as_str()));
                 continue;
             }
+            if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
+                methods.push(self.builtin_equals(m, iface, data_ty, scope, key.as_str())?);
+                continue;
+            }
             let (module, id, subst, native) = found.ok_or_else(|| {
                 Error::new(format!(
                     "{concrete} has no method {} for {}",
@@ -187,6 +191,61 @@ impl Cx {
 }
 
 impl Cx {
+    /// `equals` of data with built-in equality (scalars, collections, records without an
+    /// `impl Equal`): structural equality against another value of the same type, and `False`
+    /// against any other type.
+    fn builtin_equals(
+        &mut self,
+        m: &mut Module,
+        iface: IfaceId,
+        data_ty: MTy,
+        scope: ct::Name,
+        key: &str,
+    ) -> Result<ms_mir::ir::FuncId, Error> {
+        // The table being built gets the next id.
+        let vt = VtableId(m.vtables.len() as u32);
+        let scope = self.glue_scope(m, data_ty, scope);
+        let other_ty = m.ifaces[iface.index()].methods[0].params[0];
+        let ps = vec![
+            Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            },
+            Param {
+                ty: other_ty,
+                mode: Mode::Borrow,
+            },
+        ];
+        let mut b = FuncBuilder::new(m, &format!("vt.equals.{key}"), ps, MTy::BOOL);
+        b.func_mut().kind = FuncKind::Method;
+        b.func_mut().linkage = Linkage::Internal;
+        let (this, other) = (b.params()[0], b.params()[1]);
+        let hit = b
+            .emit(Op::IfaceIs, &[other], Imm::Vtable(vt), Some(MTy::BOOL))
+            .expect("test");
+        let (same, differ) = (b.new_block(), b.new_block());
+        b.br_if(hit, same, &[], differ, &[]);
+        b.seal_block(same);
+        b.seal_block(differ);
+        b.switch_to(differ);
+        let no = b.bconst(false);
+        b.ret(Some(no));
+        b.switch_to(same);
+        let a = b
+            .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let data = b
+            .emit(Op::IfaceData, &[other], Imm::None, Some(MTy::PTR))
+            .expect("data");
+        let c = b
+            .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
+            .expect("load");
+        let r = crate::eq::element_eq(self, &mut b, scope, data_ty, a, c)?;
+        b.ret(Some(r));
+        let f = b.into_func();
+        Ok(m.add_func(f))
+    }
+
     /// `compare` of a built-in scalar: the sign of the order against another value of the same
     /// type, and `0` against any other type.
     fn scalar_compare(
