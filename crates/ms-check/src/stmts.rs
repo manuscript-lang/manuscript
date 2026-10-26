@@ -561,6 +561,7 @@ impl Checker {
     ) -> (bool, bool) {
         let i = self.expression(value, None);
         let t = i.t();
+        let held = self.begin_lock(s, value, &t);
         if !is_invalid_id(&t) && !self.closeable(&t) {
             let msg = self.with_not_closeable_message(&t);
             self.type_error(s.pos, msg);
@@ -600,6 +601,9 @@ impl Checker {
             .loop_binding = Some(b);
         let (fall, br) = self.block(body, false);
         self.scope = old;
+        if held {
+            self.held_locks.pop();
+        }
         (!i.no_return && fall, i.breaks || br)
     }
 

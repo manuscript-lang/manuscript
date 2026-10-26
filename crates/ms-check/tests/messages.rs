@@ -470,3 +470,55 @@ fn in_range_constants_and_runtime_operands_are_accepted() {
         );
     }
 }
+
+const LOCK_HEADER: &str = "from \"@std/shared.ms\" import Shared, share
+from \"@std/sync.ms\" import lock
+";
+
+fn check_messages(source: &str) -> Vec<String> {
+    let file: Arc<str> = Arc::from("t.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    )
+    .diagnostics
+    .iter()
+    .map(|d| d.message.clone())
+    .collect()
+}
+
+#[test]
+fn locking_a_shared_inside_its_own_guard_is_rejected() {
+    let source = format!(
+        "{LOCK_HEADER}export def main() -> Int:
+    let box = share(1)
+    with var outer = lock(box):
+        with var inner = lock(box):
+            inner.value += 1
+        outer.value += 1
+    return 0
+"
+    );
+    let found = check_messages(&source);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(found[0].contains("box is already locked"), "{found:?}");
+}
+
+#[test]
+fn sequential_and_distinct_locks_are_accepted() {
+    let source = format!(
+        "{LOCK_HEADER}export def main() -> Int:
+    let a = share(1)
+    let b = share(2)
+    with var one = lock(a):
+        with var two = lock(b):
+            two.value += one.value
+    with var again = lock(a):
+        again.value += 1
+    return 0
+"
+    );
+    assert_eq!(check_messages(&source), Vec::<String>::new());
+}

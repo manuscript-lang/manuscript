@@ -1,5 +1,5 @@
 //! Faults that constant operands make certain: integer overflow, division by
-//! zero and an index outside a list literal.
+//! zero, an index outside a list literal and locking a `Shared` twice.
 
 use crate::checker::Checker;
 use crate::types::*;
@@ -95,5 +95,47 @@ impl Checker {
                 ),
             );
         }
+    }
+}
+
+/// The written place `a` or `a.b.c`, or none for any other expression.
+fn place_text(e: &Expr) -> Option<String> {
+    match &e.kind {
+        ExprKind::Name(name) => Some(name.as_str().to_string()),
+        ExprKind::Member { left, name } => Some(format!("{}.{}", place_text(left)?, name.as_str())),
+        _ => None,
+    }
+}
+
+impl Checker {
+    /// Tracks `with ... lock(box):` for the duration of its block and rejects locking the same
+    /// written place again inside it, which waits on itself forever. Returns whether a lock was
+    /// pushed; the caller pops it when the block ends.
+    pub(crate) fn begin_lock(&mut self, s: &Stmt, value: &Expr, ty: &Ty) -> bool {
+        let ExprKind::Call { args, .. } = &value.kind else {
+            return false;
+        };
+        if !ty.is_source_type("@std/sync.ms", "SharedGuard") {
+            return false;
+        }
+        let Some(place) = args.first().and_then(|a| place_text(&a.value)) else {
+            return false;
+        };
+        let function = self.function;
+        if self
+            .held_locks
+            .iter()
+            .any(|(f, p)| *f == function && *p == place)
+        {
+            self.type_error(
+                s.pos,
+                format!(
+                    "{place} is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first"
+                ),
+            );
+            return false;
+        }
+        self.held_locks.push((function, place));
+        true
     }
 }
