@@ -116,3 +116,9 @@ test "size and shape methods as values":
     (map_entries().length() == 1) | try expect_true
     (set_length() == 2) | try expect_true
     (set_is_empty() == False) | try expect_true
+
+test "sorted as a value":
+    let sort = [3, 1, 2].sorted
+    let ordered = sort(compare: lambda a, b: a - b)
+    (ordered.get(index: 0) == 1) | try expect_true
+    (ordered.get(index: 2) == 3) | try expect_true

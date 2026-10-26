@@ -1342,24 +1342,7 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v, own: true })
             }
             (TyKind::List(elem), "sorted") => {
-                let f = args
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| Error::new("sorted without comparator"))?;
-                if !self.is_fn(f.val.v) {
-                    return Err(Error::new(
-                        "sorted takes a comparator function; omit compare to sort in natural order",
-                    ));
-                }
-                let ft = self.ty_of(f.val.v);
-                let fvar = self.fresh_var(ft);
-                let fo = self.owned(f.val);
-                self.b.def_var(fvar, fo);
-                let (lv, hidden) = self.list_source(Some(recv_expr), recv)?;
-                let r = self.list_sorted(lv, fvar, elem);
-                self.release_source(lv, hidden);
-                self.release_source(fvar, true);
-                r
+                self.list_sorted_call(Some(recv_expr), recv, elem, args)
             }
             _ if crate::iterate::handles(self.b.m, rty, name) => {
                 let out = self.emty(e)?;
@@ -1633,6 +1616,9 @@ impl<'a> FnLower<'a> {
                 }
             }
             (TyKind::Obj(n, _), "entries") if n == "Map" => self.map_entries(None, recv, result)?,
+            (TyKind::List(elem), "sorted") => {
+                self.list_sorted_call(None, recv, elem, args.to_vec())?
+            }
             (TyKind::List(_), "list_keys") => self.list_keys(None, recv, result)?,
             (TyKind::List(_), "list_entries") => self.list_entries(None, recv, result)?,
             (TyKind::List(elem), "list_chunks" | "list_windows") => {
@@ -1713,6 +1699,34 @@ impl<'a> FnLower<'a> {
             let v = self.b.use_var(var);
             self.drop_value(v);
         }
+    }
+
+    /// `sorted(compare)`: a stable sort of a copy ordered by the comparator's sign.
+    fn list_sorted_call(
+        &mut self,
+        recv_expr: Option<&Expr>,
+        recv: Val,
+        elem: MTy,
+        args: Vec<NArg>,
+    ) -> Result<Val, Error> {
+        let f = args
+            .into_iter()
+            .next()
+            .ok_or_else(|| Error::new("sorted without comparator"))?;
+        if !self.is_fn(f.val.v) {
+            return Err(Error::new(
+                "sorted takes a comparator function; omit compare to sort in natural order",
+            ));
+        }
+        let ft = self.ty_of(f.val.v);
+        let fvar = self.fresh_var(ft);
+        let fo = self.owned(f.val);
+        self.b.def_var(fvar, fo);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        let r = self.list_sorted(lv, fvar, elem);
+        self.release_source(lv, hidden);
+        self.release_source(fvar, true);
+        r
     }
 
     /// The indexes of a list: `0..length`.
