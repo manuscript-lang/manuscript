@@ -7,20 +7,9 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "callback mismatch: the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)",
-        "position": {
-          "file": "pkg-compiler-testmaptransformcontracts-3.ms",
-          "line": 6,
-          "column": 69,
-          "offset": 279
-        }
-      },
-      {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)",
+        "message": "expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)",
         "position": {
           "file": "pkg-compiler-testmaptransformcontracts-3.ms",
           "line": 6,
@@ -32,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:6:69: type: callback mismatch: the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)\n<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:6:69: type: expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:6:69: type: expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
