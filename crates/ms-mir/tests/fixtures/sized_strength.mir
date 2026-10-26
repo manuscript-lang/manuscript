@@ -1,0 +1,78 @@
+module "sized_strength"
+entry @main
+
+fn @reduce_int(%x: int) -> int {
+b0:
+  %two: int = iconst 2
+  %zero: int = iconst 0
+  %product: int = imul %x, %two
+  %wide: int = conv %product
+  %rem: int = srem.chk %x, %two
+  %odd: bool = icmp.ne %rem, %zero
+  %flag: int = b2i %odd
+  %result: int = iadd %wide, %flag
+  ret %result
+}
+
+fn @reduce_int8(%x: int8) -> int {
+b0:
+  %two: int8 = iconst 2
+  %zero: int8 = iconst 0
+  %product: int8 = imul %x, %two
+  %wide: int = conv %product
+  %rem: int8 = srem.chk %x, %two
+  %odd: bool = icmp.ne %rem, %zero
+  %flag: int = b2i %odd
+  %result: int = iadd %wide, %flag
+  ret %result
+}
+
+fn @reduce_int16(%x: int16) -> int {
+b0:
+  %two: int16 = iconst 2
+  %zero: int16 = iconst 0
+  %product: int16 = imul %x, %two
+  %wide: int = conv %product
+  %rem: int16 = srem.chk %x, %two
+  %odd: bool = icmp.ne %rem, %zero
+  %flag: int = b2i %odd
+  %result: int = iadd %wide, %flag
+  ret %result
+}
+
+fn @reduce_int32(%x: int32) -> int {
+b0:
+  %two: int32 = iconst 2
+  %zero: int32 = iconst 0
+  %product: int32 = imul %x, %two
+  %wide: int = conv %product
+  %rem: int32 = srem.chk %x, %two
+  %odd: bool = icmp.ne %rem, %zero
+  %flag: int = b2i %odd
+  %result: int = iadd %wide, %flag
+  ret %result
+}
+
+fn @main() -> int {
+b0:
+
+  %x_int: int = iconst -7
+  %r_int: int = call @reduce_int(%x_int)
+
+  %x_int8: int8 = iconst -7
+  %r_int8: int = call @reduce_int8(%x_int8)
+
+  %x_int16: int16 = iconst -7
+  %r_int16: int = call @reduce_int16(%x_int16)
+
+  %x_int32: int32 = iconst -7
+  %r_int32: int = call @reduce_int32(%x_int32)
+
+  %a: int = iadd %r_int, %r_int8
+  %b: int = iadd %r_int16, %r_int32
+  %sum: int = iadd %a, %b
+  %expected: int = iconst -52
+  %bad: bool = icmp.ne %sum, %expected
+  %code: int = b2i %bad
+  ret %code
+}

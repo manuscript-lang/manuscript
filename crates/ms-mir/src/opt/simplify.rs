@@ -270,8 +270,8 @@ fn is_pow2(x: i64) -> bool {
     x > 1 && x & (x - 1) == 0
 }
 
-fn mk_const(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, v: i64, loc: Loc) -> Value {
-    let r = f.new_value(Ty::INT);
+fn mk_const(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, ty: Ty, v: i64, loc: Loc) -> Value {
+    let r = f.new_value(ty);
     out.push(Inst {
         op: Op::IConst,
         args: vec![],
@@ -361,7 +361,7 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                     if inst.op == Op::IMul
                         && let Some(c) = env.ci(y).filter(|c| is_pow2(*c))
                     {
-                        let k = mk_const(f, env, out, c.trailing_zeros() as i64, inst.loc);
+                        let k = mk_const(f, env, out, f.ty(x), c.trailing_zeros() as i64, inst.loc);
                         return Act::Rewrite(Op::Shl, vec![x, k], Imm::None);
                     }
                 }
@@ -474,8 +474,9 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
                 && let Some((Op::SRem | Op::SRemChk, rargs, _)) = env.defs.get(&x).cloned()
                 && let Some(c) = env.ci(rargs[1]).filter(|c| is_pow2(*c))
             {
-                let mask = mk_const(f, env, out, c - 1, inst.loc);
-                let r = f.new_value(Ty::INT);
+                let ty = f.ty(rargs[0]);
+                let mask = mk_const(f, env, out, ty, c - 1, inst.loc);
+                let r = f.new_value(ty);
                 out.push(Inst {
                     op: Op::And,
                     args: vec![rargs[0], mask],
