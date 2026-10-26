@@ -44,7 +44,8 @@ fn server_limits(
     };
     let admission = size(admission)?;
     let header = size(header.or(Some(SERVE_MAX_HEADER_BYTES)))?;
-    if admission == 0 || header == 0 {
+    let timeout = limit(timeout)?;
+    if admission == 0 || header == 0 || timeout == Some(0) {
         return Err(());
     }
     Ok(Limits {
@@ -52,7 +53,7 @@ fn server_limits(
         body: size(body)?,
         response: size(response)?,
         header,
-        timeout: limit(timeout)?.map(Duration::from_nanos),
+        timeout: timeout.map(Duration::from_nanos),
         grace: limit(grace)?.map(Duration::from_nanos),
     })
 }

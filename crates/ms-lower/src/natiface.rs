@@ -107,6 +107,7 @@ const METHODS: &[MethodRow] = &[
         &[],
     ),
     ("net", "Network", "lookup", "msrt_net_network_lookup", &[]),
+    ("net", "Network", "resolve", "msrt_net_network_resolve", &[]),
     (
         "net",
         "Connection",

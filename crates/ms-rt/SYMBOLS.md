@@ -603,7 +603,7 @@ msrt_net_network_bind_datagram( net: *const Obj, address: *const StrVal, out: *m
 msrt_net_network_restrict( net: *const Obj, hosts: *const VecVal, cidrs: *const VecVal, allow_listen: u8, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_network_with_resolver( net: *const Obj, address: *const StrVal, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_net_network_lookup( net: *const Obj, name: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
-msrt_net_network_resolve( net: *const Obj, name: *const StrVal, kind: u8, has_max: u8, max: i64, has_timeout: u8, timeout: i64, records: *mut *mut DnsRecordWire, count: *mut usize, err: *mut StrVal, ) -> u8
+msrt_net_network_resolve( net: *const Obj, name: *const StrVal, kind: i64, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
 msrt_net_connection_close(c: *const Obj)
 msrt_net_connection_local_address(c: *const Obj, out: *mut StrVal)
 msrt_net_connection_peer_address(c: *const Obj, out: *mut StrVal)

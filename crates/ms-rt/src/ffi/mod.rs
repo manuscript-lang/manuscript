@@ -15,9 +15,9 @@ pub use crate::{abi_handle, abi_record, native};
 pub use native::{
     AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesArray, BytesList, EntryFilter, ErrOut,
     FromAbi, Global, Handed, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell,
-    ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecArray,
-    RecList, Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text,
-    TextList, argv, start_nanos,
+    ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecList,
+    Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,
+    start_nanos,
 };
 
 use ms_rt_abi::KIND_LIST;

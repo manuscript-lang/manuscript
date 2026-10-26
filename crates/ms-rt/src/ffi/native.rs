@@ -961,27 +961,6 @@ impl AbiSlot for BytesArray {
     }
 }
 
-/// Records handed out as a pointer to a runtime-allocated array (null when empty); the length
-/// travels in a separate `usize` out.
-pub struct RecArray<R: AbiRecord>(pub Vec<R>);
-
-impl<R: AbiRecord> IntoAbi for RecArray<R> {
-    type Raw = *mut R;
-    fn into_raw(self) -> *mut R {
-        if self.0.is_empty() {
-            return core::ptr::null_mut();
-        }
-        // SAFETY: the block holds `len` records, each written once; ownership moves to the caller.
-        unsafe {
-            let p = msrt_alloc(self.0.len() * core::mem::size_of::<R>()).cast::<R>();
-            for (i, r) in self.0.into_iter().enumerate() {
-                p.add(i).write(r);
-            }
-            p
-        }
-    }
-}
-
 /// A compiled function value passed to a native that keeps or calls it, as the raw closure object.
 /// Retaining it and reading its code word is left to the (small, `unsafe`) module that owns the
 /// calling convention of that closure.

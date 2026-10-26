@@ -706,6 +706,7 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             decoded: Vec::new(),
             remaining_read: server.limits.body,
             body_over_limit: false,
+            body_malformed: false,
             remaining_write: server.limits.response,
             expect_continue: head.expect_continue,
             minor: 1,

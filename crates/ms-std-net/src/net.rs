@@ -519,9 +519,17 @@ impl Network {
                 .copied()
                 .ok_or_else(|| NetErr::failed(cannot_resolve(host)))?
         };
-        let addr = SocketAddr::new(ip, port);
-        let sock = Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP))
-            .map_err(|e| self.io_failure(&e))?;
+        let mut addr = SocketAddr::new(ip, port);
+        let sock = match Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP)) {
+            Ok(sock) => sock,
+            // A host without IPv6 serves the empty host on IPv4 alone.
+            Err(_) if host.is_empty() => {
+                addr = SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), port);
+                Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP))
+                    .map_err(|e| self.io_failure(&e))?
+            }
+            Err(e) => return Err(self.io_failure(&e)),
+        };
         sys::prepare_listener(&sock).map_err(|e| self.io_failure(&e))?;
         if addr.ip().is_unspecified() && addr.is_ipv6() {
             // A wildcard listener serves both families (Windows defaults to v6 only).
@@ -570,7 +578,20 @@ impl Network {
                 .copied()
                 .ok_or_else(|| NetErr::failed(cannot_resolve(host)))?
         };
-        let sock = bind_udp_socket(SocketAddr::new(ip, port)).map_err(|e| {
+        let bound = bind_udp_socket(SocketAddr::new(ip, port)).or_else(|e| {
+            // A host without IPv6 serves the empty host on IPv4 alone.
+            if host.is_empty()
+                && Socket::new(Domain::IPV6, Type::DGRAM, Some(Protocol::UDP)).is_err()
+            {
+                bind_udp_socket(SocketAddr::new(
+                    IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
+                    port,
+                ))
+            } else {
+                Err(e)
+            }
+        });
+        let sock = bound.map_err(|e| {
             rt::check_cancel();
             NetErr::Failed(describe_io_error(&e))
         })?;

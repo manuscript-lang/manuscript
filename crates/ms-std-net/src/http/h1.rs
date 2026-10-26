@@ -57,6 +57,16 @@ fn collect(headers: &[httparse::Header<'_>]) -> Vec<(String, Vec<u8>)> {
         .collect()
 }
 
+/// Whether every CR and LF of a head is part of a CRLF pair; a bare one lets two parsers split
+/// the message differently.
+fn strict_line_endings(head: &[u8]) -> bool {
+    head.iter().enumerate().all(|(i, &c)| match c {
+        b'\n' => i > 0 && head[i - 1] == b'\r',
+        b'\r' => head.get(i + 1) == Some(&b'\n'),
+        _ => true,
+    })
+}
+
 /// Parses a request head from the front of `buf`.
 pub fn parse_request(buf: &[u8], limit: usize) -> Parsed<RequestHead> {
     let mut storage = [httparse::EMPTY_HEADER; MAX_FIELDS];
@@ -65,6 +75,9 @@ pub fn parse_request(buf: &[u8], limit: usize) -> Parsed<RequestHead> {
         Ok(httparse::Status::Complete(length)) => {
             if length > limit {
                 return Parsed::Bad(BadMessage::new(431, "Request Header Fields Too Large"));
+            }
+            if !strict_line_endings(&buf[..length]) {
+                return Parsed::Bad(BadMessage::new(400, "Bad Request"));
             }
             Parsed::Complete(RequestHead {
                 method: req.method.unwrap_or_default().to_string(),
@@ -179,7 +192,8 @@ fn content_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
     Ok(found)
 }
 
-/// Request body framing as the server reads it: chunked wins over a length.
+/// Request body framing as the server reads it; a message with both `Transfer-Encoding` and
+/// `Content-Length` is refused.
 pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
     let bad_length = BadMessage::new(400, "Bad Request");
     let encodings: Vec<&[u8]> = field(&head.fields, "Transfer-Encoding").collect();
@@ -190,7 +204,8 @@ pub fn request_framing(head: &RequestHead) -> Result<Framing, BadMessage> {
             .map(trim)
             .filter(|t| !t.is_empty())
             .collect();
-        if head.minor == 0 {
+        // Both framings make the request's end ambiguous between parsers: refuse it.
+        if head.minor == 0 || field(&head.fields, "Content-Length").next().is_some() {
             return Err(bad_length);
         }
         return match list.as_slice() {
@@ -261,6 +276,8 @@ pub struct BodyDecoder {
     state: State,
     size: Vec<u8>,
     trailer_line: usize,
+    /// A CR was read and its LF is due: the end of chunk data or of a trailer line.
+    cr: bool,
 }
 
 impl BodyDecoder {
@@ -276,6 +293,7 @@ impl BodyDecoder {
             state,
             size: Vec::new(),
             trailer_line: 0,
+            cr: false,
         }
     }
 
@@ -320,7 +338,9 @@ impl BodyDecoder {
                     self.size.extend_from_slice(&input[at..at + rel]);
                     at += rel + 1;
                     let line = std::mem::take(&mut self.size);
-                    let line = line.strip_suffix(b"\r").unwrap_or(&line);
+                    let Some(line) = line.strip_suffix(b"\r") else {
+                        return Err("chunk size line must end with CRLF");
+                    };
                     let digits: &[u8] = line.split(|&c| c == b';').next().unwrap_or(&[]);
                     let digits = trim(digits);
                     if digits.is_empty()
@@ -355,12 +375,14 @@ impl BodyDecoder {
                     while at < input.len() {
                         let c = input[at];
                         at += 1;
-                        if c == b'\n' {
-                            self.state = State::Size;
-                            break;
-                        }
-                        if c != b'\r' {
-                            return Err("malformed chunk terminator");
+                        match (c, self.cr) {
+                            (b'\r', false) => self.cr = true,
+                            (b'\n', true) => {
+                                self.cr = false;
+                                self.state = State::Size;
+                                break;
+                            }
+                            _ => return Err("malformed chunk terminator"),
                         }
                     }
                     if matches!(self.state, State::DataEnd) {
@@ -374,13 +396,18 @@ impl BodyDecoder {
                         at += 1;
                         match c {
                             b'\n' => {
+                                if !self.cr {
+                                    return Err("trailer line must end with CRLF");
+                                }
+                                self.cr = false;
                                 if self.trailer_line == 0 {
                                     self.state = State::Done;
                                     return Ok((at, Decoded::Done));
                                 }
                                 self.trailer_line = 0;
                             }
-                            b'\r' => {}
+                            _ if self.cr => return Err("bare CR in trailer"),
+                            b'\r' => self.cr = true,
                             _ => {
                                 self.trailer_line += 1;
                                 if self.trailer_line > 8192 {
@@ -583,7 +610,13 @@ mod tests {
             Ok(Framing::Length(5))
         );
         assert_eq!(
-            f("POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n"),
+            f("POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Length: 5\r\n\r\n")
+                .unwrap_err()
+                .status,
+            400
+        );
+        assert_eq!(
+            f("POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"),
             Ok(Framing::Chunked)
         );
         assert_eq!(f("GET / HTTP/1.1\r\n\r\n"), Ok(Framing::None));
@@ -616,6 +649,36 @@ mod tests {
         }
         let mut d = BodyDecoder::new(Framing::Chunked);
         assert!(d.feed(b"zz\r\n", &mut Vec::new()).is_err());
+    }
+
+    #[test]
+    fn chunked_decoding_requires_crlf() {
+        for wire in [
+            &b"3\nabc\r\n0\r\n\r\n"[..],
+            b"3\r\nabc\n0\r\n\r\n",
+            b"3\r\nabc\r\r\n0\r\n\r\n",
+            b"3\r\nabcX\r\n0\r\n\r\n",
+            b"3\r\nabc\r\n0\r\nT: x\n\r\n",
+            b"3\r\nabc\r\n0\r\nT: x\r\r\n\r\n",
+            b"3\r\nabc\r\n0\n\n",
+        ] {
+            let mut d = BodyDecoder::new(Framing::Chunked);
+            assert!(d.feed(wire, &mut Vec::new()).is_err(), "{wire:?}");
+        }
+    }
+
+    #[test]
+    fn heads_with_bare_line_endings_are_refused() {
+        for wire in [
+            &b"GET / HTTP/1.1\nHost: x\n\n"[..],
+            b"GET / HTTP/1.1\r\nHost: x\n\r\n",
+            b"GET / HTTP/1.1\r\nHost: x\r\n\n",
+        ] {
+            assert!(
+                matches!(parse_request(wire, 1000), Parsed::Bad(b) if b.status == 400),
+                "{wire:?}"
+            );
+        }
     }
 
     #[test]

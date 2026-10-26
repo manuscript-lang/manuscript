@@ -5,7 +5,7 @@ use crate::error::{NetErr, Status as _};
 use crate::ip::{Cidr, ip_text, normalize};
 use crate::net::{DnsKind, root};
 use ms_rt::ffi::{
-    Bytes, ErrOut, ObjRef, Object, Out, RecArray, StatusCode, Str, abi_handle, abi_record, native,
+    Bytes, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, abi_handle, abi_record, native,
 };
 use ms_rt_abi::STATUS_NONE;
 use std::net::IpAddr;
@@ -15,7 +15,7 @@ abi_handle!(Cidr);
 abi_record! {
     /// One resolved DNS record as compiled code lays out `DnsRecord`.
     pub struct DnsRecordWire {
-        pub kind: u8,
+        pub kind: i64,
         pub value: Str,
         pub priority: i64,
         pub weight: i64,
@@ -221,38 +221,32 @@ native! {
         Ok(())
     }
 
-    /// `Network.resolve(name, kind, max, timeout)`: the records as an array plus its length.
+    /// `Network.resolve(name, kind, max, timeout)`.
     fn msrt_net_network_resolve(
         net: ObjRef<NetH>,
         name: &str,
-        kind: u8,
+        kind: i64,
         has_max: bool,
         max: i64,
         has_timeout: bool,
         timeout: i64,
-        records: Out<RecArray<DnsRecordWire>>,
-        count: Out<usize>,
+        out: Out<RecList<DnsRecordWire>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
-        let Some(kind) = DnsKind::from_index(kind) else {
+        let Some(kind) = u8::try_from(kind).ok().and_then(DnsKind::from_index) else {
             return Err(StatusCode(NetErr::InvalidInput.code()));
         };
         let list = net
             .0
             .resolve(name, kind, opt(has_max, max), opt(has_timeout, timeout));
         let list = report(list, &err)?;
-        count.write(list.len());
-        records.write(RecArray(
-            list.iter()
-                .map(|rec| DnsRecordWire {
-                    kind: DnsKind::index(rec.kind),
-                    value: Str::new(&rec.value),
-                    priority: rec.priority,
-                    weight: rec.weight,
-                    port: rec.port,
-                })
-                .collect(),
-        ));
+        out.write(RecList::new(list.iter().map(|rec| DnsRecordWire {
+            kind: i64::from(DnsKind::index(rec.kind)),
+            value: Str::new(&rec.value),
+            priority: rec.priority,
+            weight: rec.weight,
+            port: rec.port,
+        })));
         Ok(())
     }
 
@@ -589,7 +583,7 @@ mod tests {
                 0
             );
             assert_eq!(read_string_list(out.as_ptr()), vec!["127.0.0.1"]);
-            let (mut records, mut count) = (null_mut(), 0usize);
+            let mut records = MaybeUninit::<VecVal>::uninit();
             assert_eq!(
                 msrt_net_network_resolve(
                     net,
@@ -599,14 +593,15 @@ mod tests {
                     0,
                     0,
                     0,
-                    &mut records,
-                    &mut count,
+                    records.as_mut_ptr(),
                     &mut err
                 ),
                 0
             );
-            assert_eq!(count, 1);
-            assert_eq!(take((*records).value.as_ptr().read()), "127.0.0.1");
+            let records = records.assume_init();
+            assert_eq!(records.len, 1);
+            let record = &*(records.ptr as *const DnsRecordWire);
+            assert_eq!(take(record.value.as_ptr().read()), "127.0.0.1");
             ms_rt::obj::msrt_release(child.cast());
             ms_rt::obj::msrt_release(net.cast());
         }

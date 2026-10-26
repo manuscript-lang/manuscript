@@ -196,7 +196,7 @@ export type HttpClientOptions:
     max_redirects: Optional[Int] = none
     # Number of idle connections kept for reuse. Must be nonnegative; none sets no explicit cap.
     max_idle_connections: Optional[Int] = none
-    # Largest accepted size of a response header block, in bytes. Must be positive; none sets no cap.
+    # Largest accepted size of a response header block, in bytes. Must be positive; none uses the default of 1 MiB.
     max_header_bytes: Optional[Int] = none
     # How long an idle pooled connection is kept before it is closed. none never expires it, and a negative duration is rejected.
     idle_timeout: Optional[Duration] = none
@@ -295,7 +295,7 @@ export type HttpServerOptions:
     max_response_bytes: Optional[Int] = none
     # Largest accepted request header block and largest response header block, in bytes. Must be positive; none uses the default of 1 MiB.
     max_header_bytes: Optional[Int] = none
-    # Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (`tasks.cancelled()` turns true and its waits end) and the request is answered 504; a WebSocket it opened is not limited. none sets no deadline.
+    # Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (`tasks.cancelled()` turns true and its waits end) and the request is answered 504; a WebSocket it opened is not limited. Must be positive; none sets no deadline.
     timeout: Optional[Duration] = none
     # How long `close` waits for in-flight requests to finish before cancelling them. none waits without limit and 0 cancels immediately.
     grace: Optional[Duration] = none
