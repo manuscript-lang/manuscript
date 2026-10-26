@@ -181,6 +181,6 @@ export def bench_list() -> Unit:
         "list.records_map",
         100000,
         lambda () -> Int:
-            let points = data.map(lambda (x: Int) -> Point: Point(x, x + 1))
-            return points.fold(0, lambda (acc: Int, p: Point) -> Int: acc + p.y)
+            let mapped = data.map(lambda (x: Int) -> Point: Point(x, x + 1))
+            return mapped.fold(0, lambda (acc: Int, p: Point) -> Int: acc + p.y)
     )
