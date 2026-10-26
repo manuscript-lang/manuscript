@@ -45,7 +45,7 @@ trap 'rm -rf "$staging"' EXIT HUP INT TERM
 bundle="$staging/$name"
 mkdir -p "$bundle/examples/hello/src"
 cp "target/release/$executable" "$bundle/$executable"
-cp examples/hello/ms.toml "$bundle/examples/hello/"
+cp examples/hello/ms.toml examples/hello/test.ms "$bundle/examples/hello/"
 cp examples/hello/src/main.ms "$bundle/examples/hello/src/"
 
 if [ "$target_os" = windows ]; then

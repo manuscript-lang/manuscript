@@ -1063,19 +1063,6 @@ unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
     unsafe { trimmed(s, false, true) }
 }
 
-fn is_cased(c: char) -> bool {
-    // Titlecase letters (Lt) are neither `is_lowercase` nor `is_uppercase` in Rust.
-    c.is_lowercase()
-        || c.is_uppercase()
-        || matches!(
-            c,
-            '\u{1C5}' | '\u{1C8}' | '\u{1CB}' | '\u{1F2}' | '\u{1FBC}' | '\u{1FCC}' | '\u{1FFC}'
-        )
-        || ('\u{1F88}'..='\u{1F8F}').contains(&c)
-        || ('\u{1F98}'..='\u{1F9F}').contains(&c)
-        || ('\u{1FA8}'..='\u{1FAF}').contains(&c)
-}
-
 fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
     if text.is_ascii() {
         let mut out = text.to_vec();
@@ -1086,66 +1073,14 @@ fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
         }
         return out;
     }
-    let mut out = Vec::with_capacity(text.len());
-    let mut chars: Vec<char> = Vec::new();
-    let mut i = 0;
-    while i < text.len() {
-        let (c, w) = utf8::decode(&text[i..]);
-        chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
-        i += w;
+    let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
+    if upper {
+        text.to_uppercase().into_bytes()
+    } else {
+        // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
+        // for the contextual final-sigma rule.
+        text.to_lowercase().into_bytes()
     }
-    let cs = chars.as_slice();
-    let mut tmp = [0u8; 4];
-    for (k, &c) in cs.iter().enumerate() {
-        if upper {
-            for u in c.to_uppercase() {
-                out.extend_from_slice(u.encode_utf8(&mut tmp).as_bytes());
-            }
-        } else if c == '\u{3A3}' {
-            // Final sigma: preceded by a cased letter and not followed by one.
-            let before = cs[..k]
-                .iter()
-                .rev()
-                .find(|&&x| !is_case_ignorable(x))
-                .is_some_and(|&x| is_cased(x));
-            let after = cs[k + 1..]
-                .iter()
-                .find(|&&x| !is_case_ignorable(x))
-                .is_some_and(|&x| is_cased(x));
-            out.extend_from_slice(
-                if before && !after {
-                    "\u{3C2}"
-                } else {
-                    "\u{3C3}"
-                }
-                .as_bytes(),
-            );
-        } else {
-            for u in c.to_lowercase() {
-                out.extend_from_slice(u.encode_utf8(&mut tmp).as_bytes());
-            }
-        }
-    }
-    out
-}
-
-fn is_case_ignorable(c: char) -> bool {
-    matches!(
-        c,
-        '\'' | '.'
-            | ':'
-            | '^'
-            | '`'
-            | '\u{A8}'
-            | '\u{AD}'
-            | '\u{AF}'
-            | '\u{B4}'
-            | '\u{B7}'
-            | '\u{B8}'
-            | '\u{2019}'
-    ) || ('\u{300}'..='\u{36F}').contains(&c)
-        || ('\u{2B0}'..='\u{2FF}').contains(&c)
-        || ('\u{200B}'..='\u{200F}').contains(&c)
 }
 
 #[unsafe(no_mangle)]
@@ -2539,6 +2474,23 @@ mod tests {
             assert_eq!(
                 ret(|o| msrt_string_replace(st("aaa"), st("aa"), st("b"), o)),
                 "ba"
+            );
+        }
+    }
+
+    #[test]
+    fn lowercase_sigma_ignores_unicode_marks_and_format_characters() {
+        let _g = testutil::lock();
+        for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"] {
+            let before = std::format!("A{mark}Σ");
+            let after = std::format!("AΣ{mark}A");
+            assert_eq!(
+                map_case(before.as_bytes(), false),
+                std::format!("a{mark}ς").as_bytes()
+            );
+            assert_eq!(
+                map_case(after.as_bytes(), false),
+                std::format!("aσ{mark}a").as_bytes()
             );
         }
     }

@@ -1,5 +1,13 @@
 from "@std/testing.ms" import expect_equal, expect_false, fail
 
+test "Unicode lowercase sigma ignores combining marks and format characters":
+    for mark in [f"\u{1ab0}", f"\u{5bf}", f"\u{2060}", f"\u{fe0f}"]:
+        try expect_equal(f"A{mark}Σ".lower(), f"a{mark}ς")
+        try expect_equal(f"AΣ{mark}A".lower(), f"aσ{mark}a")
+
+        let lower = f"AΣ{mark}A".lower
+        try expect_equal(lower(), f"aσ{mark}a")
+
 test "String basic counterparts are callable":
     try expect_equal("é🙂".length(), 2)
     try expect_false(not ("".is_empty()) or "a".is_empty())

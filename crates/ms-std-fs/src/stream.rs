@@ -177,7 +177,7 @@ impl Stream {
             return Err(IoFail::status(STATUS_UNAVAILABLE));
         }
         let c = CPath::new(path).ok_or(IoFail::status(STATUS_INVALID_INPUT))?;
-        match sys::open(&c, sys::O_RDONLY, 0) {
+        match crate::ops::open_waitless(&c, sys::O_RDONLY, 0) {
             Ok(fd) => Ok(Stream::new(fd, true, path)),
             Err(_) => Err(IoFail::status(STATUS_UNAVAILABLE)),
         }

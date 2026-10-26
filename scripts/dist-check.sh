@@ -21,4 +21,9 @@ tar -xzf "$repository/dist/$name.tar.gz" -C "$staging/extracted distribution"
 bundle="$staging/extracted distribution/$name"
 "$bundle/ms" --version
 cd "$bundle/examples/hello"
-"$bundle/ms" run ms.toml
+output=$("$bundle/ms" run ms.toml -- first second)
+test "$output" = "Arguments: 2"
+"$bundle/ms" build ms.toml -o hello
+output=$(./hello first second)
+test "$output" = "Arguments: 2"
+"$bundle/ms" test test.ms

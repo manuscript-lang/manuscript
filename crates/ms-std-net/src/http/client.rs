@@ -528,8 +528,11 @@ impl Client {
             // reused, then drop it.
             self.discard(head, wire, key, &method, deadline);
             sent += 1;
+            // Once a hop strips a header, later redirects must not restore it.
             let mut next_headers =
-                self.redirect_headers(&initial, &previous, &url, &next_url, keep_body);
+                self.redirect_headers(&hop_headers, &previous, &url, &next_url, keep_body);
+            // Recompute an automatic Referer for this hop rather than forwarding the last one.
+            next_headers.retain(|(name, _)| !name.eq_ignore_ascii_case("Referer"));
             if let Some(referer) = referer_for(&url, &next_url, &initial) {
                 set_header(&mut next_headers, "Referer", referer.into_bytes());
             }
@@ -627,7 +630,7 @@ impl Client {
         Ok(Some((next_method, next, keep_body)))
     }
 
-    /// Headers of a redirected request: the caller's own, minus the credentials
+    /// Headers of a redirected request: the previous hop's, minus the credentials
     /// that must not leave the origin and, without a body, the entity headers.
     fn redirect_headers(
         &self,
@@ -2180,6 +2183,131 @@ mod tests {
             none.send(request("GET", &address, "/r302")).unwrap().status,
             302
         );
+    }
+
+    #[test]
+    fn redirects_do_not_restore_credentials_after_an_origin_change() {
+        let received = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured = received.clone();
+        let (destination, _) = serve(move |s, _| {
+            while let Some(request) = read_request(s) {
+                captured.lock().unwrap().push(request.clone());
+                if request.starts_with("GET /again ") {
+                    reply(
+                        s,
+                        "HTTP/1.1 307 Temporary Redirect\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
+                    );
+                } else {
+                    reply(s, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok");
+                }
+            }
+        });
+        let (origin, _) = serve(move |s, _| {
+            read_request(s).unwrap();
+            reply(
+                s,
+                &format!(
+                    "HTTP/1.1 302 Found\r\nLocation: http://{destination}/again\r\nContent-Length: 0\r\n\r\n"
+                ),
+            );
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut sent = request("GET", &origin, "/start");
+        sent.deadline = Deadline::after(Duration::from_secs(2));
+        sent.headers = vec![
+            ("Authorization".into(), b"secret".to_vec()),
+            ("Proxy-Authorization".into(), b"proxy-secret".to_vec()),
+            ("Cookie".into(), b"session=secret".to_vec()),
+            ("X-Keep".into(), b"retained".to_vec()),
+        ];
+        assert_eq!(text(&c.send(sent).unwrap()), "ok");
+        let received = received.lock().unwrap();
+        assert_eq!(received.len(), 2);
+        for request in received.iter() {
+            assert!(!request.contains("Authorization:"), "{request}");
+            assert!(!request.contains("Cookie:"), "{request}");
+            assert!(request.contains("X-Keep: retained\r\n"), "{request}");
+        }
+    }
+
+    #[test]
+    fn redirects_drop_an_automatic_referer_when_changing_origin() {
+        let (destination, _) = serve(|s, _| {
+            let request = read_request(s).unwrap();
+            reply(
+                s,
+                &format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{request}",
+                    request.len()
+                ),
+            );
+        });
+        let (origin, _) = serve(move |s, _| {
+            while let Some(request) = read_request(s) {
+                if request.starts_with("GET /start ") {
+                    reply(
+                        s,
+                        "HTTP/1.1 302 Found\r\nLocation: /again\r\nContent-Length: 0\r\n\r\n",
+                    );
+                } else {
+                    reply(
+                        s,
+                        &format!(
+                            "HTTP/1.1 302 Found\r\nLocation: http://{destination}/final\r\nContent-Length: 0\r\n\r\n"
+                        ),
+                    );
+                }
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut sent = request("GET", &origin, "/start");
+        sent.deadline = Deadline::after(Duration::from_secs(2));
+        let echoed = text(&c.send(sent).unwrap());
+        assert!(echoed.starts_with("GET /final HTTP/1.1\r\n"), "{echoed}");
+        assert!(!echoed.contains("Referer:"), "{echoed}");
+    }
+
+    #[test]
+    fn redirects_do_not_restore_headers_for_a_dropped_body() {
+        let (address, _) = serve(|s, _| {
+            while let Some(request) = read_request(s) {
+                if request.starts_with("POST /start ") {
+                    reply(
+                        s,
+                        "HTTP/1.1 302 Found\r\nLocation: /again\r\nContent-Length: 0\r\n\r\n",
+                    );
+                } else if request.starts_with("GET /again ") {
+                    reply(
+                        s,
+                        "HTTP/1.1 307 Temporary Redirect\r\nLocation: /final\r\nContent-Length: 0\r\n\r\n",
+                    );
+                } else {
+                    reply(
+                        s,
+                        &format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{request}",
+                            request.len()
+                        ),
+                    );
+                }
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        let mut sent = request("POST", &address, "/start");
+        sent.deadline = Deadline::after(Duration::from_secs(2));
+        sent.body = Body::Bytes(Rc::new(b"hello".to_vec()));
+        sent.headers = vec![
+            ("Content-Type".into(), b"text/plain".to_vec()),
+            ("Content-Encoding".into(), b"identity".to_vec()),
+            ("Content-Language".into(), b"en".to_vec()),
+            ("Content-Location".into(), b"/original".to_vec()),
+            ("X-Keep".into(), b"retained".to_vec()),
+        ];
+        let echoed = text(&c.send(sent).unwrap());
+        assert!(echoed.starts_with("GET /final HTTP/1.1\r\n"), "{echoed}");
+        assert!(!echoed.contains("Content-"), "{echoed}");
+        assert!(echoed.contains("X-Keep: retained\r\n"), "{echoed}");
+        assert!(echoed.ends_with("\r\n\r\n"), "{echoed}");
     }
 
     #[test]

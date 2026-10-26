@@ -75,16 +75,43 @@ pub(crate) fn lex_at<'a>(
     }
     let (normalized, offsets) = normalize_source(source);
     let tokens = {
-        let mut s = Scanner {
+        let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
+        s.tokens.reserve(source.len() / 4 + 16);
+        s.run()?;
+        s.tokens
+    };
+    Ok(Lexed {
+        source: normalized,
+        tokens,
+    })
+}
+
+/// Scans an already validated interpolation from just after its opening brace
+/// through its closing brace, including nested strings and interpolations.
+pub(crate) fn interpolation_length(file: &Arc<str>, source: &str) -> PResult<usize> {
+    let mut scanner = Scanner::new(file, source, 0, 0, Vec::new());
+    scanner.interpolation_body(Pos::new(0, 1, 1))?;
+    Ok(scanner.offset)
+}
+
+impl<'a> Scanner<'a> {
+    fn new(
+        file: &'a Arc<str>,
+        text: &'a str,
+        base_offset: u32,
+        base_line: u32,
+        line_offsets: Vec<u32>,
+    ) -> Self {
+        Self {
             file,
-            src: normalized.as_bytes(),
-            text: &normalized,
+            src: text.as_bytes(),
+            text,
             offset: 0,
             line: base_line + 1,
             base_line,
             base_offset,
             column: 1,
-            tokens: Vec::with_capacity(source.len() / 4 + 16),
+            tokens: Vec::new(),
             levels: vec![Layout {
                 indent: 0,
                 depth: 0,
@@ -93,16 +120,10 @@ pub(crate) fn lex_at<'a>(
             groups: Vec::new(),
             opened: Vec::new(),
             function_depths: Vec::new(),
-            line_offsets: offsets,
+            line_offsets,
             interpolations: Vec::new(),
-        };
-        s.run()?;
-        s.tokens
-    };
-    Ok(Lexed {
-        source: normalized,
-        tokens,
-    })
+        }
+    }
 }
 
 /// Lexes raw bytes, reporting invalid UTF-8.

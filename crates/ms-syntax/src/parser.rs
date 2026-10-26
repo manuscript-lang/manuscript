@@ -1800,6 +1800,7 @@ impl<'a> Parser<'a> {
                 if min > 0 {
                     break;
                 }
+                self.link(&mut links)?;
                 e = self.pipe(e)?;
                 if self.kind() == Tok::Dot {
                     e = self.postfix(e)?;
@@ -1977,11 +1978,13 @@ impl<'a> Parser<'a> {
             }
             self.at += 1;
             let mut callee = self.mk(name.pos, ExprKind::Name(self.sym(name)));
+            let mut links = 0;
             // A '.' on a later line continues the flow and applies to the step's
             // result, so it never extends the step's name path.
             while self.kind() == Tok::Dot
                 && self.peek().pos.line == self.tokens[self.at - 1].pos.line
             {
+                self.link(&mut links)?;
                 self.at += 1;
                 let member = self.need(Tok::Name)?;
                 callee = self.mk(
@@ -2039,7 +2042,9 @@ impl<'a> Parser<'a> {
                 },
             );
         }
+        let mut links = 0;
         while self.take(Tok::Dot) {
+            self.link(&mut links)?;
             let name = self.need(Tok::Name)?;
             e = self.mk(
                 name.pos,
@@ -2336,27 +2341,7 @@ impl<'a> Parser<'a> {
             }
             flush(&mut literal, &mut parts);
             let start = i;
-            let mut depth = 1;
-            let mut quoted = false;
-            while i < rb.len() && depth > 0 {
-                let b = rb[i];
-                if b == b'\\' {
-                    i += 2;
-                    continue;
-                }
-                if b == b'"' {
-                    quoted = !quoted;
-                }
-                if !quoted {
-                    if b == b'{' {
-                        depth += 1;
-                    }
-                    if b == b'}' {
-                        depth -= 1;
-                    }
-                }
-                i += 1;
-            }
+            i += crate::lexer::interpolation_length(self.file, &raw[start..])?;
             let source = &raw[start..i - 1];
             let value = self.interpolation(token, start + prefix, source)?;
             parts.push(TextPart::Interp(value));

@@ -336,6 +336,9 @@ impl BodyDecoder {
                         return Ok((input.len(), Decoded::More));
                     };
                     self.size.extend_from_slice(&input[at..at + rel]);
+                    if self.size.len() > 4096 {
+                        return Err("chunk size line too long");
+                    }
                     at += rel + 1;
                     let line = std::mem::take(&mut self.size);
                     let Some(line) = line.strip_suffix(b"\r") else {
@@ -649,6 +652,30 @@ mod tests {
         }
         let mut d = BodyDecoder::new(Framing::Chunked);
         assert!(d.feed(b"zz\r\n", &mut Vec::new()).is_err());
+    }
+
+    #[test]
+    fn chunk_size_line_limit_does_not_depend_on_read_splits() {
+        // The limit includes the CR before LF, as in an incomplete size line.
+        for extension in [4093, 4094, 4095, 8192] {
+            let wire = format!("1;{}\r\nx\r\n0\r\n\r\n", "a".repeat(extension));
+            for split in [0, 1, 4096, 4097, wire.len()] {
+                let mut decoder = BodyDecoder::new(Framing::Chunked);
+                let mut body = Vec::new();
+                let result = decoder
+                    .feed(&wire.as_bytes()[..split], &mut body)
+                    .and_then(|_| decoder.feed(&wire.as_bytes()[split..], &mut body));
+                assert_eq!(
+                    result.is_ok(),
+                    extension <= 4093,
+                    "extension={extension}, split={split}"
+                );
+                if result.is_ok() {
+                    assert_eq!(body, b"x");
+                    assert!(decoder.is_done());
+                }
+            }
+        }
     }
 
     #[test]

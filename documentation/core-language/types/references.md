@@ -35,7 +35,7 @@ The standard library declares its lending natives the same way (`trim`, `List.fi
 ## Reassignment
 
 - Reassigning a `var` replaces its value; it does not close the old object or affect other references. A `let` cannot be reassigned.
-- A `with` binding is immutable and registers the initialized object itself; reassigning another variable cannot change which `close()` runs. Closing early is fine because `close()` is idempotent.
+- A `with let` binding cannot be reassigned. A `with var` binding can change, and cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [using with](../cleanup/scopes.md).
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
 - Non-escaping closures borrow captures; escaping closures own them. Borrowed roots cannot be changed or moved while the borrow is live.
 
@@ -49,11 +49,13 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. A task that locks a box it already holds waits forever. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
-```
-import {share, Shared} from "@std/shared.ms"
-import {lock} from "@std/sync.ms"
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+from "@std/shared.ms" import share, Shared
+from "@std/sync.ms" import lock
+from "@std/testing.ms" import expect_equal
 
 type Counter:
     values: List[Int]
@@ -65,6 +67,11 @@ impl Counter:
 def bump(shared: Shared[Counter]) -> Unit:
     with var guard = lock(shared):
         guard.value.bump()
+
+test "change a shared value through its guard":
+    let shared = share(Counter([]))
+    bump(shared)
+    shared.get().values.length() | try expect_equal(1)
 ```
 
 ## References inside other values
