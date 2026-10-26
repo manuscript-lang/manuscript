@@ -51,6 +51,14 @@ fn valid_utf8(bytes: &[u8]) -> bool {
     core::str::from_utf8(bytes).is_ok()
 }
 
+/// A directory entry name as text: bytes that are not UTF-8 become U+FFFD, so one odd name
+/// does not make its directory unlistable. Such a name no longer addresses the entry.
+pub(crate) fn lossy_name(name: &[u8]) -> Vec<u8> {
+    alloc::string::String::from_utf8_lossy(name)
+        .into_owned()
+        .into_bytes()
+}
+
 // ---------------------------------------------------------------------------
 // Whole-file reads and writes
 // ---------------------------------------------------------------------------
@@ -317,11 +325,7 @@ fn stat_now(path: &[u8], follow: bool) -> Res<Info> {
     let p = cpath(path)?;
     let st = sys::stat(&p, follow)
         .map_err(|e| Fail::errno(e, if follow { "stat" } else { "lstat" }, path))?;
-    let name = path::base(path);
-    if !valid_utf8(&name) {
-        return Err(Fail::status(STATUS_UNSUPPORTED));
-    }
-    Ok(info_of(&st, &name))
+    Ok(info_of(&st, &lossy_name(&path::base(path))))
 }
 
 #[derive(Debug)]
@@ -360,12 +364,9 @@ fn list_now(path: &[u8], max: i64) -> Res<Vec<Entry>> {
         if out.len() as i64 >= max {
             return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
         }
-        if !valid_utf8(&name) {
-            return Err(Fail::status(STATUS_UNSUPPORTED));
-        }
         let (directory, symlink) = entry_kind(path, &name, kind);
         out.push(Entry {
-            name,
+            name: lossy_name(&name),
             directory,
             symlink,
         });
@@ -744,6 +745,25 @@ mod tests {
         assert_eq!(stat(&root, true).unwrap_err().status, STATUS_NOT_FOUND);
         remove(&root, true).unwrap();
         let _ = remove(&path::dir(&root), true);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_name_that_is_not_utf8_is_listed_lossily() {
+        let root = scratch("l");
+        create_directory(&root, true).unwrap();
+        write_file(&sub(&root, "a.txt"), b"a", false).unwrap();
+        write_file(&path::join(&root, b"bad\xff.dat"), b"x", false).unwrap();
+        let names: Vec<Vec<u8>> = list(&root, UNLIMITED)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(
+            names,
+            [b"a.txt".to_vec(), "bad\u{fffd}.dat".as_bytes().to_vec()]
+        );
+        remove(&root, true).unwrap();
     }
 
     #[cfg(unix)]
