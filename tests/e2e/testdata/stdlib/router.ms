@@ -80,6 +80,20 @@ test "the first matching route wins":
     r.route(HttpMethod.Get, "/a/b", say("literal")).get()
     try expect_equal(body_of(try r.call(get("/a/b"))), "param")
 
+def head_reply(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    return reply(exchange, text(202, "head"))
+
+test "explicit HEAD routes take precedence over GET fallback":
+    var r = Router()
+    try r.route(HttpMethod.Get, "/a/:id", say("get"))
+    try r.route(HttpMethod.Head, "/a/:id", head_reply)
+    try r.route(HttpMethod.Head, "/a/fixed", say("later"))
+
+    let response = try r.call(request(HttpMethod.Head, "/a/fixed"))
+    try expect_equal(response.status, 202)
+    try expect_equal(response.body.length(), 0)
+    try expect_equal(body_of(try r.call(get("/a/fixed"))), "get")
+
 test "invalid and duplicate patterns are rejected":
     var r = Router()
     try expect_true(r.route(HttpMethod.Get, "users", say("x")).is_error())

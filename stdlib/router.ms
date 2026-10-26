@@ -275,6 +275,7 @@ type Lookup:
 
 def lookup(routes: List[Route], method: String, parts: List[String]) -> Lookup:
     var found: Optional[Int] = none
+    var fallback = False
     var params = RouteParams(names: [], values: [])
     var allow: List[String] = []
 
@@ -282,8 +283,15 @@ def lookup(routes: List[Route], method: String, parts: List[String]) -> Lookup:
         if let captured = capture(entry.value.segments, parts):
             allow.append(entry.value.method.clone())
 
-            if found.is_none() and serves(entry.value.method, method):
+            if (
+                serves(entry.value.method, method)
+                and (
+                    found.is_none()
+                    or (fallback and entry.value.method == method)
+                )
+            ):
                 found = some(entry.index)
+                fallback = entry.value.method != method
                 params = RouteParams(
                     names: names_of(entry.value.segments), values: captured
                 )
