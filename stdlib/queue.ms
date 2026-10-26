@@ -31,7 +31,7 @@ impl Queue[T]:
             self.items = live
             self.head = 0
 
-        self.items.append(some(value))
+        self.items.append(value)
         return True
 
     # Removes and returns the oldest value, or `none` when empty.
@@ -141,7 +141,7 @@ impl PriorityQueue[T]:
 
         if count == 1:
             self.heap.pop()
-            return some(top)
+            return top
 
         # The last entry is placed from a hole at the root, and then dropped from the end of the list.
         let entry = self.heap.get(count - 1).clone()
@@ -170,14 +170,14 @@ impl PriorityQueue[T]:
 
         self.heap.set(at, entry)
         self.heap.pop()
-        return some(top)
+        return top
 
     # Returns the next value by priority without removing it, or none when empty.
     def peek() -> Optional[T]:
         if self.heap.length() == 0:
             return none
 
-        return some(self.heap.get(0).value.clone())
+        return self.heap.get(0).value.clone()
 
     # Returns the number of enqueued values, independent of their priorities.
     def length() -> Int:

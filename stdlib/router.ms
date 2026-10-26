@@ -52,7 +52,7 @@ impl RouteParams:
     # Returns the text captured for `name`, or none when the pattern has no such parameter.
     def get(name: String) -> Optional[String]:
         if let index = self.names.index_of(name):
-            return some(self.values[index].clone())
+            return self.values[index].clone()
 
         return none
 
@@ -241,8 +241,8 @@ def segment_of(part: String) -> Segment:
 def segment_name(segment: Segment) -> Optional[String]:
     match segment:
         case Literal(_): return none
-        case Param(name): return some(name.clone())
-        case Rest(name): return some(name.clone())
+        case Param(name): return name.clone()
+        case Rest(name): return name.clone()
 
 def valid_segment(segment: Segment, names: List[String], last: Bool) -> Bool:
     match segment:
@@ -293,7 +293,7 @@ def lookup(routes: List[Route], method: String, parts: List[String]) -> Lookup:
                     or (fallback and route.method == method)
                 )
             ):
-                found = some(index)
+                found = index
                 fallback = route.method != method
                 params = RouteParams(names: names_of(route.segments), values: captured)
 
@@ -320,14 +320,14 @@ def capture(segments: List[Segment], parts: List[String]) -> Optional[List[Strin
     for entry in segments.entries():
         if take_rest(entry.value):
             values.append(parts.drop(entry.index).join("/"))
-            return some(values)
+            return values
 
         if entry.index >= parts.length(): return none
         if not accepts(entry.value, parts[entry.index], var values): return none
 
     if parts.length() != segments.length(): return none
 
-    return some(values)
+    return values
 
 def take_rest(segment: Segment) -> Bool:
     match segment:
@@ -447,7 +447,7 @@ impl Router:
         let state = share(
             TestState(
                 status: 0, sent: False, complete: False, closed: False, head: headers(),
-                body: BytesBuilder(), unread: some(request.body.clone())
+                body: BytesBuilder(), unread: request.body.clone()
             )
         )
         let exchange = TestExchange(request: request.clone(), state: state)
@@ -522,8 +522,8 @@ impl HttpExchange for TestExchange:
                 let n = max if max < bytes.length() else bytes.length()
 
                 if n < bytes.length():
-                    guard.value.unread = some(bytes.slice(n, bytes.length()).get())
-                return ok(some(bytes.slice(0, n).get()))
+                    guard.value.unread = bytes.slice(n, bytes.length()).get()
+                return ok(bytes.slice(0, n).get())
 
             return ok(none)
 

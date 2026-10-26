@@ -240,7 +240,7 @@ def optionals(n: Int) -> Int:
     while i < n:
         var o: Optional[Int] = none
         if i % 5 != 0:
-            o = some(i)
+            o = i
 
         if let v = o:
             total += v

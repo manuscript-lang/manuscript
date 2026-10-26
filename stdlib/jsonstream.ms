@@ -81,7 +81,7 @@ def reset(var state: Decoder) -> Unit:
 def fail(var state: Decoder, cause: JsonError) -> Result[List[JsonValue], JsonError]:
     # Dropping the partial value releases its buffered bytes.
     reset(var state)
-    state.failure = some(cause)
+    state.failure = cause
     return error(cause)
 
 # Parses the buffered value and clears the scanner for the next one.
@@ -89,7 +89,7 @@ def complete(var state: Decoder) -> Result[JsonValue, JsonError]:
     let bytes = state.pending.build()
     reset(var state)
     if let text = bytes.decode_utf8():
-        return parse(text, some(state.limits))
+        return parse(text, state.limits)
 
     return error(JsonError.InvalidData)
 
@@ -149,7 +149,7 @@ def step(var state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError
     if not done: return ok(none)
 
     let value = try complete(var state)
-    return ok(some(value))
+    return ok(value)
 
 impl JsonDecoder for Decoder:
     var def feed(chunk: Bytes) -> Result[List[JsonValue], JsonError]:

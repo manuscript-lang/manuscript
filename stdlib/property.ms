@@ -212,7 +212,7 @@ def optional_draw[T](gen: Gen[T], s: Source) -> Drawn[Optional[T]]:
         return Drawn(none, middle)
 
     let {value, source} = gen.make(middle)
-    return Drawn(some(value), source)
+    return Drawn(value, source)
 
 # Generates lists of `min_length` through `max_length` elements, shrinking toward fewer and simpler elements.
 export def lists[T](
@@ -302,7 +302,7 @@ def run_case[T](
 
     let outcome = property(value)
     if outcome.is_error():
-        return Outcome(source, some(outcome.err().message()))
+        return Outcome(source, outcome.err().message())
 
     return Outcome(source, none)
 
@@ -340,7 +340,7 @@ def attempt[T](
     if not simpler(used, current):
         return none
 
-    return some(used)
+    return used
 
 # Shrinks failing `choices`: deletes spans, then lowers values, until a full pass makes no progress or `budget` replays run.
 def shrink[T](

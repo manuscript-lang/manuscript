@@ -230,7 +230,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
                 if let value = lane.value.pop():
                     lane.value.wake()
-                    return ok(some(value))
+                    return ok(value)
 
                 if lane.value.sender_closed:
                     return ok(none)
@@ -280,7 +280,7 @@ def group_end[In, Out](
 ) -> Channel[In, Out]:
     return Channel[In, Out](
         transport: TaskTransport[In, Out](
-            outgoing: down, incoming: up, lifetime: some(lifetime)
+            outgoing: down, incoming: up, lifetime: lifetime
         )
     )
 

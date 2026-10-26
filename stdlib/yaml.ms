@@ -93,7 +93,7 @@ type Flow:
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
 def default_limits() -> YamlLimits:
-    return YamlLimits(max_depth: some(10000), max_values: some(1000000))
+    return YamlLimits(max_depth: 10000, max_values: 1000000)
 
 def within(value: Int, limit: Optional[Int]) -> Bool:
     if let maximum = limit:

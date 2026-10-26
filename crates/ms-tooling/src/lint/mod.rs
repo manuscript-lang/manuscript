@@ -5,8 +5,8 @@ mod bindings;
 mod faults;
 mod matches;
 mod patterns;
-mod redundant;
 mod recursion;
+mod redundant;
 mod results;
 mod tasks;
 

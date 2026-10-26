@@ -99,7 +99,7 @@ impl ListExtremes[T] for List[T]:
         for i in 1..self.length():
             if self[i].compare(self[at]) < 0:
                 at = i
-        return some(self[at].clone())
+        return self[at].clone()
 
     # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].max()` is `some(3)`.
@@ -111,7 +111,7 @@ impl ListExtremes[T] for List[T]:
         for i in 1..self.length():
             if self[i].compare(self[at]) > 0:
                 at = i
-        return some(self[at].clone())
+        return self[at].clone()
 
 interface ListKeyedExtremes[T: Clonable]:
     def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
@@ -135,7 +135,7 @@ impl ListKeyedExtremes[T] for List[T]:
                 at = i
                 best = k
 
-        return some(self[at].clone())
+        return self[at].clone()
 
     # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
@@ -154,4 +154,4 @@ impl ListKeyedExtremes[T] for List[T]:
                 at = i
                 best = k
 
-        return some(self[at].clone())
+        return self[at].clone()

@@ -37,7 +37,7 @@ test "a group collects its results in start order":
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(entry, timeout: some(nanoseconds(...)))` limits one task. `TaskGroup[T](timeout: some(nanoseconds(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
+A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds(...))` limits one task. `TaskGroup[T](timeout: nanoseconds(...))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript
@@ -52,7 +52,7 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
 
 test "a task that passes its timeout is cancelled":
     with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: some(nanoseconds(10000000)))
+        let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
