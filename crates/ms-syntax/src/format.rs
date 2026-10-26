@@ -553,7 +553,11 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
                     continue;
                 };
                 let (from, to) = (colon.hi as usize, body.pos.offset as usize);
-                let gap = &self.source[from..to];
+                // Interpolated expressions keep offsets local to their text, so the
+                // range can be reversed or off a boundary.
+                let Some(gap) = self.source.get(from..to) else {
+                    continue;
+                };
                 if colon.kind == Tok::Colon
                     && gap.contains('\n')
                     && gap.chars().all(char::is_whitespace)
