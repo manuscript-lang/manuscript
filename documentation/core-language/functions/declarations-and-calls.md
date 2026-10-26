@@ -50,7 +50,7 @@ All five results are `7`. Arguments resolve left to right and labels do not rese
 
 `reduce(amount: amount, deduction: deduction)` binds the same as `reduce(amount, deduction)`. `ms fmt --drop-labels` removes `name: name` labels only when the call binds identically without them.
 
-The rule covers functions, generics, methods, function values, library APIs, and constructors. A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type parameter names remain part of [type identity](function-values-and-closures.md).
+The rule covers functions, generics, methods, function values, library APIs, and constructors. A method's receiver is evaluated before its arguments and takes no positional slot. Constructor slots follow field declaration order. A zero-parameter function uses `()`. Function-type identity depends on ordered parameter types and the result type; parameter names are not part of [type identity](function-values-and-closures.md).
 
 A parameter with a default may be omitted; others are required, including `Optional[T]` without a default (pass `none`). A supplied `T` is wrapped once as `some(value: ...)` ([optional arguments](../types/optionals.md#passing-optional-arguments)). Variadics and spreading are unsupported. Match bindings such as `some(value):` are [patterns](../control-flow/pattern-matching.md), not calls.
 
@@ -76,7 +76,7 @@ def example() -> Int:
 - A failing default stops later defaults and the body. `try` in a default propagates under the function's result type.
 - Named functions, lambdas, and `impl` methods may declare defaults; function types and alternative payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Record fields have their own [defaults](../types/records.md#construction). Omitted arguments give no generic type evidence.
-- Defaults are callable permissions of declared functions only. Calls through function values, including an inferred local copy, are positional and supply every parameter. Defaults are not part of function-type identity.
+- Defaults are callable permissions of known callables. Inferred immutable copies preserve them; explicit function types, mutable callable bindings, and generic inference require every parameter. Defaults are not part of function-type identity.
 - Native standard-library slice: expression defaults work on nongeneric functions and ordinary record fields. Standard interface defaults must be closed literals. Native generic defaults, defaults on opaque native constructors, and recursive native default expansion are unsupported.
 
 ## Collections as arguments

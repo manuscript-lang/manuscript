@@ -296,3 +296,125 @@ fn invalid_callback_slots_preserve_known_type_conflicts() {
         "{messages:?}"
     );
 }
+
+fn callable_messages(source: &str) -> Vec<String> {
+    let file: Arc<str> = Arc::from("callable.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    ms_check::check(
+        vec![ms_check::load_module(&module)],
+        ImportMap::default(),
+        CheckOptions::default(),
+    )
+    .diagnostics
+    .into_iter()
+    .map(|d| d.message)
+    .collect()
+}
+
+#[test]
+fn callable_type_mismatches_do_not_suggest_parameter_renames() {
+    let cases = [
+        (
+            "def source(PARAM: Int) -> Int: PARAM",
+            "Callable[[Optional[Int]], Int]",
+            "Callable[[Int], Int]",
+        ),
+        (
+            "def source(PARAM: Int) -> Int: PARAM",
+            "Callable[[String], Int]",
+            "Callable[[Int], Int]",
+        ),
+        (
+            "def source(PARAM: Int) -> String: \"text\"",
+            "Callable[[Int], Int]",
+            "Callable[[Int], String]",
+        ),
+    ];
+    for (declaration, expected, actual) in cases {
+        for name in ["value", "_0"] {
+            let declaration = declaration.replace("PARAM", name);
+            let source = format!(
+                "{declaration}\ndef exercise() -> Unit:\n    let callback: {expected} = source\n"
+            );
+            assert_eq!(
+                callable_messages(&source),
+                [format!(
+                    "expected {expected}, found {actual} (in the initializer of 'callback')"
+                )],
+                "{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn map_callback_type_mismatch_retains_the_real_type_error() {
+    for name in ["value", "_0"] {
+        let source = format!(
+            "def transform({name}: Int, key: String) -> Int: {name}\ndef wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)\n"
+        );
+        assert_eq!(
+            callable_messages(&source),
+            [
+                "expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)"
+            ],
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn generic_callback_evidence_still_reports_a_real_conflict() {
+    let source = "def source(value: String) -> Int: value.length()\ndef apply[T](callback: Callable[[T], Int], value: T) -> Int: callback(value)\ndef exercise() -> Int: apply(source, 3)\n";
+    assert_eq!(
+        callable_messages(source),
+        [
+            "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
+            "expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\""
+        ]
+    );
+}
+
+#[test]
+fn fixed_callback_mismatches_keep_their_primary_type_diagnostic() {
+    let cases = [
+        (
+            "def source(PARAM: Int) -> String: \"text\"",
+            "Callable[[T], Int]",
+            "expected Callable[[<invalid>], Int], found Callable[[Int], String] (in argument 'callback' of apply)",
+        ),
+        (
+            "def source(PARAM: Int) -> Int: PARAM",
+            "Callable[[String], T]",
+            "expected Callable[[String], <invalid>], found Callable[[Int], Int] (in argument 'callback' of apply)",
+        ),
+    ];
+    for (declaration, expected, message) in cases {
+        for name in ["value", "_0"] {
+            let declaration = declaration.replace("PARAM", name);
+            let source = format!(
+                "{declaration}\ndef apply[T](callback: {expected}) -> Unit: return\ndef exercise() -> Unit: apply(source)\n"
+            );
+            assert_eq!(
+                callable_messages(&source),
+                [
+                    "cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
+                    message
+                ],
+                "{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn generic_callback_arity_mismatch_keeps_its_hint() {
+    let source = "def source(first: Int, second: Int) -> Int: first + second\ndef apply[T](callback: Callable[[T], Int], value: T) -> Int: callback(value)\ndef exercise() -> Int: apply(source, 3)\n";
+    assert_eq!(
+        callable_messages(source),
+        [
+            "callback mismatch: the function takes 2 parameters but this position expects 1; pass a function with 1 parameter, or wrap it in a lambda that supplies the rest",
+            "expected Callable[[Int], Int], found Callable[[Int, Int], Int] (in argument 'callback' of apply)"
+        ]
+    );
+}

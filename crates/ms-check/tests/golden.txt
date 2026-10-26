@@ -2452,8 +2452,7 @@ def count(items: List[Int], data: Bytes) -> Int:
 def wrong(values: Map[String, Int]) -> Unit:
     let mapped = values.map_keys(lambda k, v: v.to_float())type	2	25	69	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimaldef wrong[W](values: Map[String, Int], transform: Callable[[String, Int], W]) -> Unit:
     let mapped = values.map_keys(transform)type	2	25	111	W does not satisfy Hashable; pass a type that already implements itdef transform(value: Int, key: String) -> Int: value
-def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)type	2	69	121	callback mismatch: the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)
-type	2	69	121	expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)def wrong(values: Map[String, Int]) -> Unit:
+def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)type	2	69	121	expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)def wrong(values: Map[String, Int]) -> Unit:
     let found = values.find_last(lambda k, v: v)type	2	47	91	expected Bool, found Int (in the return value)def allowed(values: Map[String, Int]) -> Map[String, Float]:
     return values.map(lambda key, value: value.to_float())
 type Shape:
@@ -2587,7 +2586,7 @@ def call() -> Unit: f([4])
 def f(value: Int) -> Int: return value
 def call() -> Unit:
     let callback: Callable[[Optional[Int]], Int] = f
-type	3	52	110	expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback'); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)def f(value: Optional[Int]) -> Unit: return
+type	3	52	110	expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback')def f(value: Optional[Int]) -> Unit: return
 def call() -> Unit: f(other: 4)
 type	2	23	66	unknown argument other; parameters of f: value
 type	2	21	64	missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'def f(value: Optional[Int]) -> Unit: return
@@ -6867,7 +6866,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve); the function's parameter is named request but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(request: _0)export def helper() -> Unit:
+type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
     return
 test "interruptible":
     println("READY")
