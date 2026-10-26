@@ -143,6 +143,29 @@ impl<'a> FnLower<'a> {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
+            // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
+            if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
+                matches!(
+                    *n,
+                    "bit_and"
+                        | "bit_or"
+                        | "bit_xor"
+                        | "bit_not"
+                        | "shift_left"
+                        | "shift_right"
+                        | "shift_right_unsigned"
+                        | "wrapping_add"
+                        | "wrapping_subtract"
+                        | "wrapping_multiply"
+                )
+            }) {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                self.at(e.pos);
+                return self.bit_operation(name, &args);
+            }
             // Time values are plain words: reading one is not a runtime call.
             if let Some(field) = match symbol {
                 "msstd_time_duration_to_nanoseconds" => Some(None),

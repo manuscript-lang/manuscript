@@ -3,6 +3,7 @@
 from "@std/bytes.ms" import Bytes, BytesBuilder, BinaryError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
+from "@std/math.ms" import bit_and, shift_right
 
 # The `width` bytes at `at` (1, 2, 4 or 8) as an unsigned number; eight bytes keep their bit pattern as an Int.
 extern def msrt_bytes_read_word(
@@ -20,17 +21,13 @@ extern def msrt_float32_from_bits(bits: Int) -> Float
 
 extern def msrt_float32_to_bits(value: Float) -> Int
 
-extern def msrt_bits_bit_and(left: Int, right: Int) -> Int
-
-extern def msrt_bits_shift_right(value: Int, count: Int) -> Int
-
 # Appends the low `width` bytes of `value` in the requested byte order.
 def put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) -> Unit:
     for i in range(0, width):
         var place = width - 1 - i
         if little:
             place = i
-        out.append(msrt_bits_bit_and(msrt_bits_shift_right(value, 8 * place), 255))
+        out.append(bit_and(shift_right(value, 8 * place), 255))
 
 # Appends an unsigned `value` after checking that it is below `limit`, which is 2 to the power `bits`.
 def put_unsigned(
