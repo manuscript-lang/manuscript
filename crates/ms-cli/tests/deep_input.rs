@@ -87,3 +87,33 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     assert_eq!(text.trim(), "[454, 962]", "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_match_over_thousands_of_cases_builds_in_linear_time() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-cases-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // Every payload read and construction used to copy the layout of all cases.
+    let cases = 10_000;
+    let mut source = String::from("from \"@std/io.ms\" import stdout\ntype E:\n");
+    for i in 0..cases {
+        source.push_str(&format!("    case C{i}(x: Int)\n"));
+    }
+    source.push_str("\ndef g(e: E) -> Int:\n    match e:\n");
+    for i in 0..cases {
+        source.push_str(&format!("        case C{i}(x): return x + {i}\n"));
+    }
+    source.push_str(
+        "\nexport def main() -> Int:\n    stdout().write(f\"{g(C9999(1))}\\n\").get()\n    return 0\n",
+    );
+    std::fs::write(dir.join("cases.ms"), source).unwrap();
+    let started = std::time::Instant::now();
+    let (status, text) = run_ms(&["build", "cases.ms", "--build-type", "Debug"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(
+        started.elapsed().as_secs() < 15,
+        "took {:?}",
+        started.elapsed()
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

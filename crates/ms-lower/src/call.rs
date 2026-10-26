@@ -671,7 +671,7 @@ impl<'a> FnLower<'a> {
                     }
                     return self.derived_hash(recv);
                 }
-                // Built-in scalars order themselves; the argument arrives as a `Comparable` view.
+                // Built-in scalars order themselves against another of their own type.
                 if m.name().is_some_and(|n| n.as_str() == "compare")
                     && contract.is_std("Comparable")
                     && let [other] = view.arguments.as_slice()
@@ -681,37 +681,11 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     let a = self.borrow(recv);
-                    // An operand of the receiver's own type compares as it is, without a `Comparable` view.
-                    let source = self.hir.info(other.expr).error_source;
-                    if source.as_ref().is_some_and(|src| {
-                        ct::type_key(&ct::sub(src, &self.subst)) == ct::type_key(&static_ty)
-                    }) {
-                        let raw = self.expr_value(other.expr)?;
-                        if self.dead {
-                            return Ok(raw);
-                        }
-                        let b = self.borrow(raw);
-                        let r = self.order(want, &static_ty, a, b)?;
-                        return Ok(Val { v: r, own: false });
-                    }
-                    let other = self.expr(other.expr)?;
+                    let raw = self.expr_value(other.expr)?;
                     if self.dead {
-                        return Ok(other);
+                        return Ok(raw);
                     }
-                    let view_value = self.borrow(other);
-                    let data = self
-                        .b
-                        .emit(
-                            Op::IfaceData,
-                            &[view_value],
-                            ms_mir::ir::Imm::None,
-                            Some(MTy::PTR),
-                        )
-                        .expect("data");
-                    let b = self
-                        .b
-                        .emit(Op::Load, &[data], ms_mir::ir::Imm::Ty(want), Some(want))
-                        .expect("load");
+                    let b = self.borrow(raw);
                     let r = self.order(want, &static_ty, a, b)?;
                     return Ok(Val { v: r, own: false });
                 }

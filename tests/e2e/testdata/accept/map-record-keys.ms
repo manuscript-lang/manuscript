@@ -22,7 +22,7 @@ impl Hashable for Folded:
         return 0
 
 impl Equal for Folded:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Folded) -> Bool:
         return True
 
 test "plain record keys":

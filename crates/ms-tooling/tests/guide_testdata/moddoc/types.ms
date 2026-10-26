@@ -23,7 +23,7 @@ impl Measured for Box[Int]:
         return self.count
 
 impl Equal for Shape:
-    def equals(other: Equal) -> Bool:
+    def equals(other: Shape) -> Bool:
         return True
 
 export let LIMIT = 10

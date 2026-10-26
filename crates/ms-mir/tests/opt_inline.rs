@@ -598,3 +598,24 @@ fn a_closure_that_escapes_the_callee_is_kept_correct() {
     let m = inlined(&src);
     assert_eq!(outcome(&before), outcome(&m), "{}", print_module(&m));
 }
+
+/// Thousands of inlinable calls in one block take linear time: each split moves only the
+/// instructions since the previous one.
+#[test]
+fn many_calls_in_one_block_inline_in_linear_time() {
+    let n = 20_000;
+    let mut src = String::from(
+        "module \"main\"\nfile 0 \"a.ms\"\nentry @main\n\n\
+         fn @id(%0: int) -> int {\nb0:\n  ret %0\n}\n\nfn @main() -> int export {\nb0:\n  %0: int = iconst 1\n",
+    );
+    for i in 1..=n {
+        src.push_str(&format!("  %{i}: int = call @id (%{})\n", i - 1));
+    }
+    src.push_str(&format!("  ret %{n}\n}}\n"));
+    let mut m = module(&src);
+    let start = std::time::Instant::now();
+    ms_mir::opt::inline::run(&mut m);
+    assert!(start.elapsed().as_secs() < 10, "took {:?}", start.elapsed());
+    verify_module(&m).expect("verify after");
+    assert!(!print_module(&m).contains("call @id"));
+}

@@ -124,6 +124,40 @@ fn overlap(a: &Ty, b: &Ty, x: &Ty, y: &Ty, vars: &[Ty]) -> bool {
     u.matches(a, x) && u.matches(b, y)
 }
 
+/// Binds an interface's `Self` to the type implementing it.
+pub(crate) fn self_binding(contract: &Ty, implementor: &Ty) -> Subst {
+    let mut s = Subst::new();
+    s.insert(
+        crate::checker::self_variable(contract.id).id,
+        implementor.clone(),
+    );
+    s
+}
+
+/// The operation `name` of `contract` as called on a value of type `implementor`.
+fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<MethodRef> {
+    let def = contract.def.as_ref()?;
+    let op = def
+        .operations
+        .borrow()
+        .iter()
+        .find(|o| o.name == name)
+        .cloned()?;
+    let mut s = substitution(contract);
+    s.extend(self_binding(contract, implementor));
+    Some(Rc::new(Method {
+        id: n(""),
+        module: n(""),
+        local: false,
+        receiver: contract.clone(),
+        contract: Some(contract.clone()),
+        ty: sub(&op.ty, &s),
+        variables: stdlib::operation_variables(&format!("{}/{}", contract.id, name)),
+        decl: op.decl.clone(),
+        native: n("contract"),
+    }))
+}
+
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
 fn builtin_comparable(t: &Ty) -> bool {
@@ -291,7 +325,8 @@ impl Checker {
         let mut seen: HashSet<Name> = HashSet::new();
         let mut ops: Vec<Operation> = Vec::new();
         if let Some(def) = &contract.def {
-            let s = substitution(&contract);
+            let mut s = substitution(&contract);
+            s.extend(self_binding(&contract, &receiver));
             for op in def.operations.borrow().iter() {
                 let mut op = op.clone();
                 op.ty = sub(&op.ty, &s);
@@ -733,33 +768,20 @@ impl Checker {
             return vec![Rc::new(m)];
         }
         if receiver.kind == Kind::Contract
-            && let Some(def) = &receiver.def
+            && let Some(method) = contract_operation(receiver, name, receiver)
         {
-            let found = def
-                .operations
-                .borrow()
-                .iter()
-                .find(|o| o.name == name)
-                .cloned();
-            if let Some(op) = found {
-                return vec![Rc::new(Method {
-                    id: n(""),
-                    module: n(""),
-                    local: false,
-                    receiver: receiver.clone(),
-                    contract: Some(receiver.clone()),
-                    ty: sub(&op.ty, &substitution(receiver)),
-                    variables: stdlib::operation_variables(&format!("{}/{}", receiver.id, name)),
-                    decl: op.decl.clone(),
-                    native: n("contract"),
-                })];
-            }
+            return vec![method];
         }
         if receiver.kind == Kind::Variable {
             let mut result: Vec<MethodRef> = Vec::new();
             for b in receiver.bounds() {
-                if b.kind == Kind::Contract {
-                    result.extend(self.methods(&b, name));
+                if b.kind != Kind::Contract {
+                    continue;
+                }
+                // `Self` in a bound's operation is the bounded variable itself.
+                match contract_operation(&b, name, receiver) {
+                    Some(method) => result.push(method),
+                    None => result.extend(self.methods(&b, name)),
                 }
             }
             return result;
@@ -769,11 +791,12 @@ impl Checker {
             let property = if name == "hash" { "Hashable" } else { "Equal" };
             if self.property(receiver, property, None) {
                 let contract = standard(property, vec![]);
-                let operation = contract
+                let mut operation = contract
                     .def
                     .as_ref()
                     .map(|d| d.operations.borrow()[0].clone())
                     .expect("operation");
+                operation.ty = sub(&operation.ty, &self_binding(&contract, receiver));
                 return vec![Rc::new(Method {
                     id: n(""),
                     module: n(""),

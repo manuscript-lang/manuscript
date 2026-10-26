@@ -395,6 +395,39 @@ impl Checker {
         self.names.borrow_mut().insert(name, s);
     }
 
+    /// Makes `Self` available while an interface's operations are resolved: the implementing
+    /// type, which an implementation or a call replaces with its receiver.
+    pub(crate) fn declare_self(&mut self, owner: &Ty) {
+        if owner.kind == Kind::Contract {
+            self.scope
+                .types
+                .borrow_mut()
+                .insert(n("Self"), self_variable(owner.id));
+        }
+    }
+
+    /// `Self` is limited to whole parameter types, the only position an interface value can
+    /// turn back into the implementing type.
+    pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
+        fn mentions(t: &Ty) -> bool {
+            t.id.as_str().ends_with("/Self")
+                || t.args.iter().any(mentions)
+                || t.params.iter().any(|p| mentions(&p.ty))
+                || t.result.as_ref().is_some_and(mentions)
+        }
+        let misplaced = op
+            .params
+            .iter()
+            .any(|p| !p.ty.id.as_str().ends_with("/Self") && mentions(&p.ty))
+            || op.result.as_ref().is_some_and(mentions);
+        if misplaced {
+            self.type_error(
+                pos,
+                "Self can only be a whole parameter type of an interface operation; write 'other: Self', not 'List[Self]' or a result type",
+            );
+        }
+    }
+
     /// Declares the type parameters of an interface or native operation in the current scope and
     /// records them as the operation's own variables (`owner/name`).
     pub(crate) fn operation_variables(&mut self, owner: Name, method: &ms_syntax::ast::Method) {
@@ -858,8 +891,10 @@ impl Checker {
                         );
                     }
                     self.scope = self.variable_scope(&s.variables());
+                    self.declare_self(&s.ty());
                     self.operation_variables(s.ty().id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
+                    self.check_self_use(&ty, m.pos);
                     def.operations.borrow_mut().push(Operation {
                         name: m.func.name,
                         ty,
@@ -1474,4 +1509,14 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
         }
     }
     result
+}
+
+/// The implicit `Self` type of an interface: a variable that implementations and calls replace
+/// with the receiver.
+pub fn self_variable(owner: Name) -> Ty {
+    Rc::new(Type::new(
+        n("Self"),
+        n(&format!("{owner}/Self")),
+        Kind::Variable,
+    ))
 }
