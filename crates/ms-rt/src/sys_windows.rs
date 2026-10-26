@@ -129,6 +129,21 @@ unsafe extern "system" {
         flags: DWORD,
     ) -> BOOL;
     fn UnregisterWaitEx(wait: HANDLE, event: HANDLE) -> BOOL;
+    fn CreateWaitableTimerExW(
+        attributes: *mut c_void,
+        name: *const u16,
+        flags: DWORD,
+        access: DWORD,
+    ) -> HANDLE;
+    fn SetWaitableTimer(
+        timer: HANDLE,
+        due: *const i64,
+        period: i32,
+        completion: *mut c_void,
+        argument: *mut c_void,
+        resume: BOOL,
+    ) -> BOOL;
+    fn CancelWaitableTimer(timer: HANDLE) -> BOOL;
 }
 
 unsafe extern "C" {
@@ -622,4 +637,76 @@ pub unsafe fn unregister_wait(wait: *mut c_void) {
     // INVALID_HANDLE_VALUE: block until a running callback returns.
     // SAFETY: forwarded from the caller.
     unsafe { UnregisterWaitEx(wait, -1isize as HANDLE) };
+}
+
+/// A waitable timer that fires at the system's finest resolution rather than on the scheduler
+/// tick (about 15 ms by default). Null where the system lacks high-resolution timers (before
+/// Windows 10 1803).
+pub fn precise_timer_create() -> *mut c_void {
+    const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: DWORD = 0x2;
+    const TIMER_ALL_ACCESS: DWORD = 0x1F_0003;
+    // SAFETY: no attributes or name; the result is checked by the caller.
+    unsafe {
+        CreateWaitableTimerExW(
+            core::ptr::null_mut(),
+            core::ptr::null(),
+            CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+            TIMER_ALL_ACCESS,
+        )
+    }
+}
+
+/// Arms `timer` to signal once, `ns` nanoseconds from now (rounded to 100 ns, at least one).
+///
+/// # Safety
+/// `timer` came from [`precise_timer_create`] and is open.
+pub unsafe fn precise_timer_set(timer: *mut c_void, ns: i64) {
+    // A negative due time is relative, in 100 ns units.
+    let due = -(ns / 100).max(1);
+    // SAFETY: `due` is a live local; no completion routine.
+    unsafe {
+        SetWaitableTimer(
+            timer,
+            &due,
+            0,
+            core::ptr::null_mut(),
+            core::ptr::null_mut(),
+            0,
+        )
+    };
+}
+
+/// Disarms `timer`; a signal that already happened stays.
+///
+/// # Safety
+/// `timer` came from [`precise_timer_create`] and is open.
+pub unsafe fn precise_timer_cancel(timer: *mut c_void) {
+    // SAFETY: forwarded from the caller.
+    unsafe { CancelWaitableTimer(timer) };
+}
+
+/// Like [`register_wait`], but the wait stays registered and runs `callback(context)` every time
+/// `object` signals, until [`unregister_wait`].
+///
+/// # Safety
+/// `object` stays open until the wait is unregistered.
+pub unsafe fn register_repeating_wait(
+    object: *mut c_void,
+    callback: unsafe extern "system" fn(*mut c_void, u8),
+    context: *mut c_void,
+) -> *mut c_void {
+    const WT_EXECUTEDEFAULT: DWORD = 0;
+    let mut wait: HANDLE = core::ptr::null_mut();
+    // SAFETY: `wait` is writable; the caller keeps `object` open.
+    let ok = unsafe {
+        RegisterWaitForSingleObject(
+            &mut wait,
+            object,
+            callback,
+            context,
+            INFINITE,
+            WT_EXECUTEDEFAULT,
+        )
+    };
+    if ok == 0 { core::ptr::null_mut() } else { wait }
 }

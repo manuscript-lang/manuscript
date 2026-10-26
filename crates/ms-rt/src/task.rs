@@ -1818,7 +1818,6 @@ mod tests {
     /// A timer shorter than a millisecond must not wait a whole one (the poll timeout used to
     /// round up): 100 sleeps of 100 us take about 10 ms, and at least 100 ms when rounded up.
     #[test]
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[cfg_attr(miri, ignore = "context switches use inline assembly")]
     fn sleeps_shorter_than_a_millisecond_are_not_rounded_up() {
         let _g = lock();

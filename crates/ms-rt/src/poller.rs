@@ -288,6 +288,60 @@ mod imp {
         signals: Arc<Signals>,
         /// Pipes whose readiness wakes the task waiting on another key instead, by handle.
         groups: HashMap<usize, usize>,
+        /// Wakes an idle wait at a timer deadline, which the poll's millisecond timeout cannot.
+        timer: Option<PreciseTimer>,
+    }
+
+    /// A high-resolution timer whose signal wakes the poller (see `wait`).
+    struct PreciseTimer {
+        handle: usize,
+        wait: usize,
+        /// The `Arc<Waker>` the wait callback was given, to free after the wait ends.
+        context: *mut Arc<Waker>,
+    }
+
+    unsafe extern "system" fn timer_fired(context: *mut core::ffi::c_void, _: u8) {
+        // SAFETY: the context lives until the wait is unregistered, which blocks on this callback.
+        let waker = unsafe { &*(context as *const Arc<Waker>) };
+        let _ = waker.wake();
+    }
+
+    impl PreciseTimer {
+        fn open(waker: &Arc<Waker>) -> Option<PreciseTimer> {
+            let handle = crate::sys::precise_timer_create();
+            if handle.is_null() {
+                return None;
+            }
+            let context = Box::into_raw(Box::new(waker.clone()));
+            // SAFETY: the timer stays open until `Drop` unregisters the wait.
+            let wait =
+                unsafe { crate::sys::register_repeating_wait(handle, timer_fired, context.cast()) };
+            if wait.is_null() {
+                // SAFETY: the context was never shared; the handle is ours.
+                unsafe {
+                    drop(Box::from_raw(context));
+                    crate::sys::close_handle(handle);
+                }
+                return None;
+            }
+            Some(PreciseTimer {
+                handle: handle as usize,
+                wait: wait as usize,
+                context,
+            })
+        }
+    }
+
+    impl Drop for PreciseTimer {
+        fn drop(&mut self) {
+            // SAFETY: the wait and timer are ours; unregistering returns after a running
+            // callback, so the context is no longer used.
+            unsafe {
+                crate::sys::unregister_wait(self.wait as *mut _);
+                crate::sys::close_handle(self.handle as *mut _);
+                drop(Box::from_raw(self.context));
+            }
+        }
     }
 
     crate::isolate_static! {
@@ -333,6 +387,7 @@ mod imp {
                 pipes: HashMap::new(),
                 objects: HashMap::new(),
                 groups: HashMap::new(),
+                timer: PreciseTimer::open(&waker),
             };
             Ok((state, waker))
         };
@@ -536,9 +591,24 @@ mod imp {
 
     pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
-        // The completion port waits in whole milliseconds, rounded up.
+        // The completion port waits in whole milliseconds, rounded up, and on the system tick
+        // unless the process raised its resolution. A high-resolution timer wakes the wait at
+        // the deadline; the poll timeout is only a bound.
         let timeout = (timeout_ns >= 0).then(|| Duration::from_nanos(timeout_ns as u64));
-        if s.poll.poll(&mut s.events, timeout).is_err() {
+        let armed = match &s.timer {
+            Some(t) if timeout_ns > 0 => {
+                // SAFETY: the timer is open for as long as the state.
+                unsafe { crate::sys::precise_timer_set(t.handle as *mut _, timeout_ns) };
+                Some(t.handle)
+            }
+            _ => None,
+        };
+        let polled = s.poll.poll(&mut s.events, timeout);
+        if let Some(handle) = armed {
+            // SAFETY: as above. A wake for another reason must not leave a stale signal behind.
+            unsafe { crate::sys::precise_timer_cancel(handle as *mut _) };
+        }
+        if polled.is_err() {
             fault::fault(b"I/O poller failed");
         }
         let mut count = 0;
