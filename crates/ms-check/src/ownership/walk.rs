@@ -1949,11 +1949,18 @@ impl Walker<'_> {
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error_fix(
-                e.pos,
-                format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
-                insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
-            );
+            if b.ty.kind == Kind::Function {
+                self.error(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed"),
+                );
+            } else {
+                self.error_fix(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                );
+            }
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
         self.mark_mutated(b.uid);
@@ -2419,11 +2426,18 @@ impl Walker<'_> {
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error_fix_opt(
-                e.pos,
-                format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
-                copy_after(e),
-            );
+            if b.ty.kind == Kind::Function {
+                self.error(
+                    e.pos,
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `def` instead"),
+                );
+            } else {
+                self.error_fix_opt(
+                    e.pos,
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
+                    copy_after(e),
+                );
+            }
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
         self.record(e.id, b, Access::Move);
