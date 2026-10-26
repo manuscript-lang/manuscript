@@ -161,8 +161,10 @@ struct Sched {
     /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length, whose guard it has.
     pool: Vec<(usize, usize)>,
     /// Unused aligned stack slots of the last reservation: next slot address and the end.
+    #[cfg(unix)]
     carve: (usize, usize),
     /// How many slots the next reservation holds; doubles up to `CARVE_MAX`.
+    #[cfg(unix)]
     carve_batch: usize,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
@@ -195,7 +197,9 @@ crate::isolate_static! {
     fd_waiting: 0,
     epfd: -1,
     pool: Vec::new(),
+    #[cfg(unix)]
     carve: (0, 0),
+    #[cfg(unix)]
     carve_batch: 1,
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
@@ -1727,8 +1731,18 @@ pub fn teardown() {
         }
         // The isolate's pool owns mappings too. Its thread-local state has no destructor,
         // so a worker that exits must release the cached stacks as well as active ones.
-        for base in core::mem::take(&mut s.pool) {
-            stack::destroy(base as *mut u8, DEFAULT_STACK);
+        for (base, len) in core::mem::take(&mut s.pool) {
+            stack::destroy(base as *mut u8, len);
+        }
+        #[cfg(unix)]
+        {
+            // Slots reserved in a batch and never handed out.
+            let (mut next, end) = core::mem::take(&mut s.carve);
+            while next < end {
+                stack::destroy(next as *mut u8, DEFAULT_STACK);
+                next += STACK_SLOT;
+            }
+            s.carve_batch = 1;
         }
         s.cur = null_mut();
         s.main = null_mut();
@@ -1849,7 +1863,7 @@ mod tests {
                 "the completed stack must enter the pool"
             );
             teardown();
-            for base in pooled {
+            for (base, _) in pooled {
                 let mut resident = 0u8;
                 // Querying an unmapped address fails; no access to its contents is made.
                 assert_eq!(
