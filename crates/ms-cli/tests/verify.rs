@@ -3,6 +3,40 @@
 use std::process::Command;
 
 #[test]
+fn dash_prefixed_target_reaches_every_verification_step() {
+    let root = std::env::temp_dir().join(format!("ms-cli-verify-dash-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(
+        root.join("-input.ms"),
+        "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&root)
+        .args(["verify", "--json", "--", "-input.ms"])
+        .output()
+        .unwrap();
+    let stdout = std::str::from_utf8(&output.stdout).unwrap();
+    assert!(
+        output.status.success(),
+        "{stdout}\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let document = ms_json::parse(stdout).unwrap();
+    assert_eq!(document.get("ok").unwrap().as_bool(), Some(true));
+    let steps = document.get("steps").unwrap().as_array().unwrap();
+    assert_eq!(steps.len(), 4);
+    for (step, name) in steps.iter().zip(["check", "fmt", "lint", "test"]) {
+        assert_eq!(step.get("name").unwrap().as_str(), Some(name));
+        assert_eq!(step.get("status").unwrap().as_str(), Some("passed"));
+        assert_eq!(step.get("exit_code").unwrap().as_i64(), Some(0));
+    }
+    let summary = steps[3].get("result").unwrap().get("summary").unwrap();
+    assert_eq!(summary.get("passed").unwrap().as_i64(), Some(1));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn no_test_succeeds_only_when_source_checks_pass() {
     let root = std::env::temp_dir().join(format!("ms-cli-verify-{}", std::process::id()));
     std::fs::create_dir_all(&root).unwrap();
