@@ -176,6 +176,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `any(predicate: Callable[[K, V], Bool]) -> Bool`; `all` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) -> Unit`; `remove(key: K) -> Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
+| `Map[K, V]` | `update(key: K, initial: V, change: Callable[[V], V]) -> Unit` stores `change` applied to the stored value, or to `initial` when absent (`counts.update(word, 0, lambda n: n + 1)`); needs `var m` and a cloneable key |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
 | `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
