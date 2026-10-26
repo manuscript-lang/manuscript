@@ -55,7 +55,7 @@ test "interface values of different types are unequal":
     try expect_false(a.equals(1))
 
     let order: Comparable = Version(1)
-    try expect_equal(order.compare(2), 0)
+    try expect_true(order.compare(Version(3)) < 0)
 
 test "keys use the custom equality":
     let keys = {CustomerKey(1, "a"): "first"}

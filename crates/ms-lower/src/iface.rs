@@ -182,7 +182,7 @@ impl Cx {
             };
             let mut call_args = vec![recv];
             // A `Self` argument is an interface value holding the implementing type: another type
-            // has no answer (`False`, or `0` for an order) and the same type passes its data.
+            // is unequal (`False`) and has no order (a fault) and the same type passes its data.
             for (i, arg) in args[1..].iter().enumerate() {
                 if !s.self_params.get(i).copied().unwrap_or(false) {
                     call_args.push(*arg);
@@ -199,11 +199,10 @@ impl Cx {
                 if s.ret == MTy::BOOL {
                     let no = b.bconst(false);
                     b.ret(Some(no));
-                } else if s.ret == MTy::INT {
-                    let zero = b.iconst(0);
-                    b.ret(Some(zero));
                 } else {
-                    b.fault(ms_mir::ir::FaultKind::Unreachable);
+                    // An order between different types would contradict `equals`.
+                    let msg = b.m.add_string("compared values of different types");
+                    b.fault(ms_mir::ir::FaultKind::Message(msg));
                 }
                 b.switch_to(same);
                 let data = b
@@ -280,7 +279,7 @@ impl Cx {
     }
 
     /// `compare` of a built-in scalar: the sign of the order against another value of the same
-    /// type, and `0` against any other type.
+    /// type; another type faults.
     fn scalar_compare(
         &mut self,
         m: &mut Module,
@@ -312,8 +311,8 @@ impl Cx {
         b.seal_block(same);
         b.seal_block(differ);
         b.switch_to(differ);
-        let zero = b.iconst(0);
-        b.ret(Some(zero));
+        let msg = b.m.add_string("compared values of different types");
+        b.fault(ms_mir::ir::FaultKind::Message(msg));
         b.switch_to(same);
         let a = b
             .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
@@ -665,8 +664,8 @@ fn builtin_compare(m: &Module, t: MTy) -> Option<&'static str> {
     }
 }
 
-/// `compare(other)` of a built-in type: the sign of the comparison, or `0` when `other` holds
-/// another type.
+/// `compare(other)` of a built-in type: the sign of the comparison; a value of
+/// another type faults.
 fn build_builtin_compare(
     m: &mut Module,
     sig: &ms_mir::types::MethodSig,
@@ -701,7 +700,8 @@ fn build_builtin_compare(
     b.seal_block(same);
     b.seal_block(other);
     b.switch_to(other);
-    b.ret(Some(zero));
+    let msg = b.m.add_string("compared values of different types");
+    b.fault(ms_mir::ir::FaultKind::Message(msg));
     b.switch_to(same);
     let me = b
         .emit(Op::Load, &[args[0]], Imm::Ty(data_ty), Some(data_ty))
