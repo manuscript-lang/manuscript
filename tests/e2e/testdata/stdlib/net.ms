@@ -1,5 +1,6 @@
 from "@std/testing.ms" import expect_equal, expect_error, expect_false
-from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily, Listener, Connection
+from "@std/bytes.ms" import Bytes
+from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, DatagramSocket, DnsKind, NetworkError, IpFamily, Listener, Connection
 from "@std/shared.ms" import Shared, share
 from "@std/tasks.ms" import TaskGroup
 from "@std/time.ms" import sleep
@@ -143,3 +144,62 @@ test "two tasks read one connection":
 
         client.close()
         shared.get().close()
+
+# Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
+def answer_mx(socket: Shared[DatagramSocket]) -> Result[Int, NetworkError]:
+    let query = try socket.get().receive(512, 2.seconds)
+    let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
+    let header = Bytes(
+        [query.data.get(0), query.data.get(1), 129, 128, 0, 1, 0, 1, 0, 0, 0, 0]
+    )
+    let record = Bytes([192, 12, 0, 15, 0, 1, 0, 0, 0, 0, 0, 21, 0, 10])
+    let name = Bytes(
+        [
+            4, 109, 97, 105, 108, 7, 101, 120, 97, 109, 112, 108, 101, 4, 116, 101, 115,
+            116, 0
+        ]
+    )
+    (
+        try socket.get().send_bytes(
+            header.concat(question).concat(record).concat(name), query.sender, 2.seconds
+        )
+    )
+    return ok(1)
+
+test "resolve returns typed DNS records from the configured resolver":
+    let net = network()
+    let one = try net.resolve("127.0.0.1", DnsKind.A, none, 2.seconds)
+    try expect_equal(one.length(), 1)
+    try expect_equal(one[0].value, "127.0.0.1")
+    try expect_equal(one[0].kind.text(), "A")
+
+    let server: Shared[DatagramSocket] = share(try net.bind_datagram("127.0.0.1:0"))
+    let derived = try net.with_resolver(server.get().address())
+
+    with let group = TaskGroup[Int]():
+        let socket = server
+        group.spawn(lambda ch: answer_mx(socket).get(0))
+
+        let mx = try derived.resolve("example.test", DnsKind.MX, none, 2.seconds)
+        try expect_equal(mx.length(), 1)
+        try expect_equal(mx[0].kind.text(), "MX")
+        try expect_equal(mx[0].priority, 10)
+        try expect_equal(mx[0].value, "mail.example.test.")
+
+        let answered = try group.results()
+        try expect_equal(answered[0], 1)
+
+test "an empty host listens on every interface, with or without IPv6":
+    let net = network()
+
+    with let listener = try net.listen(":0"):
+        let parts = listener.address().split(":")
+        let port = parts[parts.length() - 1]
+
+        with let client = try net.connect(f"127.0.0.1:{port}", 2.seconds):
+            with let server = try listener.accept(2.seconds):
+                try client.write("hi", 2.seconds)
+                try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
+
+    with let socket = try net.bind_datagram(":0"):
+        try expect_false(socket.address().is_empty())

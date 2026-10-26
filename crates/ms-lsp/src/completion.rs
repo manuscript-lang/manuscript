@@ -938,7 +938,7 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         active = index;
     }
     let result = t.result.as_ref().map(|r| r.to_string()).unwrap_or_default();
-    let label = format!("{name}({}) {result}", labels.join(", "));
+    let label = format!("{name}({}) -> {result}", labels.join(", "));
     let mut documentation = Json::Null;
     if let (Some(module), ms_syntax::ast::ExprKind::Call { callee, .. }) = (&a.module, &call.kind) {
         let files = DeclFiles::new(&a.result.source_modules());

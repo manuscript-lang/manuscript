@@ -221,6 +221,12 @@ impl Checker {
                     return (true, false);
                 };
                 self.m().facts_mut().assigned.insert(value.id, b.clone());
+                // A write-only assignment still captures the variable.
+                if b.function != self.function
+                    && let Some(captured) = self.captures.get_mut(&self.function)
+                {
+                    captured.insert(b.uid, b.clone());
+                }
                 if !b.mutable {
                     self.type_error(
                         s.pos,
@@ -806,7 +812,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "non-exhaustive match; missing cases: {}, or add a final '_' arm; add the arms {}",
+                    "non-exhaustive match; missing cases: {}, or add a final 'case _:' arm; add the arms {}",
                     list(&missing_cases(&all_cases, &seen), 12),
                     missing_arms(&all_cases, &seen)
                 ),
@@ -847,7 +853,7 @@ impl Checker {
             } else {
                 self.type_error(
                     arm.pos,
-                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final '_' arm; to bind or compare computed values use if/else"),
+                    format!("a match on {t} takes literal arms such as 1, \"text\" or true, and a final 'case _:' arm; to bind or compare computed values use if/else"),
                 );
             }
             if !arm.bindings.is_empty() {
@@ -864,7 +870,7 @@ impl Checker {
         if !covered {
             self.type_error(
                 pos,
-                format!("non-exhaustive match on {t}; add a final '_' arm"),
+                format!("non-exhaustive match on {t}; add a final 'case _:' arm"),
             );
         }
         (!info.no_return && fall, info.breaks || breaks)

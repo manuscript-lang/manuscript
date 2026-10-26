@@ -1731,6 +1731,10 @@ pub(crate) mod tests {
         assert!(run(b"GET / HTTP/1.1\r\n\r\n").starts_with("HTTP/1.1 400 Bad Request"));
         assert!(run(b"POST /echo HTTP/1.1\r\nHost: t\r\nContent-Length: 10\r\nConnection: close\r\n\r\n0123456789").starts_with("HTTP/1.1 413"));
         assert!(run(b"POST /echo HTTP/1.1\r\nHost: t\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n8\r\n12345678\r\n0\r\n\r\n").starts_with("HTTP/1.1 413"));
+        assert!(run(b"POST /echo HTTP/1.1\r\nHost: t\r\nTransfer-Encoding: chunked\r\n\r\nZZ\r\nab\r\n0\r\n\r\n").starts_with("HTTP/1.1 400"));
+        assert!(run(b"POST /echo HTTP/1.1\r\nHost: t\r\nTransfer-Encoding: chunked\r\n\r\n3\nabc\n0\n\n").starts_with("HTTP/1.1 400"));
+        assert!(run(b"POST /echo HTTP/1.1\r\nHost: t\r\nContent-Length: 3\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n").starts_with("HTTP/1.1 400"));
+        assert!(run(b"GET / HTTP/1.1\nHost: t\n\n").starts_with("HTTP/1.1 400"));
         assert!(run(b"GET /a%2Fb HTTP/1.1\r\nHost: t\r\n\r\n").starts_with("HTTP/1.1 400"));
         assert!(run(b"GET /%ff HTTP/1.1\r\nHost: t\r\n\r\n").contains("invalid UTF-8 URL"));
         assert!(

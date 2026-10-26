@@ -2,6 +2,7 @@
 
 use crate::checker::Checker;
 use crate::hints::*;
+use crate::inference::inference_type_known;
 use crate::stdlib;
 use crate::syntax::*;
 use crate::types::*;
@@ -675,6 +676,7 @@ impl Checker {
         if let Some(exp) = expected
             && exp.is_std("List")
             && exp.args.len() == 1
+            && inference_type_known(&exp.args[0], &self.inference_variables)
         {
             element = Some(exp.args[0].clone());
         }
@@ -723,6 +725,8 @@ impl Checker {
         if let Some(exp) = expected
             && exp.is_std("Map")
             && exp.args.len() == 2
+            && inference_type_known(&exp.args[0], &self.inference_variables)
+            && inference_type_known(&exp.args[1], &self.inference_variables)
         {
             types[0] = Some(exp.args[0].clone());
             types[1] = Some(exp.args[1].clone());

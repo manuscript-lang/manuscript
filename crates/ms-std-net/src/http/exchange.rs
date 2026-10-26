@@ -29,6 +29,8 @@ pub(super) struct ExSt {
     pub remaining_read: usize,
     /// A read ran past the body limit; a handler failing with no response out answers 413.
     pub body_over_limit: bool,
+    /// The request body is not valid chunked framing.
+    pub body_malformed: bool,
     pub remaining_write: usize,
     pub expect_continue: bool,
     pub minor: u8,
@@ -96,6 +98,7 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             decoded: Vec::new(),
             remaining_read: server.limits.body,
             body_over_limit: false,
+            body_malformed: false,
             remaining_write: server.limits.response,
             expect_continue,
             minor: head.minor,
@@ -267,7 +270,10 @@ impl Exchange {
                     st.decoded = out;
                     match fed {
                         Ok((used, _)) => conn.consume(used),
-                        Err(m) => return Err(IoErr::failed(m)),
+                        Err(m) => {
+                            st.body_malformed = true;
+                            return Err(IoErr::failed(m));
+                        }
                     }
                     if !st.decoded.is_empty() || st.decoder.is_done() {
                         continue;
@@ -615,7 +621,11 @@ impl Exchange {
         } else if failed {
             if !head_written {
                 let over = self.st.borrow().body_over_limit;
-                if over && !(late || cancelled) {
+                let malformed = self.st.borrow().body_malformed;
+                if malformed && !(late || cancelled) {
+                    server::error_bytes(&mut out, reactor, 400, "malformed request body", true);
+                    close = true;
+                } else if over && !(late || cancelled) {
                     server::error_bytes(
                         &mut out,
                         reactor,

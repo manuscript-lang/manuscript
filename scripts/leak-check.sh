@@ -51,7 +51,8 @@ swept=0
 leaks=0
 for file in "$@"; do
     file=$(CDPATH='' cd -- "$(dirname -- "$file")" && pwd)/$(basename -- "$file")
-    count=$(cd "$scratch" && $limit "$ms" run "$file" </dev/null 2>&1 >/dev/null | sed -n 's/^ms-rt live blocks at exit: //p' || true)
+    count=$(cd "$scratch" && $limit "$ms" run "$file" </dev/null 2>&1 >/dev/null | sed -n 's/^ms-rt live blocks at exit: //p' | awk '{ total += $1 } END { if (NR) print total }' || true)
+    # A program that starts child processes prints one count per process; their sum is what leaked.
     [ -n "$count" ] || continue
     swept=$((swept + 1))
     if [ "$count" != 0 ]; then

@@ -15,7 +15,7 @@ def fail() -> Result[Int, TextError]:
     return error(TextError("boom"))
 def use() -> Unit:
     fail()
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	27	65	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	18	94	unknown binding TextError; add: from "@std/core.ms" import TextErrorfrom "@std/net.ms" import network
 from "@std/http.ms" import HttpResponse
@@ -26,7 +26,7 @@ def use() -> Unit:
         shared.add(key: 1, value: 2)
         return panic("unreached")
     )
-resolution	3	30	103	module does not export panic; unknown standard module @std/faults.ms
+resolution	3	30	103	unknown standard module @std/faults.ms
 resolution	8	16	314	unknown binding panic; add: from "@std/core.ms" import panic
 type	6	68	228	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpExchange], HttpResponse] (in argument 'handler' of serve)# Doubles a number.
 export def double(value: Int) -> Int:
@@ -192,7 +192,7 @@ export def main() -> Int:
 test "arithmetic":
     if not (2 + 3 == 5):
         return panic(message: "arithmetic failed")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	5	16	95	unknown binding panic; add: from "@std/core.ms" import panicfn value%d(x: Int) Int: return x + 1
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'export def value() -> Int: return 3
 export def other() -> Int: return 4
@@ -211,7 +211,7 @@ type	5	12	74	expected String, found Int (in the return value); Int does not conv
 from "@std/faults.ms" import panic
 test "never execute":
     return panic("check executed code")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	3	12	68	unknown binding panic; add: from "@std/core.ms" import panictest "valid":
     let n = 1
 
@@ -342,7 +342,7 @@ test "list":
     let values = [1, 2]
     if not (values.length() == 2):
         return panic(message: "check failed")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	6	16	123	unknown binding panic; add: from "@std/core.ms" import panicinterface Read[T]:
     def get() -> Int
 type Pair[A, B]:
@@ -370,7 +370,7 @@ impl Read for Box[Callable[[Int], Int]]:
 test "opaque":
     let queue = Queue[Int](capacity: 1)
     let capacity = queue.capacity
-resolution	1	30	29	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	30	29	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	3	17	66	unknown binding Queue; add: from "@std/queue.ms" import Queueinterface Same[V]:
     def same(other: V) -> Bool
 type Box[T: Equal]:
@@ -470,8 +470,8 @@ fn old(value: Read & Equal) Unit:
     let resource = Closeable(value: queue)parse	2	5	40	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfrom "@std/queues.ms" import Queue
 from "@std/cleanup.ms" import Closeable
 def invalid() -> Unit: ...
-    resolution	1	30	29	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	31	65	module does not export Closeable; unknown standard module @std/cleanup.msfrom "@std/faults.ms" import panic
+    resolution	1	30	29	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	31	65	unknown standard module @std/cleanup.msfrom "@std/faults.ms" import panic
 
 def positive(value: Int) -> Int:
     if value > 0:
@@ -488,7 +488,7 @@ test "return contracts":
         return panic("check failed")
 
     discard(1)
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	7	9	126	unknown binding panic; add: from "@std/core.ms" import panic
 type	3	1	36	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)
 resolution	11	16	232	unknown binding panic; add: from "@std/core.ms" import panic
@@ -503,7 +503,7 @@ def returned_failure() -> Int:
 def endless() -> Int:
     while True:
         continue
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	4	28	98	unknown binding panic; add: from "@std/core.ms" import panic
 type	3	1	36	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
 resolution	7	12	176	unknown binding panic; add: from "@std/core.ms" import panicdef optional(value: Int = 1) -> Int: return value
@@ -529,7 +529,7 @@ def call(x: Optional[Int]) -> Int:
 type	1	31	30	arithmetic requires numeric operandsdef f(x: Optional[Int]) -> Int:
     return match x:
         case some(n): n
-type	2	12	43	non-exhaustive match; missing cases: none, or add a final '_' arm; add the arms 'none:'def f(x: Optional[Int]) -> Unit:
+type	2	12	43	non-exhaustive match; missing cases: none, or add a final 'case _:' arm; add the arms 'case none:'def f(x: Optional[Int]) -> Unit:
     let y = match x:
         case some(n): n
         case none: "missing"
@@ -578,7 +578,7 @@ def explicit() -> Unit:
 type Override:
     received: Bool
 impl FileSystem for Override:
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	4	6	74	unknown type FileSystem; add: from "@std/fs.ms" import FileSystemtest "filesystem concrete overrides and interface defaults":
     let item = Override(False)
     let view = FileSystem(item)
@@ -832,7 +832,7 @@ def forward[T](item: T) -> T: item
 from "@std/faults.ms" import panic
 export def main() -> Int:
     return panic(message: "profile failure")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import duration, sleep
 from "@std/io.ms" import stdout
 export def main() -> Int:
@@ -924,7 +924,7 @@ def first() -> Unit:
 from "@std/errors.ms" import TextError
 def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 def first() -> Result[Int, Missing]: fail("empty")
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	43	81	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	28	146	unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it
 resolution	2	61	99	unknown binding TextError; add: from "@std/core.ms" import TextErrortype Failure:
@@ -1102,12 +1102,12 @@ def f() -> Int:
 def f() -> Int:
     panic = 2
     return 0
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	3	5	55	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/queues.ms" import Queue
 def f(q: Queue[Int]) -> Int:
     q.capacity = 5
     return q.capacity
-resolution	1	30	29	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	30	29	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	2	10	44	unknown type Queue; add: from "@std/queue.ms" import Queue
 type	3	7	70	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'interface I:
     def n() -> Int
@@ -1325,7 +1325,7 @@ def f(s: S) -> Int:
         case A:
             return 1
     return 0
-type	6	5	65	non-exhaustive match; missing cases: B, C, or add a final '_' arm; add the arms 'B:', 'C:'def f() -> Int:
+type	6	5	65	non-exhaustive match; missing cases: B, C, or add a final 'case _:' arm; add the arms 'case B:', 'case C:'def f() -> Int:
     return "a" + 1
 type	2	16	31	operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f"{value}", or convert between Int and Float)def f(o: Optional[Int]) -> Int:
     match o:
@@ -1364,7 +1364,7 @@ def f() -> Int:
 type	3	12	41	x is not a function (it has type Int); only functions and methods can be called, so remove the (...) or call a function insteadfrom "@std/faults.ms" import nope
 def f() -> Unit:
     return
-resolution	1	30	29	module does not export nope; unknown standard module @std/faults.msdef f() -> Int:
+resolution	1	30	29	unknown standard module @std/faults.msdef f() -> Int:
     let x: Int = 3.5
     let y = x + 1
     return y
@@ -1372,7 +1372,7 @@ def f() -> Unit:
 def f() -> Int:
     let q = PriorityQueue(compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0)
     return 0
-resolution	1	30	29	module does not export PriorityQueue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	30	29	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	3	13	71	unknown binding PriorityQueue; add: from "@std/queue.ms" import PriorityQueuetype Choice[T]:
     case Found(value: T)
     case Missing
@@ -1442,7 +1442,7 @@ def f() -> Int:
     with let x = mk():
         return 1
     return 0
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	1	31	30	unknown standard module @std/cleanup.ms
 resolution	4	6	64	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	10	5	197	with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'export type MoneyError:
     case Invalid
@@ -1463,7 +1463,7 @@ impl Missing for S:
     return resultparse	2	5	55	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfrom "@std/errors.ms" import TextError
 def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 def first() -> Result[Int, TextError]: ...
-    resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+    resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	43	81	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	28	146	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	2	61	99	unknown binding TextError; add: from "@std/core.ms" import TextErrordef collect[T, U](items: List[T], step: Callable[[T], Result[List[U], MissingError]]) -> Result[List[U], MissingError]:
@@ -1477,7 +1477,7 @@ resolution	4	88	258	unknown type MissingError; declare it with 'type MissingErro
 type	5	26	311	expected Int, found String (in the initializer of 'unrelated')from "@std/errors.ms" import TextError
 def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 def first() -> Result[Int, TextError]: fail[Int]("empty")
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	43	81	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	28	146	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	2	61	99	unknown binding TextError; add: from "@std/core.ms" import TextErrordef convert[T, U](value: T) -> Optional[U]: none
@@ -1928,7 +1928,7 @@ interface Read:
     def get() -> Int
 impl Read for Box[Int]:
     def get() -> Int: self.value
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	4	49	253	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	4	75	279	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	30	332	unknown type TextError; add: from "@std/core.ms" import TextErrorlet value = result(fn():
@@ -1971,7 +1971,7 @@ def wrong() -> Unit:
 resolution	3	35	98	unknown or non-nullary alternative case Sha257 of HashAlgorithm; cases: Md5, Sha1, Sha224, Sha256, Sha384, Sha3_256, Sha3_384, Sha3_512, Sha512 (cases with payloads need call syntax)from "@std/compress.ms" import CompressionFormat
 def wrong() -> Unit:
     let format = CompressionFormat.GZip
-resolution	1	32	31	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	1	32	31	unknown standard module @std/compress.ms
 resolution	3	18	87	unknown binding CompressionFormat; add: from "@std/archive.ms" import CompressionFormatfrom "@std/archive.ms" import ArchiveFormat
 def wrong() -> Unit:
     let format = ArchiveFormat.TAR
@@ -1986,7 +1986,7 @@ def choose(algorithm: HashAlgorithm) -> Unit:
     return ()
 def wrong() -> Unit:
     choose(CompressionFormat.Gzip)
-resolution	2	32	74	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	2	32	74	unknown standard module @std/compress.ms
 resolution	6	12	184	unknown binding CompressionFormat; add: from "@std/archive.ms" import CompressionFormattype Other:
     case OutOfRange
 def other() -> Other: Other.OutOfRange
@@ -2000,9 +2000,9 @@ from "@std/bytes.ms" import Bytes
 def bytes() -> Bytes: Bytes([1])
 def build() -> List[Int]: ListBuilder[Int]().freeze()
 def text_error(message: String) -> TextError: TextError(message)
-resolution	2	30	132	module does not export ErrorCategory; unknown standard module @std/errors.ms
-resolution	2	45	147	module does not export TextError; unknown standard module @std/errors.ms
-resolution	2	56	158	module does not export category; unknown standard module @std/errors.ms
+resolution	2	30	132	unknown standard module @std/errors.ms
+resolution	2	45	147	unknown standard module @std/errors.ms
+resolution	2	56	158	unknown standard module @std/errors.ms
 resolution	6	36	323	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	46	279	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
 resolution	6	47	334	unknown binding TextError; did you mean 'text_error'?type Other:
@@ -2051,9 +2051,9 @@ def get() -> Other: Missing(1)
 resolution	3	21	61	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingfrom "@std/compress.ms" import compress, CompressionFormat, CompressionError
 from "@std/bytes.ms" import Bytes
 def forward[T](item: T) -> T: item
-resolution	1	32	31	module does not export compress; unknown standard module @std/compress.ms
-resolution	1	42	41	module does not export CompressionFormat; unknown standard module @std/compress.ms
-resolution	1	61	60	module does not export CompressionError; unknown standard module @std/compress.mslet encode = forward(compress)
+resolution	1	32	31	unknown standard module @std/compress.ms
+resolution	1	42	41	unknown standard module @std/compress.ms
+resolution	1	61	60	unknown standard module @std/compress.mslet encode = forward(compress)
     encode("".to_bytes(), "gzip")parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = compress
     encode("".to_bytes(), "gzip")parse	2	5	129	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode = forward(CompressionFormat.Gzip.compress)
     encode("".to_bytes())parse	2	5	58	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = CompressionFormat.Gzip.compress
@@ -2066,8 +2066,8 @@ def explicit() -> Unit:
     CompressionFormat.Gzip.compress(data, 6)
     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
-resolution	1	32	31	module does not export compress; unknown standard module @std/compress.ms
-resolution	1	42	41	module does not export CompressionFormat; unknown standard module @std/compress.ms
+resolution	1	32	31	unknown standard module @std/compress.ms
+resolution	1	42	41	unknown standard module @std/compress.ms
 resolution	4	5	116	unknown binding compress; add: from "@std/archive.ms" import compress
 resolution	5	5	146	unknown binding compress; add: from "@std/archive.ms" import compress
 resolution	6	5	193	unknown binding compress; add: from "@std/archive.ms" import compress
@@ -2108,8 +2108,8 @@ type Failure:
 impl Error for Failure:
     def message() -> String: self.detail
 def consume(value: Optional[Int]) -> Unit: return
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
-resolution	2	30	68	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
+resolution	2	30	68	unknown standard module @std/faults.ms
 resolution	3	43	116	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	61	134	unknown binding TextError; add: from "@std/core.ms" import TextError
 resolution	10	34	520	unknown binding panic; add: from "@std/core.ms" import panicdef first() -> Unit:
@@ -2359,7 +2359,7 @@ impl Closeable for Box[T]:
         return
 export def loaded() -> Int:
     return 1
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	1	31	30	unknown standard module @std/cleanup.ms
 resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
     def get() -> Int:
         return 0
@@ -2515,7 +2515,7 @@ type Val:
 impl Read for Val:
     def get() -> Int:
         return self.val
-resolution	3	30	91	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?def f(value: Val) -> Unit:
+resolution	3	30	91	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?def f(value: Val) -> Unit:
     value.val = True
 resolution	1	14	13	unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	37	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'def f(value: Val) -> Unit:
@@ -2842,7 +2842,7 @@ type	2	9	24	recursive generic applications must preserve their parameters in I.f
 def value(expr: Expr) -> Int:
     match expr:
         case Num(value): return value
-type	5	5	108	non-exhaustive match; missing cases: Add, or add a final '_' arm; add the arms 'Add(left, right):'def compare(left: Node, right: Node) -> Bool: return left == right
+type	5	5	108	non-exhaustive match; missing cases: Add, or add a final 'case _:' arm; add the arms 'case Add(left, right):'def compare(left: Node, right: Node) -> Bool: return left == right
 resolution	1	19	18	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it
 resolution	1	32	31	unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import ittype Pair:
     left: Int
@@ -2883,8 +2883,8 @@ def optional[T](r: Optional[Result[T, Error]]) -> Unit: return
 def convert[T, U](r: Result[T, Error]) -> Optional[U]: none
 def apply[T, U](r: Result[T, Error], callback: Callable[[T], U]) -> U: callback(h(r))
 def exact[T, E: Error](r: Result[T, E]) -> Result[T, E]: r
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
-resolution	2	30	68	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
+resolution	2	30	68	unknown standard module @std/faults.ms
 resolution	23	31	627	unknown binding panic; did you mean 'pair'?def first() -> Int:
     let r: Result[Int, Error] = f()
     return h(r)resolution	2	33	52	unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module
@@ -3019,13 +3019,13 @@ fn tail(value: Result[parse	2	23	61	unterminated delimiter '[' opened at line 2
 def tail(value: Result[Int, TextError]) -> Result[Int, TextError]:
     let output = try value
     return ok(output)
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	29	67	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	2	56	94	unknown type TextError; add: from "@std/core.ms" import TextErrorfrom "@std/errors.ms" import TextError
 def tail(value: Result[Int, TextError]) -> Result[Int, Error]:
     let output = try value
     return ok(output)
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	29	67	unknown type TextError; add: from "@std/core.ms" import TextError.ms"
 fn check() Unit:
     let decoded = parse(text: "a: 1")
@@ -3265,7 +3265,7 @@ let NAMES: List[String] = ["a"]
     match command:
         case "réport": return 1
     return 0
-type	2	5	35	non-exhaustive match on String; add a final '_' armfn f(r: Result[Optional[Int], String]) Int:
+type	2	5	35	non-exhaustive match on String; add a final 'case _:' armfn f(r: Result[Optional[Int], String]) Int:
     match r:
         ok(some(n)): return n
     return 0
@@ -3398,7 +3398,7 @@ fn g() Int: return 1
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'def f(a: Int) -> Int:
     match a:
         case 1: return 2
-type	2	5	26	non-exhaustive match on Int; add a final '_' armdef f(a: List[Int]) -> Unit:
+type	2	5	26	non-exhaustive match on Int; add a final 'case _:' armdef f(a: List[Int]) -> Unit:
     a[0] = 1
 type	2	5	33	cannot change `a`: parameter `a` is not declared var; write `var a: <Type>` in the signature and pass `var` at every callfn f() Int:
     for i, x in [1]:
@@ -3515,7 +3515,7 @@ test "bad":
 test "text":
     if not (f"{1}" == "1"):
         return panic(message: "check failed")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	5	16	92	unknown binding panic; add: from "@std/core.ms" import panictype Item:
     value: Int
 def use(value: Int) -> Unit:
@@ -3802,7 +3802,7 @@ impl Read for Box:
     def read(value: Int = choose(8)) -> Int:
         return choose(9)
 resolution	4	14	132	unknown type Array; declare it with 'type Array:' / 'interface Array:', declare it as a type parameter, or import it
-type	6	14	190	a match on Int takes literal arms such as 1, "text" or true, and a final '_' arm; to bind or compare computed values use if/elsedef choose(value: Int) -> Int:
+type	6	14	190	a match on Int takes literal arms such as 1, "text" or true, and a final 'case _:' arm; to bind or compare computed values use if/elsedef choose(value: Int) -> Int:
     return value
 def collect(fallback: Int = choose(1)) -> String:
     let callbacks = [
@@ -3878,7 +3878,7 @@ from "@std/http.ms" import HttpResponse, HttpServerOptions
 from "@std/faults.ms" import panic
 def run() -> Unit:
     let values = [0]
-resolution	3	30	122	module does not export panic; unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
+resolution	3	30	122	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -3899,7 +3899,7 @@ def named(state: Queue[Int], value: Int = read(state)) -> Int:
 def nested(state: Queue[Int]) -> Unit:
     let callback = lambda (value: Int = read(state)) -> Int:
         return value
-resolution	1	30	29	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	30	29	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	2	17	51	unknown type Queue; add: from "@std/queue.ms" import Queue
 resolution	4	18	114	unknown type Queue; add: from "@std/queue.ms" import Queue
 resolution	6	19	195	unknown type Queue; add: from "@std/queue.ms" import Queuediff --git a/src/a.ms b/src/a.ms
@@ -3969,8 +3969,8 @@ def nested(resource: Resource) -> Unit:
 
 def indirect(callback: Callable[[], Unit]) -> Unit:
     callback()
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
-resolution	2	30	69	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	31	30	unknown standard module @std/cleanup.ms
+resolution	2	30	69	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	5	12	102	unknown type Queue; add: from "@std/queue.ms" import Queue
 resolution	7	6	119	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	15	5	275	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
@@ -5191,7 +5191,7 @@ def length(values: List[Int]) -> Int:
     return values.length()
 def os_name() -> String:
     return system().info().os
-resolution	2	30	75	module does not export system; unknown standard module @std/system.ms; did you mean '@std/bytes.ms'?
+resolution	2	30	75	unknown standard module @std/system.ms; did you mean '@std/bytes.ms'?
 resolution	6	12	183	unknown binding system; add: from "@std/process.ms" import systemdef label(value: Int) -> String:
     return f"{value}"
 test "methods":
@@ -5244,7 +5244,7 @@ def pairs(values: Map[String, Int]) -> List[MapEntry[String, Int]]: values.entri
 def cut(values: List[Int]) -> Result[List[Int], CollectionError]: values.slice(0, 1)
 from "@std/errors.ms" import MissingValue # keep
 def first(values: List[Int]) -> Result[Int, MissingValue]: values.first().ok_or()
-resolution	1	30	29	module does not export MissingValue; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	45	93	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationfrom "@std/collections.ms" import List # keep
 def count() -> Int: List[Int]().length()
 resolution	1	35	34	redundant prelude import List; remove List from this import and use its prelude declaration directlyfrom "@std/collections.ms" import ListBuilder, List
@@ -5611,7 +5611,7 @@ export def run() -> Int:
 from "@std/errors.ms" import TextError
 export def load(n: Int) -> Result[Int, TextError]:
     return ok(n)
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	40	78	unknown type TextError; add: from "@std/core.ms" import TextErrorexport def load(n: Int) -> Result[Int, Error]:
     return ok(n)
 def one() -> Int:
@@ -5673,7 +5673,7 @@ test "fails":
 
 test "after":
     return ()
-resolution	2	30	69	module does not export panic; unknown standard module @std/faults.ms
+resolution	2	30	69	unknown standard module @std/faults.ms
 resolution	9	12	234	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/faults.ms" import panic
 from "@std/fs.ms" import filesystem
 export def other() -> Int: return 4
@@ -5683,7 +5683,7 @@ test "source":
         if data.length() != 7: return panic("wrong fixture size")
     else:
         return panic("library fixture cwd changed")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	5	29	150	unknown binding panic; add: from "@std/core.ms" import panic
 resolution	7	39	287	unknown binding panic; add: from "@std/core.ms" import panic
 resolution	9	16	340	unknown binding panic; add: from "@std/core.ms" import panicimport {parse, CsvOptions} from "@std/csv.ms"
@@ -5800,7 +5800,7 @@ type Resource:
 impl Closeable for Resource:
     def close() -> Unit:
         self.visits.append(1)
-resolution	2	31	73	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	2	31	73	unknown standard module @std/cleanup.ms
 resolution	5	6	125	unknown type Closeable; add: from "@std/core.ms" import Closeablefn %s(visits: List[Int], scoped: Bool) String:
     let b = StringBuilder()
     var i = 0
@@ -5966,7 +5966,7 @@ export def main() -> Int:
     let value: Optional[Int] = none
     let result = value.ok_or_else(crash)
     return 0
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	16	54	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	3	12	76	unknown binding TextError; add: from "@std/core.ms" import TextErrorfrom "@std/cleanup.ms" import Closeable
 type AggregateResource:
@@ -5987,7 +5987,7 @@ impl AggregateCounter for AggregateCell:
         self.total -= by
         return self.total
 def identity[T](value: T) -> T: return value
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	1	31	30	unknown standard module @std/cleanup.ms
 resolution	4	6	91	unknown type Closeable; add: from "@std/core.ms" import Closeablefn %s(visits: List[Int], scoped: Bool) Int:
     %s
     var i = %d
@@ -6028,7 +6028,7 @@ type Resource:
 impl Closeable for Resource:
     def close() -> Unit:
         self.visits.append(1)
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	1	31	30	unknown standard module @std/cleanup.ms
 resolution	4	6	82	unknown type Closeable; add: from "@std/core.ms" import Closeablefn probe%d(visits: List[Int]) Int:
     var sum = 0
     var i = %d
@@ -6165,7 +6165,7 @@ def chain(n: Int) -> Result[Int, TextError]:
     return ok(value)
 export def main() -> Int:
     return chain(9223372036854775807).get()
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	36	74	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	6	34	198	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	4	22	121	unknown binding TextError; add: from "@std/core.ms" import TextErrorinterface Counter:
@@ -6213,28 +6213,28 @@ def deep(value: Result[Int, TextError]) -> Int:
     return value.get()
 export def main() -> Int:
     return deep(error(TextError("expected failure")))
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	29	67	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	23	158	unknown binding TextError; add: from "@std/core.ms" import TextErrorfrom "@std/errors.ms" import TextError
 export def main() -> Int:
     let value: Result[Int, TextError] = ok(0)
     let extract = value.err
     return extract().text.scalar_length()
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	3	28	92	unknown type TextError; add: from "@std/core.ms" import TextErrorfrom "@std/errors.ms" import TextError
 def crash(value: Int) -> Int:
     return 1 / value
 export def main() -> Int:
     let value: Result[Int, TextError] = ok(0)
     return value.map(crash).get()
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	5	28	143	unknown type TextError; add: from "@std/core.ms" import TextErrorfrom "@std/errors.ms" import TextError
 def crash(cause: TextError) -> Int:
     return 1 / 0
 export def main() -> Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))
     return value.or_else(crash)
-resolution	1	30	29	module does not export TextError; unknown standard module @std/errors.ms
+resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	18	56	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	28	145	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	47	164	unknown binding TextError; add: from "@std/core.ms" import TextErrordef crash(key: String, value: Int) -> Bool:
@@ -6261,7 +6261,7 @@ test "several checks":
     let good = 2 + 3
     if good == 5:
         panic("last check failed")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	5	9	105	unknown binding panic; add: from "@std/core.ms" import panicdef zero() -> Int:
     return 0
 export def main() -> Int:
@@ -6379,7 +6379,7 @@ def discard(value: Int) -> Unit:
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
     discard(value: 1) | try expect_equal(expected: ())
-resolution	2	30	72	module does not export panic; unknown standard module @std/faults.ms
+resolution	2	30	72	unknown standard module @std/faults.ms
 resolution	8	9	169	unknown binding panic; add: from "@std/core.ms" import panic
 type	4	1	79	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/testing.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
@@ -6409,14 +6409,14 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-resolution	2	30	89	module does not export panic; unknown standard module @std/faults.ms
+resolution	2	30	89	unknown standard module @std/faults.ms
 resolution	5	27	157	unknown binding panic; add: from "@std/core.ms" import panic
 type	4	1	96	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
 resolution	8	12	244	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/testing.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(lambda: panic("boom")), "boom")
-resolution	2	30	89	module does not export panic; unknown standard module @std/faults.ms
+resolution	2	30	89	unknown standard module @std/faults.ms
 resolution	4	50	192	unknown binding panic; add: from "@std/core.ms" import panicinterface Read:
     def read() -> Int
 type Reader:
@@ -6472,7 +6472,7 @@ def run() -> Int:
 
 test "fault":
     run()
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	4	44	97	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/cleanup.ms" import Closeable
 type Count:
     total: Int
@@ -6501,7 +6501,7 @@ export def main() -> Int:
         i += 1
     if sum != 2033: return 4
     return 0
-resolution	1	31	30	module does not export Closeable; unknown standard module @std/cleanup.ms
+resolution	1	31	30	unknown standard module @std/cleanup.ms
 resolution	13	16	301	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	6	6	101	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	10	5	213	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Watch has none, so add 'impl Closeable for Watch:' with var def close() -> Unit
@@ -6670,9 +6670,9 @@ export def main() -> Int:
 from "@std/queues.ms" import Queue, PriorityQueue
 from "@std/bigint.ms" import from_int
 def compare(left: Int, right: Int) -> Int: left - right
-resolution	2	30	77	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	37	84	module does not export PriorityQueue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	30	127	module does not export from_int; unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
+resolution	2	30	77	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	37	84	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	3	30	127	unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
@@ -6709,12 +6709,12 @@ resolution	25	32	564	unknown or ambiguous member remove on Unit; this type has n
 
 export def main() -> Int:
     return panic("check must not execute main")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	4	12	73	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/faults.ms" import panic
 
 test "check must not execute tests":
     return panic("check must not execute tests")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
+resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	4	12	84	unknown binding panic; add: from "@std/core.ms" import panicdef number() -> Int: return 1
 type Node:
     next: Optional[Node]
@@ -6794,9 +6794,9 @@ test "negative replace limit faults":
 
 test "runner continues with fresh roots after faults":
     emit("fresh root after stdlib faults\n")
-resolution	1	30	29	module does not export panic; unknown standard module @std/faults.ms
-resolution	2	31	65	module does not export Closeable; unknown standard module @std/cleanup.ms
-resolution	4	30	150	module does not export Queue; unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	1	30	29	unknown standard module @std/faults.ms
+resolution	2	31	65	unknown standard module @std/cleanup.ms
+resolution	4	30	150	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
 resolution	14	6	365	unknown type Closeable; add: from "@std/core.ms" import Closeable
 type	19	5	526	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
 resolution	20	16	581	unknown binding panic; add: from "@std/core.ms" import panic
@@ -6838,7 +6838,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-resolution	3	30	127	module does not export panic; unknown standard module @std/faults.msfrom "@std/testing.ms" import TestHooks, expect_equal
+resolution	3	30	127	unknown standard module @std/faults.msfrom "@std/testing.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 def println(message: String) -> Unit:
     let written = stdout().write(f"{message}\n").get()

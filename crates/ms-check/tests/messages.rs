@@ -48,7 +48,7 @@ fn match_and_member_errors_list_the_fix() {
     let got = first_message(
         "type S:\n    case A\n    case B(x: Int)\ndef f(s: S) -> Int:\n    match s:\n        case A:\n            return 1\nexport def main() -> Int:\n    return 0\n",
     );
-    assert!(got.ends_with("add the arms 'B(x):'"), "{got}");
+    assert!(got.ends_with("add the arms 'case B(x):'"), "{got}");
     let got = first_message(
         "export def main() -> Int:\n    let m = Map[String, Int]()\n    m.set(1, 2)\n    return 0\n",
     );
