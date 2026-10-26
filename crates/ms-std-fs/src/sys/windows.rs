@@ -144,6 +144,8 @@ pub fn fstat(file: &File) -> io::Result<Stat> {
 
 /// `hostos.StatFS`: sizes of the volume holding `path`.
 pub fn statfs(path: &CPath) -> Result<FsStat, Errno> {
+    // The volume call accepts a missing path, so check the path itself exists first.
+    std::fs::metadata(path.path()).map_err(|e| code(&e))?;
     let full = std::path::absolute(path.path()).map_err(|e| code(&e))?;
     let Some(Component::Prefix(prefix)) = full.components().next() else {
         return Err(EINVAL);
