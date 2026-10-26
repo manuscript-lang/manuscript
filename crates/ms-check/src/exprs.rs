@@ -1104,6 +1104,7 @@ impl Checker {
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
+                self.constant_arithmetic(e, op, left, right, &common);
                 if op == BinaryOp::Rem && !integer(&common) && !common.is_std("BigInt") {
                     self.type_error(
                         e.pos,

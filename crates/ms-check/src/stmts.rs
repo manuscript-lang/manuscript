@@ -1256,6 +1256,7 @@ impl Checker {
             return info;
         }
         if list {
+            self.constant_index(e, left, right);
             info.ty = Some(rt.args[0].clone());
         } else if map {
             info.ty = Some(rt.args[1].clone());

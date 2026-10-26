@@ -4,7 +4,7 @@
 from "@std/core.ms" import TextError
 
 def crash() -> TextError:
-    return TextError((1 / 0).to_string())
+    return TextError((1 / "".byte_length()).to_string())
 
 export def main() -> Int:
     let value: Optional[Int] = none

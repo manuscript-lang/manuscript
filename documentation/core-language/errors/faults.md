@@ -34,6 +34,16 @@ panic("Required invariant was violated.")
 
 A fault aborts the current operation after cleanup.
 
+## Faults the checker rejects
+
+When constant operands make a fault certain, `ms check` reports an error instead of leaving it for run time:
+
+- Integer `+ - * / %` over literals whose result leaves the operand type's range (`9223372036854775807 + 1`).
+- Integer `/` or `%` by a constant zero (`n / 0`, `n % (2 - 2)`).
+- A constant index outside a list literal (`[1, 2][2]`; negative indexes count from the end, so `[1, 2][-3]` is outside too).
+
+Only literals and arithmetic over literals are folded. Values that arrive through bindings, parameters, or calls are checked at run time. To demonstrate a fault in a test, make the operand a runtime value.
+
 ## Runaway recursion
 
 - Recursion is limited by stack size, not by a call count: recursion may use up to 256 MiB of stack, so small frames allow millions of nested calls. When the stack runs out, the fault is `stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead`, with the innermost source frames. It unwinds, runs cleanup, and fails only the current test.

@@ -418,3 +418,55 @@ fn generic_callback_arity_mismatch_keeps_its_hint() {
         ]
     );
 }
+
+#[test]
+fn constant_faults_are_compile_errors() {
+    let cases = [
+        ("1 / 0", "division by zero always faults"),
+        ("7 % (2 - 2)", "division by zero always faults"),
+        ("9223372036854775807 + 1", "overflows Int and always faults"),
+        ("4611686018427387904 * 2", "overflows Int and always faults"),
+        (
+            "-9223372036854775807 - 2",
+            "overflows Int and always faults",
+        ),
+        (
+            "[1, 2][2]",
+            "index 2 is outside this list literal of 2 element(s)",
+        ),
+        (
+            "[1, 2][-3]",
+            "index -3 is outside this list literal of 2 element(s)",
+        ),
+    ];
+    for (expr, want) in cases {
+        let source = format!("export def main() -> Int:\n    return {expr}\n");
+        let got = first_message(&source);
+        assert!(got.contains(want), "{expr}: {got}");
+    }
+}
+
+#[test]
+fn in_range_constants_and_runtime_operands_are_accepted() {
+    for expr in [
+        "9223372036854775806 + 1",
+        "-9223372036854775808",
+        "[1, 2][-2]",
+        "[1, 2][1]",
+        "8 / 2 % 3",
+    ] {
+        let source = format!("export def main() -> Int:\n    return {expr}\n");
+        let file: Arc<str> = Arc::from("t.ms");
+        let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+        let program = ms_check::check(
+            vec![ms_check::load_module(&module)],
+            ImportMap::default(),
+            CheckOptions::default(),
+        );
+        assert!(
+            program.diagnostics.is_empty(),
+            "{expr}: {:?}",
+            program.diagnostics
+        );
+    }
+}
