@@ -28,7 +28,7 @@ case "$(uname -s)" in
 esac
 CARGO_TARGET_DIR="$stats_target" cargo build --release --locked -q -p ms-native --features ms-rt/stats ${target:+--target "$target"}
 cargo xtask runtime >/dev/null
-cargo build --release --locked -q -p ms-cli
+cargo build --release --locked -q -p ms-cli --target-dir "$repository/target"
 ms="$repository/target/release/ms"
 MS_RT_LIB="$stats_target/$release/libms_native.a"
 # `ms.exe` is a native program, which cannot read an MSYS path.

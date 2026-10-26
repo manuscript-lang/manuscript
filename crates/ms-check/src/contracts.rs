@@ -25,6 +25,19 @@ fn synthetic_id() -> NodeId {
     })
 }
 
+/// Whether an interface declares an operation with type parameters of its own. Such an operation
+/// dispatches statically, so the interface works as a bound but not as the type of a value.
+pub(crate) fn has_generic_operation(contract: &Ty) -> bool {
+    contract.def.as_ref().is_some_and(|d| {
+        d.operations.borrow().iter().any(|o| {
+            o.decl
+                .as_ref()
+                .and_then(|f| f.func())
+                .is_some_and(|f| !f.type_params.is_empty())
+        })
+    })
+}
+
 /// Visit state of a structural property query.
 #[derive(Default)]
 pub(crate) struct PropertyState {
@@ -306,6 +319,7 @@ impl Checker {
                     ),
                 );
             }
+            let own = self.method_variables(method);
             let mut t = (*self.signature(&method.func.params, Some(&method.func.result))).clone();
             let mut found = false;
             for op in &ops {
@@ -324,7 +338,27 @@ impl Checker {
                     }
                     t.defaults = Some(Rc::new(merged));
                 }
-                if !same(&Rc::new(t.clone()), &op.ty) {
+                let declared = stdlib::operation_variables(&format!("{}/{}", contract.id, op.name));
+                let renamed: Subst = declared
+                    .iter()
+                    .zip(&own)
+                    .map(|(d, o)| (d.id, o.clone()))
+                    .collect();
+                let bounds_match = declared.len() == own.len()
+                    && declared.iter().zip(&own).all(|(d, o)| {
+                        let (db, ob) = (d.bounds(), o.bounds());
+                        db.len() == ob.len()
+                            && db.iter().zip(&ob).all(|(x, y)| same(&sub(x, &renamed), y))
+                    });
+                if !bounds_match {
+                    self.type_error(
+                        method.pos,
+                        format!(
+                            "implementation operation type parameters do not match contract; {} must declare the type parameters of the interface operation, with the same bounds",
+                            method.func.name
+                        ),
+                    );
+                } else if !same(&Rc::new(t.clone()), &sub(&op.ty, &renamed)) {
                     self.type_error(
                         method.pos,
                         format!(
@@ -376,13 +410,16 @@ impl Checker {
                 receiver: receiver.clone(),
                 contract: Some(contract.clone()),
                 ty: Rc::new(t),
-                variables: vars.clone(),
+                variables: vars.iter().chain(&own).cloned().collect(),
                 decl: Some(FuncRef {
                     decl: d.clone(),
                     index: Some(index),
                 }),
                 native: n(""),
             };
+            for v in &own {
+                self.scope.types.borrow_mut().remove(&v.name);
+            }
             self.p.methods.push(Rc::new(m));
         }
         for op in &ops {
@@ -445,6 +482,33 @@ impl Checker {
         self.scope = old;
     }
 
+    /// Declares a method's own type parameters in the current scope.
+    fn method_variables(&mut self, method: &ms_syntax::ast::Method) -> Vec<Ty> {
+        let mut own: Vec<Ty> = Vec::new();
+        for param in &method.func.type_params {
+            if self.scope.types.borrow().contains_key(&param.name) {
+                self.type_error(
+                    param.pos,
+                    format!(
+                        "type parameter {} shadows a type parameter of the impl; choose a different name",
+                        param.name
+                    ),
+                );
+            }
+            let id = self.unique("typevar");
+            let v: Ty = Rc::new(Type::new(param.name, id, Kind::Variable));
+            own.push(v.clone());
+            self.scope.types.borrow_mut().insert(param.name, v);
+        }
+        for (i, param) in method.func.type_params.iter().enumerate() {
+            for bound in &param.bounds {
+                let t = self.resolve(Some(bound));
+                own[i].bounds.borrow_mut().push(t);
+            }
+        }
+        own
+    }
+
     /// Whether `receiver` implements `contract`.
     pub(crate) fn implements(&self, receiver: &Ty, contract: &Ty) -> bool {
         if receiver.id == contract.id {
@@ -466,7 +530,7 @@ impl Checker {
             let mut s = Subst::new();
             if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut s)
                 && same(&sub(mc, &s), contract)
-                && self.bounds_satisfied(&m.variables, &s)
+                && self.bounds_satisfied(m.split_variables().0, &s)
             {
                 return true;
             }
@@ -645,14 +709,16 @@ impl Checker {
                 continue;
             }
             let mut s = Subst::new();
-            if unify(&m.receiver, receiver, &variable_set(&m.variables), &mut s)
-                && self.bounds_satisfied(&m.variables, &s)
+            let (shared, own) = m.split_variables();
+            if unify(&m.receiver, receiver, &variable_set(shared), &mut s)
+                && self.bounds_satisfied(shared, &s)
             {
                 let mut r = (**m).clone();
                 r.ty = sub(&m.ty, &s);
                 r.contract = m.contract.as_ref().map(|c| sub(c, &s));
                 r.receiver = receiver.clone();
-                r.variables = Vec::new(); // Implementation variables are fixed by the receiver.
+                // Implementation variables are fixed by the receiver; the method's own stay open.
+                r.variables = own.to_vec();
                 result.push(Rc::new(r));
             }
         }
@@ -914,6 +980,7 @@ impl Checker {
     pub(crate) fn interface_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
         expected.kind == Kind::Contract
             && actual.kind != Kind::Contract
+            && !has_generic_operation(expected)
             && self.implements(actual, expected)
     }
 

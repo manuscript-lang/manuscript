@@ -1,0 +1,36 @@
+module "optional_int64"
+entry @main
+fn @convert(%x: int) -> int inline(never) {
+b0:
+  %o: opt<int> = inarrow.opt %x
+  %present: bool = opt.is_some %o
+  br_if %present, some(), none()
+some:
+  %v: int = opt.get %o
+  %wrong: bool = icmp.ne %v, %x
+  %code: int = b2i %wrong
+  ret %code
+none:
+  %bad: int = iconst 1
+  ret %bad
+}
+fn @main() -> int {
+b0:
+  %zero: int = iconst 0
+  %x0: int = iconst -9223372036854775808
+  %c0: int = call @convert(%x0)
+  %sum0: int = iadd %zero, %c0
+  %x1: int = iconst -1
+  %c1: int = call @convert(%x1)
+  %sum1: int = iadd %sum0, %c1
+  %x2: int = iconst 0
+  %c2: int = call @convert(%x2)
+  %sum2: int = iadd %sum1, %c2
+  %x3: int = iconst 1
+  %c3: int = call @convert(%x3)
+  %sum3: int = iadd %sum2, %c3
+  %x4: int = iconst 9223372036854775807
+  %c4: int = call @convert(%x4)
+  %sum4: int = iadd %sum3, %c4
+  ret %sum4
+}

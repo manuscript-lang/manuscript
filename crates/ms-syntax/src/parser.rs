@@ -962,12 +962,7 @@ impl<'a> Parser<'a> {
                         let mutating = self.take(Tok::Var);
                         self.need(Tok::Def)?;
                         let name = self.need(Tok::Name)?;
-                        methods.push(self.method_signature(
-                            name,
-                            contract.is_none(),
-                            true,
-                            mutating,
-                        )?);
+                        methods.push(self.method_signature(name, true, true, mutating)?);
                     }
                     self.need(Tok::Dedent)?;
                 }
@@ -1103,7 +1098,7 @@ impl<'a> Parser<'a> {
                     return self.fail(t, format!("a type declares only fields or cases; write its methods in an 'impl {name}{names}:' block, or implement an interface with 'impl <Interface> for {name}{names}:'"));
                 }
                 let mname = self.need(Tok::Name)?;
-                let m = self.method_signature(mname, false, false, mutating)?;
+                let m = self.method_signature(mname, true, false, mutating)?;
                 self.end()?;
                 methods.push(m);
             } else {

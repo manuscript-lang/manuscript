@@ -398,9 +398,10 @@ impl Stream {
         {
             let line = self.available()[..i].to_vec();
             self.consume(i + 1);
-            return finish_line(line).map(Some);
+            return finish_line(line, true).map(Some);
         }
         let mut b: Vec<u8> = Vec::new();
+        let mut terminated = false;
         loop {
             let mut chunk = self.take_pending();
             if chunk.is_empty() {
@@ -420,6 +421,7 @@ impl Stream {
                 if line_length(&b) >= max {
                     return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
                 }
+                terminated = true;
                 break;
             }
             b.extend_from_slice(&chunk);
@@ -427,7 +429,7 @@ impl Stream {
                 return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
             }
         }
-        finish_line(b).map(Some)
+        finish_line(b, terminated).map(Some)
     }
 }
 
@@ -467,8 +469,8 @@ fn line_length(line: &[u8]) -> u64 {
     }
 }
 
-fn finish_line(mut line: Vec<u8>) -> IoRes<Vec<u8>> {
-    if line.last() == Some(&b'\r') {
+fn finish_line(mut line: Vec<u8>, terminated: bool) -> IoRes<Vec<u8>> {
+    if terminated && line.last() == Some(&b'\r') {
         line.pop();
     }
     if core::str::from_utf8(&line).is_err() {
@@ -606,6 +608,21 @@ mod tests {
         {
             let mut f = Stream::open(b"/proc/self/status").unwrap();
             assert!(f.read(None).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn an_unterminated_carriage_return_is_line_content() {
+        for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
+            let (r, w) = pipe();
+            let mut input = Stream::new(r, true, b"pipe");
+            let mut output = Stream::new(w, true, b"pipe");
+            output.write(b"first\n").unwrap();
+            output.write(text).unwrap();
+            output.close().unwrap();
+            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
+            assert_eq!(input.read_line(None).unwrap().unwrap(), text);
+            assert_eq!(input.read_line(None).unwrap(), None);
         }
     }
 }

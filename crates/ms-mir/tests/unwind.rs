@@ -77,20 +77,67 @@ fn leaves_programs_without_tasks_alone() {
 }
 
 #[test]
-fn skips_calls_that_cannot_be_cancelled() {
+fn skips_instructions_that_cannot_be_cancelled_or_fault() {
     let body = r#"
 fn @main() -> int {
 b0:
   %s: str = str "held"
   %t: str = copy %s
-  %same: bool = call.rt @msrt_string_eq (%t, %s)
+  %a: int = iconst 2
+  %b: int = iadd %a, %a
   drop %t
-  ret
+  ret %b
 }
 "#;
-    let body = body.replace("ret\n", "%z: int = iconst 0\n  ret %z\n");
-    let (m, changed) = rewrite(&body, true);
+    let (m, changed) = rewrite(body, true);
     assert!(!changed, "{}", print_module(&m));
+}
+
+#[test]
+fn registers_an_owned_value_around_a_faulting_operation() {
+    let body = r#"
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  %a: int = iconst 2
+  %b: int = iadd.chk %a, %a
+  %c: int = iadd.chk %b, %a
+  drop %t
+  ret %c
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    // Both checked additions share one registration of the held string.
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(calls(&m, "main", "msrt_cleanup_discard"), 1);
+}
+
+#[test]
+fn registers_an_owned_value_before_an_explicit_fault() {
+    let body = r#"
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  fault index_out_of_range
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(calls(&m, "main", "msrt_cleanup_discard"), 0);
 }
 
 #[test]
@@ -148,4 +195,117 @@ b0:
     // registering it here too would drop it twice.
     assert!(!changed, "{}", print_module(&m));
     assert_eq!(count(&m, "hold", Op::CleanupPush), 0);
+}
+
+const LOOP_HOLDING_STRING: &str = r#"
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  %zero: int = iconst 0
+  br b1(%zero)
+b1(%i: int):
+  %ten: int = iconst 10
+  %more: bool = icmp.lt %i, %ten
+  br_if %more, b2(), b3()
+b2():
+  %one: int = iconst 1
+  %next: int = iadd.chk %i, %one
+  br b1(%next)
+b3():
+  drop %t
+  ret %i
+}
+"#;
+
+#[test]
+fn registers_a_value_held_across_a_loop_once() {
+    let (m, changed) = rewrite(LOOP_HOLDING_STRING, true);
+    assert!(changed, "{}", print_module(&m));
+    // One registration before the loop and one discard where it is left, none per iteration.
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(
+        calls(&m, "main", "msrt_cleanup_discard"),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    let in_loop = [2usize]
+        .iter()
+        .all(|b| f.blocks[*b].insts.iter().all(|i| i.op != Op::CleanupPush));
+    assert!(in_loop, "{}", print_module(&m));
+}
+
+#[test]
+fn keeps_per_iteration_windows_for_a_value_defined_in_the_loop() {
+    let body = r#"
+fn @main() -> int {
+b0:
+  %zero: int = iconst 0
+  br b1(%zero)
+b1(%i: int):
+  %ten: int = iconst 10
+  %more: bool = icmp.lt %i, %ten
+  br_if %more, b2(), b3()
+b2():
+  %s: str = str "held"
+  %t: str = copy %s
+  %one: int = iconst 1
+  %next: int = iadd.chk %i, %one
+  drop %t
+  br b1(%next)
+b3():
+  ret %i
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    assert!(
+        f.blocks[2].insts.iter().any(|i| i.op == Op::CleanupPush),
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn ends_a_shared_window_at_a_with_open() {
+    let body = r#"
+fn @close(%s: str) -> unit {
+b0:
+  %u: unit = unit
+  ret %u
+}
+
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  %w: str = str "with"
+  %v: str = copy %w
+  %a: int = iconst 2
+  %b: int = iadd.chk %a, %a
+  %h: int = cleanup.push @close %v
+  %c: int = iadd.chk %b, %a
+  cleanup.run %h
+  drop %v
+  drop %t
+  ret %c
+}
+"#;
+    let (m, changed) = rewrite(body, true);
+    assert!(changed, "{}", print_module(&m));
+    // Two windows around the checked additions: one discard must not pop the `with` entry.
+    assert_eq!(
+        calls(&m, "main", "msrt_cleanup_discard"),
+        2,
+        "{}",
+        print_module(&m)
+    );
 }

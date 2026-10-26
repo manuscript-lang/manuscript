@@ -826,6 +826,29 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn stat_and_glob_report_a_non_utf8_name_lossily() {
+        let root = scratch("s");
+        create_directory(&root, true).unwrap();
+        let bad = path::join(&root, b"bad\xff.dat");
+        let created = write_file(&bad, b"x", false);
+        if cfg!(target_os = "macos") {
+            // APFS only holds valid UTF-8 names, so the file cannot exist to be listed.
+            assert_eq!(created.unwrap_err().status, ms_rt_abi::STATUS_FAILED);
+            remove(&root, true).unwrap();
+            return;
+        }
+        created.unwrap();
+        assert_eq!(
+            stat(&bad, true).unwrap().name,
+            "bad\u{fffd}.dat".as_bytes().to_vec()
+        );
+        let found = crate::walk::glob(&root, b"*.dat", UNLIMITED).unwrap();
+        assert_eq!(found, ["bad\u{fffd}.dat".as_bytes().to_vec()]);
+        remove(&root, true).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn canonicalize_resolves_links() {
         let root = scratch("c");
         create_directory(&sub(&root, "real/inner"), true).unwrap();

@@ -114,6 +114,17 @@ impl Dispatch for Streamer {
                     return Ok(());
                 }
                 "/nobody" => return Ok(()),
+                "/whole" | "/whole-empty" => {
+                    let body = if ex.path() == "/whole" {
+                        &b"done"[..]
+                    } else {
+                        &[][..]
+                    };
+                    ex.send_response(200, &Headers::new(), body)?;
+                    assert_eq!(ex.write(b"extra"), Err(crate::error::IoErr::InvalidInput));
+                    assert_eq!(ex.write(b""), Err(crate::error::IoErr::InvalidInput));
+                    return Ok(());
+                }
                 _ => {}
             }
             ex.send_headers(200, &Headers::new())?;
@@ -317,6 +328,24 @@ fn big_window() -> Settings {
         connection_window: 4 << 20,
         ..Settings::default()
     }
+}
+
+#[test]
+fn whole_response_rejects_subsequent_writes() {
+    let (_net, server) = start(Box::new(Streamer), limits());
+    let addr = server.address().to_string();
+    let responses = with_client(move || {
+        let mut c = Client::connect(&addr, big_window());
+        ["/whole", "/whole-empty"].map(|path| {
+            let id = c.get(path);
+            c.response(id)
+        })
+    });
+    assert_eq!(responses[0].status, "200");
+    assert_eq!(responses[0].text(), "done");
+    assert_eq!(responses[0].header("content-length"), Some("4"));
+    assert_eq!(responses[1].status, "200");
+    assert!(responses[1].body.is_empty());
 }
 
 #[test]
