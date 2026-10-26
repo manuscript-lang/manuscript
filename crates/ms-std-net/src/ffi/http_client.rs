@@ -433,6 +433,17 @@ native! {
         chunk(b.read(max), out, &err)
     }
 
+    /// `HttpResponseBody.read_all()`: the rest of the body in one buffer.
+    fn msrt_http_body_read_all(
+        b: ObjRef<BodyH>,
+        out: Out<Vec<u8>>,
+        err: ErrOut,
+    ) -> Result<(), StatusCode> {
+        let data = report(b.read_all_bytes(), &err)?;
+        out.write(data);
+        Ok(())
+    }
+
     // ----------------------------------------------------------------- one-shot
 
     /// `Network.request(method, address, headers, body, max_response, timeout)`.

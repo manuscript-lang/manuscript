@@ -568,6 +568,7 @@ msrt_http_client_request_stream( c: *const Obj, method: *const StrVal, address: 
 msrt_http_body_close(b: *const Obj)
 msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
+msrt_http_body_read_all(b: *const Obj, out: *mut VecVal, err: *mut StrVal) -> u8
 msrt_net_network_request( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_request_bytes( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
