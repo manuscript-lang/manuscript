@@ -35,7 +35,7 @@ The payoff is visible in a server: the same HTTP service on Manuscript's standar
 
 ## Batteries included
 
-A language for agents has to cover what programs actually do without a package hunt. The standard library ships files, streams, processes, HTTP client and server, TCP, JSON and JSON streaming, CSV, TOML, YAML, HTML, time, crypto, random, regex, logging, decimal, semver, archives, sized numerics (`Int8` to `Int64`, `Float32`, packed in memory) and a test runner, all in `ms`. Most of it is written in Manuscript itself; Rust is reserved for small, general runtime primitives.
+A language for agents has to cover what programs actually do without a package hunt. The standard library ships files, streams, processes, HTTP client and server, TCP, JSON and JSON streaming, CSV, TOML, YAML, HTML, time, crypto, random, regex, logging, command-line parsing, decimal, semver, archives, sized numerics (`Int8` to `Int64`, `Float32`, packed in memory) and a test runner, all in `ms`. Most of it is written in Manuscript itself; Rust is reserved for small, general runtime primitives.
 
 It is also fast: `@std/json` parses and writes the standard documents at 1.2x to 3.4x the speed of V8 on our four-core Linux machine, from a small RPC message to writing `twitter.json`; on other hardware two rows have landed just under Node, so the honest range is about 0.9x to 3.4x ([JSON results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/json/results.md)).
 
