@@ -68,6 +68,9 @@ const GUARD: usize = 64 << 10;
 #[cfg(unix)]
 const HDR_PAGE: usize = 4096;
 const STACK_POOL: usize = 512;
+/// Most slots one address-space reservation holds (stack creation reserves in batches).
+#[cfg(unix)]
+const CARVE_MAX: usize = 16;
 /// Address space reserved for a task a group starts (committed lazily).
 const TASK_GROUP_STACK: usize = 16 << 20;
 const NO_DEADLINE: i64 = i64::MAX;
@@ -155,7 +158,12 @@ struct Sched {
     fd_waiters: Vec<Vec<u64>>,
     fd_waiting: usize,
     epfd: i32,
-    pool: Vec<usize>,
+    /// Idle stacks (base, length) kept for reuse; a stack is reused only for the same length, whose guard it has.
+    pool: Vec<(usize, usize)>,
+    /// Unused aligned stack slots of the last reservation: next slot address and the end.
+    carve: (usize, usize),
+    /// How many slots the next reservation holds; doubles up to `CARVE_MAX`.
+    carve_batch: usize,
     zombie_stack: (usize, usize),
     zombie_task: *mut Task,
     live: usize,
@@ -185,6 +193,8 @@ crate::isolate_static! {
     fd_waiting: 0,
     epfd: -1,
     pool: Vec::new(),
+    carve: (0, 0),
+    carve_batch: 1,
     zombie_stack: (0, 0),
     zombie_task: null_mut(),
     live: 0,
@@ -337,29 +347,53 @@ mod stack {
     /// below them and the header page at the slot's base; null on failure. Address space only:
     /// pages are committed as the stack grows.
     pub unsafe fn create(len: usize) -> *mut u8 {
-        let raw = sys::map_anon(2 * STACK_SLOT);
-        if raw.is_null() {
-            return raw;
+        let base = unsafe { take_slot() };
+        if base.is_null() {
+            return base;
         }
-        let start = raw as usize;
-        let base = start.next_multiple_of(STACK_SLOT);
-        let end = start + 2 * STACK_SLOT;
-        // SAFETY: trims the unaligned head and tail of the reservation and guards the gap
-        // between the header page and the stack, all inside the fresh mapping.
+        // SAFETY: guards the gap between the header page and the stack inside the slot.
         unsafe {
-            if base > start {
-                sys::unmap(start as *mut u8, base - start);
-            }
-            if end > base + STACK_SLOT {
-                sys::unmap((base + STACK_SLOT) as *mut u8, end - base - STACK_SLOT);
-            }
             let len = len.min(DEFAULT_STACK);
-            sys::guard(
-                (base + HDR_PAGE) as *mut u8,
-                STACK_SLOT - len + GUARD - HDR_PAGE,
-            );
+            sys::guard(base.add(HDR_PAGE), STACK_SLOT - len + GUARD - HDR_PAGE);
         }
-        base as *mut u8
+        base
+    }
+
+    /// The next aligned slot. Address space is reserved in batches that double up to
+    /// `CARVE_MAX`, so most stacks cost no `mmap` or trimming `munmap` of their own.
+    unsafe fn take_slot() -> *mut u8 {
+        let mut s = sched();
+        if s.carve.0 == s.carve.1 {
+            let mut count = s.carve_batch;
+            let mut raw = sys::map_anon((count + 1) * STACK_SLOT);
+            if raw.is_null() && count > 1 {
+                count = 1;
+                raw = sys::map_anon(2 * STACK_SLOT);
+            }
+            if raw.is_null() {
+                return raw;
+            }
+            let start = raw as usize;
+            let base = start.next_multiple_of(STACK_SLOT);
+            let end = start + (count + 1) * STACK_SLOT;
+            // SAFETY: trims the unaligned head and tail of the fresh reservation.
+            unsafe {
+                if base > start {
+                    sys::unmap(start as *mut u8, base - start);
+                }
+                if end > base + count * STACK_SLOT {
+                    sys::unmap(
+                        (base + count * STACK_SLOT) as *mut u8,
+                        end - base - count * STACK_SLOT,
+                    );
+                }
+            }
+            s.carve = (base, base + count * STACK_SLOT);
+            s.carve_batch = (s.carve_batch * 2).min(CARVE_MAX);
+        }
+        let slot = s.carve.0;
+        s.carve.0 += STACK_SLOT;
+        slot as *mut u8
     }
 
     pub unsafe fn destroy(base: *mut u8, _len: usize) {
@@ -532,10 +566,8 @@ unsafe fn ensure_init() -> *mut Task {
 
 unsafe fn alloc_stack(len: usize) -> *mut u8 {
     let mut s = sched();
-    if len == DEFAULT_STACK
-        && let Some(base) = s.pool.pop()
-    {
-        return base as *mut u8;
+    if let Some(at) = s.pool.iter().rposition(|&(_, pooled)| pooled == len) {
+        return s.pool.swap_remove(at).0 as *mut u8;
     }
     // SAFETY: the lowest pages of the fresh mapping become the guard.
     unsafe {
@@ -549,8 +581,8 @@ unsafe fn alloc_stack(len: usize) -> *mut u8 {
 
 unsafe fn release_stack(base: usize, len: usize) {
     let mut s = sched();
-    if stack::POOLED && len == DEFAULT_STACK && s.pool.len() < STACK_POOL {
-        s.pool.push(base);
+    if stack::POOLED && s.pool.len() < STACK_POOL {
+        s.pool.push((base, len));
         return;
     }
     // SAFETY: the stack came from `alloc_stack` and no task runs on it.
