@@ -1,0 +1,30 @@
+# conform: tags=stdlib-shared,stdlib-tasks,tier-io
+# conform: phase=run
+# conform: timeout=20
+from "@std/collections.ms" import range
+from "@std/io.ms" import stdout
+from "@std/shared.ms" import Shared, share
+from "@std/sync.ms" import lock
+from "@std/tasks.ms" import TaskGroup
+from "@std/time.ms" import duration, sleep
+
+def bump(box: Shared[Int], n: Int) -> Int:
+    for i in range(0, 50):
+        with var g = lock(box):
+            g.value = g.value + 1
+            sleep(duration(nanoseconds: 20000))
+
+    return n
+
+export def main() -> Int:
+    let box = share(0)
+
+    with let g = TaskGroup[Int]():
+        for n in range(0, 100):
+            let b = box
+            g.spawn(lambda ch: bump(b, n))
+
+        g.results()
+
+    stdout().write("total " + box.get().to_string() + "\n")
+    return 0
