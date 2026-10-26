@@ -787,7 +787,12 @@ impl Checker {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
                 if typ.is_none() && v.t().id != "Never" {
-                    typ = Some(required_type(&v.t()));
+                    let t = v.t();
+                    typ = Some(if t.kind == Kind::Function {
+                        required_type(&t)
+                    } else {
+                        t
+                    });
                 }
                 checked[at] = Some(v);
             }
