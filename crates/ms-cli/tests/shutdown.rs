@@ -196,7 +196,7 @@ export def main() -> Int:
         var w = group.spawn(long).get()
         stdout().write("joining\n").get()
         stdout().flush().get()
-        let outcome = w.join()
+        let outcome = w.wait()
         stdout().write(f"joined {outcome.is_ok()}\n").get()
     return 0
 "#;

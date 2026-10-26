@@ -16,8 +16,8 @@ interface ListFloatSum:
     def sum() -> Float
 
 impl ListFloatSum for List[Float]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+` in binary64 arithmetic; an empty list sums to 0.0.
+    # Example: `[1.5, 2.5].sum()` is `4.0`.
     def sum() -> Float:
         var total: Float = 0.0
         for x in self:
@@ -28,8 +28,7 @@ interface ListInt8Sum:
     def sum() -> Int8
 
 impl ListInt8Sum for List[Int8]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int8 overflow faults; an empty list sums to 0.
     def sum() -> Int8:
         var total: Int8 = 0
         for x in self:
@@ -40,8 +39,7 @@ interface ListInt16Sum:
     def sum() -> Int16
 
 impl ListInt16Sum for List[Int16]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int16 overflow faults; an empty list sums to 0.
     def sum() -> Int16:
         var total: Int16 = 0
         for x in self:
@@ -52,8 +50,7 @@ interface ListInt32Sum:
     def sum() -> Int32
 
 impl ListInt32Sum for List[Int32]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int32 overflow faults; an empty list sums to 0.
     def sum() -> Int32:
         var total: Int32 = 0
         for x in self:
@@ -64,8 +61,7 @@ interface ListFloat32Sum:
     def sum() -> Float32
 
 impl ListFloat32Sum for List[Float32]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+` in binary32 arithmetic; an empty list sums to 0.0.
     def sum() -> Float32:
         var total: Float32 = 0.0
         for x in self:

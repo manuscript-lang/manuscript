@@ -4,7 +4,7 @@ from "@std/testing.ms" import expect_equal, expect_error
 
 def report(reason: TaskError) -> String:
     match reason:
-        case Faulted(message): return message.split("\n").get(0).clone()
+        case Faulted(report): return report.split("\n").get(0).clone()
         case _: return reason.message()
 
 test "closing a faulted group does not replace a later wait report":

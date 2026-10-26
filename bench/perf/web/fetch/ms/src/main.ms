@@ -6,7 +6,7 @@ from "@std/tasks.ms" import TaskGroup
 from "@std/time.ms" import clock, duration
 
 def worker(url: String, nanos: Int) -> Int:
-    let f = fetcher().get()
+    var f = fetcher().get()
     let started = clock().now()
     var n = 0
 

@@ -138,7 +138,7 @@ impl Worker[In, Out]:
     # Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
-    var def join() -> Result[Unit, WorkerError]:
+    var def wait() -> Result[Unit, WorkerError]:
         with var held = lock(self.ended):
             if held.value.length() > 0:
                 return held.value[0].clone()
@@ -166,7 +166,7 @@ def outcome_of(report: String) -> Result[Unit, WorkerError]:
 
 # A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
 # Open a group with `with`: leaving the block cancels workers that are still running and waits for them.
-# Manuscript faults caught by the worker runtime are reported through `join` as `Faulted`.
+# Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
 # Worker threads are not a process-crash isolation boundary.
 export type WorkerGroup[In = Unit, Out = Unit]:
     # Internal state: the workers in start order, changed through the shared handle so the group works as a `with` binding.
@@ -202,4 +202,4 @@ impl Closeable for WorkerGroup[In, Out]:
         with var started = lock(self.workers):
             for index in range(0, started.value.length()):
                 started.value[index].cancel()
-                started.value[index].join()
+                started.value[index].wait()
