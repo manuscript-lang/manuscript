@@ -12,8 +12,8 @@ def main() -> Unit:
     let x = 1
     var (
         a = 10
-        b = lambda (x: Int) -> Int:
-            return x + 1
+        b = lambda (y: Int) -> Int:
+            return y + 1
     )
     let (
         c = 11

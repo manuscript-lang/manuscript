@@ -19,7 +19,7 @@ type Tok:
 def kind(t: Tok) -> Int:
     match t:
         case Num(v, s): return v.to_int64() + s.truncate_to_int().get(0)
-        case Word(t, k): return t.length() + k.to_int64()
+        case Word(text, k): return text.length() + k.to_int64()
         case End: return 0
 
 export def main() -> Int:

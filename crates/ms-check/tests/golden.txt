@@ -2996,7 +2996,8 @@ impl Error for Cause:
             sum += found
         i += 1
     return sum
-resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a moduledef probe() -> Int:
+resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a module
+type	5	16	95	binding found shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def probe() -> Int:
     var sum = 0
     var i = 0
     while i < 1000:
@@ -3999,7 +4000,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def helper() -> Int: 1
+type	10	21	139	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def helper() -> Int: 1
 
 let (
     A = 1
@@ -4018,7 +4019,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
+type	12	21	141	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
 def example() -> Int:
     return apply(
         transform: lambda (value: Int) -> Int:
@@ -5446,7 +5447,7 @@ def use[T](value: Result[Int, Failure[T]]) -> Int:
     match value:
         case error(NotFound): return 1
         case ok(value): return value
-interface Describe:
+type	9	14	242	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     def describe() -> String
 type State:
     case Ready

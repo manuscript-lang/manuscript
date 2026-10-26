@@ -11,4 +11,4 @@ impl Error for Failure[T]:
 def use[T](value: Result[Int, Failure[T]]) -> Int:
     match value:
         case error(NotFound): return 1
-        case ok(value): return value
+        case ok(inner): return inner

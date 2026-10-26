@@ -22,7 +22,7 @@ Parameters and return types are explicit; local annotations are optional.
 - Parameter names are unique and every parameter and result type is explicit, including `Unit`.
 - Signatures are collected before bodies are checked, so functions may call later declarations and recurse, including mutually.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
-- Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, and loop bodies open nested scopes that may shadow outer names.
+- Parameters live in the body's scope; a local cannot reuse a parameter name there. Branches, arms, loop bodies, and closures open nested scopes, which cannot reuse an enclosing local or parameter name.
 
 ## Argument names
 
