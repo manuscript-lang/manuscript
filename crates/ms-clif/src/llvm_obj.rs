@@ -53,6 +53,16 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         dir: dir.clone(),
         obj: obj.clone(),
     };
+    // LLVM 20 and later dropped the `Os` pipeline: it is `O2` with `optsize` on every function.
+    let sized;
+    let ir = if level == "s" {
+        sized = ir
+            .replace("attributes #0 = { ", "attributes #0 = { optsize ")
+            .replace("attributes #1 = { ", "attributes #1 = { optsize ");
+        &sized
+    } else {
+        ir
+    };
     std::fs::write(&ll, ir).map_err(|e| Error(e.to_string()))?;
     if std::env::var_os("MS_KEEP_LL").is_some() {
         let _ = std::fs::copy(&ll, "ms-keep.ll");
@@ -64,7 +74,7 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
     })?;
     // What `clang -O<level>` does for IR input: the default pipeline, then code generation.
     let (pipeline, codegen) = match level {
-        "s" => ("default<Os>", "-O2"),
+        "s" => ("default<O2>", "-O2"),
         _ => (&*format!("default<O{level}>"), &*format!("-O{level}")),
     };
     let bitcode = dir.join("m.bc");
