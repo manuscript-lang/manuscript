@@ -1,6 +1,6 @@
 from "@std/testing.ms" import expect_equal, expect_true
-from "@std/http.ms" import headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
-from "@std/io.ms" import read_all
+from "@std/http.ms" import from_io, headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
+from "@std/io.ms" import IoError, read_all
 from "@std/net.ms" import network
 from "@std/log.ms" import create, LogError, Transport
 from "@std/shared.ms" import Shared, share
@@ -148,6 +148,84 @@ test "a handler that sends nothing answers 204":
     var r = Router()
     r.route(HttpMethod.Get, "/n", lambda exchange, params: ok(())).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
+
+def small_reads(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    let first = try exchange.read(some(1)).map_error(from_io)
+    let second = try exchange.read(some(2)).map_error(from_io)
+    let end = try exchange.read(some(1)).map_error(from_io)
+    let a = first.get(Bytes([])).decode_utf8().get("")
+    let b = second.get(Bytes([])).decode_utf8().get("")
+    return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+
+test "in-process reads retain the unread body after a bounded chunk":
+    var r = Router()
+    try r.route(HttpMethod.Post, "/", small_reads)
+
+    let response = try r.call(
+        HttpRequest(
+            method: HttpMethod.Post, path: "/", query: "", headers: headers(),
+            body: "abc".to_bytes()
+        )
+    )
+    try expect_equal(body_of(response), "a|bc|true")
+
+def read_sizes(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    let limit = none if params.get("mode").get("") == "default" else some(100000)
+
+    let first = try exchange.read(limit).map_error(from_io)
+    let second = try exchange.read(limit).map_error(from_io)
+    let end = try exchange.read(limit).map_error(from_io)
+    let a = first.get(Bytes([])).length()
+    let b = second.get(Bytes([])).length()
+    return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+
+test "in-process reads cap default and explicit chunks at 65536 bytes":
+    var r = Router()
+    try r.route(HttpMethod.Post, "/:mode", read_sizes)
+
+    for mode in ["default", "explicit"]:
+        let response = try r.call(
+            HttpRequest(
+                method: HttpMethod.Post, path: f"/{mode}", query: "",
+                headers: headers(), body: "x".repeat(65537).get("").to_bytes()
+            )
+        )
+        try expect_equal(body_of(response), "65536|1|true")
+
+def read_empty(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    let first = try exchange.read().map_error(from_io)
+    let second = try exchange.read().map_error(from_io)
+    return reply(exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
+
+test "in-process reads report EOF immediately for an empty body":
+    var r = Router()
+    try r.route(HttpMethod.Get, "/", read_empty)
+    try expect_equal(body_of(try r.call(get("/"))), "true|true")
+
+def invalid_reads(
+    exchange: HttpExchange,
+    params: RouteParams
+) -> Result[Unit, HttpError]:
+    for limit in [0, -1]:
+        let read = exchange.read(some(limit))
+        if read.is_ok(): return error(HttpError.Failed("invalid read size accepted"))
+        if read.err() != IoError.InvalidInput: return error(
+            HttpError.Failed("wrong read error")
+        )
+
+    return small_reads(exchange, params)
+
+test "in-process reads reject nonpositive sizes without consuming input":
+    var r = Router()
+    try r.route(HttpMethod.Post, "/", invalid_reads)
+
+    let response = try r.call(
+        HttpRequest(
+            method: HttpMethod.Post, path: "/", query: "", headers: headers(),
+            body: "abc".to_bytes()
+        )
+    )
+    try expect_equal(body_of(response), "a|bc|true")
 
 test "the router serves over a socket":
     let handler = router().handler()
