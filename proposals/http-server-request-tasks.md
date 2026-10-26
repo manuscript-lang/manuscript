@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, 2026-10-25, against `a3e9e41a`. Direction (Chinmay, 2026-10-25): "move to the concurrency model? use task group at the very least and get rid of this custom stuff". Builds on `proposals/taskgroup.md` and `proposals/taskgroup-request-scopes.md` (contained faults #1327, `tasks.cancelled()` #1333).
+Implemented, 2026-10-26 (#1349, #1351, #1353, #1354). Proposed 2026-10-25 against `a3e9e41a`. Direction (Chinmay, 2026-10-25): "move to the concurrency model? use task group at the very least and get rid of this custom stuff". Builds on `proposals/taskgroup.md` and `proposals/taskgroup-request-scopes.md` (contained faults #1327, `tasks.cancelled()` #1333).
 
 ## Problem
 
