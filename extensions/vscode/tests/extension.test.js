@@ -9,7 +9,7 @@ test('editor commands pass argument arrays, discover projects, and require trust
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'manuscript editor '));
   const commands = new Map(), builds = [], terminals = [], errors = [], clientOptions = [];
   const dispose = { dispose() {} };
-  let started = false, stopped = false, provider, logSubscriptions = 0;
+  let started = false, stopped = false, provider, logSubscriptions = 0, canceled = false;
   const vscode = {
     workspace: {
       registerTextDocumentContentProvider: (scheme, value) => { assert.equal(scheme, "manuscript-stdlib"); provider = value; return dispose; },
@@ -31,7 +31,10 @@ test('editor commands pass argument arrays, discover projects, and require trust
         } : {}),
       }),
       showErrorMessage: message => errors.push(message),
-      showSaveDialog: async () => ({ fsPath: path.join(root, 'CPU profile.pprof') }),
+      showSaveDialog: async options => {
+        assert.equal(options.title, 'Save sampling profile (choose a new directory)');
+        return canceled ? undefined : { fsPath: path.join(root, 'profile capture') };
+      },
       createTerminal: options => { terminals.push(options); return { show() {} }; },
     },
     commands: { registerCommand: (name, callback) => { commands.set(name, callback); return dispose; } },
@@ -70,7 +73,12 @@ test('editor commands pass argument arrays, discover projects, and require trust
     assert.equal(logSubscriptions, 2);
     assert.equal(clientOptions[1].outputChannel, clientOptions[0].outputChannel);
     await commands.get('manuscript.profile')();
-    assert.deepEqual(terminals[0].shellArgs, ['run', path.join(root, 'ms.toml'), '--cpu-profile', path.join(root, 'CPU profile.pprof')]);
+    assert.deepEqual(terminals[0].shellArgs, ['profile', path.join(root, 'ms.toml'), '--out-dir', path.join(root, 'profile capture')]);
+    assert.equal(terminals[0].shellPath, '/compiler path/ms');
+    assert.equal(terminals[0].cwd, root);
+    canceled = true;
+    await commands.get('manuscript.profile')();
+    assert.equal(terminals.length, 1);
     vscode.workspace.isTrusted = false;
     await commands.get('manuscript.profile')();
     assert.equal(builds.length, 0); assert.equal(terminals.length, 1); assert.equal(errors.length, 1);
