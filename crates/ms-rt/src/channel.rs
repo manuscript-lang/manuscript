@@ -5,6 +5,157 @@
 use crate::task;
 use std::collections::{HashMap, VecDeque};
 
+use core::ptr::null_mut;
+use ms_rt_abi::{Closure, Obj};
+
+/// A group's weak list of live channel leases. Leases retain this tracker, never the reverse.
+#[repr(C)]
+pub struct ChannelGroup {
+    hdr: Obj,
+    first: *mut ChannelLease,
+    closed: bool,
+}
+
+/// Keeps a channel's close callback alive only while a group-end handle still exists.
+#[repr(C)]
+pub struct ChannelLease {
+    hdr: Obj,
+    group: *mut ChannelGroup,
+    previous: *mut ChannelLease,
+    next: *mut ChannelLease,
+    linked: bool,
+    close: *mut Closure,
+}
+
+unsafe fn unlink(lease: *mut ChannelLease) {
+    // SAFETY: the isolate owns this live or deferred-drop node and its retained group.
+    unsafe {
+        if !(*lease).linked {
+            return;
+        }
+        let (previous, next) = ((*lease).previous, (*lease).next);
+        if previous.is_null() {
+            (*(*lease).group).first = next;
+        } else {
+            (*previous).next = next;
+        }
+        if !next.is_null() {
+            (*next).previous = previous;
+        }
+        (*lease).linked = false;
+        (*lease).previous = null_mut();
+        (*lease).next = null_mut();
+    }
+}
+
+unsafe extern "C" fn drop_group(obj: *mut Obj) {
+    let group = obj.cast::<ChannelGroup>();
+    // SAFETY: every linked lease retains the group, so its final release has no children.
+    unsafe {
+        debug_assert!((*group).first.is_null());
+        crate::alloc::free(group.cast());
+    }
+}
+
+unsafe extern "C" fn drop_lease(obj: *mut Obj) {
+    let lease = obj.cast::<ChannelLease>();
+    // SAFETY: the final release owns this node; unlink before dropping anything reentrant.
+    unsafe {
+        unlink(lease);
+        crate::obj::release((*lease).close.cast());
+        crate::obj::release((*lease).group.cast());
+        crate::alloc::free(lease.cast());
+    }
+}
+
+unsafe fn close_channel(close: *mut Closure) {
+    if close.is_null() {
+        return;
+    }
+    // SAFETY: this owns the capture-free-argument closure; the private callback cannot suspend
+    // or unwind. It only closes private lanes after their tasks have completed cleanup.
+    unsafe {
+        let call: unsafe extern "C-unwind" fn(*mut Closure) = core::mem::transmute((*close).code);
+        call(close);
+        crate::obj::release(close.cast());
+    }
+}
+
+/// Creates the private channel tracker of a TaskGroup.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_channel_group_new() -> *mut ChannelGroup {
+    // SAFETY: a fresh object, initialized before being returned.
+    unsafe {
+        let group =
+            crate::obj::new_obj(size_of::<ChannelGroup>(), drop_group).cast::<ChannelGroup>();
+        (*group).first = null_mut();
+        (*group).closed = false;
+        group
+    }
+}
+
+/// Tracks a channel without retaining its lease from the group. Returns one owned lease.
+///
+/// # Safety
+/// Both arguments must be live on this isolate. `close` is the private, non-suspending,
+/// non-unwinding lane-close callback; it is retained until group close or final lease release.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_channel_group_add(
+    group: *mut ChannelGroup,
+    close: *mut Closure,
+) -> *mut ChannelLease {
+    // SAFETY: the caller lends live objects; the lease owns its new references.
+    unsafe {
+        crate::obj::retain(group.cast());
+        crate::obj::retain(close.cast());
+        let lease =
+            crate::obj::new_obj(size_of::<ChannelLease>(), drop_lease).cast::<ChannelLease>();
+        (*lease).group = group;
+        (*lease).previous = null_mut();
+        (*lease).next = null_mut();
+        (*lease).linked = false;
+        (*lease).close = close;
+        if (*group).closed {
+            (*lease).close = null_mut();
+            close_channel(close);
+            return lease;
+        }
+        let first = (*group).first;
+        (*lease).next = first;
+        (*lease).linked = true;
+        if !first.is_null() {
+            (*first).previous = lease;
+        }
+        (*group).first = lease;
+        lease
+    }
+}
+
+/// Closes every channel still handed out by the group, including collected task handles.
+///
+/// # Safety
+/// `group` must be live on this isolate. Its tasks have finished cleanup before this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_channel_group_close(group: *mut ChannelGroup) {
+    // SAFETY: the tracker and its callbacks belong to this isolate.
+    unsafe {
+        if (*group).closed {
+            return;
+        }
+        crate::obj::retain(group.cast());
+        (*group).closed = true;
+        while !(*group).first.is_null() {
+            let lease = (*group).first;
+            unlink(lease);
+            let close = core::mem::replace(&mut (*lease).close, null_mut());
+            // Do not retain or touch the lease again: its callback can drop it, and a deferred
+            // zero-count lease may already have its count word repurposed by Obj::drop_slow.
+            close_channel(close);
+        }
+        crate::obj::release(group.cast());
+    }
+}
+
 crate::isolate_static! {
     /// Tokens of tasks waiting on a key (the identity of something they wait for), oldest first.
     static WAIT_QUEUES: Option<HashMap<usize, VecDeque<i64>>> = None;
@@ -105,6 +256,204 @@ pub extern "C-unwind" fn msrt_channel_post(token: i64) {
 mod tests {
     use super::*;
     use crate::testutil::lock;
+
+    #[repr(C)]
+    struct TestClose {
+        closure: Closure,
+        called: *mut usize,
+        dropped: *mut usize,
+        release: [*mut Obj; 3],
+        reenter: *mut ChannelGroup,
+    }
+
+    unsafe extern "C" fn drop_test_close(obj: *mut Obj) {
+        // SAFETY: each test keeps the counter alive until its closures are released.
+        unsafe {
+            *(*obj.cast::<TestClose>()).dropped += 1;
+            crate::alloc::free(obj.cast());
+        }
+    }
+
+    unsafe extern "C-unwind" fn test_close(closure: *mut Closure) {
+        // SAFETY: a TestClose's callback owns these designated references and runs once.
+        unsafe {
+            let close = closure.cast::<TestClose>();
+            *(*close).called += 1;
+            for obj in (*close).release {
+                crate::obj::release(obj);
+            }
+            if !(*close).reenter.is_null() {
+                msrt_channel_group_close((*close).reenter);
+            }
+        }
+    }
+
+    fn callback(called: &mut usize, dropped: &mut usize) -> *mut Closure {
+        // SAFETY: a fresh test closure, initialized before it escapes.
+        unsafe {
+            let close =
+                crate::obj::new_obj(size_of::<TestClose>(), drop_test_close).cast::<TestClose>();
+            (*close).closure.code = test_close as *const u8;
+            (*close).called = called;
+            (*close).dropped = dropped;
+            (*close).release = [null_mut(); 3];
+            (*close).reenter = null_mut();
+            close.cast()
+        }
+    }
+
+    #[test]
+    fn last_channel_drop_releases_tracking_without_another_spawn() {
+        let _g = lock();
+        let (mut called, mut dropped) = (0, 0);
+        let group = msrt_channel_group_new();
+        // SAFETY: all objects belong to this test's isolate and all owned references are released.
+        unsafe {
+            for _ in 0..10_000 {
+                let close = callback(&mut called, &mut dropped);
+                let lease = msrt_channel_group_add(group, close);
+                crate::obj::release(close.cast());
+                crate::obj::retain(lease.cast());
+                crate::obj::release(lease.cast());
+                assert_eq!((*group).first, lease);
+                crate::obj::release(lease.cast());
+                assert!(
+                    (*group).first.is_null(),
+                    "an idle group retained a dead channel"
+                );
+            }
+            msrt_channel_group_close(group);
+            crate::obj::release(group.cast());
+        }
+        assert_eq!(called, 0);
+        assert_eq!(dropped, 10_000);
+    }
+
+    #[test]
+    fn group_close_releases_callbacks_while_channel_handles_remain() {
+        let _g = lock();
+        let (mut called, mut dropped) = (0, 0);
+        let group = msrt_channel_group_new();
+        // SAFETY: the retained leases remain live through both closes and are then released.
+        unsafe {
+            let close = callback(&mut called, &mut dropped);
+            let a = msrt_channel_group_add(group, close);
+            let b = msrt_channel_group_add(group, close);
+            crate::obj::release(close.cast());
+            msrt_channel_group_close(group);
+            assert!((*group).first.is_null());
+            assert!((*a).close.is_null());
+            assert!((*b).close.is_null());
+            assert_eq!(called, 2);
+            assert_eq!(dropped, 1);
+            msrt_channel_group_close(group);
+            crate::obj::release(a.cast());
+            crate::obj::release(b.cast());
+            crate::obj::release(group.cast());
+        }
+        assert_eq!(called, 2);
+        assert_eq!(dropped, 1);
+    }
+
+    #[test]
+    fn a_channel_created_after_group_close_is_closed_immediately() {
+        let _g = lock();
+        let (mut called, mut dropped) = (0, 0);
+        let group = msrt_channel_group_new();
+        // SAFETY: live group and closure; the late lease is released once.
+        unsafe {
+            msrt_channel_group_close(group);
+            let close = callback(&mut called, &mut dropped);
+            let lease = msrt_channel_group_add(group, close);
+            crate::obj::release(close.cast());
+            assert!((*group).first.is_null());
+            assert!((*lease).close.is_null());
+            crate::obj::release(lease.cast());
+            crate::obj::release(group.cast());
+        }
+        assert_eq!(called, 1);
+        assert_eq!(dropped, 1);
+    }
+
+    #[test]
+    fn a_close_callback_can_drop_its_lease_siblings_and_group_owner() {
+        let _g = lock();
+        let (mut called, mut dropped) = (0, 0);
+        let group = msrt_channel_group_new();
+        // SAFETY: the callback consumes the references placed in release; close retains the tracker.
+        unsafe {
+            let other_close = callback(&mut called, &mut dropped);
+            let other = msrt_channel_group_add(group, other_close);
+            crate::obj::release(other_close.cast());
+            let close = callback(&mut called, &mut dropped);
+            let lease = msrt_channel_group_add(group, close);
+            (*close.cast::<TestClose>()).release = [lease.cast(), other.cast(), group.cast()];
+            (*close.cast::<TestClose>()).reenter = group;
+            crate::obj::release(close.cast());
+            msrt_channel_group_close(group);
+        }
+        assert_eq!(called, 1, "the dropped sibling must not be called");
+        assert_eq!(dropped, 2);
+    }
+
+    #[repr(C)]
+    struct NestedDrop {
+        hdr: Obj,
+        child: *mut Obj,
+        group: *mut ChannelGroup,
+        lease: *mut ChannelLease,
+        preserved: *mut bool,
+    }
+
+    unsafe extern "C" fn drop_nested(obj: *mut Obj) {
+        // SAFETY: this node owns its child; the deepest node owns the designated lease.
+        unsafe {
+            let node = obj.cast::<NestedDrop>();
+            if !(*node).child.is_null() {
+                crate::obj::release((*node).child);
+            } else {
+                crate::obj::release((*node).lease.cast());
+                // At the drop-depth limit the lease is pending, with rc reused as its next link.
+                assert_eq!((*(*node).lease).hdr.rc, 0);
+                msrt_channel_group_close((*node).group);
+                *(*node).preserved = (*(*node).lease).hdr.rc == 0;
+            }
+            crate::alloc::free(obj.cast());
+        }
+    }
+
+    #[test]
+    fn group_close_does_not_resurrect_a_lease_with_a_deferred_drop() {
+        let _g = lock();
+        let (mut called, mut dropped) = (0, 0);
+        let mut preserved = false;
+        let group = msrt_channel_group_new();
+        // SAFETY: the chain owns the lease and every node; the group stays live until it drains.
+        unsafe {
+            let close = callback(&mut called, &mut dropped);
+            let lease = msrt_channel_group_add(group, close);
+            crate::obj::release(close.cast());
+            let mut child = null_mut();
+            for _ in 0..4096 {
+                let node =
+                    crate::obj::new_obj(size_of::<NestedDrop>(), drop_nested).cast::<NestedDrop>();
+                (*node).child = child;
+                (*node).group = group;
+                (*node).lease = lease;
+                (*node).preserved = &raw mut preserved;
+                child = node.cast();
+            }
+            crate::obj::release(child);
+            assert!((*group).first.is_null());
+            crate::obj::release(group.cast());
+        }
+        assert!(
+            preserved,
+            "group close changed the pending object's link word"
+        );
+        assert_eq!(called, 1);
+        assert_eq!(dropped, 1);
+    }
 
     #[test]
     fn wait_queues_wake_in_order_and_drop_removed_tokens() {

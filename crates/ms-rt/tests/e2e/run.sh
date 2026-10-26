@@ -5,9 +5,11 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../../.." && pwd)
 target=${CARGO_TARGET_DIR:-$root/target}
-(cd "$root" && cargo build -q -p ms-native)
+case "$target" in /*) ;; *) target="$root/$target" ;; esac
+(cd "$root" && cargo build -q --locked -p ms-native --target-dir "$target")
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
+profile_pid=
+trap 'rm -rf "$work"; if [ -n "$profile_pid" ]; then rm -f "/tmp/perf-$profile_pid.map"; fi' EXIT
 cc -O1 -g -fno-omit-frame-pointer -fno-optimize-sibling-calls -o "$work/h" "$here/harness.c" "$target/debug/libms_native.a" -lpthread -ldl -lm
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
@@ -15,9 +17,11 @@ out=$("$work/h" ok 2>"$work/err") && st=0 || st=$?
 [ "$st" = 3 ] || fail "ok: exit $st"
 [ "$out" = "héllo" ] || fail "ok: stdout '$out'"
 
+out=$("$work/h" strings 2>"$work/err") || fail "strings: exit $?"
+[ "$out" = "héllo from the native C driver" ] || fail "strings: stdout '$out'"
+
 "$work/h" fault >/dev/null 2>"$work/err" && st=0 || st=$?
 [ "$st" = 67 ] || fail "fault: exit $st"
-expected=$(printf 'boom\n  at t.ms:3 in inner\n  at t.ms:3 in inner\n  at t.ms:3 in inner\n  at t.ms:9 in outer\ncleanup b\ncleanup a\n')
 # cleanups run before the report is written; accept either relative order of the two streams
 grep -q '^boom' "$work/err" || fail "fault: message missing"
 grep -q 'in outer' "$work/err" || fail "fault: frames missing"
@@ -55,7 +59,17 @@ grep -q '^cleanup a' "$work/perr" || fail "parked: cleanups must run on cancella
 
 [ "$("$work/h" args a b c)" = 3 ] || fail "args"
 
-MS_PROFILE="$work/prof" MS_PERF_MAP=1 "$work/h" busy >/dev/null 2>&1 || true
+MS_PROFILE="$work/prof" MS_PERF_MAP=1 "$work/h" busy >/dev/null 2>&1 &
+profile_pid=$!
+wait "$profile_pid" || fail "profile: busy failed"
 grep -q 'busy [0-9]' "$work/prof" || fail "profile: no busy samples: $(cat "$work/prof")"
-ls /tmp/perf-*.map >/dev/null 2>&1 || fail "profile: perf map missing"
+[ -s "/tmp/perf-$profile_pid.map" ] || fail "profile: perf map missing"
+
+# The adjacent C benchmark is also a native ABI consumer. Check its results,
+# without comparing timings or requiring the Go performance baseline.
+cc -O2 -fno-omit-frame-pointer -o "$work/bench" "$here/../bench/bench.c" "$target/debug/libms_native.a" -lpthread -ldl -lm
+"$work/bench" >"$work/bench.out" || fail "benchmark: wrong result or exit status"
+for name in list_push_int list_sort_int map_insert_int map_get_int string_concat_len; do
+    grep -q "^$name [0-9]" "$work/bench.out" || fail "benchmark: $name missing"
+done
 echo "ms-rt e2e: ok"

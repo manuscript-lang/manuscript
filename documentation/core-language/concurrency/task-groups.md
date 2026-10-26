@@ -96,6 +96,7 @@ test "a task answers messages on its channel":
 - `receive()` waits for the next value: `ok(some(value))`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.
+- Collecting a task's result leaves its channel readable, including buffered values. Closing the group closes retained and cloned channel handles too, even after result collection, and drops their unread values. Discarded collected channels are released without waiting for group close or another spawn.
 - Two tasks that each wait to send to the other while neither reads cannot make progress. The task scheduler can detect deadlocks within its own scheduler. Cycles spanning workers or processes are not covered by this guarantee; design protocols so each receive has a corresponding sender.
 - An end has one owner. `.clone()` makes another handle on the same end, so several tasks can send to or receive from it.
 - Write the parameter as `ch` and rebind it with `var c = ch`; a function with a `var` parameter cannot be passed as an entry yet ([#1191](https://github.com/manuscript-lang/manuscript/issues/1191)).

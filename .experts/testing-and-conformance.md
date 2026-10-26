@@ -10,6 +10,14 @@ Apply when: deciding where a regression test belongs.
 Evidence: [conformance corpus](../tests/conformance/README.md), [development checks](../documentation/contributing/development.md), [Makefile](../Makefile).
 Verify: the test fails on the unfixed code, then passes; `make verify` and the affected target (`make conform`) pass.
 
+### C drivers must execute against the production runtime
+
+Verified: the native C smoke harness compiled and linked with obsolete one-word string return/message declarations, then aborted at its first call. The adjacent benchmark also retained a six-word map after `MapVal` grew to seven words. Successful linking cannot check C declarations against Rust exports.
+
+Apply when: changing runtime value layouts or exported signatures. Use the canonical [C string header](../crates/ms-rt-abi/include/ms_abi.h), audit the remaining declarations against `ms-rt-abi`, and keep the production archive driver in the regular test suite.
+Evidence: [C driver regression](../crates/ms-native/tests/c_smoke.rs), [smoke checks](../crates/ms-rt/tests/e2e/run.sh).
+Verify: `cargo nextest run -p ms-native --test c_smoke` exercises strings, faults, guard messages, joins, cancellation, argument lists, profiling, and the adjacent benchmark's results on Linux. Other native hosts retain their existing runtime and generated-program tests.
+
 ### Conformance expectations are frozen contracts
 
 Decision: the corpus expectations were first recorded from the Go `ms` and are now the contract; the Go implementation is gone and is not needed to extend them. Known differences of the Rust `ms` are listed in `tests/conformance/expect-fail.txt` with a reason, and fixtures tagged `aliasing` are excluded because the value-semantics migration changes them on purpose. Remove an expect-fail entry when it is fixed; do not add one to hide a new regression.

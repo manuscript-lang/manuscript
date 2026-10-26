@@ -870,6 +870,9 @@ msrt_scope_close(scope: i64)
 msrt_channel_token() -> i64
 msrt_channel_park(token: i64)
 msrt_channel_post(token: i64)
+msrt_channel_group_new() -> *mut ChannelGroup
+msrt_channel_group_add( group: *mut ChannelGroup, close: *mut Closure, ) -> *mut ChannelLease
+msrt_channel_group_close(group: *mut ChannelGroup)
 msrt_addr_id(addr: *const u8) -> i64
 msrt_waitq_push(key: i64, token: i64)
 msrt_waitq_wake(key: i64) -> i64

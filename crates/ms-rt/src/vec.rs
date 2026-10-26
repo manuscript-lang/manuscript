@@ -1114,10 +1114,26 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let buf = alloc::alloc(v.len * size.max(1));
-        if size == 8 {
-            merge_sort_word(v.ptr as *mut u64, buf as *mut u64, v.len, cmp, env);
-        } else {
-            merge_sort(v.ptr, buf, v.len, size, cmp, env);
+        // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
+        macro_rules! words {
+            ($n:literal) => {
+                merge_sort_word(
+                    v.ptr as *mut [u64; $n],
+                    buf as *mut [u64; $n],
+                    v.len,
+                    cmp,
+                    env,
+                )
+            };
+        }
+        match size {
+            8 => words!(1),
+            16 => words!(2),
+            24 => words!(3),
+            32 => words!(4),
+            40 => words!(5),
+            48 => words!(6),
+            _ => merge_sort(v.ptr, buf, v.len, size, cmp, env),
         }
         alloc::free(buf);
     }
