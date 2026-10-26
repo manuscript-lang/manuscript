@@ -11,12 +11,9 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("ok_or", "core/ok_or"),
             ("ok_or_else", "core/ok_or_else"),
-            ("map", "core/map"),
             ("and_then", "core/and_then"),
             ("get_or_else", "core/get_or_else"),
             ("or_else", "core/or_else"),
-            ("is_some", "core/is_some"),
-            ("is_none", "core/is_none"),
             ("get", "core/get"),
         ],
     ),

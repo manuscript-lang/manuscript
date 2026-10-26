@@ -82,18 +82,9 @@ export type Optional[T]:
     case none
 
 impl Optional[T]:
-    # Returns True for some(value), and False for none.
-    def is_some() -> Bool: ...
-
-    # Reports whether this value is absent.
-    def is_none() -> Bool: ...
-
     # Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
     # Without a default, `none` raises a fault.
     def get(default: Optional[T] = none) -> ref T: ...
-
-    # Transforms a present payload; none remains absent.
-    def map[U](transform: Callable[[T], U]) -> Optional[U]: ...
 
     # Calls transform only when present, returning its Optional unchanged.
     def and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]: ...
@@ -110,6 +101,28 @@ impl Optional[T]:
 
     # Constructs an error once only for none; present payloads remain unchanged.
     def ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]: ...
+
+interface OptionalOps[T]:
+    def is_some() -> Bool
+    def is_none() -> Bool
+    def map[U](transform: Callable[[T], U]) -> Optional[U]
+
+impl OptionalOps[T] for Optional[T]:
+    # Returns True for some(value), and False for none.
+    def is_some() -> Bool:
+        if let present = self:
+            return True
+        return False
+
+    # Reports whether this value is absent.
+    def is_none() -> Bool:
+        return not self.is_some()
+
+    # Transforms a present payload; none remains absent.
+    def map[U](transform: Callable[[T], U]) -> Optional[U]:
+        if let value = self:
+            return some(transform(value))
+        return none
 
 # Holds either a successful value (`ok`) or an expected failure (`error`).
 export type Result[T, E: Error]:
