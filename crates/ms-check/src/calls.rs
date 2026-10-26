@@ -898,7 +898,12 @@ fn mentions_shared(t: &Ty, visiting: &mut Vec<Name>) -> bool {
 /// way across, so a worker message may not hold one. A type with a `JsonEncode` implementation
 /// chooses its own form.
 fn without_json_form(t: &Ty, custom: &dyn Fn(&Ty) -> bool, visiting: &mut Vec<Name>) -> Option<Ty> {
-    if t.kind == Kind::Variable || t.is_source_type("@std/json.ms", "JsonValue") || custom(t) {
+    // `Shared` has its own, clearer diagnostic.
+    if t.kind == Kind::Variable
+        || t.is_std("Shared")
+        || t.is_source_type("@std/json.ms", "JsonValue")
+        || custom(t)
+    {
         return None;
     }
     if matches!(t.kind, Kind::Function | Kind::Contract) {
