@@ -1,16 +1,15 @@
 # Tooling demo
 
-This project exercises typed completions, source navigation/refactoring, native debugging, and profiling. Build `ms`, install the [VS Code extension](../../extensions/vscode/README.md), install Delve, and open this folder in a trusted workspace. Set executable paths in VS Code if `ms` and `dlv` are not on PATH.
+This project exercises typed completions, source navigation/refactoring, lint fixes, and native profiling. Build `ms`, install the [VS Code extension](../../extensions/vscode/README.md), and open this folder. Set `manuscript.serverPath` in VS Code if `ms` is not on PATH.
 
 ```sh
 ms check ms.toml
 ms test ms.toml
 ms run ms.toml
-ms profile ms.toml --out-dir captures --trace
-ms profile src/work.ms --out-dir work-captures
-ms pprof -tags work-captures/cpu.pprof
-ms pprof -http=127.0.0.1:8080 captures/program captures/cpu.pprof
-ms trace captures/trace.out
+ms profile ms.toml --out-dir captures --top 10
+ms profile src/work.ms --out-dir work-captures --top 10
 ```
 
-Set a breakpoint on the workload call in `src/main.ms` and press F5. Inspect the record, list, variant, queue, and execution scopes; add `package.count` as a watch. `src/lint.ms` contains semantic lint findings. Add trailing spaces and remove its final newline to also demonstrate the two source-hygiene findings; use it for diagnostics, quick fixes, and formatting. Profile destinations must be new.
+Profile destinations must be new. Each bundle contains `program`, `profile.folded`, `profile.pb`, `top.txt`, and `manifest.json`. Read `captures/top.txt` for the text report or open `captures/profile.pb` with an external pprof viewer. See [profiling and native debugging](../../documentation/developer-tooling/debugging/debugger-integration.md) for the bundle format and debugger support.
+
+Use completion and hover on `package` in `src/main.ms`, follow `total` or `compute` to `src/math.ms`, and rename local declarations. `src/lint.ms` deliberately contains semantic lint findings for diagnostics and quick fixes. Add trailing spaces or remove its final newline to demonstrate the two source-hygiene findings and formatting.
