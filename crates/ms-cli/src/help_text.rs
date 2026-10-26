@@ -22,6 +22,7 @@ Commands:
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
   guide          Print the language cheat sheet
+  explain        Explain a diagnostic code and its usual repair
   help           Show help for a command
   version        Print the compiler version
 
@@ -341,6 +342,20 @@ Options:
 
 Examples:
   ms guide
+"#;
+
+pub const HELP_EXPLAIN: &str = r#"Usage: ms explain <code>... [--json]
+
+Explain a diagnostic code from ms check --json: its rule family and the usual
+repair. Apply the diagnostic's own fix field first when it has one.
+
+Options:
+  --json      Emit versioned JSON
+  -h, --help  Show this help
+
+Examples:
+  ms explain MS3060
+  ms explain MS2001 MS3050 --json
 "#;
 
 pub const HELP_HELP: &str = r#"Usage: ms help [command]

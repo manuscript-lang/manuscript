@@ -75,6 +75,64 @@ pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
     0
 }
 
+pub fn run_explain(args: &[String], io: &mut Io) -> i32 {
+    let mut json = false;
+    let mut codes: Vec<&str> = Vec::new();
+    for arg in &args[1..] {
+        if matches!(arg.as_str(), "-h" | "--help") {
+            return run_help(&["explain".to_string()], io);
+        }
+        match arg.as_str() {
+            "--json" => json = true,
+            code => codes.push(code),
+        }
+    }
+    if codes.is_empty() {
+        let list: Vec<&str> = ms_syntax::diag::CODES.iter().map(|c| c.code).collect();
+        return usage_error(
+            io,
+            format!(
+                "ms explain needs a diagnostic code; codes: {}",
+                list.join(" ")
+            ),
+        );
+    }
+    let mut status = 0;
+    let mut entries = Vec::new();
+    for code in codes {
+        let Some(info) = ms_syntax::diag::explain(code) else {
+            let _ = writeln!(io.stderr, "ms explain: unknown diagnostic code {code}");
+            status = 1;
+            continue;
+        };
+        if json {
+            entries.push(
+                crate::json::Json::object()
+                    .with("code", crate::json::Json::str(info.code))
+                    .with("family", crate::json::Json::str(info.family))
+                    .with("repair", crate::json::Json::str(info.repair)),
+            );
+        } else {
+            let _ = writeln!(
+                io.stdout,
+                "{}: {}\n  repair: {}",
+                info.code, info.family, info.repair
+            );
+        }
+    }
+    if json {
+        let document = crate::json::Json::object()
+            .with("format", crate::json::Json::int(1))
+            .with("codes", crate::json::Json::Arr(entries));
+        let _ = writeln!(
+            io.stdout,
+            "{}",
+            document.pretty(crate::json::Escape::GoHtml)
+        );
+    }
+    status
+}
+
 pub fn run_search_symbol(args: &[String], io: &mut Io) -> i32 {
     let mut names: Vec<String> = Vec::new();
     let (mut limit, mut json) = (DEFAULT_SYMBOL_LIMIT, false);

@@ -22,8 +22,33 @@ fn import_statement(message: &str) -> Option<&str> {
     statement.starts_with("from ").then_some(statement)
 }
 
+/// The single spelling an `unknown binding` hint names for a habit from
+/// another language (`Some`, `Ok`, `Err`, `true`, `null`, `this`).
+fn habit_replacement(message: &str) -> Option<&'static str> {
+    let rest = message.strip_prefix("unknown binding ")?;
+    let (name, hint) = rest.split_once("; ")?;
+    match name {
+        "Some" => Some("some"),
+        "Ok" => Some("ok"),
+        "Err" | "err" | "Error" => Some("error"),
+        "true" => Some("True"),
+        "false" => Some("False"),
+        "nil" | "null" | "None" | "undefined" => Some("none"),
+        "this" if hint.ends_with("write self instead of this") => Some("self"),
+        _ => None,
+    }
+}
+
 /// The fix for a diagnostic at `pos` whose offending name has `len` bytes.
 pub(crate) fn fix_for(message: &str, pos: Pos, len: usize) -> Option<DiagnosticFix> {
+    if let Some(name) = habit_replacement(message) {
+        let end = Pos::new(pos.offset + len as u32, pos.line, pos.column + len as u32);
+        return Some(DiagnosticFix {
+            pos,
+            end,
+            replacement: name.to_string(),
+        });
+    }
     if let Some(name) = single_suggestion(message) {
         let end = Pos::new(pos.offset + len as u32, pos.line, pos.column + len as u32);
         return Some(DiagnosticFix {
@@ -41,7 +66,58 @@ pub(crate) fn fix_for(message: &str, pos: Pos, len: usize) -> Option<DiagnosticF
     })
 }
 
+/// `let` to `var` for an assignment to a `let` binding declared at `decl`.
+/// `None` unless the source reads `let <name>` there, so patterns and loop
+/// variables get no edit.
+pub(crate) fn let_to_var(source: &str, decl: Pos) -> Option<DiagnosticFix> {
+    let at = decl.offset as usize;
+    let keyword = at.checked_sub(4)?;
+    (source.get(keyword..at)? == "let ").then_some(())?;
+    let start = Pos::new(
+        keyword as u32,
+        decl.line,
+        decl.column.checked_sub(4)?.max(1),
+    );
+    let end = Pos::new(keyword as u32 + 3, decl.line, start.column + 3);
+    Some(DiagnosticFix {
+        pos: start,
+        end,
+        replacement: "var".to_string(),
+    })
+}
+
+/// Removal of the `()` after the nullary case `name` called at `pos`.
+pub(crate) fn drop_case_parens(source: &str, pos: Pos, name: &str) -> Option<DiagnosticFix> {
+    let at = pos.offset as usize;
+    let rest = source.get(at..)?.strip_prefix(name)?;
+    rest.starts_with("()").then_some(())?;
+    let start_offset = (at + name.len()) as u32;
+    let start = Pos::new(start_offset, pos.line, pos.column + name.len() as u32);
+    let end = Pos::new(start_offset + 2, pos.line, start.column + 2);
+    Some(DiagnosticFix {
+        pos: start,
+        end,
+        replacement: String::new(),
+    })
+}
+
 impl Checker {
+    /// A type diagnostic carrying an already-built fix.
+    pub(crate) fn type_error_with_fix(
+        &mut self,
+        pos: Pos,
+        message: String,
+        fix: Option<DiagnosticFix>,
+    ) {
+        let count = self.p.diagnostics.len();
+        self.error(pos, Phase::Type, message);
+        if self.p.diagnostics.len() > count
+            && let Some(last) = self.p.diagnostics.last_mut()
+        {
+            last.fix = fix;
+        }
+    }
+
     /// A resolution diagnostic about the `len`-byte name at `pos`, with its fix.
     pub(crate) fn res_error_name(&mut self, pos: Pos, len: usize, message: String) {
         self.error_fixed(pos, len, Phase::Resolution, message);
@@ -76,6 +152,39 @@ mod tests {
         assert_eq!(fix.replacement, "count");
         assert!(fix_for("no member x; did you mean 'a' or 'b'?", pos, 1).is_none());
         assert!(fix_for("unknown binding q; declare it", pos, 1).is_none());
+    }
+
+    #[test]
+    fn habit_names_are_fixed() {
+        let pos = Pos::new(4, 1, 5);
+        let fix = fix_for(
+            "unknown binding Some; write the lowercase some(value) for a present Optional",
+            pos,
+            4,
+        )
+        .unwrap();
+        assert_eq!((fix.end.offset, fix.replacement.as_str()), (8, "some"));
+        let this = "unknown binding this; the receiver in an impl method is 'self'; write self instead of this";
+        assert_eq!(fix_for(this, pos, 4).unwrap().replacement, "self");
+        assert!(fix_for("unknown binding this; there is no 'this'", pos, 4).is_none());
+    }
+
+    #[test]
+    fn let_becomes_var_only_after_let() {
+        let source = "let x = 1";
+        let fix = let_to_var(source, Pos::new(4, 1, 5)).unwrap();
+        assert_eq!(
+            (fix.pos.offset, fix.end.offset, fix.replacement.as_str()),
+            (0, 3, "var")
+        );
+        assert!(let_to_var("for x in xs", Pos::new(4, 1, 5)).is_none());
+    }
+
+    #[test]
+    fn nullary_call_parens_are_dropped() {
+        let fix = drop_case_parens("  Red()", Pos::new(2, 1, 3), "Red").unwrap();
+        assert_eq!((fix.pos.offset, fix.end.offset), (5, 7));
+        assert!(drop_case_parens("Red(1)", Pos::new(0, 1, 1), "Red").is_none());
     }
 
     #[test]

@@ -303,12 +303,10 @@ impl Checker {
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
         if phase == Phase::Resolution
-            && let Some((_, rest)) = message.split_once("; add: import ")
+            && message.starts_with("Decimal literal requires")
+            && self.import_reported("Decimal", pos)
         {
-            let name = rest.split(" from ").next().unwrap_or("");
-            if self.import_reported(name, pos) {
-                return;
-            }
+            return;
         }
         if let Some(m) = &self.module {
             for span in &m.recovered {
@@ -982,6 +980,7 @@ impl Checker {
             uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
             ty: t,
             mutable,
+            decl: pos,
             function: self.function,
         });
         self.scope.bindings.borrow_mut().insert(name, b.clone());

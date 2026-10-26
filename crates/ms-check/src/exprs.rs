@@ -325,9 +325,10 @@ impl Checker {
                 .zip(stdlib::standard_symbol("Decimal"))
                 .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
             if !ok {
-                self.res_error(
+                self.res_error_name(
                     e.pos,
-                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"",
+                    text.len(),
+                    "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal".to_string(),
                 );
             }
             i.ty = Some(standard("Decimal", vec![]));

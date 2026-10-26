@@ -2,6 +2,7 @@
 
 use crate::checker::{Checker, Scope};
 use crate::hints::*;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
@@ -232,11 +233,13 @@ impl Checker {
                     captured.insert(b.uid, b.clone());
                 }
                 if !b.mutable {
-                    self.type_error(
+                    let fix = suggestions::let_to_var(&self.m().source, b.decl);
+                    self.type_error_with_fix(
                         s.pos,
                         format!(
                             "cannot assign immutable binding {name}; declare it with 'var {name} = ...' instead of 'let'"
                         ),
+                        fix,
                     );
                 }
                 let i = self.expression(value, Some(&b.ty));

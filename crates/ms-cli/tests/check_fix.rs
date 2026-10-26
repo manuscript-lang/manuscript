@@ -50,3 +50,37 @@ fn fix_rejects_watch_and_other_commands() {
     let (status, text) = ms(&["build", "x.ms", "--fix"], &dir);
     assert_eq!(status, Some(2), "{text}");
 }
+
+#[test]
+fn fix_repairs_habits_and_mutation_and_decimal_import() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-habits-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "type Color:\n    case Red\n    case Green\n\n\
+        def pick() -> Color:\n    return Red()\n\n\
+        def main() -> Int:\n    let fixed = 1\n    fixed = 2\n    let a = Some(1)\n    let b = true\n    let d = 1.5d\n    return fixed\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(
+        fixed.starts_with("from \"@std/decimal.ms\" import Decimal\n"),
+        "{fixed}"
+    );
+    assert!(fixed.contains("return Red\n"), "{fixed}");
+    assert!(fixed.contains("var fixed = 1"), "{fixed}");
+    assert!(fixed.contains("let a = some(1)"), "{fixed}");
+    assert!(fixed.contains("let b = True"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn explain_names_the_family_and_repair() {
+    let dir = std::env::temp_dir();
+    let (status, text) = ms(&["explain", "MS3060"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(text.contains("MS3060: Mutation"), "{text}");
+    let (status, text) = ms(&["explain", "MS9999"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+}

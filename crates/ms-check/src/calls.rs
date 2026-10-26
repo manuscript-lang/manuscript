@@ -5,6 +5,7 @@ use crate::exprs::{callee_name, is_plain_literal};
 use crate::hints::*;
 use crate::inference::*;
 use crate::stmts::case_names;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
@@ -231,12 +232,15 @@ impl Checker {
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
             if cs.fields.is_empty() {
-                self.type_error(
+                let fix =
+                    suggestions::drop_case_parens(&self.m().source, callee.pos, cs.name.as_str());
+                self.type_error_with_fix(
                     e.pos,
                     format!(
                         "nullary cases omit call parentheses; write {0} instead of {0}()",
                         cs.name
                     ),
+                    fix,
                 );
             }
             let resolved = constructor_arguments(args, &cs.fields);
