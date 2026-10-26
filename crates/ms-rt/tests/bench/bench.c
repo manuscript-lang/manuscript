@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include "../../../ms-rt-abi/include/ms_abi.h"
 
 typedef struct { uint8_t *ptr; size_t len, cap; } VecVal;
-typedef struct { void *slots, *index; size_t len, used, cap, mask; } MapVal;
+typedef struct { void *slots, *index; size_t len, used, cap, mask; const void *desc; } MapVal;
 extern int32_t msrt_start(int64_t (*)(void), const void *, int, char **);
 extern const char msrt_desc_int[], msrt_desc_string[];
 extern void msrt_list_push(VecVal *, const void *, const void *);
@@ -14,10 +15,9 @@ extern void msrt_list_sort_in_place(VecVal *, const void *, int64_t (*)(void *, 
 extern void msrt_map_add(MapVal *, const void *, const void *, void *, void *);
 extern const void *msrt_map_get_ptr(const MapVal *, const void *, const void *, const void *);
 extern void msrt_map_drop(MapVal *, const void *, const void *);
-extern void *msrt_string_from_bytes(const char *, size_t);
-extern void *msrt_string_concat(const void *, const void *);
-extern void msrt_release(void *);
-extern int64_t msrt_string_length(const void *);
+extern void msrt_string_concat(const ms_str *, const ms_str *, ms_str *);
+extern void msrt_string_free(const ms_str *);
+extern int64_t msrt_string_length(const ms_str *);
 
 static double now(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e9 + t.tv_nsec; }
 static void report(const char *n, double t0, long ops) { printf("%s %.1f\n", n, (now() - t0) / ops); }
@@ -45,10 +45,12 @@ static int64_t entry(void) {
     msrt_map_drop(&m, msrt_desc_int, msrt_desc_int);
 
     t = now();
-    void *s = msrt_string_from_bytes("ab", 2);
-    for (int i = 0; i < N / 10; i++) { void *c = msrt_string_concat(s, s); hits += msrt_string_length(c); msrt_release(c); }
+    ms_str s;
+    msrt_string_from_bytes((const uint8_t *)"ab", 2, &s);
+    for (int i = 0; i < N / 10; i++) { ms_str c; msrt_string_concat(&s, &s, &c); hits += msrt_string_length(&c); msrt_string_free(&c); }
     report("string_concat_len", t, N / 10);
-    return hits < 0;
+    msrt_string_free(&s);
+    return hits != N / 2 + 4 * (N / 10);
 }
 
 int main(int argc, char **argv) { return msrt_start(entry, 0, argc, argv); }

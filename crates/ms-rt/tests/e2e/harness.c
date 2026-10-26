@@ -4,39 +4,49 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../../../ms-rt-abi/include/ms_abi.h"
 
-typedef struct { uint64_t rc; void *drop; uint64_t len; uint64_t scalars; } StrHdr;
 typedef struct { uintptr_t addr; uint32_t size, name_off, file_off, line; } FuncEntry;
 typedef struct { uintptr_t pc; uint32_t line, file_off; } LineEntry;
+typedef struct { uint32_t name_off, file_off, parent, call_line; } ScopeEntry;
 typedef struct {
     uint32_t abi_version, reserved;
     const FuncEntry *funcs; size_t func_count;
     const LineEntry *lines; size_t line_count;
     const char *strings; size_t strings_len;
+    const uint32_t *line_scopes;
+    const ScopeEntry *scopes; size_t scope_count;
 } Tables;
 typedef struct { uint8_t *ptr; size_t len, cap; } VecVal;
 
 extern int32_t msrt_start(int64_t (*main_fn)(void), const Tables *t, int argc, char **argv);
-extern void *msrt_string_from_bytes(const char *p, size_t n);
-extern void msrt_io_write_stdout(void *s);
+extern void msrt_io_write_stdout(const ms_str *s);
+extern void msrt_string_free(const ms_str *s);
 extern void msrt_fault(const char *p, size_t n) __attribute__((noreturn));
 extern size_t msrt_cleanup_push(void (*f)(void *), void *arg);
-extern int64_t msrt_string_length(void *s);
+extern int64_t msrt_string_length(const ms_str *s);
 extern uintptr_t *msrt_isolate_hdr(void);
 extern void msrt_fault_depth(void) __attribute__((noreturn));
 extern void msrt_args(VecVal *out);
-extern uint8_t msrt_guard_call(void (*code)(void *), void *data, void **msg_out);
+extern const uint8_t msrt_desc_string[];
+extern void msrt_list_drop(VecVal *v, const void *desc);
+extern uint8_t msrt_guard_call(void (*code)(void *), void *data, ms_str *msg_out);
 extern void msrt_cleanup_run(size_t handle);
 extern uint64_t msrt_task_spawn(void (*entry)(void *), void *arg, uint32_t flags, size_t stack);
 extern void msrt_task_yield(void);
 extern uint32_t msrt_task_wait_fd(int fd, uint32_t events, int64_t timeout_ns);
 extern uint32_t msrt_task_sleep(int64_t ns);
-extern uint8_t msrt_task_join(uint64_t h, void **msg_out);
+extern uint8_t msrt_task_join(uint64_t h, ms_str *msg_out);
 extern void msrt_task_cancel(uint64_t h);
 extern size_t msrt_task_count(void);
 extern void msrt_cancelled(void) __attribute__((noreturn));
 
 static const char *mode;
+
+// The runtime writes this static, null string for an absent guard/join report.
+static int no_message(const ms_str *s) {
+    return s->ptr_word == NULL && s->tagged == ((size_t)2 << 62);
+}
 
 static void cleanup_a(void *arg) { fputs("cleanup a\n", stderr); }
 static void cleanup_b(void *arg) { fputs("cleanup b\n", stderr); }
@@ -69,10 +79,11 @@ static void faulting_request(void *data) {
 }
 static void fine_request(void *data) { *(int *)data += 1; }
 static void nested_request(void *data) {
-    void *msg = 0;
+    ms_str msg;
     int inner_n = 0;
     uint8_t r = msrt_guard_call(faulting_request, &inner_n, &msg);
-    *(int *)data = r == 1 && inner_n == 1 && msg ? 7 : -1;
+    *(int *)data = r == 1 && inner_n == 1 && !no_message(&msg) ? 7 : -1;
+    msrt_string_free(&msg);
     // a fault after the inner guard returned reaches the outer guard
     msrt_fault("outer boom", 10);
 }
@@ -81,18 +92,20 @@ static int64_t guard_mode(void) {
     size_t base = msrt_cleanup_push(cleanup_a, 0);
     for (int round = 0; round < 3; round++) {
         int n = 0;
-        void *msg = 0;
+        ms_str msg;
         uint8_t r = msrt_guard_call(faulting_request, &n, &msg);
-        if (r != 1 || n != 1 || !msg) return 10;
-        if (msrt_string_length(msg) < 4) return 11;
-        msrt_io_write_stdout(msg);
+        if (r != 1 || n != 1 || no_message(&msg)) return 10;
+        if (msrt_string_length(&msg) < 4) return 11;
+        msrt_io_write_stdout(&msg);
+        msrt_string_free(&msg);
         n = 0;
-        if (msrt_guard_call(fine_request, &n, &msg) != 0 || n != 1 || msg) return 12;
+        if (msrt_guard_call(fine_request, &n, &msg) != 0 || n != 1 || !no_message(&msg)) return 12;
     }
     int n = 0;
-    void *msg = 0;
-    if (msrt_guard_call(nested_request, &n, &msg) != 1 || n != 7 || !msg) return 13;
-    msrt_io_write_stdout(msg);
+    ms_str msg;
+    if (msrt_guard_call(nested_request, &n, &msg) != 1 || n != 7 || no_message(&msg)) return 13;
+    msrt_io_write_stdout(&msg);
+    msrt_string_free(&msg);
     msrt_cleanup_run(base);
     puts("guards ok");
     return 0;
@@ -143,6 +156,9 @@ static void canceller_target(void *arg) {
 }
 
 static int64_t tasks_mode(void) {
+    // msrt_start also owns a waiting root flow. Joining every child must restore
+    // the entry count, with no finished or cancelled task left behind.
+    size_t initial_tasks = msrt_task_count();
     // sleepers wake in deadline order, not spawn order
     uint64_t a = msrt_task_spawn(sleeper, (void *)30, 0, 0);
     uint64_t b = msrt_task_spawn(sleeper, (void *)10, 0, 0);
@@ -173,10 +189,11 @@ static int64_t tasks_mode(void) {
     msrt_task_join(t, 0);
     if (order_n != 1 || order[0] != 200) return 17;
     // a fault in a joined task is returned with its report and runs its cleanups
-    void *msg = 0;
+    ms_str msg;
     uint64_t f = msrt_task_spawn(faulter, 0, 0, 0);
-    if (msrt_task_join(f, &msg) != 1 || !msg) return 18;
-    msrt_io_write_stdout(msg);
+    if (msrt_task_join(f, &msg) != 1 || no_message(&msg)) return 18;
+    msrt_io_write_stdout(&msg);
+    msrt_string_free(&msg);
     // cancellation wakes a parked task
     order_n = 0;
     uint64_t k = msrt_task_spawn(canceller_target, 0, 0, 0);
@@ -189,7 +206,7 @@ static int64_t tasks_mode(void) {
     uint64_t many[200];
     for (int i = 0; i < 200; i++) many[i] = msrt_task_spawn(yielder, (void *)0, 0, 0);
     for (int i = 0; i < 200; i++) msrt_task_join(many[i], 0);
-    if (msrt_task_count() != 1) return 20;
+    if (msrt_task_count() != initial_tasks) return 20;
     puts("tasks ok");
     return 0;
 }
@@ -219,9 +236,21 @@ static int64_t entry(void) {
     if (!strcmp(mode, "tasks")) return tasks_mode();
     if (!strcmp(mode, "guard")) return guard_mode();
     if (!strcmp(mode, "ok")) {
-        void *s = msrt_string_from_bytes("héllo\n", 7);
-        msrt_io_write_stdout(s);
+        ms_str s;
+        msrt_string_from_bytes((const uint8_t *)"héllo\n", 7, &s);
+        if (msrt_string_length(&s) != 6) return 10;
+        msrt_io_write_stdout(&s);
+        msrt_string_free(&s);
         return 3;
+    }
+    if (!strcmp(mode, "strings")) {
+        static const char text[] = "héllo from the native C driver\n";
+        ms_str s;
+        msrt_string_from_bytes((const uint8_t *)text, sizeof text - 1, &s);
+        if (msrt_string_length(&s) != sizeof text - 2) return 10;
+        msrt_io_write_stdout(&s);
+        msrt_string_free(&s);
+        return 0;
     }
     if (!strcmp(mode, "fault")) {
         msrt_cleanup_push(cleanup_a, 0);
@@ -234,6 +263,7 @@ static int64_t entry(void) {
     if (!strcmp(mode, "args")) {
         VecVal v; msrt_args(&v);
         printf("%zu\n", v.len);
+        msrt_list_drop(&v, msrt_desc_string);
         return 0;
     }
     if (!strcmp(mode, "busy")) return busy();
@@ -251,6 +281,6 @@ int main(int argc, char **argv) {
     // Sort by address.
     for (int i = 0; i < 3; i++) for (int j = i + 1; j < 3; j++)
         if (funcs[j].addr < funcs[i].addr) { FuncEntry t = funcs[i]; funcs[i] = funcs[j]; funcs[j] = t; }
-    Tables t = { 2, 0, funcs, 3, 0, 0, names, sizeof names };
+    Tables t = { 3, 0, funcs, 3, 0, 0, names, sizeof names, 0, 0, 0 };
     return msrt_start(entry, &t, argc - 1, argv + 1);
 }
