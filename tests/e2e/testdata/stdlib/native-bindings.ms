@@ -131,6 +131,22 @@ test "polling and native watchers report a created file and close":
                     found = saw(try native.next(), f"{root}/b.txt", "rename")
             try expect_true(found)
 
+test "native watcher max_entries counts the paths under the root":
+    let fs = filesystem()
+
+    with let t = (fs.temporary("ms-me-") | try expect_ok):
+        try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
+        try expect_fs_error(
+            fs.watch_native(
+                path: t.path(), recursive: True, max_entries: some(1), overflow: "error"
+            ),
+            FileSystemError.LimitExceeded
+        )
+        with let w = try fs.watch_native(
+            path: t.path(), recursive: True, max_entries: some(2), overflow: "error"
+        ):
+            w.close()
+
 def wait_next(w: Shared[FileWatcher]) -> Int:
     let r = w.get().next()
     if r.is_ok():

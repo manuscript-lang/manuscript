@@ -100,9 +100,10 @@ fn diff(before: &BTreeMap<Vec<u8>, Stamp>, now: &BTreeMap<Vec<u8>, Stamp>) -> Ve
         .collect()
 }
 
-/// The arguments every native watcher accepts: `max` bounds watched paths, `events` queued
-/// events and `overflow` is `error` or `ignore`.
-fn valid_native(root: &[u8], max: i64, events: i64, overflow: &[u8]) -> Res<()> {
+/// The arguments every native watcher accepts: `max` bounds the paths under the root (the root,
+/// files and directories) counted once at start, as for the polling watcher, on every platform;
+/// `events` bounds queued events and `overflow` is `error` or `ignore`.
+fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &[u8]) -> Res<()> {
     if root.is_empty()
         || max <= 0
         || events <= 0
@@ -111,7 +112,7 @@ fn valid_native(root: &[u8], max: i64, events: i64, overflow: &[u8]) -> Res<()> 
     {
         return Err(Fail::invalid());
     }
-    Ok(())
+    snapshot(root, recursive, max).map(drop)
 }
 
 fn sleep_slice() {
@@ -174,7 +175,6 @@ impl Poll {
 pub struct Native {
     fd: i32,
     recursive: bool,
-    max: i64,
     ignore_overflow: bool,
     capacity: usize,
     watches: BTreeMap<i32, Vec<u8>>,
@@ -194,7 +194,7 @@ const MASK: u32 = (libc::IN_MOVED_TO
 
 #[cfg(target_os = "linux")]
 impl Native {
-    /// `overflow` is `error` or `ignore`; `max` bounds watched directories, `events` queued events.
+    /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root, `events` queued events.
     pub fn new(
         root: &[u8],
         recursive: bool,
@@ -202,7 +202,7 @@ impl Native {
         events: i64,
         overflow: &[u8],
     ) -> Res<Native> {
-        valid_native(root, max, events, overflow)?;
+        valid_native(root, recursive, max, events, overflow)?;
         // SAFETY: plain system call.
         let fd = unsafe { libc::inotify_init1(libc::IN_CLOEXEC | libc::IN_NONBLOCK) };
         if fd < 0 {
@@ -211,7 +211,6 @@ impl Native {
         let mut n = Native {
             fd,
             recursive,
-            max,
             ignore_overflow: overflow == b"ignore",
             capacity: events as usize,
             watches: BTreeMap::new(),
@@ -237,9 +236,6 @@ impl Native {
             return Ok(());
         }
         if !self.watches.values().any(|w| w == p) {
-            if self.watches.len() as i64 >= self.max {
-                return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
-            }
             // SAFETY: `c` is a NUL-terminated path and `fd` an inotify descriptor.
             let wd = unsafe { libc::inotify_add_watch(self.fd, c.as_ptr(), MASK) };
             if wd < 0 {
@@ -520,6 +516,11 @@ mod tests {
     fn native_reports_events_and_new_directories() {
         let root = ops::temporary_directory(b"msfs-native-").unwrap();
         assert!(Native::new(&root, true, 10, 10, b"bogus").is_err());
+        ops::write_file(&path::join(&root, b"a"), b"x", false).unwrap();
+        // The root and one file are two paths.
+        let limited = Native::new(&root, true, 1, 10, b"error");
+        assert_eq!(limited.err().map(|f| f.status), Some(STATUS_LIMIT_EXCEEDED));
+        drop(Native::new(&root, true, 2, 10, b"error").unwrap());
         let mut w = Watcher::native(Native::new(&root, true, 100, 100, b"error").unwrap());
         ops::create_directory(&path::join(&root, b"d"), false).unwrap();
         let got = names(w.wait().unwrap());

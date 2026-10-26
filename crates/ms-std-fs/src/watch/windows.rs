@@ -52,8 +52,8 @@ pub struct Native {
 }
 
 impl Native {
-    /// `overflow` is `error` or `ignore`; `events` bounds the queued events. `max` is unused: one
-    /// handle watches the whole tree.
+    /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start and
+    /// `events` the queued events.
     pub fn new(
         root: &[u8],
         recursive: bool,
@@ -61,7 +61,7 @@ impl Native {
         events: i64,
         overflow: &[u8],
     ) -> Res<Native> {
-        valid_native(root, max, events, overflow)?;
+        valid_native(root, recursive, max, events, overflow)?;
         let text = core::str::from_utf8(root).map_err(|_| Fail::status(STATUS_UNSUPPORTED))?;
         let meta = std::fs::metadata(text).map_err(|e| Fail::errno(sys::code(&e), "stat", root))?;
         // A file is watched through its directory, keeping only the events that name it.

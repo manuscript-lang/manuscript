@@ -23,7 +23,6 @@ pub struct Native {
     kq: i32,
     root: Vec<u8>,
     recursive: bool,
-    max: i64,
     ignore_overflow: bool,
     capacity: usize,
     before: BTreeMap<Vec<u8>, Stamp>,
@@ -33,7 +32,7 @@ pub struct Native {
 }
 
 impl Native {
-    /// `overflow` is `error` or `ignore`; `max` bounds tracked paths, `events` queued events.
+    /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root at start, `events` queued events.
     pub fn new(
         root: &[u8],
         recursive: bool,
@@ -41,7 +40,7 @@ impl Native {
         events: i64,
         overflow: &[u8],
     ) -> Res<Native> {
-        valid_native(root, max, events, overflow)?;
+        valid_native(root, recursive, max, events, overflow)?;
         // SAFETY: plain system call.
         let kq = unsafe { libc::kqueue() };
         if kq < 0 {
@@ -53,14 +52,13 @@ impl Native {
             kq,
             root: root.to_vec(),
             recursive,
-            max,
             ignore_overflow: overflow == b"ignore",
             capacity: events as usize,
             before: BTreeMap::new(),
             fds: BTreeMap::new(),
             queue: VecDeque::new(),
         };
-        n.before = snapshot(root, recursive, max)?;
+        n.before = snapshot(root, recursive, i64::MAX)?;
         n.register()?;
         Ok(n)
     }
@@ -147,7 +145,7 @@ impl Native {
 
     /// Compares a fresh snapshot with the last one and queues what differs.
     fn refresh(&mut self) -> Res<()> {
-        let now = match snapshot(&self.root, self.recursive, self.max) {
+        let now = match snapshot(&self.root, self.recursive, i64::MAX) {
             Ok(s) => s,
             Err(f) if f.status == STATUS_NOT_FOUND => BTreeMap::new(),
             Err(f) => return Err(f),
