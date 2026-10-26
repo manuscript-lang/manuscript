@@ -1,6 +1,6 @@
 # conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-from "@std/property.ms" import check, ints, bools, lists, strings, optionals, pairs, filtered, floats, element_of, mapped, one_of, constant
+from "@std/test/property.ms" import check, ints, bools, lists, strings, optionals, pairs, filtered, floats, element_of, mapped, one_of, constant
 from "@std/testing.ms" import expect_equal, expect_true, expect_contains, expect_error
 
 test "a true property passes":
