@@ -1,0 +1,66 @@
+module "int_to_float32"
+entry @main
+fn @round(%x: int) -> float32 inline(never) {
+b0:
+  %r: float32 = i2f %x
+  ret %r
+}
+fn @main() -> int {
+b0:
+  %zero: int = iconst 0
+  %x0: int = iconst 4611686293305294847
+  %expected0: float32 = fconst 4.611686018427388e+18
+  %runtime0: float32 = call @round(%x0)
+  %constant0: float32 = i2f %x0
+  %runtime_bad0: bool = fcmp.ne %runtime0, %expected0
+  %constant_bad0: bool = fcmp.ne %constant0, %expected0
+  %bad0: bool = or %runtime_bad0, %constant_bad0
+  %flag0: int = b2i %bad0
+  %sum0: int = iadd %zero, %flag0
+  %x1: int = iconst 4611686293305294848
+  %expected1: float32 = fconst 4.611686018427388e+18
+  %runtime1: float32 = call @round(%x1)
+  %constant1: float32 = i2f %x1
+  %runtime_bad1: bool = fcmp.ne %runtime1, %expected1
+  %constant_bad1: bool = fcmp.ne %constant1, %expected1
+  %bad1: bool = or %runtime_bad1, %constant_bad1
+  %flag1: int = b2i %bad1
+  %sum1: int = iadd %sum0, %flag1
+  %x2: int = iconst 4611686293305294849
+  %expected2: float32 = fconst 4.611686568183202e+18
+  %runtime2: float32 = call @round(%x2)
+  %constant2: float32 = i2f %x2
+  %runtime_bad2: bool = fcmp.ne %runtime2, %expected2
+  %constant_bad2: bool = fcmp.ne %constant2, %expected2
+  %bad2: bool = or %runtime_bad2, %constant_bad2
+  %flag2: int = b2i %bad2
+  %sum2: int = iadd %sum1, %flag2
+  %x3: int = iconst -4611686293305294849
+  %expected3: float32 = fconst -4.611686568183202e+18
+  %runtime3: float32 = call @round(%x3)
+  %constant3: float32 = i2f %x3
+  %runtime_bad3: bool = fcmp.ne %runtime3, %expected3
+  %constant_bad3: bool = fcmp.ne %constant3, %expected3
+  %bad3: bool = or %runtime_bad3, %constant_bad3
+  %flag3: int = b2i %bad3
+  %sum3: int = iadd %sum2, %flag3
+  %x4: int = iconst 9223372036854775807
+  %expected4: float32 = fconst 9.223372036854776e+18
+  %runtime4: float32 = call @round(%x4)
+  %constant4: float32 = i2f %x4
+  %runtime_bad4: bool = fcmp.ne %runtime4, %expected4
+  %constant_bad4: bool = fcmp.ne %constant4, %expected4
+  %bad4: bool = or %runtime_bad4, %constant_bad4
+  %flag4: int = b2i %bad4
+  %sum4: int = iadd %sum3, %flag4
+  %x5: int = iconst -9223372036854775808
+  %expected5: float32 = fconst -9.223372036854776e+18
+  %runtime5: float32 = call @round(%x5)
+  %constant5: float32 = i2f %x5
+  %runtime_bad5: bool = fcmp.ne %runtime5, %expected5
+  %constant_bad5: bool = fcmp.ne %constant5, %expected5
+  %bad5: bool = or %runtime_bad5, %constant_bad5
+  %flag5: int = b2i %bad5
+  %sum5: int = iadd %sum4, %flag5
+  ret %sum5
+}

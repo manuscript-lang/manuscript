@@ -1862,7 +1862,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }],
             Op::I2F => vec![{
                 let x = self.a(inst, 0)[0];
-                self.b.ins().fcvt_from_sint(types::F64, x)
+                if res_ty == Some(Ty::FLOAT32) {
+                    let narrow = self.b.ins().fcvt_from_sint(types::F32, x);
+                    self.b.ins().fpromote(types::F64, narrow)
+                } else {
+                    self.b.ins().fcvt_from_sint(types::F64, x)
+                }
             }],
             Op::F2IOpt => {
                 let v = self.a(inst, 0)[0];

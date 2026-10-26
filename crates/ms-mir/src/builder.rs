@@ -230,9 +230,9 @@ impl<'m> FuncBuilder<'m> {
     pub fn fcmp(&mut self, cc: Cc, a: Value, b: Value) -> Value {
         self.val(Op::FCmp, &[a, b], Imm::Cc(cc), Ty::BOOL)
     }
-    /// `i2f`.
-    pub fn i2f(&mut self, a: Value) -> Value {
-        self.val(Op::I2F, &[a], Imm::None, Ty::FLOAT)
+    /// `i2f`: converts directly to the target float width, rounding once.
+    pub fn i2f(&mut self, a: Value, to: Ty) -> Value {
+        self.val(Op::I2F, &[a], Imm::None, to)
     }
     /// `f2i.opt`.
     pub fn f2i_opt(&mut self, a: Value) -> Value {

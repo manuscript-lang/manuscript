@@ -599,8 +599,8 @@ impl Verifier<'_> {
             Op::I2F => {
                 arity(1)?;
                 want(
-                    m.types.is_int(t(0)) && res == Some(Ty::FLOAT),
-                    "i2f converts int to float",
+                    m.types.is_int(t(0)) && res.is_some_and(|r| m.types.is_float(r)),
+                    "i2f converts an int type to a float type",
                 )
             }
             Op::F2IOpt => {

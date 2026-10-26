@@ -69,6 +69,10 @@ Literal-list sizes also bound indices and fold length reads; a new list's capaci
 Evidence: [range analysis](../crates/ms-mir/src/opt/range.rs), [saved-length regressions](../crates/ms-mir/tests/opt_range.rs).
 Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
 
+Verified: an integer converted to `Float32` must round directly to binary32. Converting to binary64 first can discard the bit that decides which side of a binary32 midpoint the integer occupies: `4611686293305294849` must round up to `4611686568183201792`, while a binary64 intermediate incorrectly rounds down. Keep the target width through MIR, constant folding, and native code generation.
+Evidence: [integer conversion regression](../tests/e2e/testdata/accept/int-float32-rounding.ms), [MIR conversion fixture](../crates/ms-mir/tests/fixtures/int_to_float32.mir).
+Verify: run the source fixture in Debug and Release; both constant and variable conversions, both signs, and ties to even must agree.
+
 ### Native omissions are declared in the standard declaration
 
 Verified: defaults for native functions, methods, and constructor fields are written in the standard `.ms` declaration and checked as ordinary expressions. Constructor omission follows source metadata, application implementations inherit standard interface default permissions and receive concrete values, and native compositions pass `some(n)` through source-defined streams. Inferring permission or default expressions from a field's name would create a second schema; passing raw integers through an Optional interface would break source implementations.

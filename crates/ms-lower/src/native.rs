@@ -863,7 +863,11 @@ impl<'a> FnLower<'a> {
         let v = if let Some(inner) = self.b.m.opt_inner(result) {
             self.b.inarrow_opt(x, inner)
         } else if types.is_float(result) {
-            let float = if types.is_int(from) { self.b.i2f(x) } else { x };
+            let float = if types.is_int(from) {
+                self.b.i2f(x, result)
+            } else {
+                x
+            };
             if self.ty_of(float) == result {
                 float
             } else {
