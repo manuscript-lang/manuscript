@@ -31,21 +31,23 @@ def serve_command() -> Command[ServeOptions]:
     return Command(
         name: "serve",
         about: "Run the server",
-        flags: common_flags() + [Flag.int("port", short: "p", default: 8080), Flag.choice("mode", ["dev", "prod"], default: "dev")],
-        args: [Arg.required("root")],
+        flags: common_flags() + [int_flag("port", short: "p", default: 8080), choice_flag("mode", ["dev", "prod"], default: "dev")],
+        args: [required_arg("root")],
         build: lambda m: ok(ServeOptions(port: m.int("port"), mode: m.string("mode"), root: m.arg("root"), verbose: m.bool("verbose"))),
         run: lambda o: serve(o)
     )
 
 def main() -> Unit:
-    let app = Command.group("tool", about: "Manage projects", flags: [Flag.bool("verbose", short: "v", persistent: true)], children: [serve_command().node(), remote_command()])
+    let app = group("tool", about: "Manage projects", flags: [bool_flag("verbose", short: "v", persistent: true)], children: [serve_command().node(), remote_command()])
     exit(app.execute(arguments()))
 ```
+
+Constructors are free functions (`bool_flag`, `choice_flag`, `required_arg`, `group`), since Manuscript has no static methods; `Command(...)` is the type constructor and `parse`, `node`, `execute` are instance methods.
 
 Composition rules:
 
 - `Command[T].node() -> Node` erases `T` by capturing `build` and `run` in a closure (verified: `ms check` accepts generic types holding `Callable` fields and a method returning a closure over them).
-- `Command.group(...)` has children and no `run`; leaves have `build` + `run`. Any command, group or leaf, can be a child of another, to any depth, and the same `Node` can be mounted under several parents.
+- `group(...)` has children and no `run`; leaves have `build` + `run`. Any command, group or leaf, can be a child of another, to any depth, and the same `Node` can be mounted under several parents.
 - `common_flags()`-style functions return `List[Flag]`; persistent flags on a parent are visible to every descendant's `build` through `Matches`.
 - Because handlers take `T`, they are plain functions testable without parsing: `serve(ServeOptions(...))`.
 - Optional `Command.parse(argv)` on a leaf returns `Result[T, CliError]` for unit tests.
@@ -53,9 +55,9 @@ Composition rules:
 Semantics, one rule each:
 
 - **Tree**: `Command.command(child)` nests without depth limit. Resolution takes the longest chain of leading non-flag words that name subcommands; the rest are that command's positionals. A command with children and no `run` prints its help.
-- **Flags**: `--name value`, `--name=value`, `-p value`, `-p=value`, `-pvalue`, clustered shorts `-abc` for bools, `--no-name` for bools, `--` ends flags. Kinds: `Flag.bool`, `string`, `int`, `float`, `choice`, and `list` (repeatable). Each takes `short:`, `default:`, `help:`, `required:`, `persistent:`.
+- **Flags**: `--name value`, `--name=value`, `-p value`, `-p=value`, `-pvalue`, clustered shorts `-abc` for bools, `--no-name` for bools, `--` ends flags. Kinds: free functions `bool_flag`, `string_flag`, `int_flag`, `float_flag`, `choice_flag`, and `list_flag` (repeatable). Each takes `short:`, `default:`, `help:`, `required:`, `persistent:`.
 - **Persistent flags** (cobra): declared on a parent, valid on every descendant, may appear before or after the subcommand word.
-- **Positionals**: `Arg.required`, `Arg.optional`, and `Arg.rest` (variadic, last only). Count and order are validated.
+- **Positionals**: `required_arg`, `optional_arg`, and `rest_arg` (variadic, last only). Count and order are validated.
 - **Matches** (used inside `build`): `string(name)`, `int`, `bool`, `float`, `list`, `arg(name)`, `rest()`, `path()`. Unknown names fault, since the schema is the caller's own code. `build` may return `CliError` for cross-field validation.
 - **Help**: `-h` and `--help` are built in and generate `Usage:`, description, `Commands:`, `Arguments:`, `Flags:` (with defaults and choices), and inherited persistent flags. `help` as a subcommand word (`tool help remote add`) works too. Output is deterministic text (golden-testable).
 - **Errors**: `CliError` is a `type` implementing `Error`: `UnknownFlag`, `UnknownCommand` (with nearest-name suggestion), `MissingValue`, `InvalidValue`, `MissingRequired`, `TooManyArguments`. `execute` prints the message plus a usage hint to stderr and returns exit code 2; `--help` returns 0.
