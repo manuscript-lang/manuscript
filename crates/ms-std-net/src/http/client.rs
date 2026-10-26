@@ -178,6 +178,18 @@ impl Wire {
     }
 }
 
+impl Wire {
+    /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
+    fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
+        let mut scratch = SCRATCH.take();
+        scratch.resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch[..max], deadline);
+        let out = got.map(|n| scratch[..n].to_vec());
+        SCRATCH.set(scratch);
+        out
+    }
+}
+
 struct Idle {
     wire: Wire,
     since: Instant,
@@ -1382,6 +1394,30 @@ impl BodyState {
                 return Ok(chunk);
             }
             if wire.pending().is_empty() {
+                if let Some(room) = self.decoder.raw_room() {
+                    // A raw body goes from the socket to the chunk in one copy.
+                    let want = max.max(1).min(usize::try_from(room).unwrap_or(usize::MAX));
+                    let chunk = wire.read_raw(deadline, want).map_err(|e| match e {
+                        IoErr::Failed(m) if m == "operation timed out" => {
+                            IoErr::Failed("context deadline exceeded".into())
+                        }
+                        other => other,
+                    })?;
+                    if chunk.is_empty() {
+                        self.wire_eof = true;
+                        if self.decoder.finish_on_eof() {
+                            self.done = true;
+                            return Ok(None);
+                        }
+                        return Err(IoErr::Failed(
+                            "connection closed before the exchange completed".into(),
+                        ));
+                    }
+                    if self.decoder.took_raw(chunk.len()) == Decoded::Done {
+                        self.done = true;
+                    }
+                    return Ok(Some(chunk));
+                }
                 let n = wire.fill(deadline).map_err(|e| match e {
                     IoErr::Failed(m) if m == "operation timed out" => {
                         IoErr::Failed("context deadline exceeded".into())
@@ -1648,6 +1684,9 @@ impl ResponseBody {
                 return Err(IoErr::Failed("response body limit exceeded".into()));
             }
             state.remaining -= n as u64;
+            if state.ready_pos == 0 && n == state.ready.len() {
+                return Ok(Some(std::mem::take(&mut state.ready)));
+            }
             let chunk = state.ready[state.ready_pos..state.ready_pos + n].to_vec();
             state.ready_pos += n;
             return Ok(Some(chunk));

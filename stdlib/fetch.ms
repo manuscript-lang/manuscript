@@ -183,28 +183,23 @@ def drain(
         var total = 0
 
         while True:
-            let chunk = try read_next(open, options, started)
+            let read = open.read()
 
-            if let bytes = chunk:
-                total += bytes.length()
-                if limit_exceeded(options.max_response_bytes, total):
-                    return error(FetchError.Http(HttpError.LimitExceeded))
+            if let step = read:
+                if let bytes = step:
+                    total += bytes.length()
+                    if limit_exceeded(options.max_response_bytes, total):
+                        return error(FetchError.Http(HttpError.LimitExceeded))
 
-                out.append_bytes(bytes)
+                    out.append_bytes(bytes)
+                else:
+                    let whole = out.build()
+                    return ok(FetchResponse(head: metadata, body: whole))
             else:
-                return ok(FetchResponse(head: metadata, body: out.build()))
+                if expired(options.timeout, started):
+                    return error(FetchError.Http(HttpError.Timeout))
 
-# Reads one chunk, mapping a read failure after the deadline to Timeout.
-def read_next(
-    body: ResponseBody,
-    options: FetchOptions,
-    started: Instant
-) -> Result[Optional[Bytes], FetchError]:
-    let read = body.read()
-    if read.is_error() and expired(options.timeout, started):
-        return error(FetchError.Http(HttpError.Timeout))
-
-    return read.map_error(io_failure)
+                return error(FetchError.Io(read.err().clone()))
 
 def json_failure(cause: JsonError) -> FetchError:
     return FetchError.Json(cause)

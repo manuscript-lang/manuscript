@@ -301,6 +301,28 @@ impl BodyDecoder {
         matches!(self.state, State::Done)
     }
 
+    /// How many body bytes the next read may take when the body is raw (a fixed length or
+    /// until close), so they can bypass `feed`; `None` for chunked bodies and finished ones.
+    pub fn raw_room(&self) -> Option<u64> {
+        match self.state {
+            State::Length(left) => Some(left),
+            State::UntilClose => Some(u64::MAX),
+            _ => None,
+        }
+    }
+
+    /// Accounts for `n` raw body bytes taken without `feed` (see `raw_room`).
+    pub fn took_raw(&mut self, n: usize) -> Decoded {
+        if let State::Length(left) = &mut self.state {
+            *left -= n as u64;
+            if *left == 0 {
+                self.state = State::Done;
+                return Decoded::Done;
+            }
+        }
+        Decoded::More
+    }
+
     /// Consumes input, appending body bytes to `out`; returns bytes consumed and
     /// the progress. A malformed chunked body is an `Err`.
     pub fn feed(
