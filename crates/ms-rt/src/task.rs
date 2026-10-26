@@ -1807,23 +1807,35 @@ mod tests {
                 !pooled.is_empty(),
                 "the completed stack must enter the pool"
             );
+            let page_size = libc::sysconf(libc::_SC_PAGESIZE);
+            assert!(page_size > 0);
+            let page_size = page_size as usize;
+            for &base in &pooled {
+                assert_eq!(
+                    libc::msync(base as *mut core::ffi::c_void, page_size, libc::MS_ASYNC),
+                    0,
+                    "the control stack must still be mapped before teardown"
+                );
+            }
             teardown();
             for base in pooled {
-                let mut resident = 0u8;
-                // Querying an unmapped address fails; no access to its contents is made.
-                assert_eq!(
-                    libc::mincore(
-                        base as *mut core::ffi::c_void,
-                        4096,
-                        (&raw mut resident).cast()
-                    ),
-                    -1,
-                    "teardown left a task stack mapped"
-                );
-                assert_eq!(
-                    std::io::Error::last_os_error().raw_os_error(),
-                    Some(libc::ENOMEM)
-                );
+                // Darwin mincore reports residency even for holes. msync checks mappings:
+                // an unmapped page must fail with ENOMEM on both Darwin and Linux.
+                for offset in (0..STACK_SLOT).step_by(page_size) {
+                    assert_eq!(
+                        libc::msync(
+                            (base + offset) as *mut core::ffi::c_void,
+                            page_size,
+                            libc::MS_ASYNC
+                        ),
+                        -1,
+                        "teardown left a task stack page mapped"
+                    );
+                    assert_eq!(
+                        std::io::Error::last_os_error().raw_os_error(),
+                        Some(libc::ENOMEM)
+                    );
+                }
             }
         }
     }
