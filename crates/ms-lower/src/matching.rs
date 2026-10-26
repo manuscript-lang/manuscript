@@ -73,7 +73,11 @@ impl FnLower<'_> {
             self.adopt_hidden(sv, ty);
         }
         let rty = self.emty(e)?;
-        let owned = self.needs_drop(rty);
+        // The returned expression of a lending function hands back the branch values themselves.
+        let lend_arms = self.lent_return
+            && self.lent_expr == Some(e as *const Expr as usize)
+            && self.ownership_checked();
+        let owned = self.needs_drop(rty) && !lend_arms;
         let res = self
             .b
             .declare_var(rty, if owned { Mode::Own } else { Mode::Borrow });
@@ -214,12 +218,21 @@ impl FnLower<'_> {
             self.stmts(&arm.body)?;
             let mark = self.temps.len();
             if !self.dead {
+                if lend_arms && let Some(v) = &arm.value {
+                    self.lent_expr = Some(v as *const Expr as usize);
+                }
                 let x = match &arm.value {
                     Some(v) => Some(self.expr(v)?),
                     None => None,
                 };
                 if !self.dead {
                     let v = match x {
+                        Some(x) if lend_arms => {
+                            if x.own && self.needs_drop(self.ty_of(x.v)) {
+                                self.lent_violation = true;
+                            }
+                            x.v
+                        }
                         Some(x) => self.owned(x),
                         None => self.b.unit(),
                     };
