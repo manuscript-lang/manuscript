@@ -85,6 +85,7 @@ Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven me
 | 8 | 255-365 | 104-126 | 150-155 |
 
 User CPU for 3 s at 8 connections: 1.47 s before, 0.12 s after (the rest is kernel receive and page faults). The Manuscript client still runs on one core, Go's on two.
+
 ## 2026-10-26, server on several cores
 
 `server <port> <dir> <threads>` starts that many workers, each running `serve` with `HttpServerOptions(shared: True)` on one shared listener. Server on CPUs 0-1, 64 keep-alive connections from CPUs 2-3, 4 s per row, shared 4-CPU Linux VM (+/-10% between runs); two runs each.
