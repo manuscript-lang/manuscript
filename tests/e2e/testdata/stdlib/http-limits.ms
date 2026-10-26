@@ -1,5 +1,5 @@
-from "@std/testing.ms" import expect_ok
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
+from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/http.ms" import HttpError, headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
 from "@std/core.ms" import TextError
 from "@std/net.ms" import network
 from "@std/bytes.ms" import Bytes
@@ -56,3 +56,13 @@ test "serve timeout closes idle connections":
             if let _data = after: return error(
                 TextError("idle keep-alive connection stayed open")
             )
+
+test "serve rejects a zero request timeout":
+    let net = network()
+    let started = net.serve(
+        address: "127.0.0.1:0", handler: buffered(ok_route),
+        options: HttpServerOptions(timeout: 0.seconds)
+    )
+    if started.is_ok(): return error(TextError("a zero timeout was accepted"))
+
+    try expect_equal(started.err(), HttpError.InvalidInput)

@@ -525,7 +525,8 @@ impl Client {
             // reused, then drop it.
             self.discard(head, wire, key, &method, deadline);
             sent += 1;
-            let mut next_headers = self.redirect_headers(&initial, &previous, &url, &next_url);
+            let mut next_headers =
+                self.redirect_headers(&initial, &previous, &url, &next_url, keep_body);
             if let Some(referer) = referer_for(&url, &next_url, &initial) {
                 set_header(&mut next_headers, "Referer", referer.into_bytes());
             }
@@ -624,18 +625,31 @@ impl Client {
     }
 
     /// Headers of a redirected request: the caller's own, minus the credentials
-    /// that must not leave the origin.
+    /// that must not leave the origin and, without a body, the entity headers.
     fn redirect_headers(
         &self,
         initial: &[(String, Vec<u8>)],
         previous: &Url,
         old: &Url,
         next: &Url,
+        keep_body: bool,
     ) -> Vec<(String, Vec<u8>)> {
         let subdomain = is_domain_or_subdomain(&next.host, &previous.host);
         let same_origin = next.same_origin(old);
         initial
             .iter()
+            .filter(|(name, _)| {
+                // A redirect that drops the body drops the headers that describe it.
+                keep_body
+                    || ![
+                        "Content-Type",
+                        "Content-Encoding",
+                        "Content-Language",
+                        "Content-Location",
+                    ]
+                    .iter()
+                    .any(|h| name.eq_ignore_ascii_case(h))
+            })
             .filter(|(name, _)| {
                 let sensitive = matches!(
                     name.as_str(),
@@ -2122,13 +2136,16 @@ mod tests {
             "{echoed}"
         );
         assert!(echoed.contains("Authorization: secret\r\n"));
-        assert!(echoed.contains("Content-Type: text/plain\r\n"));
+        // The body is gone, so the header describing it is too.
+        assert!(!echoed.contains("Content-Type"), "{echoed}");
         assert!(!echoed.contains("Content-Length"));
 
         let mut post = request("POST", &address, "/r307");
         post.body = Body::Bytes(Rc::new(b"hello".to_vec()));
+        post.headers = vec![("Content-Type".into(), b"text/plain".to_vec())];
         let echoed = text(&c.send(post).unwrap());
         assert!(echoed.starts_with("POST /dump HTTP/1.1\r\n"), "{echoed}");
+        assert!(echoed.contains("Content-Type: text/plain\r\n"), "{echoed}");
         assert!(echoed.ends_with("\r\n\r\nhello"));
 
         // No Location: the redirect response itself.
