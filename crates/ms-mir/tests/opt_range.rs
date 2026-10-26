@@ -590,3 +590,35 @@ fn a_record_returned_through_memory_keeps_an_unknown_list_length() {
     verify_module(&after).unwrap_or_else(|e| panic!("{e:?}\n{}", print_module(&after)));
     assert_eq!(exec(&after), want, "{}", print_module(&after));
 }
+
+/// `n` list-mapping loops one after another, each over the list the one before built.
+fn loop_chain(n: usize) -> String {
+    let mut s = String::from(
+        "module \"t\"\nentry @main\nfn @main() -> int {\nb0:\n  %one: int = iconst 1\n  %z: int = iconst 0\n  %l0: list<int> = list.lit %one\n  br h0(%l0)\n",
+    );
+    for k in 0..n {
+        s.push_str(&format!(
+            "h{k}(%in{k}: own list<int>):\n  %len{k}: int = list.len %in{k}\n  %out{k}: list<int> = list.new %len{k}\n  br l{k}(%z, %in{k}, %out{k})\n\
+             l{k}(%i{k}: int, %src{k}: own list<int>, %dst{k}: own list<int>):\n  %c{k}: bool = icmp.lt %i{k}, %len{k}\n  br_if %c{k}, body{k}(), done{k}()\n\
+             body{k}:\n  %x{k}: int = list.get %src{k}, %i{k}\n  %y{k}: int = iadd %x{k}, %one\n  %d2{k}: list<int> = list.push %dst{k}, %y{k}\n  %j{k}: int = iadd %i{k}, %one\n  br l{k}(%j{k}, %src{k}, %d2{k})\n\
+             done{k}:\n  drop %src{k}\n  br h{}(%dst{k})\n",
+            k + 1
+        ));
+    }
+    s.push_str(&format!(
+        "h{n}(%r: own list<int>):\n  %v: int = list.get %r, %z\n  drop %r\n  ret %v\n}}\n"
+    ));
+    s
+}
+
+#[test]
+fn a_chain_of_loops_is_handled_in_linear_time() {
+    // Each loop leaves facts about its own counter and list length behind; they must not pile
+    // up in the environments of every later loop, which made the pass quadratic.
+    let n = 6000;
+    let mut m = parse(&loop_chain(n));
+    let start = std::time::Instant::now();
+    assert!(range::run(&mut m));
+    assert!(start.elapsed().as_secs() < 20, "took {:?}", start.elapsed());
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+}

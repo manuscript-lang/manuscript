@@ -28,6 +28,7 @@ use ms_mir::ir::{Boxing, Module};
 use ms_mir::types::{AltId, Ty, TyKind};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// A scalar machine value.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -121,9 +122,13 @@ pub fn mem_layout(leaves: &[Leaf]) -> MemLayout {
 pub struct Layouts<'m> {
     /// The module whose types are described.
     pub m: &'m Module,
-    cache: RefCell<HashMap<Ty, Shape>>,
+    cache: RefCell<HashMap<Ty, Rc<Shape>>>,
+    alt_cache: RefCell<HashMap<AltId, Rc<AltFields>>>,
     boxing: RefCell<Boxing>,
 }
+
+/// Per case, per field: the field's type and its leaf indices into the alternative's leaf list.
+pub type AltFields = Vec<Vec<(Ty, Vec<usize>)>>;
 
 impl<'m> Layouts<'m> {
     /// A fresh oracle.
@@ -131,6 +136,7 @@ impl<'m> Layouts<'m> {
         Layouts {
             m,
             cache: RefCell::new(HashMap::new()),
+            alt_cache: RefCell::new(HashMap::new()),
             boxing: RefCell::new(Boxing::default()),
         }
     }
@@ -147,7 +153,10 @@ impl<'m> Layouts<'m> {
     }
 
     /// The flattened shape of `ty`.
-    pub fn shape(&self, ty: Ty) -> Shape {
+    ///
+    /// Shared: every instruction asks, and copying the leaves and case slots of a large
+    /// alternative each time made lowering quadratic in its case count.
+    pub fn shape(&self, ty: Ty) -> Rc<Shape> {
         if let Some(s) = self.cache.borrow().get(&ty) {
             return s.clone();
         }
@@ -157,20 +166,58 @@ impl<'m> Layouts<'m> {
             // A boxed alternative is one pointer; this also ends the recursion through its own fields.
             self.cache.borrow_mut().insert(
                 ty,
-                Shape {
+                Rc::new(Shape {
                     leaves: vec![Leaf::I64],
                     alt: None,
-                },
+                }),
             );
         }
-        let s = self.compute(ty);
+        let s = Rc::new(self.compute(ty));
         self.cache.borrow_mut().insert(ty, s.clone());
         s
     }
 
+    /// Per-case, per-field `(type, leaf indices into the alt's leaf/block list)`.
+    pub fn alt_fields(&self, a: AltId) -> Rc<AltFields> {
+        if let Some(f) = self.alt_cache.borrow().get(&a) {
+            return f.clone();
+        }
+        let ty = self
+            .m
+            .types
+            .find(&TyKind::Alt(a))
+            .expect("alt type interned");
+        let shape = self.shape(ty);
+        let no_slots = Vec::new();
+        let slots = match &shape.alt {
+            Some(AltRepr::Inline { slots }) | Some(AltRepr::Boxed { slots, .. }) => slots,
+            None => &no_slots,
+        };
+        let fields: AltFields = self.m.alts[a.index()]
+            .cases
+            .iter()
+            .zip(slots)
+            .map(|(c, sl)| {
+                let mut at = 0;
+                c.fields
+                    .iter()
+                    .map(|f| {
+                        let w = self.width(f.1);
+                        let idx = sl[at..at + w].to_vec();
+                        at += w;
+                        (f.1, idx)
+                    })
+                    .collect()
+            })
+            .collect();
+        let fields = Rc::new(fields);
+        self.alt_cache.borrow_mut().insert(a, fields.clone());
+        fields
+    }
+
     /// The register leaves of `ty`.
     pub fn leaves(&self, ty: Ty) -> Vec<Leaf> {
-        self.shape(ty).leaves
+        self.shape(ty).leaves.clone()
     }
 
     /// Number of register leaves.

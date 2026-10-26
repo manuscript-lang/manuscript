@@ -74,3 +74,51 @@ The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn b
 | 8 MiB, 8 | 221 | 90 |
 
 Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven memory-copy passes per body byte; now three). Callgrind over 20 fetches of 8 MiB: 1.18G to 0.52G instructions. `/io` (whole-file read and write) went from 676 to 756 req/s, with `/health` beside it from 26k to 40k req/s and its p99 from 11 to 5.8 ms: reads per request 40 to 5, writes 19 to 4. A 30-route router served 41k-46k requests per second before it stopped cloning its routes on each request, and 80k-83k after.
+
+## 2026-10-26, fetch bodies received in place
+
+`ResponseBody.read_all()` receives a fixed-length HTTP/1 body straight into the result buffer, and `fetch` uses it. `sh bench/perf/web/fetch.sh` style run, 8 MiB body, client on CPUs 2-3, three rounds on the shared VM (+/-10%):
+
+| Connections | Go req/s | Manuscript before | Manuscript after |
+| --- | ---: | ---: | ---: |
+| 1 | 158-207 | 120-136 | 138-146 |
+| 8 | 255-365 | 104-126 | 150-155 |
+
+User CPU for 3 s at 8 connections: 1.47 s before, 0.12 s after (the rest is kernel receive and page faults). The Manuscript client still runs on one core, Go's on two.
+
+## 2026-10-26, server on several cores
+
+`server <port> <dir> <threads>` starts that many workers, each running `serve` with `HttpServerOptions(shared: True)` on one shared listener. Server on CPUs 0-1, 64 keep-alive connections from CPUs 2-3, 4 s per row, shared 4-CPU Linux VM (+/-10% between runs); two runs each.
+
+| Server | `/top?n=10` req/s | `/health` req/s |
+| --- | ---: | ---: |
+| Go `net/http` | 34.4k, 37.5k | 85.1k, 84.6k |
+| Manuscript, 1 thread | 26.3k, 25.1k | 118.3k, 105.7k |
+| Manuscript, 2 workers | 58.1k, 56.9k | 140.7k, 136.1k |
+| Manuscript, 4 workers (2 CPUs) | 59.1k, 61.4k | 150.7k, 139.9k |
+
+A first run of this table had 2 workers at 38.6k/39.1k on `/top` and 65-72k on `/health`, below one thread: Rust code in a worker allocated through musl's `malloc`, which has one process-wide lock, and a `futex` trace showed the two workers handing that lock back and forth. Workers now allocate small Rust blocks from a process-wide heap that is never unmapped, with per-thread free lists (`worker_heap` in `ms-rt/src/alloc.rs`).
+
+## 2026-10-26, fetch on several cores
+
+`fetch.sh` gained a row that spreads the 8 connections over 2 worker threads (`ms/fetch <url> 8 <secs> 2`), one `Fetcher` task group per worker. Same machine and pinning as above (clients on CPUs 2-3), 3 s, two runs.
+
+| 8 MiB body, 8 connections | req/s |
+| --- | ---: |
+| Go `net/http` | 424, 437 |
+| Manuscript, tasks on one thread | 165, 151 |
+| Manuscript, 2 worker threads | 371, 374 |
+
+Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one worker fetched 70-84 req/s against 190-198 on the main thread, because each body buffer was mapped and faulted in again.
+
+## 2026-10-26, fetch on several cores after in-place bodies (#1503)
+
+`sh bench/perf/web/fetch.sh 3`, tree with #1495 and #1503, same machine and pinning (server CPUs 0-1, clients CPUs 2-3), two runs.
+
+| Body, connections | Go req/s | Manuscript, tasks on one thread | Manuscript, 2 worker threads |
+| --- | ---: | ---: | ---: |
+| 3 bytes, 8 | 38.8k, 39.9k | 53.7k, 54.9k | 49.8k, 45.7k |
+| 8 MiB, 1 | 268, 242 | 260, 252 | |
+| 8 MiB, 8 | 425, 363 | 237, 202 | 590, 479 |
+
+With the body received in place, two worker threads put the 8 MiB case 35-39% above Go's client on the same two CPUs. For tiny bodies the extra thread costs 7-15%, so keep one thread there.

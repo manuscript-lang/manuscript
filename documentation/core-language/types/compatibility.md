@@ -17,7 +17,7 @@ A value's type must match the type required at its position: annotations, assign
 | Record or alternative | Defining module, declaration, and ordered type arguments; matching fields or cases do not establish compatibility |
 | Contract view | Nominal contract application; a type with a declared implementation [converts implicitly](contracts.md#interface-conversion) where the interface is expected |
 | Generic application | Exact declaration and every ordered argument; Result can widen its error to Error while retaining the same success type |
-| Function | Exact parameter labels, declaration order, parameter types, and result type; no variance or label/order adaptation |
+| Function | Exact parameter types in declaration order and result type; parameter names are not part of identity; no variance |
 
 A generic bound grants properties, not subtyping. Type positions use [ordinary name resolution](../modules/declarations.md#names-and-declaration-order); a value shadowing a type name is an error. Unqualified cases follow [alternative lookup](alternatives.md#construction-and-identity), and expected types cannot override a lexical binding or choose an ambiguous case.
 

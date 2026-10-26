@@ -130,16 +130,17 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
     }
     // A value left with only its drop is never observed: delete both.
     let uses = f.use_counts();
-    let dead: Vec<Value> = known
+    let mut drops: HashMap<Value, usize> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if i.op == Op::Drop && known.contains_key(&i.args[0]) {
+            *drops.entry(i.args[0]).or_default() += 1;
+        }
+    }
+    let dead: HashSet<Value> = known
         .keys()
         .copied()
         .filter(|v| {
-            let drops = f
-                .blocks
-                .iter()
-                .flat_map(|b| &b.insts)
-                .filter(|i| i.op == Op::Drop && i.args[0] == *v)
-                .count();
+            let drops = drops.get(v).copied().unwrap_or(0);
             uses[v.index()] > 0 && uses[v.index()] as usize == drops
         })
         .collect();
@@ -198,13 +199,12 @@ fn known_ifaces(m: &Module, f: &mut Func) -> bool {
         }
     }
     let plain = |v: &Value| handled.get(v).copied().unwrap_or(0) == uses[v.index()];
-    boxed.retain(|b, _| {
-        plain(b)
-            && pointers
-                .iter()
-                .filter(|(_, owner)| *owner == b)
-                .all(|(p, _)| plain(p))
-    });
+    let unplain_owners: HashSet<Value> = pointers
+        .iter()
+        .filter(|(p, _)| !plain(p))
+        .map(|(_, owner)| *owner)
+        .collect();
+    boxed.retain(|b, _| plain(b) && !unplain_owners.contains(b));
     if boxed.is_empty() {
         return false;
     }
@@ -906,6 +906,15 @@ fn branches(f: &mut Func) -> bool {
     }
     // Thread edges through empty blocks that only forward their arguments.
     let uses = f.use_counts();
+    // The blocks whose terminator targets each block, kept current as edges move.
+    let mut preds: Vec<Vec<usize>> = vec![Vec::new(); f.blocks.len()];
+    for (pb, blk) in f.blocks.iter().enumerate() {
+        blk.term.for_each_target(|e| {
+            if preds[e.block.index()].last() != Some(&pb) {
+                preds[e.block.index()].push(pb);
+            }
+        });
+    }
     for b in 1..f.blocks.len() {
         if !f.blocks[b].insts.is_empty() {
             continue;
@@ -926,8 +935,9 @@ fn branches(f: &mut Func) -> bool {
         }
         let bb = Block(b as u32);
         let mut did = false;
-        for pb in 0..f.blocks.len() {
+        for pb in std::mem::take(&mut preds[b]) {
             if pb == b {
+                preds[b].push(pb);
                 continue;
             }
             f.blocks[pb].term.for_each_target_mut(|e| {
@@ -946,6 +956,8 @@ fn branches(f: &mut Func) -> bool {
                 e.args = new_args;
                 did = true;
             });
+            // A repeated entry only revisits a block whose edges already moved.
+            preds[t.block.index()].push(pb);
         }
         changed |= did;
     }

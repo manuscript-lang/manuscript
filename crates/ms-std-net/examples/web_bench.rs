@@ -84,6 +84,7 @@ fn main() {
     let options = Options {
         limits: Limits::default(),
         tls: None,
+        shared: false,
     };
     let server = Server::start(&net, &address, Box::new(Buffered(App)), options).expect("listen");
     server.wait();

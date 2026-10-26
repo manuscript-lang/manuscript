@@ -47,7 +47,7 @@
 
 use crate::ir::*;
 use crate::types::{Ty, TyKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Whether bounded loop counters are assumed not to overflow (see the module docs).
 pub const ASSUME_BOUNDED_COUNTERS: bool = true;
@@ -186,11 +186,31 @@ struct Fa<'a> {
     base: Vec<Option<Itv>>,
     envs: Vec<Env>,
     widen: Vec<u32>,
-    lenof: HashMap<Value, Value>,
+    lenof: LenOf,
     lengths: Vec<Value>,
     byte_lists: Vec<bool>,
     /// Block and index of the block parameter that defines a value.
     param_of: Vec<Option<(usize, usize)>>,
+    /// Reverse-postorder position of the last block that reads each value, by [`Fa::class`].
+    /// A fact about a value no block at or after a position reads is dropped from the
+    /// environments built there, so they stay as large as what is live, not as large as the
+    /// dominating code (a chain of many loops would otherwise make the pass quadratic).
+    last_read: Vec<u32>,
+    rpo_pos: Vec<u32>,
+}
+
+/// The length origin of each `list.len` result. Queried at every proof step, so a table
+/// indexed by value, not a hash map.
+struct LenOf(Vec<Option<Value>>);
+
+impl LenOf {
+    fn insert(&mut self, v: Value, origin: Value) {
+        self.0[v.index()] = Some(origin);
+    }
+
+    fn get(&self, v: &Value) -> Option<&Value> {
+        self.0[v.index()].as_ref()
+    }
 }
 
 /// A list length can flow through replacement and block arguments without its
@@ -485,7 +505,7 @@ impl<'a> Fa<'a> {
         let lengths = length_origins(m, f);
         let byte_lists = byte_lists(m, f);
         let mut defs = vec![None; f.values.len()];
-        let mut lenof = HashMap::new();
+        let mut lenof = LenOf(vec![None; f.values.len()]);
         for (bi, b) in f.blocks.iter().enumerate() {
             for (ii, i) in b.insts.iter().enumerate() {
                 if let Some(r) = i.res {
@@ -523,6 +543,24 @@ impl<'a> Fa<'a> {
                 _ => {}
             }
         }
+        let mut rpo_pos = vec![0u32; n];
+        for (pos, b) in rpo.iter().enumerate() {
+            rpo_pos[b.index()] = pos as u32;
+        }
+        let class = |v: Value| lenof.get(&v).map_or(v.index(), |o: &Value| o.index());
+        let mut last_read = vec![0u32; f.values.len()];
+        for &b in &rpo {
+            let pos = rpo_pos[b.index()];
+            let blk = &f.blocks[b.index()];
+            let mut read = |v: Value| {
+                let slot = &mut last_read[class(v)];
+                *slot = (*slot).max(pos);
+            };
+            blk.insts
+                .iter()
+                .for_each(|i| i.args.iter().for_each(|&a| read(a)));
+            blk.term.for_each_use(&mut read);
+        }
         let mut base = vec![None; f.values.len()];
         for p in &f.blocks[0].params {
             let t = f.ty(p.value);
@@ -544,7 +582,31 @@ impl<'a> Fa<'a> {
             lengths,
             byte_lists,
             param_of,
+            last_read,
+            rpo_pos,
         }
+    }
+
+    fn class(&self, v: Value) -> usize {
+        self.lenof.get(&v).map_or(v.index(), |o| o.index())
+    }
+
+    /// Drops what `env` knows about values that no block from `bi` on reads.
+    fn prune(&self, env: &mut Env, bi: usize) {
+        let pos = self.rpo_pos[bi];
+        let live = |v: &Value| self.last_read[self.class(*v)] >= pos;
+        env.itv.retain(|v, _| live(v));
+        // `a < b` serves a proof that reaches `b` from a live value and goes on from there, so it
+        // stays when `b` is live or when `b` starts another kept relation. `0 < len` for every
+        // earlier version of a list would otherwise outlive the lists.
+        let starts: HashSet<usize> = env
+            .rels
+            .iter()
+            .filter(|(_, b, _)| live(b))
+            .map(|(a, ..)| self.class(*a))
+            .collect();
+        env.rels
+            .retain(|(a, b, _)| live(b) || (live(a) && starts.contains(&self.class(*b))));
     }
 
     fn def_inst(&self, v: Value) -> Option<&'a Inst> {
@@ -669,6 +731,7 @@ impl<'a> Fa<'a> {
             return Env::default();
         }
         let mut env = self.envs[self.idom[bi]].clone();
+        self.prune(&mut env, bi);
         if let [(p, kind, _)] = self.incoming[bi].as_slice() {
             self.apply_edge(&mut env, *p, *kind);
         }

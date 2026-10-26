@@ -283,6 +283,11 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
     while let Some(bi) = work.pop() {
+        // Choose every site in the block first, then inline from the last: each split moves
+        // only the instructions up to the previous split, not the whole remaining tail.
+        // Callee constants never reach a later call's arguments, so the choices match
+        // inlining one site at a time.
+        let mut picks: Vec<(usize, usize)> = Vec::new();
         for ii in 0..m.funcs[fi].blocks[bi].insts.len() {
             let inst = &m.funcs[fi].blocks[bi].insts[ii];
             let (Op::Call, Imm::Func(g)) = (inst.op, inst.imm) else {
@@ -309,20 +314,19 @@ fn inline_into(m: &mut Module, fi: usize, cyc: &[bool], sites: &[usize]) -> bool
                     size <= limit && grown + size <= budget
                 }
             };
-            if !ok {
-                continue;
+            if ok {
+                grown += size;
+                picks.push((ii, gi));
             }
-            grown += size;
+        }
+        for (ii, gi) in picks.into_iter().rev() {
             let callee = m.funcs[gi].clone();
             let ret_own = m.needs_drop(callee.ret) && !callee.ret_borrowed;
             let cont = inline_at(&mut m.funcs[fi], bi, ii, &callee, ret_own);
             // Only the call definition is replaced; existing constants keep their IDs when
             // the tail moves. Fresh callee definitions follow the continuation block.
             consts.extend(const_values(&m.funcs[fi].blocks[cont + 1..]));
-            work.push(cont);
             changed = true;
-            // The rest of this block now lives in `cont`.
-            break;
         }
     }
     changed

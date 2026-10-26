@@ -252,26 +252,6 @@ fn type_alias(name: &str) -> Option<&'static str> {
     })
 }
 
-/// Explains a function passed where names differ.
-pub fn label_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
-    if actual.kind != Kind::Function || expected.kind != Kind::Function {
-        return String::new();
-    }
-    if actual.params.len() != expected.params.len() {
-        return String::new();
-    }
-    for (i, p) in actual.params.iter().enumerate() {
-        if p.name != expected.params[i].name {
-            let want = expected.params[i].name;
-            return format!(
-                "the function's parameter is named {} but this position expects {}; rename the parameter to {}, or wrap the function in a lambda: lambda {}: f({}: {})",
-                p.name, want, want, want, p.name, want
-            );
-        }
-    }
-    String::new()
-}
-
 /// Names the fix when an Optional is used where a plain value is required.
 pub fn optional_use_hint(actual: &Ty, expected: &Ty) -> String {
     if !actual.is_std("Optional") || actual.args.len() != 1 || expected.is_std("Optional") {
@@ -768,7 +748,6 @@ impl Checker {
         }
         let message = format_mismatch(actual, expected);
         for hint in [
-            label_mismatch_hint(actual, expected),
             optional_use_hint(actual, expected),
             number_conversion_hint(actual, expected),
             ok_wrap_hint(actual, expected),

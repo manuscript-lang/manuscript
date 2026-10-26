@@ -215,6 +215,8 @@ msrt_pipe_new() -> i64
 msrt_pipe_peer(end: i64) -> i64
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
+msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_close(end: i64)
 msrt_task_yield()
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
@@ -568,6 +570,7 @@ msrt_http_client_request_stream( c: *const Obj, method: *const StrVal, address: 
 msrt_http_body_close(b: *const Obj)
 msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
+msrt_http_body_read_all(b: *const Obj, out: *mut VecVal, err: *mut StrVal) -> u8
 msrt_net_network_request( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_request_bytes( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8

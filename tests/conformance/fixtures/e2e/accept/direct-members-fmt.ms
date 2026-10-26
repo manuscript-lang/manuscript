@@ -8,10 +8,8 @@ type Point:
     y: Int
 
 impl Equal for Point:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Point(value): return self.x == value.x
-            case _: return False
+    def equals(other: Point) -> Bool:
+        return self.x == other.x
 
 def contains_generic[T: Equal](values: List[T], value: T) -> Bool:
     return values.contains(value)
