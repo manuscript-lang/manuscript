@@ -144,4 +144,4 @@ Each of the three runs cleanup for the scopes it exits. Each iteration is its ow
 
 ## Cancellation
 
-Each loop back-edge is a cancellation checkpoint, so CPU-bound loops respond to cancellation without explicit calls.
+Tasks share one thread and are cancelled at their next wait, so a loop that never waits is not stopped by cancellation or a timeout and keeps other tasks from running. Wait inside the loop, or poll `cancelled()` and return. Lint rule **MSL110** flags a `while True` loop in a module that imports `@std/tasks.ms` when its body neither waits nor exits.
