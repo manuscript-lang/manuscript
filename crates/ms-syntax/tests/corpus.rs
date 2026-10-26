@@ -279,3 +279,55 @@ fn nesting_limits() {
         ms_syntax::parser::parse(&file, &moderate).unwrap();
     });
 }
+
+#[test]
+fn pipe_and_case_paths_obey_the_chain_limit() {
+    big_stack(|| {
+        let file: Arc<str> = Arc::from("pipe-limit.ms");
+        let long = ms_syntax::parser::MAX_CHAIN + 1;
+        let cases = [
+            (
+                format!("def f() -> Int:\n    return 1{}\n", " | step".repeat(long)),
+                2,
+            ),
+            (
+                format!(
+                    "def f() -> Int:\n    return 1{}\n",
+                    " | .member()".repeat(long)
+                ),
+                2,
+            ),
+            (
+                format!(
+                    "def f() -> Int:\n    return 1 | step{}\n",
+                    ".member".repeat(long)
+                ),
+                2,
+            ),
+            (
+                format!(
+                    "def f() -> Int:\n    return match value:\n        case Case{}: 1\n",
+                    ".member".repeat(long)
+                ),
+                3,
+            ),
+        ];
+        for (source, line) in cases {
+            let result = ms_syntax::parser::parse(&file, &source);
+            assert!(
+                result.is_err(),
+                "overlong expression chain must be rejected"
+            );
+            let diagnostic = result.err().unwrap();
+            assert!(
+                diagnostic
+                    .message
+                    .starts_with("expression chain exceeds 10000")
+            );
+            assert_eq!(diagnostic.pos.line, line);
+            assert!((diagnostic.pos.offset as usize) < source.len());
+        }
+        let source = format!("def f() -> Int:\n    return 1{}\n", " | step".repeat(100));
+        ms_syntax::parser::parse(&file, &source).unwrap();
+    });
+}

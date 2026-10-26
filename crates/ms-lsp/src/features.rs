@@ -13,9 +13,10 @@ pub fn folding_ranges(d: &Document) -> Json {
     let indent = |line: &str| line.len() - line.trim_start_matches(' ').len();
     let mut result = Vec::new();
     for (start, line) in lines.iter().enumerate() {
-        let trimmed = line.trim();
-        let code = trimmed.split('#').next().unwrap_or("");
-        if !code.ends_with(':') {
+        let header = text::editor_tokens(line)
+            .into_iter()
+            .rfind(|token| token.kind != text::EditorKind::Comment);
+        if !header.is_some_and(|token| token.is(b':')) {
             continue;
         }
         let level = indent(line);
@@ -105,4 +106,39 @@ pub fn inlay_hints(analysis: &Analysis, d: &Document, requested: Range) -> Json 
     let mut hints = hints.hints;
     hints.sort_by_key(|(p, _)| (p.line, p.character));
     Json::Arr(hints.into_iter().map(|(_, hint)| hint).collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn folding_headers_allow_comments_and_hashes_in_strings() {
+        let source = "def main() -> Int: # 😀 note\n    if \"a#b\" == \"a#b\": # note\n        return 1\n    return 0\n";
+        let expected = Json::Arr(vec![
+            obj([
+                ("startLine", 0usize.into()),
+                ("endLine", 3usize.into()),
+                ("kind", "region".into()),
+            ]),
+            obj([
+                ("startLine", 1usize.into()),
+                ("endLine", 2usize.into()),
+                ("kind", "region".into()),
+            ]),
+        ]);
+        for source in [source.to_string(), source.replace('\n', "\r\n")] {
+            let d = Document::new("file:///folding.ms", source);
+            assert_eq!(folding_ranges(&d), expected);
+        }
+    }
+
+    #[test]
+    fn folding_ignores_colons_in_comments_and_strings() {
+        let d = Document::new(
+            "file:///folding.ms",
+            "# heading:\n    # indented comment\nlet text = \"fake: # comment\"\n    let other = 1\n",
+        );
+        assert_eq!(folding_ranges(&d), Json::Arr(Vec::new()));
+    }
 }
