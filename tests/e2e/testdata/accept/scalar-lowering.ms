@@ -133,7 +133,7 @@ def value_match_loop_try(marker: String) -> Result[Int, TextError]:
 test "combined lowering retains callable state and try boundaries":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-scalar-") | try expect_ok:
         let dir = temporary.path()
         let expected = Result[Int, TextError].error(TextError("expected"))
         try expect_equal(nested_results(f"{dir}/nested"), expected)
@@ -146,7 +146,7 @@ test "combined lowering retains callable state and try boundaries":
 test "cleanup remains owned by its source callable":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-scalar-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-scalar-") | try expect_ok:
         let dir = temporary.path()
         try expect_equal(conditional(f"{dir}/skipped", take: False), 8)
         try expect_false(closed(f"{dir}/skipped"))

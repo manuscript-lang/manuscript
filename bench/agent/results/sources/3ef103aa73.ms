@@ -1274,25 +1274,19 @@ impl Sheet:
                 precedents = precedents_of(node.clone())
             for p in precedents:
                 self.link(p, key)
-            (
-                self.cells.add(
-                    key,
-                    Cell(
-                        raw: text, value: Empty, ast: parsed, is_formula: True,
-                        precedents: precedents
-                    )
+            self.cells.add(
+                key,
+                Cell(
+                    raw: text, value: Empty, ast: parsed, is_formula: True,
+                    precedents: precedents
                 )
             )
         else:
-            (
-                self
-                .cells
-                .add(
-                    key,
-                    Cell(
-                        raw: text, value: constant_value(text), ast: none,
-                        is_formula: False, precedents: []
-                    )
+            self.cells.add(
+                key,
+                Cell(
+                    raw: text, value: constant_value(text), ast: none,
+                    is_formula: False, precedents: []
                 )
             )
 
@@ -1920,14 +1914,10 @@ impl Sheet:
                 self.strong_connect(w)
                 self.tarjan_low.add(key, lower_of(self.low_of(key), self.low_of(w)))
             elif self.tarjan_on.contains(w):
-                (
-                    self
-                    .tarjan_low
-                    .add(
-                        key,
-                        lower_of(
-                            self.low_of(key), self.index_of_node(w)
-                        )
+                self.tarjan_low.add(
+                    key,
+                    lower_of(
+                        self.low_of(key), self.index_of_node(w)
                     )
                 )
 

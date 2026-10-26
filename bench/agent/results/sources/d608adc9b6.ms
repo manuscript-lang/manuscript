@@ -47,13 +47,11 @@ def suffix(fee: Int) -> String:
 impl Ledger:
     var def blame(id: String) -> Unit:
         let acct = self.accounts.get(id).get()
-        (
-            self.accounts.add(
-                id,
-                Account(
-                    limit: acct.limit, balance: acct.balance, ops: acct.ops,
-                    rejected: acct.rejected + 1, frozen: acct.frozen
-                )
+        self.accounts.add(
+            id,
+            Account(
+                limit: acct.limit, balance: acct.balance, ops: acct.ops,
+                rejected: acct.rejected + 1, frozen: acct.frozen
             )
         )
 
@@ -80,13 +78,11 @@ impl Ledger:
             if self.accounts.contains(id) == False: return f"error: unknown account {id}"
 
             let acct = self.accounts.get(id).get()
-            (
-                self.accounts.add(
-                    id,
-                    Account(
-                        limit: acct.limit, balance: acct.balance, ops: acct.ops,
-                        rejected: acct.rejected, frozen: cmd == "freeze"
-                    )
+            self.accounts.add(
+                id,
+                Account(
+                    limit: acct.limit, balance: acct.balance, ops: acct.ops,
+                    rejected: acct.rejected, frozen: cmd == "freeze"
                 )
             )
             return "ok"
@@ -124,13 +120,11 @@ impl Ledger:
             return f"error: account frozen {id}"
 
         let new_balance = acct.balance + amount.get()
-        (
-            self.accounts.add(
-                id,
-                Account(
-                    limit: acct.limit, balance: new_balance, ops: acct.ops + 1,
-                    rejected: acct.rejected, frozen: acct.frozen
-                )
+        self.accounts.add(
+            id,
+            Account(
+                limit: acct.limit, balance: new_balance, ops: acct.ops + 1,
+                rejected: acct.rejected, frozen: acct.frozen
             )
         )
         return f"ok {new_balance}"
@@ -157,15 +151,11 @@ impl Ledger:
             self.blame(id)
             return f"error: overdraft limit exceeded {id}"
 
-        (
-            self
-            .accounts
-            .add(
-                id,
-                Account(
-                    limit: acct.limit, balance: new_balance, ops: acct.ops + 1,
-                    rejected: acct.rejected, frozen: acct.frozen
-                )
+        self.accounts.add(
+            id,
+            Account(
+                limit: acct.limit, balance: new_balance, ops: acct.ops + 1,
+                rejected: acct.rejected, frozen: acct.frozen
             )
         )
         self.fees += fee
@@ -205,22 +195,18 @@ impl Ledger:
             return f"error: overdraft limit exceeded {from}"
 
         let new_dst = dst.balance + amount.get()
-        (
-            self.accounts.add(
-                from,
-                Account(
-                    limit: src.limit, balance: new_src, ops: src.ops + 1,
-                    rejected: src.rejected, frozen: src.frozen
-                )
+        self.accounts.add(
+            from,
+            Account(
+                limit: src.limit, balance: new_src, ops: src.ops + 1,
+                rejected: src.rejected, frozen: src.frozen
             )
         )
-        (
-            self.accounts.add(
-                to,
-                Account(
-                    limit: dst.limit, balance: new_dst, ops: dst.ops + 1,
-                    rejected: dst.rejected, frozen: dst.frozen
-                )
+        self.accounts.add(
+            to,
+            Account(
+                limit: dst.limit, balance: new_dst, ops: dst.ops + 1,
+                rejected: dst.rejected, frozen: dst.frozen
             )
         )
         self.fees += fee
