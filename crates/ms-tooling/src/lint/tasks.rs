@@ -1,4 +1,4 @@
-//! A `while True` loop that never waits (`MSL110`). Tasks share one thread and are
+//! A `while True` loop that never waits (`MSL111`). Tasks share one thread and are
 //! cancelled at their next wait, so such a loop starves its siblings and ignores
 //! timeouts and `TaskGroup` close.
 
@@ -43,7 +43,7 @@ impl Visitor for Scan<'_> {
         walk_block(&mut body_scan, body);
         if !body_scan.may_wait_or_exit {
             self.findings.push(finding(
-                "MSL110",
+                "MSL111",
                 "This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep or a channel call), or return once cancelled() is True",
                 self.file,
                 cond.pos,

@@ -1,4 +1,4 @@
-//! `MSL110`: a `while True` loop in a tasks module that never waits.
+//! `MSL111`: a `while True` loop in a tasks module that never waits.
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::lint::lint_program;
@@ -27,7 +27,7 @@ fn spinning_loop_is_reported() {
     let source = format!(
         "{HEAD}def spin() -> Int:\n    var items = List[Int]()\n    var n = 0\n    while True:\n        n += 1\n        items.append(n)\n    return n\nexport def main() -> Int:\n    return 0\n"
     );
-    assert!(codes(&source).contains(&"MSL110".to_string()));
+    assert!(codes(&source).contains(&"MSL111".to_string()));
 }
 
 #[test]
@@ -38,12 +38,12 @@ fn loops_that_wait_or_exit_are_not_reported() {
     let exits = format!(
         "{HEAD}def count() -> Int:\n    var n = 0\n    while True:\n        n += 1\n        if n > 3:\n            return n\n    return n\nexport def main() -> Int:\n    return 0\n"
     );
-    assert!(!codes(&waits).contains(&"MSL110".to_string()));
-    assert!(!codes(&exits).contains(&"MSL110".to_string()));
+    assert!(!codes(&waits).contains(&"MSL111".to_string()));
+    assert!(!codes(&exits).contains(&"MSL111".to_string()));
 }
 
 #[test]
 fn modules_without_tasks_are_not_reported() {
     let source = "def spin() -> Int:\n    var n = 0\n    while True:\n        n += 1\n    return n\nexport def main() -> Int:\n    return 0\n";
-    assert!(!codes(source).contains(&"MSL110".to_string()));
+    assert!(!codes(source).contains(&"MSL111".to_string()));
 }

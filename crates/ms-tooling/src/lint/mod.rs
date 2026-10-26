@@ -15,7 +15,7 @@ use std::sync::Arc;
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL110`.
+    /// Stable rule code, `MSL001`..`MSL111`.
     pub code: &'static str,
     /// Human-readable message.
     pub message: String,
