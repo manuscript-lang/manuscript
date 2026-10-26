@@ -1,6 +1,6 @@
 # Tooling demo
 
-This project exercises typed completions, source navigation/refactoring, lint fixes, and native profiling. Build `ms`, install the [VS Code extension](../../extensions/vscode/README.md), and open this folder. Set `manuscript.serverPath` in VS Code if `ms` is not on PATH.
+This project exercises typed completions, source navigation/refactoring, lint fixes, and native profiling. Build `ms`, install the [VS Code extension](../../extensions/vscode/README.md), and open this folder in a trusted workspace. Set `manuscript.serverPath` in VS Code if `ms` is not on PATH.
 
 ```sh
 ms check ms.toml
