@@ -493,6 +493,64 @@ mod tests {
 
     unsafe extern "C-unwind" fn returns(_: *mut u8) {}
 
+    static RETIRED_TOKEN: AtomicU64 = AtomicU64::new(0);
+    static REPLACEMENT_TOKEN: AtomicU64 = AtomicU64::new(0);
+    static REPLACEMENT_PARK: AtomicU64 = AtomicU64::new(u64::MAX);
+
+    unsafe extern "C-unwind" fn leaves_pending_token(_: *mut u8) {
+        // SAFETY: the worker owns its scheduler; teardown retires this pending token.
+        let token = unsafe { msrt_token_new(TOKEN_REMOTE) };
+        RETIRED_TOKEN.store(token, Ordering::SeqCst);
+    }
+
+    unsafe extern "C-unwind" fn waits_on_replacement_token(_: *mut u8) {
+        // SAFETY: the worker owns this token through the park and frees it afterwards.
+        unsafe {
+            let token = msrt_token_new(TOKEN_REMOTE);
+            REPLACEMENT_TOKEN.store(token, Ordering::SeqCst);
+            let mut value = 0;
+            let result = msrt_token_park(token, 100_000_000, &mut value);
+            REPLACEMENT_PARK.store((u64::from(result) << 32) | value, Ordering::SeqCst);
+            msrt_token_free(token);
+        }
+    }
+
+    #[test]
+    fn late_posts_from_a_retired_isolate_do_not_wake_its_replacement() {
+        let _g = crate::testutil::lock();
+        RETIRED_TOKEN.store(0, Ordering::SeqCst);
+        REPLACEMENT_TOKEN.store(0, Ordering::SeqCst);
+        REPLACEMENT_PARK.store(u64::MAX, Ordering::SeqCst);
+        // SAFETY: entries ignore their arguments and every worker is joined once.
+        unsafe {
+            let old = msrt_worker_spawn(leaves_pending_token, core::ptr::null_mut(), 0);
+            assert_ne!(old, 0);
+            assert_eq!(msrt_worker_join(old, core::ptr::null_mut()), 0);
+            let new = msrt_worker_spawn(waits_on_replacement_token, core::ptr::null_mut(), 0);
+            assert_ne!(new, 0);
+            let until = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while REPLACEMENT_TOKEN.load(Ordering::SeqCst) == 0 {
+                assert!(
+                    std::time::Instant::now() < until,
+                    "replacement did not start"
+                );
+                std::thread::yield_now();
+            }
+            msrt_token_post_remote(RETIRED_TOKEN.load(Ordering::SeqCst), 42);
+            assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
+        }
+        let old = RETIRED_TOKEN.load(Ordering::SeqCst);
+        let new = REPLACEMENT_TOKEN.load(Ordering::SeqCst);
+        crate::task::teardown();
+        assert_eq!(old >> isolate::ID_SHIFT, new >> isolate::ID_SHIFT);
+        assert_ne!(old, new, "a reused isolate slot revived an old token");
+        assert_eq!(
+            REPLACEMENT_PARK.load(Ordering::SeqCst),
+            u64::from(crate::task::WAIT_TIMEOUT) << 32,
+            "a stale post delivered its value to the replacement"
+        );
+    }
+
     #[test]
     fn collected_handles_do_not_address_replacement_workers() {
         let _g = crate::testutil::lock();
