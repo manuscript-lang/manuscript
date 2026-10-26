@@ -233,3 +233,66 @@ fn borrowed_spellings_name_the_manuscript_one() {
         assert!(got.ends_with(want), "{got}");
     }
 }
+
+#[test]
+fn invalid_callback_types_do_not_conflict_over_parameter_names() {
+    for signature in [
+        "def broken(value: Missing) -> Int: 1",
+        "def broken(amount: Int) -> Missing: 1",
+        "def broken(handler: Callable[[Missing], Int]) -> Int: 1",
+    ] {
+        let source = format!(
+            "{signature}\ndef apply[T, U](callback: Callable[[T], U]) -> Unit: return\ndef exercise() -> Unit:\n    apply(broken)\n"
+        );
+        let file: Arc<str> = Arc::from("recovery.ms");
+        let module = ms_syntax::parser::parse(&file, &source).expect("parses");
+        let checked = ms_check::check(
+            vec![ms_check::load_module(&module)],
+            Default::default(),
+            Default::default(),
+        );
+        let messages: Vec<_> = checked
+            .diagnostics
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect();
+        assert_eq!(messages.len(), 1, "{signature}: {messages:?}");
+        assert!(
+            messages[0].starts_with("unknown type Missing;"),
+            "{messages:?}"
+        );
+    }
+}
+
+#[test]
+fn invalid_callback_slots_preserve_known_type_conflicts() {
+    let source = "def broken(first: Missing, second: Int) -> Int: 1\ndef apply[T](callback: Callable[[T, String], Int]) -> Unit: return\ndef exercise() -> Unit:\n    apply(broken)\n";
+    let file: Arc<str> = Arc::from("conflict.ms");
+    let module = ms_syntax::parser::parse(&file, source).expect("parses");
+    let checked = ms_check::check(
+        vec![ms_check::load_module(&module)],
+        Default::default(),
+        Default::default(),
+    );
+    let messages: Vec<_> = checked
+        .diagnostics
+        .iter()
+        .map(|d| d.message.as_str())
+        .collect();
+    assert_eq!(
+        messages
+            .iter()
+            .filter(|m| m.starts_with("unknown type Missing;"))
+            .count(),
+        1,
+        "{messages:?}"
+    );
+    assert_eq!(
+        messages
+            .iter()
+            .filter(|m| m.starts_with("conflicting generic inference;"))
+            .count(),
+        1,
+        "{messages:?}"
+    );
+}

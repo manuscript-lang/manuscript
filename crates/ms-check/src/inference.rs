@@ -108,9 +108,6 @@ pub(crate) fn infer_invalid_argument(
         }
     }
     for (p, q) in pattern.params.iter().zip(&actual.params) {
-        if p.name != q.name {
-            valid = false;
-        }
         if !infer_invalid_argument(Some(&p.ty), Some(&q.ty), vars, s) {
             valid = false;
         }
