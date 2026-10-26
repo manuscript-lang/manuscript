@@ -75,7 +75,7 @@ test "custom equality and hashing define map key identity":
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-cleanup-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok:
         let dir = temporary.path()
         try expect_equal(leave(dir.clone()), 42)
         try expect_equal((try fs.read_file(f"{dir}/1")), Bytes([116, 114, 117, 101]))

@@ -1,0 +1,3 @@
+impl Head for List[Int]:
+    def head() -> Int:
+        return self [0]

@@ -59,15 +59,8 @@ impl SortedMap[K, V]:
 
     # Records the last key of chunk `c` after the chunk changed.
     var def refresh(c: Int) -> Unit:
-        (
-            self
-            .maxes
-            .set(
-                c,
-                self.key_chunks[c].get(
-                    self.key_chunks[c].length() - 1
-                ).clone()
-            )
+        self.maxes.set(
+            c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone()
         )
 
     # Returns the number of entries.

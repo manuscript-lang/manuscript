@@ -90,7 +90,7 @@ test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-tail-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-tail-") | try expect_ok:
         let first = f"{temporary.path()}/first"
         let second = f"{temporary.path()}/second"
         tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(

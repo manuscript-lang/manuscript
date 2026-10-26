@@ -147,10 +147,8 @@ def order_cmd(var store: Store, id: String, items: List[String]) -> Unit:
         else:
             total += line.qty * price
 
-        (
-            store.stock.add(
-                key: line.sku, value: store.stock.get_or(line.sku, 0) - line.qty
-            )
+        store.stock.add(
+            key: line.sku, value: store.stock.get_or(line.sku, 0) - line.qty
         )
 
     store.statuses.add(key: id, value: "placed")
@@ -171,15 +169,8 @@ def cancel_cmd(var store: Store, id: String) -> Unit:
         emit(f"error: order {id} already cancelled")
     else:
         for line in store.lines.get_or(id, List[Line]()):
-            (
-                store
-                .stock
-                .add(
-                    key: line.sku,
-                    value: store.stock.get_or(
-                        line.sku, 0
-                    ) + line.qty
-                )
+            store.stock.add(
+                key: line.sku, value: store.stock.get_or(line.sku, 0) + line.qty
             )
         store.statuses.add(key: id, value: "cancelled")
         emit("ok")

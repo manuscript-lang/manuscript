@@ -177,22 +177,18 @@ def cancel_cmd(var shop: Shop, id: String) -> String:
             case Placed:
                 for item in order.items:
                     let known = shop.skus.get_or(item.sku, Sku(stock: 0, price: 0))
-                    (
-                        shop.skus.add(
-                            item.sku,
-                            Sku(
-                                stock: known.stock + item.qty, price: known.price
-                            )
+                    shop.skus.add(
+                        item.sku,
+                        Sku(
+                            stock: known.stock + item.qty, price: known.price
                         )
                     )
 
-                (
-                    shop.orders.add(
-                        id,
-                        Order(
-                            items: order.items.clone(), total: order.total,
-                            status: Cancelled
-                        )
+                shop.orders.add(
+                    id,
+                    Order(
+                        items: order.items.clone(), total: order.total,
+                        status: Cancelled
                     )
                 )
                 return "ok"
@@ -207,15 +203,10 @@ def ship_cmd(var shop: Shop, id: String) -> String:
     if let order = shop.orders.get(id).clone():
         match order.status:
             case Placed:
-                (
-                    shop
-                    .orders
-                    .add(
-                        id,
-                        Order(
-                            items: order.items.clone(), total: order.total,
-                            status: Shipped
-                        )
+                shop.orders.add(
+                    id,
+                    Order(
+                        items: order.items.clone(), total: order.total, status: Shipped
                     )
                 )
                 return "ok"

@@ -146,13 +146,7 @@ def next_frame(
 
                 if available >= 5 + size:
                     let kind = state.value.pending.get(4)
-                    let body = (
-                        state
-                        .value
-                        .pending
-                        .slice(5, 5 + size)
-                        .get("".to_bytes())
-                    )
+                    let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
                     state.value.pending = (
                         state
                         .value
