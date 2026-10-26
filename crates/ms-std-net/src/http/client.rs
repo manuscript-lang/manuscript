@@ -1485,7 +1485,7 @@ fn h2_next(
 
 /// Body framing of an HTTP/2 response: it ends with the stream.
 fn h2_framing(head: &ResponseHead, method: &str, stream: &H2Stream) -> Framing {
-    let bodiless = method.eq_ignore_ascii_case("HEAD") || matches!(head.status, 204 | 304);
+    let bodiless = method == "HEAD" || matches!(head.status, 204 | 304);
     if bodiless || stream.drained() {
         Framing::None
     } else {
@@ -1985,6 +1985,28 @@ mod tests {
         });
         let body = c.send(request("GET", &address, "/")).unwrap();
         assert!(text(&body).contains("Accept-Encoding: gzip\r\n"));
+    }
+
+    #[test]
+    fn custom_method_case_does_not_discard_response_bodies() {
+        let (address, _) = serve(|s, _| {
+            while let Some(request) = read_request(s) {
+                let method = request.split_whitespace().next().unwrap();
+                reply(
+                    s,
+                    &format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{method}",
+                        method.len()
+                    ),
+                );
+            }
+        });
+        let (_net, c) = client(ClientOptions::default());
+        for method in ["head", "Head"] {
+            let mut sent = request(method, &address, "/");
+            sent.deadline = Deadline::after(Duration::from_secs(2));
+            assert_eq!(text(&c.send(sent).unwrap()), method);
+        }
     }
 
     #[test]
