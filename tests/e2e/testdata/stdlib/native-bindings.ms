@@ -60,19 +60,19 @@ test "set_identity and set_groups validate input and apply or refuse":
 
 test "replace rejects invalid programs before leaving this process":
     let process = control()
-    try expect_process_error(
-        process.replace(program: "", arguments: ["x"], environment: {}),
-        ProcessError.InvalidInput
-    )
     let info = try process.info()
+    let empty = process.replace(program: "", arguments: ["x"], environment: {})
     let missing = process.replace(
         program: "/definitely/not/a/program",
         arguments: ["x"],
         environment: {}
     )
     if info.uid < 0:
+        # Windows has no exec.
+        try expect_process_error(empty, ProcessError.Unsupported)
         try expect_process_error(missing, ProcessError.Unsupported)
     else:
+        try expect_process_error(empty, ProcessError.InvalidInput)
         try expect_process_error(missing, ProcessError.NotFound)
 
 test "stat_filesystem describes the filesystem under a path":
@@ -96,12 +96,15 @@ test "polling and native watchers report a created file and close":
             path: root, recursive: False, interval: milliseconds(20)
         ):
             try fs.write_file(path: f"{root}/a.txt", data: "x", replace: False)
-            let events = try polling.next()
-            try expect_true(saw(events, f"{root}/a.txt", "rename"))
+            try expect_true(saw(try polling.next(), f"{root}/a.txt", "rename"))
 
         with let native = try fs.watch_native(
             path: root, recursive: False, overflow: "error"
         ):
             try fs.write_file(path: f"{root}/b.txt", data: "y", replace: False)
-            let events = try native.next()
-            try expect_true(saw(events, f"{root}/b.txt", "rename"))
+            var found = False
+            for attempt in [1, 2, 3, 4, 5, 6]:
+                if not found:
+                    found = saw(try native.next(), f"{root}/b.txt", "rename")
+
+            try expect_true(found)

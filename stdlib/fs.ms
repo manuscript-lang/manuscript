@@ -158,8 +158,8 @@ export interface FileSystem:
         options: CopyOptions,
         filter: Optional[Callable[[String, String], Bool]]
     ) -> Result[Unit, FileSystemError]
-    # Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).
-    # Other policies return InvalidInput. Limits bound tracked paths and queued events.
+    # Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
+    # Other policies return InvalidInput. Limits bound tracked paths and queued events; Windows watches a whole tree with one handle, so `max_entries` does not apply there.
     def watch_native(
         path: String,
         recursive: Bool,
