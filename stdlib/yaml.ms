@@ -271,11 +271,9 @@ def digit_text(text: String) -> Bool:
 
 def numeric(text: String) -> Bool:
     var clean = text.clone()
-    if clean.starts_with("+") or clean.starts_with("-"): clean = (
-        clean
-        .slice(1, clean.scalar_length())
-        .get("")
-    )
+    if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
+        1, clean.scalar_length()
+    ).get("")
     if (clean == ".inf" or clean == ".Inf" or clean == ".INF"): return True
     if (text == ".nan" or text == ".NaN" or text == ".NAN"): return True
 
@@ -297,11 +295,9 @@ def numeric(text: String) -> Bool:
 
     if exponent.length() == 2:
         var power = exponent.last().get()
-        if power.starts_with("+") or power.starts_with("-"): power = (
-            power
-            .slice(1, power.scalar_length())
-            .get("")
-        )
+        if power.starts_with("+") or power.starts_with("-"): power = power.slice(
+            1, power.scalar_length()
+        ).get("")
         if not digit_text(power): return False
 
     let mantissa = exponent.first().get().split(".")
@@ -892,12 +888,9 @@ def block_value(
             context: context.clone(), delimited: False
         )
         anchor = try anchor_name(var flow)
-        remainder = (
-            remainder
-            .slice(flow.pos, remainder.scalar_length())
-            .get("")
-            .trim_start()
-        )
+        remainder = remainder.slice(
+            flow.pos, remainder.scalar_length()
+        ).get("").trim_start()
 
     var result = YamlValue.Null
 
@@ -1017,13 +1010,9 @@ def sequence_items(
         if line_indent < base: break
         if line_indent != base or not sequence(line.trim_start()): break
 
-        let item = (
-            line
-            .trim_start()
-            .slice(1, (line.trim_start().scalar_length()))
-            .get("")
-            .trim_start()
-        )
+        let item = line.trim_start().slice(
+            1, (line.trim_start().scalar_length())
+        ).get("").trim_start()
         let chain = nested_columns(line, base)
 
         if chain.length() > 0:
@@ -1073,12 +1062,9 @@ def sequence_items(
         elif sequence(item) or boundary(item, colon: True) >= 0:
             # Treat a compact mapping/sequence as a virtual indented first line.
             # Its column follows the indicator, so extra spaces move the nested base.
-            let marker = (
-                line
-                .trim_start()
-                .slice(1, (line.trim_start().scalar_length()))
-                .get("")
-            )
+            let marker = line.trim_start().slice(
+                1, (line.trim_start().scalar_length())
+            ).get("")
             var gap = indent(marker)
             if gap == 0: gap = 1
 
@@ -1165,12 +1151,9 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
 
             explicit.add(name.clone())
 
-            let text = (
-                content
-                .slice(colon + 1, content.scalar_length())
-                .get("")
-                .trim_start()
-            )
+            let text = content.slice(
+                colon + 1, content.scalar_length()
+            ).get("").trim_start()
             let key_line = context.index + 1
             context.index += 1
 
@@ -1231,11 +1214,9 @@ export def parse(
     )
 
     var normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    if normalized.starts_with(f"\u{feff}"): normalized = (
-        normalized
-        .slice(1, normalized.scalar_length())
-        .get("")
-    )
+    if normalized.starts_with(f"\u{feff}"): normalized = normalized.slice(
+        1, normalized.scalar_length()
+    ).get("")
     for code in normalized.scalar_values():
         if (
             (code < 32 and code != 9 and code != 10)

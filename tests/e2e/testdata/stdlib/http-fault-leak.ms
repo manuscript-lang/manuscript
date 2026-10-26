@@ -16,7 +16,9 @@ def faulting(exchange: HttpExchange) -> Result[Unit, HttpError]:
 test "a faulting handler releases the values its frames own":
     let net = network()
 
-    with let server = net.serve(address: "127.0.0.1:0", handler: faulting) | try expect_ok:
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: faulting
+    ) | try expect_ok:
         let before = (control().memory_usage() | try expect_ok).resident
 
         for i in 0..60:
