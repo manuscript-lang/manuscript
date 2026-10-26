@@ -585,7 +585,9 @@ impl<'a> FnLower<'a> {
         if !ct::unify(&declared.receiver, &rt, &vars, &mut subst) {
             return Err(Error::new("cannot bind method receiver type"));
         }
-        for (i, v) in m.variables.iter().enumerate() {
+        // The method's own type parameters come last; the call's type arguments bind them in order.
+        let own = declared.variables.len() - c.func.func().map_or(0, |f| f.type_params.len());
+        for (i, v) in declared.variables[own..].iter().enumerate() {
             if let (false, Some(Some(a))) = (subst.contains_key(&v.id), view.type_args.get(i)) {
                 subst.insert(v.id, ct::sub(a, &self.subst));
             }
@@ -679,6 +681,19 @@ impl<'a> FnLower<'a> {
                         return Ok(recv);
                     }
                     let a = self.borrow(recv);
+                    // An operand of the receiver's own type compares as it is, without a `Comparable` view.
+                    let source = self.hir.info(other.expr).error_source;
+                    if source.as_ref().is_some_and(|src| {
+                        ct::type_key(&ct::sub(src, &self.subst)) == ct::type_key(&static_ty)
+                    }) {
+                        let raw = self.expr_value(other.expr)?;
+                        if self.dead {
+                            return Ok(raw);
+                        }
+                        let b = self.borrow(raw);
+                        let r = self.order(want, &static_ty, a, b)?;
+                        return Ok(Val { v: r, own: false });
+                    }
                     let other = self.expr(other.expr)?;
                     if self.dead {
                         return Ok(other);

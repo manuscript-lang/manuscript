@@ -781,6 +781,11 @@ impl Checker {
         if expected.kind != Kind::Contract || actual.id == "<invalid>" {
             return message;
         }
+        if crate::contracts::has_generic_operation(expected) {
+            return format!(
+                "{message}; {expected} declares an operation with type parameters of its own, so it bounds a type parameter (`def f[T: {expected}](x: T)`) but cannot type a value"
+            );
+        }
         if self.implements(actual, expected) {
             return format!(
                 "{message}; {actual} implements {expected}, but generic inference does not convert; bind it to an {expected}-typed let first or give the arguments one type"

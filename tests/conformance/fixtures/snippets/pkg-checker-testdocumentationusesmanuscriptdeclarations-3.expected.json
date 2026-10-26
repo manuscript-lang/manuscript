@@ -7,54 +7,32 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
-          "line": 15,
-          "column": 9,
-          "offset": 429
+          "line": 4,
+          "column": 1,
+          "offset": 230
         }
       },
       {
-        "code": "MS3000",
+        "code": "MS3012",
         "phase": "type",
-        "message": "method and_then declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
+        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
         "position": {
           "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
-          "line": 17,
-          "column": 9,
-          "offset": 494
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "method ok_or declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
-        "position": {
-          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
-          "line": 21,
-          "column": 9,
-          "offset": 646
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "method ok_or_else declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument",
-        "position": {
-          "file": "pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms",
-          "line": 23,
-          "column": 9,
-          "offset": 734
+          "line": 8,
+          "column": 1,
+          "offset": 287
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:15:9: type: method map declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:17:9: type: method and_then declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:21:9: type: method ok_or declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:23:9: type: method ok_or_else declares its own type parameters, which source methods do not support yet; use a generic function that takes the receiver as an argument\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:4:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-3.ms:8:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

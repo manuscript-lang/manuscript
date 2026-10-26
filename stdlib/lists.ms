@@ -116,3 +116,46 @@ impl ListExtremes[T] for List[T]:
             if self [i].compare(self [at]) > 0:
                 at = i
         return some(self [at].clone())
+
+interface ListKeyedExtremes[T: Clonable]:
+    def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+    def min_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+
+impl ListKeyedExtremes[T] for List[T]:
+    # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    # Returns a copy of the element, like `find`.
+    # Example: `["bb", "a", "ccc"].max_by(lambda (w: String) -> Int: w.length())` is `some("ccc")`.
+    def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        var best = key(self [0])
+
+        for i in 1..self.length():
+            let k = key(self [i])
+
+            if k.compare(best) > 0:
+                at = i
+                best = k
+
+        return some(self [at].clone())
+
+    # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
+    # Returns a copy of the element, like `find`.
+    # Example: `["bb", "a", "ccc"].min_by(lambda (w: String) -> Int: w.length())` is `some("a")`.
+    def min_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]:
+        if self.length() == 0:
+            return none
+
+        var at = 0
+        var best = key(self [0])
+
+        for i in 1..self.length():
+            let k = key(self [i])
+
+            if k.compare(best) < 0:
+                at = i
+                best = k
+
+        return some(self [at].clone())

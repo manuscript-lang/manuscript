@@ -63,7 +63,7 @@ let inferred = identity(1)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
-- Records, alternatives, interfaces, and named functions may be generic. Anonymous functions, contract operations, and implementation methods cannot declare parameters; implementations inherit the receiver's ([generic implementations](contracts.md#generic-implementations)).
+- Records, alternatives, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and implementations inherit the receiver's ([generic implementations](contracts.md#generic-implementations)).
 - Higher-kinded parameters, type aliases, and variadic parameters are unsupported.
 - Applications are invariant: `Box[Int]` is not `Box[Float]`.
 - A generic function used as a value must be specialized: `identity[Int]`.

@@ -127,14 +127,6 @@ impl List[T]:
     # Returns True when every value satisfies the predicate; empty lists return True.
     def all(predicate: Callable[[T], Bool]) -> Bool: ...
 
-    # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
-    # Returns a copy of the element, like `find`.
-    def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]: ...
-
-    # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
-    # Returns a copy of the element, like `find`.
-    def min_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]: ...
-
     # Calls operation(value:) over the initial backing slice and length; element writes can affect later calls, and append does not extend traversal.
     def for_each(operation: Callable[[T], Unit]) -> Unit: ...
 
