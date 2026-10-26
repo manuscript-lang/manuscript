@@ -779,7 +779,14 @@ mod tests {
         let root = scratch("l");
         create_directory(&root, true).unwrap();
         write_file(&sub(&root, "a.txt"), b"a", false).unwrap();
-        write_file(&path::join(&root, b"bad\xff.dat"), b"x", false).unwrap();
+        let created = write_file(&path::join(&root, b"bad\xff.dat"), b"x", false);
+        if cfg!(target_os = "macos") {
+            // APFS only holds valid UTF-8 names, so the file cannot exist to be listed.
+            assert_eq!(created.unwrap_err().status, ms_rt_abi::STATUS_FAILED);
+            remove(&root, true).unwrap();
+            return;
+        }
+        created.unwrap();
         let names: Vec<Vec<u8>> = list(&root, UNLIMITED)
             .unwrap()
             .into_iter()
