@@ -113,7 +113,9 @@ pub(super) fn run(server: &Server, conn: &Rc<Conn>, pending: Box<Pending>) {
             h2: None,
         }),
     });
+    crate::rt::limit_current_until(timeout.map(|t| started + t));
     let outcome = server.dispatch.streaming(exchange.clone());
+    crate::rt::limit_current_until(None);
     let late = timeout.is_some_and(|t| started.elapsed() > t);
     exchange.finish(outcome, late);
 }
@@ -542,6 +544,8 @@ impl Exchange {
                     .map_err(WsErr::from)?;
                 let config = Config::new(max, accepted.compress, accepted.subprotocol);
                 let socket = Rc::new(Socket::new(conn, leftover, Role::Server, config));
+                // A WebSocket outlives the request timeout.
+                crate::rt::limit_current_until(None);
                 let mut st = self.st.borrow_mut();
                 st.upgraded = true;
                 st.websocket = Some(socket.clone());

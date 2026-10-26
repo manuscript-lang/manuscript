@@ -668,6 +668,18 @@ unsafe fn expire_timers(now: i64) {
 }
 
 /// Whether `t` runs a cleanup action, which cancellation must not interrupt.
+/// Whether `t` holds a stop shield, which keeps SIGINT/SIGTERM from waking it.
+unsafe fn stop_shielded(t: *mut Task) -> bool {
+    // SAFETY: `t` is a live record; the running task's state is in the live globals.
+    unsafe {
+        if t == sched().cur {
+            (*fault::cur_hdr()).stop_shield.load(Ordering::Relaxed) > 0
+        } else {
+            (*t).ctx.stop_shielded()
+        }
+    }
+}
+
 unsafe fn shielded(t: *mut Task) -> bool {
     // SAFETY: `t` is a live record; the running task's state is in the live globals.
     unsafe {
@@ -686,13 +698,17 @@ unsafe fn cancel_all_waiters() -> bool {
     let mut woke = false;
     // SAFETY: slots hold live records or null.
     unsafe {
-        if !s.main.is_null() && (*s.main).state == State::Waiting && !shielded(s.main) {
+        if !s.main.is_null()
+            && (*s.main).state == State::Waiting
+            && !shielded(s.main)
+            && !stop_shielded(s.main)
+        {
             wake(s.main, WAIT_CANCELLED);
             woke = true;
         }
         for i in 0..s.slots.len() {
             let t = s.slots[i].task;
-            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) {
+            if !t.is_null() && (*t).state == State::Waiting && !shielded(t) && !stop_shielded(t) {
                 wake(t, WAIT_CANCELLED);
                 woke = true;
             }
@@ -1289,6 +1305,17 @@ unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
 pub(crate) unsafe fn unwind_if_cancelled() {
     if cancel_flag().load(Ordering::Relaxed) != 0 {
         fault::msrt_cancelled();
+    }
+}
+
+/// Changes when the running task is cancelled for running too long: `limit_ns` from now, or
+/// never when negative. Replaces any earlier limit.
+pub(crate) fn limit_current(limit_ns: i64) {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe {
+        let t = ensure_init();
+        (*t).kill_at = NO_DEADLINE;
+        arm_kill((*t).handle, limit_ns);
     }
 }
 
@@ -2259,6 +2286,42 @@ mod tests {
             assert_eq!(r, WAIT_TIMEOUT);
         }
         teardown();
+    }
+
+    unsafe extern "C-unwind" fn stop_shielded_sleeper(_: *mut u8) {
+        fault::stop_shield_enter();
+        // SAFETY: called from a running task.
+        let r = unsafe { msrt_task_sleep(3_000_000_000) };
+        fault::stop_shield_exit();
+        note(if r == WAIT_CANCELLED { 2 } else { 1 });
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "parks on the poller")]
+    fn a_stop_shield_holds_back_stop_requests_but_not_a_cancel_of_the_task() {
+        let _g = lock();
+        teardown();
+        // SAFETY: tests hold the global lock; every handle is joined once.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            // A stop request leaves the shielded task asleep: it ends by its own timeout.
+            let stop = StopRequest::raise();
+            let held = msrt_task_spawn(stop_shielded_sleeper, null_mut(), 0, 0);
+            msrt_task_yield();
+            assert!(!cancel_all_waiters_woke_any());
+            drop(stop);
+            cancel_flag().store(0, Ordering::Relaxed);
+            // A cancel aimed at the task wakes it at once.
+            msrt_task_cancel(held);
+            msrt_task_join(held, null_mut());
+            assert_eq!(&(&(*LOG.ptr()))[..*LOG_N.ptr()], &[2]);
+        }
+        teardown();
+    }
+
+    unsafe fn cancel_all_waiters_woke_any() -> bool {
+        // SAFETY: tests hold the global lock.
+        unsafe { cancel_all_waiters() }
     }
 
     #[test]

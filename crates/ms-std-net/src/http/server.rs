@@ -377,11 +377,11 @@ unsafe extern "C-unwind" fn request_task(arg: *mut u8) {
     };
     let shield = server.limits.grace.is_some_and(|g| !g.is_zero());
     if shield {
-        rt::shield();
+        rt::stop_shield();
     }
     server.dispatch_conn(&conn, &Reactor::get());
     if shield {
-        rt::unshield();
+        rt::stop_unshield();
     }
 }
 

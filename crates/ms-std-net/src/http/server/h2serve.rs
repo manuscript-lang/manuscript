@@ -707,7 +707,9 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             h2: Some(id),
         }),
     });
+    crate::rt::limit_current_until(timeout.map(|t| started + t));
     let outcome = server.dispatch.streaming(exchange.clone());
+    crate::rt::limit_current_until(None);
     let late = timeout.is_some_and(|t| started.elapsed() > t);
     exchange.finish(outcome, late);
 }
