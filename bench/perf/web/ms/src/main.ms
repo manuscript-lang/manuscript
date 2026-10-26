@@ -149,6 +149,6 @@ export def main() -> Int:
             let _ready = worker.channel.receive()
             workers.append(worker)
 
-        let _stopped = workers[0].join()
+        let _stopped = workers[0].wait()
 
     return 0

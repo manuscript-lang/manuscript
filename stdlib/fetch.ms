@@ -116,10 +116,8 @@ impl FetchResponse:
     # Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
     def json[T](ignore_unknown_fields: Bool = True) -> Result[T, FetchError]:
         let text = try self.text()
-        return (
-            parse[T](
-                text, ignore_unknown_fields: ignore_unknown_fields
-            ).map_error(json_failure)
+        return parse[T](text, ignore_unknown_fields: ignore_unknown_fields).map_error(
+            json_failure
         )
 
     # Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.

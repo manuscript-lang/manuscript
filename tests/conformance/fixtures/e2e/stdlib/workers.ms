@@ -317,7 +317,7 @@ test "workers fetch from the starter's server at the same time":
 
             for i in range(0, 4):
                 try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
-                try expect_ok(workers[i].join())
+                try expect_ok(workers[i].wait())
 
         server.close()
 
@@ -346,7 +346,7 @@ test "bytes cross a worker pipe without JSON":
         try expect_equal(first.slice(300000, 300010), big.slice(0, 10))
         try expect_equal(second.decode_utf8().get(""), "abcabc")
         worker.channel.close()
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 
 def serves_shared() -> Unit:
     var ch = worker_channel[String, String]()
@@ -386,7 +386,7 @@ test "workers serve one port with a shared listener":
 
         for i in range(0, 3):
             try expect_ok(workers[i].channel.send("stop"))
-            try expect_ok(workers[i].join())
+            try expect_ok(workers[i].wait())
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w
