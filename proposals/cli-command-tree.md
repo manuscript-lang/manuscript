@@ -18,7 +18,7 @@ Proposal, 2026-10-26, checked against `main` (no `@std/cli.ms`; `grep -n args st
 
 ## Design
 
-A command is a typed value `Command[T]`: `T` is the options struct its handler receives. Flags and positionals are declared once; a `build` function maps the parsed `Matches` to `T`. Commands are ordinary values, so they compose: a function can return a command, flag groups are reusable lists, and `Command[A]` and `Command[B]` nest under one parent through type erasure (`node()`).
+A command is a typed record `Command[T]`: `T` is the options struct its handler receives; `build` maps parsed `Matches` to `T`. Flags and arguments are plain records, not constructors, because Manuscript has no static methods (`Flag.choice(...)` does not exist). Examples below were checked with `ms check` against stub declarations of exactly these types (every line is accepted; bodies of `execute`/parsing are the stubbed part).
 
 ```manuscript
 type ServeOptions:
@@ -27,69 +27,74 @@ type ServeOptions:
     root: String
     verbose: Bool
 
+def common_flags() -> List[Flag]:
+    return [Flag(name: "verbose", kind: FlagKind.Bool, short: "v", persistent: True)]
+
 def serve_command() -> Command[ServeOptions]:
     return Command(
         name: "serve",
         about: "Run the server",
-        flags: common_flags() + [int_flag("port", short: "p", default: 8080), choice_flag("mode", ["dev", "prod"], default: "dev")],
-        args: [required_arg("root")],
-        build: lambda m: ok(ServeOptions(port: m.int("port"), mode: m.string("mode"), root: m.arg("root"), verbose: m.bool("verbose"))),
+        flags: [
+            Flag(name: "port", kind: FlagKind.Number, short: "p", default: "8080"),
+            Flag(name: "mode", kind: FlagKind.Choice(["dev", "prod"]), default: "dev")
+        ],
+        args: [Arg(name: "root")],
+        build: lambda m: ok(ServeOptions(port: m.int("port"), mode: m.string("mode"), root: m.string("root"), verbose: m.bool("verbose"))),
         run: lambda o: serve(o)
     )
 
-def main() -> Unit:
-    let app = group("tool", about: "Manage projects", flags: [bool_flag("verbose", short: "v", persistent: true)], children: [serve_command().node(), remote_command()])
-    exit(app.execute(arguments()))
+def main() -> Int:
+    let app = Node(name: "tool", about: "Manage projects", flags: common_flags(), children: [serve_command().node()])
+    return app.execute(arguments())
 ```
 
-Constructors are free functions (`bool_flag`, `choice_flag`, `required_arg`, `group`), since Manuscript has no static methods; `Command(...)` is the type constructor and `parse`, `node`, `execute` are instance methods.
+Types (all in `stdlib/cli.ms`, source-only):
 
-Composition rules:
+- `Flag(name, kind, short = "", default = "", help = "", required = False, persistent = False)`; `FlagKind` is `Bool | Text | Number | Choice(options) | Many` (`Many` repeats).
+- `Arg(name, help = "", required = True, rest = False)`; only the last arg may be `rest`.
+- `Matches` reads parsed values inside `build`: `string`, `int`, `float`, `bool`, `list`, `rest`, and `path()` (resolved subcommand chain). An unknown name faults, since the schema is the caller's own code.
+- `Node(name, about, flags, args, children, exec)` is the untyped, composable unit. A group is a `Node` with `children` and no `exec`.
+- `Command[T].node() -> Node` erases `T` by closing over `build` and `run` (verified to check, including the recursive `children: List[Node]`).
+- `Node.execute(argv) -> Int` resolves, parses, builds `T`, runs, and returns the exit status, so `main() -> Int` returns it directly (the guide's contract; no `exit` call).
+- `Node.dispatch(argv) -> Result[Int, CliError]` is the same without printing, and `Node.help(path) -> String` renders help, for tests.
 
-- `Command[T].node() -> Node` erases `T` by capturing `build` and `run` in a closure (verified: `ms check` accepts generic types holding `Callable` fields and a method returning a closure over them).
-- `group(...)` has children and no `run`; leaves have `build` + `run`. Any command, group or leaf, can be a child of another, to any depth, and the same `Node` can be mounted under several parents.
-- `common_flags()`-style functions return `List[Flag]`; persistent flags on a parent are visible to every descendant's `build` through `Matches`.
-- Because handlers take `T`, they are plain functions testable without parsing: `serve(ServeOptions(...))`.
-- Optional `Command.parse(argv)` on a leaf returns `Result[T, CliError]` for unit tests.
+Composition: commands and groups are values, so functions return them, flag lists concatenate (`common_flags() + [...]`), and one `Node` can be mounted under several parents. Handlers take `T`, so `serve(ServeOptions(...))` is testable without parsing.
 
-Semantics, one rule each:
+Rules:
 
-- **Tree**: `Command.command(child)` nests without depth limit. Resolution takes the longest chain of leading non-flag words that name subcommands; the rest are that command's positionals. A command with children and no `run` prints its help.
-- **Flags**: `--name value`, `--name=value`, `-p value`, `-p=value`, `-pvalue`, clustered shorts `-abc` for bools, `--no-name` for bools, `--` ends flags. Kinds: free functions `bool_flag`, `string_flag`, `int_flag`, `float_flag`, `choice_flag`, and `list_flag` (repeatable). Each takes `short:`, `default:`, `help:`, `required:`, `persistent:`.
-- **Persistent flags** (cobra): declared on a parent, valid on every descendant, may appear before or after the subcommand word.
-- **Positionals**: `required_arg`, `optional_arg`, and `rest_arg` (variadic, last only). Count and order are validated.
-- **Matches** (used inside `build`): `string(name)`, `int`, `bool`, `float`, `list`, `arg(name)`, `rest()`, `path()`. Unknown names fault, since the schema is the caller's own code. `build` may return `CliError` for cross-field validation.
-- **Help**: `-h` and `--help` are built in and generate `Usage:`, description, `Commands:`, `Arguments:`, `Flags:` (with defaults and choices), and inherited persistent flags. `help` as a subcommand word (`tool help remote add`) works too. Output is deterministic text (golden-testable).
-- **Errors**: `CliError` is a `type` implementing `Error`: `UnknownFlag`, `UnknownCommand` (with nearest-name suggestion), `MissingValue`, `InvalidValue`, `MissingRequired`, `TooManyArguments`. `execute` prints the message plus a usage hint to stderr and returns exit code 2; `--help` returns 0.
-- **API layers**: `Node.dispatch(argv) -> Result[Int, CliError]`, `Node.execute(argv) -> Int` (resolve, build `T`, handle help and errors, run), `Node.render_help(path) -> String`.
-- **Handlers**: `Callable[[T], Result[Int, CliError]]` (`ms check` rejects `String` as the error type; it must implement `Error`). `Ok(code)` is the exit code; `Err` prints and exits 1.
+- **Resolution**: leading words that name children descend the tree; remaining words are positionals of the reached node. A group with no `exec` prints its help. Depth is unlimited.
+- **Flags**: `--name value`, `--name=value`, `-p value`, `-p=value`, `-pvalue`, clustered short bools `-abc`, `--no-name` for bools, `--` ends flags. Persistent flags declared on a node are accepted at that node and every descendant, before or after the subcommand word.
+- **Help**: `-h` and `--help` are built in and render Usage, description, Commands, Arguments, and Flags with defaults and choices; `tool help remote add` also works. Output is deterministic (golden-testable). Exit 0.
+- **Errors**: `CliError` implements `Error` with `UnknownFlag`, `UnknownCommand` (nearest-name suggestion), `MissingValue`, `InvalidValue`, `MissingRequired`, `TooManyArguments`, and `Failed(cause)`. `execute` writes the message and a usage hint to stderr and returns 2. `run` returns `Result[Int, CliError]`: `ok(code)` is the status; `error(e)` prints and returns 1. A handler's own `Error` is wrapped with `Failed(...)`.
+- **Ownership**: values are owned `String`/`List`; `node()` clones what it keeps. No natives, so Linux, macOS, and Windows are identical; `/flag` Windows forms are not supported.
 
-Ownership and platform: values are plain owned `String`/`List`; no native code, so Linux, macOS, and Windows behave identically. Windows `/flag` forms are not supported.
+Naming follows the stdlib: plain options-record construction with defaults (as `FetchOptions`), one spelling (`process.arguments()` stays the only argv source), `Result[_, E: Error]` with a domain error type.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/cli.ms` | new module, all logic in Manuscript | `stdlib/test` unit tests: parsing, errors, help goldens |
-| `stdlib/bindings.json` | unchanged (no natives) | n/a |
+| `stdlib/cli.ms` | new source-only module with guide comment and per-member doc examples | `tests/e2e/testdata/stdlib/cli.ms` fixture: parsing, errors, help goldens |
+| `stdlib/bindings.json`, `ms-rt` | unchanged (no natives) | n/a |
 | `crates/ms-check` build embed | picks up new `.ms` automatically | stdlib check in `make verify` |
-| `documentation/` | CLI guide page; API reference generated from comments | `make docs` |
+| `documentation/` | tutorial page; reference generated from `stdlib/cli.ms` comments | `make docs-check` |
 | `examples/` | one multi-level example app | e2e run |
 | Parser, checker, lowering, runtime, formatter, LSP | unchanged | n/a |
 
 ## Alternatives
 
+- **Builder methods on `Command`** (`cmd.int_flag(...)`): needs one method per kind on both `Command` and `Node`; records plus a flag list compose by concatenation instead. Revisit if verbose.
 - **Do nothing**: every program re-implements parsing; agents produce inconsistent, error-prone CLIs. Rejected.
-- **Struct-derived parsing (clap derive)**: needs reflection or macros Manuscript lacks. Rejected.
+- **Struct-derived parsing**: needs reflection or macros Manuscript lacks; `build` is the explicit form. Rejected.
 - **Flags only (Go `flag`)**: no subcommands or help hierarchy, the stated requirement. Rejected.
 - **Native Rust parser**: contradicts Manuscript-first; no primitive is missing. Rejected.
 
 ## Staging and verification
 
-1. `Command`, `Flag`, `Arg`, `parse`, `Matches`, `CliError`; unit tests. Gate: tests green on all platforms.
+1. Types, `Matches`, `CliError`, `dispatch`; fixture tests. Gate: tests green on all platforms.
 2. Help generation, `help` word, suggestions, `execute`; golden tests.
 3. Docs page and example app; `make verify`.
 
 ## Open questions
 
-- Handler error type: `CliError` only, or any `Error` via a wrapper variant (recommend the wrapper).
+- None for the owner: no language or runtime behavior changes.
