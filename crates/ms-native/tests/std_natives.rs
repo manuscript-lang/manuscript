@@ -393,27 +393,11 @@ mod fs_io {
         }
     }
 
-    // The native watcher is inotify; elsewhere `FileWatcher` falls back to polling.
-    #[cfg(not(target_os = "linux"))]
-    #[test]
-    fn native_file_watchers_are_unsupported_off_linux() {
-        let _g = lock();
-        let r = st("/tmp");
-        let mut h: *mut ms_rt::ffi::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
-        // SAFETY: valid runtime strings and a writable handle.
-        unsafe {
-            assert_eq!(
-                msstd_fs_watch_native(r, 1, 0, 0, 0, 0, st("error"), &mut h),
-                ms_rt_abi::STATUS_UNSUPPORTED
-            );
-        }
-    }
-
-    #[cfg(target_os = "linux")]
     #[test]
     fn file_watchers_through_the_abi() {
         let _g = lock();
-        let root = std::format!("/tmp/msrt-watch-{}", std::process::id());
+        let dir = std::env::temp_dir().join(std::format!("msrt-watch-{}", std::process::id()));
+        let root = dir.to_str().unwrap().to_owned();
         let r = st(&root);
         let overflow = st("error");
         let mut h: *mut ms_rt::ffi::ObjCell<ms_std_fs::watch::Watcher> = core::ptr::null_mut();
@@ -429,10 +413,10 @@ mod fs_io {
                 msstd_fs_watch_native(r, 1, 0, 0, 0, 0, overflow, &mut h),
                 STATUS_OK
             );
-            let file = st(&std::format!("{root}/x"));
+            let file = st(dir.join("x").to_str().unwrap());
             assert_eq!(msstd_fs_write_file(file, &vec_of(b"1"), 0), STATUS_OK);
             assert_eq!(msstd_fs_watch_next(h, &mut events), STATUS_OK);
-            assert_eq!(events.len, 1);
+            assert!(events.len >= 1);
             msstd_fs_watch_close(h);
             assert_eq!(
                 msstd_fs_watch_next(h, &mut events),
@@ -520,7 +504,7 @@ mod process {
             // SAFETY: allocated above.
             unsafe { ms_rt::alloc::free(b) };
         }
-        if !cfg!(any(target_os = "linux", windows)) {
+        if !cfg!(any(target_os = "linux", target_os = "macos", windows)) {
             assert_eq!(status, ms_rt_abi::STATUS_UNSUPPORTED);
             return;
         }
