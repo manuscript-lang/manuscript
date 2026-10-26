@@ -36,7 +36,8 @@ if [ "$target_os" = windows ]; then executable=ms.exe; fi
 cargo xtask runtime
 # Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
 # the profiler); they made it about 130 MB.
-CARGO_PROFILE_RELEASE_STRIP=debuginfo cargo build --release --locked -p ms-cli
+# Keep Cargo's output where the copy below reads it, even with a caller's target-dir override.
+CARGO_PROFILE_RELEASE_STRIP=debuginfo cargo build --release --locked -p ms-cli --target-dir "$repository/target"
 
 name="manuscript-rust-$target_os-$target_arch"
 mkdir -p dist
