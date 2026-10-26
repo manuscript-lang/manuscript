@@ -98,6 +98,8 @@ export def read_all(
     return msstd_io_read_all(input, max_bytes)
 
 # Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
+# `max_bytes` bounds the line including its terminator: a newline-terminated line must be shorter than `max_bytes`
+# (`"abc\n"` needs 4), while an unterminated final line may be exactly `max_bytes` long. Longer lines return `LimitExceeded`.
 # To read every line, iterate `lines(input)` instead.
 export def read_line(
     input: ReadStream,
