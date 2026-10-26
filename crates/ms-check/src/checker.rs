@@ -1010,6 +1010,22 @@ impl Checker {
                 ),
             );
         }
+        if report
+            && !name.as_str().starts_with('_')
+            && name != "self"
+            && self
+                .scope
+                .parent
+                .as_ref()
+                .is_some_and(|outer| outer.binding(name).is_some())
+        {
+            self.type_error(
+                pos,
+                format!(
+                    "binding {name} shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'"
+                ),
+            );
+        }
         let t = if mutable { required_type(t) } else { t.clone() };
         let id = self.unique("local");
         let b = Rc::new(Binding {

@@ -533,3 +533,37 @@ fn key_holding_shared_state_is_not_hashable() {
         "{got}"
     );
 }
+
+#[test]
+fn nested_bindings_cannot_shadow_enclosing_locals() {
+    let cases = [
+        "export def main() -> Int:\n    let x = 1\n    if x > 0:\n        let x = 2\n        return x\n    return 0\n",
+        "export def main() -> Int:\n    let x = 1\n    let f = lambda x: return x + 1\n    return f(x)\n",
+        "export def main() -> Int:\n    let x = 1\n    for x in [1, 2]:\n        return x\n    return 0\n",
+        "def f(x: Int) -> Int:\n    if x > 0:\n        let x = 2\n        return x\n    return 0\nexport def main() -> Int:\n    return f(1)\n",
+    ];
+    for source in cases {
+        let found = check_messages(source);
+        assert!(
+            found.iter().any(|m| m.contains("shadows an outer binding")),
+            "{source}: {found:?}"
+        );
+    }
+}
+
+#[test]
+fn sibling_scopes_and_underscore_names_may_reuse_names() {
+    let source = "export def main() -> Int:
+    var total = 0
+    for i in [1, 2]:
+        total += i
+    for i in [3, 4]:
+        total += i
+    let _x = 1
+    if total > 0:
+        let _x = 2
+        total += _x
+    return total
+";
+    assert_eq!(check_messages(source), Vec::<String>::new());
+}
