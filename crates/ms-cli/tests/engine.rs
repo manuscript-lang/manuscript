@@ -383,6 +383,35 @@ fn emit_prints_the_lowered_program() {
     assert!(stdout.contains("fn @main"), "{stdout}");
 }
 
+#[test]
+fn emit_json_reports_source_diagnostics_and_preserves_output() {
+    let dir = scratch("emit-json-error");
+    let source = write(
+        &dir,
+        "main.ms",
+        "export def main() -> Int:\n    return \"bad\"\n",
+    );
+    let output = write(&dir, "main.mir", "previous MIR\n");
+    let backend = Engine::new(Native);
+    let (status, stdout, stderr) = ms(&backend, &["emit", &source, "--json", "-o", &output]);
+    assert_eq!(status, 1);
+    assert!(stderr.is_empty(), "{stderr}");
+    let document = ms_json::parse(&stdout).unwrap();
+    assert_eq!(document.get("format").unwrap().as_i64(), Some(1));
+    let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].get("phase").unwrap().as_str(), Some("type"));
+    assert!(
+        diagnostics[0]
+            .get("message")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("expected Int, found String")
+    );
+    assert_eq!(std::fs::read_to_string(output).unwrap(), "previous MIR\n");
+}
+
 /// Drop and copy of a long chain of a recursive alternative loop over its tail; the copy keeps
 /// every payload (`Tag(n, ..)`) and the original stays intact.
 #[test]

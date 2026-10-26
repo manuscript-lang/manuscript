@@ -104,6 +104,11 @@ impl<L: Lower> Engine<L> {
     pub fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
         let compiled = match compile(self, &request.filename, false) {
             Ok(compiled) => compiled,
+            Err(failure) if request.json => {
+                let document =
+                    crate::diagnostic::diagnostics_document(&failure.command_diagnostics());
+                return Ok(crate::util::emit_json(io, &document, 1));
+            }
             Err(failure) => return Ok(failure.report(io)),
         };
         let mut module = compiled.module;
