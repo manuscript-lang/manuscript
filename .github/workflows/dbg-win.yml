@@ -49,7 +49,7 @@ jobs:
           run orig Release tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms
           run v3 Release dbg/win/v3_timeout_slow.ms
           run v4 Release dbg/win/v4_grace_slow.ms
-          run hello Release examples/hello/main.ms
+          run hello Release examples/hello/ms.toml
       - name: Summary
         if: always()
         run: cat summary.txt
