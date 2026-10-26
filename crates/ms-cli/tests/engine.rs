@@ -94,6 +94,47 @@ fn build_writes_an_executable_and_reports_it() {
 }
 
 #[test]
+fn build_fails_when_its_metadata_cannot_be_written() {
+    let dir = scratch("metadata-failure");
+    let source = write(&dir, "main.ms", MAIN);
+    let output = dir.join("program");
+    let metadata = dir.join("program.ms-build.json");
+    std::fs::create_dir(&metadata).unwrap();
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    for structured in [false, true] {
+        let mut args = vec!["build", &source, "-o", output.to_str().unwrap()];
+        if structured {
+            args.push("--json");
+        }
+        let (status, stdout, stderr) = ms(&backend, &args);
+        assert_eq!(status, 1, "{stdout}{stderr}");
+        assert!(stderr.contains("cannot write build metadata"), "{stderr}");
+        assert!(stderr.contains(".ms-build.json"), "{stderr}");
+        assert!(metadata.is_dir());
+        if structured {
+            let document = ms_json::parse(&stdout).unwrap();
+            assert_eq!(document.get("completed").unwrap().as_bool(), Some(false));
+            assert_eq!(document.get("exit_code").unwrap().as_i64(), Some(1));
+            assert_eq!(
+                document.get("reason").unwrap().as_str(),
+                Some("build_error")
+            );
+            let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(diagnostics[0].get("code").unwrap().as_str(), Some("MSN001"));
+            let artifacts = document.get("artifacts").unwrap().as_array().unwrap();
+            let metadata = artifacts
+                .iter()
+                .find(|artifact| artifact.get("kind").unwrap().as_str() == Some("build_metadata"))
+                .unwrap();
+            assert_eq!(metadata.get("state").unwrap().as_str(), Some("unavailable"));
+        } else {
+            assert!(stdout.is_empty(), "{stdout}");
+        }
+    }
+}
+
+#[test]
 fn checker_diagnostics_stop_before_lowering() {
     let dir = scratch("diagnostics");
     let source = write(
