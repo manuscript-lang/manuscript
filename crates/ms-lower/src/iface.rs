@@ -96,13 +96,6 @@ impl Cx {
                 found = Some((mm.module, decl.id(), subst, mm.native));
                 break;
             }
-            if found.is_none()
-                && s.name == "compare"
-                && matches!(data_ty, MTy::INT | MTy::FLOAT | MTy::STR)
-            {
-                methods.push(self.scalar_compare(m, iface, data_ty, own, key.as_str()));
-                continue;
-            }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].name == "Equal" {
                 methods.push(self.builtin_equals(m, iface, data_ty, scope, own, key.as_str())?);
                 continue;
@@ -282,73 +275,6 @@ impl Cx {
         b.ret(Some(r));
         let f = b.into_func();
         Ok(m.add_func(f))
-    }
-
-    /// `compare` of a built-in scalar: the sign of the order against another value of the same
-    /// type; another type faults.
-    fn scalar_compare(
-        &mut self,
-        m: &mut Module,
-        iface: IfaceId,
-        data_ty: MTy,
-        vt: VtableId,
-        key: &str,
-    ) -> ms_mir::ir::FuncId {
-        let other_ty = m.ifaces[iface.index()].methods[0].params[0];
-        let ps = vec![
-            Param {
-                ty: MTy::PTR,
-                mode: Mode::Borrow,
-            },
-            Param {
-                ty: other_ty,
-                mode: Mode::Borrow,
-            },
-        ];
-        let mut b = FuncBuilder::new(m, &format!("vt.compare.{key}"), ps, MTy::INT);
-        b.func_mut().kind = FuncKind::Method;
-        b.func_mut().linkage = Linkage::Internal;
-        let (this, other) = (b.params()[0], b.params()[1]);
-        let hit = b
-            .emit(Op::IfaceIs, &[other], Imm::Vtable(vt), Some(MTy::BOOL))
-            .expect("test");
-        let (same, differ) = (b.new_block(), b.new_block());
-        b.br_if(hit, same, &[], differ, &[]);
-        b.seal_block(same);
-        b.seal_block(differ);
-        b.switch_to(differ);
-        let msg = b.m.add_string("compared values of different types");
-        b.fault(ms_mir::ir::FaultKind::Message(msg));
-        b.switch_to(same);
-        let a = b
-            .emit(Op::Load, &[this], Imm::Ty(data_ty), Some(data_ty))
-            .expect("load");
-        let data = b
-            .emit(Op::IfaceData, &[other], Imm::None, Some(MTy::PTR))
-            .expect("data");
-        let c = b
-            .emit(Op::Load, &[data], Imm::Ty(data_ty), Some(data_ty))
-            .expect("load");
-        let r = if b.m.types.is_int(data_ty) {
-            let (lt, gt) = (
-                b.icmp(ms_mir::ir::Cc::Lt, a, c),
-                b.icmp(ms_mir::ir::Cc::Gt, a, c),
-            );
-            let (one, zero, minus) = (b.iconst(1), b.iconst(0), b.iconst(-1));
-            let upper = b.select(gt, one, zero);
-            b.select(lt, minus, upper)
-        } else {
-            let sym = if b.m.types.is_float(data_ty) {
-                "msrt_float_compare"
-            } else {
-                "msrt_string_compare"
-            };
-            let ext = crate::text::runtime_fn(b.m, sym, &[data_ty, data_ty], MTy::INT);
-            b.call_rt(ext, &[a, c])
-        };
-        b.ret(Some(r));
-        let f = b.into_func();
-        m.add_func(f)
     }
 }
 
