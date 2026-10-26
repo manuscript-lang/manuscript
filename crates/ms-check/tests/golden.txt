@@ -6188,18 +6188,20 @@ def probe(input: ReadStream) -> Bool:
 export def main() -> Int:
     if probe(stdin()): return 1
     return 0
-def crash() -> Int:
+type	3	14	87	division by zero always faults; guard the divisor or use a nonzero constantdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     return values.add(crash(), 1).length()
-resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     let add = values.add
     return add(value: crash(), key: 1).length()
-resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
     return values.get(index)
 export def main() -> Int:
     return pick([1, 2, 3], 3)
@@ -6231,6 +6233,7 @@ export def main() -> Int:
     return value.or_else(crash)
 resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	18	56	unknown type TextError; add: from "@std/core.ms" import TextError
+type	3	14	88	division by zero always faults; guard the divisor or use a nonzero constant
 resolution	5	28	145	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	47	164	unknown binding TextError; add: from "@std/core.ms" import TextErrordef crash(key: String, value: Int) -> Bool:
     return 1 / value == 0
@@ -6274,11 +6277,11 @@ export def main() -> Int:
     return value
 export def main() -> Int:
     return divide()
-export def main() -> Int:
+type	1	27	26	division by zero always faults; guard the divisor or use a nonzero constantexport def main() -> Int:
     let crash = lambda () -> Int:
         return 1 / 0
     return crash()
-def extract[T](value: Optional[T]) -> T:
+type	3	18	77	division by zero always faults; guard the divisor or use a nonzero constantdef extract[T](value: Optional[T]) -> T:
     return value.get()
 export def main() -> Int:
     return extract[Int](none)
@@ -6527,7 +6530,8 @@ resolution	5	20	160	unknown binding Shape; did you mean 'shapes'?def fail() -> 
 export def main() -> Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(fail() * 0))
-resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+type	2	14	32	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
 resolution	5	12	108	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduleexport def main() -> Int:
     let shapes = [Shape.Circle(2)]
     var sum = 9223372036854775807
@@ -6908,7 +6912,7 @@ test "receiver fault comes first":
     let impossible = (1 / 0).minutes
 test "continues with valid units":
     let valid = (1).seconds
-import stdout from "@std/io.ms"
+type	6	25	204	division by zero always faults; guard the divisor or use a nonzero constantimport stdout from "@std/io.ms"
 
 export fn main() Int:
     match stdout().write(data: %q):

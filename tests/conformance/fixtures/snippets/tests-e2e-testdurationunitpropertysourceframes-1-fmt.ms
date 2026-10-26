@@ -8,7 +8,7 @@ test "negative unit overflow":
     let impossible = (-153722868).minutes
 
 test "receiver fault comes first":
-    let impossible = (1 / 0).minutes
+    let impossible = (1 / "".byte_length()).minutes
 
 test "continues with valid units":
     let valid = (1).seconds
