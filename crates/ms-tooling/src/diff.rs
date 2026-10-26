@@ -102,6 +102,9 @@ pub fn parse_diff(text: &str) -> Result<Vec<DiffFile>, String> {
         }
         i += 1;
     }
+    if files.is_empty() && !text.trim().is_empty() {
+        return Err("input is not a unified diff; pipe in git diff --no-renames".to_string());
+    }
     for file in &files {
         if file.old.is_empty() && file.new.is_empty() {
             return Err("diff has a file header with no paths".to_string());
