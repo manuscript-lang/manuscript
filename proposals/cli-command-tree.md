@@ -18,33 +18,37 @@ Proposal, 2026-10-26, checked against `main` (no `@std/cli.ms`; `grep -n args st
 
 ## Design
 
-A command is a value built by calling methods on a `var`. Parsing is a pure function of `argv`; running a handler is separate, so tests never touch the process.
+A command is a typed value `Command[T]`: `T` is the options struct its handler receives. Flags and positionals are declared once; a `build` function maps the parsed `Matches` to `T`. Commands are ordinary values, so they compose: a function can return a command, flag groups are reusable lists, and `Command[A]` and `Command[B]` nest under one parent through type erasure (`node()`).
 
 ```manuscript
-from "@std/cli.ms" import Command, Flag, Arg, Matches
-from "@std/process.ms" import arguments
+type ServeOptions:
+    port: Int
+    mode: String
+    root: String
+    verbose: Bool
+
+def serve_command() -> Command[ServeOptions]:
+    return Command(
+        name: "serve",
+        about: "Run the server",
+        flags: common_flags() + [Flag.int("port", short: "p", default: 8080), Flag.choice("mode", ["dev", "prod"], default: "dev")],
+        args: [Arg.required("root")],
+        build: lambda m: ok(ServeOptions(port: m.int("port"), mode: m.string("mode"), root: m.arg("root"), verbose: m.bool("verbose"))),
+        run: lambda o: serve(o)
+    )
 
 def main() -> Unit:
-    var app = Command("tool", about: "Manage projects")
-    app.flag(Flag.bool("verbose", short: "v", help: "Print more", persistent: true))
-
-    var serve = Command("serve", about: "Run the server")
-    serve.flag(Flag.int("port", short: "p", default: 8080, help: "Listen port"))
-    serve.flag(Flag.choice("mode", ["dev", "prod"], default: "dev"))
-    serve.arg(Arg.required("root", help: "Directory to serve"))
-    serve.run(lambda m: serve_cmd(m))
-
-    var remote = Command("remote", about: "Manage remotes")
-    var add = Command("add", about: "Add a remote")
-    add.arg(Arg.required("name"))
-    add.arg(Arg.required("url"))
-    add.run(lambda m: add_cmd(m))
-    remote.command(add)
-
-    app.command(serve)
-    app.command(remote)
+    let app = Command.group("tool", about: "Manage projects", flags: [Flag.bool("verbose", short: "v", persistent: true)], children: [serve_command().node(), remote_command()])
     exit(app.execute(arguments()))
 ```
+
+Composition rules:
+
+- `Command[T].node() -> Node` erases `T` by capturing `build` and `run` in a closure (verified: `ms check` accepts generic types holding `Callable` fields and a method returning a closure over them).
+- `Command.group(...)` has children and no `run`; leaves have `build` + `run`. Any command, group or leaf, can be a child of another, to any depth, and the same `Node` can be mounted under several parents.
+- `common_flags()`-style functions return `List[Flag]`; persistent flags on a parent are visible to every descendant's `build` through `Matches`.
+- Because handlers take `T`, they are plain functions testable without parsing: `serve(ServeOptions(...))`.
+- Optional `Command.parse(argv)` on a leaf returns `Result[T, CliError]` for unit tests.
 
 Semantics, one rule each:
 
@@ -52,11 +56,11 @@ Semantics, one rule each:
 - **Flags**: `--name value`, `--name=value`, `-p value`, `-p=value`, `-pvalue`, clustered shorts `-abc` for bools, `--no-name` for bools, `--` ends flags. Kinds: `Flag.bool`, `string`, `int`, `float`, `choice`, and `list` (repeatable). Each takes `short:`, `default:`, `help:`, `required:`, `persistent:`.
 - **Persistent flags** (cobra): declared on a parent, valid on every descendant, may appear before or after the subcommand word.
 - **Positionals**: `Arg.required`, `Arg.optional`, and `Arg.rest` (variadic, last only). Count and order are validated.
-- **Matches**: `get_string(name)`, `get_int`, `get_bool`, `get_float`, `get_list`, `arg(name)`, `rest()`, and `path()` (the resolved subcommand chain). Unknown names fault, since the schema is the caller's own code.
+- **Matches** (used inside `build`): `string(name)`, `int`, `bool`, `float`, `list`, `arg(name)`, `rest()`, `path()`. Unknown names fault, since the schema is the caller's own code. `build` may return `CliError` for cross-field validation.
 - **Help**: `-h` and `--help` are built in and generate `Usage:`, description, `Commands:`, `Arguments:`, `Flags:` (with defaults and choices), and inherited persistent flags. `help` as a subcommand word (`tool help remote add`) works too. Output is deterministic text (golden-testable).
 - **Errors**: `CliError` is a `type` implementing `Error`: `UnknownFlag`, `UnknownCommand` (with nearest-name suggestion), `MissingValue`, `InvalidValue`, `MissingRequired`, `TooManyArguments`. `execute` prints the message plus a usage hint to stderr and returns exit code 2; `--help` returns 0.
-- **API layers**: `Command.parse(argv) -> Result[Matches, CliError]` (pure), `Command.execute(argv) -> Int` (parse, handle help and errors, run handler), `Command.render_help(path) -> String`.
-- **Handlers**: `Callable[[Matches], Result[Int, Error]]`-style; exact return type fixed during Stage 1 to match how existing stdlib handlers report failure (see `router.ms`).
+- **API layers**: `Node.dispatch(argv) -> Result[Int, CliError]`, `Node.execute(argv) -> Int` (resolve, build `T`, handle help and errors, run), `Node.render_help(path) -> String`.
+- **Handlers**: `Callable[[T], Result[Int, CliError]]` (`ms check` rejects `String` as the error type; it must implement `Error`). `Ok(code)` is the exit code; `Err` prints and exits 1.
 
 Ownership and platform: values are plain owned `String`/`List`; no native code, so Linux, macOS, and Windows behave identically. Windows `/flag` forms are not supported.
 
@@ -86,5 +90,4 @@ Ownership and platform: values are plain owned `String`/`List`; no native code, 
 
 ## Open questions
 
-- Handler return type and exit-code convention (recommend `Result[Int, Error]`, `Err` prints and exits 1).
-- Method-chaining builders are unavailable if methods return `Unit`; recommend `var` mutation as shown unless chaining already works (checked in Stage 1).
+- Handler error type: `CliError` only, or any `Error` via a wrapper variant (recommend the wrapper).
