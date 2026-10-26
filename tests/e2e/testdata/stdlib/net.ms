@@ -188,3 +188,18 @@ test "resolve returns typed DNS records from the configured resolver":
 
         let answered = try group.results()
         try expect_equal(answered[0], 1)
+
+test "an empty host listens on every interface, with or without IPv6":
+    let net = network()
+
+    with let listener = try net.listen(":0"):
+        let parts = listener.address().split(":")
+        let port = parts[parts.length() - 1]
+
+        with let client = try net.connect(f"127.0.0.1:{port}", 2.seconds):
+            with let server = try listener.accept(2.seconds):
+                try client.write("hi", 2.seconds)
+                try expect_equal((try server.read(2, 2.seconds)).get(), "hi".to_bytes())
+
+    with let socket = try net.bind_datagram(":0"):
+        try expect_false(socket.address().is_empty())
