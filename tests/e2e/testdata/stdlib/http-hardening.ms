@@ -1,5 +1,5 @@
 from "@std/testing.ms" import expect_ok, expect_equal
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
+from "@std/http.ms" import headers, reply, text, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered, HttpServerOptions
 from "@std/core.ms" import TextError
 from "@std/net.ms" import network, Connection
 from "@std/bytes.ms" import Bytes
@@ -120,3 +120,26 @@ test "serve answers requests while handlers read and write files":
                 try expect_file_reply(b)
 
     dir.close()
+
+def oversized(exchange: HttpExchange) -> Result[Unit, HttpError]:
+    return reply(exchange, text(200, "z".repeat(5000).get("")))
+
+test "serve answers 500 when a whole response exceeds max_response_bytes":
+    let net = network()
+
+    with let server = (
+        net.serve(
+            address: "127.0.0.1:0", handler: oversized,
+            options: HttpServerOptions(max_response_bytes: some(100))
+        ) | try expect_ok
+    ):
+        with let client = (net.connect(server.address(), 2.seconds) | try expect_ok):
+            client.write(
+                "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n", 2.seconds
+            ) | try expect_ok
+
+            let reply_bytes = (client.read(timeout: 3.seconds) | try expect_ok)
+            let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
+            if not head.starts_with("HTTP/1.1 500"): return error(
+                TextError(f"expected a 500 reply, got: {head}")
+            )

@@ -613,7 +613,7 @@ impl Exchange {
             // The upgrade attempt already answered.
             close = true;
         } else if failed {
-            if !sent {
+            if !head_written {
                 let over = self.st.borrow().body_over_limit;
                 if over && !(late || cancelled) {
                     server::error_bytes(
