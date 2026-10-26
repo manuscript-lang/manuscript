@@ -2263,7 +2263,7 @@ impl<'a> Parser<'a> {
                     && self.kind() == Tok::Arrow
                 {
                     let a = self.peek();
-                    return self.fail(a, format!("lambdas are written fn(name: Type) Result: expression, e.g. fn({n}: Int) Int: {n} + 1"));
+                    return self.fail(a, format!("arrow lambdas are not supported; write 'lambda {n}: {n} + 1', or 'lambda ({n}: Int) -> Int: {n} + 1' with explicit types"));
                 }
                 args.push(Argument {
                     pos,
