@@ -1,6 +1,8 @@
 name: dbg-win
 on:
   workflow_dispatch:
+  push:
+    branches: [dbg-win-1557]
 permissions:
   contents: read
 jobs:
