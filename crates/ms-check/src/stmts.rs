@@ -149,7 +149,7 @@ impl Checker {
             expected = Some(resolved);
         }
         let before = self.p.diagnostics.len();
-        let info = match (&pattern.kind, &expected) {
+        let mut info = match (&pattern.kind, &expected) {
             (PatternKind::Name(name), Some(_)) => self.expression_in(
                 value,
                 expected.as_ref(),
@@ -164,6 +164,10 @@ impl Checker {
         {
             // A failed initializer must not retype the annotated binding.
             bound = exp.clone();
+        }
+        if mutable && bound.kind == Kind::Function {
+            bound = required_type(&bound);
+            info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
         (!info.no_return, info.breaks)
@@ -251,7 +255,9 @@ impl Checker {
                     .as_ref()
                     .and_then(|r| r.context.clone());
                 let inferred = self.infer(v, context.as_ref());
-                let info = self.check_expression(v, inferred, None);
+                let required =
+                    (inferred.t().kind == Kind::Function).then(|| required_type(&inferred.t()));
+                let info = self.check_expression(v, inferred, required.as_ref());
                 typ = info.t();
                 breaks = info.breaks;
             }
@@ -1353,10 +1359,14 @@ impl Checker {
             breaks = breaks || states[si].breaks;
             let arm = states[si].arm;
             if let Some(value) = &arm.value {
-                if states[si].info.is_none() {
-                    let info = self.arm_value(value, result.as_ref(), expected);
-                    states[si].info = Some(info);
-                }
+                let info = match states[si].info.take() {
+                    Some(info) if info.t().kind == Kind::Function => {
+                        self.check_expression(value, info, result.as_ref())
+                    }
+                    Some(info) => info,
+                    None => self.arm_value(value, result.as_ref(), expected),
+                };
+                states[si].info = Some(info);
                 if normal {
                     let info = states[si].info.as_ref().expect("arm info");
                     breaks = breaks || info.breaks;
