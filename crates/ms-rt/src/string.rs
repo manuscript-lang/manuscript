@@ -765,14 +765,14 @@ const MAX_FMT: usize = 6;
 ///
 /// # Safety
 /// Every part whose mask bit is clear is a live string.
-unsafe fn format_parts(mask: i64, parts: &[usize]) -> StrVal {
-    debug_assert!(parts.len() <= MAX_FMT);
+#[inline(always)]
+unsafe fn format_parts<const N: usize>(mask: i64, parts: [usize; N]) -> StrVal {
+    const { assert!(N <= MAX_FMT) };
     // Digit buffers are initialised only for the integer parts.
-    let mut digits: [core::mem::MaybeUninit<[u8; 20]>; MAX_FMT] =
-        [core::mem::MaybeUninit::uninit(); MAX_FMT];
-    let mut slices: [(*const u8, usize); MAX_FMT] = [(core::ptr::null(), 0); MAX_FMT];
+    let mut digits: [core::mem::MaybeUninit<[u8; 20]>; N] = [core::mem::MaybeUninit::uninit(); N];
+    let mut slices: [(*const u8, usize); N] = [(core::ptr::null(), 0); N];
     let mut total = 0usize;
-    for (k, &p) in parts.iter().enumerate() {
+    for (k, p) in parts.into_iter().enumerate() {
         let (ptr, len) = if (mask >> k) & 1 == 1 {
             let d = crate::num::format_i64(p as i64, digits[k].write([0u8; 20]));
             (d.as_ptr(), d.len())
@@ -795,7 +795,7 @@ unsafe fn format_parts(mask: i64, parts: &[usize]) -> StrVal {
         None => buf.as_mut_ptr(),
     };
     let mut at = 0usize;
-    for &(ptr, len) in &slices[..parts.len()] {
+    for &(ptr, len) in &slices {
         // SAFETY: `dst` has room for `total` bytes and every slice is readable.
         unsafe { core::ptr::copy_nonoverlapping(ptr, dst.add(at), len) };
         at += len;
@@ -811,7 +811,7 @@ unsafe fn format_parts(mask: i64, parts: &[usize]) -> StrVal {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) {
     // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, &[a, b]).write_to(out) }
+    unsafe { format_parts(mask, [a, b]).write_to(out) }
 }
 
 /// Three parts, any of them integers: see [`format_parts`].
@@ -824,7 +824,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt3(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, &[a, b, c]).write_to(out) }
+    unsafe { format_parts(mask, [a, b, c]).write_to(out) }
 }
 
 /// Four parts, any of them integers: see [`format_parts`].
@@ -838,7 +838,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt4(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, &[a, b, c, d]).write_to(out) }
+    unsafe { format_parts(mask, [a, b, c, d]).write_to(out) }
 }
 
 /// Five parts, any of them integers: see [`format_parts`].
@@ -853,7 +853,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt5(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, &[a, b, c, d, e]).write_to(out) }
+    unsafe { format_parts(mask, [a, b, c, d, e]).write_to(out) }
 }
 
 /// Six parts, any of them integers: see [`format_parts`].
@@ -869,7 +869,7 @@ pub unsafe extern "C-unwind" fn msrt_string_fmt6(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes live strings and a writable `out`.
-    unsafe { format_parts(mask, &[a, b, c, d, e, f]).write_to(out) }
+    unsafe { format_parts(mask, [a, b, c, d, e, f]).write_to(out) }
 }
 
 /// A growable byte buffer the text formatters append to, so building a long text is linear.
