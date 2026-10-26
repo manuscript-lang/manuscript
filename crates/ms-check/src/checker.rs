@@ -950,7 +950,7 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(f, &s.ty(), d.pos());
+                        self.check_extern_signature(d.name().as_str(), f, &s.ty(), d.pos());
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
@@ -1174,10 +1174,16 @@ impl Checker {
 
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
-    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
+    fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
+        }
+        if name.starts_with("msrt_") || name.starts_with("msstd_") {
+            self.type_error(
+                pos,
+                format!("extern def {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
+            );
         }
         if !f.type_params.is_empty() {
             self.type_error(

@@ -18,8 +18,8 @@ test "a lambda that captures a map orders by the looked-up counts":
 
     let words = ["fox", "the", "dog"].sorted(
         compare: lambda (a: String, b: String) -> Int: return (
-            freq.get(b).get()
-            - freq.get(a).get()
+            freq[b]
+            - freq[a]
         )
     )
     try expect_equal(words, ["the", "dog", "fox"])

@@ -498,6 +498,51 @@ pub unsafe extern "C-unwind" fn msrt_list_set(
     }
 }
 
+/// Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or dropped.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_replace(
+    v: *mut VecVal,
+    d: *const TypeDesc,
+    index: i64,
+    e: *mut u8,
+    out: *mut u8,
+) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (v, d) = (&mut *v, &*d);
+        let i = relative(v.len, index);
+        if i < 0 || i as usize >= v.len {
+            index_fault("List.replace", v.len, index);
+        }
+        let p = elem(v, d, i as usize);
+        core::ptr::copy_nonoverlapping(p, out, d.size as usize);
+        core::ptr::copy_nonoverlapping(e, p, d.size as usize);
+    }
+}
+
+/// Exchanges the elements at `i` and `j` in place; nothing is copied or dropped.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: *const TypeDesc, i: i64, j: i64) {
+    // SAFETY: caller contract.
+    unsafe {
+        let (v, d) = (&mut *v, &*d);
+        let (a, b) = (relative(v.len, i), relative(v.len, j));
+        if a < 0 || a as usize >= v.len {
+            index_fault("List.swap", v.len, i);
+        }
+        if b < 0 || b as usize >= v.len {
+            index_fault("List.swap", v.len, j);
+        }
+        if a != b {
+            core::ptr::swap_nonoverlapping(
+                elem(v, d, a as usize),
+                elem(v, d, b as usize),
+                d.size as usize,
+            );
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64) {
     // SAFETY: caller contract.
@@ -2097,6 +2142,44 @@ mod tests {
     unsafe extern "C-unwind" fn by_value(_: *mut u8, a: *const u8, b: *const u8) -> i64 {
         // SAFETY: int slots.
         unsafe { (*(a as *const i64)).cmp(&*(b as *const i64)) as i64 }
+    }
+
+    #[test]
+    fn replace_and_swap_move_without_copying() {
+        let _g = testutil::lock();
+        unsafe {
+            let before = alloc::live_blocks();
+            let d = &msrt_desc_string;
+            let mut v = EMPTY;
+            for text in [&b"a"[..], b"b", b"c"] {
+                let s = string::from_bytes(text);
+                msrt_list_push(&mut v, d, &s as *const _ as *const u8);
+            }
+            let mut incoming = string::from_bytes(b"x");
+            let mut outgoing = core::mem::zeroed::<StrVal>();
+            msrt_list_replace(
+                &mut v,
+                d,
+                -2,
+                &mut incoming as *mut _ as *mut u8,
+                &mut outgoing as *mut _ as *mut u8,
+            );
+            assert_eq!(string::bytes(&outgoing), b"b");
+            assert_eq!(string::bytes((v.ptr as *const StrVal).add(1)), b"x");
+            msrt_list_swap(&mut v, d, 0, -1);
+            msrt_list_swap(&mut v, d, 1, 1);
+            let got: Vec<&[u8]> = (0..3)
+                .map(|i| string::bytes((v.ptr as *const StrVal).add(i)))
+                .collect();
+            assert_eq!(got, [&b"c"[..], b"x", b"a"]);
+            testutil::assert_fault(
+                "List.swap: index must be between -3 and 2 (negative indexes count from the end), found 3",
+                || msrt_list_swap(&mut v, d, 0, 3),
+            );
+            drop_list(&mut v, d);
+            slot_drop(d, &mut outgoing as *mut _ as *mut u8);
+            assert_eq!(alloc::live_blocks(), before);
+        }
     }
 
     #[test]

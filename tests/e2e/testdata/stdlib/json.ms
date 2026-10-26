@@ -360,7 +360,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
     try expect_equal(profile.age, 18)
     try expect_false(not profile.nickname.is_none())
     try expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)
-    try expect_equal(profile.labels.get("a").get(), 1)
+    try expect_equal(profile.labels["a"], 1)
     try expect_equal(profile.ids.length(), 2)
 
     let full = "{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[],\"labels\":{},\"ids\":[]}"
@@ -501,16 +501,16 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
     let ints: Map[Int, String] = try parse[Map[Int, String]](
         "{\"2\":\"b\",\"1\":\"a\"}"
     )
-    try expect_equal(ints.get(2).get(), "b")
+    try expect_equal(ints[2], "b")
 
     let bad: Result[Map[Int, String], JsonError] = error(JsonError.InvalidData)
     try expect_equal(parse[Map[Int, String]]("{\"x\":\"b\"}"), bad)
 
     let flags: Map[Bool, Int] = try parse[Map[Bool, Int]]("{\"true\":1}")
-    try expect_equal(flags.get(True).get(), 1)
+    try expect_equal(flags[True], 1)
 
     let kinds: Map[Tagged, Int] = try parse[Map[Tagged, Int]]("{\"Plain\":3}")
-    try expect_equal(kinds.get(Tagged.Plain).get(), 3)
+    try expect_equal(kinds[Tagged.Plain], 3)
 
 test "JSON parse needs a default for fields without a JSON form":
     let outcome = parse[Handler]("{\"name\":\"n\"}")

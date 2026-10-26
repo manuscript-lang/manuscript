@@ -1,3 +1,7 @@
+# Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
+# expect-mir: "iface.new"
+# expect-mir: "call.method"
+
 from "@std/io.ms" import stdout
 from "@std/core.ms" import TextError
 

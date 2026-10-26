@@ -51,7 +51,7 @@ test "public collection support types retain their standard runtime identities":
         values, lambda (value: Int) -> Int: (value % 2)
     )
     let distinct: Set[Int] = unique(values)
-    try expect_false(grouped.get(1).get() != [3] or distinct.values() != [3, 4])
+    try expect_false(grouped[1] != [3] or distinct.values() != [3, 4])
     try expect_equal(index(values, 4).get(), 1)
 
     let absent: Result[Int, MissingValue] = first([])

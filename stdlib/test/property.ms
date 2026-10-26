@@ -10,7 +10,7 @@ from "@std/time.ms" import clock, milliseconds
 # `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.
 # Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
 # draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
-# composed with `mapped`, `flat_mapped`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
+# composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
 # Example: `try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))`.
 # `ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
 # The recorded stream of draws a generator reads. Create one with `source`; generators call `draw`.
@@ -23,7 +23,7 @@ export type Source:
     state: Int
     # True while generating new input, false while replaying a recorded prefix (missing draws read as 0).
     fresh: Bool
-    # Set by `filtered` when it cannot satisfy its predicate; `check` discards such cases instead of running them.
+    # Set by `filter` when it cannot satisfy its predicate; `check` discards such cases instead of running them.
     invalid: Bool
 
 # Returns a source that generates fresh input from `seed`.
@@ -147,25 +147,30 @@ def one_draw[T](gens: List[Gen[T]], s: Source) -> Drawn[T]:
     let {value, source} = draw(s, gens.length() - 1)
     return gens[value].make(source)
 
-# Transforms every generated value.
-export def mapped[A, B](gen: Gen[A], transform: Callable[[A], B]) -> Gen[B]:
-    return Gen[B](lambda s: map_draw(gen, transform, s))
+impl Gen[T]:
+    # Transforms every generated value.
+    def map[B](transform: Callable[[T], B]) -> Gen[B]:
+        return Gen[B](lambda s: map_draw(self, transform, s))
+
+    # Generates a value, then generates again with a generator chosen from it (dependent generation).
+    def flat_map[B](next: Callable[[T], Gen[B]]) -> Gen[B]:
+        return Gen[B](lambda s: flat_map_draw(self, next, s))
+
+    # Keeps values for which `keep` is true. After 50 consecutive rejections the case is marked invalid and discarded.
+    def filter(keep: Callable[[T], Bool]) -> Gen[T]:
+        return Gen[T](lambda s: filter_draw(self, keep, s))
+
+    # Combines one value from this generator with one from `other`.
+    def zip[B, C](other: Gen[B], combine: Callable[[T, B], C]) -> Gen[C]:
+        return Gen[C](lambda s: zip_draw(self, other, combine, s))
 
 def map_draw[A, B](gen: Gen[A], transform: Callable[[A], B], s: Source) -> Drawn[B]:
     let {value, source} = gen.make(s)
     return Drawn(transform(value), source)
 
-# Generates a value, then generates again with a generator chosen from it (dependent generation).
-export def flat_mapped[A, B](gen: Gen[A], next: Callable[[A], Gen[B]]) -> Gen[B]:
-    return Gen[B](lambda s: flat_map_draw(gen, next, s))
-
 def flat_map_draw[A, B](gen: Gen[A], next: Callable[[A], Gen[B]], s: Source) -> Drawn[B]:
     let {value, source} = gen.make(s)
     return next(value).make(source)
-
-# Keeps values for which `keep` is true. After 50 consecutive rejections the case is marked invalid and discarded.
-export def filtered[T](gen: Gen[T], keep: Callable[[T], Bool]) -> Gen[T]:
-    return Gen[T](lambda s: filter_draw(gen, keep, s))
 
 def filter_draw[T](gen: Gen[T], keep: Callable[[T], Bool], s: Source) -> Drawn[T]:
     var cursor = s
@@ -183,14 +188,6 @@ def filter_draw[T](gen: Gen[T], keep: Callable[[T], Bool], s: Source) -> Drawn[T
             return Drawn(value, rejected)
 
         cursor = source
-
-# Combines one value from each generator.
-export def zipped[A, B, C](
-    first: Gen[A],
-    second: Gen[B],
-    combine: Callable[[A, B], C]
-) -> Gen[C]:
-    return Gen[C](lambda s: zip_draw(first, second, combine, s))
 
 def zip_draw[A, B, C](
     first: Gen[A],
@@ -259,11 +256,11 @@ export def strings(
     var letters = List[String]()
     for c in alphabet.chars():
         letters.append(c)
-    return mapped(lists(element_of(letters), 0, max_length), lambda cs: cs.join(""))
+    return lists(element_of(letters), 0, max_length).map(lambda cs: cs.join(""))
 
 # Generates a 2-element `Pair`.
 export def pairs[A, B](first: Gen[A], second: Gen[B]) -> Gen[Pair[A, B]]:
-    return zipped(first, second, lambda a, b: Pair(a, b))
+    return first.zip(second, lambda a, b: Pair(a, b))
 
 # Run settings. `ms test` fills them from `--runs`, `--seed`, and `--fuzz` through environment variables.
 export type Settings:
@@ -441,7 +438,7 @@ export def check[T](
             discarded += 1
             if discarded > 10 * config.runs + 1000:
                 return fail(
-                    f"property '{name}': {discarded} generated cases were discarded by filtered; loosen the filter"
+                    f"property '{name}': {discarded} generated cases were discarded by filter; loosen the filter"
                 )
 
             continue
