@@ -1,5 +1,7 @@
 # ms-rt micro-benchmarks vs Go
 
+These historical measurements came from [#712](https://github.com/manuscript-lang/manuscript/pull/712). The Go comparison sources were removed in [#853](https://github.com/manuscript-lang/manuscript/pull/853); the current `run.sh` runs the native C benchmark alone. The figures below are unchanged and do not describe the current runtime.
+
 Same machine, same run (4 cores, shared), `crates/ms-rt/tests/bench/run.sh`. Nanoseconds per element; Go figures are
 `ns/op` of the benchmark divided by the element count (2,000,000 pushes and sort elements, 1,000,000 map operations, 200,000 concats).
 
