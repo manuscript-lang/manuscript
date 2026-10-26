@@ -78,8 +78,7 @@ impl<L: Lower> Engine<L> {
             &runtime,
             &extra,
         )?;
-        write_metadata(output, kind);
-        Ok(())
+        write_metadata(output, kind)
     }
 }
 
@@ -313,7 +312,7 @@ pub(crate) fn profile(kind: BuildType) -> ms_build::Profile {
 }
 
 /// `<executable>.ms-build.json`: what built the executable.
-fn write_metadata(output: &Path, kind: BuildType) {
+fn write_metadata(output: &Path, kind: BuildType) -> Result<(), String> {
     let mut name = output.as_os_str().to_owned();
     name.push(".ms-build.json");
     let document = format!(
@@ -321,7 +320,13 @@ fn write_metadata(output: &Path, kind: BuildType) {
         crate::quote(crate::VERSION),
         kind.as_str()
     );
-    let _ = std::fs::write(PathBuf::from(name), document);
+    let path = PathBuf::from(name);
+    std::fs::write(&path, document).map_err(|error| {
+        format!(
+            "cannot write build metadata {}: {error}; choose an output path whose .ms-build.json file can be written",
+            path.display()
+        )
+    })
 }
 
 /// A scratch directory removed when dropped.

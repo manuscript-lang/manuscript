@@ -23,10 +23,12 @@ fn artifacts(output: &str, executable_built: bool) -> Vec<(&'static str, String,
     .map(|(kind, path)| {
         let state = if executable_built {
             "verified"
-        } else if Path::new(&path).is_file() {
-            "preserved"
         } else {
-            "missing"
+            match std::fs::metadata(&path) {
+                Ok(info) if info.is_file() => "preserved",
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => "missing",
+                _ => "unavailable",
+            }
         };
         (kind, path, state)
     })
