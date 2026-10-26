@@ -64,7 +64,7 @@ fn bytes_of<'a>(items: &'a [&'a str]) -> Vec<&'a [u8]> {
 }
 
 abi_record! {
-    /// Flattened `CpuUsage` / `ResourceUsage` (microseconds, bytes and counts, in declaration order).
+    /// Flattened `ResourceUsage` (microseconds, bytes and counts, in declaration order).
     pub struct ResourceOut {
         pub user_microseconds: i64,
         pub system_microseconds: i64,
@@ -79,8 +79,16 @@ abi_record! {
 }
 
 abi_record! {
+    /// Flattened `CpuUsage`: user and kernel microseconds.
+    pub struct CpuOut {
+        pub user_microseconds: i64,
+        pub system_microseconds: i64,
+    }
+}
+
+abi_record! {
     /// `memory_usage`: `heap_used`, `heap_total`, `heap_system`, `external`, `resident` in bytes.
-    /// Linux only; other hosts report `STATUS_UNSUPPORTED`.
+    /// Linux, macOS and Windows; other hosts report `STATUS_UNSUPPORTED`.
     pub struct MemoryOut {
         pub heap_used: i64,
         pub heap_total: i64,
@@ -293,6 +301,13 @@ native! {
     fn msstd_process_signal_close(h: ObjMut<signals::Watcher>) -> () {
         let mut h = h;
         h.close()
+    }
+
+    fn msstd_process_cpu_usage() -> Result<CpuOut, StatusCode> {
+        fs_status(control::resource_usage()).map(|u| CpuOut {
+            user_microseconds: u.user_us,
+            system_microseconds: u.system_us,
+        })
     }
 
     fn msstd_process_memory_usage() -> Result<MemoryOut, StatusCode> {
