@@ -166,7 +166,7 @@ fn native_values_and_time() {
 fn error_values_print_their_dynamic_text_and_equal_uses_impls() {
     let mir = lower(
         "dyntext",
-        "from \"@std/io.ms\" import stdout\nfrom \"@std/core.ms\" import TextError\n\ntype Key:\n    id: Int\n    label: String\n\nimpl Equal for Key:\n    def equals(other: Equal) -> Bool:\n        match other:\n            case Key(value): return self.id == value.id\n            case _: return False\n\nexport def main() -> Int:\n    let e: Error = TextError(\"bad\")\n    let a = Key(id: 1, label: \"a\")\n    let b = Key(id: 1, label: \"b\")\n    let r = stdout().write(f\"{e} {a == b}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\nfrom \"@std/core.ms\" import TextError\n\ntype Key:\n    id: Int\n    label: String\n\nimpl Equal for Key:\n    def equals(other: Key) -> Bool:\n        return self.id == other.id\n\nexport def main() -> Int:\n    let e: Error = TextError(\"bad\")\n    let a = Key(id: 1, label: \"a\")\n    let b = Key(id: 1, label: \"b\")\n    let r = stdout().write(f\"{e} {a == b}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("iface.is"));
     assert!(mir.contains("iface.new"));
@@ -196,7 +196,7 @@ fn method_values_type_applications_and_callee_capture() {
 fn comparable_impls_order_extremes_and_result_methods_are_values() {
     let mir = lower(
         "ordering",
-        "from \"@std/io.ms\" import stdout\nfrom \"@std/math.ms\" import max\n\ntype Version:\n    major: Int\n\nimpl Comparable for Version:\n    def compare(other: Comparable) -> Int:\n        match other:\n            case Version(value): return self.major - value.major\n            case _: return 0\n\nexport def main() -> Int:\n    let a = Version(1)\n    let b = Version(2)\n    let c: Result[Int, Error] = ok(1)\n    let e = c.is_ok\n    let r = stdout().write(f\"{max(a, b).major} {e()}\\n\")\n    return 0\n",
+        "from \"@std/io.ms\" import stdout\nfrom \"@std/math.ms\" import max\n\ntype Version:\n    major: Int\n\nimpl Comparable for Version:\n    def compare(other: Version) -> Int:\n        return self.major - other.major\n\nexport def main() -> Int:\n    let a = Version(1)\n    let b = Version(2)\n    let c: Result[Int, Error] = ok(1)\n    let e = c.is_ok\n    let r = stdout().write(f\"{max(a, b).major} {e()}\\n\")\n    return 0\n",
     );
     assert!(mir.contains("call.method"));
 }

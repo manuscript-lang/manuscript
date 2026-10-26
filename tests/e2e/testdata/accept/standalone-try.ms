@@ -40,7 +40,7 @@ def closed(marker: String) -> Bool:
 test "standalone try evaluates once and continues on Unit success":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-try-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-try-") | try expect_ok:
         let marker = f"{temporary.path()}/marker"
         let value = try exact(State(0, marker.clone()), fail: False)
         try expect_equal(value, "done 11")
@@ -49,7 +49,7 @@ test "standalone try evaluates once and continues on Unit success":
 test "standalone try propagates and cleans up before returning":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-try-") | try expect_ok):
+    with let temporary = fs.temporary("manuscript-try-") | try expect_ok:
         let marker = f"{temporary.path()}/marker"
         let failed = exact(State(0, marker.clone()), fail: True)
         try expect_false(failed.is_ok())

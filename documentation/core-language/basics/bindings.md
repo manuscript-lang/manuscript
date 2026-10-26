@@ -55,8 +55,8 @@ let {name, email: customer_email} = customer
 
 ## Scope and shadowing
 
-- A local name cannot be declared twice in one scope. A nested block may declare the same name, which shadows the outer one.
-- Every local needs an initial value. The name is visible only after its initializer, so the initializer may use an outer binding of the same name.
+- A local name cannot be declared twice in one scope, and a nested scope (a block, match arm, loop, or closure parameter) cannot reuse the name of an enclosing local or parameter: `ms check` rejects the shadowing binding. Rename one of them. A name starting with `_` is exempt.
+- Every local needs an initial value. The name is visible only after its initializer.
 - Locals are visible in source order; module declaration signatures may refer forward.
 - A `var` keeps the type from its annotation or initializer; later values must fit it.
 - Assignment targets a `var` binding or a field reached through mutable storage. `let` is immutable including contents; mutation through a parameter or receiver requires `var`. Collection methods that mutate require a mutable receiver and return Unit.

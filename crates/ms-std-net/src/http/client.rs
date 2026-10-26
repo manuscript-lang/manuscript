@@ -178,6 +178,39 @@ impl Wire {
     }
 }
 
+impl Wire {
+    /// Reads up to `max` bytes straight into a new buffer; empty is end of stream.
+    fn read_raw(&mut self, deadline: Deadline, max: usize) -> Result<Vec<u8>, IoErr> {
+        let mut scratch = SCRATCH.take();
+        scratch.resize(READ_BUF.max(max), 0);
+        let got = self.conn.read_into(&mut scratch[..max], deadline);
+        let out = got.map(|n| scratch[..n].to_vec());
+        SCRATCH.set(scratch);
+        out
+    }
+}
+
+impl Wire {
+    /// Reads up to `want` bytes straight into the spare capacity of `out`; zero is end of stream.
+    fn read_spare(
+        &mut self,
+        deadline: Deadline,
+        out: &mut Vec<u8>,
+        want: usize,
+    ) -> Result<usize, IoErr> {
+        out.reserve(want);
+        let len = out.len();
+        // SAFETY: `reserve` made `want` bytes of capacity past `len`. The socket only writes
+        // into the slice, and `len` grows by the bytes it reports, so no byte is read before
+        // it is written.
+        let spare = unsafe { core::slice::from_raw_parts_mut(out.as_mut_ptr().add(len), want) };
+        let n = self.conn.read_into(spare, deadline)?;
+        // SAFETY: the read initialised `n <= want` bytes at `len`.
+        unsafe { out.set_len(len + n) };
+        Ok(n)
+    }
+}
+
 struct Idle {
     wire: Wire,
     since: Instant,
@@ -1386,6 +1419,30 @@ impl BodyState {
                 return Ok(chunk);
             }
             if wire.pending().is_empty() {
+                if let Some(room) = self.decoder.raw_room() {
+                    // A raw body goes from the socket to the chunk in one copy.
+                    let want = max.max(1).min(usize::try_from(room).unwrap_or(usize::MAX));
+                    let chunk = wire.read_raw(deadline, want).map_err(|e| match e {
+                        IoErr::Failed(m) if m == "operation timed out" => {
+                            IoErr::Failed("context deadline exceeded".into())
+                        }
+                        other => other,
+                    })?;
+                    if chunk.is_empty() {
+                        self.wire_eof = true;
+                        if self.decoder.finish_on_eof() {
+                            self.done = true;
+                            return Ok(None);
+                        }
+                        return Err(IoErr::Failed(
+                            "connection closed before the exchange completed".into(),
+                        ));
+                    }
+                    if self.decoder.took_raw(chunk.len()) == Decoded::Done {
+                        self.done = true;
+                    }
+                    return Ok(Some(chunk));
+                }
                 let n = wire.fill(deadline).map_err(|e| match e {
                     IoErr::Failed(m) if m == "operation timed out" => {
                         IoErr::Failed("context deadline exceeded".into())
@@ -1652,6 +1709,9 @@ impl ResponseBody {
                 return Err(IoErr::Failed("response body limit exceeded".into()));
             }
             state.remaining -= n as u64;
+            if state.ready_pos == 0 && n == state.ready.len() {
+                return Ok(Some(std::mem::take(&mut state.ready)));
+            }
             let chunk = state.ready[state.ready_pos..state.ready_pos + n].to_vec();
             state.ready_pos += n;
             return Ok(Some(chunk));
@@ -1674,6 +1734,116 @@ impl ResponseBody {
             return Err(IoErr::Failed("context deadline exceeded".into()));
         }
         state.produce(self.deadline)
+    }
+
+    /// The rest of the body in one buffer. A fixed-length or until-close HTTP/1 body without
+    /// decompression is received straight into the result, so its bytes are copied by the
+    /// kernel only; anything else is gathered chunk by chunk.
+    pub fn read_all_bytes(&self) -> Result<Vec<u8>, IoErr> {
+        if self.closed.get() {
+            return Err(IoErr::Closed);
+        }
+        if self.reading.get() {
+            return Err(IoErr::Failed(
+                "response body is being read by another task".into(),
+            ));
+        }
+        rt::check_cancel();
+        let Some(taken) = self.state.borrow_mut().take() else {
+            return Ok(Vec::new());
+        };
+        self.reading.set(true);
+        let mut held = Held::new(self, taken);
+        let state = held.state().as_mut().expect("state");
+        let mut out: Vec<u8> = Vec::new();
+        loop {
+            if state.ready_pos < state.ready.len() {
+                let n = state.ready.len() - state.ready_pos;
+                if n as u64 > state.remaining {
+                    state.abandon();
+                    return Err(IoErr::Failed("response body limit exceeded".into()));
+                }
+                state.remaining -= n as u64;
+                if out.is_empty() && state.ready_pos == 0 {
+                    out = std::mem::take(&mut state.ready);
+                } else {
+                    out.extend_from_slice(&state.ready[state.ready_pos..]);
+                }
+                state.ready.clear();
+                state.ready_pos = 0;
+            }
+            // A decompressor still holds output after the last compressed byte arrived.
+            if state.done && state.gzip.is_none() && state.gz_in.is_empty() {
+                break;
+            }
+            if let Err(e) = self.fill_direct(state, &mut out) {
+                if self.closed.get() {
+                    return Err(IoErr::Closed);
+                }
+                state.abandon();
+                return Err(e);
+            }
+        }
+        let done = held.state().take().expect("state");
+        drop(held);
+        match self.client.upgrade() {
+            Some(client) if !self.closed.get() => done.finish(&client),
+            _ => {
+                let mut done = done;
+                done.abandon();
+            }
+        }
+        Ok(out)
+    }
+
+    /// One step toward the end of the body: raw bytes go straight into `out`, other bodies
+    /// leave their next decoded chunk in `state.ready`.
+    fn fill_direct(&self, state: &mut BodyState, out: &mut Vec<u8>) -> Result<(), IoErr> {
+        if self.deadline.expired() {
+            return Err(IoErr::Failed("context deadline exceeded".into()));
+        }
+        let direct = state.gzip.is_none()
+            && !state.done
+            && state
+                .wire
+                .as_ref()
+                .is_some_and(|w| w.h2.is_none() && w.pending().is_empty());
+        let Some(room) = state.decoder.raw_room().filter(|_| direct) else {
+            return state.produce(self.deadline);
+        };
+        let budget = state.remaining.saturating_add(1);
+        let want = (room.min(budget) as usize).clamp(1, READ_BUF);
+        if room != u64::MAX {
+            // The rest of a fixed-length body fits without growing the buffer again.
+            out.reserve_exact(room.min(budget).min(1 << 30) as usize);
+        }
+        let wire = state.wire.as_mut().expect("wire");
+        let n = wire
+            .read_spare(self.deadline, out, want)
+            .map_err(|e| match e {
+                IoErr::Failed(m) if m == "operation timed out" => {
+                    IoErr::Failed("context deadline exceeded".into())
+                }
+                other => other,
+            })?;
+        if n == 0 {
+            state.wire_eof = true;
+            if state.decoder.finish_on_eof() {
+                state.done = true;
+                return Ok(());
+            }
+            return Err(IoErr::Failed(
+                "connection closed before the exchange completed".into(),
+            ));
+        }
+        if n as u64 > state.remaining {
+            return Err(IoErr::Failed("response body limit exceeded".into()));
+        }
+        state.remaining -= n as u64;
+        if state.decoder.took_raw(n) == Decoded::Done {
+            state.done = true;
+        }
+        Ok(())
     }
 
     /// Reads everything within the budget (the buffered response path).
@@ -2139,6 +2309,73 @@ mod tests {
         let (_net, plain) = client(ClientOptions::default());
         let body = plain.send(request("GET", &address, "/gz")).unwrap();
         assert!(body.headers.borrow().values("Content-Encoding").is_some());
+    }
+
+    #[test]
+    fn read_all_bytes_gathers_every_framing_into_one_buffer() {
+        let payload: Vec<u8> = (0..300_000u32).map(|i| (i % 251) as u8).collect();
+        let gz = {
+            let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            e.write_all(&payload).unwrap();
+            e.finish().unwrap()
+        };
+        let served = payload.clone();
+        let (address, _) = serve(move |s, _| {
+            let request = read_request(s).unwrap();
+            if request.starts_with("GET /length") {
+                let head = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    served.len()
+                );
+                s.write_all(head.as_bytes()).unwrap();
+                s.write_all(&served[..10]).unwrap();
+                s.flush().unwrap();
+                s.write_all(&served[10..]).unwrap();
+            } else if request.starts_with("GET /close") {
+                s.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+                    .unwrap();
+                s.write_all(&served).unwrap();
+            } else if request.starts_with("GET /gz") {
+                let head = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    gz.len()
+                );
+                s.write_all(head.as_bytes()).unwrap();
+                s.write_all(&gz).unwrap();
+            } else if request.starts_with("GET /short") {
+                s.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\nabc",
+                )
+                .unwrap();
+            } else {
+                reply(
+                    s,
+                    "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n3\r\nabc\r\n2\r\nde\r\n0\r\n\r\n",
+                );
+            }
+        });
+        let (_net, c) = client(ClientOptions {
+            decompress: true,
+            ..ClientOptions::default()
+        });
+        for path in ["/length", "/close", "/gz"] {
+            let body = c.send(request("GET", &address, path)).unwrap();
+            let got = body.read_all_bytes().unwrap();
+            assert_eq!(got.len(), payload.len(), "{path}");
+            assert!(got == payload, "{path}");
+        }
+        let body = c.send(request("GET", &address, "/chunked")).unwrap();
+        assert_eq!(body.read_all_bytes().unwrap(), b"abcde");
+
+        let mut limited = request("GET", &address, "/length");
+        limited.max_response = 299_999;
+        let body = c.send(limited).unwrap();
+        assert_eq!(
+            body.read_all_bytes(),
+            Err(IoErr::Failed("response body limit exceeded".into()))
+        );
+        let body = c.send(request("GET", &address, "/short")).unwrap();
+        assert!(body.read_all_bytes().is_err());
     }
 
     #[test]

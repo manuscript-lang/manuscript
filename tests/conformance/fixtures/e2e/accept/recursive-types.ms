@@ -40,10 +40,8 @@ type Link:
     next: Optional[Link]
 
 impl Equal for Link:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Link(value): return self.value == value.value
-            case _: return False
+    def equals(other: Link) -> Bool:
+        return self.value == other.value
 
 impl Hashable for Link:
     def hash() -> Int: return self.value
@@ -60,8 +58,8 @@ test "recursive alternatives construct match compare and clone":
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
-        case More(tree):
-            ((tree.value != 3 or tree.rest != Forest.Empty) | try expect_false)
+        case More(first):
+            ((first.value != 3 or first.rest != Forest.Empty) | try expect_false)
         case Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":

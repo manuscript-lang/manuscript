@@ -4,7 +4,7 @@
 from "@std/core.ms" import TextError
 
 def crash(cause: TextError) -> Int:
-    return 1 / 0
+    return 1 / "".byte_length()
 
 export def main() -> Int:
     let value: Result[Int, TextError] = error(TextError("expected failure"))

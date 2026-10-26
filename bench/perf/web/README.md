@@ -22,4 +22,6 @@ sh bench/perf/web/run.sh 5
 - system calls in 5 idle seconds, and per `/health` request under load;
 - resident memory with 10,000 idle keep-alive connections open, and `/health` throughput beside them.
 
+`sh bench/perf/web/fetch.sh [seconds]` measures the client side the same way: `fetch` against Go's `net/http` client on small and 8 MiB bodies.
+
 Compare numbers only within one run on one machine. Shared virtual machines vary by 10 to 15% between runs; run twice and report both. [`results.md`](results.md) records the latest numbers.

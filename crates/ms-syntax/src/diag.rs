@@ -174,6 +174,137 @@ pub fn code_for(phase: &str, message: &str) -> &'static str {
     }
 }
 
+/// What a diagnostic code means and how it is usually repaired.
+pub struct CodeInfo {
+    pub code: &'static str,
+    pub family: &'static str,
+    pub repair: &'static str,
+}
+
+/// Every code `code_for` can return, in order.
+pub const CODES: &[CodeInfo] = &[
+    CodeInfo {
+        code: "MS0000",
+        family: "Unclassified diagnostic",
+        repair: "read the message; it names the cause and the fix",
+    },
+    CodeInfo {
+        code: "MS1000",
+        family: "Grammar",
+        repair: "follow the expected token the message names; block headers end with ':'",
+    },
+    CodeInfo {
+        code: "MS1001",
+        family: "Literals and text",
+        repair: "fix the literal, escape or encoding the message names",
+    },
+    CodeInfo {
+        code: "MS1002",
+        family: "Layout",
+        repair: "indent with four spaces and keep each suite aligned",
+    },
+    CodeInfo {
+        code: "MS2001",
+        family: "Names and members",
+        repair: "apply the `fix` edit (nearest name or import), or declare the name",
+    },
+    CodeInfo {
+        code: "MS2002",
+        family: "Modules and imports",
+        repair: "check the path, extension and [aliases] entry the message names",
+    },
+    CodeInfo {
+        code: "MS2003",
+        family: "Redundant prelude import",
+        repair: "delete the import; the prelude already provides it",
+    },
+    CodeInfo {
+        code: "MS3000",
+        family: "General typing",
+        repair: "read the message; it names the rule and the fix",
+    },
+    CodeInfo {
+        code: "MS3001",
+        family: "Exact types and operators",
+        repair: "convert explicitly: to_float(), f\"{value}\", or an explicit comparison",
+    },
+    CodeInfo {
+        code: "MS3002",
+        family: "Duplicate argument",
+        repair: "pass each argument once",
+    },
+    CodeInfo {
+        code: "MS3003",
+        family: "Missing argument",
+        repair: "supply the parameter the message names",
+    },
+    CodeInfo {
+        code: "MS3004",
+        family: "Unknown argument",
+        repair: "use one of the parameter names the message lists",
+    },
+    CodeInfo {
+        code: "MS3010",
+        family: "Overlapping implementation",
+        repair: "keep one impl per interface and type",
+    },
+    CodeInfo {
+        code: "MS3011",
+        family: "Signature mismatch",
+        repair: "match the interface operation's signature",
+    },
+    CodeInfo {
+        code: "MS3012",
+        family: "Implementation receiver",
+        repair: "implement interfaces for types you declare",
+    },
+    CodeInfo {
+        code: "MS3021",
+        family: "Hashing",
+        repair: "use a Hashable key type",
+    },
+    CodeInfo {
+        code: "MS3030",
+        family: "Captures",
+        repair: "capture a copy with .clone(), or finish using the value first",
+    },
+    CodeInfo {
+        code: "MS3040",
+        family: "Recursion",
+        repair: "keep recursive types finite and generic arguments stable",
+    },
+    CodeInfo {
+        code: "MS3050",
+        family: "Exhaustiveness",
+        repair: "add the missing cases or a final `case _:`",
+    },
+    CodeInfo {
+        code: "MS3060",
+        family: "Mutation",
+        repair: "declare the binding with `var`; the `fix` edit rewrites `let`",
+    },
+    CodeInfo {
+        code: "MS3070",
+        family: "Numeric literals",
+        repair: "use a value inside the type's range",
+    },
+    CodeInfo {
+        code: "MS3080",
+        family: "Generic inference",
+        repair: "write the type arguments or annotate the binding",
+    },
+    CodeInfo {
+        code: "MS4000",
+        family: "Lowering",
+        repair: "report this as a compiler bug with the source",
+    },
+];
+
+/// The entry for `code`, matched case-insensitively.
+pub fn explain(code: &str) -> Option<&'static CodeInfo> {
+    CODES.iter().find(|c| c.code.eq_ignore_ascii_case(code))
+}
+
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -225,6 +356,22 @@ pub fn json_string(out: &mut String, text: &str) {
 #[cfg(test)]
 mod code_tests {
     use super::code_for;
+
+    #[test]
+    fn every_returned_code_is_explained() {
+        for (phase, message) in [
+            ("parse", ""),
+            ("parse", "indent"),
+            ("parse", "UTF-8"),
+            ("resolution", "unknown"),
+            ("resolution", "module"),
+            ("type", ""),
+        ] {
+            assert!(super::explain(super::code_for(phase, message)).is_some());
+        }
+        assert!(super::explain("ms3060").is_some());
+        assert!(super::explain("MS9999").is_none());
+    }
 
     #[test]
     fn codes() {

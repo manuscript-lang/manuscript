@@ -67,7 +67,7 @@ test "collection updates mutate in place and clone separates storage":
     values.set(1, 9)
     try expect_false(not (values == [0, 9, 2, 3] and copy == [1, 2]))
     values.remove(1)
-    values.reverse_in_place()
+    values.reverse()
     values.fill(8, 0, 1)
     try expect_equal(values, [8, 2, 0])
     values.splice(1, 1, values.clone())

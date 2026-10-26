@@ -14,11 +14,16 @@ Both are prelude interfaces from `@std/core.ms`; importing them is rejected. The
 
 ```manuscript
 interface Equal:
-    def equals(other: Equal) -> Bool
+    def equals(other: Self) -> Bool
+
+interface Comparable:
+    def compare(other: Self) -> Int
 
 interface Hashable:
     def hash() -> Int
 ```
+
+`Self` is the implementing type. An implementation writes its own type for `other`, as `impl Equal for CustomerKey` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults. `Self` is allowed only as a whole parameter type of an interface operation.
 
 `==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
 
@@ -52,10 +57,8 @@ type CustomerKey:
     label: String
 
 impl Equal for CustomerKey:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case CustomerKey(value): return self.id == value.id
-            case _: return False
+    def equals(other: CustomerKey) -> Bool:
+        return self.id == other.id
 
 impl Hashable for CustomerKey:
     def hash() -> Int: self.id
@@ -66,5 +69,7 @@ These apply to operators, collection searches, and key lookup. Overriding equali
 ## Key consistency
 
 Equality must be reflexive, symmetric, and transitive, and equal values must hash equally. Hashes are lookup aids, not stable IDs or a serialization format.
+
+A key is copied into the Map or Set, so changing the original never changes the stored one. A type that holds a `Shared` handle is the exception, since every copy reaches one payload, and the checker rejects it as a key even with an explicit `impl Hashable`; key on a plain value such as an `Int` id.
 
 Never change a stored key's equality or hash. Remove it, mutate, and reinsert; a mutated key stays filed under its old hash and neither value finds it. Equality and hash must be deterministic and independent of authority, resource state, and wall-clock time.

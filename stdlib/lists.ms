@@ -16,8 +16,8 @@ interface ListFloatSum:
     def sum() -> Float
 
 impl ListFloatSum for List[Float]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+` in binary64 arithmetic; an empty list sums to 0.0.
+    # Example: `[1.5, 2.5].sum()` is `4.0`.
     def sum() -> Float:
         var total: Float = 0.0
         for x in self:
@@ -28,8 +28,7 @@ interface ListInt8Sum:
     def sum() -> Int8
 
 impl ListInt8Sum for List[Int8]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int8 overflow faults; an empty list sums to 0.
     def sum() -> Int8:
         var total: Int8 = 0
         for x in self:
@@ -40,8 +39,7 @@ interface ListInt16Sum:
     def sum() -> Int16
 
 impl ListInt16Sum for List[Int16]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int16 overflow faults; an empty list sums to 0.
     def sum() -> Int16:
         var total: Int16 = 0
         for x in self:
@@ -52,8 +50,7 @@ interface ListInt32Sum:
     def sum() -> Int32
 
 impl ListInt32Sum for List[Int32]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+`, so Int32 overflow faults; an empty list sums to 0.
     def sum() -> Int32:
         var total: Int32 = 0
         for x in self:
@@ -64,8 +61,7 @@ interface ListFloat32Sum:
     def sum() -> Float32
 
 impl ListFloat32Sum for List[Float32]:
-    # Adds the elements left to right with `+`, so integer overflow faults; an empty list sums to 0.
-    # Example: `[1, 2, 3].sum()` is `6`.
+    # Adds the elements left to right with `+` in binary32 arithmetic; an empty list sums to 0.0.
     def sum() -> Float32:
         var total: Float32 = 0.0
         for x in self:
@@ -101,9 +97,9 @@ impl ListExtremes[T] for List[T]:
 
         var at = 0
         for i in 1..self.length():
-            if self [i].compare(self [at]) < 0:
+            if self[i].compare(self[at]) < 0:
                 at = i
-        return some(self [at].clone())
+        return some(self[at].clone())
 
     # Returns a copy of the greatest element, or none for an empty list; the first of equal elements wins.
     # Example: `[3, 1, 2].max()` is `some(3)`.
@@ -113,9 +109,9 @@ impl ListExtremes[T] for List[T]:
 
         var at = 0
         for i in 1..self.length():
-            if self [i].compare(self [at]) > 0:
+            if self[i].compare(self[at]) > 0:
                 at = i
-        return some(self [at].clone())
+        return some(self[at].clone())
 
 interface ListKeyedExtremes[T: Clonable]:
     def max_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
@@ -130,16 +126,16 @@ impl ListKeyedExtremes[T] for List[T]:
             return none
 
         var at = 0
-        var best = key(self [0])
+        var best = key(self[0])
 
         for i in 1..self.length():
-            let k = key(self [i])
+            let k = key(self[i])
 
             if k.compare(best) > 0:
                 at = i
                 best = k
 
-        return some(self [at].clone())
+        return some(self[at].clone())
 
     # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
@@ -149,13 +145,13 @@ impl ListKeyedExtremes[T] for List[T]:
             return none
 
         var at = 0
-        var best = key(self [0])
+        var best = key(self[0])
 
         for i in 1..self.length():
-            let k = key(self [i])
+            let k = key(self[i])
 
             if k.compare(best) < 0:
                 at = i
                 best = k
 
-        return some(self [at].clone())
+        return some(self[at].clone())

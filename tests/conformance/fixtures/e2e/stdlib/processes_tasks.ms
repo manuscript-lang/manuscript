@@ -5,19 +5,19 @@ from "@std/process.ms" import commands, os_type
 from "@std/processes.ms" import ProcessGroup
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_ok
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def talker(ch: Channel[Int, Unit]) -> Int:
     var c = ch
 
     for i in 0..3:
-        sleep(duration(20000000))
+        sleep(nanoseconds(20000000))
         c.send(i)
 
     return 42
 
 def late(ch: Channel[Int, Unit]) -> Int:
-    sleep(duration(300000000))
+    sleep(nanoseconds(300000000))
     return 42
 
 def read_all(c: Channel[Unit, Int]) -> Int:
@@ -49,7 +49,7 @@ test "result waits while another task receives from the same child":
             tasks.spawn(lambda ch: read_all(reader.clone()))
 
             # The receiver is the one reading the pipe by now, so `result` waits for it.
-            sleep(duration(150000000))
+            sleep(nanoseconds(150000000))
             try expect_equal(child.result().get(-1), 42)
             try expect_equal(tasks.results().get([]), [3])
 
@@ -58,7 +58,7 @@ test "a task cancelled in a channel read releases the link":
         var child = group.spawn(late).get()
         let reader = child.channel.clone()
 
-        with let tasks = TaskGroup[Int](timeout: some(duration(50000000))):
+        with let tasks = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
             tasks.spawn(lambda ch: first(reader.clone()))
             try expect_equal(tasks.wait().is_error(), True)
 
@@ -98,11 +98,11 @@ test "the process listing command runs":
         try expect_ok(commands().run("pgrep", ["-f", "sleep 30.717"]))
 
 test "cancelling a task inside commands().run kills the child":
-    with let group = TaskGroup[Int](timeout: some(duration(200000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(200000000))):
         let t = group.spawn(lambda ch: run_long())
         try expect_equal(t.result().is_ok(), False)
 
-    sleep(duration(200000000))
+    sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), False)
 
 def wait_long() -> Int:
@@ -110,22 +110,22 @@ def wait_long() -> Int:
     return child.wait().get(-1)
 
 test "cancelling a task inside Subprocess.wait kills the child":
-    with let group = TaskGroup[Int](timeout: some(duration(200000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(200000000))):
         let t = group.spawn(lambda ch: wait_long())
         try expect_equal(t.result().is_ok(), False)
 
-    sleep(duration(200000000))
+    sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), False)
 
 # The child belongs to the task's closure, not to a local of its frames, so the unwind pass has no
 # value to drop: only Subprocess.wait's own cleanup stops it.
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
     let child = commands().spawn(long_program(), long_args()).get()
-    with let group = TaskGroup[Int](timeout: some(duration(200000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(200000000))):
         let t = group.spawn(lambda ch: child.wait().get(-1))
         try expect_equal(t.result().is_ok(), False)
 
-    sleep(duration(200000000))
+    sleep(nanoseconds(200000000))
     try expect_equal(long_alive(), False)
 
 test "the liveness check sees a live child":
@@ -134,7 +134,7 @@ test "the liveness check sees a live child":
 
 def slow_sum(ch: Channel[Unit, Int]) -> Int:
     var c = ch
-    sleep(duration(200000000))
+    sleep(nanoseconds(200000000))
 
     var total = 0
 

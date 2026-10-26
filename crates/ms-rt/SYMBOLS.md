@@ -215,6 +215,8 @@ msrt_pipe_new() -> i64
 msrt_pipe_peer(end: i64) -> i64
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
+msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_close(end: i64)
 msrt_task_yield()
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32
@@ -245,7 +247,7 @@ msrt_list_insert_copy( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const
 msrt_list_pop( v: *mut VecVal, d: *const TypeDesc, out: *mut u8, ) -> u8
 msrt_list_set( v: *mut VecVal, d: *const TypeDesc, index: i64, e: *const u8, )
 msrt_list_remove(v: *mut VecVal, d: *const TypeDesc, index: i64)
-msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc)
+msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc)
 msrt_list_reversed( v: *const VecVal, d: *const TypeDesc, out: *mut VecVal, )
 msrt_list_splice( v: *mut VecVal, d: *const TypeDesc, start: i64, count: i64, replacement: *mut VecVal, )
 msrt_list_fill( v: *mut VecVal, d: *const TypeDesc, value: *const u8, start: i64, end: i64, )
@@ -281,6 +283,7 @@ msrt_bytes_reversed(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_with_value( b: *const VecVal, index: i64, value: i64, out: *mut VecVal, )
 msrt_bytes_concat( a: *const VecVal, b: *const VecVal, out: *mut VecVal, )
 msrt_bytes_split( b: *const VecVal, sep: *const VecVal, has_max: u8, max: i64, out: *mut VecVal, )
+msrt_bytes_join(parts: *const VecVal, out: *mut VecVal)
 msrt_bytes_values(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal)
 msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8
@@ -567,6 +570,7 @@ msrt_http_client_request_stream( c: *const Obj, method: *const StrVal, address: 
 msrt_http_body_close(b: *const Obj)
 msrt_http_body_metadata(b: *const Obj, out: *mut MetadataWire)
 msrt_http_body_read( b: *const Obj, has_max: u8, max: i64, out: *mut VecVal, err: *mut StrVal, ) -> u8
+msrt_http_body_read_all(b: *const Obj, out: *mut VecVal, err: *mut StrVal) -> u8
 msrt_net_network_request( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_request_bytes( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
@@ -867,6 +871,9 @@ msrt_scope_close(scope: i64)
 msrt_channel_token() -> i64
 msrt_channel_park(token: i64)
 msrt_channel_post(token: i64)
+msrt_channel_group_new() -> *mut ChannelGroup
+msrt_channel_group_add( group: *mut ChannelGroup, close: *mut Closure, ) -> *mut ChannelLease
+msrt_channel_group_close(group: *mut ChannelGroup)
 msrt_addr_id(addr: *const u8) -> i64
 msrt_waitq_push(key: i64, token: i64)
 msrt_waitq_wake(key: i64) -> i64

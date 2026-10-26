@@ -4,6 +4,7 @@ use crate::checker::Checker;
 use crate::hints::*;
 use crate::inference::inference_type_known;
 use crate::stdlib;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
@@ -207,7 +208,13 @@ impl Checker {
                     if let Some(context) = context {
                         msg = with_mismatch_context(msg, &context);
                     }
-                    self.type_error(e.pos, msg);
+                    let fix = suggestions::conversion_fix(
+                        &self.m().source,
+                        e,
+                        actual.id.as_str(),
+                        exp.id.as_str(),
+                    );
+                    self.type_error_with_fix(e.pos, msg, fix);
                 }
             }
             if exp.kind == Kind::Function && same(&i.t(), exp) {
@@ -325,9 +332,10 @@ impl Checker {
                 .zip(stdlib::standard_symbol("Decimal"))
                 .is_some_and(|(a, b)| Rc::ptr_eq(&a, &b));
             if !ok {
-                self.res_error(
+                self.res_error_name(
                     e.pos,
-                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"",
+                    text.len(),
+                    "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal".to_string(),
                 );
             }
             i.ty = Some(standard("Decimal", vec![]));
@@ -787,7 +795,12 @@ impl Checker {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
                 if typ.is_none() && v.t().id != "Never" {
-                    typ = Some(v.t());
+                    let t = v.t();
+                    typ = Some(if t.kind == Kind::Function {
+                        required_type(&t)
+                    } else {
+                        t
+                    });
                 }
                 checked[at] = Some(v);
             }
@@ -1056,12 +1069,19 @@ impl Checker {
             if hint.is_empty() {
                 hint = "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)".to_string();
             }
-            self.type_error(
+            let source = self.m().source.clone();
+            let fix = match (at.id.as_str(), bt.id.as_str()) {
+                ("Int", "Float") => suggestions::to_float(&source, left),
+                ("Float", "Int") => suggestions::to_float(&source, right),
+                _ => None,
+            };
+            self.type_error_with_fix(
                 e.pos,
                 format!(
                     "operator operands require the same independently known type, found {at} {} {bt}; {hint}",
                     op.as_str()
                 ),
+                fix,
             );
             self.unknown_type = true; // later "<invalid>" diagnostics only restate this one
             i.ty = Some(if comparison { bool_() } else { invalid() });
@@ -1099,6 +1119,7 @@ impl Checker {
                 {
                     self.type_error(e.pos, "arithmetic requires numeric operands");
                 }
+                self.constant_arithmetic(e, op, left, right, &common);
                 if op == BinaryOp::Rem && !integer(&common) && !common.is_std("BigInt") {
                     self.type_error(
                         e.pos,

@@ -37,22 +37,22 @@ test "a group collects its results in start order":
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(entry, timeout: some(duration(...)))` limits one task. `TaskGroup[T](timeout: some(duration(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
+A task has no time limit unless you give one. `spawn(entry, timeout: some(nanoseconds(...)))` limits one task. `TaskGroup[T](timeout: some(nanoseconds(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
-    sleep(duration(60000000000))
+    sleep(nanoseconds(60000000000))
     return 1
 
 test "a task that passes its timeout is cancelled":
     with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: some(duration(10000000)))
+        let task = group.spawn(wait_a_minute, timeout: some(nanoseconds(10000000)))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
@@ -96,6 +96,7 @@ test "a task answers messages on its channel":
 - `receive()` waits for the next value: `ok(some(value))`, or `ok(none)` once the other end closed and every value it sent was read.
 - `close()` closes this end. The other end reads what is left, then `ok(none)`; its sends give `error(ChannelError.Closed)`. Using an end after closing it gives `Closed`, and unread values on it are dropped. Closing again does nothing.
 - A task's end closes when its entry returns, is cancelled, or never ran, so the group's `receive` ends with `ok(none)` instead of waiting forever. Closing the group closes every end.
+- Collecting a task's result leaves its channel readable, including buffered values. Closing the group closes retained and cloned channel handles too, even after result collection, and drops their unread values. Discarded collected channels are released without waiting for group close or another spawn.
 - Two tasks that each wait to send to the other while neither reads cannot make progress. The task scheduler can detect deadlocks within its own scheduler. Cycles spanning workers or processes are not covered by this guarantee; design protocols so each receive has a corresponding sender.
 - An end has one owner. `.clone()` makes another handle on the same end, so several tasks can send to or receive from it.
 - Write the parameter as `ch` and rebind it with `var c = ch`; a function with a `var` parameter cannot be passed as an entry yet ([#1191](https://github.com/manuscript-lang/manuscript/issues/1191)).

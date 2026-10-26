@@ -611,3 +611,30 @@ impl Error for PathError:
     def message() -> String:
         match self:
             case InvalidInput: return "path: invalid input"
+
+# A relative path that stays inside whatever directory it is joined to: no root, drive, NUL byte or `..` segment, under either POSIX or Windows spelling.
+# Build one with `relative_path` and join it with `under`; use it for names that come from outside the program, such as archive entries and request paths.
+export type RelPath:
+    # The validated path text, as given.
+    value: String
+
+# Validates `text` as a RelPath. An empty text, a leading `/` or `\`, a drive prefix such as `C:`, a NUL byte, or any `..` segment separated by `/` or `\` returns InvalidInput.
+export def relative_path(text: String) -> Result[RelPath, PathError]:
+    if text.is_empty() or text.contains("\u{0}"): return error(PathError.InvalidInput)
+    if text.starts_with("/") or text.starts_with("\\"): return error(
+        PathError.InvalidInput
+    )
+
+    let scalars = text.scalar_values()
+    let letter = scalars.length() > 1 and scalars[1] == 58
+    if letter: return error(PathError.InvalidInput)
+
+    for segment in text.replace("\\", "/").split("/"):
+        if segment == "..": return error(PathError.InvalidInput)
+    return ok(RelPath(text))
+
+impl RelPath:
+    # Returns this path resolved under the absolute directory `root` using host path rules, so the result cannot leave `root`.
+    # A relative `root` returns InvalidInput.
+    def under(root: String) -> Result[String, PathError]:
+        return resolve(root, [self.value.clone()])

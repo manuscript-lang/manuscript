@@ -7,11 +7,11 @@ from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpSer
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network
 from "@std/process.ms" import control
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def handle(request: HttpRequest) -> HttpResponse:
     if request.path == "/slow":
-        sleep(duration(3000000000))
+        sleep(nanoseconds(3000000000))
     return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 def fetch(address: String, path: String) -> String:
@@ -20,7 +20,7 @@ def fetch(address: String, path: String) -> String:
         var text = ""
 
         while True:
-            if let chunk = conn.read(timeout: duration(5000000000)):
+            if let chunk = conn.read(timeout: nanoseconds(5000000000)):
                 if let data = chunk:
                     text = f"{text}{data.decode_utf8().get("?")}"
                     continue
@@ -34,7 +34,7 @@ def fetch(address: String, path: String) -> String:
 
 def run(label: String, grace_ms: Int) -> Bool:
     let options = HttpServerOptions(
-        timeout: duration(200000000), grace: duration(grace_ms * 1000000)
+        timeout: nanoseconds(200000000), grace: nanoseconds(grace_ms * 1000000)
     )
 
     if let acquired = network().serve(

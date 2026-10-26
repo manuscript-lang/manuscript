@@ -982,16 +982,12 @@ def emit_one(
 
 def emit_table(var writer: Writer, path: List[String], values: Map[String, TomlValue]) -> Unit:
     for entry in values.entries():
-        if section_kind(entry.value.clone()) == 0: (
-            writer
-            .out
-            .append(
-                (
-                    format_key(entry.key.clone())
-                    .concat(" = ")
-                    .concat(inline_value(entry.value.clone()))
-                    .concat("\n")
-                )
+        if section_kind(entry.value.clone()) == 0: writer.out.append(
+            (
+                format_key(entry.key.clone())
+                .concat(" = ")
+                .concat(inline_value(entry.value.clone()))
+                .concat("\n")
             )
         )
 

@@ -6,7 +6,7 @@ use crate::text::runtime_fn;
 use ms_check::hir::{CallView, Resolution};
 use ms_check::types as ct;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value, VtableDef};
+use ms_mir::ir::{FuncId, FuncKind, Linkage, Mode, Param, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
@@ -140,6 +140,49 @@ impl<'a> FnLower<'a> {
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
+            }
+            // Float rounding and square root are single instructions.
+            if let Some(op) = match symbol {
+                "msstd_math_sqrt" => Some(ms_mir::ir::Op::FSqrt),
+                "msstd_math_floor" => Some(ms_mir::ir::Op::FFloor),
+                "msstd_math_ceil" => Some(ms_mir::ir::Op::FCeil),
+                "msstd_math_truncate" => Some(ms_mir::ir::Op::FTrunc),
+                _ => None,
+            } {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let x = self.borrow(args[0].val);
+                self.at(e.pos);
+                let v = self
+                    .b
+                    .emit(op, &[x], ms_mir::ir::Imm::None, Some(MTy::FLOAT))
+                    .expect("float op");
+                return Ok(Val { v, own: false });
+            }
+            // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
+            if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
+                matches!(
+                    *n,
+                    "bit_and"
+                        | "bit_or"
+                        | "bit_xor"
+                        | "bit_not"
+                        | "shift_left"
+                        | "shift_right"
+                        | "shift_right_unsigned"
+                        | "wrapping_add"
+                        | "wrapping_subtract"
+                        | "wrapping_multiply"
+                )
+            }) {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                self.at(e.pos);
+                return self.bit_operation(name, &args);
             }
             // Time values are plain words: reading one is not a runtime call.
             if let Some(field) = match symbol {
@@ -665,15 +708,8 @@ impl<'a> FnLower<'a> {
                 for s in &sigs {
                     methods.push(build(self.b.m, &s.name, &s.params, s.ret));
                 }
-                self.b.m.vtables.push(VtableDef {
-                    name: key.clone(),
-                    iface,
-                    methods,
-                    data_ty: MTy::UNIT,
-                });
-                let id = ms_mir::ir::VtableId(self.b.m.vtables.len() as u32 - 1);
-                self.cx.vtables.insert(key, id);
-                id
+                self.cx
+                    .intern_vtable(self.b.m, key, iface, methods, MTy::UNIT)
             }
         };
         let u = self.b.unit();
@@ -1574,21 +1610,12 @@ impl<'a> FnLower<'a> {
         )
     }
 
-    /// `equals` of data with built-in equality: boxes the receiver as the argument's `Equal`
-    /// and dispatches, so both sides compare as the interface value would.
-    fn equals_value(&mut self, concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
-        let want = self.ty_of(other.v);
-        let TyKind::Iface(iface) = self.b.m.types.kind(want).clone() else {
-            return Err(Error::new("equals without an interface argument"));
-        };
-        let boxed = self.fit_ty(recv, concrete, want)?;
-        let v = self.b.call_method(iface, 0, boxed.v, &[other.v]);
-        if boxed.own {
-            self.drop_value(boxed.v);
-        }
-        if other.own {
-            self.drop_value(other.v);
-        }
+    /// `equals` of data with built-in equality: the equality `==` selects, against another
+    /// value of the same type.
+    fn equals_value(&mut self, _concrete: &ct::Ty, recv: Val, other: Val) -> Result<Val, Error> {
+        let t = self.ty_of(recv.v);
+        // `equal` borrows both operands, so owned temporaries are released with the statement.
+        let v = self.equal(t, recv, other)?;
         Ok(Val { v, own: false })
     }
 
@@ -2426,14 +2453,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<(Value, Option<Val>), Error> {
         let runtime_only = !matches!(
             name,
-            "append"
-                | "set"
-                | "prepend"
-                | "insert"
-                | "remove"
-                | "pop"
-                | "reverse_in_place"
-                | "sort"
+            "append" | "set" | "prepend" | "insert" | "remove" | "pop" | "reverse" | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
@@ -2575,7 +2595,7 @@ impl<'a> FnLower<'a> {
                 self.release_source(fvar, true);
                 Ok((r.v, None))
             }
-            "reverse_in_place" => {
+            "reverse" => {
                 let var = self.fresh_var(lt);
                 self.b.def_var(var, old);
                 let r = self.list_reversed(var, elem)?;

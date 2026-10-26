@@ -20,7 +20,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered); the function's parameter is named request but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(request: _0)",
+        "message": "expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered)",
         "position": {
           "file": "internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
           "line": 15,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:11:26: type: cannot infer callback parameter request; provide a type or a known function context\n<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:15:77: type: expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered); the function's parameter is named request but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(request: _0)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:11:26: type: cannot infer callback parameter request; provide a type or a known function context\n<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:15:77: type: expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

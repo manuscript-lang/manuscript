@@ -196,6 +196,8 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
+    /// `(function, place)` of each `lock` guard whose `with` block is being checked.
+    pub(crate) held_locks: Vec<(usize, String)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -238,6 +240,7 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
+            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,
@@ -303,12 +306,10 @@ impl Checker {
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
         if phase == Phase::Resolution
-            && let Some((_, rest)) = message.split_once("; add: import ")
+            && message.starts_with("Decimal literal requires")
+            && self.import_reported("Decimal", pos)
         {
-            let name = rest.split(" from ").next().unwrap_or("");
-            if self.import_reported(name, pos) {
-                return;
-            }
+            return;
         }
         if let Some(m) = &self.module {
             for span in &m.recovered {
@@ -393,6 +394,39 @@ impl Checker {
             return;
         }
         self.names.borrow_mut().insert(name, s);
+    }
+
+    /// Makes `Self` available while an interface's operations are resolved: the implementing
+    /// type, which an implementation or a call replaces with its receiver.
+    pub(crate) fn declare_self(&mut self, owner: &Ty) {
+        if owner.kind == Kind::Contract {
+            self.scope
+                .types
+                .borrow_mut()
+                .insert(n("Self"), self_variable(owner.id));
+        }
+    }
+
+    /// `Self` is limited to whole parameter types, the only position an interface value can
+    /// turn back into the implementing type.
+    pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
+        fn mentions(t: &Ty) -> bool {
+            t.id.as_str().ends_with("/Self")
+                || t.args.iter().any(mentions)
+                || t.params.iter().any(|p| mentions(&p.ty))
+                || t.result.as_ref().is_some_and(mentions)
+        }
+        let misplaced = op
+            .params
+            .iter()
+            .any(|p| !p.ty.id.as_str().ends_with("/Self") && mentions(&p.ty))
+            || op.result.as_ref().is_some_and(mentions);
+        if misplaced {
+            self.type_error(
+                pos,
+                "Self can only be a whole parameter type of an interface operation; write 'other: Self', not 'List[Self]' or a result type",
+            );
+        }
     }
 
     /// Declares the type parameters of an interface or native operation in the current scope and
@@ -858,8 +892,10 @@ impl Checker {
                         );
                     }
                     self.scope = self.variable_scope(&s.variables());
+                    self.declare_self(&s.ty());
                     self.operation_variables(s.ty().id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
+                    self.check_self_use(&ty, m.pos);
                     def.operations.borrow_mut().push(Operation {
                         name: m.func.name,
                         ty,
@@ -974,6 +1010,22 @@ impl Checker {
                 ),
             );
         }
+        if report
+            && !name.as_str().starts_with('_')
+            && name != "self"
+            && self
+                .scope
+                .parent
+                .as_ref()
+                .is_some_and(|outer| outer.binding(name).is_some())
+        {
+            self.type_error(
+                pos,
+                format!(
+                    "binding {name} shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'"
+                ),
+            );
+        }
         let t = if mutable { required_type(t) } else { t.clone() };
         let id = self.unique("local");
         let b = Rc::new(Binding {
@@ -982,6 +1034,7 @@ impl Checker {
             uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
             ty: t,
             mutable,
+            decl: pos,
             function: self.function,
         });
         self.scope.bindings.borrow_mut().insert(name, b.clone());
@@ -1474,4 +1527,14 @@ pub fn unique_diagnostics(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
         }
     }
     result
+}
+
+/// The implicit `Self` type of an interface: a variable that implementations and calls replace
+/// with the receiver.
+pub fn self_variable(owner: Name) -> Ty {
+    Rc::new(Type::new(
+        n("Self"),
+        n(&format!("{owner}/Self")),
+        Kind::Variable,
+    ))
 }

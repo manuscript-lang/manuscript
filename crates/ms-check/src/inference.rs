@@ -3,7 +3,7 @@
 
 use crate::checker::{CheckedArgument, Checker};
 use crate::exprs::is_plain_literal;
-use crate::hints::{arity_mismatch_hint, label_mismatch_hint};
+use crate::hints::arity_mismatch_hint;
 use crate::syntax::*;
 use crate::types::Param;
 use crate::types::*;
@@ -108,9 +108,6 @@ pub(crate) fn infer_invalid_argument(
         }
     }
     for (p, q) in pattern.params.iter().zip(&actual.params) {
-        if p.name != q.name {
-            valid = false;
-        }
         if !infer_invalid_argument(Some(&p.ty), Some(&q.ty), vars, s) {
             valid = false;
         }
@@ -270,19 +267,29 @@ impl Checker {
         {
             return;
         }
-        let mut hint = label_mismatch_hint(&actual_ty, &substituted);
-        if hint.is_empty() && mentions_variable(&pattern, vars) {
-            hint = arity_mismatch_hint(&actual_ty, &substituted);
-        }
+        let hint = if mentions_variable(&pattern, vars) {
+            arity_mismatch_hint(&actual_ty, &substituted)
+        } else {
+            String::new()
+        };
         if !hint.is_empty() {
             self.type_error(arg.pos, format!("callback mismatch: {hint}"));
             self.unknown_type = true;
             self.label_mismatch = true;
             return;
         }
-        // A pattern without type variables has nothing to conflict; the
-        // argument check reports the plain mismatch.
-        if mentions_variable(&pattern, vars) {
+        // A concrete callback mismatch is explained by the final argument
+        // check; type arguments cannot repair an incompatible fixed slot.
+        let concrete_callback_mismatch = substituted.kind == Kind::Function
+            && actual_ty.kind == Kind::Function
+            && (substituted
+                .params
+                .iter()
+                .zip(&actual_ty.params)
+                .any(|(p, q)| !mentions_variable(&p.ty, vars) && !same(&p.ty, &q.ty))
+                || (!mentions_variable(&substituted.result_ty(), vars)
+                    && !same(&substituted.result_ty(), &actual_ty.result_ty())));
+        if mentions_variable(&pattern, vars) && !concrete_callback_mismatch {
             self.type_error(arg.pos, CONFLICTING_INFERENCE);
         }
     }

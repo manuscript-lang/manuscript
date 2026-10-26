@@ -520,7 +520,7 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeD
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_list_reverse_in_place(v: *mut VecVal, d: *const TypeDesc) {
+pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: *const TypeDesc) {
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
@@ -543,7 +543,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reversed(
     // SAFETY: caller contract.
     unsafe {
         copy_list(v, &*d, out);
-        msrt_list_reverse_in_place(out, d);
+        msrt_list_reverse(out, d);
     }
 }
 
@@ -967,15 +967,7 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
     // SAFETY: caller contract.
     unsafe {
         let v = &*v;
-        let sepb = string::bytes(sep);
-        let mut b = Vec::new();
-        for i in 0..v.len {
-            if i > 0 {
-                b.extend_from_slice(sepb);
-            }
-            b.extend_from_slice(string::bytes((v.ptr as *const StrVal).add(i)));
-        }
-        *out = string::from_buf(b);
+        *out = string::join_strings(v.ptr as *const StrVal, v.len, string::bytes(sep));
     }
 }
 
@@ -1114,10 +1106,26 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         }
         let size = d.size as usize;
         let buf = alloc::alloc(v.len * size.max(1));
-        if size == 8 {
-            merge_sort_word(v.ptr as *mut u64, buf as *mut u64, v.len, cmp, env);
-        } else {
-            merge_sort(v.ptr, buf, v.len, size, cmp, env);
+        // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
+        macro_rules! words {
+            ($n:literal) => {
+                merge_sort_word(
+                    v.ptr as *mut [u64; $n],
+                    buf as *mut [u64; $n],
+                    v.len,
+                    cmp,
+                    env,
+                )
+            };
+        }
+        match size {
+            8 => words!(1),
+            16 => words!(2),
+            24 => words!(3),
+            32 => words!(4),
+            40 => words!(5),
+            48 => words!(6),
+            _ => merge_sort(v.ptr, buf, v.len, size, cmp, env),
         }
         alloc::free(buf);
     }
@@ -1590,6 +1598,41 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
     }
 }
 
+/// `bytes.join(parts)`: the parts end to end in one allocation.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) {
+    // SAFETY: caller contract; the list holds `Bytes` values inline.
+    unsafe {
+        let list = &*parts;
+        let items: &[VecVal] = if list.len == 0 {
+            &[]
+        } else {
+            core::slice::from_raw_parts(list.ptr.cast::<VecVal>(), list.len)
+        };
+        let total = items.iter().fold(0usize, |sum, part| {
+            sum.checked_add(part.len)
+                .unwrap_or_else(|| fault::fault(b"bytes size overflow"))
+        });
+        if total == 0 {
+            *out = EMPTY;
+            return;
+        }
+        let p = alloc::alloc(total);
+        let mut at = 0;
+        for part in items {
+            if part.len > 0 {
+                core::ptr::copy_nonoverlapping(part.ptr, p.add(at), part.len);
+                at += part.len;
+            }
+        }
+        *out = VecVal {
+            ptr: p,
+            len: total,
+            cap: total,
+        };
+    }
+}
+
 /// `Bytes(values)`: each element must be 0..=255.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {
@@ -1744,6 +1787,19 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
 pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) {
     // SAFETY: caller contract.
     unsafe {
+        let v = &mut *b;
+        // A long text takes over the builder's buffer (NUL terminated, trimmed when much of it
+        // is spare) instead of copying it.
+        if v.len > STR_INLINE_MAX && v.len <= string::MAX_BYTES {
+            let mut ptr = v.ptr;
+            if v.cap == v.len || v.cap > v.len + (v.len >> 2) + 1 {
+                ptr = alloc::realloc(ptr, v.len + 1);
+            }
+            *ptr.add(v.len) = 0;
+            out.write(StrVal::owned(ptr, v.len));
+            *v = EMPTY;
+            return;
+        }
         let s = from_bytes(bslice(b));
         msrt_bytes_drop(b);
         out.write(s);
@@ -1772,6 +1828,31 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strbuilder_freeze_adopts_long_buffers() {
+        for len in [0usize, 1, 15, 16, 17, 100, 5000] {
+            for cap_extra in [0usize, 1, len, 10 * len + 7] {
+                // SAFETY: the builder is a fresh owned buffer that freeze consumes.
+                unsafe {
+                    let mut b = EMPTY;
+                    let want: Vec<u8> = (0..len).map(|i| b'a' + (i % 26) as u8).collect();
+                    reserve(&mut b, &desc::msrt_desc_bool, len + cap_extra);
+                    core::ptr::copy_nonoverlapping(want.as_ptr(), b.ptr, len);
+                    b.len = len;
+                    let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
+                    msrt_strbuilder_freeze(&mut b, out.as_mut_ptr());
+                    let s = out.assume_init();
+                    assert_eq!(string::bytes(&s), &want[..]);
+                    if len > STR_INLINE_MAX {
+                        assert_eq!(*string::bytes(&s).as_ptr().add(len), 0);
+                    }
+                    assert!(b.ptr.is_null());
+                    string::release(&s);
+                }
+            }
+        }
+    }
 
     unsafe extern "C-unwind" fn cmp_high(_env: *mut u8, a: *const u8, b: *const u8) -> i64 {
         // SAFETY: the sort passes pointers to live word slots.

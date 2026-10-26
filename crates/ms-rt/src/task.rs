@@ -1767,6 +1767,7 @@ pub fn teardown() {
         s.remote_tokens = 0;
         s.peer_tokens = 0;
         isolate::clear_posts();
+        crate::scope::teardown();
     }
 }
 
@@ -1857,28 +1858,44 @@ mod tests {
             let h = msrt_task_spawn(long_wait, null_mut(), 0, 0);
             msrt_task_cancel(h);
             assert_eq!(msrt_task_join(h, null_mut()), 0);
-            let pooled = sched().pool.clone();
+            let pooled = sched()
+                .pool
+                .iter()
+                .map(|&(base, _)| base)
+                .collect::<Vec<_>>();
             assert!(
                 !pooled.is_empty(),
                 "the completed stack must enter the pool"
             );
+            let page_size = libc::sysconf(libc::_SC_PAGESIZE);
+            assert!(page_size > 0);
+            let page_size = page_size as usize;
+            for &base in &pooled {
+                assert_eq!(
+                    libc::msync(base as *mut core::ffi::c_void, page_size, libc::MS_ASYNC),
+                    0,
+                    "the control stack must still be mapped before teardown"
+                );
+            }
             teardown();
-            for (base, _) in pooled {
-                let mut resident = 0u8;
-                // Querying an unmapped address fails; no access to its contents is made.
-                assert_eq!(
-                    libc::mincore(
-                        base as *mut core::ffi::c_void,
-                        4096,
-                        (&raw mut resident).cast()
-                    ),
-                    -1,
-                    "teardown left a task stack mapped"
-                );
-                assert_eq!(
-                    std::io::Error::last_os_error().raw_os_error(),
-                    Some(libc::ENOMEM)
-                );
+            for base in pooled {
+                // Darwin mincore reports residency even for holes. msync checks mappings:
+                // an unmapped page must fail with ENOMEM on both Darwin and Linux.
+                for offset in (0..STACK_SLOT).step_by(page_size) {
+                    assert_eq!(
+                        libc::msync(
+                            (base + offset) as *mut core::ffi::c_void,
+                            page_size,
+                            libc::MS_ASYNC
+                        ),
+                        -1,
+                        "teardown left a task stack page mapped"
+                    );
+                    assert_eq!(
+                        std::io::Error::last_os_error().raw_os_error(),
+                        Some(libc::ENOMEM)
+                    );
+                }
             }
         }
     }

@@ -298,6 +298,47 @@ Evidence: [worker retirement regression](../crates/ms-rt/src/worker.rs)
 (`an_exhausted_token_generation_does_not_revive_a_stale_id`).
 Verify: `cargo nextest run -p ms-rt` passes both stale-post regressions.
 
+Verified: `isolate_static!` suppresses thread-local destructors. Closing every group does not
+release its scope-table buffers, and dropping a stack-pool vector would not unmap its stacks.
+Scheduler retirement explicitly releases both; generation history needed by remote tokens stays
+in the process registry instead. Check Rust heap storage as well as program allocations.
+Apply when: adding isolate-local caches or changing worker/scheduler teardown.
+Evidence: [mapping regression](../crates/ms-rt/src/task.rs)
+(`teardown_unmaps_pooled_task_stacks`) and
+[Rust heap regression](../crates/ms-rt/tests/scope_teardown.rs).
+Verify: `cargo nextest run -p ms-rt` releases the mappings and reports zero retained table bytes.
+
+### Result collection does not transfer a task channel's resource lifetime
+
+Decision (Chinmay, 2026-10-26): closing a group closes every channel it handed out, including
+retained or cloned handles after result collection. Preserve collection's bounded retention:
+discarded channels must not remain owned by the group, and retained unread buffers release at close.
+The private tracker weakly links channel leases; each lease owns its callback and retains its tracker.
+Detach and take the callback before invoking it. Never retain a weak-listed lease: deferred object
+drops reuse a zero-count object's count word for the pending list.
+
+Apply when: changing task collection, channel lifetime, or group close.
+Evidence: [resolved contract and design](../proposals/task-channel-lifetime.md),
+[called lifecycle checks](../tests/e2e/testdata/stdlib/task-channel-lifetime.ms),
+and [native lease regressions](../crates/ms-rt/src/channel.rs).
+Verify: retained channels drain before group close, then give Closed; unread payloads release at
+close; last-handle drop removes tracking without another spawn; deferred drops and reentry stay valid.
+
+### Interrupted channel waits retire their queue entries
+
+Verified: freeing a cancelled park token prevents stale delivery but leaves its ID in a source
+lane's waiting list unless the wait registers cleanup. Repeated cancellations on an idle or full
+channel therefore retain entries until a later wake. Register a private wait ticket before park,
+remove only its own ID on exit, and release an empty list's capacity. Preserve other live waiters.
+
+Apply when: parking on a source-managed queue or changing task-channel cancellation.
+Evidence: [channel wait cleanup](../stdlib/tasks.ms),
+[deterministic sender/receiver checks](../tests/e2e/testdata/stdlib/task-channel-wait-cancellation.ms),
+and [retention finding #1505](https://github.com/manuscript-lang/manuscript/issues/1505).
+Verify: acknowledged waits cancelled without sleeps retain no excess heap over an equally cancelled,
+woken control; another live waiter still wakes. Keep samples within the small-block heap counter's
+range, and report profile-specific cancellation allocations separately from queue storage.
+
 ## Shared is changed only through a lock guard
 
 Decision (Chinmay, 2026-10-25): a `Shared` payload is changed with `with var guard = lock(box):` from `@std/sync.ms`, like Rust's `Arc<Mutex<T>>`; raw `take`/`put` were the manual lock that a cancellation left set (p13). The guard's close returns the payload on every exit, `lock` waits for a held guard, and the checker rejects `take`, `put` and `locked` outside `@std/sync.ms` and a `Shared` in a worker or process message (#1249). A `with var` binding registers its storage slot, so a fault or cancellation closes the value the block had reached.

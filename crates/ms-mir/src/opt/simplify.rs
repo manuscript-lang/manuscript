@@ -10,7 +10,7 @@
 use crate::ir::*;
 use crate::types::Ty;
 use crate::verify::dominators;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Runs the pass over every function; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
@@ -38,9 +38,11 @@ fn simplify_func(m: &Module, f: &mut Func) -> bool {
         let mut c = false;
         c |= fold(f);
         c |= known_alts(m, f);
+        c |= known_ifaces(m, f);
         c |= known_lists(m, f);
         c |= phis(m, f);
         c |= roundtrips(f);
+        c |= put_takes(f);
         c |= branches(f);
         c |= cse(m, f);
         c |= dce(m, f);
@@ -128,16 +130,17 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
     }
     // A value left with only its drop is never observed: delete both.
     let uses = f.use_counts();
-    let dead: Vec<Value> = known
+    let mut drops: HashMap<Value, usize> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if i.op == Op::Drop && known.contains_key(&i.args[0]) {
+            *drops.entry(i.args[0]).or_default() += 1;
+        }
+    }
+    let dead: HashSet<Value> = known
         .keys()
         .copied()
         .filter(|v| {
-            let drops = f
-                .blocks
-                .iter()
-                .flat_map(|b| &b.insts)
-                .filter(|i| i.op == Op::Drop && i.args[0] == *v)
-                .count();
+            let drops = drops.get(v).copied().unwrap_or(0);
             uses[v.index()] > 0 && uses[v.index()] as usize == drops
         })
         .collect();
@@ -152,6 +155,81 @@ fn known_alts(m: &Module, f: &mut Func) -> bool {
         changed = true;
     }
     changed
+}
+
+/// Removes the box of an interface value built in the same function from a payload that needs
+/// no drop when nothing but `iface.data` reads, `load`s of the payload type and drops touch it:
+/// `a.compare(b)` on an element type inlines to a load of the boxed argument, so each load
+/// becomes the payload operand and the allocation, the pointer and the drops are deleted.
+fn known_ifaces(m: &Module, f: &mut Func) -> bool {
+    let mut boxed: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::IfaceNew, [x], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && !m.needs_drop(f.ty(*x))
+        {
+            boxed.insert(r, *x);
+        }
+    }
+    if boxed.is_empty() {
+        return false;
+    }
+    let mut pointers: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::IfaceData, [b], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && boxed.contains_key(b)
+        {
+            pointers.insert(r, *b);
+        }
+    }
+    let uses = f.use_counts();
+    let mut handled: HashMap<Value, u32> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        match (i.op, i.args.as_slice()) {
+            (Op::Drop | Op::IfaceData, [b]) if boxed.contains_key(b) => {
+                *handled.entry(*b).or_default() += 1;
+            }
+            (Op::Load, [p]) => {
+                if let (Some(b), Some(r)) = (pointers.get(p), i.res)
+                    && f.ty(r) == f.ty(boxed[b])
+                {
+                    *handled.entry(*p).or_default() += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+    let plain = |v: &Value| handled.get(v).copied().unwrap_or(0) == uses[v.index()];
+    let unplain_owners: HashSet<Value> = pointers
+        .iter()
+        .filter(|(p, _)| !plain(p))
+        .map(|(_, owner)| *owner)
+        .collect();
+    boxed.retain(|b, _| plain(b) && !unplain_owners.contains(b));
+    if boxed.is_empty() {
+        return false;
+    }
+    pointers.retain(|_, b| boxed.contains_key(b));
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    for i in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::Load, [p], Some(r)) = (i.op, i.args.as_slice(), i.res)
+            && let Some(b) = pointers.get(p)
+        {
+            subst.insert(r, boxed[b]);
+        }
+    }
+    for b in &mut f.blocks {
+        b.insts.retain(|i| {
+            let dropped = i.op == Op::Drop && i.args.first().is_some_and(|a| boxed.contains_key(a));
+            let defines = i
+                .res
+                .is_some_and(|r| boxed.contains_key(&r) || pointers.contains_key(&r));
+            let reads =
+                i.op == Op::Load && i.args.first().is_some_and(|a| pointers.contains_key(a));
+            !(dropped || defines || reads)
+        });
+    }
+    apply_subst(f, &subst);
+    true
 }
 
 /// Folds reads of a `list.lit` whose elements need no drop and that is only read: `list.len`
@@ -511,11 +589,15 @@ fn rule(f: &mut Func, env: &mut Env, out: &mut Vec<Inst>, inst: &Inst) -> Act {
             }
             _ => Act::Keep,
         },
-        Op::FNeg | Op::FSqrt | Op::FAbs => match env.cf(a(0)) {
+        Op::FNeg | Op::FSqrt | Op::FAbs | Op::FFloor | Op::FCeil | Op::FTrunc => match env.cf(a(0))
+        {
             Some(p) => {
                 let r = match inst.op {
                     Op::FNeg => -p,
                     Op::FSqrt => p.sqrt(),
+                    Op::FFloor => p.floor(),
+                    Op::FCeil => p.ceil(),
+                    Op::FTrunc => p.trunc(),
                     _ => p.abs(),
                 };
                 Act::Const(K::F(r.to_bits()))
@@ -824,6 +906,15 @@ fn branches(f: &mut Func) -> bool {
     }
     // Thread edges through empty blocks that only forward their arguments.
     let uses = f.use_counts();
+    // The blocks whose terminator targets each block, kept current as edges move.
+    let mut preds: Vec<Vec<usize>> = vec![Vec::new(); f.blocks.len()];
+    for (pb, blk) in f.blocks.iter().enumerate() {
+        blk.term.for_each_target(|e| {
+            if preds[e.block.index()].last() != Some(&pb) {
+                preds[e.block.index()].push(pb);
+            }
+        });
+    }
     for b in 1..f.blocks.len() {
         if !f.blocks[b].insts.is_empty() {
             continue;
@@ -844,8 +935,9 @@ fn branches(f: &mut Func) -> bool {
         }
         let bb = Block(b as u32);
         let mut did = false;
-        for pb in 0..f.blocks.len() {
+        for pb in std::mem::take(&mut preds[b]) {
             if pb == b {
+                preds[b].push(pb);
                 continue;
             }
             f.blocks[pb].term.for_each_target_mut(|e| {
@@ -864,6 +956,8 @@ fn branches(f: &mut Func) -> bool {
                 e.args = new_args;
                 did = true;
             });
+            // A repeated entry only revisits a block whose edges already moved.
+            preds[t.block.index()].push(pb);
         }
         changed |= did;
     }
@@ -917,8 +1011,11 @@ fn cse(m: &Module, f: &mut Func) -> bool {
                 inst.op,
                 Op::IAddChk | Op::ISubChk | Op::IMulChk | Op::INegChk | Op::SDivChk | Op::SRemChk
             );
-            if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int)
-                || m.needs_drop(ty)
+            // A field read is a borrowed view of an immutable record value, so repeating it
+            // yields the same view even when the field's type owns heap data.
+            let view = inst.op == Op::RecGet;
+            if !(inst.op.is_numberable() || inst.op == Op::AltTag || checked_int || view)
+                || (m.needs_drop(ty) && !view)
             {
                 continue;
             }
@@ -1007,6 +1104,50 @@ fn roundtrips(f: &mut Func) -> bool {
         }
     }
     changed
+}
+
+/// A value put into a slot and taken straight back out (inlining a callee that receives its
+/// argument through a slot leaves `put S, v; r = take S`) is `v` itself: the pair is deleted and
+/// `r` renamed to `v`, which is then a value the analyses can follow. `put` consumes `v`, so `r`
+/// takes over its one owning use, and only pure instructions may sit between the two.
+fn put_takes(f: &mut Func) -> bool {
+    let mut subst: HashMap<Value, Value> = HashMap::new();
+    let mut removed: HashSet<(usize, usize)> = HashSet::new();
+    for (bi, b) in f.blocks.iter().enumerate() {
+        for (pi, put) in b.insts.iter().enumerate() {
+            if put.op != Op::Put {
+                continue;
+            }
+            let (slot, v) = (put.args[0], put.args[1]);
+            for (ti, take) in b.insts.iter().enumerate().skip(pi + 1) {
+                if take.op == Op::Take && take.args[0] == slot {
+                    if let Some(r) = take.res
+                        && f.ty(r) == f.ty(v)
+                    {
+                        subst.insert(r, v);
+                        removed.insert((bi, pi));
+                        removed.insert((bi, ti));
+                    }
+                    break;
+                }
+                if take.args.contains(&slot) || !take.op.info().effects.is_pure() {
+                    break;
+                }
+            }
+        }
+    }
+    if removed.is_empty() {
+        return false;
+    }
+    for (bi, b) in f.blocks.iter_mut().enumerate() {
+        let mut k = 0;
+        b.insts.retain(|_| {
+            k += 1;
+            !removed.contains(&(bi, k - 1))
+        });
+    }
+    apply_subst(f, &subst);
+    true
 }
 
 /// The instruction indexes of the sequence starting with the `take` at `at`:

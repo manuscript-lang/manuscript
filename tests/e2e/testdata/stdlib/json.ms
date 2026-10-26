@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/json.ms" import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode
-from "@std/time.ms" import timestamp, duration, clock, Timestamp, Duration, Instant
+from "@std/time.ms" import timestamp, nanoseconds, clock, Timestamp, Duration, Instant
 from "@std/net.ms" import Url
 from "@std/bytes.ms" import Bytes
 from "@std/decimal.ms" import Decimal
@@ -212,7 +212,7 @@ test "JSON stringify omits values without a JSON form and writes null for list e
 test "JSON stringify encodes standard-library values":
     let at = try timestamp(1700000000, 500000000)
     let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
-    let item = Stamped(at, duration(1500), "hi".to_bytes(), link)
+    let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
     let expected = "{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"}"
     try expect_equal((try encoded(item)), expected)
     try expect_equal((try encoded(TextError("boom"))), "{\"text\":\"boom\"}")
@@ -492,11 +492,11 @@ test "JSON parse takes its type from an explicit argument, the expected result o
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
     let at = try timestamp(1700000000, 500000000)
     let link = Url("https", "example.com", some(8080), "/a", "x=1", "")
-    let item = Stamped(at, duration(1500), "hi".to_bytes(), link)
+    let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
     let text = try stringify(item)
     let back: Stamped = try parse[Stamped](text)
     try expect_equal((try stringify(back)), text)
-    try expect_equal(back.took, duration(1500))
+    try expect_equal(back.took, nanoseconds(1500))
 
     let ints: Map[Int, String] = try parse[Map[Int, String]](
         "{\"2\":\"b\",\"1\":\"a\"}"
@@ -583,7 +583,7 @@ test "JSON round trips fields named like Go keywords":
 
 test "JSON round trips generic records alternatives and Duration keys":
     var chain_2 = Map[Duration, String]()
-    chain_2.add(duration(5), "five")
+    chain_2.add(nanoseconds(5), "five")
 
     let w = Wrap(
         [Op.Add(1, 2), Op.Neg(none), Op.Neg(some(3)), Op.Nop], [Pair(1, Op.Nop)],

@@ -20,17 +20,17 @@ test "closures borrow the variable and shadowing":
         return value + offset
 
     if True:
-        var offset = 20
-        offset = 30
-        try expect_equal(action(offset), 40)
+        var local = 20
+        local = 30
+        try expect_equal(action(local), 40)
 
     try expect_equal(action(3), 13)
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
 
     let factory = lambda (value: Int) -> Callable[[Int], Int]:
-        return lambda value:
-            return value + offset
+        return lambda inner:
+            return inner + offset
     let nested = factory(value: 99)
     offset = 100
     try expect_equal(nested(1), 11)

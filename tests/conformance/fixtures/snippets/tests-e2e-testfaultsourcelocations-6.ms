@@ -2,7 +2,7 @@
 # conform: phase=run
 # conform: origin=tests/e2e/fault_locations_test.go:74 TestFaultSourceLocations
 def crash() -> Int:
-    return 1 / 0
+    return 1 / "".byte_length()
 
 export def main() -> Int:
     var values = Map[Int, Int]()

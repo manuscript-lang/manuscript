@@ -310,7 +310,7 @@ impl Equal for Data:
     def compare() -> Unit:
         return
 type	4	9	55	extra operation compare; Equal declares: equals (remove it or add it to the interface)
-type	3	1	26	missing implementation operation equals; add fn equals(other: Equal) -> Bool to this impltype First:
+type	3	1	26	missing implementation operation equals; add fn equals(other: Data) -> Bool to this impltype First:
     case Ready(value: Int)
 type Second:
     case Ready(value: Int)
@@ -833,11 +833,11 @@ def forward[T](item: T) -> T: item
 export def main() -> Int:
     return panic(message: "profile failure")
 resolution	1	30	29	unknown standard module @std/faults.ms
-resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import duration, sleep
+resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import nanoseconds, sleep
 from "@std/io.ms" import stdout
 export def main() -> Int:
     stdout().write(data: "ready\n")
-    sleep(duration(nanoseconds: 60000000000))
+    sleep(nanoseconds(60000000000))
     return 0
 import stdout from "@std/io.ms"
 
@@ -1088,7 +1088,8 @@ impl Equal for K:
 def f() -> Int:
     let s = Set[K]()
     return 0
-type	7	13	125	K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements itdef helper() -> Int:
+type	4	9	47	implementation operation signature does not match contract; equals must be declared as fn equals(other: K) -> Bool
+type	7	13	125	K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements itdef helper() -> Int:
     return 1
 def f() -> Int:
     helper = 2
@@ -1761,7 +1762,8 @@ def one() -> Int:
 impl Equal for Key:
     def equals(other: Equal) -> Bool: return True
 def keys() -> Map[Key, Int]: return Map[Key, Int]()
-type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
+type	4	9	50	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Bool
+type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
 type State:
     value: Int
 impl TestHooks for State:
@@ -2421,8 +2423,7 @@ def probe() -> Int:
     values.add(Key(1), 10)
     values.add(Key(2), 20)
     return values.length()
-type	9	5	193	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
-type	10	5	220	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itdef lookup[T: Hashable](key: T, value: T) -> T:
+type	4	9	53	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Booldef lookup[T: Hashable](key: T, value: T) -> T:
     let values = Map[T, T]()
     values.add(key, value)
     return values.get(key).get()
@@ -2452,8 +2453,7 @@ def count(items: List[Int], data: Bytes) -> Int:
 def wrong(values: Map[String, Int]) -> Unit:
     let mapped = values.map_keys(lambda k, v: v.to_float())type	2	25	69	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimaldef wrong[W](values: Map[String, Int], transform: Callable[[String, Int], W]) -> Unit:
     let mapped = values.map_keys(transform)type	2	25	111	W does not satisfy Hashable; pass a type that already implements itdef transform(value: Int, key: String) -> Int: value
-def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)type	2	69	121	callback mismatch: the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)
-type	2	69	121	expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)def wrong(values: Map[String, Int]) -> Unit:
+def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)type	2	69	121	expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)def wrong(values: Map[String, Int]) -> Unit:
     let found = values.find_last(lambda k, v: v)type	2	47	91	expected Bool, found Int (in the return value)def allowed(values: Map[String, Int]) -> Map[String, Float]:
     return values.map(lambda key, value: value.to_float())
 type Shape:
@@ -2587,7 +2587,7 @@ def call() -> Unit: f([4])
 def f(value: Int) -> Int: return value
 def call() -> Unit:
     let callback: Callable[[Optional[Int]], Int] = f
-type	3	52	110	expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback'); the function's parameter is named value but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(value: _0)def f(value: Optional[Int]) -> Unit: return
+type	3	52	110	expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback')def f(value: Optional[Int]) -> Unit: return
 def call() -> Unit: f(other: 4)
 type	2	23	66	unknown argument other; parameters of f: value
 type	2	21	64	missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'def f(value: Optional[Int]) -> Unit: return
@@ -2996,7 +2996,8 @@ impl Error for Cause:
             sum += found
         i += 1
     return sum
-resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a moduledef probe() -> Int:
+resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a module
+type	5	16	95	binding found shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def probe() -> Int:
     var sum = 0
     var i = 0
     while i < 1000:
@@ -3999,7 +4000,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def helper() -> Int: 1
+type	10	21	139	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def helper() -> Int: 1
 
 let (
     A = 1
@@ -4018,7 +4019,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
+type	12	21	141	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
 def example() -> Int:
     return apply(
         transform: lambda (value: Int) -> Int:
@@ -5446,7 +5447,7 @@ def use[T](value: Result[Int, Failure[T]]) -> Int:
     match value:
         case error(NotFound): return 1
         case ok(value): return value
-interface Describe:
+type	9	14	242	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     def describe() -> String
 type State:
     case Ready
@@ -5868,10 +5869,10 @@ test "third=after":
 export def helper() -> Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, duration
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, nanoseconds
 
 test "timeout":
-    sleep(duration(nanoseconds: 1000000000))
+    sleep(nanoseconds(1000000000))
 
 test "after":
     return ()
@@ -6058,8 +6059,7 @@ export def main() -> Int:
     return 0
 test "continues after decimal overflow":
     let finite = 1d / 3d
-resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/decimal.ms"
-resolution	2	23	63	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/decimal.ms"interface Shape:
+resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: from "@std/decimal.ms" import Decimalinterface Shape:
     def area() -> Int
 
 type Rect:
@@ -6189,18 +6189,20 @@ def probe(input: ReadStream) -> Bool:
 export def main() -> Int:
     if probe(stdin()): return 1
     return 0
-def crash() -> Int:
+type	3	14	87	division by zero always faults; guard the divisor or use a nonzero constantdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     return values.add(crash(), 1).length()
-resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     let add = values.add
     return add(value: crash(), key: 1).length()
-resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
     return values.get(index)
 export def main() -> Int:
     return pick([1, 2, 3], 3)
@@ -6232,6 +6234,7 @@ export def main() -> Int:
     return value.or_else(crash)
 resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	18	56	unknown type TextError; add: from "@std/core.ms" import TextError
+type	3	14	88	division by zero always faults; guard the divisor or use a nonzero constant
 resolution	5	28	145	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	47	164	unknown binding TextError; add: from "@std/core.ms" import TextErrordef crash(key: String, value: Int) -> Bool:
     return 1 / value == 0
@@ -6275,11 +6278,11 @@ export def main() -> Int:
     return value
 export def main() -> Int:
     return divide()
-export def main() -> Int:
+type	1	27	26	division by zero always faults; guard the divisor or use a nonzero constantexport def main() -> Int:
     let crash = lambda () -> Int:
         return 1 / 0
     return crash()
-def extract[T](value: Optional[T]) -> T:
+type	3	18	77	division by zero always faults; guard the divisor or use a nonzero constantdef extract[T](value: Optional[T]) -> T:
     return value.get()
 export def main() -> Int:
     return extract[Int](none)
@@ -6528,7 +6531,8 @@ resolution	5	20	160	unknown binding Shape; did you mean 'shapes'?def fail() -> 
 export def main() -> Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(fail() * 0))
-resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+type	2	14	32	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
 resolution	5	12	108	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduleexport def main() -> Int:
     let shapes = [Shape.Circle(2)]
     var sum = 9223372036854775807
@@ -6642,8 +6646,8 @@ export def main() -> Int:
 
 type	25	33	572	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
 type	27	10	638	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
-    let minimum = duration(-9223372036854775808)
-    let maximum = duration(9223372036854775807)
+    let minimum = nanoseconds(-9223372036854775808)
+    let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
 parse	1	6	5	expected text in double quotes, found '%'test "continues after numeric faults":
     let valid = 1
@@ -6867,7 +6871,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve); the function's parameter is named request but this position expects _0; rename the parameter to _0, or wrap the function in a lambda: lambda _0: f(request: _0)export def helper() -> Unit:
+type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
     return
 test "interruptible":
     println("READY")
@@ -6909,7 +6913,7 @@ test "receiver fault comes first":
     let impossible = (1 / 0).minutes
 test "continues with valid units":
     let valid = (1).seconds
-import stdout from "@std/io.ms"
+type	6	25	204	division by zero always faults; guard the divisor or use a nonzero constantimport stdout from "@std/io.ms"
 
 export fn main() Int:
     match stdout().write(data: %q):

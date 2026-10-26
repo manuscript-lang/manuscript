@@ -89,10 +89,6 @@ pub struct Type {
     pub default: RefCell<Option<Ty>>,
     /// Omittable parameters of a known source callable.
     pub defaults: Defaults,
-    /// Omittable parameters erased by `required_type`: not callable permissions, but still
-    /// how the value is represented (an omittable parameter crosses a function value as an
-    /// optional).
-    pub erased: Defaults,
 }
 
 impl Clone for Type {
@@ -108,7 +104,6 @@ impl Clone for Type {
             bounds: RefCell::new(self.bounds.borrow().clone()),
             default: RefCell::new(self.default.borrow().clone()),
             defaults: self.defaults.clone(),
-            erased: self.erased.clone(),
         }
     }
 }
@@ -173,7 +168,6 @@ impl Type {
             bounds: RefCell::new(Vec::new()),
             default: RefCell::new(None),
             defaults: None,
-            erased: None,
         }
     }
 
@@ -182,9 +176,9 @@ impl Type {
         self.defaults.as_ref().is_some_and(|d| d.contains(&name))
     }
 
-    /// Whether `name` crosses a function value as an optional, whether or not a call may omit it.
+    /// Whether a default-aware function value passes `name` as an optional.
     pub fn is_lifted(&self, name: Name) -> bool {
-        self.is_default(name) || self.erased.as_ref().is_some_and(|d| d.contains(&name))
+        self.is_default(name)
     }
 
     /// The id as text.
@@ -380,6 +374,8 @@ pub struct Binding {
     pub ty: Ty,
     /// Declared with `var`.
     pub mutable: bool,
+    /// Where the name is declared.
+    pub decl: ms_syntax::Pos,
     /// Function (closure) nesting number that owns it.
     pub function: usize,
 }
@@ -714,8 +710,8 @@ pub fn sub_opt(t: &Option<Ty>, bindings: &Subst) -> Option<Ty> {
     t.as_ref().map(|t| sub(t, bindings))
 }
 
-/// Erases omittable-parameter markers (explicit function types and generic
-/// inference ignore them).
+/// Erases omission permissions and selects the ordinary required-argument form
+/// used by explicit function types and generic inference.
 pub fn required_type(t: &Ty) -> Ty {
     let mut changed = t.defaults.is_some();
     let mut args: Option<Vec<Ty>> = None;
@@ -750,7 +746,6 @@ pub fn required_type(t: &Ty) -> Ty {
         return t.clone();
     }
     let mut r = (**t).clone();
-    r.erased = t.defaults.clone().or_else(|| t.erased.clone());
     r.defaults = None;
     if let Some(a) = args {
         r.args = a;
@@ -837,8 +832,28 @@ pub fn cases(t: &Ty) -> Vec<Case> {
 }
 
 /// One case by name.
+///
+/// Only the named case has its type arguments substituted: building every case to pick one made
+/// a match with many arms quadratic.
 pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
-    cases(t).into_iter().find(|c| c.name == name)
+    let def = t.def.as_ref()?;
+    let cs = def.cases.borrow();
+    let c = cs.iter().find(|c| c.name == name)?;
+    let mut s = Subst::new();
+    if !c.fields.is_empty() {
+        bind_type_arguments(t, &mut s);
+    }
+    Some(Case {
+        name: c.name,
+        fields: c
+            .fields
+            .iter()
+            .map(|p| Param {
+                name: p.name,
+                ty: sub(&p.ty, &s),
+            })
+            .collect(),
+    })
 }
 
 /// Constructor inputs and omission permissions.

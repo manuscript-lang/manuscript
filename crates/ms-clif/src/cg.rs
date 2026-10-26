@@ -547,6 +547,15 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
     compile_with_isa(m, opts, isa_builder)
 }
 
+/// MIR instructions in one function above which a Debug module is allocated with the single-pass
+/// register allocator.
+const SINGLE_PASS_INSTS: usize = 4000;
+
+fn single_pass(m: &Module, opts: &Options) -> bool {
+    let insts = |f: &Func| f.blocks.iter().map(|b| b.insts.len()).sum::<usize>();
+    opts.opt_level == "none" && m.funcs.iter().any(|f| insts(f) > SINGLE_PASS_INSTS)
+}
+
 fn compile_with_isa(
     m: &Module,
     opts: &Options,
@@ -557,6 +566,14 @@ fn compile_with_isa(
     flags
         .set("opt_level", opts.opt_level)
         .map_err(|e| e.to_string())?;
+    if single_pass(m, opts) {
+        // The backtracking allocator is quadratic in a function's size and Debug builds keep owned
+        // values live to scope end, so a very long function takes seconds; the single-pass
+        // allocator is near linear but emits slower code, so only such modules use it.
+        flags
+            .set("regalloc_algorithm", "single_pass")
+            .map_err(|e| e.to_string())?;
+    }
     // Cranelift's ARM64 COFF writer supports absolute addresses, but not GOT or
     // ADRP data relocations. The PE linker records these absolute addresses in
     // the image's base-relocation table so the loader can still relocate it.
@@ -1106,6 +1123,57 @@ fn emit_main(
 #[cfg(test)]
 mod target_tests {
     use super::*;
+
+    #[test]
+    fn compile_honors_the_requested_optimization_level() {
+        let m = ms_mir::parse::parse_module(
+            "module \"levels\"\nfn @identity(%x: int) -> int export {\nb0:\n  ret %x\n}\n",
+        )
+        .unwrap();
+        for opt_level in ["none", "speed", "speed_and_size"] {
+            compile(
+                &m,
+                &Options {
+                    opt_level,
+                    ..Options::default()
+                },
+            )
+            .unwrap();
+        }
+        assert!(
+            compile(
+                &m,
+                &Options {
+                    opt_level: "invalid",
+                    ..Options::default()
+                },
+            )
+            .is_err(),
+            "an unknown Cranelift optimization level must be rejected"
+        );
+    }
+
+    #[test]
+    fn long_debug_functions_use_the_single_pass_allocator() {
+        let body = |n: usize| {
+            let mut text = String::from("module \"m\"\nfn @main() -> int export {\nb0:\n");
+            for i in 0..n {
+                text.push_str(&format!("  %{i}: int = iconst {i}\n"));
+            }
+            text.push_str(&format!("  ret %{}\n}}\n", n - 1));
+            ms_mir::parse::parse_module(&text).unwrap()
+        };
+        let debug = Options {
+            opt_level: "none",
+            ..Options::default()
+        };
+        assert!(!single_pass(&body(100), &debug));
+        assert!(single_pass(&body(SINGLE_PASS_INSTS + 1), &debug));
+        assert!(!single_pass(
+            &body(SINGLE_PASS_INSTS + 1),
+            &Options::default()
+        ));
+    }
 
     #[test]
     fn mir_fixtures_emit_for_all_six_supported_platforms() {

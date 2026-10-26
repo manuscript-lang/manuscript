@@ -405,6 +405,7 @@ pub fn parse_module(src: &str) -> Result<Module, ParseError> {
                         params,
                         ret,
                         ret_borrowed,
+                        self_params: Vec::new(),
                     });
                     c.eat_p(',');
                 }

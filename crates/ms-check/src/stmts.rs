@@ -2,6 +2,7 @@
 
 use crate::checker::{Checker, Scope};
 use crate::hints::*;
+use crate::suggestions;
 use crate::syntax::*;
 use crate::types::*;
 use crate::types::{Case, Param};
@@ -149,7 +150,7 @@ impl Checker {
             expected = Some(resolved);
         }
         let before = self.p.diagnostics.len();
-        let info = match (&pattern.kind, &expected) {
+        let mut info = match (&pattern.kind, &expected) {
             (PatternKind::Name(name), Some(_)) => self.expression_in(
                 value,
                 expected.as_ref(),
@@ -164,6 +165,10 @@ impl Checker {
         {
             // A failed initializer must not retype the annotated binding.
             bound = exp.clone();
+        }
+        if mutable && bound.kind == Kind::Function {
+            bound = required_type(&bound);
+            info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
         (!info.no_return, info.breaks)
@@ -228,11 +233,13 @@ impl Checker {
                     captured.insert(b.uid, b.clone());
                 }
                 if !b.mutable {
-                    self.type_error(
+                    let fix = suggestions::let_to_var(&self.m().source, b.decl);
+                    self.type_error_with_fix(
                         s.pos,
                         format!(
                             "cannot assign immutable binding {name}; declare it with 'var {name} = ...' instead of 'let'"
                         ),
+                        fix,
                     );
                 }
                 let i = self.expression(value, Some(&b.ty));
@@ -251,7 +258,9 @@ impl Checker {
                     .as_ref()
                     .and_then(|r| r.context.clone());
                 let inferred = self.infer(v, context.as_ref());
-                let info = self.check_expression(v, inferred, None);
+                let required =
+                    (inferred.t().kind == Kind::Function).then(|| required_type(&inferred.t()));
+                let info = self.check_expression(v, inferred, required.as_ref());
                 typ = info.t();
                 breaks = info.breaks;
             }
@@ -482,12 +491,14 @@ impl Checker {
             Expr {
                 id: id(self),
                 pos: iter.pos,
+                end: iter.pos,
                 kind: ExprKind::Name(hidden),
             }
         };
         let callee = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Member {
                 left: Box::new(holder),
                 name: n("next"),
@@ -496,6 +507,7 @@ impl Checker {
         let call = Expr {
             id: id(self),
             pos: iter.pos,
+            end: iter.pos,
             kind: ExprKind::Call {
                 callee: Box::new(callee),
                 args: Vec::new(),
@@ -525,6 +537,7 @@ impl Checker {
         let forever = Expr {
             id: id(self),
             pos,
+            end: pos,
             kind: ExprKind::Bool(true),
         };
         expansion.push(Stmt {
@@ -555,6 +568,7 @@ impl Checker {
     ) -> (bool, bool) {
         let i = self.expression(value, None);
         let t = i.t();
+        let held = self.begin_lock(s, value, &t);
         if !is_invalid_id(&t) && !self.closeable(&t) {
             let msg = self.with_not_closeable_message(&t);
             self.type_error(s.pos, msg);
@@ -594,6 +608,9 @@ impl Checker {
             .loop_binding = Some(b);
         let (fall, br) = self.block(body, false);
         self.scope = old;
+        if held {
+            self.held_locks.pop();
+        }
         (!i.no_return && fall, i.breaks || br)
     }
 
@@ -1250,6 +1267,7 @@ impl Checker {
             return info;
         }
         if list {
+            self.constant_index(e, left, right);
             info.ty = Some(rt.args[0].clone());
         } else if map {
             info.ty = Some(rt.args[1].clone());
@@ -1353,10 +1371,14 @@ impl Checker {
             breaks = breaks || states[si].breaks;
             let arm = states[si].arm;
             if let Some(value) = &arm.value {
-                if states[si].info.is_none() {
-                    let info = self.arm_value(value, result.as_ref(), expected);
-                    states[si].info = Some(info);
-                }
+                let info = match states[si].info.take() {
+                    Some(info) if info.t().kind == Kind::Function => {
+                        self.check_expression(value, info, result.as_ref())
+                    }
+                    Some(info) => info,
+                    None => self.arm_value(value, result.as_ref(), expected),
+                };
+                states[si].info = Some(info);
                 if normal {
                     let info = states[si].info.as_ref().expect("arm info");
                     breaks = breaks || info.breaks;

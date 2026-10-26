@@ -6,14 +6,14 @@ from "@std/channels.ms" import Channel
 from "@std/fs.ms" import filesystem
 from "@std/io.ms" import stdout
 from "@std/processes.ms" import ProcessGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def marker() -> String:
     let root = filesystem().temporary_root().get("/tmp")
     return root + "/ms_group_grandchild_marker"
 
 def grandchild(ch: Channel[Unit, Unit]) -> Int:
-    sleep(duration(2000000000))
+    sleep(nanoseconds(2000000000))
     filesystem().write_file(marker(), "outlived\n")
     return 0
 
@@ -30,7 +30,7 @@ export def main() -> Int:
     with let group = ProcessGroup[Int, Unit, Unit]():
         var c = group.spawn(child).get()
         c.channel.receive()
-    sleep(duration(3500000000))
+    sleep(nanoseconds(3500000000))
     stdout().write("grandchild survived: " + filesystem().read_file(marker()).is_ok().to_string() + "\n").get()
     filesystem().remove(marker())
     return 0

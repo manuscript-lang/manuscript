@@ -3,19 +3,19 @@ from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def hold(box: Shared[List[Int]]) -> Int:
     with var guard = lock(box):
         guard.value.append(2)
-        sleep(duration(5000000000))
+        sleep(nanoseconds(5000000000))
 
     return 0
 
 def add_slowly(box: Shared[List[Int]]) -> Int:
     with var guard = lock(box):
         guard.value.append(1)
-        sleep(duration(2000000))
+        sleep(nanoseconds(2000000))
         guard.value.append(2)
 
     return 0
@@ -29,7 +29,7 @@ test "a task cancelled while holding the lock puts the payload back":
     let box: Shared[List[Int]] = share([1])
     let mine = box
 
-    with let group = TaskGroup[Int](timeout: some(duration(20000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
         group.spawn(lambda ch: hold(mine))
 
         let ignored = group.wait()

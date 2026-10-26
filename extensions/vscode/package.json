@@ -4,7 +4,17 @@
   "description": "Manuscript diagnostics, formatting, symbols and language intelligence",
   "version": "0.1.0",
   "publisher": "manuscript-lang",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "icon": "icon.png",
+  "homepage": "https://github.com/manuscript-lang/manuscript#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manuscript-lang/manuscript",
+    "directory": "extensions/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/manuscript-lang/manuscript/issues"
+  },
   "engines": {
     "vscode": "^1.91.0"
   },

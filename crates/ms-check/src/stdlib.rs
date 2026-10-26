@@ -1035,10 +1035,12 @@ impl Loader<'_> {
                         );
                     }
                     self.c.scope = self.c.variable_scope(&vars);
+                    self.c.declare_self(&s.ty());
                     self.c.operation_variables(s.id, method);
                     let ty = self
                         .c
                         .signature(&method.func.params, Some(&method.func.result));
+                    self.c.check_self_use(&ty, method.pos);
                     def.operations.borrow_mut().push(Operation {
                         name: method.func.name,
                         ty,

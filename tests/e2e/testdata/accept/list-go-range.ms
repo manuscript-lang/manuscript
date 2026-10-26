@@ -77,7 +77,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
         outer.append(value)
 
         if index == 0:
-            values.reverse_in_place()
+            values.reverse()
             for item in values.clone():
                 inner.append(item)
 

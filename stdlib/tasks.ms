@@ -34,6 +34,21 @@ extern def msrt_channel_park(token: Int) -> Unit
 
 extern def msrt_channel_post(token: Int) -> Unit
 
+# Internal lifetime tracker for the group's channels; it never owns its channel leases.
+export extern type TaskChannels
+
+# Internal reference-counted lease; its final holder removes it from the group's tracker.
+extern type TaskChannelLease
+
+extern def msrt_channel_group_new() -> TaskChannels
+
+extern def msrt_channel_group_add(
+    group: TaskChannels,
+    close: Callable[[], Unit]
+) -> TaskChannelLease
+
+extern def msrt_channel_group_close(group: TaskChannels) -> Unit
+
 # Why a task produced no result.
 export type TaskError:
     # The task's timeout (or its group's) passed before it finished, and it was cancelled.
@@ -45,7 +60,7 @@ export type TaskError:
     # The task faulted in a group that contains faults. Carries the fault report.
     case Faulted(
         # The fault report from the task: its message and stack.
-        message: String
+        report: String
     )
 
 impl Error for TaskError:
@@ -55,7 +70,7 @@ impl Error for TaskError:
             case TimedOut: return "task: timed out"
             case Cancelled: return "task: cancelled"
             case Closed: return "task: closed"
-            case Faulted(message): return "task: fault: " + message
+            case Faulted(report): return "task: fault: " + report
 
 # Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
 # A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
@@ -146,6 +161,25 @@ def close_end[A, B](outgoing: Shared[Lane[A]], incoming: Shared[Lane[B]]) -> Uni
         receiving.value.clear()
         receiving.value.wake()
 
+# Removes this wait's token on every exit without disturbing other tasks on the lane.
+type WaitTicket[T]:
+    # The lane holding this wait's token.
+    lane: Shared[Lane[T]]
+    # The token that this wait registered.
+    token: Int
+
+impl Closeable for WaitTicket[T]:
+    # A normal wake already cleared the entry. Cancellation must remove it here instead.
+    var def close() -> Unit:
+        with var lane = lock(self.lane):
+            for index in range(0, lane.value.waiting.length()):
+                if lane.value.waiting[index] == self.token:
+                    lane.value.waiting.remove(index)
+                    break
+
+            if lane.value.waiting.is_empty():
+                lane.value.waiting = List[Int]()
+
 # One end of a channel between tasks on the runtime thread. Values move from one end to the other;
 # a task that must wait parks until the other end posts its token.
 type TaskTransport[In, Out]:
@@ -153,6 +187,8 @@ type TaskTransport[In, Out]:
     outgoing: Shared[Lane[In]]
     # Values this end receives.
     incoming: Shared[Lane[Out]]
+    # Only group ends hold a lease; copies share its lifetime without the group retaining them.
+    lifetime: Optional[TaskChannelLease] = none
 
 impl TaskTransport[In, Out]:
     # Waits until `outgoing` has room. Nothing runs between this returning and the caller's send.
@@ -169,7 +205,8 @@ impl TaskTransport[In, Out]:
                 token = msrt_channel_token()
                 lane.value.waiting.append(token)
 
-            msrt_channel_park(token)
+            with let ticket = WaitTicket[In](lane: self.outgoing, token: token):
+                msrt_channel_park(token)
 
         return ok(())
 
@@ -201,7 +238,8 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
                 token = msrt_channel_token()
                 lane.value.waiting.append(token)
 
-            msrt_channel_park(token)
+            with let ticket = WaitTicket[Out](lane: self.incoming, token: token):
+                msrt_channel_park(token)
 
         return ok(none)
 
@@ -237,10 +275,13 @@ def run[T, In, Out](
 # The group's end of a task channel.
 def group_end[In, Out](
     down: Shared[Lane[In]],
-    up: Shared[Lane[Out]]
+    up: Shared[Lane[Out]],
+    lifetime: TaskChannelLease
 ) -> Channel[In, Out]:
     return Channel[In, Out](
-        transport: TaskTransport[In, Out](outgoing: down, incoming: up)
+        transport: TaskTransport[In, Out](
+            outgoing: down, incoming: up, lifetime: some(lifetime)
+        )
     )
 
 # What a group keeps of a task until it is collected: enough to wait for it and close its channel.
@@ -295,6 +336,7 @@ impl Task[T, In, Out]:
 # Call `results`, `wait` or a task's `result` before the block ends to keep the work.
 # Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
 # tasks that are running or uncollected.
+# Retained channels may drain buffered values after collection; group close closes them too and drops unread values.
 # `timeout` limits the whole group, counted from its creation; `spawn` can set a shorter limit for one task.
 # A task that passes its limit is cancelled and has the result `TimedOut`. There is no limit unless one is given. A cancelled task releases the values its functions own.
 # Tasks run on the one runtime thread and switch only when one waits (`result`, `wait`, a channel, sleeping, I/O).
@@ -308,6 +350,8 @@ export type TaskGroup[T, In = Unit, Out = Unit]:
     scope: Int = new_scope(contain_faults)
     # Internal state: the uncollected tasks in start order, changed through the shared handle so the group works as a `with` binding.
     tasks: Shared[Map[Int, Entry[T, In, Out]]] = share(Map[Int, Entry[T, In, Out]]())
+    # Internal state: weak tracking of handed-out channels, including collected tasks.
+    channels: TaskChannels = msrt_channel_group_new()
 
 impl TaskGroup[T, In, Out]:
     # Starts `entry` as a task and returns its handle. The task gets its end of a new channel, and the
@@ -334,10 +378,18 @@ impl TaskGroup[T, In, Out]:
             close_end(down, up)
             close_end(up, down)
 
+        let close_down = down
+        let close_up = up
+        let lifetime = msrt_channel_group_add(
+            self.channels, lambda: close_end(close_down, close_up)
+        )
+
         # The group keeps a second handle on its end, so closing the group closes it.
         with var started = lock(self.tasks):
-            started.value[handle] = Entry(handle, values, group_end(down, up))
-        return Task(self.scope, handle, self.tasks, values, group_end(down, up))
+            started.value[handle] = Entry(handle, values, group_end(down, up, lifetime))
+        return Task(
+            self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
+        )
 
     # Waits for every uncollected task and returns their results in start order, or the first task's error.
     # Tasks already collected with `result` are not included; the ones returned are collected.
@@ -363,6 +415,7 @@ impl Closeable for TaskGroup[T, In, Out]:
     # Cancels tasks that have not ended, waits for them, and closes every channel. Safe to call again.
     var def close() -> Unit:
         msrt_scope_close(self.scope)
+        msrt_channel_group_close(self.channels)
         with var started = lock(self.tasks):
             for handle in started.value.keys():
                 if var entry = started.value.get(handle):

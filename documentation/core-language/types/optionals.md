@@ -74,7 +74,7 @@ def display_name(name: Optional[String], create: Callable[[], String]) -> String
     return name.get_or_else(create)
 ```
 
-Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; use `get` only when absence is a programming error:
+Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`:
 
 ```manuscript
 def greet(name: Optional[String]) -> String:

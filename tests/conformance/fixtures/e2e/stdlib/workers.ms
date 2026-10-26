@@ -3,12 +3,14 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
+from "@std/fetch.ms" import fetch
+from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
 from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
-from "@std/time.ms" import duration, sleep
-from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_channel
+from "@std/time.ms" import nanoseconds, sleep
+from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel
 
 type Job:
     id: Int
@@ -54,7 +56,7 @@ def reads_stdin() -> Unit:
 
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 5000000))
+    sleep(nanoseconds(5000000))
     ch.send(1)
 
 def wait_forever() -> Unit:
@@ -79,7 +81,7 @@ def spin_then_wait() -> Unit:
     let got = ch.receive()
 
 def sleep_long() -> Unit:
-    sleep(duration(nanoseconds: 60000000000))
+    sleep(nanoseconds(60000000000))
 
 def sum_until_closed() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -103,7 +105,7 @@ def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
     var answer = -1
     if let got = worker.channel.receive().get(none):
         answer = got
-    try worker.join()
+    try worker.wait()
     return ok(answer)
 
 test "a worker answers a message":
@@ -121,7 +123,7 @@ test "a worker answers each message in order":
         try expect_equal(worker.channel.receive(), ok(some(4)))
         try expect_equal(worker.channel.receive(), ok(some(9)))
         worker.channel.close()
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 
 test "records cross as JSON":
     with let group = WorkerGroup[Job, Done]():
@@ -129,7 +131,7 @@ test "records cross as JSON":
         try expect_ok(worker.channel.send(Job(id: 7, words: ["a", "b", "c"])))
         try expect_equal(worker.channel.receive(), ok(some(Done(id: 7, count: 3))))
         worker.channel.close()
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 
 test "many messages wait for room":
     with let group = WorkerGroup[Int, Int]():
@@ -142,7 +144,7 @@ test "many messages wait for room":
                 total += got
 
         worker.channel.close()
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
         try expect_equal(total, 2646700)
 
 test "workers run side by side with memory of their own":
@@ -156,13 +158,13 @@ test "workers run side by side with memory of their own":
 
         first.channel.close()
         second.channel.close()
-        try expect_ok(first.join())
-        try expect_ok(second.join())
+        try expect_ok(first.wait())
+        try expect_ok(second.wait())
 
 test "a fault in a worker is a result, not the end of the program":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
-        let outcome = worker.join()
+        let outcome = worker.wait()
         let ignored = try expect_error(outcome)
 
 test "cancelling a worker stops it":
@@ -170,20 +172,20 @@ test "cancelling a worker stops it":
         var worker = group.spawn(announce_then_wait).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         worker.cancel()
-        try expect_equal(worker.join(), error(WorkerError.Cancelled))
+        try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
 test "a worker cancelled while computing is cancelled at its next channel operation":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(spin_then_wait).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         worker.cancel()
-        try expect_equal(worker.join(), error(WorkerError.Cancelled))
+        try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
 test "cancelling a worker right after spawn is not lost":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(sleep_long).get(none)
         worker.cancel()
-        try expect_equal(worker.join(), error(WorkerError.Cancelled))
+        try expect_equal(worker.wait(), error(WorkerError.Cancelled))
 
 test "leaving the group stops workers that are still running":
     with let group = WorkerGroup[Int, Int]():
@@ -195,25 +197,25 @@ test "leaving the group stops workers that are still running":
 test "sends after the worker ended report the channel closed":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
-        let outcome = worker.join()
+        let outcome = worker.wait()
         let ignored = try expect_error(worker.channel.send(1))
 
 test "a worker sleeps without blocking its starter":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(naps).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 
 test "standard input stays with the main thread":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(reads_stdin).get(none)
-        let outcome = worker.join()
+        let outcome = worker.wait()
         let ignored = try expect_error(outcome)
         try expect_true(outcome.err().message().contains("main thread"))
 
 def delayed_send() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 150000000))
+    sleep(nanoseconds(150000000))
     ch.send(1)
 
 def quick() -> Unit:
@@ -222,13 +224,13 @@ def quick() -> Unit:
 test "cancelling a joined worker's handle leaves a later worker alone":
     with let group = WorkerGroup[Int, Int]():
         var a = group.spawn(quick).get(none)
-        try expect_ok(a.join())
+        try expect_ok(a.wait())
 
         var b = group.spawn(delayed_send).get(none)
-        sleep(duration(nanoseconds: 30000000))
+        sleep(nanoseconds(30000000))
         a.cancel()
         try expect_equal(b.channel.receive(), ok(some(1)))
-        try expect_ok(b.join())
+        try expect_ok(b.wait())
 
 def sends_one() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -239,7 +241,7 @@ test "a finished worker's channel ends with none instead of an error":
         var worker = group.spawn(sends_one).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_equal(worker.channel.receive(), ok(none))
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
 
 def runs_faulting_task() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -251,28 +253,28 @@ def runs_faulting_task() -> Unit:
 test "a fault in a task a worker started is the worker's fault":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(runs_faulting_task).get(none)
-        let outcome = worker.join()
+        let outcome = worker.wait()
         let cause = try expect_error(outcome)
         try expect_true(cause.message().contains("task inside worker faults"))
 
 def sleeps_long() -> Unit:
     var ch = worker_channel[Int, Int]()
-    sleep(duration(nanoseconds: 30000000000))
+    sleep(nanoseconds(30000000000))
 
 def joins_nested() -> Unit:
     var ch = worker_channel[Int, Int]()
 
     with let inner = WorkerGroup[Int, Int]():
         var worker = inner.spawn(sleeps_long).get(none)
-        let outcome = worker.join()
+        let outcome = worker.wait()
 
 test "cancelling a worker that is joining another ends it as cancelled":
     with let group = WorkerGroup[Int, Int]():
         var outer = group.spawn(joins_nested).get(none)
-        sleep(duration(nanoseconds: 50000000))
+        sleep(nanoseconds(50000000))
         outer.cancel()
 
-        let outcome = outer.join()
+        let outcome = outer.wait()
         let cause = try expect_error(outcome)
         try expect_equal(cause.message(), "worker: cancelled")
 
@@ -285,11 +287,110 @@ test "a worker that uses the network ends cleanly":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(touches_network).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
-        try expect_ok(worker.join())
+        try expect_ok(worker.wait())
+
+def fetches_page() -> Unit:
+    var ch = worker_channel[Int, String]()
+
+    if let address = ch.receive().get(none):
+        var total = 0
+        for round in range(0, 3):
+            if let response = fetch(f"http://{address}/page"):
+                total += response.body.length()
+        ch.send(total)
+
+def page(request: HttpRequest) -> HttpResponse:
+    return HttpResponse(200, headers(), "x".repeat(65536).get("").to_bytes())
+
+test "workers fetch from the starter's server at the same time":
+    let handler = buffered(page)
+    let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
+
+    with let server = acquired:
+        with let group = WorkerGroup[String, Int]():
+            var workers: List[Worker[String, Int]] = []
+
+            for i in range(0, 4):
+                var worker = group.spawn(fetches_page).get(none)
+                try expect_ok(worker.channel.send(server.address()))
+                workers.append(worker)
+
+            for i in range(0, 4):
+                try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
+                try expect_ok(workers[i].wait())
+
+        server.close()
+
+def doubles_bytes() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    var raw = worker_bytes()
+
+    while True:
+        if let data = raw.receive().get(none):
+            let _sent = raw.send(data.concat(data))
+        else:
+            return
+
+test "bytes cross a worker pipe without JSON":
+    with let group = WorkerGroup[Int, Int]():
+        var worker = group.spawn(doubles_bytes).get(none)
+        var raw = worker.bytes()
+        let big = "0123456789".repeat(30000).get("").to_bytes()
+        let small = "abc".to_bytes()
+        try expect_ok(raw.send(big))
+        try expect_ok(raw.send(small))
+
+        let first = raw.receive().get(none).get("".to_bytes())
+        let second = raw.receive().get(none).get("".to_bytes())
+        try expect_equal(first.length(), 600000)
+        try expect_equal(first.slice(300000, 300010), big.slice(0, 10))
+        try expect_equal(second.decode_utf8().get(""), "abcabc")
+        worker.channel.close()
+        try expect_ok(worker.wait())
+
+def serves_shared() -> Unit:
+    var ch = worker_channel[String, String]()
+
+    if let address = ch.receive().get(none):
+        let options = HttpServerOptions(shared: True)
+
+        if let acquired = network().serve(
+            address: address, handler: buffered(page), options: options
+        ):
+            with let server = acquired:
+                ch.send(server.address())
+
+                let _stopped = ch.receive()
+                server.close()
+
+test "workers serve one port with a shared listener":
+    with let group = WorkerGroup[String, String]():
+        var workers: List[Worker[String, String]] = []
+        var first = ""
+
+        for i in range(0, 3):
+            var worker = group.spawn(serves_shared).get(none)
+            try expect_ok(worker.channel.send("127.0.0.1:0"))
+
+            let address = worker.channel.receive().get(none).get("")
+            if i == 0:
+                first = address.clone()
+            try expect_equal(address, first)
+            workers.append(worker)
+
+        var total = 0
+        for i in range(0, 12):
+            if let response = fetch(f"http://{first}/page"):
+                total += response.body.length()
+        try expect_equal(total, 12 * 65536)
+
+        for i in range(0, 3):
+            try expect_ok(workers[i].channel.send("stop"))
+            try expect_ok(workers[i].wait())
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w
-    if held.join().is_ok():
+    if held.wait().is_ok():
         return 1
 
     return 0
@@ -299,6 +400,7 @@ test "tasks joining clones of one worker all see its outcome":
         let worker = workers.spawn(naps).get(none)
         let first_copy = worker.clone()
         let second_copy = worker.clone()
+
         with let tasks = TaskGroup[Int]():
             let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))

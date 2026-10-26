@@ -27,14 +27,10 @@ impl BitSet:
             return
 
         let word = index / 64
-        (
-            self
-            .words
-            .set(
-                word,
-                bit_and(
-                    self.words.get(word), bit_not(shift_left(1, index % 64))
-                )
+        self.words.set(
+            word,
+            bit_and(
+                self.words.get(word), bit_not(shift_left(1, index % 64))
             )
         )
 

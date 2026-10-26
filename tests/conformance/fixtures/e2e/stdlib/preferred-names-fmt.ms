@@ -6,7 +6,7 @@ from "@std/bytes.ms" import Bytes
 from "@std/string.ms" import compile, Regex, RegexError
 
 interface ListMutation:
-    var def reverse_in_place() -> Unit
+    var def reverse() -> Unit
     def reversed() -> List[Int]
     var def set(index: Int, value: Int) -> Unit
     var def remove(index: Int) -> Unit
@@ -16,8 +16,8 @@ type ListAdapter:
     items: List[Int]
 
 impl ListMutation for ListAdapter:
-    var def reverse_in_place() -> Unit:
-        self.items.reverse_in_place()
+    var def reverse() -> Unit:
+        self.items.reverse()
 
     def reversed() -> List[Int]:
         return self.items.reversed()
@@ -228,7 +228,7 @@ impl ByteCopy for ByteAdapter:
 test "list reversal names distinguish receiver mutation and shallow copies":
     var items = [1, 2, 3]
     let copied = items.reversed()
-    items.reverse_in_place()
+    items.reverse()
     items.append(4)
     try expect_false((items != [3, 2, 1, 4] or copied != [3, 2, 1]))
 
@@ -239,12 +239,12 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     var detached = reversed()
     detached.remove(0)
     try expect_equal(items, [3, 2, 1, 4])
-    items.reverse_in_place()
-    items.reverse_in_place()
+    items.reverse()
+    items.reverse()
     try expect_equal(items, [3, 2, 1, 4])
 
     var empty: List[Int] = []
-    empty.reverse_in_place()
+    empty.reverse()
 
     var flipped = empty.reversed()
     flipped.append(1)
@@ -264,12 +264,12 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     var view: ListMutation = viewed
     var other = view.reversed()
     other.append(6)
-    view.reverse_in_place()
+    view.reverse()
 
     let view_reversed = view.reversed
     var view_copy = view_reversed()
     view_copy.set(0, 7)
-    view.reverse_in_place()
+    view.reverse()
     try expect_equal(view.reversed(), [5, 4])
 
 test "byte reversal names copy across direct bound and view calls":

@@ -65,6 +65,7 @@ pub fn run<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
         "review" => commands::run_review(args, io),
         "search_symbol" => commands::run_search_symbol(args, io),
         "guide" => commands::run_guide(args, io),
+        "explain" => commands::run_explain(args, io),
         _ => run_source_command(args, &usage, engine, io),
     }
 }

@@ -94,7 +94,7 @@ test "optional labels on methods and native functions":
     sum([1, 2, 3]) | try expect_equal(6)
 
     var chain_1 = ([1, 2, 3])
-    chain_1.reverse_in_place()
+    chain_1.reverse()
     chain_1 | try expect_equal([3, 2, 1])
 
     var chain_2 = [1, 2]

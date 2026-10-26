@@ -6,11 +6,11 @@ from "@std/io.ms" import stdout
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, milliseconds, sleep
+from "@std/time.ms" import nanoseconds, milliseconds, sleep
 
 def holder(box: Shared[Int], nap: Int) -> Int:
     with var g = lock(box):
-        sleep(duration(nanoseconds: nap))
+        sleep(nanoseconds(nap))
     return 0
 
 def waiter(box: Shared[Int]) -> Int:
@@ -27,13 +27,12 @@ export def main() -> Int:
 
         with let g = TaskGroup[Int]():
             g.spawn(lambda ch: holder(box, nap))
-            sleep(duration(nanoseconds: 100000))
+            sleep(nanoseconds(100000))
 
             let first = g.spawn(
                 lambda ch: waiter(box),
                 timeout: some(
-                    duration(
-                        nanoseconds: nap - 100000 + (
+                    nanoseconds(nap - 100000 + (
                             round
                             % 7
                         ) * 3000 - 9000
