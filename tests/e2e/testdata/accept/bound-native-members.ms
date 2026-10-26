@@ -92,6 +92,7 @@ test "size and shape methods as values":
     let xs = [10, 20, 30]
     var m = Map[String, Int]()
     m["a"] = 1
+
     let s = Set([1, 2])
     let length = xs.length
     let is_empty = xs.is_empty
