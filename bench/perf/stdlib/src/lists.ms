@@ -156,7 +156,9 @@ export def bench_list() -> Unit:
         lambda () -> Int:
             var n = 0
             for i in range(0, 100):
-                if let best = small_points.max_by(lambda (p: Point) -> Int: p.y): n += best.x
+                if let best = small_points.max_by(
+                    lambda (p: Point) -> Int: p.y
+                ): n += best.x
             return n
     )
 
