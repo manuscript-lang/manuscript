@@ -140,6 +140,12 @@ impl Stat {
         self.kind() == S_IFREG
     }
 
+    /// Whether this is a named pipe, whose open and reads wait for the other end.
+    #[cfg(unix)]
+    pub fn is_fifo(&self) -> bool {
+        self.kind() == libc::S_IFIFO as u32
+    }
+
     /// Whether both describe the same file (`os.SameFile`).
     pub fn same_file(&self, other: &Stat) -> bool {
         self.device == other.device && self.inode == other.inode
@@ -608,6 +614,16 @@ fn stat_of(m: &fs::Metadata) -> Stat {
         links: m.nlink(),
         uid: u64::from(m.uid()),
         gid: u64::from(m.gid()),
+    }
+}
+
+/// Switches a descriptor back to blocking mode after an open that could not wait.
+#[cfg(unix)]
+pub fn clear_nonblocking(fd: Fd) {
+    // SAFETY: `fd` is a descriptor the caller owns; fcntl touches no memory.
+    unsafe {
+        let current = libc::fcntl(fd, libc::F_GETFL);
+        libc::fcntl(fd, libc::F_SETFL, current & !libc::O_NONBLOCK);
     }
 }
 

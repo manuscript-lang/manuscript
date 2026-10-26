@@ -40,7 +40,8 @@ pub fn open(path: &[u8], flags: i64, mode: i64) -> Res<Stream> {
     }
     let p = CPath::new(path).ok_or_else(Fail::invalid)?;
     let flags = flags as i32;
-    let fd = sys::open(&p, flags, mode as u32).map_err(|e| Fail::errno(e, "open", path))?;
+    let fd =
+        ops::open_waitless(&p, flags, mode as u32).map_err(|e| Fail::errno(e, "open", path))?;
     Ok(Stream::file_handle(fd, flags, path))
 }
 
