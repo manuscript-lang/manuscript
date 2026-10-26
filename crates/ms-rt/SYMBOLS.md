@@ -215,6 +215,8 @@ msrt_pipe_new() -> i64
 msrt_pipe_peer(end: i64) -> i64
 msrt_pipe_send(end: i64, message: *const StrVal) -> i64
 msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8
+msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64
+msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8
 msrt_pipe_close(end: i64)
 msrt_task_yield()
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32

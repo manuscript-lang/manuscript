@@ -203,6 +203,10 @@ pub fn claim_arena(main: bool) {
 /// falls through to the system allocator's path and must not happen (isolates copy what they
 /// hand out).
 pub fn release_arena() {
+    #[cfg(target_os = "linux")]
+    if crate::isolate::is_worker() {
+        worker_heap::retire();
+    }
     // SAFETY: this isolate's allocator state; nothing allocates from it afterwards.
     let s = unsafe { &mut *STATE.ptr() };
     if s.base != 0 {
@@ -759,6 +763,28 @@ mod tests {
         assert_eq!(live_blocks(), before);
     }
 
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn worker_heap_blocks_cross_threads_and_are_reused() {
+        use super::worker_heap;
+        let p = worker_heap::alloc(100);
+        assert!(!p.is_null() && worker_heap::owns(p));
+        // SAFETY: a live block of at least 100 bytes.
+        unsafe { core::ptr::write_bytes(p, 0xAB, 100) };
+        let addr = p as usize;
+        // A thread that is not a worker hands the block to the shared list; the next
+        // allocation of its class on this thread takes it back.
+        std::thread::spawn(move || worker_heap::free(addr as *mut u8, 100))
+            .join()
+            .unwrap();
+        let mut got = false;
+        for _ in 0..4 {
+            got |= worker_heap::alloc(100) as usize == addr;
+        }
+        assert!(got);
+        assert!(!worker_heap::owns(alloc(100)));
+    }
+
     #[test]
     fn remote_free_returns_to_owner() {
         let _g = lock();
@@ -794,22 +820,189 @@ mod tests {
 #[cfg(target_os = "linux")]
 pub struct StdHeap;
 
+/// The small-block heap for Rust code on worker threads (Linux).
+///
+/// The system allocator (musl) serves every thread through one lock, so workers that allocate in
+/// Rust natives (connection buffers, headers) slowed each other down. A worker cannot use its own
+/// arena for that: Rust code keeps blocks in process-wide state that outlives the isolate and its
+/// arena. This heap lives in one reservation shared by the process and is never unmapped: blocks
+/// are carved in per-thread slabs, freed to the freeing worker's lists (any thread may free any
+/// block), and a worker that ends hands its lists to the next one.
+#[cfg(target_os = "linux")]
+mod worker_heap {
+    use super::{CLASS_SIZES, NUM_CLASSES, class_of, sys};
+    use core::ptr::null_mut;
+    use core::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Mutex;
+
+    /// Address space reserved for the heap; pages commit on first touch.
+    const REGION: usize = 16 << 30;
+    /// Bytes a thread takes from the region at a time for one class.
+    const SLAB: usize = 64 << 10;
+
+    static BASE: AtomicUsize = AtomicUsize::new(0);
+    static NEXT: AtomicUsize = AtomicUsize::new(0);
+
+    /// Free blocks handed over by ended workers and by threads that are not workers.
+    struct Shared([*mut u8; NUM_CLASSES]);
+    // SAFETY: the lists link blocks of the immortal region and are only touched under the lock.
+    unsafe impl Send for Shared {}
+    static SHARED: Mutex<Shared> = Mutex::new(Shared([null_mut(); NUM_CLASSES]));
+
+    struct Local {
+        free: [*mut u8; NUM_CLASSES],
+        bump: [*mut u8; NUM_CLASSES],
+        bump_end: [*mut u8; NUM_CLASSES],
+    }
+
+    crate::isolate_static! {
+    static LOCAL: Local = Local {
+        free: [null_mut(); NUM_CLASSES],
+        bump: [null_mut(); NUM_CLASSES],
+        bump_end: [null_mut(); NUM_CLASSES],
+    };
+    }
+
+    /// Whether `p` is a block of this heap.
+    #[inline(always)]
+    pub fn owns(p: *mut u8) -> bool {
+        let base = BASE.load(Ordering::Relaxed);
+        base != 0 && (p as usize).wrapping_sub(base) < REGION
+    }
+
+    fn reserve() -> usize {
+        let base = BASE.load(Ordering::Acquire);
+        if base != 0 {
+            return base;
+        }
+        let p = sys::map_anon(REGION) as usize;
+        if p == 0 {
+            return 0;
+        }
+        match BASE.compare_exchange(0, p, Ordering::AcqRel, Ordering::Acquire) {
+            Ok(_) => p,
+            Err(won) => {
+                // SAFETY: the mapping was made here and nothing used it.
+                unsafe { sys::unmap(p as *mut u8, REGION) };
+                won
+            }
+        }
+    }
+
+    /// A block for `size` bytes (at most `MAX_SMALL`), or null when the region is full.
+    pub fn alloc(size: usize) -> *mut u8 {
+        // SAFETY: this thread's lists.
+        let l = unsafe { &mut *LOCAL.ptr() };
+        let class = class_of(size.max(1));
+        let head = l.free[class];
+        if !head.is_null() {
+            // SAFETY: free blocks hold the next link in word 0.
+            l.free[class] = unsafe { *(head as *mut *mut u8) };
+            return head;
+        }
+        refill(l, class)
+    }
+
+    #[cold]
+    fn refill(l: &mut Local, class: usize) -> *mut u8 {
+        {
+            let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
+            l.free[class] = core::mem::replace(&mut shared.0[class], null_mut());
+        }
+        let head = l.free[class];
+        if !head.is_null() {
+            // SAFETY: as above.
+            l.free[class] = unsafe { *(head as *mut *mut u8) };
+            return head;
+        }
+        let size = CLASS_SIZES[class] as usize;
+        if l.bump[class].is_null() || l.bump[class] >= l.bump_end[class] {
+            let base = reserve();
+            if base == 0 {
+                return null_mut();
+            }
+            let at = NEXT.fetch_add(SLAB, Ordering::Relaxed);
+            if at + SLAB > REGION {
+                return null_mut();
+            }
+            let start = (base + at) as *mut u8;
+            // SAFETY: the slab lies inside the region.
+            l.bump_end[class] = unsafe { start.add(SLAB / size * size) };
+            l.bump[class] = start;
+        }
+        let p = l.bump[class];
+        // SAFETY: `p` is below `bump_end`, so the block stays inside the slab.
+        l.bump[class] = unsafe { p.add(size) };
+        p
+    }
+
+    /// Frees a block of `size` bytes (the size it was requested with).
+    pub fn free(p: *mut u8, size: usize) {
+        let class = class_of(size.max(1));
+        if crate::isolate::is_worker() {
+            // SAFETY: this thread's lists; a freed block is at least 16 bytes.
+            unsafe {
+                let l = &mut *LOCAL.ptr();
+                *(p as *mut *mut u8) = l.free[class];
+                l.free[class] = p;
+            }
+        } else {
+            // A thread that never allocates here must not hoard blocks.
+            let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
+            // SAFETY: as above.
+            unsafe { *(p as *mut *mut u8) = shared.0[class] };
+            shared.0[class] = p;
+        }
+    }
+
+    /// Hands the calling worker's free blocks to the next worker as its isolate ends.
+    pub fn retire() {
+        // SAFETY: this thread's lists.
+        let l = unsafe { &mut *LOCAL.ptr() };
+        let mut shared = SHARED.lock().unwrap_or_else(|e| e.into_inner());
+        for class in 0..NUM_CLASSES {
+            let mut p = core::mem::replace(&mut l.free[class], null_mut());
+            while !p.is_null() {
+                // SAFETY: free blocks hold the next link in word 0.
+                unsafe {
+                    let next = *(p as *mut *mut u8);
+                    *(p as *mut *mut u8) = shared.0[class];
+                    shared.0[class] = p;
+                    p = next;
+                }
+            }
+        }
+    }
+}
+
 #[cfg(target_os = "linux")]
 mod std_heap {
-    use super::{MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena};
+    use super::{MAX_SMALL, STATE, StdHeap, arena_of, has_arena, in_arena, worker_heap};
     use core::alloc::{GlobalAlloc, Layout};
     use std::alloc::System;
 
     /// Whether the arena may serve `layout` on this thread. Counting builds keep the standard
     /// library out of the arena so leak checks see only program allocations. A worker's arena
     /// ends with the worker, and Rust code can keep what it allocates in process-wide state
-    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator.
+    /// (a cache, a buffer another isolate reads), so Rust code in a worker uses the system allocator
+    /// for small blocks. Large blocks are system blocks in any case, and the worker keeps freed ones
+    /// for reuse (as the main isolate does), so an 8 MiB body buffer is not mapped and faulted in
+    /// again by every request.
     #[inline(always)]
     fn arena_ok(layout: Layout) -> bool {
         !cfg!(feature = "stats")
             && layout.align() <= 16
             && has_arena()
-            && !crate::isolate::is_worker()
+            && (!crate::isolate::is_worker() || layout.size() > MAX_SMALL)
+    }
+
+    /// Whether the worker heap serves `layout` on this thread: Rust code in a worker, small blocks.
+    #[inline(always)]
+    fn worker_ok(layout: Layout) -> bool {
+        !cfg!(feature = "stats")
+            && layout.align() <= 16
+            && layout.size() <= MAX_SMALL
+            && crate::isolate::is_worker()
     }
 
     /// Whether `p` is a small block of any isolate's arena.
@@ -825,6 +1018,12 @@ mod std_heap {
     unsafe impl GlobalAlloc for StdHeap {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            if worker_ok(layout) {
+                let p = worker_heap::alloc(layout.size());
+                if !p.is_null() {
+                    return p;
+                }
+            }
             if arena_ok(layout) {
                 super::alloc(layout.size())
             } else {
@@ -835,6 +1034,14 @@ mod std_heap {
 
         #[inline]
         unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+            if worker_ok(layout) {
+                let p = worker_heap::alloc(layout.size());
+                if !p.is_null() {
+                    // SAFETY: a block of at least `layout.size()` bytes.
+                    unsafe { core::ptr::write_bytes(p, 0, layout.size()) };
+                    return p;
+                }
+            }
             if arena_ok(layout) && layout.size() <= MAX_SMALL {
                 super::alloc_zeroed(layout.size())
             } else {
@@ -845,7 +1052,9 @@ mod std_heap {
 
         #[inline]
         unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
-            if owns(p) {
+            if worker_heap::owns(p) {
+                worker_heap::free(p, layout.size());
+            } else if owns(p) {
                 // SAFETY: an arena block; `free` routes it to its owner.
                 unsafe { super::free(p) };
             } else if layout.size() > MAX_SMALL && arena_ok(layout) {
@@ -864,6 +1073,23 @@ mod std_heap {
             let Ok(target) = target else {
                 return core::ptr::null_mut();
             };
+            if worker_heap::owns(p) && new_size <= layout.size() && new_size > layout.size() / 2 {
+                // Shrinking a little keeps the block (its class is the same or the next one down).
+                if super::class_of(new_size.max(1)) == super::class_of(layout.size().max(1)) {
+                    return p;
+                }
+            }
+            if worker_heap::owns(p) {
+                // SAFETY: moves between blocks by copy; the old block is released by `dealloc`.
+                unsafe {
+                    let q = self.alloc(target);
+                    if !q.is_null() {
+                        core::ptr::copy_nonoverlapping(p, q, layout.size().min(new_size));
+                        self.dealloc(p, layout);
+                    }
+                    return q;
+                }
+            }
             if arena_ok(layout) && (owns(p) || new_size > MAX_SMALL) {
                 // SAFETY: `p` is a live block of this heap (arena, or a large system block).
                 return unsafe { super::realloc(p, new_size) };

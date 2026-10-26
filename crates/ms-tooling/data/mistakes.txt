@@ -1,0 +1,78 @@
+# Common agent mistakes. Each entry is checked by crates/ms-tooling/tests/guide_pages.rs:
+# `wrong` must produce the diagnostic fragment `diag` (`-` means it checks clean, silently),
+# and `right` must check clean. Both replace `{}` in `body` (default `{}`), inside `main`;
+# `;;` starts a new line (rendered `; `). `setup` lines precede `main`.
+# Sources: rejection corpus (bughunt/neg, bughunt/cli-diag), re-probed against the current compiler;
+# agent first-build failure rates (bench/agent-python) motivate the list but record no error text.
+
+wrong: print("hi")
+right: stdout().write("hi\n").get()
+setup: from "@std/io.ms" import stdout
+diag: no built-in print
+
+wrong: stdout().write("hi\n")
+right: stdout().write("hi\n").get()
+setup: from "@std/io.ms" import stdout
+diag: -
+
+wrong: "n={n}"
+right: f"n={n}"
+setup: from "@std/io.ms" import stdout
+body: let n = 1;;stdout().write({}).get()
+diag: -
+
+wrong: else if c:
+right: elif c:
+body: let c = True;;if c:;;    return 1;;{};;    return 2
+diag: no 'else if'
+
+wrong: let n = 1;;n = 2
+right: var n = 1;;n = 2
+body: {}
+diag: cannot assign immutable binding
+
+wrong: []
+right: List[Int]()
+body: let xs = {}
+diag: cannot infer list element type
+
+wrong: xs.push(1)
+right: xs.append(1)
+body: var xs = [0];;{}
+diag: did you mean 'append'
+
+wrong: len(xs)
+right: xs.length()
+body: let xs = [0];;let n = {}
+diag: no len() function
+
+wrong: s[0]
+right: s.get(0)
+body: let s = "abc";;let c = {}
+diag: indexing a String
+
+wrong: let x: Float = 1
+right: let x: Float = 1.0
+body: {}
+diag: does not convert to Float implicitly
+
+wrong: i++
+right: i += 1
+body: var i = 0;;{}
+diag: no '++' operator
+
+wrong: a && b
+right: a and b
+body: let a = True;;let b = True;;let c = {}
+diag: not an operator
+
+wrong: null
+right: none
+body: let x: Optional[Int] = {}
+diag: no null
+
+wrong: let v = try f()
+right: let v = f().get(0)
+setup: def f() -> Result[Int, Error]: ok(1)
+body: {}
+diag: try requires an enclosing Result

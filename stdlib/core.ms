@@ -159,13 +159,13 @@ impl Result[T, E]:
 # Equality and hashing are ordinary operation interfaces. Built-in data retains
 # its value semantics; an explicit implementation selects domain identity.
 export interface Equal:
-    # Compares this value with another value in the same domain.
-    def equals(other: Equal) -> Bool
+    # Compares this value with another value of the same type.
+    def equals(other: Self) -> Bool
 
 # A type with a total order; `compare` agrees with `equals` when both are implemented.
 export interface Comparable:
-    # Orders this value against another in the same domain: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
-    def compare(other: Comparable) -> Int
+    # Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
+    def compare(other: Self) -> Int
 
 # A type whose values can be duplicated. Plain data and functions are Clonable; resource handles are not.
 # There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.

@@ -8,7 +8,7 @@
 //! the other end posts it.
 use crate::task::{TOKEN_PEER, TOKEN_REMOTE, msrt_token_new, msrt_token_post_remote};
 use core::ptr::null_mut;
-use ms_rt_abi::StrVal;
+use ms_rt_abi::{StrVal, VecVal};
 use std::sync::Mutex;
 
 /// Messages one direction holds before a send waits.
@@ -189,7 +189,20 @@ fn park(token: u64) {
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_pipe_send(end: i64, message: *const StrVal) -> i64 {
     // SAFETY: a live string by contract.
-    let bytes = unsafe { crate::string::bytes(&*message) };
+    send(end, unsafe { crate::string::bytes(&*message) })
+}
+
+/// `msrt_pipe_send` for a `Bytes` value: the same queue, so text and bytes keep their order.
+///
+/// # Safety
+/// `message` points to a live `Bytes` value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_pipe_send_bytes(end: i64, message: *const VecVal) -> i64 {
+    // SAFETY: a live `Bytes` value by contract.
+    send(end, unsafe { crate::ffi::bytes_ref(message) })
+}
+
+fn send(end: i64, bytes: &[u8]) -> i64 {
     loop {
         cancel_if_requested();
         let mut t = table();
@@ -252,6 +265,23 @@ fn cancel_if_requested() {
 /// `out` is writable.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) -> u8 {
+    // SAFETY: `out` is writable by contract.
+    receive(end, |data| unsafe {
+        *out = crate::string::from_bytes(data)
+    })
+}
+
+/// `msrt_pipe_receive` for a `Bytes` value: one copy from the queue into the reader's memory.
+///
+/// # Safety
+/// `out` is writable memory for a `Bytes` value.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_pipe_receive_bytes(end: i64, out: *mut VecVal) -> u8 {
+    // SAFETY: `out` is writable by contract.
+    receive(end, |data| unsafe { crate::ffi::write_bytes(out, data) })
+}
+
+fn receive(end: i64, emit: impl FnOnce(&[u8])) -> u8 {
     loop {
         cancel_if_requested();
         let mut t = table();
@@ -275,7 +305,7 @@ pub unsafe extern "C-unwind" fn msrt_pipe_receive(end: i64, out: *mut StrVal) ->
                     m.cast::<u8>().add(core::mem::size_of::<Message>()),
                     (*m).len,
                 );
-                *out = crate::string::from_bytes(data);
+                emit(data);
                 crate::sys::free(m.cast());
             }
             lane.wake();

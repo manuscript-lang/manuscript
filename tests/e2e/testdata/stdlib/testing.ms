@@ -56,10 +56,8 @@ type Key:
     label: String
 
 impl Equal for Key:
-    def equals(other: Equal) -> Bool:
-        match other:
-            case Key(value): return self.id == value.id
-            case _: return False
+    def equals(other: Key) -> Bool:
+        return self.id == other.id
 
 test "assertions preserve domain equality":
     Key(id: 1, label: "first") | try expect_equal(Key(id: 1, label: "second"))

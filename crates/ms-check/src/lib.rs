@@ -29,7 +29,7 @@ pub mod suggestions;
 pub mod syntax;
 pub mod types;
 
-pub use checker::{CheckOptions, ImportMap, Program, TestFixture};
+pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
 
 use ms_syntax::ast::Module;
