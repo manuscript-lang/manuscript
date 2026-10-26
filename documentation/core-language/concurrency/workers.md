@@ -49,7 +49,7 @@ test "a worker answers over its channel":
 
 ## What a worker may use
 
-Use workers for CPU-bound work. Worker networking has known alpha limitations and is not currently safe to rely on. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
+Use workers for CPU-bound work. A worker may use the network: HTTP `fetch` and connections run on the worker's own thread, so several workers download in parallel (four workers fetching from one server at once are covered by the conformance fixture `workers.ms`). Returning a large response body to the starter costs a JSON encode and decode, so reduce it inside the worker and send the result. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
 
 Send plain serializable data. Messages reconstruct values through JSON; acceptance by the checker does not establish transfer suitability or preserve shared identity. Do not use worker messages to transfer live resources.
 

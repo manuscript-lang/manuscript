@@ -10,7 +10,8 @@
 
 ## Status
 
-- Implemented on branch `claude/project-thread-lgd5qy` (PR #1181): runtime isolates, `WorkerGroup`, checker rule, pipes, fixtures and docs. Open: macOS and Windows verification. Nothing merges until the whole feature works (owner, 2026-10-24).
+- Merged (PR #1181): runtime isolates, `WorkerGroup`, checker rule, pipes, fixtures and docs.
+- Measured 2026-10-26 (Linux, 4 cores, 8 MiB body, local Python server, release build): 40 `fetch` calls take 0.52 s in one worker and 0.32 s across 2, 4 or 8 workers; the server, not the client, bounds the parallel runs. `fetch` works inside a worker; the old note that worker networking was unsafe is removed.
 - Direction (Chinmay, 2026-10-24): `worker_threads`-style model; separate proposals for threads and processes; dedicated group type; `Channel` uppercase; no user-facing "sendable" concept; Linux, macOS and Windows in every stage; 2 GiB default arena per worker; channels are bidirectional and in memory for tasks and workers (socketpair only for processes); majority of the work in Manuscript, small general Rust primitives.
 - Reversed since the first draft: raw-memory moves between arenas (replaced by JSON frames) and a result-returning `results()` (replaced by channels both ways).
 - Siblings: `proposals/taskgroup.md` (landed: `stdlib/tasks.ms`), `proposals/child-processes.md` (same group shape), channels (`proposals/channels.md`, PR #1185).

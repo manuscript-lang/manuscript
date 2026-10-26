@@ -3,6 +3,8 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/core.ms" import panic
+from "@std/fetch.ms" import fetch
+from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse
 from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
@@ -286,6 +288,36 @@ test "a worker that uses the network ends cleanly":
         var worker = group.spawn(touches_network).get(none)
         try expect_equal(worker.channel.receive(), ok(some(1)))
         try expect_ok(worker.join())
+
+def fetches_page() -> Unit:
+    var ch = worker_channel[Int, String]()
+    if let address = ch.receive().get(none):
+        var total = 0
+        for round in range(0, 3):
+            if let response = fetch(f"http://{address}/page"):
+                total += response.body.length()
+
+        ch.send(total)
+
+def page(request: HttpRequest) -> HttpResponse:
+    return HttpResponse(200, headers(), "x".repeat(65536).get("").to_bytes())
+
+test "workers fetch from the starter's server at the same time":
+    let handler = buffered(page)
+    let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
+    with let server = acquired:
+        with let group = WorkerGroup[String, Int]():
+            var workers: List[Worker[String, Int]] = []
+            for i in range(0, 4):
+                var worker = group.spawn(fetches_page).get(none)
+                try expect_ok(worker.channel.send(server.address()))
+                workers.append(worker)
+
+            for i in range(0, 4):
+                try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
+                try expect_ok(workers[i].join())
+
+        server.close()
 
 def joined_ok(w: Worker[Int, Int]) -> Int:
     var held = w
