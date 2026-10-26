@@ -427,6 +427,9 @@ mod imp {
 
     /// Ends the registration of `sock`, leaving the socket open.
     fn release(s: &mut State, sock: usize) {
+        if s.views.contains_key(&sock) {
+            eprintln!("[poll] release {sock}");
+        }
         if let Some(mut view) = s.views.remove(&sock) {
             let _ = s.poll.registry().deregister(&mut view);
             let _ = view.into_raw_socket();
@@ -452,10 +455,12 @@ mod imp {
         let mut view = TcpStream::from_std(stream);
         match s.poll.registry().register(&mut view, Token(sock), interest) {
             Ok(()) => {
+                eprintln!("[poll] watch {sock} events={events} armed");
                 s.views.insert(sock, view);
                 Watch::Armed
             }
-            Err(_) => {
+            Err(e) => {
+                eprintln!("[poll] watch {sock} events={events} ERR {e}");
                 let _ = view.into_raw_socket();
                 Watch::Always
             }
@@ -640,6 +645,7 @@ mod imp {
             }
         }
         for (sock, bits) in ready {
+            eprintln!("[poll] ready {sock} bits={bits}");
             // One-shot: the task registers again when it waits again.
             release(s, sock);
             out[count] = Ready { fd: sock, bits };
