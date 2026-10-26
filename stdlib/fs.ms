@@ -159,7 +159,7 @@ export interface FileSystem:
         filter: Optional[Callable[[String, String], Bool]]
     ) -> Result[Unit, FileSystemError]
     # Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
-    # Other policies return InvalidInput. `max_entries` bounds tracked paths and `max_events` queued events. Linux tracks one path per watched directory, macOS tracks every entry under the root, and Windows watches a whole tree with one handle, so `max_entries` does not apply there.
+    # Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
     def watch_native(
         path: String,
         recursive: Bool,
