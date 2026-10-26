@@ -216,6 +216,13 @@ impl LenOf {
 /// A list length can flow through replacement and block arguments without its
 /// elements flowing with it. Each fact changes at most twice, so this worklist
 /// also handles nested loops without rescanning the function to a fixpoint.
+///
+/// A list held in a record field is tracked the same way: a node for each list field of each
+/// record value follows `rec.new`, `rec.fill`/`rec.set` (the written field takes the written list,
+/// the other fields keep theirs), copies and block arguments, so reading the field of a record
+/// that was updated in a loop yields lists of one length origin. Records of unknown provenance
+/// (parameters, loads, call results) start each field at the first read of it, which is why
+/// repeated reads of one record must already be one value (see `simplify::cse`).
 fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
     #[derive(Clone, Copy, PartialEq, Eq)]
     enum Origin {
@@ -223,27 +230,112 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
         One(Value),
         Mixed,
     }
-    let mut facts = vec![Origin::Unknown; f.values.len()];
-    let mut users = vec![Vec::new(); f.values.len()];
+    let nv = f.values.len();
+    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    let list_fields = |v: Value| -> Vec<u32> {
+        let TyKind::Rec(rid) = m.types.kind(f.ty(v)) else {
+            return Vec::new();
+        };
+        m.records[rid.0 as usize]
+            .fields
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, t))| matches!(m.types.kind(*t), TyKind::List(_)))
+            .map(|(k, _)| k as u32)
+            .collect()
+    };
+    // One node per list value, then one per list field of each record value.
+    let mut pair: HashMap<(Value, u32), usize> = HashMap::new();
+    let mut total = nv;
+    for i in 0..nv {
+        let v = Value(i as u32);
+        for k in list_fields(v) {
+            pair.insert((v, k), total);
+            total += 1;
+        }
+    }
+    let mut facts = vec![Origin::Unknown; total];
+    let mut users = vec![Vec::new(); total];
     let mut work = Vec::new();
     let mut reads: HashMap<(Value, Value), Value> = HashMap::new();
-    let is_list = |v: Value| matches!(m.types.kind(f.ty(v)), TyKind::List(_));
+    // The first read of each record field, the origin of a field nothing else defines.
+    let mut first_field_read: HashMap<(Value, u32), Value> = HashMap::new();
+    // Record values whose list fields come from other nodes rather than starting fresh.
+    let mut flows: Vec<bool> = vec![false; nv];
+    let edge = |users: &mut Vec<Vec<usize>>, from: usize, to: usize| users[from].push(to);
+    for b in f.blocks.iter().skip(1) {
+        for p in &b.params {
+            flows[p.value.index()] = true;
+        }
+    }
     for p in &f.blocks[0].params {
         if is_list(p.value) {
             facts[p.value.index()] = Origin::One(p.value);
-            work.push(p.value);
+            work.push(p.value.index());
         }
     }
     for b in &f.blocks {
         for i in &b.insts {
-            let Some(r) = i.res.filter(|r| is_list(*r)) else {
+            let Some(r) = i.res else { continue };
+            match i.op {
+                Op::RecNew => {
+                    flows[r.index()] = true;
+                    let Imm::Rec(rid) = i.imm else { continue };
+                    for (k, (_, t)) in m.records[rid.0 as usize].fields.iter().enumerate() {
+                        if matches!(m.types.kind(*t), TyKind::List(_))
+                            && let Some(&to) = pair.get(&(r, k as u32))
+                        {
+                            edge(&mut users, i.args[k].index(), to);
+                        }
+                    }
+                    continue;
+                }
+                Op::RecFill | Op::RecSet => {
+                    flows[r.index()] = true;
+                    let Imm::Field(_, written) = i.imm else {
+                        continue;
+                    };
+                    for k in list_fields(r) {
+                        let Some(&to) = pair.get(&(r, k)) else {
+                            continue;
+                        };
+                        if k == written {
+                            edge(&mut users, i.args[1].index(), to);
+                        } else if let Some(&from) = pair.get(&(i.args[0], k)) {
+                            edge(&mut users, from, to);
+                        }
+                    }
+                    continue;
+                }
+                Op::Copy if !list_fields(r).is_empty() => {
+                    flows[r.index()] = true;
+                    for k in list_fields(r) {
+                        if let (Some(&to), Some(&from)) =
+                            (pair.get(&(r, k)), pair.get(&(i.args[0], k)))
+                        {
+                            edge(&mut users, from, to);
+                        }
+                    }
+                    continue;
+                }
+                Op::RecGet if is_list(r) => {
+                    let Imm::Field(_, k) = i.imm else { continue };
+                    first_field_read.entry((i.args[0], k)).or_insert(r);
+                    if let Some(&from) = pair.get(&(i.args[0], k)) {
+                        edge(&mut users, from, r.index());
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+            if !is_list(r) {
                 continue;
-            };
+            }
             if matches!(
                 i.op,
-                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill
+                Op::ListSet | Op::ListSetNn | Op::ListSetU | Op::ListFill | Op::MoveOut | Op::Copy
             ) {
-                users[i.args[0].index()].push(r);
+                edge(&mut users, i.args[0].index(), r.index());
             } else {
                 // Reading the same element of the same (immutable) list twice yields lists of
                 // one length.
@@ -254,33 +346,48 @@ fn length_origins(m: &Module, f: &Func) -> Vec<Value> {
                     _ => r,
                 };
                 facts[r.index()] = Origin::One(origin);
-                work.push(r);
+                work.push(r.index());
             }
         }
         b.term.for_each_target(|t| {
             for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
                 if is_list(p.value) {
-                    users[a.index()].push(p.value);
+                    edge(&mut users, a.index(), p.value.index());
+                }
+                for k in list_fields(p.value) {
+                    if let (Some(&from), Some(&to)) = (pair.get(&(*a, k)), pair.get(&(p.value, k)))
+                    {
+                        edge(&mut users, from, to);
+                    }
                 }
             }
         });
     }
+    // Record values nothing flows into start every list field at its first read, or at the record
+    // itself when the field is never read (a value no list shares an origin with).
+    for (&(r, k), &node) in &pair {
+        if !flows[r.index()] {
+            facts[node] = Origin::One(first_field_read.get(&(r, k)).copied().unwrap_or(r));
+            work.push(node);
+        }
+    }
     while let Some(v) = work.pop() {
-        for &u in &users[v.index()] {
-            let old = facts[u.index()];
-            let new = match (old, facts[v.index()]) {
+        for &u in &users[v] {
+            let old = facts[u];
+            let new = match (old, facts[v]) {
                 (Origin::Unknown, x) => x,
                 (Origin::One(a), Origin::One(b)) if a == b => old,
                 _ => Origin::Mixed,
             };
             if new != old {
-                facts[u.index()] = new;
+                facts[u] = new;
                 work.push(u);
             }
         }
     }
     facts
         .into_iter()
+        .take(nv)
         .enumerate()
         .map(|(i, fact)| match fact {
             Origin::One(v) => v,

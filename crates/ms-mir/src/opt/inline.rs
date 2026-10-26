@@ -12,7 +12,7 @@ use crate::ir::{
     Block, BlockData, BlockParam, Func, FuncId, FuncKind, Imm, InlineHint, Inst, Linkage, Loc,
     Mode, Module, Op, Param, Scope, Target, Term, Value,
 };
-use crate::types::Ty;
+use crate::types::{RecId, Ty, TyKind};
 use std::collections::{HashMap, HashSet};
 
 /// Instruction count up to which an `Auto` callee is inlined.
@@ -461,24 +461,80 @@ fn inline_at(f: &mut Func, bi: usize, ii: usize, callee: &Func, ret_own: bool) -
 /// values keep their indirect call.
 fn inline_closures(m: &mut Module) -> bool {
     let mut changed = false;
+    let fields = constant_closure_fields(m);
     for fi in 0..m.funcs.len() {
-        changed |= inline_closures_in(m, fi);
+        changed |= inline_closures_in(m, fi, &fields);
     }
     changed
 }
 
-fn inline_closures_in(m: &mut Module, fi: usize) -> bool {
+/// The closure code held by each record field that every construction in the module sets to the
+/// same capture-free closure and that nothing else ever writes, so reading the field always
+/// yields that closure whichever record it is read from.
+fn constant_closure_fields(m: &Module) -> HashMap<(RecId, u32), FuncId> {
+    // `None` marks a field with two different closures or a write the analysis cannot see.
+    let mut seen: HashMap<(RecId, u32), Option<FuncId>> = HashMap::new();
+    for f in &m.funcs {
+        let mut defs: HashMap<Value, &Inst> = HashMap::new();
+        for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
+            if let Some(r) = inst.res {
+                defs.insert(r, inst);
+            }
+        }
+        for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
+            match (inst.op, inst.imm) {
+                (Op::RecSet | Op::RecFill | Op::PtrField, Imm::Field(r, k)) => {
+                    seen.insert((r, k), None);
+                }
+                (Op::RecNew, Imm::Rec(r)) => {
+                    for (k, a) in inst.args.iter().enumerate() {
+                        if !matches!(m.types.kind(f.ty(*a)), TyKind::Fn(..)) {
+                            continue;
+                        }
+                        let mut v = *a;
+                        while let Some(d) = defs.get(&v)
+                            && d.op == Op::Copy
+                        {
+                            v = d.args[0];
+                        }
+                        let code = defs.get(&v).and_then(|d| match (d.op, d.imm) {
+                            (Op::ClosureNew, Imm::Func(g)) if d.args.is_empty() => Some(g),
+                            _ => None,
+                        });
+                        let entry = seen.entry((r, k as u32)).or_insert(code);
+                        if *entry != code {
+                            *entry = None;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    seen.into_iter()
+        .filter_map(|(key, g)| g.map(|g| (key, g)))
+        .collect()
+}
+
+fn inline_closures_in(m: &mut Module, fi: usize, fields: &HashMap<(RecId, u32), FuncId>) -> bool {
     let budget = m.funcs[fi].inst_count() * GROWTH_FACTOR + GROWTH_SLACK;
     let mut grown = 0usize;
     let mut changed = false;
     let mut work: Vec<usize> = (0..m.funcs[fi].blocks.len()).collect();
     let roots = known_closures(m, fi);
-    if roots.is_empty() {
-        return false;
-    }
     let mut known: HashMap<Value, (FuncId, Vec<Value>)> = HashMap::new();
     for (v, root) in closure_aliases(&m.funcs[fi], &roots) {
         known.insert(v, roots[&root].clone());
+    }
+    for inst in m.funcs[fi].blocks.iter().flat_map(|b| b.insts.iter()) {
+        if let (Op::RecGet, Imm::Field(r, k), Some(v)) = (inst.op, inst.imm, inst.res)
+            && let Some(g) = fields.get(&(r, k))
+        {
+            known.insert(v, (*g, Vec::new()));
+        }
+    }
+    if known.is_empty() {
+        return false;
     }
     while let Some(bi) = work.pop() {
         for ii in 0..m.funcs[fi].blocks[bi].insts.len() {
