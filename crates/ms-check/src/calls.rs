@@ -441,7 +441,7 @@ impl Checker {
     }
 
     /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
-    /// its raw `take`, `put` and `locked`; and a `Shared` cannot be a worker or process message,
+    /// its raw `take`, `put`, `locked` and `id`; and a `Shared` cannot be a worker or process message,
     /// because the other side would get a silent copy instead of the same box.
     fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info, sig: &Ty) {
         let name = match &callee.kind {
@@ -450,7 +450,7 @@ impl Checker {
         };
         if let Some(m) = callable.method.as_ref()
             && m.receiver.is_std("Shared")
-            && matches!(name.as_str(), "take" | "put" | "locked")
+            && matches!(name.as_str(), "take" | "put" | "locked" | "id")
             && self.m().file.as_str() != "@std/sync.ms"
         {
             self.type_error(

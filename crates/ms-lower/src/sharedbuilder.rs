@@ -223,6 +223,11 @@ impl<'a> FnLower<'a> {
                     .expect("load");
                 Ok(Val { v, own: false })
             }
+            "id" => {
+                // The box address: what a wait queue is keyed by.
+                let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
+                Ok(Val { v: id, own: false })
+            }
             "locked" => {
                 let v = self
                     .b

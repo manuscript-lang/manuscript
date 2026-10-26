@@ -867,6 +867,10 @@ msrt_scope_close(scope: i64)
 msrt_channel_token() -> i64
 msrt_channel_park(token: i64)
 msrt_channel_post(token: i64)
+msrt_addr_id(addr: *const u8) -> i64
+msrt_waitq_push(key: i64, token: i64)
+msrt_waitq_wake(key: i64) -> i64
+msrt_waitq_remove(key: i64, token: i64) -> i64
 msrt_token_free(id: u64)
 msrt_token_new(flags: u32) -> u64
 msrt_token_park( id: u64, timeout_ns: i64, value_out: *mut u64, ) -> u32
