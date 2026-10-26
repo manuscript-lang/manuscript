@@ -273,7 +273,7 @@ pub enum Op {
     // Comparisons.
     ICmp, FCmp,
     // Float arithmetic and conversions.
-    FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, I2F, F2IOpt, B2I, Select,
+    FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
     RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox,
     // Lists.
@@ -392,7 +392,7 @@ impl Op {
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
-        Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
+        Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
@@ -449,6 +449,9 @@ impl Op {
             Op::FDiv => ("fdiv", K::None, true, effects!()),
             Op::FNeg => ("fneg", K::None, true, effects!()),
             Op::FSqrt => ("fsqrt", K::None, true, effects!()),
+            Op::FFloor => ("ffloor", K::None, true, effects!()),
+            Op::FCeil => ("fceil", K::None, true, effects!()),
+            Op::FTrunc => ("ftrunc", K::None, true, effects!()),
             Op::FAbs => ("fabs", K::None, true, effects!()),
             Op::I2F => ("i2f", K::None, true, effects!()),
             Op::F2IOpt => ("f2i.opt", K::None, true, effects!()),
