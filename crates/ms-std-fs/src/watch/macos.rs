@@ -7,8 +7,9 @@ use crate::err::{Fail, Res};
 use crate::sys::{self, CPath};
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt::glue::poll_cancel;
-use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_NOT_FOUND};
 
 const FFLAGS: u32 = (libc::NOTE_WRITE
     | libc::NOTE_DELETE
@@ -176,12 +177,15 @@ impl Native {
         Ok(())
     }
 
-    pub fn wait(&mut self) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
             if let Some(e) = self.queue.pop_front() {
                 return Ok(alloc::vec![e]);
             }
             poll_cancel();
+            if closed.load(Ordering::Relaxed) {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
             if self.woken() {
                 self.refresh()?;
             } else {

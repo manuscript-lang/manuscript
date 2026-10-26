@@ -8,8 +8,9 @@ use crate::sys;
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt::glue::poll_cancel;
-use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
+use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 use std::fs::OpenOptions;
 use std::os::windows::fs::OpenOptionsExt;
 use std::os::windows::io::AsRawHandle;
@@ -166,7 +167,7 @@ impl Native {
         }
     }
 
-    pub fn wait(&mut self) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
             if let Some(f) = self.terminal.take() {
                 return Err(f);
@@ -175,6 +176,9 @@ impl Native {
                 return Ok(alloc::vec![e]);
             }
             poll_cancel();
+            if closed.load(Ordering::Relaxed) {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
             let mut got = 0u32;
             // SAFETY: the request is ours and `got` is writable; the call does not wait.
             let done = unsafe {

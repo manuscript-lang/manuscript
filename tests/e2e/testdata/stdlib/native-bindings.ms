@@ -1,8 +1,10 @@
-from "@std/testing.ms" import expect_false, expect_ok, expect_true
+from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
 from "@std/process.ms" import control, ProcessError
-from "@std/fs.ms" import filesystem, FileSystemError, FileEvent
-from "@std/time.ms" import milliseconds
+from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher
+from "@std/time.ms" import milliseconds, sleep
+from "@std/tasks.ms" import TaskGroup
+from "@std/shared.ms" import Shared, share
 
 def expect_process_error[T](
     outcome: Result[T, ProcessError],
@@ -128,3 +130,65 @@ test "polling and native watchers report a created file and close":
                 if not found:
                     found = saw(try native.next(), f"{root}/b.txt", "rename")
             try expect_true(found)
+
+def wait_next(w: Shared[FileWatcher]) -> Int:
+    let r = w.get().next()
+    if r.is_ok():
+        return 1
+
+    return 2
+
+test "close wakes a pending native next with Closed":
+    let fs = filesystem()
+
+    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+        let w: Shared[FileWatcher] = share(
+            try fs.watch_native(
+                path: t.path(), recursive: False, overflow: "error"
+            )
+        )
+
+        with let group = TaskGroup[Int]():
+            let a = w
+            group.spawn(lambda ch: wait_next(a))
+            sleep(100.milliseconds)
+            w.get().close()
+
+            let got = try group.results()
+            try expect_equal(got[0], 2)
+
+test "a group timeout cancels a task waiting on a watcher":
+    let fs = filesystem()
+
+    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+        let w: Shared[FileWatcher] = share(
+            try fs.watch(
+                path: t.path(), recursive: False, interval: milliseconds(20)
+            )
+        )
+
+        with let group = TaskGroup[Int](timeout: 300.milliseconds):
+            let a = w
+            let h = group.spawn(lambda ch: wait_next(a))
+            let c = group.spawn(lambda ch: 7)
+            try expect_equal(c.result().get(-1), 7)
+            try expect_true(h.result().is_error())
+
+        w.get().close()
+
+test "recursive native watch sees a file in a new subdirectory":
+    let fs = filesystem()
+
+    with let t = (fs.temporary("ms-r2-") | try expect_ok):
+        let r = t.path()
+
+        with let w = try fs.watch_native(path: r, recursive: True, overflow: "error"):
+            try fs.create_directory(path: f"{r}/d", recursive: False)
+            try fs.write_file(path: f"{r}/d/f", data: "1", replace: False)
+
+            var seen = False
+            for i in [1, 2, 3, 4, 5, 6, 7, 8]:
+                if not seen:
+                    for e in try w.next():
+                        if e.path == f"{r}/d/f": seen = True
+            try expect_true(seen)

@@ -9,6 +9,7 @@ use alloc::collections::BTreeMap;
 #[cfg(target_os = "linux")]
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 
@@ -64,7 +65,7 @@ fn visit(
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
-    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
+    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
@@ -144,11 +145,14 @@ impl Poll {
     }
 
     /// Every difference seen after one interval, sorted by path; waits until there is one.
-    fn next(&mut self) -> Res<Vec<Event>> {
+    fn next(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
             let mut waited = 0i64;
             while waited < self.interval_ns {
                 poll_cancel();
+                if closed.load(Ordering::Relaxed) {
+                    return Err(Fail::status(STATUS_CLOSED));
+                }
                 sleep_slice();
                 waited += i64::from(SLICE_MS) * 1_000_000;
             }
@@ -252,6 +256,30 @@ impl Native {
         Ok(())
     }
 
+    /// Queues a `rename` event for everything already inside the new directory `dir`.
+    fn report_existing(&mut self, dir: &[u8]) {
+        let Some(c) = CPath::new(dir) else { return };
+        let Ok(entries) = sys::read_dir(&c) else {
+            return;
+        };
+        for (name, _) in entries {
+            let child = path::join(dir, &name);
+            if core::str::from_utf8(&child).is_err() {
+                continue;
+            }
+            self.push(Event {
+                path: child.clone(),
+                rename: true,
+            });
+            if CPath::new(&child)
+                .and_then(|c| sys::stat(&c, false).ok())
+                .is_some_and(|st| sys::is_dir(&st))
+            {
+                self.report_existing(&child);
+            }
+        }
+    }
+
     fn push(&mut self, e: Event) {
         if self.queue.len() >= self.capacity {
             if !self.ignore_overflow && self.terminal.is_none() {
@@ -315,15 +343,20 @@ impl Native {
             self.watches
                 .retain(|_, w| *w != full && !w.starts_with(&prefix));
         }
+        let mut fresh = false;
         if self.recursive
             && mask & (libc::IN_CREATE | libc::IN_MOVED_TO) as u32 != 0
             && let Some(c) = CPath::new(&full)
             && sys::stat(&c, false).is_ok_and(|st| sys::is_dir(&st))
-            && let Err(f) = self.add_tree(&full)
-            && f.status != ms_rt_abi::STATUS_NOT_FOUND
         {
-            self.terminal = Some(f);
-            return;
+            match self.add_tree(&full) {
+                Ok(()) => fresh = true,
+                Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => {}
+                Err(f) => {
+                    self.terminal = Some(f);
+                    return;
+                }
+            }
         }
         if core::str::from_utf8(&full).is_err() {
             self.terminal = Some(Fail::status(STATUS_UNSUPPORTED));
@@ -337,11 +370,21 @@ impl Native {
                 | libc::IN_MOVED_TO
                 | libc::IN_MOVE_SELF) as u32
             != 0;
-        self.push(Event { path: full, rename });
+        self.push(Event {
+            path: full.clone(),
+            rename,
+        });
+        // What was created before the watch existed raised no event of its own.
+        if fresh {
+            self.report_existing(&full);
+        }
     }
 
-    pub fn wait(&mut self) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
+            if closed.load(Ordering::Relaxed) {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
             self.drain();
             if let Some(f) = self.terminal.take() {
                 return Err(f);
@@ -380,7 +423,7 @@ mod native_host {
             Err(Fail::status(STATUS_UNSUPPORTED))
         }
 
-        pub fn wait(&mut self) -> Res<Vec<Event>> {
+        pub fn wait(&mut self, _: &AtomicBool) -> Res<Vec<Event>> {
             Err(Fail::status(STATUS_UNSUPPORTED))
         }
     }
@@ -398,37 +441,37 @@ ms_rt::ffi::abi_handle!(Watcher);
 /// A `FileWatcher`.
 pub struct Watcher {
     kind: Kind,
-    closed: bool,
+    closed: AtomicBool,
 }
 
 impl Watcher {
     pub fn poll(p: Poll) -> Watcher {
         Watcher {
             kind: Kind::Poll(p),
-            closed: false,
+            closed: AtomicBool::new(false),
         }
     }
 
     pub fn native(n: Native) -> Watcher {
         Watcher {
             kind: Kind::Native(n),
-            closed: false,
+            closed: AtomicBool::new(false),
         }
     }
 
     /// Waits for activity; `Closed` after `close`.
     pub fn wait(&mut self) -> Res<Vec<Event>> {
-        if self.closed {
+        if self.closed.load(Ordering::Relaxed) {
             return Err(Fail::status(STATUS_CLOSED));
         }
         match &mut self.kind {
-            Kind::Poll(p) => p.next(),
-            Kind::Native(n) => n.wait(),
+            Kind::Poll(p) => p.next(&self.closed),
+            Kind::Native(n) => n.wait(&self.closed),
         }
     }
 
     pub fn close(&mut self) {
-        self.closed = true;
+        self.closed.store(true, Ordering::Relaxed);
     }
 }
 
