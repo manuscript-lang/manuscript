@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first",
+        "position": {
+          "file": "diag-lock-shared-inside-own-guard.ms",
+          "line": 9,
+          "column": 9,
+          "offset": 292
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-lock-shared-inside-own-guard.ms:9:9: type: box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
