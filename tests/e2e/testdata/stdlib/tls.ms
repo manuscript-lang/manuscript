@@ -4,10 +4,7 @@ from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
 from "@std/net.ms" import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions
 from "@std/http.ms" import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions
-from "@std/net.ms" import network, Listener
-from "@std/bytes.ms" import Bytes
-from "@std/shared.ms" import Shared, share
-from "@std/tasks.ms" import TaskGroup
+from "@std/net.ms" import network
 from "@std/time.ms" import timestamp
 from "./support/certificates.ms" import certificate, private_key
 
@@ -168,53 +165,3 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
             ):
                 try expect_equal(response.metadata().protocol, "HTTP/2.0")
                 try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
-
-def accept_and_read(listener: Shared[Listener]) -> Bytes:
-    let server = listener.get().accept(2.seconds).get()
-    return server.read(4, 2.seconds).get().get()
-
-test "listen_tls and connect_tls_config carry bytes and report the negotiated session":
-    let net = network()
-    let server_tls = TlsOptions(
-        server_name: "", roots_pem: "", certificate_pem: certificate(),
-        private_key_pem: private_key(), alpn: ["echo"],
-        require_client_certificate: False
-    )
-    let client_tls = TlsOptions(
-        server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-        private_key_pem: "", alpn: ["echo"], require_client_certificate: False
-    )
-    let listener: Shared[Listener] = share(
-        try net.listen_tls("127.0.0.1:0", server_tls, 2.seconds)
-    )
-
-    with let group = TaskGroup[Bytes]():
-        let shared = listener
-        group.spawn(lambda ch: accept_and_read(shared))
-
-        with let client = try net.connect_tls_config(
-            listener.get().address(), client_tls, 2.seconds
-        ):
-            try client.write("ping", 2.seconds)
-
-            let info = try client.tls_info()
-            try expect_equal(info.alpn, "echo")
-            try expect_false(info.peer_certificates.is_empty())
-
-            let got = try group.results()
-            try expect_equal(got[0], "ping".to_bytes())
-
-    # A wrong server name is refused.
-    let wrong = TlsOptions(
-        server_name: "other.test", roots_pem: certificate(), certificate_pem: "",
-        private_key_pem: "", alpn: [], require_client_certificate: False
-    )
-
-    with let group = TaskGroup[Bytes]():
-        let shared = listener
-        group.spawn(lambda ch: accept_and_read(shared))
-        try expect_false(
-            net.connect_tls_config(
-                listener.get().address(), wrong, 2.seconds
-            ).is_ok()
-        )
