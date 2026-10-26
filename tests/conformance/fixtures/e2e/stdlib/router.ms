@@ -32,7 +32,7 @@ def body_of(response: HttpResponse) -> String:
     return response.body.decode_utf8().get("")
 
 def allow_of(response: HttpResponse) -> String:
-    let values = response.headers.text("Allow").get(none).get([])
+    let values = response.headers.values("Allow")
     return values.join(",")
 
 def router() -> Router:
@@ -106,11 +106,11 @@ def tagged(
     next: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
     let seen = exchange.headers()
-    try seen.append("X-Trail", label.to_bytes())
+    try seen.append("X-Trail", label)
     return next(exchange)
 
 def trail(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let values = exchange.headers().text("X-Trail").get(none).get([])
+    let values = exchange.headers().values("X-Trail")
     return reply(exchange, text(200, values.join(">")))
 
 test "middleware wraps routes outermost first":
@@ -215,22 +215,22 @@ test "json and redirect build responses":
     try expect_equal(sent.status, 201)
     try expect_equal(body_of(sent), "{\"name\":\"ok\",\"count\":2}")
     try expect_equal(
-        sent.headers.text("Content-Type").get(none).get([]).join(","),
+        sent.headers.values("Content-Type").join(","),
         "application/json"
     )
 
     let moved_to = try r.call(get("/m"))
     try expect_equal(moved_to.status, 303)
     try expect_equal(
-        moved_to.headers.text("Location").get(none).get([]).join(","), "/elsewhere"
+        moved_to.headers.values("Location").join(","), "/elsewhere"
     )
 
 def echo_id(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let seen = exchange.headers().text("X-Request-Id").get(none).get([])
+    let seen = exchange.headers().values("X-Request-Id")
     return reply(exchange, text(200, seen.join(",")))
 
 def id_of(response: HttpResponse) -> String:
-    return response.headers.text("X-Request-Id").get(none).get([]).join(",")
+    return response.headers.values("X-Request-Id").join(",")
 
 test "request_id keeps a usable id and makes one otherwise":
     var r = Router()
@@ -242,14 +242,14 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(body_of(fresh), id_of(fresh))
 
     let incoming = get("/i")
-    incoming.headers.append("X-Request-Id", "abc-123".to_bytes()).get()
+    incoming.headers.append("X-Request-Id", "abc-123").get()
 
     let kept = try r.call(incoming)
     try expect_equal(id_of(kept), "abc-123")
     try expect_equal(body_of(kept), "abc-123")
 
     let bad = get("/i")
-    bad.headers.append("X-Request-Id", "has space".to_bytes()).get()
+    bad.headers.append("X-Request-Id", "has space").get()
     try expect_equal(id_of(try r.call(bad)).length(), 36)
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
 

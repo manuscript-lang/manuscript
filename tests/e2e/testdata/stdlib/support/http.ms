@@ -1,10 +1,10 @@
 from "@std/http.ms" import headers, HttpHeaders, HttpError
 
-# Explicit fixture migration from the old text maps; no runtime coercion.
+# Fixture helpers that build headers from text maps.
 export def text_headers(fields: Map[String, String]) -> Result[HttpHeaders, HttpError]:
     let result = headers()
     for name in fields.keys():
-        let appended = try (result.append(name, fields.get(name).get().to_bytes()))
+        let appended = try (result.append(name, fields.get(name).get()))
     return ok(result)
 
 export def list_headers(
@@ -13,7 +13,7 @@ export def list_headers(
     let result = headers()
     for name in fields.keys():
         for item in fields.get(name).get():
-            let appended = try (result.append(name, item.to_bytes()))
+            let appended = try (result.append(name, item))
     return ok(result)
 
 # Streaming callbacks must return HttpError; retain diagnostics from a different operation domain.

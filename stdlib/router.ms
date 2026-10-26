@@ -429,7 +429,7 @@ def finish(
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 
     let response = text(405 if method != "OPTIONS" else 204, "")
-    try response.headers.append("Allow", allow_text(found.allow).to_bytes())
+    try response.headers.append("Allow", allow_text(found.allow))
     return reply(exchange, response)
 
 # Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
@@ -529,13 +529,9 @@ impl HttpExchange for TestExchange:
 
     def send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]:
         if status < 200 or status > 599: return error(HttpError.InvalidInput)
-        if headers.values("Content-Length").is_some(): return error(
-            HttpError.InvalidInput
-        )
-        if headers.values("Transfer-Encoding").is_some(): return error(
-            HttpError.InvalidInput
-        )
-        if headers.values("Connection").is_some(): return error(HttpError.InvalidInput)
+        if headers.contains("Content-Length"): return error(HttpError.InvalidInput)
+        if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
+        if headers.contains("Connection"): return error(HttpError.InvalidInput)
 
         with var guard = lock(self.state):
             if guard.value.closed: return error(HttpError.Closed)
@@ -611,8 +607,8 @@ def snapshot(state: Shared[TapState]) -> TapState:
 def with_extra(sent: HttpHeaders, extra: HttpHeaders) -> HttpHeaders:
     let all = sent.clone()
     for name in extra.names():
-        if all.values(name).is_none():
-            for value in extra.values(name).get([]):
+        if not all.contains(name):
+            for value in extra.values(name):
                 all.append(name, value).get(())
     return all
 
@@ -679,17 +675,15 @@ def with_request_id(
     next: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
     let request = exchange.headers()
-    let given = try request.text("X-Request-Id")
-    var id = ""
-    if let values = given: id = values.first().get("")
+    var id = request.values("X-Request-Id").first().get("")
 
     if not usable_id(id):
         id = try new_id()
         request.remove("X-Request-Id")
-        try request.append("X-Request-Id", id.to_bytes())
+        try request.append("X-Request-Id", id)
 
     let extra = headers()
-    try extra.append("X-Request-Id", id.to_bytes())
+    try extra.append("X-Request-Id", id)
     return next(new_tap(exchange, extra))
 
 def usable_id(id: String) -> Bool:

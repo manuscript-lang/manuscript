@@ -51,14 +51,9 @@ def check_route(url: String, expected: String) -> Result[Unit, Error]:
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
         TextError("path or raw query changed")
     )
-    if (
-        (
-            response
-            .metadata()
-            .headers
-            .text("SET-cookie") | try expect_ok
-        ) != some(["a=1", "b=2"])
-    ): return error(TextError("#257 repeated cookies regressed"))
+    if ((response.metadata().headers.values("SET-cookie")) != ["a=1", "b=2"]): return error(
+        TextError("#257 repeated cookies regressed")
+    )
 
     return ok(())
 
