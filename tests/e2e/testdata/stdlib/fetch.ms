@@ -20,6 +20,16 @@ def route(request: HttpRequest) -> HttpResponse:
         try_append(moved, "Location", "/echo")
         return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
 
+    if request.path == "/chain":
+        let moved = headers()
+        try_append(moved, "Location", "/preserve")
+        return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
+
+    if request.path == "/preserve":
+        let moved = headers()
+        try_append(moved, "Location", "/echo")
+        return HttpResponse(status: 307, headers: moved, body: "".to_bytes())
+
     if request.path == "/slow":
         sleep(milliseconds(1500))
         return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
@@ -91,6 +101,19 @@ test "fetch follows redirects unless max_redirects is 0":
         with let client = try fetcher(FetcherOptions(max_redirects: some(0))):
             let stopped = try client.fetch(url)
             try expect_equal(stopped.head.status, 302)
+
+test "fetch does not restore Content-Type after a redirect drops its body":
+    with let server = try network().serve("127.0.0.1:0", buffered(route)):
+        let response = try fetch(
+            f"http://{server.address()}/chain",
+            some(
+                FetchOptions(
+                    method: HttpMethod.Post, body: FetchBody.Text("hello")
+                )
+            )
+        )
+        try expect_equal(response.head.status, 200)
+        try expect_equal(try response.text(), "GET||")
 
 test "error statuses are ordinary responses and check_status rejects them":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):

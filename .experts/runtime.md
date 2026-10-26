@@ -41,6 +41,19 @@ Apply when: changing HTTP adapters, repeated fields, or header representation br
 Evidence: [called source checks](../tests/e2e/testdata/stdlib/http-headers.ms), [header contracts](../stdlib/http.ms).
 Verify: both insertion orders retain every duplicate/cookie; host maps with noncanonical keys lose no values. Keep buffered raw-byte acceptance, streaming/client UTF-8 rejection, transport framing validation and domain errors distinct. Do not impose a blanket copy-on-read or membership-copy guarantee; explicit text extraction and copy are distinct operations.
 
+### Redirect header removal persists through the entire chain
+
+Verified: rebuilding each redirect from the original request restores credentials after a
+cross-origin hop stripped them, and restores entity headers when a 302 drops a body before
+a 307 preserves the now-empty body. Filter the previous hop's headers instead. Recompute
+automatic Referer on every hop so carrying headers forward cannot leak a prior origin's URL.
+
+Apply when: changing redirect policy or outgoing request header propagation.
+Evidence: [loopback redirect regressions](../crates/ms-std-net/src/http/client.rs),
+[called fetch chain regression](../tests/e2e/testdata/stdlib/fetch.ms).
+Verify: a cross-origin redirect followed by a same-origin redirect sends no original credentials;
+a 302 then 307 sends neither a body nor its original entity headers; automatic Referer stays local.
+
 ### Concurrency is removed pending a ground-up redesign
 
 Decision: the user removed the concurrency features (TaskGroup, Task, Scheduler, Synchronized, BlockingQueue, `check_cancelled`, `yield_now`, and their lowering, runtime, tooling, tests, examples, and documentation) because concurrency should be rebuilt correctly from the ground up. Do not restore the old APIs or add channels, locks, or tasks without a new user direction. Host-level cancellation (SIGINT/SIGTERM) and `with` cleanup remain. Queue stays a single-threaded FIFO. Older entries or docs that mention Scheduler or timed work predate this removal.
