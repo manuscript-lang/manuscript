@@ -150,30 +150,32 @@ impl Duration:
 
     # Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
     def to_string() -> String:
-        var n = self.abs().to_nanoseconds()
-
-        let sign = "-" if self.to_nanoseconds() < 0 else ""
-
-        if n == 0:
+        let total = self.to_nanoseconds()
+        if total == 0:
             return "0s"
-        if n < 1000:
-            return f"{sign}{n}ns"
-        if n < 1000000:
-            return f"{sign}{duration_decimal(n / 1000, n % 1000, 3)}µs"
-        if n < 1000000000:
-            return f"{sign}{duration_decimal(n / 1000000, n % 1000000, 6)}ms"
 
-        let hours = n / 3600000000000
-        n = n % 3600000000000
+        # Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
+        let step = -1 if total < 0 else 1
 
-        let minutes = n / 60000000000
-        n = n % 60000000000
+        let sign = "-" if total < 0 else ""
+
+        let whole = total / 1000000000 * step
+        let sub = total % 1000000000 * step
+        if whole == 0 and sub < 1000:
+            return f"{sign}{sub}ns"
+        if whole == 0 and sub < 1000000:
+            return f"{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
+        if whole == 0:
+            return f"{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
+
+        let hours = whole / 3600
+        let minutes = whole % 3600 / 60
 
         let clock = "" if hours == 0 else f"{hours}h"
 
         let minute_part = "" if hours == 0 and minutes == 0 else f"{minutes}m"
 
-        let seconds_part = duration_decimal(n / 1000000000, n % 1000000000, 9)
+        let seconds_part = duration_decimal(whole % 60, sub, 9)
         return f"{sign}{clock}{minute_part}{seconds_part}s"
 
     # Converts this duration to floating-point seconds.

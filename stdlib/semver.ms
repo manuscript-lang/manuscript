@@ -57,8 +57,8 @@ export def format(version: Version) -> String:
 
 # Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
 export def parse(text: String) -> Result[Version, SemverError]:
-    let build_parts = text.split("+", 2)
-    let core_and_pre = build_parts[0].split("-", 2)
+    let build_parts = split_first(text, "+")
+    let core_and_pre = split_first(build_parts[0].clone(), "-")
     let numbers = core_and_pre[0].split(".")
     if numbers.length() != 3: return error(SemverError.InvalidData)
 
@@ -108,6 +108,12 @@ export def parse(text: String) -> Result[Version, SemverError]:
             prerelease: prerelease, build: build
         )
     )
+
+# Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
+def split_first(text: String, separator: String) -> List[String]:
+    if let at = text.index_of(separator): return [text.take(at), text.drop(at + 1)]
+
+    return [text.clone()]
 
 def compare_ints(left: Int, right: Int) -> Int:
     if left < right: return -1

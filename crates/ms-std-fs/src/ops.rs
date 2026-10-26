@@ -51,6 +51,14 @@ fn valid_utf8(bytes: &[u8]) -> bool {
     core::str::from_utf8(bytes).is_ok()
 }
 
+/// A directory entry name as text: bytes that are not UTF-8 become U+FFFD, so one odd name
+/// does not make its directory unlistable. Such a name no longer addresses the entry.
+pub(crate) fn lossy_name(name: &[u8]) -> Vec<u8> {
+    alloc::string::String::from_utf8_lossy(name)
+        .into_owned()
+        .into_bytes()
+}
+
 // ---------------------------------------------------------------------------
 // Whole-file reads and writes
 // ---------------------------------------------------------------------------
@@ -60,15 +68,41 @@ pub fn read_bounded(fd: sys::Fd, max: i64) -> Result<Vec<u8>, Fail> {
     read_limited(fd, max, true)
 }
 
+/// Parks the task until `fd` can be read, so a pipe with no data yet neither stalls the other
+/// tasks nor ignores a stop request.
+fn wait_readable(fd: sys::Fd) {
+    #[cfg(all(unix, not(test)))]
+    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
+    #[cfg(any(not(unix), test))]
+    let _ = fd;
+}
+
+/// Opens `path`. A named pipe opened for reading would block in `open(2)` until a writer
+/// arrives, so it is opened without waiting and then switched back to blocking mode; reads wait
+/// for data through `wait_readable`.
+pub(crate) fn open_waitless(path: &CPath, flags: i32, mode: u32) -> Result<sys::Fd, Errno> {
+    #[cfg(unix)]
+    if flags & 3 == sys::O_RDONLY && sys::stat(path, true).is_ok_and(|st| st.is_fifo()) {
+        let fd = sys::open(path, flags | libc::O_NONBLOCK, mode)?;
+        sys::clear_nonblocking(fd);
+        return Ok(fd);
+    }
+    sys::open(path, flags, mode)
+}
+
 /// `read_bounded`; `cancellable` checks for a stop request between reads, which a blocking-pool
-/// thread must not do.
+/// thread must not do. A cancellable read of a pipe or device also waits for it to be readable.
 fn read_limited(fd: sys::Fd, max: i64, cancellable: bool) -> Result<Vec<u8>, Fail> {
     const CHUNK: usize = 32 * 1024;
     let mut out: Vec<u8> = Vec::new();
     let mut buf = alloc::vec![0u8; (max.min(CHUNK as i64 - 1) as usize) + 1];
+    let waits = cancellable && sys::fstat(fd).is_ok_and(|st| sys::is_pollable(&st));
     loop {
         if cancellable {
             poll_cancel();
+        }
+        if waits {
+            wait_readable(fd);
         }
         let remaining = max - out.len() as i64;
         let want = if remaining < buf.len() as i64 {
@@ -101,7 +135,7 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
         }
     }
     let p = cpath(path)?;
-    let fd = sys::open(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
+    let fd = open_waitless(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
     let result = (|| {
         if let Ok(st) = sys::fstat(fd)
             && sys::is_dir(&st)
@@ -317,11 +351,7 @@ fn stat_now(path: &[u8], follow: bool) -> Res<Info> {
     let p = cpath(path)?;
     let st = sys::stat(&p, follow)
         .map_err(|e| Fail::errno(e, if follow { "stat" } else { "lstat" }, path))?;
-    let name = path::base(path);
-    if !valid_utf8(&name) {
-        return Err(Fail::status(STATUS_UNSUPPORTED));
-    }
-    Ok(info_of(&st, &name))
+    Ok(info_of(&st, &lossy_name(&path::base(path))))
 }
 
 #[derive(Debug)]
@@ -360,12 +390,9 @@ fn list_now(path: &[u8], max: i64) -> Res<Vec<Entry>> {
         if out.len() as i64 >= max {
             return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
         }
-        if !valid_utf8(&name) {
-            return Err(Fail::status(STATUS_UNSUPPORTED));
-        }
         let (directory, symlink) = entry_kind(path, &name, kind);
         out.push(Entry {
-            name,
+            name: lossy_name(&name),
             directory,
             symlink,
         });
@@ -744,6 +771,25 @@ mod tests {
         assert_eq!(stat(&root, true).unwrap_err().status, STATUS_NOT_FOUND);
         remove(&root, true).unwrap();
         let _ = remove(&path::dir(&root), true);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_name_that_is_not_utf8_is_listed_lossily() {
+        let root = scratch("l");
+        create_directory(&root, true).unwrap();
+        write_file(&sub(&root, "a.txt"), b"a", false).unwrap();
+        write_file(&path::join(&root, b"bad\xff.dat"), b"x", false).unwrap();
+        let names: Vec<Vec<u8>> = list(&root, UNLIMITED)
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(
+            names,
+            [b"a.txt".to_vec(), "bad\u{fffd}.dat".as_bytes().to_vec()]
+        );
+        remove(&root, true).unwrap();
     }
 
     #[cfg(unix)]
