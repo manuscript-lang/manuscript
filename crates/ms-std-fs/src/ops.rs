@@ -136,14 +136,27 @@ pub fn read_file(path: &[u8], max: i64) -> Res<Vec<u8>> {
     }
     let p = cpath(path)?;
     let fd = open_waitless(&p, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", path))?;
-    let result = (|| {
+    drop(p);
+    let read = || {
         if let Ok(st) = sys::fstat(fd)
             && sys::is_dir(&st)
         {
             return Err(Fail::invalid());
         }
         read_bounded(fd, max)
-    })();
+    };
+    // Cancellation abandons Rust frames, so the ordinary close below does not run. The pool
+    // job above is shielded; this path can park on a pipe or device and needs runtime cleanup.
+    #[cfg(not(test))]
+    let result = ms_rt::fault::with_cleanup(
+        &mut || {
+            let _ = sys::close(fd);
+        },
+        read,
+    );
+    // Unit tests do not park and may run on threads; the cleanup stack belongs to the runtime.
+    #[cfg(test)]
+    let result = read();
     let _ = sys::close(fd);
     result
 }
