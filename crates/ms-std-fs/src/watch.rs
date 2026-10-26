@@ -1,4 +1,5 @@
-//! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify).
+//! `FileWatcher`: a polling watcher (snapshot comparison) and a native one (inotify on Linux,
+//! kqueue on macOS, `ReadDirectoryChangesW` on Windows).
 //! Both are driven from `next`, which waits in short slices and polls
 //! for cancellation between them, so no worker thread is needed.
 use crate::err::{Fail, Res};
@@ -8,6 +9,7 @@ use alloc::collections::BTreeMap;
 #[cfg(target_os = "linux")]
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicBool, Ordering};
 use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 
@@ -63,10 +65,54 @@ fn visit(
 #[cfg(target_os = "linux")]
 fn wait_events(fd: sys::Fd) {
     #[cfg(not(test))]
-    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, -1);
+    ms_rt::glue::task_wait_fd(fd, ms_rt::glue::WAIT_READ, i64::from(SLICE_MS) * 1_000_000);
     // Tests run on many threads, which the runtime's scheduler does not support.
     #[cfg(test)]
     sys::wait_ready(fd, sys::Interest::Read, SLICE_MS);
+}
+
+/// What differs between two snapshots, sorted by path: `rename` for an entry that appeared or
+/// disappeared, otherwise a change.
+fn diff(before: &BTreeMap<Vec<u8>, Stamp>, now: &BTreeMap<Vec<u8>, Stamp>) -> Vec<Event> {
+    let mut changes: BTreeMap<&Vec<u8>, bool> = BTreeMap::new();
+    for (p, s) in now {
+        match before.get(p) {
+            None => {
+                changes.insert(p, true);
+            }
+            Some(old) if old != s => {
+                changes.insert(p, false);
+            }
+            _ => {}
+        }
+    }
+    for p in before.keys() {
+        if !now.contains_key(p) {
+            changes.insert(p, true);
+        }
+    }
+    changes
+        .into_iter()
+        .map(|(p, rename)| Event {
+            path: p.clone(),
+            rename,
+        })
+        .collect()
+}
+
+/// The arguments every native watcher accepts: `max` bounds the paths under the root (the root,
+/// files and directories) counted once at start, as for the polling watcher, on every platform;
+/// `events` bounds queued events and `overflow` is `error` or `ignore`.
+fn valid_native(root: &[u8], recursive: bool, max: i64, events: i64, overflow: &[u8]) -> Res<()> {
+    if root.is_empty()
+        || max <= 0
+        || events <= 0
+        || events > 1_048_576
+        || (overflow != b"error" && overflow != b"ignore")
+    {
+        return Err(Fail::invalid());
+    }
+    snapshot(root, recursive, max).map(drop)
 }
 
 fn sleep_slice() {
@@ -100,11 +146,14 @@ impl Poll {
     }
 
     /// Every difference seen after one interval, sorted by path; waits until there is one.
-    fn next(&mut self) -> Res<Vec<Event>> {
+    fn next(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
             let mut waited = 0i64;
             while waited < self.interval_ns {
                 poll_cancel();
+                if closed.load(Ordering::Relaxed) {
+                    return Err(Fail::status(STATUS_CLOSED));
+                }
                 sleep_slice();
                 waited += i64::from(SLICE_MS) * 1_000_000;
             }
@@ -113,30 +162,7 @@ impl Poll {
                 Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => BTreeMap::new(),
                 Err(f) => return Err(f),
             };
-            let mut changes: BTreeMap<&Vec<u8>, bool> = BTreeMap::new();
-            for (p, s) in &now {
-                match self.before.get(p) {
-                    None => {
-                        changes.insert(p, true);
-                    }
-                    Some(old) if old != s => {
-                        changes.insert(p, false);
-                    }
-                    _ => {}
-                }
-            }
-            for p in self.before.keys() {
-                if !now.contains_key(p) {
-                    changes.insert(p, true);
-                }
-            }
-            let events: Vec<Event> = changes
-                .into_iter()
-                .map(|(p, rename)| Event {
-                    path: p.clone(),
-                    rename,
-                })
-                .collect();
+            let events = diff(&self.before, &now);
             self.before = now;
             if !events.is_empty() {
                 return Ok(events);
@@ -149,7 +175,6 @@ impl Poll {
 pub struct Native {
     fd: i32,
     recursive: bool,
-    max: i64,
     ignore_overflow: bool,
     capacity: usize,
     watches: BTreeMap<i32, Vec<u8>>,
@@ -169,7 +194,7 @@ const MASK: u32 = (libc::IN_MOVED_TO
 
 #[cfg(target_os = "linux")]
 impl Native {
-    /// `overflow` is `error` or `ignore`; `max` bounds watched directories, `events` queued events.
+    /// `overflow` is `error` or `ignore`; `max` bounds the paths under the root, `events` queued events.
     pub fn new(
         root: &[u8],
         recursive: bool,
@@ -177,14 +202,7 @@ impl Native {
         events: i64,
         overflow: &[u8],
     ) -> Res<Native> {
-        if root.is_empty()
-            || max <= 0
-            || events <= 0
-            || events > 1_048_576
-            || (overflow != b"error" && overflow != b"ignore")
-        {
-            return Err(Fail::invalid());
-        }
+        valid_native(root, recursive, max, events, overflow)?;
         // SAFETY: plain system call.
         let fd = unsafe { libc::inotify_init1(libc::IN_CLOEXEC | libc::IN_NONBLOCK) };
         if fd < 0 {
@@ -193,7 +211,6 @@ impl Native {
         let mut n = Native {
             fd,
             recursive,
-            max,
             ignore_overflow: overflow == b"ignore",
             capacity: events as usize,
             watches: BTreeMap::new(),
@@ -219,9 +236,6 @@ impl Native {
             return Ok(());
         }
         if !self.watches.values().any(|w| w == p) {
-            if self.watches.len() as i64 >= self.max {
-                return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
-            }
             // SAFETY: `c` is a NUL-terminated path and `fd` an inotify descriptor.
             let wd = unsafe { libc::inotify_add_watch(self.fd, c.as_ptr(), MASK) };
             if wd < 0 {
@@ -236,6 +250,30 @@ impl Native {
             self.add_dir(root, &path::join(p, &name))?;
         }
         Ok(())
+    }
+
+    /// Queues a `rename` event for everything already inside the new directory `dir`.
+    fn report_existing(&mut self, dir: &[u8]) {
+        let Some(c) = CPath::new(dir) else { return };
+        let Ok(entries) = sys::read_dir(&c) else {
+            return;
+        };
+        for (name, _) in entries {
+            let child = path::join(dir, &name);
+            if core::str::from_utf8(&child).is_err() {
+                continue;
+            }
+            self.push(Event {
+                path: child.clone(),
+                rename: true,
+            });
+            if CPath::new(&child)
+                .and_then(|c| sys::stat(&c, false).ok())
+                .is_some_and(|st| sys::is_dir(&st))
+            {
+                self.report_existing(&child);
+            }
+        }
     }
 
     fn push(&mut self, e: Event) {
@@ -301,15 +339,20 @@ impl Native {
             self.watches
                 .retain(|_, w| *w != full && !w.starts_with(&prefix));
         }
+        let mut fresh = false;
         if self.recursive
             && mask & (libc::IN_CREATE | libc::IN_MOVED_TO) as u32 != 0
             && let Some(c) = CPath::new(&full)
             && sys::stat(&c, false).is_ok_and(|st| sys::is_dir(&st))
-            && let Err(f) = self.add_tree(&full)
-            && f.status != ms_rt_abi::STATUS_NOT_FOUND
         {
-            self.terminal = Some(f);
-            return;
+            match self.add_tree(&full) {
+                Ok(()) => fresh = true,
+                Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => {}
+                Err(f) => {
+                    self.terminal = Some(f);
+                    return;
+                }
+            }
         }
         if core::str::from_utf8(&full).is_err() {
             self.terminal = Some(Fail::status(STATUS_UNSUPPORTED));
@@ -323,11 +366,21 @@ impl Native {
                 | libc::IN_MOVED_TO
                 | libc::IN_MOVE_SELF) as u32
             != 0;
-        self.push(Event { path: full, rename });
+        self.push(Event {
+            path: full.clone(),
+            rename,
+        });
+        // What was created before the watch existed raised no event of its own.
+        if fresh {
+            self.report_existing(&full);
+        }
     }
 
-    fn next(&mut self) -> Res<Vec<Event>> {
+    pub fn wait(&mut self, closed: &AtomicBool) -> Res<Vec<Event>> {
         loop {
+            if closed.load(Ordering::Relaxed) {
+                return Err(Fail::status(STATUS_CLOSED));
+            }
             self.drain();
             if let Some(f) = self.terminal.take() {
                 return Err(f);
@@ -349,19 +402,30 @@ impl Drop for Native {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
-pub struct Native;
+#[cfg(target_os = "macos")]
+#[path = "watch/macos.rs"]
+mod native_host;
+#[cfg(windows)]
+#[path = "watch/windows.rs"]
+mod native_host;
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+mod native_host {
+    use super::*;
 
-#[cfg(not(target_os = "linux"))]
-impl Native {
-    pub fn new(_: &[u8], _: bool, _: i64, _: i64, _: &[u8]) -> Res<Native> {
-        Err(Fail::status(STATUS_UNSUPPORTED))
-    }
+    pub struct Native;
 
-    fn next(&mut self) -> Res<Vec<Event>> {
-        Err(Fail::status(STATUS_UNSUPPORTED))
+    impl Native {
+        pub fn new(_: &[u8], _: bool, _: i64, _: i64, _: &[u8]) -> Res<Native> {
+            Err(Fail::status(STATUS_UNSUPPORTED))
+        }
+
+        pub fn wait(&mut self, _: &AtomicBool) -> Res<Vec<Event>> {
+            Err(Fail::status(STATUS_UNSUPPORTED))
+        }
     }
 }
+#[cfg(not(target_os = "linux"))]
+pub use native_host::Native;
 
 enum Kind {
     Poll(Poll),
@@ -373,37 +437,37 @@ ms_rt::ffi::abi_handle!(Watcher);
 /// A `FileWatcher`.
 pub struct Watcher {
     kind: Kind,
-    closed: bool,
+    closed: AtomicBool,
 }
 
 impl Watcher {
     pub fn poll(p: Poll) -> Watcher {
         Watcher {
             kind: Kind::Poll(p),
-            closed: false,
+            closed: AtomicBool::new(false),
         }
     }
 
     pub fn native(n: Native) -> Watcher {
         Watcher {
             kind: Kind::Native(n),
-            closed: false,
+            closed: AtomicBool::new(false),
         }
     }
 
     /// Waits for activity; `Closed` after `close`.
     pub fn wait(&mut self) -> Res<Vec<Event>> {
-        if self.closed {
+        if self.closed.load(Ordering::Relaxed) {
             return Err(Fail::status(STATUS_CLOSED));
         }
         match &mut self.kind {
-            Kind::Poll(p) => p.next(),
-            Kind::Native(n) => n.next(),
+            Kind::Poll(p) => p.next(&self.closed),
+            Kind::Native(n) => n.wait(&self.closed),
         }
     }
 
     pub fn close(&mut self) {
-        self.closed = true;
+        self.closed.store(true, Ordering::Relaxed);
     }
 }
 
@@ -448,20 +512,27 @@ mod tests {
         ops::remove(&root, true).unwrap();
     }
 
-    #[cfg(target_os = "linux")]
     #[test]
     fn native_reports_events_and_new_directories() {
         let root = ops::temporary_directory(b"msfs-native-").unwrap();
         assert!(Native::new(&root, true, 10, 10, b"bogus").is_err());
+        ops::write_file(&path::join(&root, b"a"), b"x", false).unwrap();
+        // The root and one file are two paths.
+        let limited = Native::new(&root, true, 1, 10, b"error");
+        assert_eq!(limited.err().map(|f| f.status), Some(STATUS_LIMIT_EXCEEDED));
+        drop(Native::new(&root, true, 2, 10, b"error").unwrap());
         let mut w = Watcher::native(Native::new(&root, true, 100, 100, b"error").unwrap());
         ops::create_directory(&path::join(&root, b"d"), false).unwrap();
         let got = names(w.wait().unwrap());
-        assert!(got[0].0.ends_with("/d") && got[0].1);
+        assert!(
+            got.iter()
+                .any(|(p, r)| (p.ends_with("/d") || p.ends_with("\\d")) && *r)
+        );
         ops::write_file(&path::join(&root, b"d/f"), b"x", false).unwrap();
         let mut seen = Vec::new();
         while seen
             .iter()
-            .all(|(p, _): &(String, bool)| !p.ends_with("/d/f"))
+            .all(|(p, _): &(String, bool)| !p.ends_with("/d/f") && !p.ends_with("\\d\\f"))
         {
             seen.extend(names(w.wait().unwrap()));
         }

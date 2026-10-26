@@ -1146,7 +1146,10 @@ impl<'a> FnLower<'a> {
                 };
                 let other = self.borrow(args[0].val);
                 let other_len = self.b.list_len(other);
-                let (lv, hidden) = self.list_source(recv_expr, recv)?;
+                // Zipping a list with itself must not iterate its variable, which loop headers
+                // would consume while `other` is still read.
+                let same = other == recv.v;
+                let (lv, hidden) = self.list_source(if same { None } else { recv_expr }, recv)?;
                 let acc = self.fresh_var(result);
                 let first = self.b.list_new(pair, other_len);
                 self.b.def_var(acc, first);

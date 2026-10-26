@@ -68,7 +68,8 @@ impl ReadStream for LimitedStream:
         return self.input.close()
 
     var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
-        if self.remaining <= 0: return ok(none)
+        if self.remaining < 0: return error(IoError.InvalidInput)
+        if self.remaining == 0: return ok(none)
 
         let wanted = max_bytes.get(self.remaining)
         let available = self.remaining
@@ -86,9 +87,7 @@ impl ReadStream for LimitedStream:
 # Ends the stream after `max_bytes` bytes without reading further from `input`.
 # A negative limit makes reads fail with InvalidInput. Closing the result closes `input`.
 export def take(input: ReadStream, max_bytes: Int) -> ReadStream:
-    var limit = max_bytes
-    if limit < 0: limit = 0
-    return LimitedStream(input, limit)
+    return LimitedStream(input, max_bytes)
 
 type ConcatStream:
     inputs: List[ReadStream]

@@ -240,6 +240,18 @@ pub fn signature_text(t: &Ty) -> String {
     format!("({}) -> {}", parts.join(", "), t.result_ty())
 }
 
+/// The builtin type other languages call by this name.
+fn type_alias(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "Integer" | "long" | "Long" | "i64" | "int64" | "number" | "Number" => "Int",
+        "double" | "Double" | "f64" | "float64" => "Float",
+        "str" | "Str" | "string" | "char" | "Char" | "Text" => "String",
+        "boolean" | "Boolean" | "bool" => "Bool",
+        "void" | "Void" | "None" | "NoneType" => "Unit",
+        _ => return None,
+    })
+}
+
 /// Explains a function passed where names differ.
 pub fn label_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
     if actual.kind != Kind::Function || expected.kind != Kind::Function {
@@ -444,8 +456,8 @@ impl Checker {
                     "{message}; write error(cause) for a failed Result, where cause is a value implementing Error"
                 );
             }
-            "True" | "False" => {
-                return format!("{message}; booleans are lowercase: true and false");
+            "true" | "false" => {
+                return format!("{message}; booleans are capitalized: True and False");
             }
             "len" => {
                 return format!(
@@ -679,6 +691,9 @@ impl Checker {
         let hint = import_hint(name.as_str());
         if !hint.is_empty() {
             return format!("{message}{hint}");
+        }
+        if let Some(builtin) = type_alias(name.as_str()) {
+            return format!("{message}; did you mean '{builtin}'?");
         }
         let hint = did_you_mean(name.as_str(), &self.type_names());
         if !hint.is_empty() {

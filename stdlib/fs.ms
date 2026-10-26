@@ -158,8 +158,8 @@ export interface FileSystem:
         options: CopyOptions,
         filter: Optional[Callable[[String, String], Bool]]
     ) -> Result[Unit, FileSystemError]
-    # Watches native OS events; overflow is exactly `error` or `ignore` (case-sensitive).
-    # Other policies return InvalidInput. Limits bound tracked paths and queued events.
+    # Watches native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows); overflow is exactly `error` or `ignore` (case-sensitive).
+    # Other policies return InvalidInput. `max_entries` bounds the paths under the root (the root, files and directories), counted when the watcher starts and failing with LimitExceeded, the same on every platform; `max_events` bounds queued events.
     def watch_native(
         path: String,
         recursive: Bool,
@@ -198,6 +198,7 @@ export interface FileSystem:
     # A path that is not a link returns InvalidInput.
     def read_link(path: String) -> Result[String, FileSystemError]
     # Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
+    # A missing path returns NotFound, except that a recursive removal of a missing path succeeds.
     def remove(path: String, recursive: Bool = False) -> Result[Unit, FileSystemError]
     # Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
     # It never falls back to copying, so a move across devices returns an error.

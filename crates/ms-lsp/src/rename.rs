@@ -41,7 +41,7 @@ pub fn rename(
 ) -> Result<Json, String> {
     canceled(cancel)?;
     let Some(selected) = occurrence_at(analysis, d, p, index) else {
-        return Err("select a resolved source declaration or use".to_string());
+        return Err("select a name that refers to a source declaration".to_string());
     };
     if selected.key.contains(":@std/") {
         return Err("standard-library declarations are read-only".to_string());

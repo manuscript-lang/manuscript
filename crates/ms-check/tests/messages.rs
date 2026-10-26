@@ -211,3 +211,25 @@ fn none_into_an_interface_still_asks_for_a_type_argument() {
         "{got:?}"
     );
 }
+
+#[test]
+fn borrowed_spellings_name_the_manuscript_one() {
+    let cases = [
+        (
+            "export def main() -> Int:\n    let a = true\n    return 0\n",
+            "booleans are capitalized: True and False",
+        ),
+        (
+            "export def main() -> Int:\n    let a: Integer = 1\n    return 0\n",
+            "did you mean 'Int'?",
+        ),
+        (
+            "export def main() -> Int:\n    let a: double = 1.0\n    return 0\n",
+            "did you mean 'Float'?",
+        ),
+    ];
+    for (source, want) in cases {
+        let got = first_message(source);
+        assert!(got.ends_with(want), "{got}");
+    }
+}

@@ -395,7 +395,15 @@ pub fn type_definition(
         return Json::Null;
     };
     match hit.info.ty.as_ref().and_then(|t| t.symbol()) {
-        Some(symbol) => symbol_location(analysis, &symbol),
+        Some(symbol) => {
+            // Point at the declared name, as definition does, not at the declaration keyword.
+            let key = crate::index::symbol_key(Some(&symbol));
+            let name = index.iter().find(|e| e.declaration && e.key == key);
+            match name.and_then(|e| occurrence_location(analysis, e)) {
+                Some(found) => Json::Arr(vec![found]),
+                None => symbol_location(analysis, &symbol),
+            }
+        }
         None => Json::Null,
     }
 }
