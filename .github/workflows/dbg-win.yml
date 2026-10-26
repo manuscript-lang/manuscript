@@ -1,0 +1,45 @@
+name: dbg-win
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dbg:
+    runs-on: windows-2025
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUSTC_WRAPPER: sccache
+      SCCACHE_CACHE_SIZE: 2G
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sccache
+        with:
+          prefix: cargo-sccache-windows-amd64-
+      - run: printf '%s\n' "TMPDIR=$RUNNER_TEMP" "TMP=$RUNNER_TEMP" "TEMP=$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+      - shell: pwsh
+        run: |
+          rustup set default-host x86_64-pc-windows-msvc
+          $l = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$l" >> $env:GITHUB_ENV
+      - run: echo 'CC=clang' >> "$GITHUB_ENV"
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: windows
+          arch: amd64
+      - run: cargo xtask runtime
+      - run: cargo build --locked -p ms-cli
+      - name: Variants
+        run: |
+          for f in dbg/win/v*.ms; do
+            echo "=== $f"
+            timeout 40 target/debug/ms.exe run "$f" --build-type Debug 2>&1 | tail -20 || echo "exit/timeout: $?"
+          done
+      - name: Original fixture
+        run: |
+          timeout 60 target/debug/ms.exe run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms --build-type Release 2>&1 | tail -20 || echo "exit/timeout: $?"
