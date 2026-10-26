@@ -3,6 +3,7 @@
 //! Reads and writes block in `poll(2)` slices so a pending cancellation interrupts them; bytes a
 //! line reader took beyond the current line wait in `pending` for the next read.
 use crate::err::describe;
+use crate::ops::offload;
 use crate::sys::{self, CPath, Interest};
 use alloc::borrow::Cow;
 use alloc::string::String;
@@ -229,15 +230,49 @@ impl Stream {
             ms_rt::glue::task_wait_fd(self.fd, events, -1);
         }
         // Tests run on many threads, which the runtime's scheduler does not support; Windows
-        // pipes and consoles cannot be polled, so they are checked between short task sleeps.
+        // pipes and consoles cannot be polled, so they are checked in short slices.
         #[cfg(any(windows, test))]
         loop {
             poll_cancel();
-            if sys::wait_ready(self.fd, interest, POLL_SLICE_MS) {
+            // A slice on the blocking pool parks this task, so others run meanwhile.
+            let ready = offload((self.fd, interest), &[], |&(fd, interest), _| {
+                sys::wait_ready(fd, interest, POLL_SLICE_MS)
+            });
+            if ready {
                 // Ready, hung up, or failed: the next read or write reports the details.
                 return;
             }
         }
+    }
+
+    /// Whether the descriptor is a regular file, whose reads and writes cannot be waited on:
+    /// they run on a blocking-pool thread when other tasks could use the time.
+    pub(crate) fn regular(&self) -> bool {
+        !self.pollable
+    }
+
+    /// One `read(2)`; a regular file reads on the blocking pool.
+    pub(crate) fn read_raw(&self, buf: &mut [u8]) -> Result<usize, i32> {
+        if !self.regular() {
+            return sys::read(self.fd, buf);
+        }
+        let read = offload((self.fd, buf.len()), &[], |&(fd, len), _| {
+            let mut buf = alloc::vec![0u8; len];
+            sys::read(fd, &mut buf).map(|n| {
+                buf.truncate(n);
+                buf
+            })
+        })?;
+        buf[..read.len()].copy_from_slice(&read);
+        Ok(read.len())
+    }
+
+    /// One `write(2)`; a regular file writes on the blocking pool.
+    pub(crate) fn write_raw(&self, bytes: &[u8]) -> Result<usize, i32> {
+        if !self.regular() {
+            return sys::write(self.fd, bytes);
+        }
+        offload(self.fd, bytes, |&fd, bytes| sys::write(fd, bytes))
     }
 
     fn read_fd(&mut self, buf: &mut [u8]) -> Result<usize, i32> {
@@ -247,7 +282,7 @@ impl Stream {
                 .map_err(|e| e.raw_os_error().unwrap_or(0));
         }
         self.wait(Interest::Read);
-        sys::read(self.fd, buf)
+        self.read_raw(buf)
     }
 
     /// One read of up to `max` bytes: `None` at end of stream.
@@ -301,7 +336,7 @@ impl Stream {
         while !data.is_empty() {
             self.wait_write();
             let end = data.len().min(1 << 20);
-            match sys::write(self.fd, &data[..end]) {
+            match self.write_raw(&data[..end]) {
                 Ok(0) => {
                     return Err(IoFail {
                         status: STATUS_FAILED,

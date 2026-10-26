@@ -1,9 +1,9 @@
 //! Directory cursors and scoped temporary directories.
 use crate::err::{Fail, Res};
 use crate::ops;
+use crate::ops::poll_cancel;
 use crate::sys::{self, CPath};
 use alloc::vec::Vec;
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_CLOSED, STATUS_UNSUPPORTED};
 
 /// One entry of a directory cursor.
