@@ -148,7 +148,7 @@ export def bench_list() -> Unit:
             return n
     )
 
-    let points = data.map(lambda (x: Int) -> Point: Point(x, (x * 7) % 1000))
+    let small_points = data.map(lambda (x: Int) -> Point: Point(x, (x * 7) % 1000))
 
     bench(
         "list.max_by",
@@ -156,7 +156,9 @@ export def bench_list() -> Unit:
         lambda () -> Int:
             var n = 0
             for i in range(0, 100):
-                if let best = points.max_by(lambda (p: Point) -> Int: p.y): n += best.x
+                if let best = small_points.max_by(
+                    lambda (p: Point) -> Int: p.y
+                ): n += best.x
             return n
     )
 
@@ -167,8 +169,8 @@ export def bench_list() -> Unit:
             var n = 0
 
             for i in range(0, 100):
-                var best = points.get(0)
-                for p in points:
+                var best = small_points.get(0)
+                for p in small_points:
                     if p.y > best.y: best = p
                 n += best.x
 
