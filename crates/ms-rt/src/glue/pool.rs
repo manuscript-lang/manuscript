@@ -371,8 +371,18 @@ fn reap() {
     drop(finished);
 }
 
+std::thread_local! {
+    static ON_POOL: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+}
+
+/// Whether the caller is a pool thread, where a job must not call into the runtime.
+pub fn on_pool_thread() -> bool {
+    ON_POOL.with(|on| on.get())
+}
+
 /// The body of a pool thread.
 fn work() -> ! {
+    ON_POOL.with(|on| on.set(true));
     loop {
         let ptr = {
             let mut pool = lock();

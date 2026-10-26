@@ -4,12 +4,12 @@
 //! serves as the `reader()` / `writer()` `@std/io` views. Every operation first returns bytes a
 //! line reader took ahead to the file, so offsets agree with what the program has consumed.
 use crate::err::{Fail, Res};
-use crate::ops::{self, Info};
+use crate::ops::poll_cancel;
+use crate::ops::{self, Info, offload};
 use crate::path;
 use crate::stream::Stream;
 use crate::sys::{self, CPath};
 use alloc::vec::Vec;
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{
     STATUS_CLOSED, STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED,
     STATUS_UNSUPPORTED,
@@ -83,7 +83,12 @@ impl Stream {
     /// Reads to the end of the file from the current position, failing past `max` bytes.
     pub fn read_file(&mut self, max: i64) -> Res<Vec<u8>> {
         self.admit(Access::Read)?;
-        let data = ops::read_bounded(self.fd, max)?;
+        let data = if self.regular() {
+            let fd = self.fd;
+            offload((fd, max), &[], |&(fd, max), _| ops::read_bounded(fd, max))?
+        } else {
+            ops::read_bounded(self.fd, max)?
+        };
         if self.is_closed() {
             return Err(Fail::status(STATUS_CLOSED));
         }
@@ -116,7 +121,7 @@ impl Stream {
             poll_cancel();
             let mut b = alloc::vec![0u8; size as usize];
             let n = if offset == -1 {
-                sys::read(self.fd, &mut b).map_err(|e| self.fail("read", e))?
+                self.read_raw(&mut b).map_err(|e| self.fail("read", e))?
             } else {
                 let n = pread_full(self.fd, &mut b, offset).map_err(|e| self.fail("read", e))?;
                 offset += n as i64;
@@ -136,7 +141,7 @@ impl Stream {
         }
         for b in buffers {
             if offset == -1 {
-                write_all_fd(self.fd, b).map_err(|e| self.fail("write", e))?;
+                write_all_fd(self.fd, b, self.regular()).map_err(|e| self.fail("write", e))?;
             } else {
                 pwrite_all(self.fd, b, offset).map_err(|e| self.fail("write", e))?;
                 offset += b.len() as i64;
@@ -241,43 +246,59 @@ fn chunk_size(max: Option<i64>) -> Res<usize> {
     }
 }
 
-/// `pread` until the buffer is full or the file ends.
+/// `pread` until the buffer is full or the file ends; positioned I/O needs a seekable file, so
+/// it always runs on the blocking pool when other tasks could use the time.
 fn pread_full(fd: sys::Fd, buf: &mut [u8], offset: i64) -> Result<usize, i32> {
-    let mut done = 0;
-    while done < buf.len() {
-        poll_cancel();
-        match sys::pread(fd, &mut buf[done..], offset + done as i64)? {
-            0 => break,
-            n => done += n,
+    let read = offload((fd, buf.len(), offset), &[], |&(fd, len, offset), _| {
+        let mut buf = alloc::vec![0u8; len];
+        let mut done = 0;
+        while done < len {
+            poll_cancel();
+            match sys::pread(fd, &mut buf[done..], offset + done as i64)? {
+                0 => break,
+                n => done += n,
+            }
         }
-    }
-    Ok(done)
+        buf.truncate(done);
+        Ok::<_, i32>(buf)
+    })?;
+    buf[..read.len()].copy_from_slice(&read);
+    Ok(read.len())
 }
 
-fn write_all_fd(fd: sys::Fd, mut data: &[u8]) -> Result<(), i32> {
-    while !data.is_empty() {
-        poll_cancel();
-        let end = data.len().min(65536);
-        match sys::write(fd, &data[..end]) {
-            Ok(0) => return Err(sys::EIO),
-            Ok(n) => data = &data[n..],
-            Err(e) => return Err(e),
+/// Writes all of `data`; on a regular file (`regular`) that runs on the blocking pool.
+fn write_all_fd(fd: sys::Fd, data: &[u8], regular: bool) -> Result<(), i32> {
+    fn run(fd: sys::Fd, mut data: &[u8]) -> Result<(), i32> {
+        while !data.is_empty() {
+            poll_cancel();
+            let end = data.len().min(65536);
+            match sys::write(fd, &data[..end]) {
+                Ok(0) => return Err(sys::EIO),
+                Ok(n) => data = &data[n..],
+                Err(e) => return Err(e),
+            }
         }
+        Ok(())
     }
-    Ok(())
+    if !regular {
+        return run(fd, data);
+    }
+    offload(fd, data, |&fd, data| run(fd, data))
 }
 
 fn pwrite_all(fd: sys::Fd, data: &[u8], offset: i64) -> Result<(), i32> {
-    let mut done = 0;
-    while done < data.len() {
-        poll_cancel();
-        let end = (done + 65536).min(data.len());
-        match sys::pwrite(fd, &data[done..end], offset + done as i64)? {
-            0 => return Err(sys::EIO),
-            n => done += n,
+    offload((fd, offset), data, |&(fd, offset), data| {
+        let mut done = 0;
+        while done < data.len() {
+            poll_cancel();
+            let end = (done + 65536).min(data.len());
+            match sys::pwrite(fd, &data[done..end], offset + done as i64)? {
+                0 => return Err(sys::EIO),
+                n => done += n,
+            }
         }
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 #[cfg(all(test, unix))]

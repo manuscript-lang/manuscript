@@ -6,10 +6,33 @@ use crate::err::{Fail, Res, read_failure};
 use crate::path;
 use crate::sys::{self, CPath, Errno};
 use alloc::vec::Vec;
-use ms_rt::glue::poll_cancel;
 use ms_rt_abi::{STATUS_LIMIT_EXCEEDED, STATUS_UNSUPPORTED};
 
 pub const UNLIMITED: i64 = i64::MAX;
+
+/// `glue::poll_cancel` for code that also runs as a blocking-pool job, where the runtime is off
+/// limits: a job never checks for a stop request.
+pub(crate) fn poll_cancel() {
+    if !ms_rt::glue::pool::on_pool_thread() {
+        ms_rt::glue::poll_cancel();
+    }
+}
+
+/// Runs `f(&input, bytes)` on a blocking-pool thread when other tasks could use the time, so a
+/// slow disk stalls only the calling task; otherwise inline. The wait is shielded, so `bytes`
+/// may be borrowed, and a stop request takes effect once the call is done. `f` must not call
+/// into the runtime (see [`poll_cancel`]). A call made by a job runs inline.
+pub(crate) fn offload<I: Send + Sync + 'static, O: Send + 'static>(
+    input: I,
+    bytes: &[u8],
+    f: fn(&I, &[u8]) -> O,
+) -> O {
+    #[cfg(not(test))]
+    if !ms_rt::glue::pool::on_pool_thread() && !ms_rt::glue::pool::alone() {
+        return ms_rt::glue::pool::run_shielded(Lane::General, input, bytes, f);
+    }
+    f(&input, bytes)
+}
 
 fn cpath(path: &[u8]) -> Res<CPath> {
     CPath::new(path).ok_or_else(Fail::invalid)
@@ -136,12 +159,10 @@ pub fn append_file(path: &[u8], data: &[u8]) -> Res<()> {
 }
 
 pub fn copy_file(source: &[u8], destination: &[u8], replace: bool, max: i64) -> Res<()> {
-    let s = cpath(source)?;
+    cpath(source)?;
     cpath(destination)?;
-    let fd = sys::open(&s, sys::O_RDONLY, 0).map_err(|e| Fail::errno(e, "open", source))?;
-    let data = read_bounded(fd, max);
-    let _ = sys::close(fd);
-    write_file(destination, &data?, replace)
+    let data = read_file(source, max)?;
+    write_file(destination, &data, replace)
 }
 
 // ---------------------------------------------------------------------------
@@ -289,6 +310,10 @@ pub fn info_of(st: &sys::Stat, name: &[u8]) -> Info {
 }
 
 pub fn stat(path: &[u8], follow: bool) -> Res<Info> {
+    offload(follow, path, |follow, path| stat_now(path, *follow))
+}
+
+fn stat_now(path: &[u8], follow: bool) -> Res<Info> {
     let p = cpath(path)?;
     let st = sys::stat(&p, follow)
         .map_err(|e| Fail::errno(e, if follow { "stat" } else { "lstat" }, path))?;
@@ -319,6 +344,10 @@ pub fn entry_kind(dir: &[u8], name: &[u8], kind: u8) -> (bool, bool) {
 }
 
 pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
+    offload(max, path, |max, path| list_now(path, *max))
+}
+
+fn list_now(path: &[u8], max: i64) -> Res<Vec<Entry>> {
     let p = cpath(path)?;
     let st = sys::stat(&p, true).map_err(|e| Fail::errno(e, "open", path))?;
     if !sys::is_dir(&st) {
@@ -350,6 +379,12 @@ pub fn list(path: &[u8], max: i64) -> Res<Vec<Entry>> {
 // ---------------------------------------------------------------------------
 
 pub fn create_directory(path: &[u8], recursive: bool) -> Res<()> {
+    offload(recursive, path, |recursive, path| {
+        create_directory_now(path, *recursive)
+    })
+}
+
+fn create_directory_now(path: &[u8], recursive: bool) -> Res<()> {
     let p = cpath(path)?;
     let made = if recursive {
         sys::mkdir_all(&p, 0o700)
@@ -404,6 +439,10 @@ fn removal_path(s: &[u8]) -> Result<Vec<u8>, Fail> {
 }
 
 pub fn remove_tree(path: &[u8]) -> Res<()> {
+    offload((), path, |_, path| remove_tree_now(path))
+}
+
+fn remove_tree_now(path: &[u8]) -> Res<()> {
     poll_cancel();
     let p = cpath(path)?;
     let st = match sys::stat(&p, false) {
@@ -418,6 +457,12 @@ pub fn remove_tree(path: &[u8]) -> Res<()> {
 }
 
 pub fn remove(path: &[u8], recursive: bool) -> Res<()> {
+    offload(recursive, path, |recursive, path| {
+        remove_now(path, *recursive)
+    })
+}
+
+fn remove_now(path: &[u8], recursive: bool) -> Res<()> {
     cpath(path)?;
     let p = removal_path(path)?;
     if recursive {
@@ -428,11 +473,21 @@ pub fn remove(path: &[u8], recursive: bool) -> Res<()> {
 }
 
 pub fn rename(source: &[u8], destination: &[u8]) -> Res<()> {
+    offload(destination.to_vec(), source, |destination, source| {
+        rename_now(source, destination)
+    })
+}
+
+fn rename_now(source: &[u8], destination: &[u8]) -> Res<()> {
     let (a, b) = (cpath(source)?, cpath(destination)?);
     sys::rename(&a, &b).map_err(|e| Fail::errno_paths(e, "rename", &[source, destination]))
 }
 
 pub fn read_link(path: &[u8]) -> Res<Vec<u8>> {
+    offload((), path, |_, path| read_link_now(path))
+}
+
+fn read_link_now(path: &[u8]) -> Res<Vec<u8>> {
     let p = cpath(path)?;
     let target = sys::readlink(&p).map_err(|e| Fail::errno(e, "readlink", path))?;
     if !valid_utf8(&target) {
@@ -442,12 +497,24 @@ pub fn read_link(path: &[u8]) -> Res<Vec<u8>> {
 }
 
 pub fn create_link(path: &[u8], target: &[u8]) -> Res<()> {
+    offload(target.to_vec(), path, |target, path| {
+        create_link_now(path, target)
+    })
+}
+
+fn create_link_now(path: &[u8], target: &[u8]) -> Res<()> {
     let p = cpath(path)?;
     let t = cpath(target)?;
     sys::symlink(&t, &p).map_err(|e| Fail::errno_paths(e, "symlink", &[target, path]))
 }
 
 pub fn hard_link(source: &[u8], destination: &[u8]) -> Res<()> {
+    offload(destination.to_vec(), source, |destination, source| {
+        hard_link_now(source, destination)
+    })
+}
+
+fn hard_link_now(source: &[u8], destination: &[u8]) -> Res<()> {
     let (a, b) = (cpath(source)?, cpath(destination)?);
     sys::link(&a, &b).map_err(|e| Fail::errno_paths(e, "link", &[source, destination]))
 }
@@ -458,6 +525,10 @@ pub fn eval_symlinks(original: &[u8]) -> Result<Vec<u8>, Errno> {
 }
 
 pub fn canonicalize(path: &[u8]) -> Res<Vec<u8>> {
+    offload((), path, |_, path| canonicalize_now(path))
+}
+
+fn canonicalize_now(path: &[u8]) -> Res<Vec<u8>> {
     cpath(path)?;
     let s = eval_symlinks(path).map_err(|e| Fail::errno(e, "lstat", path))?;
     if !valid_utf8(&s) {
@@ -517,11 +588,19 @@ pub fn temporary_directory(pattern: &[u8]) -> Res<Vec<u8>> {
 // ---------------------------------------------------------------------------
 
 pub fn stat_filesystem(path: &[u8]) -> Res<sys::FsStat> {
+    offload((), path, |_, path| stat_filesystem_now(path))
+}
+
+fn stat_filesystem_now(path: &[u8]) -> Res<sys::FsStat> {
     let p = cpath(path)?;
     sys::statfs(&p).map_err(|e| Fail::errno(e, "statfs", path))
 }
 
 pub fn chmod_link(path: &[u8], mode: i64) -> Res<()> {
+    offload(mode, path, |v, path| chmod_link_now(path, *v))
+}
+
+fn chmod_link_now(path: &[u8], mode: i64) -> Res<()> {
     let c = cpath(path)?;
     if !(0..=0o7777).contains(&mode) {
         return Err(Fail::invalid());
@@ -530,6 +609,10 @@ pub fn chmod_link(path: &[u8], mode: i64) -> Res<()> {
 }
 
 pub fn access(path: &[u8], mode: i64) -> Res<()> {
+    offload(mode, path, |v, path| access_now(path, *v))
+}
+
+fn access_now(path: &[u8], mode: i64) -> Res<()> {
     let p = cpath(path)?;
     if !(0..=7).contains(&mode) {
         return Err(Fail::invalid());
@@ -538,6 +621,10 @@ pub fn access(path: &[u8], mode: i64) -> Res<()> {
 }
 
 pub fn chmod(path: &[u8], mode: i64) -> Res<()> {
+    offload(mode, path, |v, path| chmod_now(path, *v))
+}
+
+fn chmod_now(path: &[u8], mode: i64) -> Res<()> {
     let p = cpath(path)?;
     if !(0..=0o7777).contains(&mode) {
         return Err(Fail::invalid());
@@ -546,6 +633,12 @@ pub fn chmod(path: &[u8], mode: i64) -> Res<()> {
 }
 
 pub fn chown(path: &[u8], uid: i64, gid: i64, follow: bool) -> Res<()> {
+    offload((uid, gid, follow), path, |&(uid, gid, follow), path| {
+        chown_now(path, uid, gid, follow)
+    })
+}
+
+fn chown_now(path: &[u8], uid: i64, gid: i64, follow: bool) -> Res<()> {
     let p = cpath(path)?;
     if uid < -1 || gid < -1 || uid > 2_147_483_647 || gid > 2_147_483_647 {
         return Err(Fail::invalid());
@@ -555,6 +648,10 @@ pub fn chown(path: &[u8], uid: i64, gid: i64, follow: bool) -> Res<()> {
 }
 
 pub fn truncate(path: &[u8], size: i64) -> Res<()> {
+    offload(size, path, |v, path| truncate_now(path, *v))
+}
+
+fn truncate_now(path: &[u8], size: i64) -> Res<()> {
     let p = cpath(path)?;
     if size < 0 {
         return Err(Fail::invalid());
@@ -563,6 +660,14 @@ pub fn truncate(path: &[u8], size: i64) -> Res<()> {
 }
 
 pub fn set_times(path: &[u8], accessed: (i64, i64), modified: (i64, i64), follow: bool) -> Res<()> {
+    offload(
+        (accessed, modified, follow),
+        path,
+        |&(accessed, modified, follow), path| set_times_now(path, accessed, modified, follow),
+    )
+}
+
+fn set_times_now(path: &[u8], accessed: (i64, i64), modified: (i64, i64), follow: bool) -> Res<()> {
     let p = cpath(path)?;
     sys::utimens(&p, accessed, modified, follow).map_err(|e| Fail::errno(e, "chtimes", path))
 }
