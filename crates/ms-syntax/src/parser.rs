@@ -482,6 +482,10 @@ impl<'a> Parser<'a> {
         let grouped = self.take(Tok::LParen);
         loop {
             names.push(self.need(Tok::Name)?);
+            if self.kind() == Tok::Name && self.text(self.peek()) == "as" {
+                let t = self.peek();
+                return self.fail(t, "imports cannot be renamed with 'as'; import the name as the module declares it");
+            }
             if !self.take(Tok::Comma) {
                 break;
             }

@@ -7,31 +7,31 @@
 {"id":4,"jsonrpc":"2.0","result":[]}
 {"id":5,"jsonrpc":"2.0","result":null}
 {"id":6,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":7,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":7,"jsonrpc":"2.0"}
 {"id":8,"jsonrpc":"2.0","result":[]}
 {"id":9,"jsonrpc":"2.0","result":null}
 {"id":10,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":11,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":11,"jsonrpc":"2.0"}
 {"id":12,"jsonrpc":"2.0","result":[]}
 {"id":13,"jsonrpc":"2.0","result":null}
 {"id":14,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":15,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":15,"jsonrpc":"2.0"}
 {"id":16,"jsonrpc":"2.0","result":[]}
 {"id":17,"jsonrpc":"2.0","result":null}
 {"id":18,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":19,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":19,"jsonrpc":"2.0"}
 {"id":20,"jsonrpc":"2.0","result":[]}
 {"id":21,"jsonrpc":"2.0","result":null}
 {"id":22,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":23,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":23,"jsonrpc":"2.0"}
 {"id":24,"jsonrpc":"2.0","result":[]}
 {"id":25,"jsonrpc":"2.0","result":null}
 {"id":26,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":27,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":27,"jsonrpc":"2.0"}
 {"id":28,"jsonrpc":"2.0","result":[]}
 {"id":29,"jsonrpc":"2.0","result":null}
 {"id":30,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":31,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":31,"jsonrpc":"2.0"}
 {"id":32,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":33,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":34,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: Callable[[Int], Int]\n```"},"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}}}}
@@ -51,31 +51,31 @@
 {"id":48,"jsonrpc":"2.0","result":[]}
 {"id":49,"jsonrpc":"2.0","result":null}
 {"id":50,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":51,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":51,"jsonrpc":"2.0"}
 {"id":52,"jsonrpc":"2.0","result":[]}
 {"id":53,"jsonrpc":"2.0","result":null}
 {"id":54,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":55,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":55,"jsonrpc":"2.0"}
 {"id":56,"jsonrpc":"2.0","result":[]}
 {"id":57,"jsonrpc":"2.0","result":null}
 {"id":58,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":59,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":59,"jsonrpc":"2.0"}
 {"id":60,"jsonrpc":"2.0","result":[]}
 {"id":61,"jsonrpc":"2.0","result":null}
 {"id":62,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":63,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":63,"jsonrpc":"2.0"}
 {"id":64,"jsonrpc":"2.0","result":[]}
 {"id":65,"jsonrpc":"2.0","result":null}
 {"id":66,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":67,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":67,"jsonrpc":"2.0"}
 {"id":68,"jsonrpc":"2.0","result":[]}
 {"id":69,"jsonrpc":"2.0","result":null}
 {"id":70,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":71,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":71,"jsonrpc":"2.0"}
 {"id":72,"jsonrpc":"2.0","result":[]}
 {"id":73,"jsonrpc":"2.0","result":null}
 {"id":74,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":75,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":75,"jsonrpc":"2.0"}
 {"id":76,"jsonrpc":"2.0","result":[{"range":{"end":{"character":32,"line":1},"start":{"character":26,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":77,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":2},"start":{"character":11,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":78,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: Callable[[Int], Int]\n```"},"range":{"end":{"character":32,"line":1},"start":{"character":26,"line":1}}}}
@@ -87,11 +87,11 @@
 {"id":84,"jsonrpc":"2.0","result":[]}
 {"id":85,"jsonrpc":"2.0","result":null}
 {"id":86,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":87,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":87,"jsonrpc":"2.0"}
 {"id":88,"jsonrpc":"2.0","result":[]}
 {"id":89,"jsonrpc":"2.0","result":null}
 {"id":90,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":91,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":91,"jsonrpc":"2.0"}
 {"id":92,"jsonrpc":"2.0","result":[]}
 {"id":93,"jsonrpc":"2.0","result":[{"range":{"end":{"character":8,"line":3},"start":{"character":4,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":94,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nmain: Callable[[], Int]\n```"},"range":{"end":{"character":8,"line":3},"start":{"character":4,"line":3}}}}
@@ -103,19 +103,19 @@
 {"id":100,"jsonrpc":"2.0","result":[]}
 {"id":101,"jsonrpc":"2.0","result":null}
 {"id":102,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":103,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":103,"jsonrpc":"2.0"}
 {"id":104,"jsonrpc":"2.0","result":[]}
 {"id":105,"jsonrpc":"2.0","result":null}
 {"id":106,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":107,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":107,"jsonrpc":"2.0"}
 {"id":108,"jsonrpc":"2.0","result":[]}
 {"id":109,"jsonrpc":"2.0","result":null}
 {"id":110,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":111,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":111,"jsonrpc":"2.0"}
 {"id":112,"jsonrpc":"2.0","result":[]}
 {"id":113,"jsonrpc":"2.0","result":null}
 {"id":114,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":115,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":115,"jsonrpc":"2.0"}
 {"id":116,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":5},"start":{"character":23,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":117,"jsonrpc":"2.0","result":[{"range":{"end":{"character":15,"line":4},"start":{"character":8,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":118,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ncounter: Counter\n```"},"range":{"end":{"character":15,"line":4},"start":{"character":8,"line":4}}}}
@@ -143,11 +143,11 @@
 {"id":140,"jsonrpc":"2.0","result":[]}
 {"id":141,"jsonrpc":"2.0","result":null}
 {"id":142,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":143,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":143,"jsonrpc":"2.0"}
 {"id":144,"jsonrpc":"2.0","result":[]}
 {"id":145,"jsonrpc":"2.0","result":null}
 {"id":146,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":147,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":147,"jsonrpc":"2.0"}
 {"id":148,"jsonrpc":"2.0","result":[{"range":{"end":{"character":23,"line":6},"start":{"character":18,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":149,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":5},"start":{"character":8,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":150,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nvalue: Int\n```"},"range":{"end":{"character":13,"line":5},"start":{"character":8,"line":5}}}}
@@ -183,11 +183,11 @@
 {"id":180,"jsonrpc":"2.0","result":[]}
 {"id":181,"jsonrpc":"2.0","result":null}
 {"id":182,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":183,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":183,"jsonrpc":"2.0"}
 {"id":184,"jsonrpc":"2.0","result":[]}
 {"id":185,"jsonrpc":"2.0","result":null}
 {"id":186,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":187,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":187,"jsonrpc":"2.0"}
 {"id":188,"jsonrpc":"2.0","result":[{"range":{"end":{"character":32,"line":1},"start":{"character":26,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":189,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":2},"start":{"character":11,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":190,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: Callable[[Int], Int]\n```"},"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}}}}
@@ -207,19 +207,19 @@
 {"id":204,"jsonrpc":"2.0","result":[]}
 {"id":205,"jsonrpc":"2.0","result":null}
 {"id":206,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":207,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":207,"jsonrpc":"2.0"}
 {"id":208,"jsonrpc":"2.0","result":[]}
 {"id":209,"jsonrpc":"2.0","result":null}
 {"id":210,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":211,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":211,"jsonrpc":"2.0"}
 {"id":212,"jsonrpc":"2.0","result":[]}
 {"id":213,"jsonrpc":"2.0","result":null}
 {"id":214,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":215,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":215,"jsonrpc":"2.0"}
 {"id":216,"jsonrpc":"2.0","result":[]}
 {"id":217,"jsonrpc":"2.0","result":null}
 {"id":218,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":219,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":219,"jsonrpc":"2.0"}
 {"id":220,"jsonrpc":"2.0","result":[{"range":{"end":{"character":39,"line":0},"start":{"character":32,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":25,"line":4},"start":{"character":18,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":221,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":0},"start":{"character":12,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":222,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nCounter: Counter\n```"},"range":{"end":{"character":19,"line":0},"start":{"character":12,"line":0}}}}
@@ -239,27 +239,27 @@
 {"id":236,"jsonrpc":"2.0","result":[]}
 {"id":237,"jsonrpc":"2.0","result":null}
 {"id":238,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":239,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":239,"jsonrpc":"2.0"}
 {"id":240,"jsonrpc":"2.0","result":[]}
 {"id":241,"jsonrpc":"2.0","result":null}
 {"id":242,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":243,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":243,"jsonrpc":"2.0"}
 {"id":244,"jsonrpc":"2.0","result":[]}
 {"id":245,"jsonrpc":"2.0","result":null}
 {"id":246,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":247,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":247,"jsonrpc":"2.0"}
 {"id":248,"jsonrpc":"2.0","result":[]}
 {"id":249,"jsonrpc":"2.0","result":null}
 {"id":250,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":251,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":251,"jsonrpc":"2.0"}
 {"id":252,"jsonrpc":"2.0","result":[]}
 {"id":253,"jsonrpc":"2.0","result":null}
 {"id":254,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":255,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":255,"jsonrpc":"2.0"}
 {"id":256,"jsonrpc":"2.0","result":[]}
 {"id":257,"jsonrpc":"2.0","result":null}
 {"id":258,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":259,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":259,"jsonrpc":"2.0"}
 {"id":260,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":261,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":262,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: Callable[[Int], Int]\n```"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
@@ -275,27 +275,27 @@
 {"id":272,"jsonrpc":"2.0","result":[]}
 {"id":273,"jsonrpc":"2.0","result":null}
 {"id":274,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":275,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":275,"jsonrpc":"2.0"}
 {"id":276,"jsonrpc":"2.0","result":[]}
 {"id":277,"jsonrpc":"2.0","result":null}
 {"id":278,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":279,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":279,"jsonrpc":"2.0"}
 {"id":280,"jsonrpc":"2.0","result":[]}
 {"id":281,"jsonrpc":"2.0","result":null}
 {"id":282,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":283,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":283,"jsonrpc":"2.0"}
 {"id":284,"jsonrpc":"2.0","result":[]}
 {"id":285,"jsonrpc":"2.0","result":null}
 {"id":286,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":287,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":287,"jsonrpc":"2.0"}
 {"id":288,"jsonrpc":"2.0","result":[]}
 {"id":289,"jsonrpc":"2.0","result":null}
 {"id":290,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":291,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":291,"jsonrpc":"2.0"}
 {"id":292,"jsonrpc":"2.0","result":[]}
 {"id":293,"jsonrpc":"2.0","result":null}
 {"id":294,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":295,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":295,"jsonrpc":"2.0"}
 {"id":296,"jsonrpc":"2.0","result":[{"range":{"end":{"character":12,"line":4},"start":{"character":11,"line":4}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":297,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":3},"start":{"character":18,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":298,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nn: Int\n```"},"range":{"end":{"character":12,"line":4},"start":{"character":11,"line":4}}}}
@@ -303,11 +303,11 @@
 {"id":300,"jsonrpc":"2.0","result":[]}
 {"id":301,"jsonrpc":"2.0","result":null}
 {"id":302,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":303,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":303,"jsonrpc":"2.0"}
 {"id":304,"jsonrpc":"2.0","result":[]}
 {"id":305,"jsonrpc":"2.0","result":null}
 {"id":306,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":307,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":307,"jsonrpc":"2.0"}
 {"id":308,"jsonrpc":"2.0","result":[]}
 {"id":309,"jsonrpc":"2.0","result":[{"range":{"end":{"character":10,"line":6},"start":{"character":4,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":310,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhidden: Callable[[], Int]\n```"},"range":{"end":{"character":10,"line":6},"start":{"character":4,"line":6}}}}
@@ -319,50 +319,50 @@
 {"id":316,"jsonrpc":"2.0","result":[]}
 {"id":317,"jsonrpc":"2.0","result":null}
 {"id":318,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":319,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":319,"jsonrpc":"2.0"}
 {"id":320,"jsonrpc":"2.0","result":[]}
 {"id":321,"jsonrpc":"2.0","result":null}
 {"id":322,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":323,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":323,"jsonrpc":"2.0"}
 {"id":324,"jsonrpc":"2.0","result":[]}
 {"id":325,"jsonrpc":"2.0","result":null}
 {"id":326,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":327,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":327,"jsonrpc":"2.0"}
 {"id":328,"jsonrpc":"2.0","result":[]}
 {"id":329,"jsonrpc":"2.0","result":null}
 {"id":330,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":331,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":331,"jsonrpc":"2.0"}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms","version":1}}
 {"id":332,"jsonrpc":"2.0","result":[]}
 {"id":333,"jsonrpc":"2.0","result":null}
 {"id":334,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":335,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":335,"jsonrpc":"2.0"}
 {"id":336,"jsonrpc":"2.0","result":[]}
 {"id":337,"jsonrpc":"2.0","result":null}
 {"id":338,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":339,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":339,"jsonrpc":"2.0"}
 {"id":340,"jsonrpc":"2.0","result":[]}
 {"id":341,"jsonrpc":"2.0","result":null}
 {"id":342,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":343,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":343,"jsonrpc":"2.0"}
 {"id":344,"jsonrpc":"2.0","result":[]}
 {"id":345,"jsonrpc":"2.0","result":null}
 {"id":346,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":347,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":347,"jsonrpc":"2.0"}
 {"id":348,"jsonrpc":"2.0","result":[]}
 {"id":349,"jsonrpc":"2.0","result":null}
 {"id":350,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":351,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":351,"jsonrpc":"2.0"}
 {"id":352,"jsonrpc":"2.0","result":[]}
 {"id":353,"jsonrpc":"2.0","result":null}
 {"id":354,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":355,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":355,"jsonrpc":"2.0"}
 {"id":356,"jsonrpc":"2.0","result":[]}
 {"id":357,"jsonrpc":"2.0","result":null}
 {"id":358,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":359,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":359,"jsonrpc":"2.0"}
 {"id":360,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":361,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":362,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: Callable[[Int], Int]\n```"},"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}}}}
@@ -374,19 +374,19 @@
 {"id":368,"jsonrpc":"2.0","result":[]}
 {"id":369,"jsonrpc":"2.0","result":null}
 {"id":370,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":371,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":371,"jsonrpc":"2.0"}
 {"id":372,"jsonrpc":"2.0","result":[]}
 {"id":373,"jsonrpc":"2.0","result":null}
 {"id":374,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":375,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":375,"jsonrpc":"2.0"}
 {"id":376,"jsonrpc":"2.0","result":[]}
 {"id":377,"jsonrpc":"2.0","result":null}
 {"id":378,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":379,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":379,"jsonrpc":"2.0"}
 {"id":380,"jsonrpc":"2.0","result":[]}
 {"id":381,"jsonrpc":"2.0","result":null}
 {"id":382,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":383,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":383,"jsonrpc":"2.0"}
 {"id":384,"jsonrpc":"2.0","result":[{"range":{"end":{"character":32,"line":1},"start":{"character":26,"line":1}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":6},"start":{"character":11,"line":6}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":385,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":2},"start":{"character":11,"line":2}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"}]}
 {"id":386,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nhelper: Callable[[Int], Int]\n```"},"range":{"end":{"character":17,"line":2},"start":{"character":11,"line":2}}}}
@@ -402,27 +402,27 @@
 {"id":396,"jsonrpc":"2.0","result":[]}
 {"id":397,"jsonrpc":"2.0","result":null}
 {"id":398,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":399,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":399,"jsonrpc":"2.0"}
 {"id":400,"jsonrpc":"2.0","result":[]}
 {"id":401,"jsonrpc":"2.0","result":null}
 {"id":402,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":403,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":403,"jsonrpc":"2.0"}
 {"id":404,"jsonrpc":"2.0","result":[]}
 {"id":405,"jsonrpc":"2.0","result":null}
 {"id":406,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":407,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":407,"jsonrpc":"2.0"}
 {"id":408,"jsonrpc":"2.0","result":[]}
 {"id":409,"jsonrpc":"2.0","result":null}
 {"id":410,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":411,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":411,"jsonrpc":"2.0"}
 {"id":412,"jsonrpc":"2.0","result":[]}
 {"id":413,"jsonrpc":"2.0","result":null}
 {"id":414,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":415,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":415,"jsonrpc":"2.0"}
 {"id":416,"jsonrpc":"2.0","result":[]}
 {"id":417,"jsonrpc":"2.0","result":null}
 {"id":418,"jsonrpc":"2.0","result":null}
-{"error":{"code":-32602,"message":"select a resolved source declaration or use"},"id":419,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":419,"jsonrpc":"2.0"}
 {"id":420,"jsonrpc":"2.0","result":[{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":30,"line":0},"start":{"character":24,"line":0}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"},{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/helper.ms"},{"range":{"end":{"character":22,"line":5},"start":{"character":16,"line":5}},"uri":"file://$TMP/ms-lsp-project-PID/project/main.ms"}]}
 {"id":421,"jsonrpc":"2.0","result":[{"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}},"uri":"file://$TMP/ms-lsp-project-PID/project/util.ms"}]}
 {"id":422,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\ndouble: Callable[[Int], Int]\n```"},"range":{"end":{"character":17,"line":3},"start":{"character":11,"line":3}}}}
