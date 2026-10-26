@@ -1,8 +1,10 @@
-//! The `unwind` pass: lets a cancelled task release the values its frames own.
+//! The `unwind` pass: lets a cancelled or faulted task release the values its frames own.
 //!
-//! Cancellation leaves a task by a jump, so no `drop` after the park point runs. Around every
-//! call that can reach a cancellation point the pass registers one runtime cleanup per owned
-//! value that is live across the call, and discards them when the call returns:
+//! Cancellation and a guarded fault leave a task by a jump, so no `drop` after the park or
+//! fault point runs. Around every instruction that can reach a cancellation point or fault the
+//! pass registers one runtime cleanup per owned value that is live across it, and discards
+//! them when it completes; a run of such instructions with the same live values shares one
+//! registration:
 //!
 //! ```text
 //! h = cleanup.push v, drop_if_unwinding;  ..;  call f(..);  call.rt msrt_cleanup_discard(h)
@@ -10,7 +12,8 @@
 //!
 //! `cleanup.push` keeps a bitwise copy of `v`, which is sound because `v` is owned, live and
 //! not consumed by the call. The cleanup drops `v` only when `msrt_unwind_drops` says a
-//! cancellation is leaving a guarded task; a fault or a process exit frees nothing.
+//! cancellation or a fault is leaving a guarded task; a fault outside any guard or a process
+//! exit frees nothing.
 //!
 //! Only programs that start tasks or workers are rewritten. A value moved out of a field and
 //! not yet filled back leaves a hole in its owner, so calls inside that window are skipped, as
@@ -69,6 +72,7 @@ pub fn run(m: &mut Module) -> bool {
         return false;
     }
     let parks = parking_funcs(m);
+    let faults = faulting_funcs(m, &parks);
     let count = m.funcs.len();
     let discard = m.add_extern(ExternDef {
         name: "msrt_cleanup_discard".into(),
@@ -83,6 +87,7 @@ pub fn run(m: &mut Module) -> bool {
     });
     let mut cx = Cx {
         parks,
+        faults,
         discard,
         closers: HashMap::new(),
         with_closers: HashMap::new(),
@@ -98,6 +103,8 @@ pub fn run(m: &mut Module) -> bool {
 
 struct Cx {
     parks: Vec<bool>,
+    /// Which functions can fault, directly or through a callee.
+    faults: Vec<bool>,
     discard: ExtId,
     /// The cleanup that drops a value of a type while a cancellation unwinds.
     closers: HashMap<Ty, FuncId>,
@@ -143,6 +150,51 @@ fn parking_funcs(m: &Module) -> Vec<bool> {
         }
     }
     parks
+}
+
+/// Which functions can fault: a checked operation, an explicit fault, an indirect call or a
+/// runtime call, directly or through a callee. A function that parks can also fault.
+fn faulting_funcs(m: &Module, parks: &[bool]) -> Vec<bool> {
+    let n = m.funcs.len();
+    let mut faults = parks.to_vec();
+    let mut callees: Vec<Vec<usize>> = vec![Vec::new(); n];
+    for (i, f) in m.funcs.iter().enumerate() {
+        if f.blocks.iter().any(|b| matches!(b.term, Term::Fault(_))) {
+            faults[i] = true;
+        }
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            match (inst.op, inst.imm) {
+                (Op::Call, Imm::Func(g)) => callees[i].push(g.index()),
+                (Op::Call, _) => {}
+                (Op::CallRt | Op::CallInd | Op::CallMethod, _) => faults[i] = true,
+                (op, _) if op.info().effects.faults => faults[i] = true,
+                _ => {}
+            }
+        }
+    }
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for i in 0..n {
+            if !faults[i] && callees[i].iter().any(|&g| faults[g]) {
+                faults[i] = true;
+                changed = true;
+            }
+        }
+    }
+    faults
+}
+
+/// Whether `inst` can reach a cancellation point or fault.
+fn exits_at(m: &Module, cx: &Cx, inst: &Inst) -> bool {
+    if parks_at(m, cx, inst) {
+        return true;
+    }
+    match (inst.op, inst.imm) {
+        (Op::Call, Imm::Func(g)) => cx.faults.get(g.index()).copied().unwrap_or(true),
+        (Op::Call, _) => true,
+        (op, _) => op.info().effects.faults,
+    }
 }
 
 /// Whether `inst` can reach a cancellation point.
@@ -256,6 +308,324 @@ fn wrap_with_closers(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     changed
 }
 
+/// What one liveness walk learned: the owned values live on entry to each block, the windows
+/// to register and the values to register before a terminating fault.
+struct Walk {
+    entry: Vec<Option<BTreeSet<u32>>>,
+    plans: Vec<Vec<Window>>,
+    at_fault: Vec<Vec<Value>>,
+}
+
+/// Walks `f` in reverse post-order tracking which owned values are live, and plans a
+/// registration around each instruction that can park or fault. `hoisted` holds, per block,
+/// values a loop registration already covers.
+fn analyze(
+    m: &Module,
+    cx: &Cx,
+    f: &Func,
+    owned_def: &[bool],
+    closed_by_with: &BTreeSet<u32>,
+    holes: &[u32],
+    hoisted: &[BTreeSet<u32>],
+) -> Walk {
+    let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
+    // Per block: the instruction run `first..=last` to cover and the values to register for it.
+    let mut plans: Vec<Vec<Window>> = vec![Vec::new(); f.blocks.len()];
+    // Per block: values to register before a terminating fault, which never returns.
+    let mut at_fault: Vec<Vec<Value>> = vec![Vec::new(); f.blocks.len()];
+    for b in f.rpo() {
+        let bi = b.index();
+        let blk = &f.blocks[bi];
+        let mut live: BTreeSet<u32> = match (&entry[bi], bi) {
+            (Some(s), _) => s.clone(),
+            (None, 0) => BTreeSet::new(),
+            (None, _) => continue,
+        };
+        for p in &blk.params {
+            if owned_def[p.value.index()] {
+                live.insert(p.value.0);
+            }
+        }
+        let mut open = holes[bi];
+        // The values of the window that the latest instruction may still extend.
+        let mut reach: Option<Vec<Value>> = None;
+        for (k, inst) in blk.insts.iter().enumerate() {
+            let modes = crate::verify::arg_modes(m, inst);
+            let consumed: Vec<u32> = inst
+                .args
+                .iter()
+                .zip(&modes)
+                .filter(|(a, mode)| **mode == Mode::Own && owned_def[a.index()])
+                .map(|(a, _)| a.0)
+                .collect();
+            for c in &consumed {
+                live.remove(c);
+            }
+            if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
+                // A window across a hole would drop a half-emptied owner, and one across a
+                // `with` open or close would discard an entry that is not its own.
+                reach = None;
+            } else if !live.is_empty() && exits_at(m, cx, inst) {
+                let drops = coverable(&live, closed_by_with, &hoisted[bi]);
+                match (&mut reach, plans[bi].last_mut()) {
+                    (Some(set), Some(w)) if *set == drops => w.last = k,
+                    _ => {
+                        reach = None;
+                        if !drops.is_empty() {
+                            reach = Some(drops.clone());
+                            plans[bi].push(Window {
+                                first: k,
+                                last: k,
+                                values: drops,
+                            });
+                        }
+                    }
+                }
+            }
+            open = hole_step(open, inst.op);
+            if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
+                live.insert(r.0);
+            }
+        }
+        if open == 0 && matches!(blk.term, Term::Fault(_)) {
+            at_fault[bi] = coverable(&live, closed_by_with, &hoisted[bi]);
+        }
+        let mut edges: Vec<Target> = Vec::new();
+        blk.term.for_each_target(|t| edges.push(t.clone()));
+        for t in edges {
+            let dest = &f.blocks[t.block.index()];
+            let mut after = live.clone();
+            for (a, p) in t.args.iter().zip(&dest.params) {
+                if p.mode == Mode::Own && owned_def[a.index()] {
+                    after.remove(&a.0);
+                }
+            }
+            if entry[t.block.index()].is_none() {
+                entry[t.block.index()] = Some(after);
+            }
+        }
+    }
+    Walk {
+        entry,
+        plans,
+        at_fault,
+    }
+}
+
+/// Registers values that stay owned and live across a whole loop once, before the loop, and
+/// discards them where the loop is left, instead of around every faulting instruction inside.
+///
+/// A loop is rewritten when it has a single entry (its header), no moved-out projection, and
+/// some owned value that is live into the header and consumed nowhere inside the loop (an exit
+/// edge or a `ret` may consume it: the discard comes first). Entry edges are redirected through a
+/// new block that registers the values; every exit edge gets a block that discards them, and a
+/// `ret` inside the loop discards them just before it. Outer loops are rewritten first, so an
+/// inner loop only adds the values the outer loop does not already cover.
+///
+/// Returns, per block, the values a loop registration covers, and whether anything changed.
+fn hoist_loops(
+    m: &mut Module,
+    cx: &mut Cx,
+    f: &mut Func,
+    owned_def: &mut Vec<bool>,
+    closed_by_with: &BTreeSet<u32>,
+) -> (Vec<BTreeSet<u32>>, bool) {
+    let n = f.blocks.len();
+    let none = || vec![BTreeSet::new(); n];
+    let holes = hole_states(f);
+    let entry = analyze(m, cx, f, owned_def, closed_by_with, &holes, &none()).entry;
+    let preds = f.predecessors();
+    let rpo = f.rpo();
+    let idom = crate::verify::dominators(f, &rpo, &preds);
+    let dominates = |a: usize, mut b: usize| -> bool {
+        if idom[b] == usize::MAX {
+            return false;
+        }
+        while b != a {
+            if b == 0 {
+                return false;
+            }
+            b = idom[b];
+        }
+        true
+    };
+    // (header, body) per natural loop whose only way in is its header.
+    let mut loops: Vec<(usize, Vec<usize>)> = Vec::new();
+    for h in 1..n {
+        let latches: Vec<usize> = preds[h]
+            .iter()
+            .map(|b| b.index())
+            .filter(|&p| dominates(h, p))
+            .collect();
+        if latches.is_empty() {
+            continue;
+        }
+        let mut body = vec![h];
+        let mut work = latches;
+        while let Some(b) = work.pop() {
+            if !body.contains(&b) {
+                body.push(b);
+                work.extend(preds[b].iter().map(|p| p.index()));
+            }
+        }
+        let closed_off = body
+            .iter()
+            .all(|&b| b == h || preds[b].iter().all(|p| body.contains(&p.index())));
+        let no_holes = body
+            .iter()
+            .all(|&b| holes[b] == 0 && f.blocks[b].insts.iter().all(|i| i.op != Op::MoveOut));
+        if closed_off && no_holes {
+            loops.push((h, body));
+        }
+    }
+    loops.sort_by_key(|(_, body)| std::cmp::Reverse(body.len()));
+    let mut covered: Vec<BTreeSet<u32>> = none();
+    let mut chosen: Vec<(usize, Vec<Value>)> = Vec::new();
+    for (h, body) in &loops {
+        let Some(live) = &entry[*h] else { continue };
+        let used = consumed_inside(m, f, owned_def, body);
+        let held: Vec<Value> = live
+            .iter()
+            .filter(|v| {
+                !closed_by_with.contains(v) && !covered[*h].contains(v) && !used.contains(v)
+            })
+            .map(|v| Value(*v))
+            .collect();
+        if held.is_empty() {
+            chosen.push((*h, Vec::new()));
+            continue;
+        }
+        for &b in body {
+            covered[b].extend(held.iter().map(|v| v.0));
+        }
+        chosen.push((*h, held));
+    }
+    let mut bodies: Vec<Vec<usize>> = loops.iter().map(|(_, b)| b.clone()).collect();
+    let mut changed = false;
+    for (li, (h, held)) in chosen.iter().enumerate() {
+        if held.is_empty() {
+            continue;
+        }
+        changed = true;
+        let h = *h;
+        let body = bodies[li].clone();
+        let loc = f.blocks[h].term_loc;
+        let outside: Vec<usize> = f.predecessors()[h]
+            .iter()
+            .map(|b| b.index())
+            .filter(|b| !body.contains(b))
+            .collect();
+        // The registering block takes over the header's entry edges.
+        let pre = f.new_block().index();
+        covered.push(BTreeSet::new());
+        let params: Vec<BlockParam> = f.blocks[h]
+            .params
+            .clone()
+            .into_iter()
+            .map(|p| BlockParam {
+                value: f.new_value(f.ty(p.value)),
+                mode: p.mode,
+            })
+            .collect();
+        let mut insts = Vec::new();
+        let first = push_all(m, cx, f, &mut insts, held, loc);
+        let args = params.iter().map(|p| p.value).collect();
+        f.blocks[pre].params = params;
+        f.blocks[pre].insts = insts;
+        f.blocks[pre].term = Term::Br(Target {
+            block: Block(h as u32),
+            args,
+        });
+        f.blocks[pre].term_loc = loc;
+        for q in &outside {
+            f.blocks[*q].term.for_each_target_mut(|t| {
+                if t.block.index() == h {
+                    t.block = Block(pre as u32);
+                }
+            });
+        }
+        for (lj, other) in bodies.iter_mut().enumerate() {
+            if lj != li && other.contains(&h) && outside.iter().any(|q| other.contains(q)) {
+                other.push(pre);
+            }
+        }
+        let discard = |f: &mut Func, loc| Inst {
+            op: Op::CallRt,
+            args: vec![first],
+            imm: Imm::Ext(cx.discard),
+            res: Some(f.new_value(Ty::UNIT)),
+            loc,
+        };
+        // Every way out discards the registrations first.
+        for &b in &body {
+            if matches!(f.blocks[b].term, Term::Ret(_)) {
+                let inst = discard(f, f.blocks[b].term_loc);
+                f.blocks[b].insts.push(inst);
+            }
+            let mut exits: Vec<(usize, Target)> = Vec::new();
+            let mut slot = 0;
+            f.blocks[b].term.for_each_target(|t| {
+                if !body.contains(&t.block.index()) {
+                    exits.push((slot, t.clone()));
+                }
+                slot += 1;
+            });
+            for (slot, t) in exits {
+                let out = f.new_block().index();
+                // The discard runs with the loop's registrations still in place.
+                covered.push(covered[b].clone());
+                let inst = discard(f, f.blocks[b].term_loc);
+                f.blocks[out].insts.push(inst);
+                f.blocks[out].term = Term::Br(t.clone());
+                f.blocks[out].term_loc = f.blocks[b].term_loc;
+                let mut at = 0;
+                f.blocks[b].term.for_each_target_mut(|x| {
+                    if at == slot {
+                        x.block = Block(out as u32);
+                        x.args = Vec::new();
+                    }
+                    at += 1;
+                });
+                for (lj, other) in bodies.iter_mut().enumerate() {
+                    if lj != li && other.contains(&b) && other.contains(&t.block.index()) {
+                        other.push(out);
+                    }
+                }
+            }
+        }
+    }
+    owned_def.resize(f.values.len(), false);
+    debug_assert_eq!(covered.len(), f.blocks.len());
+    (covered, changed)
+}
+
+/// Owned values consumed by an instruction in `body`, or passed on an edge that stays inside it.
+fn consumed_inside(m: &Module, f: &Func, owned_def: &[bool], body: &[usize]) -> BTreeSet<u32> {
+    let mut used = BTreeSet::new();
+    for &b in body {
+        let blk = &f.blocks[b];
+        for inst in &blk.insts {
+            let modes = crate::verify::arg_modes(m, inst);
+            for (a, mode) in inst.args.iter().zip(&modes) {
+                if *mode == Mode::Own && owned_def[a.index()] {
+                    used.insert(a.0);
+                }
+            }
+        }
+        blk.term.for_each_target(|t| {
+            if !body.contains(&t.block.index()) {
+                return;
+            }
+            for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                if p.mode == Mode::Own && owned_def[a.index()] {
+                    used.insert(a.0);
+                }
+            }
+        });
+    }
+    used
+}
+
 fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     if f.blocks.is_empty() {
         return false;
@@ -283,7 +653,6 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let wrapped = wrap_with_closers(m, cx, f);
-    let holes = hole_states(f);
     // Values an existing cleanup entry (a `with` close) uses: it must see them undropped.
     let closed_by_with: BTreeSet<u32> = f
         .blocks
@@ -292,106 +661,101 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         .filter(|i| i.op == Op::CleanupPush)
         .filter_map(|i| i.args.first().map(|v| v.0))
         .collect();
-    let mut entry: Vec<Option<BTreeSet<u32>>> = vec![None; f.blocks.len()];
-    // Per block: instruction index -> values to register before it.
-    let mut plans: Vec<Vec<(usize, Vec<Value>)>> = vec![Vec::new(); f.blocks.len()];
-    for b in f.rpo() {
-        let bi = b.index();
-        let blk = &f.blocks[bi];
-        let mut live: BTreeSet<u32> = match (&entry[bi], bi) {
-            (Some(s), _) => s.clone(),
-            (None, 0) => BTreeSet::new(),
-            (None, _) => continue,
-        };
-        for p in &blk.params {
-            if owned_def[p.value.index()] {
-                live.insert(p.value.0);
-            }
-        }
-        let mut open = holes[bi];
-        for (k, inst) in blk.insts.iter().enumerate() {
-            let modes = crate::verify::arg_modes(m, inst);
-            let consumed: Vec<u32> = inst
-                .args
-                .iter()
-                .zip(&modes)
-                .filter(|(a, mode)| **mode == Mode::Own && owned_def[a.index()])
-                .map(|(a, _)| a.0)
-                .collect();
-            for c in &consumed {
-                live.remove(c);
-            }
-            if open == 0 && !live.is_empty() && parks_at(m, cx, inst) {
-                let drops: Vec<Value> = live
-                    .iter()
-                    .filter(|v| !closed_by_with.contains(v))
-                    .map(|v| Value(*v))
-                    .collect();
-                if !drops.is_empty() {
-                    plans[bi].push((k, drops));
-                }
-            }
-            open = hole_step(open, inst.op);
-            if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
-                live.insert(r.0);
-            }
-        }
-        let mut edges: Vec<Target> = Vec::new();
-        blk.term.for_each_target(|t| edges.push(t.clone()));
-        for t in edges {
-            let dest = &f.blocks[t.block.index()];
-            let mut after = live.clone();
-            for (a, p) in t.args.iter().zip(&dest.params) {
-                if p.mode == Mode::Own && owned_def[a.index()] {
-                    after.remove(&a.0);
-                }
-            }
-            if entry[t.block.index()].is_none() {
-                entry[t.block.index()] = Some(after);
-            }
-        }
+    let (hoisted, hoists) = hoist_loops(m, cx, f, &mut owned_def, &closed_by_with);
+    let holes = hole_states(f);
+    let Walk {
+        plans,
+        mut at_fault,
+        ..
+    } = analyze(m, cx, f, &owned_def, &closed_by_with, &holes, &hoisted);
+    if plans.iter().all(|p| p.is_empty()) && at_fault.iter().all(|v| v.is_empty()) {
+        return wrapped || hoists;
     }
-    if plans.iter().all(|p| p.is_empty()) {
-        return wrapped;
-    }
-    for (bi, plan) in plans.iter().enumerate() {
-        if plan.is_empty() {
+    for bi in 0..f.blocks.len() {
+        let plan = &plans[bi];
+        if plan.is_empty() && at_fault[bi].is_empty() {
             continue;
         }
         let old = std::mem::take(&mut f.blocks[bi].insts);
         let mut out: Vec<Inst> = Vec::with_capacity(old.len() + plan.len() * 3);
         let mut next = plan.iter().peekable();
+        let mut open_window: Option<(usize, Value, Option<crate::ir::Loc>)> = None;
+        let end_loc = old.last().map(|i| i.loc);
         for (k, inst) in old.into_iter().enumerate() {
-            let Some((_, values)) = next.next_if(|(pk, _)| *pk == k) else {
-                out.push(inst);
-                continue;
-            };
             let loc = inst.loc;
-            let mut first = None;
-            for v in values {
-                let c = closer(m, cx, f.ty(*v));
-                let h = f.new_value(Ty::INT);
-                out.push(Inst {
-                    op: Op::CleanupPush,
-                    args: vec![*v],
-                    imm: Imm::Func(c),
-                    res: Some(h),
-                    loc,
-                });
-                first.get_or_insert(h);
+            if let Some(w) = next.next_if(|w| w.first == k) {
+                let first = push_all(m, cx, f, &mut out, &w.values, loc);
+                open_window = Some((w.last, first, Some(loc)));
             }
             out.push(inst);
-            out.push(Inst {
-                op: Op::CallRt,
-                args: vec![first.expect("a registered value")],
-                imm: Imm::Ext(cx.discard),
-                res: Some(f.new_value(Ty::UNIT)),
-                loc,
-            });
+            if let Some((last, first, loc)) = open_window
+                && last == k
+            {
+                out.push(Inst {
+                    op: Op::CallRt,
+                    args: vec![first],
+                    imm: Imm::Ext(cx.discard),
+                    res: Some(f.new_value(Ty::UNIT)),
+                    loc: loc.expect("window location"),
+                });
+                open_window = None;
+            }
+        }
+        let values = std::mem::take(&mut at_fault[bi]);
+        if !values.is_empty() {
+            // No discard: the fault never returns, and its cleanups run LIFO.
+            let loc = end_loc.unwrap_or_default();
+            push_all(m, cx, f, &mut out, &values, loc);
         }
         f.blocks[bi].insts = out;
     }
     true
+}
+
+/// A run of instructions `first..=last` of one block covered by one registration of `values`.
+#[derive(Clone)]
+struct Window {
+    first: usize,
+    last: usize,
+    values: Vec<Value>,
+}
+
+/// The live values a registration may cover: a `with` close sees its own values undropped, and a
+/// loop registration already covers its hoisted values.
+fn coverable(
+    live: &BTreeSet<u32>,
+    closed_by_with: &BTreeSet<u32>,
+    hoisted: &BTreeSet<u32>,
+) -> Vec<Value> {
+    live.iter()
+        .filter(|v| !closed_by_with.contains(v) && !hoisted.contains(v))
+        .map(|v| Value(*v))
+        .collect()
+}
+
+/// Appends one cleanup registration per value; returns the first handle, which discards all.
+fn push_all(
+    m: &mut Module,
+    cx: &mut Cx,
+    f: &mut Func,
+    out: &mut Vec<Inst>,
+    values: &[Value],
+    loc: crate::ir::Loc,
+) -> Value {
+    let mut first = None;
+    for v in values {
+        let c = closer(m, cx, f.ty(*v));
+        let h = f.new_value(Ty::INT);
+        out.push(Inst {
+            op: Op::CleanupPush,
+            args: vec![*v],
+            imm: Imm::Func(c),
+            res: Some(h),
+            loc,
+        });
+        first.get_or_insert(h);
+    }
+    first.expect("a registered value")
 }
 
 /// Moves-out of a projection that are not yet filled back, at the start of each block. The

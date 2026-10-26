@@ -711,6 +711,7 @@ fn run_streaming(server: &Server, conn: &Rc<Conn>, id: u32, head: Head, started:
             expect_continue: head.expect_continue,
             minor: 1,
             sent: false,
+            response_complete: false,
             status: 0,
             staged: Headers::new(),
             head_written: false,

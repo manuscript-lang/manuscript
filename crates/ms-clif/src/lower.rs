@@ -1717,10 +1717,10 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let bits = inner
                     .and_then(|i| self.g.lay.m.types.int_bits(i))
                     .unwrap_or(64);
-                let half = 1i64 << (bits - 1);
+                let half = 1i128 << (bits - 1);
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, -half),
-                    self.b.ins().iconst(types::I64, half - 1),
+                    self.b.ins().iconst(types::I64, (-half) as i64),
+                    self.b.ins().iconst(types::I64, (half - 1) as i64),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);

@@ -977,3 +977,9 @@ fn readonly_record_copies_keep_payloads_alive_after_the_owner_is_dropped() {
         assert_eq!(same(source, name).code, 10);
     }
 }
+
+#[test]
+fn optional_integer_conversion_handles_the_full_signed_range() {
+    let src = include_str!("../../ms-mir/tests/fixtures/optional_int64.mir");
+    assert_eq!(same(src, "optional_integer_full_range").code, 0);
+}
