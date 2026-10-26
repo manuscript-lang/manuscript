@@ -15,6 +15,21 @@
           "line": 5,
           "column": 20,
           "offset": 185
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-23.ms",
+            "line": 5,
+            "column": 20,
+            "offset": 185
+          },
+          "end": {
+            "file": "pkg-checker-testdiagnosticsstatecauseandfix-23.ms",
+            "line": 5,
+            "column": 21,
+            "offset": 186
+          },
+          "replacement": "3.0"
         }
       }
     ],

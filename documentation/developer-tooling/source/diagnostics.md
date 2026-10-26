@@ -22,7 +22,7 @@ A diagnostic names the violated rule and the declaration or call site involved. 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
 
 - Optional `end` has the same coordinate fields (exclusive). Parser token errors and failed import names provide it.
-- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, labels and types with one `did you mean` candidate, and unresolved standard names (an `import` inserted at the top of the file) carry one; string-match rewrites and ambiguous imports get prose only. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
+- Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, labels and types with one `did you mean` candidate, unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file), `Some`/`Ok`/`Err`/`true`/`null`/`this` habits, assignment to a `let` binding (`let` becomes `var`), and `Case()` on a nullary case, Int values used as Float (`.to_float()`, or `3.0` for a literal), Int, Float and Bool values used as String (`f"{value}"`), and ownership repairs that append `.clone()` carry one; string-match rewrites and ambiguous imports get prose only. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
 - Consumers must tolerate absent optional fields.
 
 | Code | Family |
@@ -36,5 +36,7 @@ Several inputs share one document; see [analysis selection](../implementation.md
 | MS3030, MS3040, MS3050, MS3060 | Captures, recursion, exhaustiveness, mutation |
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
+
+`ms explain <code>` prints a code's family and usual repair (`--json` for structured output).
 
 Rules are defined by [type checking](../../contributing/compiler/frontend/type-checker.md) and [scope and capture checking](../../contributing/compiler/frontend/scope-checker.md).

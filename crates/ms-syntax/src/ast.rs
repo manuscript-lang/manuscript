@@ -330,6 +330,10 @@ pub struct Expr {
     pub id: NodeId,
     /// Position (see the module docs for node-specific anchors).
     pub pos: Pos,
+    /// Exclusive end of the written expression (the end of its last token;
+    /// parentheses around it are not included). Synthetic nodes end where
+    /// they start.
+    pub end: Pos,
     /// Variant.
     pub kind: ExprKind,
 }
@@ -413,6 +417,19 @@ pub enum ExprKind {
 }
 
 impl Expr {
+    /// Where the written expression starts: `pos` is an anchor for members,
+    /// operators and index reads, so this follows the leftmost operand.
+    pub fn start(&self) -> Pos {
+        match &self.kind {
+            ExprKind::Member { left, .. }
+            | ExprKind::Apply { left, .. }
+            | ExprKind::Index { left, .. }
+            | ExprKind::Binary { left, .. } => left.start(),
+            ExprKind::Call { callee, .. } => callee.start(),
+            _ => self.pos,
+        }
+    }
+
     /// A written `match`, not the Bool match an `if` expression stands for.
     pub fn is_written_match(&self) -> bool {
         matches!(&self.kind, ExprKind::Match { arms, .. } if !arms.first().is_some_and(|a| a.from_if))

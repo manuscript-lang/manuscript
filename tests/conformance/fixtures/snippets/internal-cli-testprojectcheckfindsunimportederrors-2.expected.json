@@ -26,6 +26,21 @@
           "line": 8,
           "column": 12,
           "offset": 237
+        },
+        "fix": {
+          "position": {
+            "file": "internal-cli-testprojectcheckfindsunimportederrors-2.ms",
+            "line": 8,
+            "column": 12,
+            "offset": 237
+          },
+          "end": {
+            "file": "internal-cli-testprojectcheckfindsunimportederrors-2.ms",
+            "line": 8,
+            "column": 13,
+            "offset": 238
+          },
+          "replacement": "f\"{1}\""
         }
       }
     ],
