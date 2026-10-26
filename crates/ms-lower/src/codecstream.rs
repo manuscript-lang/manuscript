@@ -11,9 +11,7 @@ use crate::func::{FnLower, Val};
 use crate::native::NArg;
 use ms_check::hir::ModuleHir;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{
-    Cc, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableDef, VtableId,
-};
+use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param, VtableId};
 use ms_mir::types::{IfaceId, RecId, Ty as MTy, TyKind};
 use std::rc::Rc;
 
@@ -74,15 +72,7 @@ impl Cx {
             });
             methods.push(id);
         }
-        m.vtables.push(VtableDef {
-            name: key.clone(),
-            iface,
-            methods,
-            data_ty,
-        });
-        let id = VtableId(m.vtables.len() as u32 - 1);
-        self.vtables.insert(key, id);
-        id
+        self.intern_vtable(m, key, iface, methods, data_ty)
     }
 }
 
