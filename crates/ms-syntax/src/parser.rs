@@ -2336,27 +2336,7 @@ impl<'a> Parser<'a> {
             }
             flush(&mut literal, &mut parts);
             let start = i;
-            let mut depth = 1;
-            let mut quoted = false;
-            while i < rb.len() && depth > 0 {
-                let b = rb[i];
-                if b == b'\\' {
-                    i += 2;
-                    continue;
-                }
-                if b == b'"' {
-                    quoted = !quoted;
-                }
-                if !quoted {
-                    if b == b'{' {
-                        depth += 1;
-                    }
-                    if b == b'}' {
-                        depth -= 1;
-                    }
-                }
-                i += 1;
-            }
+            i += crate::lexer::interpolation_length(self.file, &raw[start..])?;
             let source = &raw[start..i - 1];
             let value = self.interpolation(token, start + prefix, source)?;
             parts.push(TextPart::Interp(value));
