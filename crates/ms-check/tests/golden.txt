@@ -574,7 +574,11 @@ def explicit() -> Unit:
     fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
     fs.create_directory("", True)
     fs.remove("", False)
-from "@std/faults.ms" import panic
+type	4	5	90	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	5	5	123	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	6	5	154	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	7	5	219	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	8	5	253	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefrom "@std/faults.ms" import panic
 type Override:
     received: Bool
 impl FileSystem for Override:
@@ -839,7 +843,7 @@ export def main() -> Int:
     stdout().write(data: "ready\n")
     sleep(duration(nanoseconds: 60000000000))
     return 0
-import stdout from "@std/io.ms"
+type	4	5	105	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -5543,7 +5547,7 @@ def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...
 resolution	2	5	26	unknown binding operation; declare it with 'let operation = ...' before use, define 'def operation(...) -> T:', or import it from a moduledef operation() -> Result[Unit, Error]: ok(())
 def caller() -> Unit:
     operation()
-def caller() -> Unit:
+type	3	5	73	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef caller() -> Unit:
     let callback = lambda () -> Unit:
         if True:
             operation()
@@ -5925,7 +5929,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	692	this statement discards Result[Unit, Error], so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purposedef f() -> Int:
+type	28	5	692	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef f() -> Int:
     return 1
 let X = f()
 type	3	9	37	a constant takes literals, operators, collections, and other constants; compute this value in a functiondef f() -> Int:

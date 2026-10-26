@@ -4,7 +4,6 @@
 mod bindings;
 mod matches;
 mod patterns;
-mod results;
 
 use ms_check::{ModuleData, Program};
 use ms_syntax::Pos;
@@ -80,7 +79,6 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
     let mut findings = Vec::new();
     for module in program.modules.iter().filter(|m| !m.is_standard()) {
         bindings::lint(program, module, &mut findings);
-        results::lint(module, &mut findings);
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }

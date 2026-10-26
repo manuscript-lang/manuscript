@@ -963,7 +963,9 @@ impl Checker {
         pos: Pos,
         report: bool,
     ) -> BindingRef {
+        // `_` names a value nothing reads, so several may share a scope.
         if report
+            && name.as_str() != "_"
             && (self.scope.bindings.borrow().contains_key(&name)
                 || self.scope.types.borrow().contains_key(&name))
         {

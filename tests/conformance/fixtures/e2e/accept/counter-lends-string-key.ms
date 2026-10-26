@@ -15,7 +15,7 @@ def tally(words: List[String]) -> Map[String, Int]:
 
 export def main() -> Int:
     let m = tally(["a", "b", "a", "c", "a", "b"])
-    stdout().write(
+    let _ = stdout().write(
         f"{m.length()} {m.get("a").get(0)} {m.get("b").get(0)} {m.get("c").get(0)}\n"
     )
     return 0

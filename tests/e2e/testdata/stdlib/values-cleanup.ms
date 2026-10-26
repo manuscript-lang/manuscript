@@ -27,7 +27,7 @@ impl Closeable for Resource:
     var def close() -> Unit:
         let fs = filesystem()
         let inner_closed = fs.read_file(f"{self.dir}/2").is_ok()
-        fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
+        let _ = fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
 
 def leave(dir: String) -> Int:
     with let outer = Resource(dir.clone(), 1):

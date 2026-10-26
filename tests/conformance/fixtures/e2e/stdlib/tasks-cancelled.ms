@@ -6,7 +6,7 @@ from "@std/tasks.ms" import TaskGroup, cancelled
 from "@std/time.ms" import duration, sleep
 
 def say(text: String) -> Unit:
-    stdout().write(text + "\n")
+    let _ = stdout().write(text + "\n")
 
 # Reports, as its task unwinds, whether the task counts as cancelled.
 type Reporter:
@@ -31,10 +31,12 @@ export def main() -> Int:
 
     with let group = TaskGroup[Int]():
         group.spawn(lambda ch: returns_normally())
-        group.results()
+
+        let _ = group.results()
 
     with let group = TaskGroup[Int](timeout: some(duration(20000000))):
         group.spawn(lambda ch: sleep_with_reporter())
-        group.wait()
+
+        let _ = group.wait()
 
     return 0

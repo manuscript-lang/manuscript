@@ -227,7 +227,6 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
-| MSL104 | Discarded `Result`: handle with `if let`, propagate with `try`, or bind `let _ignored = operation()`. See [Result handling](../core-language/errors/results.md) |
 | MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |

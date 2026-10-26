@@ -22,7 +22,7 @@ fn fix_renames_misspellings_and_adds_imports() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "def total(items: List[Int]) -> Int:\n    let sum = 0\n    return sumn\n\n\
-        def main() -> Int:\n    stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
+        def main() -> Int:\n    let _ = stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--json"], &dir);

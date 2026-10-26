@@ -1672,6 +1672,15 @@ impl<'a> Parser<'a> {
                 kind: PatternKind::Name(self.sym(t)),
             });
         }
+        // `_` binds a value nothing reads, such as a `Result` ignored on purpose.
+        if self.take(Tok::Underscore) {
+            let id = self.id();
+            return Ok(Pattern {
+                id,
+                pos: t.pos,
+                kind: PatternKind::Name(Symbol::intern("_")),
+            });
+        }
         if self.take(Tok::LBracket) {
             let mut elements = Vec::new();
             if !self.take(Tok::RBracket) {

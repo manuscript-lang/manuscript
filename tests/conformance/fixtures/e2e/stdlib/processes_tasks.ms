@@ -12,7 +12,8 @@ def talker(ch: Channel[Int, Unit]) -> Int:
 
     for i in 0..3:
         sleep(duration(20000000))
-        c.send(i)
+
+        let _ = c.send(i)
 
     return 42
 
@@ -93,7 +94,11 @@ def long_alive() -> Bool:
 # Names the error when the listing command cannot run, instead of failing inside `long_alive`.
 test "the process listing command runs":
     if os_type() == "windows":
-        try expect_ok(commands().run("tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]))
+        try expect_ok(
+            commands().run(
+                "tasklist", ["/FI", "IMAGENAME eq ping.exe", "/NH"]
+            )
+        )
     else:
         try expect_ok(commands().run("pgrep", ["-f", "sleep 30.717"]))
 
@@ -121,6 +126,7 @@ test "cancelling a task inside Subprocess.wait kills the child":
 # value to drop: only Subprocess.wait's own cleanup stops it.
 test "cancelling a task inside Subprocess.wait stops a child the task was handed":
     let child = commands().spawn(long_program(), long_args()).get()
+
     with let group = TaskGroup[Int](timeout: some(duration(200000000))):
         let t = group.spawn(lambda ch: child.wait().get(-1))
         try expect_equal(t.result().is_ok(), False)

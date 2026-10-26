@@ -38,7 +38,7 @@ def src(text: String) -> ReadStream:
     return Mem(text.to_bytes(), 0, False)
 
 export def main() -> Int:
-    match read_all(src("hello world\nline two\r\nlast"), 100):
+    let _ = match read_all(src("hello world\nline two\r\nlast"), 100):
         case ok(b): stdout().write(f"all {b.length()}" + "\n")
         case error(e): stdout().write(f"err {e.message()}" + "\n")
 
@@ -46,23 +46,23 @@ export def main() -> Int:
     var i = 0
 
     while i < 4:
-        match read_line(t):
+        let _ = match read_line(t):
             case ok(l): stdout().write(f"line {l}" + "\n")
             case error(e): stdout().write(f"err {e.message()}" + "\n")
 
         i = i + 1
 
-    match read_all(src("abcdefgh"), 5):
+    let _ = match read_all(src("abcdefgh"), 5):
         case ok(b): stdout().write(f"all {b.length()}" + "\n")
         case error(e): stdout().write(f"err {e.message()}" + "\n")
 
     let sink = Mem("".to_bytes(), 0, False)
 
-    match copy(src("abcdefgh"), sink):
+    let _ = match copy(src("abcdefgh"), sink):
         case ok(n): stdout().write(f"copied {n}" + "\n")
         case error(e): stdout().write(f"err {e.message()}" + "\n")
 
-    match read_line(src("abcdef"), 3):
+    let _ = match read_line(src("abcdef"), 3):
         case ok(l): stdout().write(f"line {l}" + "\n")
         case error(e): stdout().write(f"err {e.message()}" + "\n")
 

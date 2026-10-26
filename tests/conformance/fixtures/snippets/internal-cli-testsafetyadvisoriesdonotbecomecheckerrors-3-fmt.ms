@@ -7,4 +7,4 @@ def fail() -> Result[Int, TextError]:
     return error(TextError("boom"))
 
 def use() -> Unit:
-    fail()
+    let _ = fail()

@@ -24,7 +24,7 @@ export def main() -> Int:
             let b = box
             g.spawn(lambda ch: bump(b, n))
 
-        g.results()
+        let _ = g.results()
 
-    stdout().write("total " + box.get().to_string() + "\n")
+    let _ = stdout().write("total " + box.get().to_string() + "\n")
     return 0

@@ -40,7 +40,7 @@ def count_words() -> Unit:
             return
 
         if let job = got.get(none):
-            ch.send(Done(id: job.id, count: job.words.length()))
+            let _ = ch.send(Done(id: job.id, count: job.words.length()))
         else:
             return
 
@@ -55,7 +55,8 @@ def reads_stdin() -> Unit:
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(duration(nanoseconds: 5000000))
-    ch.send(1)
+
+    let _ = ch.send(1)
 
 def wait_forever() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -63,15 +64,13 @@ def wait_forever() -> Unit:
 
 def announce_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
-
+    let _ = ch.send(1)
     let got = ch.receive()
 
 # Runs without parking for long enough that the cancel always lands while it is computing.
 def spin_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
-
+    let _ = ch.send(1)
     var n = 0
     for i in range(0, 300000000):
         n += i
@@ -93,13 +92,12 @@ def sum_until_closed() -> Unit:
         if let n = got.get(none):
             total += n
         else:
-            ch.send(total)
+            let _ = ch.send(total)
             return
 
 def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
     var worker = try group.spawn(squares)
-    worker.channel.send(value)
-
+    let _ = worker.channel.send(value)
     var answer = -1
     if let got = worker.channel.receive().get(none):
         answer = got
@@ -214,7 +212,8 @@ test "standard input stays with the main thread":
 def delayed_send() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(duration(nanoseconds: 150000000))
-    ch.send(1)
+
+    let _ = ch.send(1)
 
 def quick() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -232,7 +231,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
 
 def sends_one() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
 test "a finished worker's channel ends with none instead of an error":
     with let group = WorkerGroup[Int, Int]():
@@ -246,7 +245,7 @@ def runs_faulting_task() -> Unit:
 
     with let tasks = TaskGroup[Int]():
         let t = tasks.spawn(lambda c: panic("task inside worker faults"))
-        t.result()
+        let _ = t.result()
 
 test "a fault in a task a worker started is the worker's fault":
     with let group = WorkerGroup[Int, Int]():
@@ -279,7 +278,7 @@ test "cancelling a worker that is joining another ends it as cancelled":
 def touches_network() -> Unit:
     var ch = worker_channel[Int, Int]()
     let net = network()
-    ch.send(1)
+    let _ = ch.send(1)
 
 test "a worker that uses the network ends cleanly":
     with let group = WorkerGroup[Int, Int]():
@@ -299,6 +298,7 @@ test "tasks joining clones of one worker all see its outcome":
         let worker = workers.spawn(naps).get(none)
         let first_copy = worker.clone()
         let second_copy = worker.clone()
+
         with let tasks = TaskGroup[Int]():
             let first = tasks.spawn(lambda c: joined_ok(first_copy.clone()))
             let second = tasks.spawn(lambda c: joined_ok(second_copy.clone()))

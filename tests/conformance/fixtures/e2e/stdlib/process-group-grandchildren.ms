@@ -14,23 +14,34 @@ def marker() -> String:
 
 def grandchild(ch: Channel[Unit, Unit]) -> Int:
     sleep(duration(2000000000))
-    filesystem().write_file(marker(), "outlived\n")
+
+    let _ = filesystem().write_file(marker(), "outlived\n")
     return 0
 
 def child(ch: Channel[Unit, Unit]) -> Int:
     with let group = ProcessGroup[Int]():
         var g = group.spawn(grandchild).get()
         var c = ch
-        c.send(())
+        let _ = c.send(())
         g.result().get()
+
     return 0
 
 export def main() -> Int:
-    filesystem().remove(marker())
+    let _ = filesystem().remove(marker())
+
     with let group = ProcessGroup[Int, Unit, Unit]():
         var c = group.spawn(child).get()
-        c.channel.receive()
+        let _ = c.channel.receive()
+
     sleep(duration(3500000000))
-    stdout().write("grandchild survived: " + filesystem().read_file(marker()).is_ok().to_string() + "\n").get()
-    filesystem().remove(marker())
+    (
+        stdout().write(
+            "grandchild survived: " + filesystem().read_file(
+                marker()
+            ).is_ok().to_string() + "\n"
+        ).get()
+    )
+
+    let _ = filesystem().remove(marker())
     return 0

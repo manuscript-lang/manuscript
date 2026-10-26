@@ -10,5 +10,6 @@ def boom(xs: List[Int]) -> Int:
 export def main() -> Int:
     with let group = TaskGroup[Int]():
         let task = group.spawn(lambda ch: boom([1]))
-        task.result()
+        let _ = task.result()
+
     return 0

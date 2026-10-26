@@ -5,6 +5,6 @@ from "@std/time.ms" import duration, sleep
 from "@std/io.ms" import stdout
 
 export def main() -> Int:
-    stdout().write(data: "ready\n")
+    let _ = stdout().write(data: "ready\n")
     sleep(duration(nanoseconds: 60000000000))
     return 0

@@ -8,17 +8,17 @@ from "@std/time.ms" import duration, sleep
 # A task cancelled while parked in a channel send or receive must not drop the channel end twice:
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.
 # Later allocations expose the corrupted heap.
-
 def receiver(ch: Channel[Int, Int]) -> Int:
     var c = ch
     if let got = c.receive():
         return 1
+
     return 0
 
 def sender(ch: Channel[Int, Int]) -> Int:
     var c = ch
     for i in 0..100:
-        c.send(i)
+        let _ = c.send(i)
     return 0
 
 def cancel_receiver() -> Unit:
@@ -34,19 +34,22 @@ def cancel_sender() -> Unit:
 def timeout_receiver() -> Unit:
     with let group = TaskGroup[Int, Int, Int]():
         let task = group.spawn(receiver, timeout: some(duration(1000000)))
-        task.result()
+        let _ = task.result()
 
 def churn() -> Int:
     var total = 0
+
     for round in 0..20:
         with let group = TaskGroup[String]():
             for i in 0..5:
                 group.spawn(lambda ch: f"task {i}")
             total += group.results().get([]).length()
+
     return total
 
 export def main() -> Int:
     var total = 0
+
     for round in 0..3:
         cancel_receiver()
         total += churn()
@@ -54,5 +57,6 @@ export def main() -> Int:
         total += churn()
         timeout_receiver()
         total += churn()
+
     stdout().write(f"survived {total}\n").get()
     return 0
