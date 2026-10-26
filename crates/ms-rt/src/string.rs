@@ -1295,6 +1295,50 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     unsafe { replace_limited(s, old, new, 1).write_to(out) }
 }
 
+/// Replaces every occurrence of a non-empty `old` by a `new` no longer than it, in one search pass: the
+/// result cannot exceed the text, so it is written into a text-sized block and trimmed afterwards.
+///
+/// # Safety
+/// `s` is live and `old` is non-empty.
+unsafe fn replace_shrinking(s: *const StrVal, old: &[u8], new: &[u8]) -> StrVal {
+    // SAFETY: caller passes a live string; the block holds `text.len() + 1` bytes and the loop writes
+    // at most `text.len()` of them, since every replacement is no longer than the match it replaces.
+    unsafe {
+        let text = bytes(s);
+        let f = Needle::new(old);
+        let Some(first) = f.find(text) else {
+            // Nothing to replace: share the unchanged input.
+            return cloned(&*s);
+        };
+        let buf = alloc::alloc(text.len() + 1);
+        let mut dst = buf;
+        let mut i = 0;
+        let mut at = first;
+        loop {
+            core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, at);
+            dst = dst.add(at);
+            core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+            dst = dst.add(new.len());
+            i += at + old.len();
+            match f.find(&text[i..]) {
+                Some(p) => at = p,
+                None => break,
+            }
+        }
+        let rest = text.len() - i;
+        core::ptr::copy_nonoverlapping(text[i..].as_ptr(), dst, rest);
+        let len = dst.add(rest).offset_from(buf) as usize;
+        if len < 2 || len <= STR_INLINE_MAX {
+            let r = from_bytes(core::slice::from_raw_parts(buf, len));
+            alloc::free(buf);
+            return r;
+        }
+        let ptr = alloc::realloc(buf, len + 1);
+        *ptr.add(len) = 0;
+        StrVal::owned(ptr, len)
+    }
+}
+
 /// Replaces every nonoverlapping occurrence; output beyond the string limit faults like `concat`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_replace(
@@ -1306,6 +1350,9 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
     // SAFETY: caller passes live strings and a writable out.
     unsafe {
         let (text, o, n) = (bytes(s), bytes(old), bytes(new));
+        if !o.is_empty() && n.len() <= o.len() {
+            return replace_shrinking(s, o, n).write_to(out);
+        }
         let count = if o.is_empty() {
             utf8::count(text) + 1
         } else {

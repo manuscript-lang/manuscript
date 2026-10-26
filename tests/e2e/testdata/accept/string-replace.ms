@@ -58,3 +58,19 @@ test "explicit and bound views retain method contracts and callable field shadow
 
     let bound = view.replace
     try expect_equal(bound("aa", "b"), "bb")
+
+test "replacing long text with a shorter or equal string trims, shares or inlines the result":
+    let long = "word word word word word word word word word word"
+    try expect_equal(long.replace("word", "w"), "w w w w w w w w w w")
+    try expect_equal(
+        long.replace("word", "WORD"),
+        "WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD"
+    )
+    try expect_equal(long.replace("word ", ""), "word")
+    try expect_equal(long.replace("word", "").byte_length(), 9)
+    try expect_equal(long.replace("missing", "x"), long)
+    try expect_equal(long.replace("word word", "ww"), "ww ww ww ww ww")
+
+    let wide = "é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é"
+    try expect_equal(wide.replace("é", "e"), "e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e")
+    try expect_equal(wide.replace("-", "").byte_length(), 40)
