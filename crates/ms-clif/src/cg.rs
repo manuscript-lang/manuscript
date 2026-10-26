@@ -1046,7 +1046,10 @@ fn define_with(
         let (file, line) = match source {
             Some(f) if !f.loc.is_none() => (f.loc.file, f.loc.line),
             _ => {
-                let first = ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX);
+                let own = ranges.iter().find(|r| r.3 == 0 && r.1 != u32::MAX);
+                let first = own
+                    .map(|r| r.1)
+                    .or_else(|| ranges.iter().map(|r| r.1).find(|f| *f != u32::MAX));
                 (first.unwrap_or(u32::MAX), 0)
             }
         };

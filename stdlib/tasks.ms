@@ -260,6 +260,14 @@ def forget[T, In, Out](registry: Shared[List[Entry[T, In, Out]]], handle: Int) -
                 entries.value.remove(index)
                 break
 
+# Drops the entries of the first `count` tasks, which `results` collected, in one pass.
+def forget_first[T, In, Out](
+    registry: Shared[List[Entry[T, In, Out]]],
+    count: Int
+) -> Unit:
+    with var entries = lock(registry):
+        entries.value = entries.value.drop(count)
+
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
 # even when it has no result, so the runtime and the group let go of it.
 def collect[T](scope: Int, handle: Int, values: Shared[List[T]]) -> Result[T, TaskError]:
@@ -346,13 +354,18 @@ impl TaskGroup[T, In, Out]:
             return error(TaskError.Closed)
 
         var values = List[T]()
+        let count = self.tasks.get().length()
+        var taken = 0
 
-        while self.tasks.get().length() > 0:
-            let first = self.tasks.get().get(0)
-            let value = collect(self.scope, first.handle, first.values)
-            forget(self.tasks, first.handle)
+        while taken < count:
+            let next = self.tasks.get().get(taken)
+            let value = collect(self.scope, next.handle, next.values)
+            taken += 1
+            if value.is_error():
+                forget_first(self.tasks, taken)
             values.append(try value)
 
+        forget_first(self.tasks, count)
         return ok(values)
 
     # Waits for every started task to end. Returns `TimedOut` or `Cancelled` if any task ended without a result.
