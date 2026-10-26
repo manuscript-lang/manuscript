@@ -787,7 +787,7 @@ impl Checker {
             if !self.contextual(items[at]) {
                 let v = self.expression(items[at], None);
                 if typ.is_none() && v.t().id != "Never" {
-                    typ = Some(v.t());
+                    typ = Some(required_type(&v.t()));
                 }
                 checked[at] = Some(v);
             }
