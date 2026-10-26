@@ -1,6 +1,6 @@
 from "@std/testing.ms" import expect_equal, expect_true
 from "@std/http.ms" import headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
-from "@std/io.ms" import read_all
+from "@std/io.ms" import IoError, read_all
 from "@std/net.ms" import network
 from "@std/log.ms" import create, LogError, Transport
 from "@std/shared.ms" import Shared, share
@@ -148,6 +148,22 @@ test "a handler that sends nothing answers 204":
     var r = Router()
     r.route(HttpMethod.Get, "/n", lambda exchange, params: ok(())).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
+
+def whole_response(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
+    let body = "" if exchange.path() == "/empty" else "done"
+    try reply(exchange, text(200, body))
+    for extra in ["extra", ""]:
+        let written = exchange.write(extra)
+        if written.is_ok(): return error(HttpError.Failed("write after send succeeded"))
+        if written.err() != IoError.InvalidInput: return error(HttpError.Failed("wrong write error"))
+    return ok(())
+
+test "a whole in-process response rejects subsequent writes":
+    var r = Router()
+    try r.route(HttpMethod.Get, "/done", whole_response)
+    try r.route(HttpMethod.Get, "/empty", whole_response)
+    try expect_equal(body_of(try r.call(get("/done"))), "done")
+    try expect_equal(body_of(try r.call(get("/empty"))), "")
 
 test "the router serves over a socket":
     let handler = router().handler()
