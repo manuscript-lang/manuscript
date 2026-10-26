@@ -60,3 +60,17 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 | task per request, stack pool 32 (spike) | 32k–33k | 32k–33k | 15k–17k |
 
 The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn before any runs), so every request paid `mmap`, `mprotect` and two `munmap` calls. With 512 the cost left is about 7% on the shortest handlers (`/health` median 107k against 114k).
+
+## 2026-10-26, fetch client
+
+`sh bench/perf/web/fetch.sh 2`: Manuscript's `fetch` (one `Fetcher`, N tasks) and Go's `net/http` client against one Go file server on CPUs 0-1, clients on CPUs 2-3, shared 4-CPU Linux VM (+/-10% between runs). The Manuscript runtime uses one thread, Go's client two cores.
+
+| Body, connections | Go req/s | Manuscript req/s |
+| --- | ---: | ---: |
+| 3 bytes, 1 | 4.2k | 6.6k |
+| 3 bytes, 8 | 24.7k | 32.6k |
+| 3 bytes, 64 | 30.0k | 38.0k |
+| 8 MiB, 1 | 147 | 117 |
+| 8 MiB, 8 | 221 | 90 |
+
+Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven memory-copy passes per body byte; now three). Callgrind over 20 fetches of 8 MiB: 1.18G to 0.52G instructions. `/io` (whole-file read and write) went from 676 to 756 req/s, with `/health` beside it from 26k to 40k req/s and its p99 from 11 to 5.8 ms: reads per request 40 to 5, writes 19 to 4. A 30-route router served 41k-46k requests per second before it stopped cloning its routes on each request, and 80k-83k after.
