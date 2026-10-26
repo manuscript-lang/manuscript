@@ -110,3 +110,15 @@ A first run of this table had 2 workers at 38.6k/39.1k on `/top` and 65-72k on `
 | Manuscript, 2 worker threads | 371, 374 |
 
 Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one worker fetched 70-84 req/s against 190-198 on the main thread, because each body buffer was mapped and faulted in again.
+
+## 2026-10-26, fetch on several cores after in-place bodies (#1503)
+
+`sh bench/perf/web/fetch.sh 3`, tree with #1495 and #1503, same machine and pinning (server CPUs 0-1, clients CPUs 2-3), two runs.
+
+| Body, connections | Go req/s | Manuscript, tasks on one thread | Manuscript, 2 worker threads |
+| --- | ---: | ---: | ---: |
+| 3 bytes, 8 | 38.8k, 39.9k | 53.7k, 54.9k | 49.8k, 45.7k |
+| 8 MiB, 1 | 268, 242 | 260, 252 | |
+| 8 MiB, 8 | 425, 363 | 237, 202 | 590, 479 |
+
+With the body received in place, two worker threads put the 8 MiB case 35-39% above Go's client on the same two CPUs. For tiny bodies the extra thread costs 7-15%, so keep one thread there.
