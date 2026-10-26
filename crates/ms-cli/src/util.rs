@@ -52,6 +52,8 @@ pub fn write_output(io: &mut Io, filename: &str, data: &[u8]) -> i32 {
     };
     match result {
         Ok(()) => 0,
+        // A reader such as `head` closed the pipe on purpose; that is not a failure to report.
+        Err(error) if filename.is_empty() && error.kind() == std::io::ErrorKind::BrokenPipe => 0,
         Err(error) => {
             let message = match (filename.is_empty(), &error) {
                 (false, e) => ProjectError::path("open", filename, e).to_string(),
@@ -129,4 +131,32 @@ pub fn required_value<'a>(
         args.get(*index)?
     };
     (!value.is_empty()).then_some(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    struct Closed;
+    impl Write for Closed {
+        fn write(&mut self, _: &[u8]) -> std::io::Result<usize> {
+            Err(std::io::ErrorKind::BrokenPipe.into())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn a_closed_stdout_pipe_is_not_reported() {
+        let (mut stdin, mut stdout, mut stderr) = (std::io::empty(), Closed, Vec::new());
+        let mut io = Io {
+            stdin: &mut stdin,
+            stdout: &mut stdout,
+            stderr: &mut stderr,
+        };
+        assert_eq!(write_output(&mut io, "", b"data"), 0);
+        assert!(stderr.is_empty());
+    }
 }
