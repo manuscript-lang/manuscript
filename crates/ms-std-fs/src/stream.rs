@@ -548,21 +548,6 @@ mod tests {
     }
 
     #[test]
-    fn an_unterminated_carriage_return_is_line_content() {
-        for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
-            let (r, w) = pipe();
-            let mut input = Stream::new(r, true, b"pipe");
-            let mut output = Stream::new(w, true, b"pipe");
-            output.write(b"first\n").unwrap();
-            output.write(text).unwrap();
-            output.close().unwrap();
-            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
-            assert_eq!(input.read_line(None).unwrap().unwrap(), text);
-            assert_eq!(input.read_line(None).unwrap(), None);
-        }
-    }
-
-    #[test]
     fn find_newline_matches_a_plain_scan() {
         for len in 0..40usize {
             for at in 0..=len {
@@ -600,6 +585,21 @@ mod tests {
         {
             let mut f = Stream::open(b"/proc/self/status").unwrap();
             assert!(f.read(None).unwrap().is_some());
+        }
+    }
+
+    #[test]
+    fn an_unterminated_carriage_return_is_line_content() {
+        for text in [b"\r".as_slice(), b"tail\r", b"tail\r\r"] {
+            let (r, w) = pipe();
+            let mut input = Stream::new(r, true, b"pipe");
+            let mut output = Stream::new(w, true, b"pipe");
+            output.write(b"first\n").unwrap();
+            output.write(text).unwrap();
+            output.close().unwrap();
+            assert_eq!(input.read_line(None).unwrap().unwrap(), b"first");
+            assert_eq!(input.read_line(None).unwrap().unwrap(), text);
+            assert_eq!(input.read_line(None).unwrap(), None);
         }
     }
 }
