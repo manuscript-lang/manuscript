@@ -473,17 +473,20 @@ fn candidate(
         .map(|bi| consume_at(bi).is_some() || ret_consumes(bi))
         .collect();
     owned_out[db] = !consumed[db] && drop_at[db].is_none();
+    // Incoming edges per block as (predecessor, successor slot), so a pass costs the edge count.
+    let mut preds: Vec<Vec<(usize, usize)>> = vec![Vec::new(); nb];
+    for (p, ss) in succs.iter().enumerate() {
+        for (si, s) in ss.iter().enumerate() {
+            preds[s.index()].push((p, si));
+        }
+    }
     loop {
         let mut again = false;
         for bi in 0..nb {
             let inn = bi != db
-                && (0..nb).any(|p| {
-                    owned_out[p]
-                        && succs[p]
-                            .iter()
-                            .enumerate()
-                            .any(|(si, s)| s.index() == bi && !edge_consumes(p, si))
-                });
+                && preds[bi]
+                    .iter()
+                    .any(|&(p, si)| owned_out[p] && !edge_consumes(p, si));
             let out = (inn || bi == db) && !consumed[bi] && drop_at[bi].is_none();
             if inn != owned_in[bi] || out != owned_out[bi] {
                 owned_in[bi] = inn;
