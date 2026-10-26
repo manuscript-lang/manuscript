@@ -125,11 +125,9 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
     let nested_result: Optional[Result[Int, TextError]] = some(
         error(TextError("nested"))
     )
-    (
-        nested_result.ok_or(
-            TextError("absent")
-        ).to_optional().get().err().message() | try expect_equal("nested")
-    )
+    nested_result.ok_or(
+        TextError("absent")
+    ).to_optional().get().err().message() | try expect_equal("nested")
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
     var empty_calls: List[Int] = []

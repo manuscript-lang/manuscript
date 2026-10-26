@@ -489,14 +489,25 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
     }
     let mut output = String::new();
     let mut offset = 0usize;
-    for node in &nodes {
+    for (index, node) in nodes.iter().enumerate() {
         let Some(gid) = node.group else { continue };
         let g = &layout.groups[gid];
         output.push_str(&source[offset..g.open.lo as usize]);
         let line = output.rsplit('\n').next().unwrap_or("");
         let indent = indent_of(line);
         let column = line.chars().count();
-        output.push_str(&layout.group(gid, indent, column, 0));
+        // Only a method call in a chain counts what follows it; other groups
+        // (type arguments, clause patterns) keep their own line.
+        let chained = g.open.kind == Tok::LParen
+            && index >= 2
+            && nodes[index - 1].tok.kind == Tok::Name
+            && nodes[index - 2].tok.kind == Tok::Dot;
+        let following = if chained {
+            layout.following_width(&nodes[index + 1..], true)
+        } else {
+            0
+        };
+        output.push_str(&layout.group(gid, indent, column, following));
         offset = g.close.hi as usize;
     }
     output.push_str(&source[offset..]);
@@ -1006,6 +1017,35 @@ impl<'a> Layout<'a> {
         indent_of(self.lines[line as usize - 1])
     }
 
+    /// Width of the text after a group on its line, up to the next group that
+    /// has its own continuation boundary: its contents must not force this
+    /// group (such as a list before a map callback) to expand as well.
+    fn following_width(&self, rest: &[Node], clause: bool) -> usize {
+        let mut tail: Vec<Node> = Vec::new();
+        for next in rest {
+            if matches!(next.tok.kind, Tok::Newline | Tok::Comment)
+                || (clause && next.tok.kind == Tok::Colon)
+            {
+                break;
+            }
+            let mut next = *next;
+            if let Some(ng) = next.group
+                && !self.groups[ng].nodes.is_empty()
+                && !(clause && self.groups[ng].nodes.len() <= 2)
+            {
+                next.group = None;
+                tail.push(next);
+                break;
+            }
+            tail.push(next);
+        }
+        let mut following = self.flat(&tail).chars().count();
+        if tail.first().is_some_and(|t| t.space) {
+            following += 1;
+        }
+        following
+    }
+
     fn sequence(&self, nodes: &[Node], indent: usize, column: usize, prefix: bool) -> String {
         struct W {
             out: String,
@@ -1084,29 +1124,7 @@ impl<'a> Layout<'a> {
                 w.write(" ");
             }
             if let Some(gid) = node.group {
-                let mut tail: Vec<Node> = Vec::new();
-                for next in &nodes[index + 1..] {
-                    if next.tok.kind == Tok::Newline || next.tok.kind == Tok::Comment {
-                        break;
-                    }
-                    let mut next = *next;
-                    if let Some(ng) = next.group
-                        && !self.groups[ng].nodes.is_empty()
-                    {
-                        // The next group has its own continuation
-                        // boundary. Its contents must not force this group
-                        // (such as a list before a map callback) to
-                        // expand as well.
-                        next.group = None;
-                        tail.push(next);
-                        break;
-                    }
-                    tail.push(next);
-                }
-                let mut following = self.flat(&tail).chars().count();
-                if tail.first().is_some_and(|t| t.space) {
-                    following += 1;
-                }
+                let following = self.following_width(&nodes[index + 1..], false);
                 let text = self.group(gid, w.line_indent, w.column, following);
                 w.write(&text);
                 last_line = self.groups[gid].close.pos.line;
@@ -1270,8 +1288,18 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             if tokens[start].kind != Tok::LParen {
                 return;
             }
+            let before = start.checked_sub(1).map(|i| tokens[i].kind);
+            if !matches!(
+                before,
+                None | Some(Tok::Assign | Tok::Return | Tok::Newline | Tok::Indent | Tok::Dedent)
+            ) {
+                return;
+            }
             let after = tokens.get(close + 1).map(|t| t.kind);
-            if !matches!(after, None | Some(Tok::Newline | Tok::Colon | Tok::Eof)) {
+            if !matches!(
+                after,
+                None | Some(Tok::Newline | Tok::Dedent | Tok::Colon | Tok::Eof)
+            ) {
                 return;
             }
             let (mut depth, mut dots) = (0, 0);
@@ -1281,6 +1309,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
                     Tok::Dot if depth == 0 => dots += 1,
                     Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Lambda | Tok::Def => return,
+                    Tok::If | Tok::Else => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
                     {
@@ -1307,14 +1336,17 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
 
         fn wrap(&mut self, start: usize) {
             if self.strip {
-                return self.unwrap_chain(start);
+                return;
             }
             let tokens = self.tokens;
             let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
-            let mut last_call = None;
+            let mut calls: Vec<(usize, usize)> = Vec::new();
             while end < tokens.len() {
                 if let Some(&close) = self.pairs.get(&end) {
-                    last_call = (tokens[end].kind == Tok::LParen).then_some((end, close));
+                    // A call with a trivial argument gains nothing from breaking.
+                    if tokens[end].kind == Tok::LParen && close > end + 3 {
+                        calls.push((end, close));
+                    }
                     end = close + 1;
                     continue;
                 }
@@ -1360,10 +1392,10 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             if end < tokens.len() && tokens[end].kind == Tok::Colon {
                 width += 1; // The condition's suite colon occupies a column too.
             }
-            // A chain whose last call can open on the first line breaks inside
-            // that call, so its opening parenthesis stays on the line.
+            // A chain breaks inside a call whose opening parenthesis still fits
+            // on the first line, rather than wrapping the whole chain.
             let hugs = booleans + operators == 0
-                && last_call.is_some_and(|(open, close)| {
+                && calls.iter().any(|&(open, _)| {
                     let mut head = column;
                     let mut code: Vec<Token> = Vec::new();
                     for t in &tokens[start..=open] {
@@ -1376,7 +1408,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                         }
                         head += (t.hi - t.lo) as usize;
                     }
-                    close + 1 == end && head <= WIDTH
+                    head <= WIDTH
                 });
             if width > WIDTH && !hugs && (booleans + operators > 0 || dots >= 2) {
                 self.insert.entry(from).or_default().push('(');
@@ -1448,6 +1480,11 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
         remove: Vec::new(),
         strip,
     };
+    if strip {
+        for start in 0..tokens.len() {
+            g.unwrap_chain(start);
+        }
+    }
     for d in &module.decls {
         // A constant's synthetic statement starts at its initializer, which
         // may be text, so it bypasses the keyword and text-statement handling.
