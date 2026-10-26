@@ -1042,10 +1042,11 @@ impl<'a> FnLower<'a> {
         {
             return self.numeric_conversion(e, recv);
         }
-        // Other operations on a sized number run on its 64-bit kind.
+        // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
         let recv_nums = {
             let t = self.ty_of(recv.v);
-            self.b.m.types.is_int(t) || self.b.m.types.is_float(t)
+            (self.b.m.types.is_int(t) || self.b.m.types.is_float(t))
+                && native.rsplit('/').next() != Some("clone")
         };
         let recv = if recv_nums {
             for a in &mut args {
