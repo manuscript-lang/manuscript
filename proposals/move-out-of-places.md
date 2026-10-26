@@ -7,7 +7,7 @@
   - `replace(var place, value) -> T` moves `value` into the place and returns the old value.
   - `swap(var a, var b)` exchanges two disjoint places, and `List.swap(i, j)` does the same for two indexes of one list.
 - Both keep the place initialized at every point, so the checker needs no hole or partial-move tracking.
-- Status: **proposed**. Decision requested: approve the primitives, or choose another option below. Nothing is implemented.
+- Status: **decided, list-only**. Chinmay chose the smaller option (2026-10-26): `List.swap(i, j)` and `List.replace(i, value) -> T` as runtime primitives, without the general place-level `replace` / `swap`. Both landed with `Queue` converted. The general primitives stay a possible follow-up if a field or `Optional` fixture needs them; `Optional` slots of a list already work through `List.replace(i, none)`.
 
 ## Problem (verified in source)
 
