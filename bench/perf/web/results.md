@@ -82,11 +82,11 @@ Before this change an 8 MiB fetch ran at 40-81 req/s on one connection (seven me
 | Server | `/top?n=10` req/s | `/health` req/s |
 | --- | ---: | ---: |
 | Go `net/http` | 34.4k, 37.5k | 85.1k, 84.6k |
-| Manuscript, 1 thread | 23.9k, 25.1k | 85.4k, 103.6k |
-| Manuscript, 2 workers | 38.6k, 39.1k | 64.7k, 72.1k |
-| Manuscript, 4 workers | 40.0k, 34.4k | 58.1k, 64.7k |
+| Manuscript, 1 thread | 26.3k, 25.1k | 118.3k, 105.7k |
+| Manuscript, 2 workers | 58.1k, 56.9k | 140.7k, 136.1k |
+| Manuscript, 4 workers (2 CPUs) | 59.1k, 61.4k | 150.7k, 139.9k |
 
-A handler with real CPU work (`/top`) gains from the second core and passes Go's server. A handler that only writes three bytes loses 20-30%: the kernel wakes every worker for each connection and the workers contend for it, so keep one thread for such servers. Four workers on two CPUs add nothing and raise p99 (7.8 ms against 2.8 ms).
+A first run of this table had 2 workers at 38.6k/39.1k on `/top` and 65-72k on `/health`, below one thread: Rust code in a worker allocated through musl's `malloc`, which has one process-wide lock, and a `futex` trace showed the two workers handing that lock back and forth. Workers now allocate small Rust blocks from a process-wide heap that is never unmapped, with per-thread free lists (`worker_heap` in `ms-rt/src/alloc.rs`).
 
 ## 2026-10-26, fetch on several cores
 
@@ -94,8 +94,8 @@ A handler with real CPU work (`/top`) gains from the second core and passes Go's
 
 | 8 MiB body, 8 connections | req/s |
 | --- | ---: |
-| Go `net/http` | 374, 385 |
-| Manuscript, tasks on one thread | 176, 143 |
-| Manuscript, 2 worker threads | 338, 351 |
+| Go `net/http` | 424, 437 |
+| Manuscript, tasks on one thread | 165, 151 |
+| Manuscript, 2 worker threads | 371, 374 |
 
 Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one worker fetched 70-84 req/s against 190-198 on the main thread, because each body buffer was mapped and faulted in again.
