@@ -751,7 +751,7 @@ impl Checker {
                     let elsewhere = expected.is_some_and(|e| {
                         e.id != t.id
                             && ((invalid_ty(e) && self.unknown_type)
-                                || (e.kind != Kind::Variable
+                                || (!matches!(e.kind, Kind::Variable | Kind::Contract)
                                     && inference_type_known(e, &self.inference_variables)))
                     });
                     if !elsewhere && !self.argument_failed_inference(args) {
