@@ -221,6 +221,12 @@ impl Checker {
                     return (true, false);
                 };
                 self.m().facts_mut().assigned.insert(value.id, b.clone());
+                // A write-only assignment still captures the variable.
+                if b.function != self.function
+                    && let Some(captured) = self.captures.get_mut(&self.function)
+                {
+                    captured.insert(b.uid, b.clone());
+                }
                 if !b.mutable {
                     self.type_error(
                         s.pos,
