@@ -17,7 +17,8 @@ fn main() {
 /// which `cargo xtask runtime` (`make runtime`) builds. The build script never compiles the runtime.
 fn embed_native(crates: &Path) {
     println!("cargo:rerun-if-env-changed=MS_NATIVE_LIB");
-    let archive = match std::env::var_os("MS_NATIVE_LIB") {
+    let prebuilt = std::env::var_os("MS_NATIVE_LIB");
+    let archive = match &prebuilt {
         Some(prebuilt) => PathBuf::from(prebuilt),
         None => crates.join("../target/ms-native/libms_native.a"),
     };
@@ -29,6 +30,9 @@ fn embed_native(crates: &Path) {
             archive.display()
         )
     });
+    if prebuilt.is_none() {
+        reject_stale(crates, &archive);
+    }
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
     let embedded = out.join("libms_native.a.gz");
     // Gzipped: raw, the archive is a third of `ms`. Written only when the content changed, so an
@@ -46,6 +50,67 @@ fn embed_native(crates: &Path) {
         fnv1a(&bytes),
         bytes.len()
     );
+}
+
+/// Runtime sources newer than the archive mean tests and programs would run an old runtime, so fail
+/// instead of embedding it. `MS_NATIVE_LIB` opts out: its archive is not built from this tree.
+fn reject_stale(crates: &Path, archive: &Path) {
+    let built = std::fs::metadata(archive).and_then(|m| m.modified()).ok();
+    let Some(built) = built else { return };
+    let Ok(entries) = std::fs::read_dir(crates) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let runtime =
+            name == "ms-native" || name.starts_with("ms-rt") || name.starts_with("ms-std-");
+        if !runtime {
+            continue;
+        }
+        println!(
+            "cargo:rerun-if-changed={}",
+            entry.path().join("src").display()
+        );
+        println!(
+            "cargo:rerun-if-changed={}",
+            entry.path().join("Cargo.toml").display()
+        );
+        if let Some(newer) = newer_than(&entry.path(), built) {
+            panic!(
+                "the native runtime {} is older than {}\n\
+                 rebuild it with `cargo xtask runtime` (or `make runtime`); tests and programs would otherwise run a stale runtime",
+                archive.display(),
+                newer.display()
+            );
+        }
+    }
+}
+
+/// The first `Cargo.toml` or source file under `dir` modified after `built`.
+fn newer_than(dir: &Path, built: std::time::SystemTime) -> Option<PathBuf> {
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let path = entry.path();
+        let name = entry.file_name();
+        if path.is_dir() {
+            if name == "target" || name == "tests" || name == "benches" {
+                continue;
+            }
+            if let Some(found) = newer_than(&path, built) {
+                return Some(found);
+            }
+        } else if (path
+            .extension()
+            .is_some_and(|e| e == "rs" || e == "c" || e == "h")
+            || name == "Cargo.toml")
+            && entry
+                .metadata()
+                .and_then(|m| m.modified())
+                .is_ok_and(|m| m > built)
+        {
+            return Some(path);
+        }
+    }
+    None
 }
 
 fn fnv1a(bytes: &[u8]) -> u64 {

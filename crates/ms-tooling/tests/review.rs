@@ -59,6 +59,13 @@ fn parse_diff_rejects_renames() {
 }
 
 #[test]
+fn parse_diff_rejects_text_that_is_not_a_diff() {
+    let err = parse_diff("garbage\n").unwrap_err();
+    assert!(err.contains("not a unified diff"), "{err}");
+    assert!(parse_diff("").unwrap().is_empty());
+}
+
+#[test]
 fn removed_content_is_base_text() {
     let files = parse_diff(
         "--- a/gone.ms\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-def a() -> Int:\n-    return 0\n",
