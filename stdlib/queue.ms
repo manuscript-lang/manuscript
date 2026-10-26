@@ -27,7 +27,7 @@ impl Queue[T]:
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
             for index in range(self.head, count):
-                live.append(self.items.get(index).clone())
+                live.append(self.items.replace(index, none))
             self.items = live
             self.head = 0
 
@@ -39,8 +39,7 @@ impl Queue[T]:
         if self.head >= self.items.length():
             return none
 
-        let value = self.items.get(self.head).clone()
-        self.items.set(self.head, none)
+        let value = self.items.replace(self.head, none)
         self.head += 1
 
         if self.head == self.items.length():
