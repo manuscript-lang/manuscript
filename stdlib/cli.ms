@@ -86,30 +86,25 @@ impl Error for CliError:
             case TooManyArguments(value): return f"cli: unexpected argument {value}"
             case InvalidSchema(reason): return f"cli: invalid command schema: {reason}"
 
-# What a flag accepts.
+# What a flag accepts. Each case fills the record field of the same language type.
 export type FlagKind:
-    # Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
+    # `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
     case Bool
-    # Any text, including text that begins with a dash when given as `--name=value`.
-    case Text
-    # A whole number that fits in Int; other text is an InvalidValue error.
+    # `String` field. Any text, including text that begins with a dash when given as `--name=value`.
+    case String
+    # `Int` field. A whole number that fits in Int; other text is an InvalidValue error.
     case Int
-    # A decimal number that parses as Float; other text is an InvalidValue error.
+    # `Float` field. A decimal number that parses as Float; other text is an InvalidValue error.
     case Float
-    # One of the listed texts.
-    case Choice(
-        # The accepted values, in the order help shows them.
-        options: List[String]
-    )
-    # Text that may repeat; every occurrence is kept in order.
-    case Many
+    # `List[String]` field. The flag may repeat; every occurrence is kept in order.
+    case List
 
 # A named option such as `--port 8080` or `-p 8080`.
 export type Flag:
     # The long name without dashes; also the key `Matches` reads it by.
     name: String
-    # What the flag accepts; defaults to any text.
-    kind: FlagKind = FlagKind.Text
+    # What the flag accepts, and so the type of the record field; defaults to String.
+    kind: FlagKind = FlagKind.String
     # One-letter alias used as `-p`; empty for none.
     short: String = ""
     # Text used when the flag is absent; none for no default. A Bool defaults to false.
@@ -120,6 +115,8 @@ export type Flag:
     required: Bool = False
     # Also accepted by every subcommand below the command that declares it.
     persistent: Bool = False
+    # When not empty, every value must be one of these texts; use with String and List flags.
+    choices: List[String] = []
 
 # A positional argument, bound in declaration order.
 export type Arg:
@@ -137,7 +134,7 @@ export type Arg:
 # Reading a name the schema does not declare, or reading it as the wrong kind, is a programmer error and faults.
 # A flag with a default or `required`, and a required argument, always has a value.
 export type Matches:
-    # Text values by flag or argument name; a Many flag or rest argument holds several.
+    # Text values by flag or argument name; a List flag or rest argument holds several.
     values: Map[String, List[String]] = Map[String, List[String]]()
     # The command names walked from the root, root included.
     path: List[String] = []
@@ -161,7 +158,7 @@ impl Matches:
     def bool(name: String) -> Bool:
         return self.string(name) == "true"
 
-    # Returns every value of a Many flag or rest argument, in order; empty when absent.
+    # Returns every value of a List flag or rest argument, in order; empty when absent.
     def list(name: String) -> List[String]:
         return self.values.get(name).get([]).clone()
 
@@ -270,10 +267,21 @@ impl Command:
 
 # Builds a leaf command whose handler receives the options record `T`.
 #
-# Each field of `T` is filled from the flag or argument with its name, with dashes as underscores: Bool for a Bool flag, Int
-# or Float for numbers, String for Text and Choice, `List[String]` for Many and rest arguments, and `Optional[...]`
-# for anything that may be absent (an optional argument, or a flag with neither a default nor `required`). A field with no matching
-# value, or of the wrong type, fails the run with an `InvalidSchema` error. The handler returns the exit status.
+# Each field of `T` is filled from the flag or argument with its name, dashes written as underscores, and has the
+# type its kind names:
+#
+# | declared | field type |
+# | --- | --- |
+# | `FlagKind.Bool` | `Bool` (absent is false) |
+# | `FlagKind.String` | `String` |
+# | `FlagKind.Int` | `Int` |
+# | `FlagKind.Float` | `Float` |
+# | `FlagKind.List`, and a `rest` argument | `List[String]` (absent is empty) |
+# | any other `Arg` | `String` |
+#
+# A flag with neither a default nor `required`, and an optional `Arg`, needs an `Optional[...]` field, which is `none`
+# when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
+# handler returns the exit status.
 export def command[T](
     name: String,
     run: Callable[[T], Result[Int, Error]],
@@ -318,7 +326,7 @@ def collect_fields(
     for flag in flags:
         let items = values.get(flag.name).get([])
 
-        if is_many(flag.kind):
+        if is_list(flag.kind):
             fields[field_name(flag.name)] = stringify(items.clone()).get()
         elif not items.is_empty():
             fields[field_name(flag.name)] = literal(flag.kind, items[0].clone())
@@ -341,22 +349,23 @@ def field_name(name: String) -> String:
 def persistent_flags(flags: List[Flag]) -> List[Flag]:
     return flags.filter(lambda flag: flag.persistent)
 
-# Describes what a kind accepts, for errors and help.
-def expected_text(kind: FlagKind) -> String:
-    match kind:
+# Describes what a flag accepts, for errors.
+def expected_text(flag: Flag) -> String:
+    if not flag.choices.is_empty(): return "one of " + flag.choices.join(", ")
+
+    match flag.kind:
         case Bool: return "true or false"
-        case Text: return "text"
         case Int: return "an integer"
         case Float: return "a number"
-        case Choice(options): return "one of " + options.join(", ")
-        case Many: return "text"
+        case _: return "text"
 
 # Names the value a flag takes in help, such as `int` or `dev|prod`.
-def value_hint(kind: FlagKind) -> String:
-    match kind:
+def value_hint(flag: Flag) -> String:
+    if not flag.choices.is_empty(): return flag.choices.join("|")
+
+    match flag.kind:
         case Int: return "int"
         case Float: return "float"
-        case Choice(options): return options.join("|")
         case _: return "text"
 
 # Returns whether the kind is Bool.
@@ -365,19 +374,20 @@ def is_bool(kind: FlagKind) -> Bool:
         case Bool: return True
         case _: return False
 
-# Returns whether the kind is Many.
-def is_many(kind: FlagKind) -> Bool:
+# Returns whether the kind is List.
+def is_list(kind: FlagKind) -> Bool:
     match kind:
-        case Many: return True
+        case List: return True
         case _: return False
 
-# Returns whether `value` fits `kind`.
-def fits(kind: FlagKind, value: String) -> Bool:
-    match kind:
+# Returns whether `value` fits the flag's kind and choices.
+def fits(flag: Flag, value: String) -> Bool:
+    if not flag.choices.is_empty() and not flag.choices.contains(value): return False
+
+    match flag.kind:
         case Bool: return value == "true" or value == "false"
         case Int: return value.parse_int().is_some()
         case Float: return value.parse_float().is_some()
-        case Choice(options): return options.contains(value)
         case _: return True
 
 # Checks one flag name or short against names already seen.
@@ -419,7 +429,7 @@ def check_schema(
 
     for flag in node.flags:
         if let text = flag.default:
-            if not fits(flag.kind, text):
+            if not fits(flag, text):
                 return error(
                     CliError.InvalidSchema(
                         f"default {text} does not fit flag {flag.name}"
@@ -485,14 +495,14 @@ def find_flag(flags: List[Flag], key: String, long: Bool) -> Optional[Flag]:
 def store(var values: Map[String, List[String]], flag: Flag, value: String) -> Result[
     Unit, CliError
 ]:
-    if not fits(flag.kind, value):
+    if not fits(flag, value):
         return error(
             CliError.InvalidValue(
-                flag.name.clone(), value, expected_text(flag.kind)
+                flag.name.clone(), value, expected_text(flag)
             )
         )
 
-    if is_many(flag.kind):
+    if is_list(flag.kind):
         var items = values.get(flag.name).get([])
         items.append(value)
         values[flag.name.clone()] = items
@@ -656,7 +666,7 @@ def fill(var values: Map[String, List[String]], flag: Flag) -> Result[Unit, CliE
         values[flag.name.clone()] = ["false"]
         return ok(())
 
-    if is_many(flag.kind):
+    if is_list(flag.kind):
         values[flag.name.clone()] = []
         return ok(())
 
@@ -724,7 +734,7 @@ def flag_section(title: String, flags: List[Flag]) -> String:
         var label = f"-{flag.short}, " if not flag.short.is_empty() else "    "
 
         label += f"--{flag.name}"
-        if not is_bool(flag.kind): label += f" <{value_hint(flag.kind)}>"
+        if not is_bool(flag.kind): label += f" <{value_hint(flag)}>"
         labels.append(label.clone())
         width = max_int(width, label.length())
 

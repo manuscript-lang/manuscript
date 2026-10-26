@@ -25,8 +25,10 @@ def serve_command() -> Command:
         about: "Run the server",
         flags: [
             Flag("port", FlagKind.Int, "p", "8080", "Listen port"),
-            Flag("mode", FlagKind.Choice(["dev", "prod"]), default: "dev"),
-            Flag("tags", FlagKind.Many)
+            Flag(
+                "mode", FlagKind.String, default: "dev", choices: ["dev", "prod"]
+            ),
+            Flag("tags", FlagKind.List)
         ],
         args: [Arg("root", "Directory to serve")],
         run: lambda options: serve(options)
@@ -159,7 +161,7 @@ test "schema mistakes are reported before parsing":
     let duplicate = Command(
         name: "x",
         flags: [
-            Flag(name: "a", kind: FlagKind.Bool), Flag(name: "a", kind: FlagKind.Text)
+            Flag(name: "a", kind: FlagKind.Bool), Flag(name: "a", kind: FlagKind.String)
         ]
     )
     (duplicate.parse([]) | try expect_error).message() | try expect_contains(

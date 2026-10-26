@@ -36,7 +36,7 @@ def main() -> Int:
         about: "Run the server",
         flags: [
             Flag("port", FlagKind.Int, "p", "8080", "Listen port"),
-            Flag("mode", FlagKind.Choice(["dev", "prod"]), default: "dev")
+            Flag("mode", FlagKind.String, default: "dev", choices: ["dev", "prod"])
         ],
         args: [Arg("root", "Directory to serve")],
         run: lambda options: serve(options)
@@ -45,11 +45,11 @@ def main() -> Int:
     return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
 ```
 
-Ceremony choices: `Flag` fields are positional-friendly (`name, kind = Text, short, default, help`); `Arg(name, help, required, rest)`; the tree is one expression; handlers are plain functions of `T`.
+Ceremony choices: `Flag` fields are positional-friendly (`name, kind = String, short, default, help`); `Arg(name, help, required, rest)`; the tree is one expression; handlers are plain functions of `T`.
 
 Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in `documentation/learn/common-tasks.md`):
 
-- `FlagKind`: `Bool | Text | Int | Float | Choice(options) | Many`; values are validated at parse time. Optional args and flags without a default map to `Optional[...]` fields; `Many` and rest args to `List[String]`.
+- `FlagKind` names the language type of the record field, one to one: `Bool` is `Bool`, `String` is `String`, `Int` is `Int`, `Float` is `Float`, `List` is `List[String]`. `Flag.choices` restricts the accepted texts without a separate kind. A flag with neither a default nor `required`, and an optional `Arg`, maps to `Optional[...]`; a `rest` `Arg` maps to `List[String]`. Values are validated at parse time.
 - `Command(name, about, flags, args, children, exec)`; `exec` is the raw `Callable[[Matches], Result[Int, Error]]` for handlers that read `Matches` themselves.
 - `Command.parse(argv) -> Result[Parsed, CliError]` (pure; `Parsed` is `Help(text)` or `Run(node, matches)`), `execute(argv) -> Int`, `help(path) -> Optional[String]`.
 - `execute` writes help to stdout (0), usage errors plus a hint to stderr (2), and handler errors to stderr (1). `main() -> Int` returns it.
