@@ -29,3 +29,8 @@ test "partition splits by predicate keeping order":
     let none_split = List[Int]().partition(lambda x: x > 0)
     try expect_equal(none_split.matching.length(), 0)
     try expect_equal(none_split.rest.length(), 0)
+
+test "flat_map infers its element type from list literals returned by a callback":
+    try expect_equal([1, 2].flat_map(lambda x: [x, x * 10]), [1, 10, 2, 20])
+    try expect_equal(["a"].flat_map(lambda s: [s + "!"]), ["a!"])
+    try expect_equal([1, 2].flat_map(lambda x: ([x] if x > 1 else [])), [2])
