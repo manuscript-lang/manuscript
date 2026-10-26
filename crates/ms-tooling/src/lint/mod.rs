@@ -2,6 +2,7 @@
 //! semantic errors; lint never changes behavior.
 
 mod bindings;
+mod faults;
 mod matches;
 mod patterns;
 mod results;
@@ -13,7 +14,7 @@ use std::sync::Arc;
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL109`.
+    /// Stable rule code, `MSL001`..`MSL110`.
     pub code: &'static str,
     /// Human-readable message.
     pub message: String,
@@ -81,6 +82,7 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
     for module in program.modules.iter().filter(|m| !m.is_standard()) {
         bindings::lint(program, module, &mut findings);
         results::lint(module, &mut findings);
+        faults::lint(module, &mut findings);
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
     }
