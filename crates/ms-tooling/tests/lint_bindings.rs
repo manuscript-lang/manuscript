@@ -41,3 +41,18 @@ fn if_let_binding_that_is_never_read_is_still_reported() {
 ";
     assert!(codes(source).contains(&"MSL101".to_string()));
 }
+
+#[test]
+fn optional_get_without_default_is_reported() {
+    let source = "export def main() -> Int:
+    let m = Map[String, Int]()
+    let a = m.get(\"a\").get(0)
+    return m.get(\"a\").get() + a
+";
+    let found = codes(source);
+    assert_eq!(
+        found.iter().filter(|c| *c == "MSL110").count(),
+        1,
+        "{found:?}"
+    );
+}
