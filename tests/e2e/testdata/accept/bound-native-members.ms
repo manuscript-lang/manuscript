@@ -159,3 +159,25 @@ test "list and map literals pass as Equal":
     (same([1, 2], [1]) == False) | try expect_true
     (same({"a": 1}, {"a": 1})) | try expect_true
     (same({"a": [1]}, {"a": [2]}) == False) | try expect_true
+
+test "numeric and optional members as values":
+    let n = -7
+    let x = 2.5
+    let abs = n.abs
+    let sign = n.sign
+    let to_float = n.to_float
+    let to_decimal = n.to_decimal
+    let narrow = n.to_int8
+    let float_abs = (-x).abs
+    let is_nan = x.is_nan
+    let is_finite = x.is_finite
+    let hash = n.hash
+    (abs() == 7) | try expect_true
+    (sign() == -1) | try expect_true
+    (to_float() == -7.0) | try expect_true
+    (to_decimal().to_string() == "-7") | try expect_true
+    (narrow().get(default: 0) == -7) | try expect_true
+    (float_abs() == 2.5) | try expect_true
+    (is_nan() == False) | try expect_true
+    (is_finite()) | try expect_true
+    (hash() == n.hash()) | try expect_true
