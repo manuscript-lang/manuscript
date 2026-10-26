@@ -15,7 +15,7 @@ mod accumulate;
 
 use alloc::vec::Vec;
 use core::cell::RefCell;
-use ms_rt::ffi::{Global, Handed, ObjBox, ObjMut, ObjRef, Object, StatusCode, Text, native};
+use ms_rt::ffi::{Global, Handed, ObjBox, ObjMut, ObjRef, Object, StatusCode, native};
 use ms_rt::glue::{fault, record_failure};
 use ms_rt_abi::{STATUS_NONE, StrVal};
 use stream::{IoFail, IoRes, Stream};
@@ -102,9 +102,10 @@ native! {
         h: ObjMut<Stream>,
         has_max: bool,
         max: i64,
-    ) -> Result<Text, StatusCode> {
+    ) -> Result<StrVal, StatusCode> {
         let mut h = h;
-        chunk(h.read_line(optional(has_max, max))).map(Text)
+        status(h.read_line_with(optional(has_max, max), ms_rt::string::from_bytes))?
+            .ok_or(StatusCode(STATUS_NONE))
     }
 
     fn msstd_io_write_bytes(h: ObjMut<Stream>, data: &[u8]) -> Result<(), StatusCode> {

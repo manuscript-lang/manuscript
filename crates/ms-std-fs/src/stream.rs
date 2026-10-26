@@ -381,6 +381,16 @@ impl Stream {
 
     /// `ioReadLine`: one line without its ending, `None` at end of stream.
     pub fn read_line(&mut self, max: Option<i64>) -> IoRes<Option<Vec<u8>>> {
+        self.read_line_with(max, <[u8]>::to_vec)
+    }
+
+    /// `read_line` that hands the validated line to `make` instead of returning an owned buffer,
+    /// so a caller that copies it into its own representation does not copy twice.
+    pub fn read_line_with<R>(
+        &mut self,
+        max: Option<i64>,
+        make: impl FnOnce(&[u8]) -> R,
+    ) -> IoRes<Option<R>> {
         if self.closed {
             return Err(IoFail::status(STATUS_CLOSED));
         }
@@ -396,9 +406,14 @@ impl Stream {
         if let Some(i) = find_newline(self.available())
             && line_length(&self.available()[..i]) < max
         {
-            let line = self.available()[..i].to_vec();
+            let line = trim_cr(&self.available()[..i]);
+            if core::str::from_utf8(line).is_err() {
+                self.consume(i + 1);
+                return Err(IoFail::status(STATUS_INVALID_DATA));
+            }
+            let made = make(line);
             self.consume(i + 1);
-            return finish_line(line).map(Some);
+            return Ok(Some(made));
         }
         let mut b: Vec<u8> = Vec::new();
         loop {
@@ -427,7 +442,7 @@ impl Stream {
                 return Err(IoFail::status(STATUS_LIMIT_EXCEEDED));
             }
         }
-        finish_line(b).map(Some)
+        finish_line(b).map(|line| Some(make(&line)))
     }
 }
 
@@ -465,6 +480,10 @@ fn line_length(line: &[u8]) -> u64 {
         Some(b'\r') => line.len() as u64 - 1,
         _ => line.len() as u64,
     }
+}
+
+fn trim_cr(line: &[u8]) -> &[u8] {
+    line.strip_suffix(b"\r").unwrap_or(line)
 }
 
 fn finish_line(mut line: Vec<u8>) -> IoRes<Vec<u8>> {
