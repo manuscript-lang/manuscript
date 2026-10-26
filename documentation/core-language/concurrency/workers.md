@@ -49,9 +49,24 @@ test "a worker answers over its channel":
 
 ## What a worker may use
 
-Use workers for CPU-bound work. Worker networking has known alpha limitations and is not currently safe to rely on. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
+Use workers for CPU-bound work. A worker may use the network: HTTP `fetch` and connections run on the worker's own thread, so several workers download in parallel (four workers fetching from one server at once are covered by the conformance fixture `workers.ms`). To move large `Bytes` between a worker and its starter, use the raw pipe (`worker.bytes()` on the starter, `worker_bytes()` in the worker): each `send` is copied once into the other side's memory with no JSON. Read each message with the kind that was sent, because bytes and channel messages share one ordered queue. Standard input, the terminal and exit hooks fault with "only available on the main thread". Standard output works; a worker's writes go straight out, unbuffered, so they can appear before text the main thread has buffered.
 
 Send plain serializable data. Messages reconstruct values through JSON; acceptance by the checker does not establish transfer suitability or preserve shared identity. Do not use worker messages to transfer live resources.
+
+## Serving on several cores
+
+Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: True)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
+
+```manuscript
+def serve_loop() -> Unit:
+    var ch = worker_channel[Int, Int]()
+    let options = HttpServerOptions(shared: True)
+    if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
+        with let server = acquired:
+            let _stopped = server.wait()
+```
+
+Start one worker per core with `group.spawn(serve_loop)`. Measured with a CPU-bound handler on two server cores: one thread 23k requests per second, two workers 45k. A handler runs on the worker that accepted the connection and shares no memory with the other workers.
 
 ## Cost
 
