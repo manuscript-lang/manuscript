@@ -403,6 +403,36 @@ mod tests {
         group: *mut ChannelGroup,
         lease: *mut ChannelLease,
         preserved: *mut bool,
+        dropped: *mut usize,
+        pending: *mut Obj,
+    }
+
+    #[repr(C)]
+    struct PendingDrop {
+        hdr: Obj,
+        dropped: *mut usize,
+    }
+
+    unsafe extern "C" fn drop_pending(obj: *mut Obj) {
+        // SAFETY: this test object owns its allocation and keeps its counter live until drained.
+        unsafe {
+            *(*obj.cast::<PendingDrop>()).dropped += 1;
+            crate::alloc::free(obj.cast());
+        }
+    }
+
+    #[inline(never)]
+    unsafe fn close_with_deferred_lease(node: *mut NestedDrop) {
+        // SAFETY: the deepest node owns the lease and keeps the group and counters live.
+        unsafe {
+            crate::obj::release((*node).pending);
+            crate::obj::release((*node).lease.cast());
+            // At the drop-depth limit the lease is pending, with rc reused as its next link.
+            let link = (*node).pending as usize;
+            assert_eq!((*(*node).lease).hdr.rc, link);
+            msrt_channel_group_close((*node).group);
+            *(*node).preserved = (*(*node).lease).hdr.rc == link;
+        }
     }
 
     unsafe extern "C" fn drop_nested(obj: *mut Obj) {
@@ -412,27 +442,34 @@ mod tests {
             if !(*node).child.is_null() {
                 crate::obj::release((*node).child);
             } else {
-                crate::obj::release((*node).lease.cast());
-                // At the drop-depth limit the lease is pending, with rc reused as its next link.
-                assert_eq!((*(*node).lease).hdr.rc, 0);
-                msrt_channel_group_close((*node).group);
-                *(*node).preserved = (*(*node).lease).hdr.rc == 0;
+                // Keep assertion formatting and close's locals out of all 4096 recursive frames.
+                close_with_deferred_lease(node);
             }
+            *(*node).dropped += 1;
             crate::alloc::free(obj.cast());
         }
     }
 
-    #[test]
-    fn group_close_does_not_resurrect_a_lease_with_a_deferred_drop() {
+    fn check_group_close_with_deferred_lease(with_pending: bool) {
         let _g = lock();
         let (mut called, mut dropped) = (0, 0);
         let mut preserved = false;
+        let mut nodes_dropped = 0;
+        let mut pending_dropped = 0;
         let group = msrt_channel_group_new();
         // SAFETY: the chain owns the lease and every node; the group stays live until it drains.
         unsafe {
             let close = callback(&mut called, &mut dropped);
             let lease = msrt_channel_group_add(group, close);
             crate::obj::release(close.cast());
+            let pending = if with_pending {
+                let pending = crate::obj::new_obj(size_of::<PendingDrop>(), drop_pending)
+                    .cast::<PendingDrop>();
+                (*pending).dropped = &raw mut pending_dropped;
+                pending.cast()
+            } else {
+                null_mut()
+            };
             let mut child = null_mut();
             for _ in 0..4096 {
                 let node =
@@ -441,6 +478,8 @@ mod tests {
                 (*node).group = group;
                 (*node).lease = lease;
                 (*node).preserved = &raw mut preserved;
+                (*node).dropped = &raw mut nodes_dropped;
+                (*node).pending = pending;
                 child = node.cast();
             }
             crate::obj::release(child);
@@ -453,6 +492,18 @@ mod tests {
         );
         assert_eq!(called, 1);
         assert_eq!(dropped, 1);
+        assert_eq!(nodes_dropped, 4096);
+        assert_eq!(pending_dropped, usize::from(with_pending));
+    }
+
+    #[test]
+    fn group_close_does_not_resurrect_a_lease_with_a_deferred_drop() {
+        check_group_close_with_deferred_lease(false);
+    }
+
+    #[test]
+    fn group_close_preserves_a_deferred_leases_nonzero_pending_link() {
+        check_group_close_with_deferred_lease(true);
     }
 
     #[test]
