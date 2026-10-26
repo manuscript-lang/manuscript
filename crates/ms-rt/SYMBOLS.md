@@ -113,6 +113,7 @@ msrt_float_to_bits(value: f64) -> i64
 msrt_float32_from_bits(bits: i64) -> f64
 msrt_float32_to_bits(value: f64) -> i64
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
+msrt_float_to_float32(v: f64, out: *mut f32) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
 msrt_heap_stats(out: *mut i64)

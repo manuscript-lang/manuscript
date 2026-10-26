@@ -40,9 +40,13 @@ impl Decimal:
         return msstd_decimal_compare(self, other)
 
     # Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
-    # Values beyond the Float range convert to an infinity.
-    def to_float() -> Float:
-        return msstd_decimal_to_float(self)
+    # Returns none when the value is beyond the Float range.
+    def to_float() -> Optional[Float]:
+        let value = msstd_decimal_to_float(self)
+        if value.is_finite():
+            return some(value)
+
+        return none
 
     # Discards the fractional part toward zero and returns the integer, so -2.9 gives -2.
     # Returns none when the integer part does not fit in the platform's Int.

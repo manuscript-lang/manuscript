@@ -556,9 +556,13 @@ impl BigInt:
     def shift_right(count: Int) -> Result[BigInt, BigIntError]:
         return msstd_bigint_shift_right(self, count)
 
-    # Converts to the nearest Float, or infinity of the same sign when the magnitude exceeds the Float range.
-    def to_float() -> Float:
-        return msstd_bigint_to_float(self)
+    # Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
+    def to_float() -> Optional[Float]:
+        let value = msstd_bigint_to_float(self)
+        if value.is_finite():
+            return some(value)
+
+        return none
 
     # Returns the value as an Int when it fits in the platform's Int, or none when it is outside that range.
     def to_int() -> Optional[Int]:
