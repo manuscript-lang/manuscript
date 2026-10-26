@@ -31,3 +31,11 @@ Decision: the user switched Pages to GitHub Actions and requested removal of obs
 Apply when: migrating or repairing Pages publishing.
 Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), [artifact deployment](../.github/workflows/cicd.yml), and [publishing instructions](../documentation/contributing/development.md).
 Verify: inspect the actual deployment result, not just the book artifact or merged PR; confirm Pages source is GitHub Actions.
+
+### Build steps use the active Cargo invocation's checkout
+
+Verified: with a Cargo target directory shared between checkouts, Cargo reused an `xtask` executable whose compile-time `CARGO_MANIFEST_DIR` named the other checkout. `cargo xtask runtime` rebuilt that checkout's runtime, and the current CLI build then rejected its own stale archive. Cargo supplies the active package's manifest directory at execution time; use that runtime value for checkout-specific build inputs and outputs, with the compiled path only as a fallback for direct execution.
+
+Apply when: a repository tool run by Cargo selects source or output paths, especially with shared build caches or worktrees.
+Evidence: [runtime build step](../crates/xtask/src/main.rs), [active-checkout regression](../crates/xtask/tests/runtime_root.rs).
+Verify: `cargo test -p xtask --test runtime_root`; an executable built elsewhere must pass the active checkout's manifest and runtime output directory to Cargo.

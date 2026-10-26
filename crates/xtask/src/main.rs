@@ -29,7 +29,12 @@ fn main() -> ExitCode {
 
 /// Builds `ms-native` in release mode, whatever the profile of `ms` itself, and returns the archive.
 fn runtime() -> Result<PathBuf, String> {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // Cargo can reuse this executable from another checkout when target directories are shared.
+    // Its runtime environment names the active package; the compiled path may name the old one.
+    let manifest = std::env::var_os("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+    let root = manifest.join("../..");
     let out = root.join("target/ms-native");
     let target = out.join("build");
     // Linux programs are static musl executables and Windows programs mingw-w64 (gnullvm) ones, all
