@@ -1,4 +1,4 @@
-from "@std/bytes.ms" import Bytes, BytesBuilder
+from "@std/bytes.ms" import Bytes, join
 from "@std/net.ms" import Connection
 from "@std/net.ms" import DatagramSocket
 from "@std/net.ms" import DnsRecord
@@ -348,23 +348,20 @@ def read_rest(
     let second = try exchange.read().map_error(from_io)
 
     if let next = second:
-        var out = BytesBuilder()
-        out.append_bytes(head)
         total += next.length()
         if over_limit(total, limit): return error(HttpError.LimitExceeded)
 
-        out.append_bytes(next)
-        return read_more(exchange, out, total, limit)
+        return read_more(exchange, [head, next], total, limit)
 
     return ok(head)
 
 def read_more(
     exchange: HttpExchange,
-    out: BytesBuilder,
+    chunks: List[Bytes],
     total: Int,
     limit: Optional[Int]
 ) -> Result[Bytes, HttpError]:
-    var rest = out
+    var parts = chunks
     var size = total
 
     while True:
@@ -374,9 +371,9 @@ def read_more(
             size += bytes.length()
             if over_limit(size, limit): return error(HttpError.LimitExceeded)
 
-            rest.append_bytes(bytes)
+            parts.append(bytes)
         else:
-            return ok(rest.build())
+            return ok(join(parts))
 
 def over_limit(total: Int, limit: Optional[Int]) -> Bool:
     if let max = limit:

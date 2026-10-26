@@ -168,9 +168,9 @@ impl Router:
     # Unmatched paths answer 404, a path matched only under other methods answers 405 with
     # `Allow`, and OPTIONS on a known path answers 204 with `Allow`.
     def handler() -> Callable[[HttpExchange], Result[Unit, HttpError]]:
-        let routes = self.routes.clone()
+        let routes = share(self.routes.clone())
         let middleware = self.middleware.clone()
-        return lambda exchange: dispatch(routes.clone(), middleware.clone(), exchange)
+        return lambda exchange: dispatch(routes, middleware.clone(), exchange)
 
 # Adds a route unless one with the same method and shape exists.
 def insert(
@@ -278,23 +278,26 @@ def lookup(routes: List[Route], method: String, parts: List[String]) -> Lookup:
     var fallback = False
     var params = RouteParams(names: [], values: [])
     var allow: List[String] = []
+    var index = 0
 
-    for entry in routes.entries():
-        if let captured = capture(entry.value.segments, parts):
-            allow.append(entry.value.method.clone())
+    while index < routes.length():
+        let route = routes[index]
+
+        if let captured = capture(route.segments, parts):
+            allow.append(route.method.clone())
 
             if (
-                serves(entry.value.method, method)
+                serves(route.method, method)
                 and (
                     found.is_none()
-                    or (fallback and entry.value.method == method)
+                    or (fallback and route.method == method)
                 )
             ):
-                found = some(entry.index)
-                fallback = entry.value.method != method
-                params = RouteParams(
-                    names: names_of(entry.value.segments), values: captured
-                )
+                found = some(index)
+                fallback = route.method != method
+                params = RouteParams(names: names_of(route.segments), values: captured)
+
+        index += 1
 
     return Lookup(found: found, params: params, allow: allow)
 
@@ -343,7 +346,7 @@ def accepts(segment: Segment, part: String, var values: List[String]) -> Bool:
         case Rest(_): return True
 
 def dispatch(
-    routes: List[Route],
+    routes: Shared[List[Route]],
     middleware: List[
         Callable[
             [
@@ -356,7 +359,7 @@ def dispatch(
     exchange: HttpExchange
 ) -> Result[Unit, HttpError]:
     let method = exchange.method().text()
-    let found = lookup(routes, method, split_path(exchange.path()))
+    let found = lookup(routes.get(), method, split_path(exchange.path()))
     return chain(middleware, 0, exchange, final_step(routes, method, found))
 
 def chain(
@@ -379,13 +382,11 @@ def chain(
 
 # The end of the chain: the matched route, or the 404, 405 or OPTIONS answer.
 def final_step(
-    routes: List[Route],
+    routes: Shared[List[Route]],
     method: String,
     found: Lookup
 ) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
-    return lambda exchange: finish(
-        routes.clone(), method.clone(), found.clone(), exchange
-    )
+    return lambda exchange: finish(routes, method.clone(), found.clone(), exchange)
 
 # The continuation handed to the middleware at `at - 1`.
 def next_step(
@@ -406,23 +407,23 @@ def next_step(
 
 # The end of a route's own middleware: its handler.
 def route_step(
-    routes: List[Route],
+    routes: Shared[List[Route]],
     index: Int,
     params: RouteParams
 ) -> Callable[[HttpExchange], Result[Unit, HttpError]]:
-    return lambda exchange: routes[index].handler(exchange, params)
+    return lambda exchange: routes.get() [index].handler(exchange, params)
 
 # Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 def finish(
-    routes: List[Route],
+    routes: Shared[List[Route]],
     method: String,
     found: Lookup,
     exchange: HttpExchange
 ) -> Result[Unit, HttpError]:
     if let index = found.found:
-        let around = routes[index].around.clone()
+        let around = routes.get() [index].around.clone()
         return chain(
-            around, 0, exchange, route_step(routes.clone(), index, found.params.clone())
+            around, 0, exchange, route_step(routes, index, found.params.clone())
         )
 
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
