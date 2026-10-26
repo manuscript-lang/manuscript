@@ -1,11 +1,13 @@
 # Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
 #
-# A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `handle` takes a `build` function that turns
-# the parsed `Matches` into your own options record and a `run` function that receives it. Parsing reads only the
-# `List[String]` you give it; pass `process.arguments()` from `main`.
+# A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `command[T]` builds a leaf whose handler
+# receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
+# and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
+# and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
+# `process.arguments()` from `main`.
 #
 # ```
-# from "@std/cli.ms" import Arg, Command, Flag, FlagKind
+# from "@std/cli.ms" import Arg, Command, Flag, FlagKind, command
 # from "@std/process.ms" import arguments
 #
 # type Greeting:
@@ -16,19 +18,17 @@
 #     return ok(0)
 #
 # def main() -> Int:
-#     var greet_command = Command(
+#     let greeting = command[Greeting](
 #         name: "greet",
 #         about: "Print a greeting",
-#         flags: [Flag(name: "shout", kind: FlagKind.Bool, short: "s", help: "Uppercase the greeting")],
-#         args: [Arg(name: "name", help: "Who to greet")]
-#     )
-#     greet_command.handle(
-#         build: lambda m: ok(Greeting(name: m.string("name"), shout: m.bool("shout"))),
+#         flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
+#         args: [Arg("name", help: "Who to greet")],
 #         run: lambda options: greet(options)
 #     )
-#     return Command(name: "tool", children: [greet_command]).execute(arguments())
+#     return Command(name: "tool", children: [greeting]).execute(arguments())
 # ```
 from "@std/io.ms" import stderr, stdout
+from "@std/json.ms" import parse, stringify
 
 # Errors returned while checking a command schema or parsing arguments.
 export type CliError:
@@ -108,8 +108,8 @@ export type FlagKind:
 export type Flag:
     # The long name without dashes; also the key `Matches` reads it by.
     name: String
-    # What the flag accepts.
-    kind: FlagKind
+    # What the flag accepts; defaults to any text.
+    kind: FlagKind = FlagKind.Text
     # One-letter alias used as `-p`; empty for none.
     short: String = ""
     # Text used when the flag is absent; none for no default. A Bool defaults to false.
@@ -132,7 +132,7 @@ export type Arg:
     # Takes every remaining word as a list; only the last argument may be rest.
     rest: Bool = False
 
-# The values one invocation produced, read inside `build`.
+# The values one invocation produced.
 #
 # Reading a name the schema does not declare, or reading it as the wrong kind, is a programmer error and faults.
 # A flag with a default or `required`, and a required argument, always has a value.
@@ -141,6 +141,8 @@ export type Matches:
     values: Map[String, List[String]] = Map[String, List[String]]()
     # The command names walked from the root, root included.
     path: List[String] = []
+    # The JSON literal for each supplied value by field name (dashes in names become underscores); decoded by `command`.
+    fields: Map[String, String] = Map[String, String]()
 
 impl Matches:
     # Returns the text of a flag or argument.
@@ -183,7 +185,7 @@ impl Matches:
 
 # A command or command group: its schema, subcommands and handler.
 #
-# A group is a Command with `children`. A leaf sets its handler with `handle`, which receives your own options record.
+# A group is a Command with `children`. Build a leaf with `command[T]`, or set `exec` directly to read `Matches` yourself.
 export type Command:
     # The word that selects this node; the program name for the root.
     name: String
@@ -214,14 +216,6 @@ export type Parsed:
     )
 
 impl Command:
-    # Sets the handler: `build` maps the parsed `Matches` to your options record `T` (an error stops the run), and
-    # `run` receives it and returns the exit status.
-    var def handle[T](
-        build: Callable[[Matches], Result[T, Error]],
-        run: Callable[[T], Result[Int, Error]]
-    ) -> Unit:
-        self.exec = lambda m: run(try build(m))
-
     # Checks the tree, resolves the subcommand chain, and validates flags and arguments.
     # Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
     def parse(argv: List[String]) -> Result[Parsed, CliError]:
@@ -273,6 +267,75 @@ impl Command:
         for candidate in self.children:
             if candidate.name == word: return some(candidate.clone())
         return none
+
+# Builds a leaf command whose handler receives the options record `T`.
+#
+# Each field of `T` is filled from the flag or argument with its name, with dashes as underscores: Bool for a Bool flag, Int
+# or Float for numbers, String for Text and Choice, `List[String]` for Many and rest arguments, and `Optional[...]`
+# for anything that may be absent (an optional argument, or a flag with neither a default nor `required`). A field with no matching
+# value, or of the wrong type, fails the run with an `InvalidSchema` error. The handler returns the exit status.
+export def command[T](
+    name: String,
+    run: Callable[[T], Result[Int, Error]],
+    about: String = "",
+    flags: List[Flag] = [],
+    args: List[Arg] = []
+) -> Command:
+    return Command(
+        name: name, about: about, flags: flags, args: args,
+        exec: lambda matches: run(try decode[T](matches))
+    )
+
+# Builds `T` from the JSON literals of the supplied values.
+def decode[T](matches: Matches) -> Result[T, CliError]:
+    var members: List[String] = []
+    for entry in matches.fields.entries():
+        members.append(stringify(entry.key.clone()).get() + ":" + entry.value)
+
+    let parsed = parse[T]("{" + members.join(",") + "}")
+    return parsed.map_error(
+        lambda cause: CliError.InvalidSchema(
+            f"options record does not match the declared flags and arguments: {cause.message()}"
+        )
+    )
+
+# Renders one supplied value as the JSON literal for its kind.
+def literal(kind: FlagKind, text: String) -> String:
+    match kind:
+        case Bool: return text
+        case Int: return f"{text.parse_int().get()}"
+        case Float: return f"{text.parse_float().get()}"
+        case _: return stringify(text.clone()).get()
+
+# Collects the JSON literal of every supplied flag and argument for `command`.
+def collect_fields(
+    values: Map[String, List[String]],
+    flags: List[Flag],
+    args: List[Arg]
+) -> Map[String, String]:
+    var fields = Map[String, String]()
+
+    for flag in flags:
+        let items = values.get(flag.name).get([])
+
+        if is_many(flag.kind):
+            fields[field_name(flag.name)] = stringify(items.clone()).get()
+        elif not items.is_empty():
+            fields[field_name(flag.name)] = literal(flag.kind, items[0].clone())
+
+    for arg in args:
+        let items = values.get(arg.name).get([])
+
+        if arg.rest:
+            fields[field_name(arg.name)] = stringify(items.clone()).get()
+        elif not items.is_empty():
+            fields[field_name(arg.name)] = stringify(items[0].clone()).get()
+
+    return fields
+
+# Maps a flag or argument name to its record field name.
+def field_name(name: String) -> String:
+    return name.replace("-", "_")
 
 # Keeps the flags that descendants also accept.
 def persistent_flags(flags: List[Flag]) -> List[Flag]:
@@ -541,7 +604,9 @@ def walk(root: Command, argv: List[String]) -> Result[Parsed, CliError]:
     try bind(node, words, var values, path)
     for flag in inherited.concat(node.flags):
         try fill(var values, flag)
-    return ok(Parsed.Run(node, Matches(values, path)))
+
+    let fields = collect_fields(values, inherited.concat(node.flags), node.args)
+    return ok(Parsed.Run(node, Matches(values, path, fields)))
 
 # Assigns positional words to the node's arguments.
 def bind(

@@ -57,11 +57,11 @@ ms run args.ms -- Sam Ada
 
 ## Parse subcommands and flags
 
-Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a record you define. Usage errors print a message and exit with status 2.
+Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a record you define: each field is filled from the flag or argument with the same name (`dry-run` fills `dry_run`). Usage errors print a message and exit with status 2.
 
 <!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
 ```manuscript
-from "@std/cli.ms" import Arg, Command, Flag, FlagKind
+from "@std/cli.ms" import Arg, Command, Flag, FlagKind, command
 from "@std/io.ms" import stdout
 from "@std/process.ms" import arguments
 
@@ -76,14 +76,11 @@ def greet(options: Greeting) -> Result[Int, Error]:
     return ok(0)
 
 export def main() -> Int:
-    var hello = Command(
+    let hello = command[Greeting](
         name: "hello",
         about: "Print a greeting",
-        flags: [Flag(name: "times", kind: FlagKind.Int, short: "n", default: "1", help: "Repeat count")],
-        args: [Arg(name: "name", help: "Who to greet")]
-    )
-    hello.handle(
-        build: lambda m: ok(Greeting(name: m.string("name"), times: m.int("times"))),
+        flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],
+        args: [Arg("name", "Who to greet")],
         run: lambda options: greet(options)
     )
     return Command(name: "tool", about: "Example tool", children: [hello]).execute(arguments())

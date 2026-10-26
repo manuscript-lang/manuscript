@@ -18,47 +18,43 @@ Implemented in the first PR (parse, help, `execute`), 2026-10-26, checked agains
 
 ## Design
 
-One record, `Command`, is both a leaf and a group. A leaf sets a typed handler with the generic method `handle[T]`; `build` maps parsed `Matches` to your own options record `T`, and `run` receives it. `T` exists only inside that call, so commands with different option records mount under one parent with no second type or erasure step. Flags and arguments are plain records because Manuscript has no static methods.
+One recursive record, `Command`, is both leaf and group. A leaf is built with the generic function `command[T](name:, run:, flags:, args:)`: `run` receives the options record `T`, and no conversion code is written. The parser stores every supplied flag and argument as a JSON literal under its name (dashes become underscores) and decodes `T` with `json.parse[T]`, the existing compiler-backed generic that builds records from text. A field with no matching value, or of the wrong type, fails the run with `CliError.InvalidSchema`; flags without a field (such as inherited persistent flags) are ignored. This is pure Manuscript: no Rust, no syntax change.
 
 ```manuscript
 type ServeOptions:
     port: Int
     mode: String
     root: String
+    verbose: Bool
 
-def serve_command() -> Command:
-    var command = Command(
+def serve(options: ServeOptions) -> Result[Int, Error]:
+    ...
+
+def main() -> Int:
+    let serve_command = command[ServeOptions](
         name: "serve",
         about: "Run the server",
         flags: [
-            Flag(name: "port", kind: FlagKind.Int, short: "p", default: "8080"),
-            Flag(name: "mode", kind: FlagKind.Choice(["dev", "prod"]), default: "dev")
+            Flag("port", FlagKind.Int, "p", "8080", "Listen port"),
+            Flag("mode", FlagKind.Choice(["dev", "prod"]), default: "dev")
         ],
-        args: [Arg(name: "root")]
-    )
-    command.handle(
-        build: lambda m: ok(ServeOptions(port: m.int("port"), mode: m.string("mode"), root: m.string("root"))),
+        args: [Arg("root", "Directory to serve")],
         run: lambda options: serve(options)
     )
-    return command
-
-def main() -> Int:
-    let flags = [Flag(name: "verbose", kind: FlagKind.Bool, short: "v", persistent: True)]
-    return Command(name: "tool", flags: flags, children: [serve_command()]).execute(arguments())
+    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: True)]
+    return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
 ```
 
-The module is implemented in `stdlib/cli.ms` with a fixture, `tests/e2e/testdata/stdlib/cli.ms`, and a runnable recipe in `documentation/learn/common-tasks.md`.
+Ceremony choices: `Flag` fields are positional-friendly (`name, kind = Text, short, default, help`); `Arg(name, help, required, rest)`; the tree is one expression; handlers are plain functions of `T`.
 
-Surface:
+Surface (`stdlib/cli.ms`, fixture `tests/e2e/testdata/stdlib/cli.ms`, recipe in `documentation/learn/common-tasks.md`):
 
-- `Flag(name, kind, short = "", default = none, help = "", required = False, persistent = False)`; `FlagKind` is `Bool | Text | Int | Float | Choice(options) | Many`. Values are validated against the kind at parse time.
-- `Arg(name, help = "", required = True, rest = False)`.
-- `Command(name, about, flags, args, children, exec)`; `handle(build:, run:)` sets `exec`. A command with `children` and no extra words prints help.
-- `Matches`: `string`, `int`, `float`, `bool`, `list`, `string_or_none`, `int_or_none`, `float_or_none`, `path`. A name outside the schema or the wrong kind faults (programmer error). Typed `Flag[T]` handles are the deferred alternative.
-- `Command.parse(argv) -> Result[Parsed, CliError]` (pure; `Parsed` is `Help(text)` or `Run(node, matches)`), `Command.execute(argv) -> Int`, `Command.help(path) -> Optional[String]`.
-- `execute` writes help to stdout (status 0), usage errors plus a hint to stderr (2), and a handler `Error` message to stderr (1). `main() -> Int` returns it.
-- Flags: `--name value`, `--name=value`, `-p value`, `--no-name`, `--`. Persistent flags apply to descendants before or after the subcommand word. Clustered shorts and suggestions are deferred.
-- `parse` first validates the schema (`CliError.InvalidSchema`): duplicate names or shorts, reserved `help`/`-h`, misplaced `rest` or required args, defaults that do not fit their kind.
+- `FlagKind`: `Bool | Text | Int | Float | Choice(options) | Many`; values are validated at parse time. Optional args and flags without a default map to `Optional[...]` fields; `Many` and rest args to `List[String]`.
+- `Command(name, about, flags, args, children, exec)`; `exec` is the raw `Callable[[Matches], Result[Int, Error]]` for handlers that read `Matches` themselves.
+- `Command.parse(argv) -> Result[Parsed, CliError]` (pure; `Parsed` is `Help(text)` or `Run(node, matches)`), `execute(argv) -> Int`, `help(path) -> Optional[String]`.
+- `execute` writes help to stdout (0), usage errors plus a hint to stderr (2), and handler errors to stderr (1). `main() -> Int` returns it.
+- Flags: `--name value`, `--name=value`, `-p value`, `--no-name`, `--`. Persistent flags apply to descendants. Clustered shorts and suggestions are deferred.
+- `parse` validates the schema first (`CliError.InvalidSchema`): duplicates, reserved `help`/`-h`, misplaced `rest`/required args, defaults that do not fit their kind.
 - `.experts/stdlib-design.md` records that an old `cli` module was merged into `process` (#659). That module only returned argv, which stays `process.arguments()`; `@std/cli.ms` parses a list it is given.
 
 ## Components touched
@@ -74,8 +70,9 @@ Surface:
 
 ## Alternatives
 
-- **Handler takes `Matches` directly**: no `build`, but handlers read strings by name; the stated requirement is a structured value. `handle[T]` keeps one `Command` type and adds the record.
-- **`Command[T]` plus type-erased `Node`**: first draft; two types for what `handle[T]` does in one.
+- **Handler takes `Matches` directly**: kept as the `exec` escape hatch; the stated requirement is a structured value.
+- **Hand-written `build` lambda or `handle[T]` method**: earlier drafts; the user converted `Matches` to `T` by hand. JSON decoding removes it.
+- **`Command[T]` plus type-erased `Node`**: first draft; `command[T]` returns an erased `Command` instead.
 
 - **Builder methods per flag kind** (`cmd.int_flag(...)`): one method per kind; records in a list compose by concatenation instead. Revisit if verbose.
 - **Do nothing**: every program re-implements parsing; agents produce inconsistent, error-prone CLIs. Rejected.
