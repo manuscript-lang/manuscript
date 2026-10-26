@@ -598,7 +598,7 @@ fn keyword_template(word: &str) -> Option<&'static str> {
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "with" => "with ${1:initializer} as ${2:resource}:\n    $0",
+        "with" => "with let ${1:resource} = ${2:initializer}:\n    $0",
         "test" => "test \"${1:name}\":\n    ${0:return ()}",
         _ => return None,
     })
