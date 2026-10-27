@@ -239,6 +239,13 @@ impl Verifier<'_> {
                 break;
             }
         }
+        let frame_slots: BTreeSet<Value> = f
+            .blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .filter(|i| i.op == Op::Slot)
+            .filter_map(|i| i.res)
+            .collect();
         for (bi, b) in f.blocks.iter().enumerate() {
             for inst in &b.insts {
                 let modes = arg_modes(self.m, inst);
@@ -248,7 +255,9 @@ impl Verifier<'_> {
                     }
                     let keeps = match inst.op {
                         Op::Drop | Op::DropIf | Op::Copy | Op::CallInd => false,
-                        Op::Store => i == 1,
+                        // A stack slot of this frame cannot outlive it: a closure that reads
+                        // another one through a borrowed capture stores it there.
+                        Op::Store => i == 1 && !frame_slots.contains(&inst.args[0]),
                         _ => modes.get(i) == Some(&Mode::Own),
                     };
                     if keeps {
