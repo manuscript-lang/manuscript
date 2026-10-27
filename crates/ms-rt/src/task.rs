@@ -469,6 +469,7 @@ mod stack {
     }
 
     pub unsafe fn switch(_cur: *mut Task, next: *mut Task) {
+        crate::dbgf!("[sw] {:p} -> {:p}", _cur, next);
         // SAFETY: `sp` holds the fiber handle of a live task.
         unsafe { sys::fiber_switch((*next).sp as *mut u8) };
     }

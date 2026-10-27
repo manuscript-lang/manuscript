@@ -109,6 +109,7 @@ native! {
     /// `network() -> Network` (a new handle on the isolate's root network). No handle is cached
     /// in a thread-local: its destructor would run after a worker's arena is gone.
     fn msrt_net_network() -> Object<NetH> {
+        ms_rt::dbgf!("[ffi] network()");
         Object(NetH(root()))
     }
 

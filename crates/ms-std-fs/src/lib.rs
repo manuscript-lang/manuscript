@@ -178,6 +178,7 @@ native! {
     }
 
     fn msstd_fs_append_file(path: &str, data: &[u8]) -> Result<(), StatusCode> {
+        ms_rt::dbgf!("[fs] append {path}");
         fs_status(ops::append_file(path.as_bytes(), data))
     }
 
