@@ -103,7 +103,7 @@ expected true, got false
 - Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(lambda n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
 - Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `none`, `bools` toward `False`.
 - A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
-- A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs in a forked child.
+- A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs under `expect_fault`.
 
 `ms test` controls property runs from the command line:
 
