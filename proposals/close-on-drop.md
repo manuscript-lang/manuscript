@@ -23,7 +23,7 @@ Proposal, 2026-10-27, against `dcdaee5d`. Direction (Chinmay): "can we follow dr
 
 - Rule: a `let`/`var` binding of Resource class (`classify.rs`) that is never moved, captured or closed by hand is closed at scope exit, on every exit (return, `break`, `continue`, error, fault, cancellation), in reverse binding order.
 - Moved bindings keep today's rule: the new owner closes them. Conditional moves stay out of scope, so no drop flags.
-- Explicit `.close()` or `with` on the binding suppresses the implicit close (no double close).
+- The implicit close is always registered and never suppressed: `close()` is already required to be idempotent (`closeable.md`), so an early manual `.close()` plus the scope-exit close is safe, and an early `try` return before the manual close still closes.
 - Lowering: treat the binding as a `with` whose body is the rest of the block, reusing `CleanupPush`, `closer_for` and `close_call`, so faults and cancellation behave as `with` does.
 - `close()` stays `var def close() -> Unit` and returns no error (Chinmay: close handles all its errors itself). The implementation must handle every fallible step inside the body (retry, fall back, or ignore deliberately); an unhandled `try` in `close` is already rejected because it returns `Unit`.
 - Callers needing a result use an explicit fallible method (`flush`, `commit`) before the scope ends.
@@ -51,6 +51,16 @@ Before/after:
 | formatter, lint, LSP | lint could suggest dropping redundant `with`; optional | none |
 | docs `cleanup/scopes.md`, tour | document rule | doc check |
 | `ms-rt`, stdlib | unchanged | none |
+
+## Review findings (skeptical Opus pass)
+
+- Rule applies only to types with a closer; records or `Shared[...]` holding a resource keep a clear diagnostic (today they hit lowering errors, `with.rs:133-143`).
+- Conditional moves are not caught today (`walk.rs:342-346`), so that claim is dropped; the narrow rule just leaves moved bindings alone.
+- `var` reassignment of a resource must close the old value or be rejected (`walk.rs:1474`).
+- Capture by a non-escaping closure should be a borrow, not a move (`walk.rs:337`).
+- Derived values (`f.reader()`) outliving the closed source need a test (`exit-order.md:86`).
+- Lint: a resource with a fallible `flush`/`commit` that is never called.
+- Keep `with` until early close, silent error loss and long-held resources (locks, temp dirs) are measured on agent fixtures; stage 3 is gated on that.
 
 ## Alternatives
 
