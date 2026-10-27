@@ -364,6 +364,10 @@ struct Tr<'a> {
     /// through them address the base directly instead of through `inttoptr`, so LLVM keeps
     /// their provenance: a slot whose address never reaches a call stays promotable to registers.
     bases: HashMap<Value, (String, i64)>,
+    /// `base + scaled` sums where `scaled` is a product: element addresses. They are emitted as
+    /// `inttoptr base` plus a `getelementptr`, so LLVM's loop analyses see one pointer and an
+    /// affine offset instead of an opaque integer-to-pointer cast of the whole sum.
+    indexed: HashMap<Value, (Value, Value)>,
 }
 
 impl<'a> Tr<'a> {
@@ -446,8 +450,14 @@ impl<'a> Tr<'a> {
                 self.def(format!("getelementptr{inbounds} i8, ptr {base}, i64 {at}"))
             };
         }
-        let o = self.op(v);
-        let p = self.def(format!("inttoptr i64 {o} to ptr"));
+        let p = if let Some((base, scaled)) = self.indexed.get(&v).copied() {
+            let (b, s) = (self.op(base), self.op(scaled));
+            let bp = self.def(format!("inttoptr i64 {b} to ptr"));
+            self.def(format!("getelementptr i8, ptr {bp}, i64 {s}"))
+        } else {
+            let o = self.op(v);
+            self.def(format!("inttoptr i64 {o} to ptr"))
+        };
         if off == 0 {
             p
         } else {
@@ -808,6 +818,14 @@ impl<'a> Tr<'a> {
         }
     }
 
+    /// Whether `v` is the result of a multiplication or left shift.
+    fn is_product(&self, v: Value) -> bool {
+        let Some(def) = self.f.dfg.value_def(v).inst() else {
+            return false;
+        };
+        matches!(self.f.dfg.insts[def].opcode(), Opcode::Imul | Opcode::Ishl)
+    }
+
     fn binary(&mut self, inst: Inst, opc: Opcode, args: [Value; 2]) {
         let (a, b) = (self.op(args[0]), self.op(args[1]));
         // A known address plus or minus a constant stays a known address.
@@ -826,6 +844,10 @@ impl<'a> Tr<'a> {
         if let Some(((base, at), c)) = step {
             let known = (base.clone(), at.wrapping_add(c));
             self.bases.insert(self.f.dfg.first_result(inst), known);
+        }
+        if opc == Opcode::Iadd && self.ty(args[0]) == types::I64 && self.is_product(args[1]) {
+            let res = self.f.dfg.first_result(inst);
+            self.indexed.insert(res, (args[0], args[1]));
         }
         let t = self.ty(args[0]);
         let lt = llty(t);
@@ -979,6 +1001,7 @@ impl LlvmModule {
             dbg: Some(none_loc),
             sites: self.sites,
             bases: HashMap::new(),
+            indexed: HashMap::new(),
         };
         // Entry parameters are the function parameters; other block parameters are phis.
         let mut params = Vec::new();
@@ -1460,6 +1483,46 @@ mod tests {
             page_size_align_log2: 12,
         });
         f
+    }
+
+    /// `fn(base, i) -> f32 { load(base + i * 4) }`.
+    fn element_load() -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64); 2];
+        sig.returns.push(AbiParam::new(types::F32));
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let args = b.block_params(entry).to_vec();
+        let off = b.ins().imul_imm_s(args[1], 4);
+        let addr = b.ins().iadd(args[0], off);
+        let v = b
+            .ins()
+            .load(types::F32, ir::MemFlagsData::trusted(), addr, 0);
+        b.ins().return_(&[v]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    #[test]
+    fn an_element_address_is_a_base_pointer_plus_an_offset() {
+        let mut m = LlvmModule::new(vec![Some("elem.ms".into())], ".".into());
+        let f = element_load();
+        m.add_function("elem", "elem", (0, 1), &f, &TestSymbols, true);
+        let text = m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false);
+        // LLVM's loop analyses need the base and the scaled index apart; an `inttoptr` of the sum
+        // hides the array and stops auto-vectorization of list loops.
+        assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
+        assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
+        assert!(!text.contains("inttoptr i64 %t"), "{text}");
     }
 
     #[test]
