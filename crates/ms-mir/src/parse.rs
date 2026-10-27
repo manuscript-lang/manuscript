@@ -1145,6 +1145,38 @@ fn parse_line(
                 })?;
             Imm::AltField(aid, ci as u32, fi as u32)
         }
+        ImmKind::AltMask => {
+            let n = c.ident()?;
+            let parts: Vec<&str> = n.split('.').collect();
+            if parts.len() < 2 {
+                return c.err("expected Alt.Case.field...");
+            }
+            let aid = m.alt_by_name(parts[0]).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown alternative {}", parts[0]),
+            })?;
+            let ci = m.alts[aid.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == parts[1])
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown case {n}"),
+                })?;
+            let mut mask = 0u32;
+            for name in &parts[2..] {
+                let fi = m.alts[aid.index()].cases[ci]
+                    .fields
+                    .iter()
+                    .position(|x| x.0 == *name)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown field {n}"),
+                    })?;
+                mask |= 1 << fi;
+            }
+            Imm::AltMask(aid, ci as u32, mask)
+        }
         ImmKind::Method => {
             let n = c.ident()?;
             let (i, mt) = n.split_once('.').ok_or_else(|| ParseError {

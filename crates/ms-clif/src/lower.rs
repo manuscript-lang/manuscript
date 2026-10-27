@@ -1949,7 +1949,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => vec![v[0]],
                 }
             }
-            Op::AltGet => {
+            Op::AltGet | Op::AltTake => {
                 let Imm::AltField(a, c, i) = inst.imm else {
                     unreachable!()
                 };
@@ -1972,6 +1972,45 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::AltRelease => {
+                let Imm::AltMask(a, c, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let case = self.alt_fields(a)[c as usize].clone();
+                let v = self.a(inst, 0);
+                let boxed = match &self.g.lay.shape(ty).alt {
+                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
+                    _ => None,
+                };
+                // Drop the payload fields that were not moved out, then free the block.
+                for (k, (fty, idx)) in case.iter().enumerate() {
+                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
+                        continue;
+                    }
+                    let fv: Vs = match &boxed {
+                        Some(block) => {
+                            let lay = mem_layout(block);
+                            idx.iter()
+                                .map(|j| {
+                                    self.b.ins().load(
+                                        leaf_type(block[*j]),
+                                        flags(),
+                                        v[0],
+                                        lay.offsets[*j] as i32,
+                                    )
+                                })
+                                .collect()
+                        }
+                        None => idx.iter().map(|j| v[*j]).collect(),
+                    };
+                    self.drop_value(*fty, &fv);
+                }
+                if boxed.is_some() {
+                    self.free(v[0]);
+                }
+                vec![]
             }
             Op::AltUnbox => {
                 let Imm::AltField(a, c, i) = inst.imm else {

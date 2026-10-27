@@ -123,6 +123,9 @@ pub struct Program {
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
     /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
+    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
 }
 
 /// A body-check result retained from an inference probe.

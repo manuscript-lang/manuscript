@@ -712,6 +712,21 @@ impl<'m> Interp<'m> {
                 }
                 set!(p[i as usize].clone());
             }
+            Op::AltTake => {
+                let Imm::AltField(_, c, i) = inst.imm else {
+                    return Err(Raw::internal("alt.take without field"));
+                };
+                let Val::Alt(t, p) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("alt.take on a non-alternative"));
+                };
+                if *t != c {
+                    return Err(Raw::internal(format!("alt.take of case {c} on case {t}")));
+                }
+                set!(p[i as usize].clone());
+            }
+            Op::AltRelease => {
+                arg(f, regs, a[0], true, m);
+            }
             Op::AltUnbox => {
                 let Imm::AltField(_, c, i) = inst.imm else {
                     return Err(Raw::internal("alt.unbox without field"));

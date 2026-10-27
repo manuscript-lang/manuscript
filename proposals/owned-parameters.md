@@ -13,6 +13,8 @@ Proposal, 2026-10-27, checked against main `7fd67983`. Driven by #1650. Project 
 
 Skeptical review: see the Review note at the end.
 
+Stage 1 prototype, 2026-10-27: parameters inferred Consume are owned at direct calls (part A), and `alt.take`/`alt.release` move payloads out of a dying scrutinee (part B, `copyelim::run_takes`). BST insert at n=40000 takes 0.023s in Release and 0.017s in Debug (was 90s+ in both); `wrap` is linear in both. `cargo test --workspace`, conform, leak-check and e2e pass.
+
 ## Problem
 
 Measured on main with `ms build --build-type Release`.
