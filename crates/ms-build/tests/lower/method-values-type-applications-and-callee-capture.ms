@@ -19,5 +19,5 @@ export def main() -> Int:
             3
         case none: 3
     )
-    let r = stdout().write(f"{lookup(1)} {n} {run(same)} {count(lambda (x: Int): x > 4)}\n")
+    let _r = stdout().write(f"{lookup(1)} {n} {run(same)} {count(lambda (x: Int): x > 4)}\n")
     return 0

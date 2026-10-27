@@ -1,4 +1,4 @@
-//! `MSL101` (unread bindings) for the borrow forms of `if var`.
+//! Lint findings that need a checked program.
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::lint::lint_program;
@@ -17,23 +17,6 @@ fn codes(source: &str) -> Vec<String> {
         .iter()
         .map(|f| f.code.to_string())
         .collect()
-}
-
-#[test]
-fn if_var_borrow_that_is_only_written_is_not_unread() {
-    let source = include_str!("lint_bindings/if-var-borrow-that-is-only-written-is-not-unread.ms");
-    assert!(!codes(source).contains(&"MSL101".to_string()));
-}
-
-#[test]
-fn if_let_binding_that_is_never_read_is_still_reported() {
-    let source = "export def main() -> Int:
-    let m = Map[String, Int]()
-    if let n = m.get(\"a\"):
-        return 1
-    return 0
-";
-    assert!(codes(source).contains(&"MSL101".to_string()));
 }
 
 #[test]
@@ -58,9 +41,20 @@ fn recursive(source: &str) -> usize {
 #[test]
 fn recursion_without_a_base_case_is_reported() {
     assert_eq!(
-        recursive(include_str!(
-            "lint_bindings/recursion-without-a-base-case-is-reported.ms"
-        )),
+        recursive(
+            "def forever(n: Int) -> Int:
+    return forever(n - 1)
+
+def both(n: Int) -> Int:
+    if n > 0:
+        return both(n - 1)
+    else:
+        return both(n + 1)
+
+export def main() -> Int:
+    return 0
+"
+        ),
         2
     );
 }
@@ -68,9 +62,29 @@ fn recursion_without_a_base_case_is_reported() {
 #[test]
 fn recursion_with_a_base_case_is_clean() {
     assert_eq!(
-        recursive(include_str!(
-            "lint_bindings/recursion-with-a-base-case-is-clean.ms"
-        )),
+        recursive(
+            "def fact(n: Int) -> Int:
+    if n <= 1:
+        return 1
+    return n * fact(n - 1)
+
+def sum(n: Int) -> Int:
+    return 0 if n <= 0 else n + sum(n - 1)
+
+def count(n: Int) -> Int:
+    for i in 0..n:
+        return i
+    return count(n - 1)
+
+def walk(n: Int) -> Int:
+    if n > 0 and walk(n - 1) > 0:
+        return 1
+    return 0
+
+export def main() -> Int:
+    return fact(3) + sum(2) + count(1) + walk(1)
+"
+        ),
         0
     );
 }
