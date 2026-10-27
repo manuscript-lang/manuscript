@@ -1,0 +1,69 @@
+module "main"
+file 0 "t.ms"
+record StringBuilder { items: bytes, sealed: bool }
+extern @msrt_list_new() -> bytes
+extern @msrt_fault_string(str) -> unit noreturn
+extern @msrt_strbuilder_append(ptr, str) -> unit
+extern @msrt_strbuilder_freeze(ptr) -> str
+extern @msrt_string_byte_length(str) -> int
+entry @main
+
+fn @main() -> int export {
+b0:
+  depth.enter
+  %0: bytes = call.rt @msrt_list_new ()
+  %1: bool = bconst false
+  %2: StringBuilder = rec.new StringBuilder %0, %1
+  %3: Shared<StringBuilder> = shared.new %2
+  %4: str = str "hello world this is long enough to be heap"
+  %5: ptr = shared.addr %3
+  %6: ptr = ptr.field StringBuilder.items %5
+  %7: ptr = ptr.field StringBuilder.sealed %5
+  %8: bool = load bool %7
+  br_if %8, b1(), b2()
+b1():
+  %9: str = str "builder is sealed"
+  %10: unit = call.rt @msrt_fault_string (%9)
+  unreachable
+b2():
+  %11: bytes = take bytes %6
+  %12: ptr = slot bytes
+  put %12, %11
+  %13: unit = call.rt @msrt_strbuilder_append (%12, %4)
+  %14: bytes = take bytes %12
+  put %6, %14
+  %15: unit = unit
+  %16: str = str "hello world this is long enough to be heap"
+  %17: ptr = shared.addr %3
+  %18: ptr = ptr.field StringBuilder.items %17
+  %19: ptr = ptr.field StringBuilder.sealed %17
+  %20: bool = load bool %19
+  br_if %20, b3(), b4()
+b3():
+  %21: str = str "builder is sealed"
+  %22: unit = call.rt @msrt_fault_string (%21)
+  unreachable
+b4():
+  %23: bytes = take bytes %18
+  %24: ptr = slot bytes
+  put %24, %23
+  %25: unit = call.rt @msrt_strbuilder_append (%24, %16)
+  %26: bytes = take bytes %24
+  put %18, %26
+  %27: unit = unit
+  %28: ptr = shared.addr %3
+  %29: ptr = ptr.field StringBuilder.items %28
+  %30: ptr = ptr.field StringBuilder.sealed %28
+  %31: bool = bconst true
+  store %30, %31
+  %32: bytes = load bytes %29
+  %33: bytes = copy %32
+  %34: ptr = slot bytes
+  put %34, %33
+  %35: str = call.rt @msrt_strbuilder_freeze (%34)
+  %36: int = call.rt @msrt_string_byte_length (%35)
+  drop %35
+  drop %3
+  depth.leave
+  ret %36
+}

@@ -103,19 +103,22 @@ impl PriorityQueue[T]:
 
     # Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
     # one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
+    # Only entries with two children are visited in the loop; its guards let the compiler prove every index in range.
     var def sift_down(start: Int) -> Unit:
         let size = self.heap.length()
+        let two_children = (size - 1) / 2
         var at = start
 
-        while True:
+        while at >= 0 and at < two_children:
             var child = at * 2 + 1
-            if child >= size:
-                break
-
-            if child + 1 < size and self.before(child + 1, child):
+            if self.before(child + 1, child):
                 child += 1
             self.swap_entries(child, at)
             at = child
+
+        if at >= 0 and at * 2 + 1 < size:
+            self.swap_entries(at * 2 + 1, at)
+            at = at * 2 + 1
 
         self.sift_up(at, start)
 

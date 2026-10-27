@@ -210,6 +210,14 @@ impl FnLower<'_> {
         id
     }
 
+    /// Closes `old`, the value a reassignment replaces, shielded like any other close. The
+    /// binding's cleanup entry stays: it closes whatever the binding holds when its scope ends.
+    pub(crate) fn close_replaced(&mut self, closer: &Closer, old: Value, ty: MTy) {
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        close_call(&mut self.b, &closer.kind, old, ty);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+    }
+
     /// Leaves the `with` binding `uid`: the cleanup entry goes away and its close runs on the
     /// current value.
     pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {

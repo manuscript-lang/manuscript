@@ -174,6 +174,17 @@ fn run_source_command<L: Lower>(
             },
             io,
         ),
+        "bench" => engine.bench(
+            &TestRequest {
+                filename: inv.filename.clone(),
+                build_type: plan.build_type,
+                link: inv.link.clone(),
+                json: inv.structured,
+                watch: false,
+                arguments: inv.arguments.clone(),
+            },
+            io,
+        ),
         "emit" => engine.emit(
             &OutputRequest {
                 filename: inv.filename.clone(),

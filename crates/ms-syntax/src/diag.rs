@@ -84,12 +84,22 @@ impl Diagnostic {
         code_for(self.phase.as_str(), &self.message)
     }
 
+    /// Stable sub-code (`MS3000.1`) naming the cause within the rule family, when the
+    /// message is a known one. The family code is [`Diagnostic::code`].
+    pub fn subcode(&self) -> Option<&'static str> {
+        kind_for(self.code(), &self.message).map(|k| k.info.code)
+    }
+
     /// JSON object in the shape of the CLI's JSON diagnostics, indented by
     /// `indent` levels of two spaces is left to the caller; this is compact.
     pub fn to_json(&self) -> String {
         let mut out = String::new();
         out.push_str("{\"code\":");
         json_string(&mut out, self.code());
+        if let Some(subcode) = self.subcode() {
+            out.push_str(",\"subcode\":");
+            json_string(&mut out, subcode);
+        }
         out.push_str(",\"phase\":");
         json_string(&mut out, self.phase.as_str());
         out.push_str(",\"message\":");
@@ -300,9 +310,287 @@ pub const CODES: &[CodeInfo] = &[
     },
 ];
 
-/// The entry for `code`, matched case-insensitively.
+/// One cause within a rule family: a stable sub-code, recognized by the opening words of the
+/// message's cause. Numbers are never reused; retire a number rather than renumbering.
+pub struct Kind {
+    /// The family code the message must already carry.
+    pub family: &'static str,
+    /// The message cause contains this text.
+    pub needle: &'static str,
+    /// The sub-code, its name, and its repair.
+    pub info: CodeInfo,
+}
+
+macro_rules! kind {
+    ($family:literal, $code:literal, $needle:literal, $name:literal, $repair:literal) => {
+        Kind {
+            family: $family,
+            needle: $needle,
+            info: CodeInfo {
+                code: $code,
+                family: $name,
+                repair: $repair,
+            },
+        }
+    };
+}
+
+/// Every sub-code, grouped by family. A message without an entry keeps its family code only.
+pub const KINDS: &[Kind] = &[
+    kind!(
+        "MS2001",
+        "MS2001.1",
+        "unknown binding",
+        "Unknown name",
+        "apply the `fix` edit, import the name, or declare it"
+    ),
+    kind!(
+        "MS2001",
+        "MS2001.2",
+        "unknown type",
+        "Unknown type",
+        "import the type or declare it"
+    ),
+    kind!(
+        "MS2001",
+        "MS2001.3",
+        "unknown or ambiguous member",
+        "Unknown member",
+        "use one of the members the message lists"
+    ),
+    kind!(
+        "MS2001",
+        "MS2001.4",
+        "unknown case",
+        "Unknown alternative case",
+        "name a case the alternative declares"
+    ),
+    kind!(
+        "MS2001",
+        "MS2001.5",
+        "reuses a prelude name",
+        "Prelude name reused",
+        "rename the declaration"
+    ),
+    kind!(
+        "MS2001",
+        "MS2001.6",
+        "fixture is available only",
+        "Fixture outside tests",
+        "declare a make_fixture factory in the test module"
+    ),
+    kind!(
+        "MS2002",
+        "MS2002.1",
+        "unknown standard module",
+        "Unknown standard module",
+        "check the module name against the standard library"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.1",
+        "is never read",
+        "Unused local binding",
+        "use the binding, or name it with a leading '_'"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.2",
+        "is moved here but used again",
+        "Use after move",
+        "pass `.clone()` to keep the value, or stop using it after the move"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.3",
+        "returns part of a parameter",
+        "Result borrows a parameter",
+        "write `ref` before the result type, or return an owned copy"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.4",
+        "shadows an outer binding",
+        "Shadowed binding",
+        "rename one binding, or assign to the outer `var`"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.5",
+        "this statement discards",
+        "Discarded Result",
+        "write `try ...` to propagate the failure, or handle it"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.6",
+        "reachable fallthrough",
+        "Missing return",
+        "return a value on every path"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.7",
+        "division by zero",
+        "Division by zero",
+        "divide by a nonzero value"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.8",
+        "does not satisfy",
+        "Bound not satisfied",
+        "use a type that implements the interface"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.9",
+        "cannot be constructed",
+        "Interface constructed",
+        "construct a type that implements the interface"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.10",
+        "is a resource that is never closed",
+        "Unclosed resource",
+        "open it with `with let`, call `.close()`, or return it"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.11",
+        "cannot move ",
+        "Move out of a borrow",
+        "take an owned copy with `.clone()`"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.12",
+        "requires a record field",
+        "Assignment target",
+        "assign to a record field or a variable"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.13",
+        "with needs a Closeable",
+        "With needs a resource",
+        "bind a value with `close() -> Unit`"
+    ),
+    kind!(
+        "MS3001",
+        "MS3001.1",
+        "expected ",
+        "Type mismatch",
+        "convert explicitly, or change the declared type"
+    ),
+    kind!(
+        "MS3010",
+        "MS3010.1",
+        "overlapping implementation",
+        "Overlapping implementation",
+        "keep one impl per interface and type"
+    ),
+    kind!(
+        "MS3011",
+        "MS3011.1",
+        "signature does not match",
+        "Signature mismatch",
+        "match the interface operation's signature"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.14",
+        "missing implementation operation",
+        "Missing operation",
+        "implement every operation the interface declares"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.15",
+        "extra operation",
+        "Extra operation",
+        "remove operations the interface does not declare"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.16",
+        "duplicate implementation operation",
+        "Duplicate operation",
+        "define each operation once"
+    ),
+    kind!(
+        "MS3012",
+        "MS3012.1",
+        "implementation receiver must be nominal",
+        "Implementation receiver",
+        "implement interfaces for a type or alternative you declare"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.17",
+        "implementation target must be an interface",
+        "Implementation target",
+        "name an interface after `impl`"
+    ),
+    kind!(
+        "MS3050",
+        "MS3050.1",
+        "exhaustive",
+        "Non-exhaustive match",
+        "add the missing cases or a final `case _:`"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.18",
+        "parameter",
+        "Parameter not declared var",
+        "write `var` before the parameter"
+    ),
+    kind!(
+        "MS3060",
+        "MS3060.2",
+        "declared with let",
+        "Binding declared with let",
+        "declare the binding with `var`"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.19",
+        "does not change its receiver",
+        "Method does not change its receiver",
+        "declare the method `var def`"
+    ),
+    kind!(
+        "MS3080",
+        "MS3080.1",
+        "cannot infer",
+        "Cannot infer",
+        "write the type arguments or annotate the binding"
+    ),
+    kind!(
+        "MS3000",
+        "MS3000.20",
+        "type arguments, found ",
+        "Generic arity",
+        "write every required type argument"
+    ),
+];
+
+/// The first sub-code of `family` whose needle appears in the message's cause.
+pub fn kind_for(family: &str, message: &str) -> Option<&'static Kind> {
+    let cause = message.split("; ").next().unwrap_or("");
+    KINDS
+        .iter()
+        .find(|k| k.family == family && cause.contains(k.needle))
+}
+
+/// The entry for `code` or a sub-code, matched case-insensitively.
 pub fn explain(code: &str) -> Option<&'static CodeInfo> {
-    CODES.iter().find(|c| c.code.eq_ignore_ascii_case(code))
+    CODES
+        .iter()
+        .chain(KINDS.iter().map(|k| &k.info))
+        .find(|c| c.code.eq_ignore_ascii_case(code))
 }
 
 impl fmt::Display for Diagnostic {

@@ -135,7 +135,7 @@ fn kind_and_name(decl: &DeclRef) -> (&'static str, String) {
         DeclKind::Alternative(a) => ("type", a.name.as_str().to_string()),
         DeclKind::Interface(i) => ("interface", i.name.as_str().to_string()),
         DeclKind::Impl(i) => ("impl", i.display_name(d.synthetic)),
-        DeclKind::Test(t) => ("test", t.name.to_string()),
+        DeclKind::Test(t) => (if t.bench { "bench" } else { "test" }, t.name.to_string()),
     }
 }
 

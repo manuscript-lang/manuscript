@@ -178,6 +178,9 @@ pub struct Ownership {
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
     /// `ref` functions that can hand back a borrow on every path, by module file and node.
     pub lenders: HashSet<Key>,
+    /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
+    /// binding identity: the closure may point at the variable instead of copying it.
+    pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
     /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
     /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
@@ -388,8 +391,16 @@ impl Hir<'_> {
         let mut closes = HashSet::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
+        let mut borrowed_captures = HashSet::new();
         let mut consumes = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            for (node, lambda) in &out.facts.lambdas {
+                for (uid, mode) in &lambda.captures {
+                    if !lambda.escaping && *mode == CaptureMode::Borrow {
+                        borrowed_captures.insert((c.module.file, *node, *uid));
+                    }
+                }
+            }
             for f in out.facts.bindings.values() {
                 let kind = if f.exclusive {
                     BorrowKind::Exclusive
@@ -427,6 +438,7 @@ impl Hir<'_> {
             closes,
             getters,
             lenders,
+            borrowed_captures,
             consumes,
         }
     }

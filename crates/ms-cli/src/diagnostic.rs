@@ -37,7 +37,7 @@ impl fmt::Display for Position {
     }
 }
 
-/// One diagnostic: `{code, phase?, message, position, end?, fix?}`.
+/// One diagnostic: `{code, subcode?, phase?, message, position, end?, fix?}`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CommandDiagnostic {
     pub code: String,
@@ -64,6 +64,9 @@ impl CommandDiagnostic {
 
     pub fn to_json(&self) -> Json {
         let mut object = Json::object().with("code", Json::str(&self.code));
+        if let Some(kind) = ms_syntax::diag::kind_for(&self.code, &self.message) {
+            object = object.with("subcode", Json::str(kind.info.code));
+        }
         if !self.phase.is_empty() {
             object = object.with("phase", Json::str(&self.phase));
         }

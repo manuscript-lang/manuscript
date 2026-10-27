@@ -25,6 +25,7 @@ Several inputs share one document; see [analysis selection](../implementation.md
 
 - Optional `end` has the same coordinate fields (exclusive). Parser token errors and failed import names provide it.
 - Optional `fix` has `position`, exclusive `end`, and `replacement`: replace that byte range in the original snapshot, then recheck. Redundant prelude imports, misspelled names, labels and types with one `did you mean` candidate, unresolved standard names and the `Decimal` literal import (an `import` inserted at the top of the file), `Some`/`Ok`/`Err`/`true`/`null`/`this` habits, assignment to a `let` binding (`let` becomes `var`), and `Case()` on a nullary case, Int values used as Float (`.to_float()`, or `3.0` for a literal), Int, Float and Bool values used as String (`f"{value}"`), and ownership repairs that append `.clone()` carry one; string-match rewrites and ambiguous imports get prose only. `ms check --fix` and `ms lint --fix` apply these edits in place (skipping overlaps), then report what remains.
+- Optional `subcode` (`MS3000.1`) names the cause within the family `code`; it is absent for messages without a known cause. Sub-codes are never renumbered or reused.
 - Consumers must tolerate absent optional fields.
 
 | Code | Family |
@@ -39,6 +40,6 @@ Several inputs share one document; see [analysis selection](../implementation.md
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
 
-`ms guide <code>` prints a code's family and usual repair (`--json` for structured output).
+`ms guide <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms guide MS3000.1`.
 
 Rules are defined by [type checking](../../contributing/compiler/frontend/type-checker.md) and [scope and capture checking](../../contributing/compiler/frontend/scope-checker.md).
