@@ -57,6 +57,8 @@
       const menu = document.getElementById('menu-control');
       if (window.matchMedia('(max-width: 62rem)').matches && menu) { menu.checked = true; menu.dispatchEvent(new Event('change')); }
       input.focus();
+      // The mobile drawer is `visibility: hidden` until its transition starts, so focus again once it can take it.
+      if (document.activeElement !== input) setTimeout(() => input.focus(), 50);
     }
   });
 })();
