@@ -2459,7 +2459,15 @@ impl Walker<'_> {
                         format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
                     );
                 }
-                if class == Class::Copy {
+                // A value the closure cannot take over, because it only borrows it or uses it
+                // again later, is copied into the closure, as a snapshot.
+                let shared = matches!(
+                    self.meta.get(&b.uid).map(|m| m.perm),
+                    Some(Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
+                ) || !self.is_last(e.id, b);
+                if class == Class::Copy
+                    || class == Class::Move && b.ty.kind != Kind::Function && shared
+                {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {

@@ -46,3 +46,15 @@ test "closures kept by natives own their captures":
     let fs = build(inc)
     try expect_equal(fs.length(), 3)
     try expect_equal(fs[2](1), 2)
+
+def keep(r: Callable[[Int], Int]) -> List[Callable[[Int], Int]]:
+    var out = List[Callable[[Int], Int]]()
+    out.append(r)
+    return out
+
+test "an escaping closure copies a captured value that is used again":
+    var a = [1, 2, 3]
+    let b = keep(lambda x: x + a.length())
+    a.append(4)
+    try expect_equal(b[0](1), 4)
+    try expect_equal(a.length(), 4)
