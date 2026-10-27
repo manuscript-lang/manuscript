@@ -1,5 +1,5 @@
+from "@std/bench.ms" import keep, measure
 from "@std/collections.ms" import range
-from "./harness.ms" import bench
 from "@std/string.ms" import StringBuilder
 from "@std/json.ms" import parse, stringify, JsonValue
 
@@ -36,36 +36,36 @@ def row_weight(tree: JsonValue, index: Int) -> Int:
 
     return 0
 
-export def bench_json() -> Unit:
+bench "json.parse":
     let doc = json_doc(5000)
 
-    bench(
-        "json.parse",
-        5000,
-        lambda () -> Int:
-            if parse(doc).is_ok():
-                return 1
+    def work() -> Result[Unit, Error]:
+        if parse(doc).is_ok():
+            return keep(1)
 
-            return 0
-    )
+        return keep(0)
 
-    bench(
-        "json.roundtrip",
-        5000,
-        lambda () -> Int:
-            if let v = parse(doc):
-                return encoded_length(v)
+    try measure(5000, work)
 
-            return 0
-    )
+bench "json.roundtrip":
+    let doc = json_doc(5000)
+
+    def work() -> Result[Unit, Error]:
+        if let v = parse(doc):
+            return keep(encoded_length(v))
+
+        return keep(0)
+
+    try measure(5000, work)
+
+bench "json.navigate":
+    let doc = json_doc(5000)
 
     if let tree = parse(doc):
-        bench(
-            "json.navigate",
-            100000,
-            lambda () -> Int:
-                var total = 0
-                for i in range(0, 100000):
-                    total += row_weight(tree, i % 5000)
-                return total
-        )
+        def work() -> Result[Unit, Error]:
+            var total = 0
+            for i in range(0, 100000):
+                total += row_weight(tree, i % 5000)
+            return keep(total)
+
+        try measure(100000, work)

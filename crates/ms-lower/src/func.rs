@@ -339,7 +339,14 @@ pub(crate) fn lower_tests(
             .cloned()
             .ok_or_else(|| Error::new("the bench driver @std/bench.ms is not loaded"))?;
         let driver = cx.function_for(&mut m, &driver, &Subst::new())?;
-        ids = crate::runner::bench_entries(&mut m, &ids, driver);
+        let per: Vec<i64> = tests
+            .iter()
+            .map(|(_, c)| match &c.func.decl.decl().kind {
+                ms_syntax::ast::DeclKind::Test(t) => t.per,
+                _ => 1,
+            })
+            .collect();
+        ids = crate::runner::bench_entries(&mut m, &ids, &per, driver);
     }
     drain(&mut cx, &mut m)?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);

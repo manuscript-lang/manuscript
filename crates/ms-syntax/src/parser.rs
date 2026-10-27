@@ -879,11 +879,26 @@ impl<'a> Parser<'a> {
                 );
             }
         };
+        let mut per = 1;
+        if bench && self.kind() == Tok::Name && self.text(self.peek()) == "per" {
+            self.at += 1;
+            let count = self.need(Tok::Number)?;
+            per = match self.text(count).parse::<i64>() {
+                Ok(n) if n > 0 => n,
+                _ => {
+                    return self.fail(
+                        count,
+                        "'per' takes a positive whole number of operations, e.g. bench \"sums a list\" per 1000:",
+                    );
+                }
+            };
+        }
         let body = self.suite()?;
         Ok(DeclKind::Test(TestDecl {
             name: text,
             body,
             bench,
+            per,
         }))
     }
 

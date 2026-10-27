@@ -224,6 +224,8 @@ pub struct TestDecl {
     pub body: Vec<Stmt>,
     /// Whether the block is a `bench`: `ms bench` runs its body repeatedly and times it; `ms test` skips it.
     pub bench: bool,
+    /// Operations one iteration of a `bench ... per N:` block performs; 1 otherwise. `ms bench` reports time per operation.
+    pub per: i64,
 }
 
 /// A method in an `impl` or an operation signature in an `interface`.

@@ -1,3 +1,4 @@
+from "@std/bench.ms" import keep, measure
 from "@std/test.ms" import expect_equal, fail
 
 def sum_to(n: Int) -> Int:
@@ -14,3 +15,10 @@ bench "breaks":
 
 test "is not a bench":
     try expect_equal(sum_to(3), 3)
+
+bench "measures after setup":
+    let data = [3, 1, 2]
+    try measure(3, lambda: keep(data.sorted().length()))
+
+bench "reports per operation" per 8:
+    try keep(8)

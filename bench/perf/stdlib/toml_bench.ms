@@ -1,5 +1,5 @@
+from "@std/bench.ms" import keep, measure
 from "@std/collections.ms" import range
-from "./harness.ms" import bench
 from "@std/string.ms" import StringBuilder
 from "@std/toml.ms" import parse
 
@@ -9,15 +9,13 @@ def toml_doc(count: Int) -> String:
         sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
-export def bench_toml() -> Unit:
+bench "toml.parse":
     let toml = toml_doc(2000)
 
-    bench(
-        "toml.parse",
-        2000,
-        lambda () -> Int:
-            if parse(toml).is_ok():
-                return 1
+    def work() -> Result[Unit, Error]:
+        if parse(toml).is_ok():
+            return keep(1)
 
-            return 0
-    )
+        return keep(0)
+
+    try measure(2000, work)

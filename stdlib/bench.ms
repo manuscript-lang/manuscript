@@ -1,13 +1,16 @@
 from "@std/math.ms" import sqrt
 from "@std/io.ms" import stdout
 from "@std/process.ms" import control
+from "@std/test.ms" import fail
 from "@std/time.ms" import clock
 
 # Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
 # and this module repeats it, times it, and reports per-iteration statistics. The entry that `ms bench` builds calls
-# `run_bench_block` with the block's body, so programs do not call it themselves.
+# `run_bench_block` with the block's body, so programs do not call it themselves; a body may instead time its own work
+# with `measure`.
 # Settings come from environment variables that `ms bench` fills from its flags: MS_BENCH_TIME_MS (target time per sample,
 # default 100), MS_BENCH_SAMPLES (default 10), and MS_BENCH_ITERATIONS (a fixed iteration count; 0 calibrates).
+# A block written `bench "name" per N:` performs N operations per iteration, and every statistic is per operation.
 # The result is one line on standard output: `MSBENCH ` followed by a JSON object of nanoseconds per iteration.
 # Run settings.
 type Settings:
@@ -54,10 +57,17 @@ def next_count(count: Int, elapsed: Int, target: Int) -> Int:
     let scaled = count * target / max(elapsed, 1) * 12 / 10
     return min(max(scaled, count + 1), min(count * 100, max_iterations))
 
-# Measures `body` and writes the statistics line; the parser calls this for every `bench` block.
-export def run_bench_block(
-    body: Callable[[], Result[Unit, Error]]
+# Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
+# A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
+#   bench "sorts":
+#       let data = ints(100000)
+#       try measure(100000, lambda: keep(data.sorted().length()))
+# Everything the body does before `measure` runs once, untimed.
+export def measure(
+    operations: Int,
+    work: Callable[[], Result[Unit, Error]]
 ) -> Result[Unit, Error]:
+    let body = work
     let config = settings()
     var count = max(config.iterations, 1)
 
@@ -74,7 +84,7 @@ export def run_bench_block(
 
     for unused in 0..config.samples:
         let elapsed = try time_batch(body, count)
-        times.append(elapsed.to_float() / count.to_float())
+        times.append(elapsed.to_float() / (count * operations).to_float())
 
     let sorted = times.sorted(lambda a, b: -1 if a < b else (1 if a > b else 0))
     let n = sorted.length().to_float()
@@ -83,6 +93,34 @@ export def run_bench_block(
     let variance = deviations.fold(0.0, lambda total, d: total + d) / n
     let last = sorted.length() - 1
     let median = (sorted[last / 2] + sorted[(last + 1) / 2]) / 2.0
-    let line = f"MSBENCH \{\"iterations\":{count},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
+    let line = f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
+    control().set_environment(measured_flag, some("1")).get()
+    return ok(())
+
+# Set once a body has timed its own work with `measure`.
+let measured_flag = "MS_BENCH_MEASURED"
+
+# The entry `ms bench` builds calls this with each block's body; programs do not. The body runs once first (the
+# warmup); a body that called `measure` has reported already, and any other body is one iteration to repeat and time.
+export def run_bench_block(
+    body: Callable[[], Result[Unit, Error]],
+    operations: Int
+) -> Result[Unit, Error]:
+    try body()
+
+    let environment = control().environment().get(Map[String, String]())
+    if environment.get(measured_flag).get("") == "1":
+        return ok(())
+
+    return measure(operations, body)
+
+# Consumes a bench's result so the work that computed it stays observable; returns an error only for the one value
+# no workload should produce (the smallest Int), so the check cannot be optimized away or tripped by accident.
+export def keep(checksum: Int) -> Result[Unit, Error]:
+    if checksum == -9223372036854775807 - 1:
+        return fail(
+            "bench result is the smallest Int; the workload is probably degenerate"
+        )
+
     return ok(())

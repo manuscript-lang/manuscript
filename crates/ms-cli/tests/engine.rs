@@ -355,7 +355,9 @@ fn native_benches_report_statistics_and_failures() {
         "BENCH sample_bench.ms::sums a range: ",
         "/op median (min ",
         "FAIL sample_bench.ms::breaks: not measurable",
-        "2 benches, 1 failed",
+        "4 benches, 1 failed",
+        "BENCH sample_bench.ms::measures after setup: ",
+        "BENCH sample_bench.ms::reports per operation: ",
     ] {
         assert!(stdout.contains(line), "{line} missing in {stdout}");
     }
@@ -377,7 +379,7 @@ fn native_benches_report_statistics_and_failures() {
     assert_eq!(status, 0);
     assert_eq!(
         stdout,
-        "sample_bench.ms::sums a range\nsample_bench.ms::breaks\n"
+        "sample_bench.ms::sums a range\nsample_bench.ms::breaks\nsample_bench.ms::measures after setup\nsample_bench.ms::reports per operation\n"
     );
 
     let (status, stdout, _) = ms(&backend, &["test", &source]);
