@@ -13,7 +13,7 @@
 mod native;
 pub use crate::{abi_handle, abi_record, native};
 pub use native::{
-    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesArray, BytesList, EntryFilter, ErrOut,
+    AbiHandle, AbiRecord, AbiSlot, AbiType, Bytes, BytesList, BytesVec, EntryFilter, ErrOut,
     FromAbi, Global, Handed, Handler, IdArray, IntList, IntMap, IntoAbi, Mut, ObjBox, ObjCell,
     ObjMut, ObjRef, ObjShare, ObjSlot, Object, OptInt, Out, Own, PairFilter, ReadSource, RecList,
     Ref, Status, StatusCode, Str, StrArray, StrMap, StringList, StringTable, Text, TextList, argv,

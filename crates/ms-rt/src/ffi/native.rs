@@ -919,55 +919,27 @@ unsafe impl FromAbi<'_> for ErrOut {
     }
 }
 
-/// A `List[Bytes]`-shaped pair stored inline in a record: a pointer to a runtime-allocated array
-/// of `Bytes` values, then its length.
+/// A `List[Bytes]` stored inline in a record.
 #[repr(C)]
-pub struct BytesArray {
-    ptr: *mut VecVal,
-    count: usize,
-}
+pub struct BytesVec(VecVal);
 
-impl BytesArray {
-    pub fn new(items: &[Vec<u8>]) -> BytesArray {
-        if items.is_empty() {
-            return BytesArray {
-                ptr: core::ptr::null_mut(),
-                count: 0,
-            };
-        }
-        // SAFETY: the block holds `len` values, each written once.
-        unsafe {
-            let ptr = msrt_alloc(items.len() * core::mem::size_of::<VecVal>()).cast::<VecVal>();
-            for (i, item) in items.iter().enumerate() {
-                ptr.add(i).write(Bytes::new(item).0);
-            }
-            BytesArray {
-                ptr,
-                count: items.len(),
-            }
-        }
+impl BytesVec {
+    pub fn new(items: &[Vec<u8>]) -> BytesVec {
+        BytesVec(BytesList(items.to_vec()).into_raw())
     }
 }
 
-impl AbiSlot for BytesArray {
+impl AbiSlot for BytesVec {
     unsafe fn release(&mut self) {
-        // SAFETY: caller contract; the block was built by `new`.
-        unsafe {
-            for i in 0..self.count {
-                msrt_bytes_drop(self.ptr.add(i));
-            }
-            if !self.ptr.is_null() {
-                msrt_free(self.ptr.cast());
-            }
-        }
-    }
-    unsafe fn duplicate(&self) -> BytesArray {
         // SAFETY: caller contract.
+        unsafe { msrt_list_drop(&raw mut self.0, crate::ffi::desc_bytes()) }
+    }
+    unsafe fn duplicate(&self) -> BytesVec {
+        let mut v = core::mem::MaybeUninit::<VecVal>::uninit();
+        // SAFETY: caller contract; `msrt_list_copy` initializes `v`.
         unsafe {
-            let items: Vec<Vec<u8>> = (0..self.count)
-                .map(|i| crate::ffi::bytes_ref(self.ptr.add(i)).to_vec())
-                .collect();
-            BytesArray::new(&items)
+            msrt_list_copy(&raw const self.0, crate::ffi::desc_bytes(), v.as_mut_ptr());
+            BytesVec(v.assume_init())
         }
     }
 }
