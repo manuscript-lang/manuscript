@@ -539,7 +539,9 @@ impl Network {
         sock.listen(4096).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
             .map_err(|e| self.io_failure(&e))?;
-        probe("end of listen_tcp", &sock);
+        probe("end of listen_tcp a", &sock);
+        probe("end of listen_tcp b", &sock);
+        probe("end of listen_tcp c", &sock);
         Ok(sock)
     }
 
