@@ -1104,9 +1104,6 @@ static PAIRS: [u8; 200] = {
     t
 };
 
-/// Strings under this many bytes are scanned a byte at a time.
-const SHORT_STRING: usize = 24;
-
 /// The letter after the backslash that escapes each byte, `u` for `\u00xx`, 0 for none.
 const ESCAPES: [u8; 256] = {
     let mut t = [0u8; 256];
@@ -1363,27 +1360,13 @@ impl Writer {
         let b = s.as_bytes();
         self.buf.reserve(b.len() + 2);
         self.buf.push(b'"');
-        // Names and short values: a table walk beats the vector scan's setup.
-        if b.len() < SHORT_STRING {
-            let mut at = 0;
-            for (i, &c) in b.iter().enumerate() {
-                let code = ESCAPES[usize::from(c)];
-                if code != 0 {
-                    push_short(&mut self.buf, &b[at..i]);
-                    self.escape(c, code);
-                    at = i + 1;
-                }
-            }
-            push_short(&mut self.buf, &b[at..]);
-        } else {
-            let mut at = 0;
-            while let Some(i) = find_special(b, at) {
-                push_short(&mut self.buf, &b[at..i]);
-                self.escape(b[i], ESCAPES[usize::from(b[i])]);
-                at = i + 1;
-            }
-            push_short(&mut self.buf, &b[at..]);
+        let mut at = 0;
+        while let Some(i) = find_special(b, at) {
+            push_short(&mut self.buf, &b[at..i]);
+            self.escape(b[i], ESCAPES[usize::from(b[i])]);
+            at = i + 1;
         }
+        push_short(&mut self.buf, &b[at..]);
         self.buf.push(b'"');
     }
 
@@ -1409,9 +1392,10 @@ impl Writer {
         match self.err {
             Some(e) => Err(e),
             None if !self.levels.is_empty() => Err(Fail::InvalidData),
-            None => {
-                String::from_utf8(core::mem::take(&mut self.buf)).map_err(|_| Fail::InvalidData)
-            }
+            // Only whole `&str`s and ASCII were appended, and `undo` cuts at a recorded boundary.
+            None => Ok(ms_rt::scan::string_from_valid_utf8(core::mem::take(
+                &mut self.buf,
+            ))),
         }
     }
 }
