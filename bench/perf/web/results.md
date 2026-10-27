@@ -155,3 +155,19 @@ With the body received in place, two worker threads put the 8 MiB case 35-39% ab
 Chunked bodies (#1538): the decoder now receives a chunk's data straight into the result, as fixed-length bodies already did, and decodes framing straight into it. Client CPU for chunked 8 MiB reads fell from 0.45 s to 0.32 s of user time per 400 requests (`time`, client on CPUs 2 and 3). Throughput did not move because the Go server and the kernel copies bound it (sys time is 2.0 s of the 4 s run). gzip is bound by inflate, 6.9 ms of user time per 8 MiB (miniz_oxide); the extra copies are not what costs there, so a faster inflate backend is the remaining lever.
 
 Worker threads on tiny bodies (#1539): with free cores, two threads match or beat one (45k to 63k req/s across runs, within noise of the single-thread number) at about 20% more CPU per request. Pinned to one CPU, two threads are 8 to 10% slower (46.6k against 51.8k in a separate three-round check), the 7 to 15% the issue saw: the cost is two threads time-sharing a core, not per-request work. `strace -c` shows the same system calls per request on one thread and on two, and each isolate has its own lock-free arena, so no shared structure showed up as the fixed cost. Crossover: use worker threads when there are at least as many free cores as threads; tiny bodies gain nothing from them, 8 MiB bodies gain 2.3x with two threads.
+
+## 2026-10-27: Rust baseline, equal cores
+
+`sh bench/perf/web/run.sh 4` on `90e401c4`, shared 4-CPU Linux VM, servers on 2 CPUs, load on the other 2. The earlier tables ran Manuscript on one worker against servers using both cores, which understated it by about 2x. Manuscript now runs two workers (`MS_THREADS`), and the hyper server in [`rust/`](rust) (two tokio workers, release with LTO) joins the comparison. Ranges cover both rounds.
+
+| Measurement | Manuscript | hyper |
+| --- | ---: | ---: |
+| `/health` req/s | 113k–119k | 114k–119k |
+| `/user/42` req/s | 107k–108k | 115k–116k |
+| `/top?n=10` req/s | 53k–54k | 53k–56k |
+| `/health` p99 | 2.2 ms | 1.9–2.7 ms |
+| Resident memory after load | 57 MB | 4 MB |
+| Resident memory, 10,000 idle connections | 62 MB | 104 MB |
+| `/health` req/s beside 10,000 idle connections | 105k | 111k |
+
+Throughput and tail latency are at parity with hyper; the gap is resident memory after load. The suite's Manuscript server also failed to compile on main (a discarded `Result` in the worker handshake) until this change.
