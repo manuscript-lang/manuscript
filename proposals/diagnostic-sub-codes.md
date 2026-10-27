@@ -9,7 +9,7 @@
 
 ## Status
 
-Proposal, 2026-10-27, checked against `origin/main` at `5f28e5d0`. Direction in #1541: fold the explanation into an existing command, not a separate `ms explain`. Verified: `ms guide <code>` already does this (`explain_codes` in `crates/ms-cli/src/commands.rs`), so no new command is needed.
+Approved 2026-10-27 (Chinmay: "good to go for 1541"). Stage 1 implemented as a table of cause kinds in `diag.rs` (`KINDS`, `kind_for`), matched by cause text within the family, instead of kinds at every emit site; `--json` gains `subcode`, `ms guide MS3000.1` explains it, and `ms-conform` ignores the additive key. Checked against `origin/main` at `5f28e5d0`. Direction in #1541: fold the explanation into an existing command, not a separate `ms explain`. Verified: `ms guide <code>` already does this (`explain_codes` in `crates/ms-cli/src/commands.rs`), so no new command is needed.
 
 ## Problem
 
