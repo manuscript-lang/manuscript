@@ -2,18 +2,17 @@
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 def next_sum(a: List[Int]) -> Int:
     var t = 0
-    for i in range(0, a.length() - 1):
+    for i in 0..a.length() - 1:
         t = t + a[i + 1]
     return t
 
 def mirror(a: List[Int]) -> Int:
     var b = a.clone()
 
-    for i in range(0, b.length() / 2):
+    for i in 0..b.length() / 2:
         let j = b.length() - 1 - i
         let t = b[i]
         b[i] = b[j]
@@ -23,7 +22,7 @@ def mirror(a: List[Int]) -> Int:
 
 def stride(a: List[Int]) -> Int:
     var t = 0
-    for i in range(0, a.length() / 3):
+    for i in 0..a.length() / 3:
         t = t + a[i * 3] + a[i * 3 + 2]
     return t
 
@@ -45,8 +44,8 @@ def search(a: List[Int], want: Int) -> Int:
 
 def nested(g: List[List[Int]]) -> Int:
     var t = 0
-    for i in range(0, g.length()):
-        for j in range(0, g[i].length()):
+    for i in 0..g.length():
+        for j in 0..g[i].length():
             t = t + g[i][j]
     return t
 

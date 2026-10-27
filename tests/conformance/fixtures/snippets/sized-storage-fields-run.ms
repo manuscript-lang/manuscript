@@ -2,7 +2,6 @@
 # conform: phase=run
 # conform: origin=sized numeric types stage 3
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 type Pix:
     r: Int8
@@ -29,7 +28,7 @@ def area(s: Shape) -> Int:
 
 export def main() -> Int:
     var l: List[Int8] = []
-    for i in range(0, 10):
+    for i in 0..10:
         l.append((i * 3 - 12).to_int8().get(0))
 
     let _ = stdout().write(f"{l} {l.length()} {l.contains(-3)}\n")

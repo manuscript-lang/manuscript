@@ -1301,7 +1301,7 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
         }
         let n = (end as i128 - start as i128) as u128;
         if n > MAX_ITEMS as u128 {
-            fault::fault(b"range: more than 268435456 items; iterate with 'for index in range(start, end)' directly or bound the list with range_by(max_items:)");
+            fault::fault(b"range: more than 268435456 items; iterate with 'for index in start..end' directly or bound the list with range_by(max_items:)");
         }
         let n = n as usize;
         let p = alloc::alloc(n * 8) as *mut i64;

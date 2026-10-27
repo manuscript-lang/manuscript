@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench, words
 from "@std/encoding.ms" import base64_encode, base64_decode, hex_encode
 from "@std/crypto.ms" import sha256
@@ -36,7 +35,7 @@ export def bench_binary() -> Unit:
         100000,
         lambda () -> Int:
             var bb = BytesBuilder()
-            for j in range(0, 100000):
+            for j in 0..100000:
                 bb.append(j % 256)
             return bb.build().length()
     )

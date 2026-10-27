@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "27 35107927985628 true sum 35107927985655\n-1 -995502207565 false sum -995502207566\nl1 = [-25, 22, 28, -9] len 4\ni2 = 7839542\nb3 = true\ni4 = 7839542\ndelta\ns5 = [héllo]\nfib(33) = 3524578\nb6 = true\ni7 = 49\nl8 = [-9, 28, 22, -25] len 4\ni9 = -7839650\ns10 = [héllohéllo]\nl11 = [-6, -22] len 2\ni12 = -2\nacc13 = 0\n",
-    "stderr": "index 5 out of range for length 4; pass a default: get(index:, default: ...)\n  at seed-0339.ms:79 in main\n"
+    "stderr": "index 5 out of range for length 4; pass a default: get(index:, default: ...)\n  at seed-0339.ms:78 in main\n"
   }
 }

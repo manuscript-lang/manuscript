@@ -6,7 +6,6 @@ from "@std/collections.ms" import (
     ListBuilder,
     MapBuilder,
     SetBuilder,
-    range,
     range_by,
     filled,
     map_from_entries,
@@ -109,41 +108,41 @@ test "stepped ranges handle full-width spans and minimum negative steps":
     try expect_equal(range_by(minimum, maximum, maximum, 2), limited)
 
 test "range counts up by one":
-    try expect_equal(range(0, 4), [0, 1, 2, 3])
+    try expect_equal((0..4), [0, 1, 2, 3])
 
     let none_between: List[Int] = []
-    try expect_false(range(2, 2) != none_between or range(5, 1) != none_between)
-    try expect_equal(range(-2, 1), [-2, -1, 0])
+    try expect_false((2..2) != none_between or (5..1) != none_between)
+    try expect_equal((-2..1), [-2, -1, 0])
 
 test "for over range counts without a list":
     var total = 0
-    for index in range(0, 5):
+    for index in 0..5:
         total += index
     try expect_equal(total, 10)
 
     var visits = 0
-    for outer in range(0, 3):
-        for inner in range(outer, 3):
+    for outer in 0..3:
+        for inner in outer..3:
             visits += 1
     try expect_equal(visits, 6)
 
     var bound = 3
     var seen = 0
 
-    for index in range(0, bound):
+    for index in 0..bound:
         bound = 10
         seen += 1
 
     try expect_equal(seen, 3)
 
     var huge = 0
-    for index in range(9223372036854775800, 9223372036854775807):
+    for index in 9223372036854775800..9223372036854775807:
         huge += 1
     try expect_equal(huge, 7)
 
     var skipped = 0
 
-    for index in range(0, 10):
+    for index in 0..10:
         if index % 2 == 0: continue
         if index > 7: break
 
@@ -152,7 +151,7 @@ test "for over range counts without a list":
     try expect_equal(skipped, 16)
 
     var callbacks: List[Callable[[], Int]] = []
-    for index in range(0, 3):
+    for index in 0..3:
         callbacks.append(lambda: index)
     try expect_equal(callbacks.map(lambda call: call()), [0, 1, 2])
 

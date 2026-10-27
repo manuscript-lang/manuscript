@@ -7,6 +7,23 @@
     "format": 1,
     "diagnostics": [
       {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export range; @std/collections.ms exports: CollectionError, List, ListBuilder, ListEntry, Map, MapBuilder, MapEntry, Pair, Partition, Set, SetBuilder, filled, ...; namespace imports are unsupported, so import individual exports with 'from \"@std/collections.ms\" import Name, OtherName'",
+        "position": {
+          "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 237
+        },
+        "end": {
+          "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 242
+        }
+      },
+      {
         "code": "MS2003",
         "phase": "resolution",
         "message": "redundant prelude import List; remove List from this import and use its prelude declaration directly",
@@ -42,7 +59,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9.ms:6:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 6 |     List\n   |     ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9.ms:5:5: resolution: module does not export range; @std/collections.ms exports: CollectionError, List, ListBuilder, ListEntry, Map, MapBuilder, MapEntry, Pair, Partition, Set, SetBuilder, filled, ...; namespace imports are unsupported, so import individual exports with 'from \"@std/collections.ms\" import Name, OtherName'\n   |\n 5 |     range,  # factory\n   |     ^^^^^\n<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-9.ms:6:5: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 6 |     List\n   |     ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

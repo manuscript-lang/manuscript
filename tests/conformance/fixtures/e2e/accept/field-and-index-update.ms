@@ -2,7 +2,6 @@
 # conform: phase=run
 # conform: origin=perf thread: in-place field updates and name-indexed element updates
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 type Reader:
     entries: List[Map[String, Int]]
@@ -41,7 +40,7 @@ export def main() -> Int:
 
     var total = 0
 
-    for i in range(0, 20000):
+    for i in 0..20000:
         reader.names.append("n")
         total += 1
 

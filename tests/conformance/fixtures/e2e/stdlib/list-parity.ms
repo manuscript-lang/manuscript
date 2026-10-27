@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/list-parity.ms
 from "@std/test.ms" import expect_equal, expect_false
-from "@std/collections.ms" import range
 
 test "List count calls the predicate once per element":
     let values = [1, 2, 3, 4]
@@ -97,7 +96,7 @@ test "List distinct handles large Int and String lists":
     var numbers: List[Int] = []
     var words: List[String] = []
 
-    for index in range(0, 60000):
+    for index in 0..60000:
         numbers.append(index % 30000)
         words.append(f"w{index % 20000}")
 

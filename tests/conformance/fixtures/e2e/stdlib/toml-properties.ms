@@ -2,7 +2,6 @@
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/toml-properties.ms
 from "@std/test.ms" import expect_not_equal, fail
-from "@std/collections.ms" import range
 from "@std/toml.ms" import parse, stringify, TomlValue
 from "./support/generator.ms" import Rng, next, text, mutate
 
@@ -20,7 +19,7 @@ def generated(var rng: Rng, depth: Int) -> TomlValue:
 
     if kind == 4:
         var items: List[TomlValue] = []
-        for item in range(0, next(var rng, 4)):
+        for item in 0..next(var rng, 4):
             items.append(generated(var rng, depth + 1))
         return TomlValue.ArrayValue(items)
 
@@ -28,7 +27,7 @@ def generated(var rng: Rng, depth: Int) -> TomlValue:
 
 def table(var rng: Rng, depth: Int) -> TomlValue:
     var entries: Map[String, TomlValue] = {}
-    for item in range(0, next(var rng, 4)):
+    for item in 0..next(var rng, 4):
         entries.add(text(var rng), generated(var rng, depth))
     return TomlValue.TableValue(entries)
 
@@ -49,17 +48,17 @@ def check_stable(seed: Int, mutated: String, first: TomlValue) -> Result[Unit, E
     return ok(())
 
 test "TOML stringify then parse preserves generated documents":
-    for seed in range(1, 301):
+    for seed in 1..301:
         try check_round_trip(seed, table(var Rng(seed), 0))
 
 test "TOML parse never faults on mutated documents and accepted input is stable":
     var accepted = 0
 
-    for seed in range(1, 301):
+    for seed in 1..301:
         var rng = Rng(seed)
         let rendered = table(var rng, 0) | stringify | try
 
-        for round in range(0, 4):
+        for round in 0..4:
             let mutated = mutate(var rng, rendered)
 
             if let first = parse(mutated):

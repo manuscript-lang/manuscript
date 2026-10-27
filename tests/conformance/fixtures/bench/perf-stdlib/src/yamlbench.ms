@@ -1,11 +1,10 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench
 from "@std/string.ms" import StringBuilder
 from "@std/yaml.ms" import parse, stringify, YamlValue
 
 def yaml_doc(count: Int) -> String:
     var sb = StringBuilder()
-    for i in range(0, count):
+    for i in 0..count:
         sb.append(f"- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
     return sb.build()
 

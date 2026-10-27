@@ -2,7 +2,6 @@
 # conform: phase=test
 from "@std/test.ms" import expect_equal, expect_true, expect_false
 from "@std/sorted.ms" import SortedMap, SortedSet
-from "@std/collections.ms" import range
 
 test "add get replace remove":
     var map = SortedMap[Int, String]()
@@ -49,7 +48,7 @@ test "first last floor ceiling and pops":
 
 test "range is half open and spans chunks":
     var map = SortedMap[Int, Int]()
-    for key in range(0, 3000):
+    for key in 0..3000:
         map.add(key * 2, key)
 
     let hits = map.range(1000, 1010)
@@ -65,7 +64,7 @@ test "many random operations agree with Map":
     var plain = Map[Int, Int]()
     var seed = 7
 
-    for step in range(0, 20000):
+    for step in 0..20000:
         seed = (seed * 1103515245 + 12345) % 2147483648
 
         let key = seed % 2000
@@ -86,7 +85,7 @@ test "many random operations agree with Map":
         try expect_equal(plain.get(entry.key), some(entry.value))
         previous = entry.key
 
-    for key in range(0, 2000):
+    for key in 0..2000:
         try expect_equal(sorted.contains(key), plain.contains(key))
 
         var expected: Optional[Int] = none

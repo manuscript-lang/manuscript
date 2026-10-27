@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "f1 = 70869.55083000001\ni2 = 9223372036854775774\ncollatz(1437) = 52\ni3 = 9223372036854775774\ns4 = [語本日a]\ni5 = 62\n9223372036854775774 0 false sum 9223372036854775774\ns6 = [語本日a]\nb7 = true\ni8 = -754303\nb9 = false\nacc10 = -3\n0 0 false sum 0\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0033.ms:70 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0033.ms:69 in main\n"
   }
 }

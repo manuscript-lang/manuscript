@@ -1440,7 +1440,7 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 if self.kind() == Tok::LParen {
                     let c = self.peek();
-                    return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in range(0, n):' to count, with range from \"@std/collections.ms\"");
+                    return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
                 self.no_binding_ref()?;
                 let name = self.need(Tok::Name)?;

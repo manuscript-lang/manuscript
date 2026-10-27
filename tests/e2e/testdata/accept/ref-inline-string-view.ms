@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 type Box:
     name: String
@@ -11,7 +10,7 @@ impl Box:
 
 def churn(n: Int) -> Int:
     var total = 0
-    for i in range(0, n):
+    for i in 0..n:
         total += f"{i}".length()
     return total
 
@@ -38,7 +37,7 @@ def pressure(a: Int, b: Int, c: Int, d: Int) -> Int:
     var z = c * 7 + d
     var w = d * 11 + a
 
-    for i in range(0, 40):
+    for i in 0..40:
         x += y % 7 + i
         y += z % 11 + x % 3
         z += w % 13 + y % 5

@@ -1,7 +1,6 @@
 # conform: tags=closures,with-cleanup,stdlib-channels,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 from "@std/channels.ms" import Channel, ChannelError
-from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/fetch.ms" import fetch
 from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions
@@ -75,7 +74,7 @@ def spin_then_wait() -> Unit:
     let _ = ch.send(1)
 
     var _n = 0
-    for i in range(0, 300000000):
+    for i in 0..300000000:
         _n += i
 
     let _got = ch.receive()
@@ -138,7 +137,7 @@ test "many messages wait for room":
         var worker = group.spawn(squares).get(none)
         var total = 0
 
-        for n in range(0, 200):
+        for n in 0..200:
             try expect_ok(worker.channel.send(n))
             if let got = worker.channel.receive().get(none):
                 total += got
@@ -152,7 +151,7 @@ test "workers run side by side with memory of their own":
         var first = group.spawn(sum_until_closed).get(none)
         var second = group.spawn(sum_until_closed).get(none)
 
-        for n in range(0, 100):
+        for n in 0..100:
             try expect_ok(first.channel.send(n))
             try expect_ok(second.channel.send(n * 2))
 
@@ -294,7 +293,7 @@ def fetches_page() -> Unit:
 
     if let address = ch.receive().get(none):
         var total = 0
-        for round in range(0, 3):
+        for round in 0..3:
             if let response = fetch(f"http://{address}/page"):
                 total += response.body.length()
         let _ = ch.send(total)
@@ -310,12 +309,12 @@ test "workers fetch from the starter's server at the same time":
         with let group = WorkerGroup[String, Int]():
             var workers: List[Worker[String, Int]] = []
 
-            for i in range(0, 4):
+            for i in 0..4:
                 var worker = group.spawn(fetches_page).get(none)
                 try expect_ok(worker.channel.send(server.address()))
                 workers.append(worker)
 
-            for i in range(0, 4):
+            for i in 0..4:
                 try expect_equal(workers[i].channel.receive(), ok(some(3 * 65536)))
                 try expect_ok(workers[i].wait())
 
@@ -368,7 +367,7 @@ test "workers serve one port with a shared listener":
         var workers: List[Worker[String, String]] = []
         var first = ""
 
-        for i in range(0, 3):
+        for i in 0..3:
             var worker = group.spawn(serves_shared).get(none)
             try expect_ok(worker.channel.send("127.0.0.1:0"))
 
@@ -379,12 +378,12 @@ test "workers serve one port with a shared listener":
             workers.append(worker)
 
         var total = 0
-        for i in range(0, 12):
+        for i in 0..12:
             if let response = fetch(f"http://{first}/page"):
                 total += response.body.length()
         try expect_equal(total, 12 * 65536)
 
-        for i in range(0, 3):
+        for i in 0..3:
             try expect_ok(workers[i].channel.send("stop"))
             try expect_ok(workers[i].wait())
 

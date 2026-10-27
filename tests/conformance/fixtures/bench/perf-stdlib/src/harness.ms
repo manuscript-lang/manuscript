@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 
@@ -21,12 +20,12 @@ export def bench(name: String, ops: Int, body: Callable[[], Int]) -> Unit:
 
 export def ints(count: Int) -> List[Int]:
     var out: List[Int] = []
-    for i in range(0, count):
+    for i in 0..count:
         out.append((i * 7919) % 10007)
     return out
 
 export def words(count: Int) -> List[String]:
     var out: List[String] = []
-    for i in range(0, count):
+    for i in 0..count:
         out.append(f"word{i % 977}")
     return out

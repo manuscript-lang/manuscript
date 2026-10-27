@@ -1,7 +1,6 @@
 # conform: tags=closures,with-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 from "@std/channels.ms" import Channel, ChannelError
-from "@std/collections.ms" import range
 from "@std/tasks.ms" import Task, TaskGroup
 from "@std/test.ms" import expect_equal, expect_true
 from "@std/time.ms" import nanoseconds, sleep
@@ -50,12 +49,12 @@ test "many tasks echo through their channels without losing a value":
     var total = 0
     var counts = 0
     with let group = TaskGroup[Result[Int, ChannelError], Int, Int]():
-        for t in range(0, 20):
+        for t in 0..20:
             var task = group.spawn(echo)
-            for i in range(0, 200):
+            for i in 0..200:
                 task.channel.send(i).get()
                 if i % 8 == 7:
-                    for k in range(0, 8):
+                    for k in 0..8:
                         total += task.channel.receive().get().get(0)
             task.channel.close()
         let results = group.results().get()
@@ -67,7 +66,7 @@ test "many tasks echo through their channels without losing a value":
 
 test "creating and closing task groups many times leaves them usable":
     var done = 0
-    for i in range(0, 2000):
+    for i in 0..2000:
         with let group = TaskGroup[Int]():
             let t = group.spawn(lambda ch: quick())
             done += t.result().get(0)
@@ -133,7 +132,7 @@ test "the worker limit refuses extra workers and frees slots when they end":
     with let group = WorkerGroup[Int, Int]():
         var started = List[Worker[Int, Int]]()
         var refused = 0
-        for i in range(0, 300):
+        for i in 0..300:
             let w = group.spawn(waits)
             if w.is_ok():
                 started.append(w.get().clone())
@@ -141,9 +140,9 @@ test "the worker limit refuses extra workers and frees slots when they end":
                 refused += 1
         try expect_true(refused > 0)
         try expect_equal(started.length() + refused, 300)
-        for i in range(0, started.length()):
+        for i in 0..started.length():
             started[i].cancel()
-        for i in range(0, started.length()):
+        for i in 0..started.length():
             let _ended = started[i].wait()
         let again = group.spawn(waits)
         try expect_equal(again.is_ok(), True)

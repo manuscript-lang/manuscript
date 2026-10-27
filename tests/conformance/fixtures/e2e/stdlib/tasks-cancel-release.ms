@@ -1,6 +1,5 @@
 # conform: tags=with-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/time.ms" import nanoseconds, sleep
@@ -10,14 +9,14 @@ from "@std/time.ms" import nanoseconds, sleep
 
 def hold_and_sleep() -> Int:
     var big = List[Int](reserve: 100000)
-    for i in range(0, 100000):
+    for i in 0..100000:
         big.append(i)
     sleep(nanoseconds(10000000000))
     return big.length()
 
 def hold_in_callee() -> Int:
     var words = List[String]()
-    for i in range(0, 1000):
+    for i in 0..1000:
         words.append(f"word number {i}")
     let total = hold_and_sleep()
     return total + words.length()
@@ -38,7 +37,7 @@ def leave_group() -> Unit:
         sleep(nanoseconds(1000000))
 
 export def main() -> Int:
-    for round in range(0, 5):
+    for round in 0..5:
         group_timeout()
         task_timeout()
         leave_group()

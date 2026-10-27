@@ -1,7 +1,6 @@
 # conform: tags=stdlib-shared,stdlib-tasks,tier-io
 # conform: phase=run
 # conform: timeout=20
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
@@ -21,7 +20,7 @@ def waiter(box: Shared[Int]) -> Int:
 export def main() -> Int:
     var served = 0
 
-    for round in range(0, 60):
+    for round in 0..60:
         let box = share(0)
         let nap = 2000000 + round * 7000
 

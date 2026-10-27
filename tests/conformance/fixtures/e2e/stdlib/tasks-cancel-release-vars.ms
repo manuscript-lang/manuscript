@@ -2,7 +2,6 @@
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup
 from "@std/time.ms" import nanoseconds, sleep
@@ -37,7 +36,7 @@ def t_field_move() -> Int:
 def t_map_loop() -> Int:
     var m = Map[String, List[Int]]()
 
-    for i in range(0, 100):
+    for i in 0..100:
         m.add(f"key{i}", [i, i])
         if i == 50:
             nap()
@@ -48,7 +47,7 @@ def t_consume_in_loop() -> Int:
     var acc = List[String]()
     var total = 0
 
-    for i in range(0, 10):
+    for i in 0..10:
         let s = f"v{i}"
         acc.append(s.clone())
         nap()
@@ -95,7 +94,7 @@ def t_nested(depth: Int) -> Int:
 def t_var_reassign() -> Int:
     var s = "start-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-    for i in range(0, 3):
+    for i in 0..3:
         s = f"{s}-{i}"
         nap()
 
@@ -137,7 +136,7 @@ def t_conditional(flag: Bool) -> Int:
 def t_loop_break() -> Int:
     var out = List[List[Int]]()
 
-    for i in range(0, 10):
+    for i in 0..10:
         out.append([i, i, i])
 
         if i == 5:
@@ -170,7 +169,7 @@ def run_one(which: Int) -> Unit:
         let _ = group.wait()
 
 export def main() -> Int:
-    for which in range(0, 7):
+    for which in 0..7:
         run_one(which)
         stdout().write(f"case {which} released\n").get()
 

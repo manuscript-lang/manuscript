@@ -1,6 +1,5 @@
 # conform: tags=closures,with-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-from "@std/collections.ms" import range
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskError, TaskGroup
@@ -178,7 +177,7 @@ test "a task that never ran releases what it captured":
 
 test "many tasks run and keep their order":
     with let group = TaskGroup[Int]():
-        for n in range(0, 300):
+        for n in 0..300:
             group.spawn(lambda ch: slow_square(n))
 
         let results = group.results() | try expect_ok
@@ -239,7 +238,7 @@ test "closing a group twice leaves a later group alone":
 
 test "more sleeping tasks than the timer heap keeps all finish":
     with let group = TaskGroup[Int]():
-        for n in range(0, 1200):
+        for n in 0..1200:
             group.spawn(lambda ch: slow_square(n))
 
         let results = group.results() | try expect_ok
@@ -278,6 +277,6 @@ test "a group forgets collected tasks":
 test "a group with a timeout collects many tasks":
     with let group = TaskGroup[Int](timeout: some(nanoseconds(3600000000000))):
         var total = 0
-        for i in range(0, 5000):
+        for i in 0..5000:
             total += group.spawn(lambda ch: i).result().get(0)
         total | try expect_equal(12497500)

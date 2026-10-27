@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_true
-from "@std/collections.ms" import range
 
 type Point:
     x: Int
@@ -27,7 +26,7 @@ impl Equal for Folded:
 
 test "plain record keys":
     var m = Map[Point, Int]()
-    for i in range(0, 50):
+    for i in 0..50:
         m.add(Point(x: i, y: i * 2), i)
     try expect_true(m.length() == 50)
     try expect_true(m.get(Point(y: 20, x: 10)).get(-1) == 10)

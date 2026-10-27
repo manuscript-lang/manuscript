@@ -1,6 +1,5 @@
 from "@std/core.ms" import TextError
 from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/collections.ms" import range
 
 def checked(n: Int) -> Result[Int, TextError]:
     if n < 0:
@@ -67,7 +66,7 @@ def closure_return(n: Int) -> Result[Int, TextError]:
 def sum_all(count: Int) -> Result[Int, TextError]:
     var total = 0
 
-    for i in range(0, count):
+    for i in 0..count:
         let v = try checked(i)
         total += v
 

@@ -1,5 +1,3 @@
-from "@std/collections.ms" import range
-
 # Deterministic generator so failures reproduce from the seed in the message.
 export type Rng:
     state: Int
@@ -16,7 +14,7 @@ let pieces = [
 
 export def text(var rng: Rng) -> String:
     var out = ""
-    for piece in range(0, next(var rng, 4)):
+    for piece in 0..next(var rng, 4):
         out += pieces[next(var rng, pieces.length())]
     return out
 

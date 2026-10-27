@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_not_equal, fail
-from "@std/collections.ms" import range
 from "@std/yaml.ms" import parse, stringify, YamlValue
 from "./support/generator.ms" import Rng, next, text, mutate
 
@@ -15,12 +14,12 @@ def generated(var rng: Rng, depth: Int) -> YamlValue:
 
     if kind == 4:
         var items: List[YamlValue] = []
-        for item in range(0, next(var rng, 4)):
+        for item in 0..next(var rng, 4):
             items.append(generated(var rng, depth + 1))
         return YamlValue.ArrayValue(items)
 
     var entries: Map[String, YamlValue] = {}
-    for item in range(0, next(var rng, 4)):
+    for item in 0..next(var rng, 4):
         entries.add(text(var rng), generated(var rng, depth + 1))
     return YamlValue.ObjectValue(entries)
 
@@ -41,18 +40,18 @@ def check_stable(seed: Int, mutated: String, first: YamlValue) -> Result[Unit, E
     return ok(())
 
 test "YAML stringify then parse preserves generated documents":
-    for seed in range(1, 301):
+    for seed in 1..301:
         var rng = Rng(seed)
         try check_round_trip(seed, generated(var rng, 0))
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
     var accepted = 0
 
-    for seed in range(1, 301):
+    for seed in 1..301:
         var rng = Rng(seed)
         let rendered = generated(var rng, 0) | stringify | try
 
-        for round in range(0, 4):
+        for round in 0..4:
             let mutated = mutate(var rng, rendered)
 
             if let first = parse(mutated):

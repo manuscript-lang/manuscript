@@ -1,17 +1,16 @@
 # conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,records,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=bench/lists/program.ms
-from "@std/collections.ms" import range
 
 def build(count: Int) -> List[Int]:
     var values: List[Int] = []
-    for i in range(0, count):
+    for i in 0..count:
         values.append(i * 7919 % 100003)
     return values
 
 def index(values: List[Int], count: Int) -> Int:
     var total = 0
-    for i in range(0, count):
+    for i in 0..count:
         total += values.get(i % values.length())
     return total
 

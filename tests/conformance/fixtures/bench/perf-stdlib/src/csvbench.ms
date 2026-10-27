@@ -1,10 +1,9 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench
 from "@std/csv.ms" import parse, stringify
 
 export def bench_csv() -> Unit:
     var rows: List[List[String]] = []
-    for i in range(0, 5000):
+    for i in 0..5000:
         rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
     let csv_text = stringify(rows).get("")
