@@ -1,7 +1,7 @@
 # conform: tags=lists,records,stdlib-fs,stdlib-log,stdlib-testing,testing,tier-io
 # conform: phase=test
 # conform: origin=perf thread: @std/log on the native backend
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/log.ms" import LogError, LogLevel, create, file_transport, record
 from "@std/fs.ms" import FileSystemError, filesystem
 

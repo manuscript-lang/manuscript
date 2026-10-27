@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_contains, expect_fault
+from "@std/test.ms" import expect_equal, expect_contains, expect_fault
 from "@std/bytes.ms" import Bytes, BytesBuilder, BinaryError
 
 test "integers round-trip in both byte orders":

@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=documentation/core-language/control-flow/loops.md:63
 from "@std/collections.ms" import range_by
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)

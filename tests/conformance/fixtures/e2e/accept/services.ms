@@ -1,7 +1,7 @@
 # conform: tags=faults,modules,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/services.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import ListBuilder
 from "@std/collections.ms" import MapBuilder
 from "@std/collections.ms" import SetBuilder

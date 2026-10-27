@@ -1,7 +1,7 @@
 # conform: tags=aliasing,control-flow,diagnostics,interpolation,lists,maps,modules,mutation,stdlib-collections,stdlib-testing,stdlib-yaml,strings,testing,tier-stdlib,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/yaml-properties.ms
-from "@std/testing.ms" import expect_not_equal, fail
+from "@std/test.ms" import expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/yaml.ms" import parse, stringify, YamlValue
 from "./support/generator.ms" import Rng, next, text, mutate

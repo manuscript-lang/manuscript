@@ -165,7 +165,7 @@ pub fn call_modes(
                 None => {
                     // A native function keeps function arguments it is given, except the
                     // testing helpers, which run them at once.
-                    let runs_now = s.module.as_str() == "@std/testing.ms";
+                    let runs_now = s.module.as_str() == "@std/test.ms";
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())

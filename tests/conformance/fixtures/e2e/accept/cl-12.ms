@@ -1,7 +1,7 @@
 # conform: tags=control-flow,maps,modules,mutation,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-12.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def map_total(values: Map[String, Int]) -> Int:
     var total = 0

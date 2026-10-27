@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "./domain.ms" import Key
 from "./first.ms" import first_run, first_add, first_remove, first_empty
 from "./second.ms" import second_run

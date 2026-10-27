@@ -36,7 +36,7 @@ JSON decodes into a record; missing fields take their defaults. Save as `config.
 
 ```manuscript
 from "@std/json.ms" import parse
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Config:
     host: String = "127.0.0.1"

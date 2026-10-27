@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/collections.ms" import range
 
 def checked(n: Int) -> Result[Int, TextError]:

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,lists,modules,stdlib-csv,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/csv.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
 
 test "CSV retains single empty fields and distinguishes empty rows":

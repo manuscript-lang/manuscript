@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interfaces,lists,match,modules,numbers,records,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/math-functions.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "@std/math.ms" import (
     acos,
     asin,

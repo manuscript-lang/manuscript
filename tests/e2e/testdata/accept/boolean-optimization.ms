@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_false
+from "@std/test.ms" import expect_false
 
 type Counter:
     calls: Int

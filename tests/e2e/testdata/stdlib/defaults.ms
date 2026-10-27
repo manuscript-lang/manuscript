@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
 from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
 from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio

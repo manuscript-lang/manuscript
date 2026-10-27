@@ -5,7 +5,7 @@ from "@std/core.ms" import panic
 from "@std/io.ms" import read_line, stderr, stdin, stdout
 from "@std/process.ms" import Stdio
 from "@std/processes.ms" import ProcessError, ProcessGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_ok
 
 type Job:
     name: String

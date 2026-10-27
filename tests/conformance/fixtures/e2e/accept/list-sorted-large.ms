@@ -1,7 +1,7 @@
 # conform: tags=lists,records,strings,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=perf thread: List.sorted is a stable n log n sort
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import range
 
 type Entry:
