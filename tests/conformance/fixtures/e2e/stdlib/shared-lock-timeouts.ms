@@ -43,5 +43,5 @@ export def main() -> Int:
             if second.result().is_ok():
                 served += 1
 
-    stdout().write("served " + served.to_string() + "\n")
+    let _ = stdout().write("served " + served.to_string() + "\n")
     return 0

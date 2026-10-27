@@ -89,9 +89,9 @@ test "closed list scalar summaries preserve sums and lengths":
 test "closed list reads preserve defaults and evaluation order":
     let values = [10, 20]
     var visits: List[Int] = []
-    values.get(default: effect(var visits, 7), index: effect(var visits, 0)) | try expect_equal(
-        10
-    )
+    values.get(
+        default: effect(var visits, 7), index: effect(var visits, 0)
+    ) | try expect_equal(10)
     values.get(-1, effect(var visits, 8)) | try expect_equal(20)
     values.get(3, effect(var visits, 9)) | try expect_equal(9)
     visits | try expect_equal([7, 0, 8, 9])

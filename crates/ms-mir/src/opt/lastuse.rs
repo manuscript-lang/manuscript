@@ -19,9 +19,14 @@ use std::collections::HashSet;
 
 /// Runs the pass; returns whether any drop moved.
 pub fn run(m: &mut Module) -> bool {
+    run_where(m, |_| true)
+}
+
+/// Runs the pass on the functions `select` accepts.
+pub fn run_where(m: &mut Module, select: impl Fn(&Func) -> bool) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
-        if m.funcs[fi].blocks.is_empty() {
+        if m.funcs[fi].blocks.is_empty() || !select(&m.funcs[fi]) {
             continue;
         }
         // The stand-in keeps `ret_borrowed`, so a recursive call still reads as lending.

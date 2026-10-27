@@ -55,9 +55,9 @@ test "one header type preserves repeated values through buffered requests":
         ) | try expect_ok
         let metadata = response.metadata()
         metadata.status | try expect_equal(200)
-        metadata.headers.text("x-dup") | try expect_ok | try expect_equal(
-            some(["first", "second"])
-        )
+        metadata.headers.text(
+            "x-dup"
+        ) | try expect_ok | try expect_equal(some(["first", "second"]))
         try expect_false(
             (
                 (
@@ -157,7 +157,9 @@ test "empty options and an omitted request body use checked defaults":
     with let server = network().serve(
         address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
     ) | try expect_ok:
-        with let client = network().http_client(options: HttpClientOptions()) | try expect_ok:
+        with let client = network().http_client(
+            options: HttpClientOptions()
+        ) | try expect_ok:
             with let response = client.request(
                 method: HttpMethod.Get, url: f"http://{server.address()}/",
                 headers: (try repeated_headers())

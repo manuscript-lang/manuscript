@@ -19,8 +19,8 @@ export def main() -> Int:
     let other: Float32 = 0.2
     let exact: Float64 = 0.1
     let exact_other: Float64 = 0.2
-    stdout().write(f"{low} {high} {wide} {mid} {same}\n")
-    stdout().write(f"{half + other} {exact + exact_other}\n")
-    stdout().write(f"{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
-    stdout().write(f"{low < high} {wide == wide} {half == half}\n")
+    let _ = stdout().write(f"{low} {high} {wide} {mid} {same}\n")
+    let _ = stdout().write(f"{half + other} {exact + exact_other}\n")
+    let _ = stdout().write(f"{total([100, 20, 7])} {low / 2} {high % 10} {-high}\n")
+    let _ = stdout().write(f"{low < high} {wide == wide} {half == half}\n")
     return 0

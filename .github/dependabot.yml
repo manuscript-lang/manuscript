@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    # cranelift-codegen is vendored with a local patch (vendor/cranelift-codegen/PATCH.md), so the
+    # cranelift crates move together by hand.
+    ignore:
+      - dependency-name: 'cranelift-*'
     groups:
       rust-dependencies:
         patterns: ['*']

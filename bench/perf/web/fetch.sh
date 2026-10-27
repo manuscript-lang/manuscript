@@ -14,6 +14,7 @@ cp -r "$HERE/fetch/go" "$HERE/fetch/ms" "$W/"
 mkdir "$W/data"
 printf 'ok\n' > "$W/data/small"
 head -c 8388608 /dev/urandom > "$W/data/big"
+yes "the quick brown fox jumps over the lazy dog 0123456789" | head -c 8388608 > "$W/data/text"
 (cd "$W/go" && CGO_ENABLED=0 "$GO" build -trimpath -o fetch .)
 (cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o fetch >&2)
 if ! command -v taskset >/dev/null || [ "$(nproc)" -lt 4 ]; then SERVER_CPUS=; LOAD_CPUS=; fi
@@ -30,4 +31,10 @@ for file in small big; do
       echo "$file connections=$conns ms threads=2 $( (on "$LOAD_CPUS" "$W/ms/fetch" "$url" $conns "$SECS" 2) )"
     fi
   done
+done
+# Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one connection.
+for path in chunked/big gzip/text; do
+  url=http://127.0.0.1:18950/$path
+  echo "$path connections=1 go $( (on "$LOAD_CPUS" "$W/go/fetch" get "$url" 1 "$SECS") )"
+  echo "$path connections=1 ms $( (on "$LOAD_CPUS" "$W/ms/fetch" "$url" 1 "$SECS") )"
 done

@@ -56,6 +56,10 @@ impl RouteParams:
 
         return none
 
+    # Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
+    def get_or(name: String, fallback: String) -> String:
+        return self.get(name).get(fallback)
+
 # One segment of a route pattern.
 export type Segment:
     # Matches exactly this text.
@@ -125,6 +129,55 @@ impl Router:
     ) -> Result[Unit, RouterError]:
         let segments = try parse_pattern(pattern.clone())
         return insert(var self.routes, method.text(), pattern, segments, [], handler)
+
+    # Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
+    var def get(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Get, pattern, handler)
+
+    # Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
+    var def head(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Head, pattern, handler)
+
+    # Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
+    var def post(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Post, pattern, handler)
+
+    # Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
+    var def put(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Put, pattern, handler)
+
+    # Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
+    var def patch(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Patch, pattern, handler)
+
+    # Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
+    var def delete(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Delete, pattern, handler)
+
+    # Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
+    var def options(
+        pattern: String,
+        handler: Callable[[HttpExchange, RouteParams], Result[Unit, HttpError]]
+    ) -> Result[Unit, RouterError]:
+        return self.route(HttpMethod.Options, pattern, handler)
 
     # Registers every route of `routes` under `prefix`, wrapped in that router's own middleware.
     # The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.

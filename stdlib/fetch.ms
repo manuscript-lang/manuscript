@@ -76,14 +76,14 @@ export type FetchOptions:
     # The request body; defaults to Empty. A Text, Raw, or JSON body adds a `Content-Type` only when `headers` lacks one.
     body: FetchBody = FetchBody.Empty
     # Whole-exchange deadline; none waits without limit.
-    timeout: Optional[Duration] = some(seconds(30))
+    timeout: Optional[Duration] = seconds(30)
     # Largest accepted response body in bytes; none sets no cap. Larger bodies return `Http(LimitExceeded)`.
-    max_response_bytes: Optional[Int] = some(16777216)
+    max_response_bytes: Optional[Int] = 16777216
 
 # Settings fixed when a `Fetcher` is created.
 export type FetcherOptions:
     # Most redirects followed per request; 0 returns the redirect itself and none sets no cap.
-    max_redirects: Optional[Int] = some(20)
+    max_redirects: Optional[Int] = 20
     # Decode gzip responses, bounded by `max_response_bytes`.
     decompress: Bool = True
     # Keep an in-memory cookie jar for the fetcher's lifetime.
@@ -148,15 +148,10 @@ impl Fetcher:
         options: FetchOptions = FetchOptions()
     ) -> Result[ResponseBody, FetchError]:
         let sent = outgoing(options)
-        return (
-            self
-            .client
-            .request_bytes(
-                options.method.clone(), url, sent.headers, sent.body,
-                options.max_response_bytes, options.timeout
-            )
-            .map_error(http_failure)
-        )
+        return self.client.request_bytes(
+            options.method.clone(), url, sent.headers, sent.body,
+            options.max_response_bytes, options.timeout
+        ).map_error(http_failure)
 
 impl Closeable for Fetcher:
     # Cancels in-flight requests and drops pooled connections; later calls return `Http(Closed)`.

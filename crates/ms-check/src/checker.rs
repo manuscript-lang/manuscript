@@ -407,8 +407,8 @@ impl Checker {
         }
     }
 
-    /// `Self` is limited to whole parameter types, the only position an interface value can
-    /// turn back into the implementing type.
+    /// `Self` is limited to whole parameter and result types, the positions where a call can
+    /// substitute the implementing type.
     pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
         fn mentions(t: &Ty) -> bool {
             t.id.as_str().ends_with("/Self")
@@ -420,11 +420,14 @@ impl Checker {
             .params
             .iter()
             .any(|p| !p.ty.id.as_str().ends_with("/Self") && mentions(&p.ty))
-            || op.result.as_ref().is_some_and(mentions);
+            || op
+                .result
+                .as_ref()
+                .is_some_and(|r| !r.id.as_str().ends_with("/Self") && mentions(r));
         if misplaced {
             self.type_error(
                 pos,
-                "Self can only be a whole parameter type of an interface operation; write 'other: Self', not 'List[Self]' or a result type",
+                "Self can only be a whole parameter or result type of an interface operation; write 'other: Self', not 'List[Self]'",
             );
         }
     }
@@ -950,7 +953,7 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(f, &s.ty(), d.pos());
+                        self.check_extern_signature(d.name().as_str(), f, &s.ty(), d.pos());
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
@@ -999,7 +1002,9 @@ impl Checker {
         pos: Pos,
         report: bool,
     ) -> BindingRef {
+        // `_` names a value nothing reads, so several may share a scope.
         if report
+            && name.as_str() != "_"
             && (self.scope.bindings.borrow().contains_key(&name)
                 || self.scope.types.borrow().contains_key(&name))
         {
@@ -1174,10 +1179,16 @@ impl Checker {
 
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
-    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
+    fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
+        }
+        if name.starts_with("msrt_") || name.starts_with("msstd_") {
+            self.type_error(
+                pos,
+                format!("extern def {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
+            );
         }
         if !f.type_params.is_empty() {
             self.type_error(

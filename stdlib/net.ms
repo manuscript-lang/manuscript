@@ -602,24 +602,3 @@ impl Error for WebSocketError:
             case Closed: return "WebSocket: resource is closed"
             case Timeout: return "WebSocket: operation timed out"
             case Failed(message): return message.clone()
-
-# A URL whose scheme is `http` or `https` and that has a host, so it is safe to pass where a web address is required, for example to a request.
-# Build one with `http_url`; the parsed components are in `url`.
-export type HttpUrl:
-    # The parsed URL, with a lowercased `http` or `https` scheme and a nonempty host.
-    url: Url
-
-# Parses `text` as an absolute `http` or `https` URL with a host. Other schemes, such as `file`, `javascript` and `data`, and URLs without a host return InvalidData.
-export def http_url(text: String) -> Result[HttpUrl, UrlError]:
-    let parsed = try parse(text)
-    if parsed.scheme != "http" and parsed.scheme != "https": return error(
-        UrlError.InvalidData
-    )
-    if parsed.host.is_empty(): return error(UrlError.InvalidData)
-
-    return ok(HttpUrl(parsed))
-
-impl HttpUrl:
-    # Returns the canonical URL text, as `format` does.
-    def text() -> Result[String, UrlError]:
-        return format(self.url.clone())

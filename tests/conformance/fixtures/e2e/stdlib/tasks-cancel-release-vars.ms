@@ -167,7 +167,7 @@ def run_one(which: Int) -> Unit:
         elif which == 5: group.spawn(lambda ch: t_loop_break())
         else: group.spawn(lambda ch: t_while_sleep())
 
-        group.wait()
+        let _ = group.wait()
 
 export def main() -> Int:
     for which in range(0, 7):

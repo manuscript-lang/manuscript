@@ -1,5 +1,5 @@
 from "./src/main.ms" import insertion_sort
-from "@std/property.ms" import check, ints, lists
+from "@std/test/property.ms" import check, ints, lists
 from "@std/testing.ms" import expect_equal, expect_true
 
 # Each property runs on 100 generated lists. A failure prints a shrunk counterexample and a seed.

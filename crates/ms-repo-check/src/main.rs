@@ -1,6 +1,7 @@
 //! `repo-check`: repository invariants that no compiler or test run enforces.
 //! Run from the repository root; exits nonzero listing every violation.
 
+mod inline_source;
 mod licenses;
 mod nested;
 mod portability;
@@ -53,10 +54,11 @@ fn run() -> ExitCode {
     issues.extend(release::extension_version());
     issues.extend(release::workflow_triggers());
     issues.extend(unsafe_boundary::check(&files));
+    issues.extend(inline_source::check(&files));
     issues.extend(portability::check(&files));
     if issues.is_empty() {
         println!(
-            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, and portability agree."
+            "Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, and portability agree."
         );
         return ExitCode::SUCCESS;
     }

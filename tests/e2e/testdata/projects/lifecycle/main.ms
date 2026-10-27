@@ -11,21 +11,21 @@ type Resource:
 
 impl Closeable for Resource:
     var def close() -> Unit:
-        self.output.write(data: f"close {self.label}\n")
+        let _ = self.output.write(data: f"close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
 def report(var output: WriteStream, label: String, value: Int) -> Int:
-    output.write(data: f"{label}\n")
+    let _ = output.write(data: f"{label}\n")
     return value
 
 def combine(first: Int, second: Int) -> Int:
     return first + second
 
 def select(var output: WriteStream) -> Callable[[Int, Int], Int]:
-    output.write(data: "callable\n")
+    let _ = output.write(data: "callable\n")
     return combine
 
 def early(var output: WriteStream) -> Int:
@@ -42,7 +42,7 @@ def propagate(output: WriteStream) -> Result[Int, TextError]:
         return ok(number)
 
 def iterable(var output: WriteStream) -> List[Int]:
-    output.write(data: "iterable\n")
+    let _ = output.write(data: "iterable\n")
     return [1, 2]
 
 def exercise() -> Result[Int, Error]:
@@ -65,9 +65,9 @@ def exercise() -> Result[Int, Error]:
     )
     (pair.first + pair.second) | try expect_equal(3)
     with let resource = Resource(label: "normal", output: stdout()):
-        let _completed = ()
-    stdout().write(data: "after normal\n")
+        let completed = ()
 
+    let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
@@ -84,16 +84,17 @@ def exercise() -> Result[Int, Error]:
         case ok(_):
             try fail(message: "Unexpected case")
         case error(_):
-            let _completed = ()
+            let completed = ()
 
     var early_out = stdout()
     early(output: var early_out) | try expect_equal(5)
-    stdout().write(data: "finished\n")
+
+    let _ = stdout().write(data: "finished\n")
     return ok(0)
 
 export def main() -> Int:
     match exercise():
         case ok(status): return status
         case error(cause):
-            let _written = stderr().write(f"{cause.message()}\n")
+            let written = stderr().write(f"{cause.message()}\n")
             return 1

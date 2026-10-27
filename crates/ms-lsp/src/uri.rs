@@ -160,6 +160,8 @@ pub fn file_uri(path: &str) -> String {
 /// The URI of a bundled standard module such as `@std/io.ms`.
 pub fn standard_library_uri(file: &str) -> String {
     let rest = file.strip_prefix("@std/").unwrap_or(file);
+    // The source half of a mixed module (`collections.ms+source`) shares its file's text.
+    let rest = rest.strip_suffix("+source").unwrap_or(rest);
     format!("{STDLIB_SCHEME}:///{}", escape_path(rest))
 }
 

@@ -4,7 +4,7 @@ from "@std/http.ms" import headers, HttpHeaders, HttpError
 export def text_headers(fields: Map[String, String]) -> Result[HttpHeaders, HttpError]:
     let result = headers()
     for name in fields.keys():
-        let _appended = try (result.append(name, fields.get(name).get().to_bytes()))
+        let appended = try (result.append(name, fields[name].to_bytes()))
     return ok(result)
 
 export def list_headers(
@@ -12,8 +12,8 @@ export def list_headers(
 ) -> Result[HttpHeaders, HttpError]:
     let result = headers()
     for name in fields.keys():
-        for item in fields.get(name).get():
-            let _appended = try (result.append(name, item.to_bytes()))
+        for item in fields[name]:
+            let appended = try (result.append(name, item.to_bytes()))
     return ok(result)
 
 # Streaming callbacks must return HttpError; retain diagnostics from a different operation domain.

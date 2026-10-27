@@ -31,7 +31,7 @@ def square_each(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
 
 def squares() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let _finished = square_each(var ch)
+    let finished = square_each(var ch)
 
 def count_words() -> Unit:
     var ch = worker_channel[Done, Job]()
@@ -42,43 +42,43 @@ def count_words() -> Unit:
             return
 
         if let job = got.get(none):
-            ch.send(Done(id: job.id, count: job.words.length()))
+            let _ = ch.send(Done(id: job.id, count: job.words.length()))
         else:
             return
 
 def explode() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
     panic("worker boom")
 
 def reads_stdin() -> Unit:
-    var _ch = worker_channel[Int, Int]()
-    let _input = stdin()
+    var ch = worker_channel[Int, Int]()
+    let input = stdin()
 
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(nanoseconds(5000000))
-    ch.send(1)
+    let _ = ch.send(1)
 
 def wait_forever() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let _got = ch.receive()
+    let got = ch.receive()
 
 def announce_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
-    let _got = ch.receive()
+    let got = ch.receive()
 
 # Runs without parking for long enough that the cancel always lands while it is computing.
 def spin_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
-    var _n = 0
+    var n = 0
     for i in range(0, 300000000):
-        _n += i
+        n += i
 
-    let _got = ch.receive()
+    let got = ch.receive()
 
 def sleep_long() -> Unit:
     sleep(nanoseconds(60000000000))
@@ -95,12 +95,12 @@ def sum_until_closed() -> Unit:
         if let n = got.get(none):
             total += n
         else:
-            ch.send(total)
+            let _ = ch.send(total)
             return
 
 def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
     var worker = try group.spawn(squares)
-    worker.channel.send(value)
+    let _ = worker.channel.send(value)
 
     var answer = -1
     if let got = worker.channel.receive().get(none):
@@ -165,7 +165,7 @@ test "a fault in a worker is a result, not the end of the program":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
         let outcome = worker.wait()
-        let _ignored = try expect_error(outcome)
+        let ignored = try expect_error(outcome)
 
 test "cancelling a worker stops it":
     with let group = WorkerGroup[Int, Int]():
@@ -190,15 +190,15 @@ test "cancelling a worker right after spawn is not lost":
 test "leaving the group stops workers that are still running":
     with let group = WorkerGroup[Int, Int]():
         let worker = group.spawn(wait_forever)
-        let _ignored = try expect_ok(worker)
+        let ignored = try expect_ok(worker)
 
     try expect_equal(1, 1)
 
 test "sends after the worker ended report the channel closed":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(explode).get(none)
-        let _outcome = worker.wait()
-        let _ignored = try expect_error(worker.channel.send(1))
+        let outcome = worker.wait()
+        let ignored = try expect_error(worker.channel.send(1))
 
 test "a worker sleeps without blocking its starter":
     with let group = WorkerGroup[Int, Int]():
@@ -210,16 +210,16 @@ test "standard input stays with the main thread":
     with let group = WorkerGroup[Int, Int]():
         var worker = group.spawn(reads_stdin).get(none)
         let outcome = worker.wait()
-        let _ignored = try expect_error(outcome)
+        let ignored = try expect_error(outcome)
         try expect_true(outcome.err().message().contains("main thread"))
 
 def delayed_send() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(nanoseconds(150000000))
-    ch.send(1)
+    let _ = ch.send(1)
 
 def quick() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
 
 test "cancelling a joined worker's handle leaves a later worker alone":
     with let group = WorkerGroup[Int, Int]():
@@ -234,7 +234,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
 
 def sends_one() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
 test "a finished worker's channel ends with none instead of an error":
     with let group = WorkerGroup[Int, Int]():
@@ -244,11 +244,11 @@ test "a finished worker's channel ends with none instead of an error":
         try expect_ok(worker.wait())
 
 def runs_faulting_task() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
 
     with let tasks = TaskGroup[Int]():
         let t = tasks.spawn(lambda c: panic("task inside worker faults"))
-        t.result()
+        let _ = t.result()
 
 test "a fault in a task a worker started is the worker's fault":
     with let group = WorkerGroup[Int, Int]():
@@ -258,15 +258,15 @@ test "a fault in a task a worker started is the worker's fault":
         try expect_true(cause.message().contains("task inside worker faults"))
 
 def sleeps_long() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
     sleep(nanoseconds(30000000000))
 
 def joins_nested() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
 
     with let inner = WorkerGroup[Int, Int]():
         var worker = inner.spawn(sleeps_long).get(none)
-        let _outcome = worker.wait()
+        let outcome = worker.wait()
 
 test "cancelling a worker that is joining another ends it as cancelled":
     with let group = WorkerGroup[Int, Int]():
@@ -280,8 +280,8 @@ test "cancelling a worker that is joining another ends it as cancelled":
 
 def touches_network() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let _net = network()
-    ch.send(1)
+    let net = network()
+    let _ = ch.send(1)
 
 test "a worker that uses the network ends cleanly":
     with let group = WorkerGroup[Int, Int]():
@@ -297,7 +297,7 @@ def fetches_page() -> Unit:
         for round in range(0, 3):
             if let response = fetch(f"http://{address}/page"):
                 total += response.body.length()
-        ch.send(total)
+        let _ = ch.send(total)
 
 def page(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), "x".repeat(65536).get("").to_bytes())
@@ -322,7 +322,7 @@ test "workers fetch from the starter's server at the same time":
         server.close()
 
 def doubles_bytes() -> Unit:
-    var _ch = worker_channel[Int, Int]()
+    var ch = worker_channel[Int, Int]()
     var raw = worker_bytes()
 
     while True:
@@ -358,7 +358,7 @@ def serves_shared() -> Unit:
             address: address, handler: buffered(page), options: options
         ):
             with let server = acquired:
-                ch.send(server.address())
+                let _ = ch.send(server.address())
 
                 let _stopped = ch.receive()
                 server.close()

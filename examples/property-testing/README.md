@@ -1,6 +1,6 @@
 # Property testing
 
-Properties from `@std/property.ms` check `insertion_sort` on generated lists.
+Properties from `@std/test/property.ms` check `insertion_sort` on generated lists.
 
 ```sh
 ms test examples/property-testing/ms.toml            # 100 cases per property

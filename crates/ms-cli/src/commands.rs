@@ -65,27 +65,11 @@ pub fn run_lsp(args: &[String], io: &mut Io) -> i32 {
 }
 
 pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
-    if args.len() > 1 {
-        return usage_error(
-            io,
-            "ms guide takes no arguments; use 'ms search_symbol' to look symbols up",
-        );
-    }
-    let _ = write!(
-        io.stdout,
-        "{}{}",
-        ms_tooling::guide::cheatsheet(),
-        ms_tooling::guide::mistakes()
-    );
-    0
-}
-
-pub fn run_explain(args: &[String], io: &mut Io) -> i32 {
     let mut json = false;
     let mut codes: Vec<&str> = Vec::new();
     for arg in &args[1..] {
         if matches!(arg.as_str(), "-h" | "--help") {
-            return run_help(&["explain".to_string()], io);
+            return run_help(&["guide".to_string()], io);
         }
         match arg.as_str() {
             "--json" => json = true,
@@ -93,20 +77,27 @@ pub fn run_explain(args: &[String], io: &mut Io) -> i32 {
         }
     }
     if codes.is_empty() {
-        let list: Vec<&str> = ms_syntax::diag::CODES.iter().map(|c| c.code).collect();
-        return usage_error(
-            io,
-            format!(
-                "ms explain needs a diagnostic code; codes: {}",
-                list.join(" ")
-            ),
+        if json {
+            return usage_error(io, "ms guide --json needs a diagnostic code");
+        }
+        let _ = write!(
+            io.stdout,
+            "{}{}",
+            ms_tooling::guide::cheatsheet(),
+            ms_tooling::guide::mistakes()
         );
+        return 0;
     }
+    explain_codes(&codes, json, io)
+}
+
+/// Prints each diagnostic code's rule family and usual repair.
+fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
     let mut status = 0;
     let mut entries = Vec::new();
-    for code in codes {
+    for code in codes.iter().copied() {
         let Some(info) = ms_syntax::diag::explain(code) else {
-            let _ = writeln!(io.stderr, "ms explain: unknown diagnostic code {code}");
+            let _ = writeln!(io.stderr, "ms guide: unknown diagnostic code {code}");
             status = 1;
             continue;
         };

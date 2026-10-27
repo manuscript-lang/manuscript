@@ -11,6 +11,7 @@ type Bad:
 impl Closeable for Bad:
     var def close() -> Unit:
         stdout().write("cleanup faulting\n").get()
+
         let xs = List[Int]()
         stdout().write(f"{xs[3]}\n").get()
 
@@ -22,5 +23,7 @@ def work() -> Int:
 export def main() -> Int:
     with let group = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
         group.spawn(lambda ch: work())
-        group.wait()
+
+        let _ = group.wait()
+
     return 0

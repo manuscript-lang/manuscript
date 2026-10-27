@@ -51,7 +51,7 @@ export def main() -> Int:
     with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
         let a = address.clone()
         group.spawn(lambda ch: accept_one(a))
-        group.wait()
+        let _ = group.wait()
     stdout().write(f"cancelled accept rebound: {rebound(address)}\n").get()
 
     let third = net.listen("127.0.0.1:0").get()
@@ -62,7 +62,7 @@ export def main() -> Int:
             let a = target.clone()
             with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
                 group.spawn(lambda ch: read_one(a))
-                group.wait()
+                let _ = group.wait()
             let accepted = server.accept(nanoseconds(500000000))
             if accepted.is_ok():
                 accepted.get().close()
@@ -74,6 +74,6 @@ export def main() -> Int:
     with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
         let a = udp_address.clone()
         group.spawn(lambda ch: receive_one(a))
-        group.wait()
+        let _ = group.wait()
     stdout().write(f"cancelled receive rebound: {rebound_datagram(udp_address)}\n").get()
     return 0

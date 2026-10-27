@@ -40,24 +40,24 @@ export def main() -> Int:
     let append = lambda: first.append(9)
     append()
     append()
-    stdout().write(f"{calls} {rows}\n")
 
+    let _ = stdout().write(f"{calls} {rows}\n")
     var box = Box(count: 1, items: [[3], [4]])
     branch(var box, False)
     branch(var box, True)
-    stdout().write(f"{box.count}\n")
 
+    let _ = stdout().write(f"{box.count}\n")
     var items = box.items
     var inner = items[1]
     invoke(lambda: invoke(lambda: inner.append(8)))
-    stdout().write(f"{box.items}\n")
 
+    let _ = stdout().write(f"{box.items}\n")
     var entries = Map[String, List[Int]]()
     entries.add("dynamic-1", [5])
     if var value = entries.get(f"dynamic-{calls}"):
         invoke(lambda: value.append(value.length()))
-    stdout().write(f"{entries}\n")
 
+    let _ = stdout().write(f"{entries}\n")
     var pair = Pair(left: [1], right: [2])
     var left = pair.left
     var right = pair.right
@@ -68,8 +68,7 @@ export def main() -> Int:
             right.append(4)
     )
 
-    stdout().write(f"{pair}\n")
-
+    let _ = stdout().write(f"{pair}\n")
     var local_rows = [[10]]
 
     invoke(
@@ -78,18 +77,18 @@ export def main() -> Int:
             invoke(lambda: local.append(11))
     )
 
-    stdout().write(f"{local_rows}\n")
-
+    let _ = stdout().write(f"{local_rows}\n")
     var via_getter = contents(box)
     invoke(lambda: via_getter.append([6]))
-    stdout().write(f"{box.items}\n")
 
+    let _ = stdout().write(f"{box.items}\n")
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
     invoke(lambda: stored.bump())
-    stdout().write(f"{boxes}\n")
 
+    let _ = stdout().write(f"{boxes}\n")
     var target = rows[1]
     invoke(lambda: add(var target))
-    stdout().write(f"{rows}\n")
+
+    let _ = stdout().write(f"{rows}\n")
     return 0

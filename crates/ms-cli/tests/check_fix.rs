@@ -22,7 +22,7 @@ fn fix_renames_misspellings_and_adds_imports() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "def total(items: List[Int]) -> Int:\n    let sum = 0\n    return sumn\n\n\
-        def main() -> Int:\n    stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
+        def main() -> Int:\n    let _ = stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
@@ -76,12 +76,12 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
 }
 
 #[test]
-fn explain_names_the_family_and_repair() {
+fn guide_explains_codes_and_names_the_family_and_repair() {
     let dir = std::env::temp_dir();
-    let (status, text) = ms(&["explain", "MS3060"], &dir);
+    let (status, text) = ms(&["guide", "MS3060"], &dir);
     assert_eq!(status, Some(0), "{text}");
     assert!(text.contains("MS3060: Mutation"), "{text}");
-    let (status, text) = ms(&["explain", "MS9999"], &dir);
+    let (status, text) = ms(&["guide", "MS9999"], &dir);
     assert_eq!(status, Some(1), "{text}");
 }
 

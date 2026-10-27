@@ -111,73 +111,73 @@ export interface ProcessControl:
     def watch_signals(
         signals: List[Int],
         capacity: Optional[Int] = none
-    ) -> Result[SignalStream, ProcessError]
+    ) -> Result[SignalStream, ControlError]
     # Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
-    def constrained_memory() -> Result[Int, ProcessError]
+    def constrained_memory() -> Result[Int, ControlError]
     # Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
-    def available_memory() -> Result[Int, ProcessError]
+    def available_memory() -> Result[Int, ControlError]
     # Returns the current process title.
     # Platforms that cannot read it return Unsupported.
-    def title() -> Result[String, ProcessError]
+    def title() -> Result[String, ControlError]
     # Sets the process title shown by tools such as `ps`.
     # A title with NUL or newline returns InvalidInput, and platforms that cannot rename a process return Unsupported.
-    def set_title(title: String) -> Result[Unit, ProcessError]
+    def set_title(title: String) -> Result[Unit, ControlError]
     # Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
     # A failed user lookup returns Failed, a `gid` outside 0 through 2147483647 returns InvalidInput, and a lack of privilege returns PermissionDenied.
-    def initialize_groups(username: String, gid: Int) -> Result[Unit, ProcessError]
+    def initialize_groups(username: String, gid: Int) -> Result[Unit, ControlError]
     # Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
     # `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return InvalidInput, and exec failures return NotFound, PermissionDenied, or Failed. Unsupported on Windows.
     def replace(
         program: String,
         arguments: List[String],
         environment: Map[String, String]
-    ) -> Result[Unit, ProcessError]
+    ) -> Result[Unit, ControlError]
     # Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
     # Text that is not valid UTF-8 returns Unsupported.
-    def info() -> Result[ProcessInfo, ProcessError]
+    def info() -> Result[ProcessInfo, ControlError]
     # Returns heap and resident memory statistics for this process, in bytes.
-    def memory_usage() -> Result[MemoryUsage, ProcessError]
+    def memory_usage() -> Result[MemoryUsage, ControlError]
     # Returns cumulative user and kernel CPU time consumed by this process in microseconds.
     # Platforms without resource accounting return Unsupported.
-    def cpu_usage() -> Result[CpuUsage, ProcessError]
+    def cpu_usage() -> Result[CpuUsage, ControlError]
     # Returns elapsed Duration since runtime initialization, rather than host boot.
-    def uptime() -> Result[Duration, ProcessError]
+    def uptime() -> Result[Duration, ControlError]
     # Reads a fresh live process environment map; non-UTF-8 entries return Unsupported.
-    def environment() -> Result[Map[String, String], ProcessError]
+    def environment() -> Result[Map[String, String], ControlError]
     # Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
     # An empty name, or a name or value with `=` or NUL, returns InvalidInput. The change is visible to child processes started afterwards.
     def set_environment(
         name: String,
         value: Optional[String]
-    ) -> Result[Unit, ProcessError]
+    ) -> Result[Unit, ControlError]
     # Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
     # Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns InvalidData and changes nothing. A file larger than `max_bytes` returns LimitExceeded.
     def load_environment(
         path: String,
         max_bytes: Optional[Int] = none
-    ) -> Result[Unit, ProcessError]
-    # Reads the live process directory, preserving OS failures as ProcessError.
-    def working_directory() -> Result[String, ProcessError]
+    ) -> Result[Unit, ControlError]
+    # Reads the live process directory, preserving OS failures as ControlError.
+    def working_directory() -> Result[String, ControlError]
     # Changes the working directory of the whole process, affecting relative paths everywhere.
     # A missing path returns NotFound, a path containing NUL returns InvalidInput, and a denied path returns PermissionDenied.
-    def change_directory(path: String) -> Result[Unit, ProcessError]
+    def change_directory(path: String) -> Result[Unit, ControlError]
     # Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
     # Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination.
-    def send_signal(pid: Int, signal: Int) -> Result[Unit, ProcessError]
+    def send_signal(pid: Int, signal: Int) -> Result[Unit, ControlError]
     # Returns the numeric ids of the supplementary groups of the process.
     # Windows returns Unsupported.
-    def groups() -> Result[List[Int], ProcessError]
+    def groups() -> Result[List[Int], ControlError]
     # Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
     # Platforms without them return Unsupported.
-    def resource_usage() -> Result[ResourceUsage, ProcessError]
+    def resource_usage() -> Result[ResourceUsage, ControlError]
     # Sets mask 0..511 (0777) and returns the previous mask; Unsupported on Windows.
-    def umask(mask: Int) -> Result[Int, ProcessError]
+    def umask(mask: Int) -> Result[Int, ControlError]
     # Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return InvalidInput.
     # Identity changes require OS permission and are Unsupported on Windows.
-    def set_identity(kind: String, id: Int) -> Result[Unit, ProcessError]
+    def set_identity(kind: String, id: Int) -> Result[Unit, ControlError]
     # Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
     # Invalid ids return InvalidInput, a lack of privilege returns PermissionDenied, and Windows returns Unsupported.
-    def set_groups(groups: List[Int]) -> Result[Unit, ProcessError]
+    def set_groups(groups: List[Int]) -> Result[Unit, ControlError]
 
 # Identity and invocation details for the current process.
 export type ProcessInfo:
@@ -255,10 +255,10 @@ export interface SignalStream:
     def close() -> Unit
     # Waits for the next observed signal and returns its number. Signals arriving while no call waits are buffered up to the stream's capacity.
     # Returns Closed after `close`. Cancelling the waiting task unwinds it.
-    def next() -> Result[Int, ProcessError]
+    def next() -> Result[Int, ControlError]
 
 # Errors returned by process-control operations.
-export type ProcessError:
+export type ControlError:
     # An argument is outside its documented range or contains NUL, such as an invalid signal number, id, mask, capacity, or environment name.
     case InvalidInput
     # Host data or file content was malformed, such as an environment file that does not parse or is not valid UTF-8.
@@ -281,7 +281,7 @@ export type ProcessError:
         message: String
     )
 
-impl Error for ProcessError:
+impl Error for ControlError:
     # Returns the `Failed` text verbatim, and otherwise the fixed diagnostic `process: <reason>`.
     def message() -> String:
         match self:
@@ -304,37 +304,6 @@ impl Error for CommandError:
             case Timeout: return "command: operation timed out"
             case OutputLimit: return "command: output limit exceeded"
             case Failed(message): return message.clone()
-
-# A child program, its arguments, input and limits, assembled step by step. Arguments are separate list items passed to the program as they are, never joined into one string and never parsed by a shell, so spaces, quotes, `;` and `$` in an argument are plain text.
-# After `var git = Command("git")`, `git.arg("log")` and `git.arg(user_text)` cannot turn `user_text` into a second command; there is no entry point that takes a shell command line.
-export type Command:
-    # The program to start, searched on the PATH. It is not a command line: put each argument in `arguments`.
-    program: String
-    # Arguments after the program name, one list item each.
-    arguments: List[String] = []
-    # Bytes written to the program's standard input.
-    input: Bytes = "".to_bytes()
-    # Output bound across both streams; none means the runtime default.
-    max_output_bytes: Optional[Int] = none
-    # Time allowed before the program is killed; none waits without a bound.
-    timeout: Optional[Duration] = none
-
-impl Command:
-    # Appends one argument, passed to the program unchanged.
-    var def arg(value: String) -> Unit:
-        self.arguments.append(value)
-
-    # Appends each value as its own argument, in order.
-    var def args(values: List[String]) -> Unit:
-        for value in values:
-            self.arguments.append(value.clone())
-
-    # Runs the program directly, without a shell, and waits for it, as `Commands.run` does.
-    def run() -> Result[CommandOutput, CommandError]:
-        return commands().run(
-            self.program.clone(), self.arguments.clone(), self.input.clone(),
-            self.max_output_bytes, self.timeout
-        )
 
 # Returns child-process operations for the current host.
 export def commands() -> Commands:

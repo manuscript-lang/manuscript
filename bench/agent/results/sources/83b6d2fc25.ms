@@ -1047,8 +1047,12 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
 
             if r.recipe.length() > 0:
                 if old.recipe.length() > 0:
-                    st.out.append(
-                        f"Makefile:{r.line}: warning: overriding recipe for target '{t}'"
+                    (
+                        st
+                        .out
+                        .append(
+                            f"Makefile:{r.line}: warning: overriding recipe for target '{t}'"
+                        )
                     )
                 e.recipe = r.recipe.clone()
 
@@ -1309,8 +1313,12 @@ def run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[St
 
         if status != 0:
             if ign:
-                st.out.append(
-                    f"make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
+                (
+                    st
+                    .out
+                    .append(
+                        f"make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
+                    )
                 )
             else:
                 st.out.append(f"make: *** [Makefile:{rl.line}: {name}] Error {status}")
