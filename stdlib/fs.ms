@@ -361,7 +361,7 @@ export interface FileHandle:
         modified: Timestamp
     ) -> Result[Unit, FileSystemError]
     # Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
-    # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded.
+    # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded. A negative `max_bytes` or `max_lines` returns InvalidInput.
     def read_lines(
         max_bytes: Optional[Int] = none,
         max_lines: Optional[Int] = none
