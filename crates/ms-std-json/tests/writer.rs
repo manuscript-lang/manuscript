@@ -189,3 +189,94 @@ fn integers_cover_every_digit_count() {
     let want: Vec<String> = values.iter().map(i64::to_string).collect();
     assert_eq!(w.finish().unwrap(), format!("[{}]", want.join(",")));
 }
+
+/// What `serde_json`-style escaping gives, one byte at a time.
+fn escaped(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+#[test]
+fn short_strings_and_names_match_the_byte_escape_at_every_length_and_position() {
+    for len in 0..=20usize {
+        let mut texts = vec!["a".repeat(len)];
+        for at in 0..len {
+            for bad in ['"', '\\', '\n', '\u{1f}', ' ', '\u{7f}'] {
+                let mut chars: Vec<char> = "a".repeat(len).chars().collect();
+                chars[at] = bad;
+                texts.push(chars.into_iter().collect());
+            }
+        }
+        for text in texts {
+            let mut w = Writer::new(None, None);
+            w.begin_object();
+            w.key(&text);
+            w.string(&text);
+            w.key(&text);
+            w.int(1);
+            w.key_quoted(&escaped(&text));
+            w.null();
+            w.end_object();
+            let name = escaped(&text);
+            assert_eq!(
+                w.finish().unwrap(),
+                format!("{{{name}:{name},{name}:1,{name}:null}}"),
+                "{text:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn number_text_is_validated_whatever_its_length() {
+    for ok in [
+        "0",
+        "7",
+        "10",
+        "123456789012345",
+        "1234567890123456",
+        "12345678901234567890",
+        "-1",
+        "1.5",
+        "1e5",
+        "0.5",
+        "-0",
+        "1E+2",
+    ] {
+        let mut w = Writer::new(None, None);
+        w.number(ok);
+        assert_eq!(w.finish().unwrap(), ok);
+    }
+    for bad in [
+        "",
+        "01",
+        "00",
+        "0123",
+        "1a",
+        "a1",
+        "12345678a",
+        " 1",
+        "1 ",
+        "+1",
+        ".5",
+        "1.",
+        "1e",
+        "-",
+        "0x10",
+        "١٢٣",
+    ] {
+        let mut w = Writer::new(None, None);
+        w.number(bad);
+        assert!(matches!(w.finish(), Err(Fail::InvalidData)), "{bad:?}");
+    }
+}

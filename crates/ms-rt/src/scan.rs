@@ -39,6 +39,151 @@ pub fn string_from_valid_utf8(
     unsafe { crate::stdalloc::string::String::from_utf8_unchecked(bytes) }
 }
 
+/// Whether a string of at most 16 bytes holds nothing JSON must escape: two overlapping word
+/// tests rather than a byte loop, which is most of the cost of writing short names.
+#[inline(always)]
+pub fn json_clean_short(b: &[u8]) -> bool {
+    match short_words(b, b'A') {
+        (w, None) => json_special_word(w) == 0,
+        (w, Some(tail)) => (json_special_word(w) | json_special_word(tail)) == 0,
+    }
+}
+
+/// The bytes of `b` (at most 16) as one word, or two overlapping words from eight bytes up, so
+/// a test of the words covers every byte; the unused positions of a short string hold `pad`.
+#[inline(always)]
+fn short_words(b: &[u8], pad: u8) -> (u64, Option<u64>) {
+    let n = b.len();
+    debug_assert!(n <= 16);
+    // SAFETY: every load reads inside `b[..n]`; each width is guarded by `n`.
+    unsafe {
+        let p = b.as_ptr();
+        if n >= 8 {
+            let head = p.cast::<u64>().read_unaligned();
+            (head, Some(p.add(n - 8).cast::<u64>().read_unaligned()))
+        } else if n >= 4 {
+            let head = u64::from(p.cast::<u32>().read_unaligned());
+            (
+                head | u64::from(p.add(n - 4).cast::<u32>().read_unaligned()) << 32,
+                None,
+            )
+        } else if n > 0 {
+            let fill = u64::from_le_bytes([0, 0, 0, pad, pad, pad, pad, pad]);
+            (
+                u64::from(*p)
+                    | u64::from(*p.add(n / 2)) << 8
+                    | u64::from(*p.add(n - 1)) << 16
+                    | fill,
+                None,
+            )
+        } else {
+            (u64::from_le_bytes([pad; 8]), None)
+        }
+    }
+}
+
+/// Whether `b` (at most 16 bytes) is a JSON integer without sign: digits only, no leading zero.
+/// A short check ahead of the full number grammar, which most numbers in a document satisfy.
+#[inline(always)]
+pub fn json_plain_digits(b: &[u8]) -> bool {
+    let n = b.len();
+    if n == 0 || (n > 1 && b[0] == b'0') {
+        return false;
+    }
+    // `t` bytes are below 10 exactly for digits; padding with `0` keeps unused bytes neutral.
+    let nondigit = |x: u64| {
+        let t = x ^ (ONES * 0x30);
+        ((x | t) & HIGHS) | ((t & !HIGHS).wrapping_add(ONES * 0x76) & HIGHS)
+    };
+    match short_words(b, b'0') {
+        (w, None) => nondigit(w) == 0,
+        (w, Some(tail)) => (nondigit(w) | nondigit(tail)) == 0,
+    }
+}
+
+/// Appends `"s"` when `s` is at most 16 bytes with nothing to escape, and returns whether it
+/// did; otherwise `buf` is left as it was.
+#[inline(always)]
+pub fn push_string_short(buf: &mut crate::stdalloc::vec::Vec<u8>, s: &[u8]) -> bool {
+    let n = s.len();
+    if n > 16 || !json_clean_short(s) {
+        return false;
+    }
+    buf.reserve(18);
+    // SAFETY: `reserve` left room for the two quotes and `n <= 16` bytes, at most 18; `s` cannot
+    // alias the buffer's spare capacity.
+    unsafe {
+        let at = buf.as_mut_ptr().add(buf.len());
+        *at = b'"';
+        crate::vec::copy_short(s.as_ptr(), at.add(1), n);
+        *at.add(n + 1) = b'"';
+        buf.set_len(buf.len() + n + 2);
+    }
+    true
+}
+
+/// Appends `,` (when `comma`), the already quoted and escaped `quoted` name and `:` when
+/// `quoted` is at most 16 bytes, and returns whether it did; otherwise `buf` is left as it was.
+#[inline(always)]
+pub fn push_member_quoted(
+    buf: &mut crate::stdalloc::vec::Vec<u8>,
+    comma: bool,
+    quoted: &[u8],
+) -> bool {
+    let n = quoted.len();
+    if n > 16 {
+        return false;
+    }
+    buf.reserve(18);
+    // SAFETY: `reserve` left room for the comma, `n <= 16` bytes and the colon, at most 18;
+    // `quoted` cannot alias the buffer's spare capacity.
+    unsafe {
+        let mut at = buf.as_mut_ptr().add(buf.len());
+        if comma {
+            *at = b',';
+            at = at.add(1);
+        }
+        crate::vec::copy_short(quoted.as_ptr(), at, n);
+        *at.add(n) = b':';
+        buf.set_len(buf.len() + usize::from(comma) + n + 1);
+    }
+    true
+}
+
+/// Appends `,"name":` (without the comma when `comma` is false) when `name` is at most 16 bytes
+/// with nothing to escape, and returns whether it did; otherwise `buf` is left as it was.
+#[inline(always)]
+pub fn push_member_name(buf: &mut crate::stdalloc::vec::Vec<u8>, comma: bool, name: &[u8]) -> bool {
+    let n = name.len();
+    if n > 16 || !json_clean_short(name) {
+        return false;
+    }
+    buf.reserve(20);
+    // SAFETY: `reserve` left room for the comma, two quotes, the colon and `n <= 16` name
+    // bytes, which is at most 20; `name` cannot alias the buffer's spare capacity.
+    unsafe {
+        let mut at = buf.as_mut_ptr().add(buf.len());
+        if comma {
+            *at = b',';
+            at = at.add(1);
+        }
+        *at = b'"';
+        crate::vec::copy_short(name.as_ptr(), at.add(1), n);
+        *at.add(n + 1) = b'"';
+        *at.add(n + 2) = b':';
+        let used = usize::from(comma) + n + 3;
+        buf.set_len(buf.len() + used);
+    }
+    true
+}
+
+/// Nonzero when any byte of `w` is `"`, `\` or below 0x20.
+#[inline(always)]
+fn json_special_word(w: u64) -> u64 {
+    let zero = |x: u64| x.wrapping_sub(ONES) & !x & HIGHS;
+    zero(w ^ (ONES * 0x22)) | zero(w ^ (ONES * 0x5c)) | (w.wrapping_sub(ONES * 0x20) & !w & HIGHS)
+}
+
 /// The index of the first byte at or after `i` that a JSON string must escape (`"`, `\` or a
 /// control character).
 #[inline]
@@ -220,6 +365,77 @@ mod tests {
                     assert_eq!(skip_spaces(&text, at + 1), len);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod json_short_tests {
+    use super::*;
+
+    #[test]
+    fn clean_short_matches_json_special() {
+        let samples: [&[u8]; 14] = [
+            b"",
+            b"a",
+            b"ab",
+            b"abc",
+            b"abcd",
+            b"abcdefg",
+            b"abcdefgh",
+            b"abcdefghijklmno",
+            b"abcdefghijklmnop",
+            b"a\"b",
+            b"\\",
+            b"abcdefg\n",
+            b"x\x1fyzabcdefghijkl",
+            b"\x7f\xc3\xa9\xc3\xa9",
+        ];
+        for s in samples {
+            assert_eq!(json_clean_short(s), json_special(s, 0).is_none(), "{s:?}");
+        }
+        for len in 1..=16usize {
+            for at in 0..len {
+                for bad in [b'"', b'\\', 0u8, 0x1f, b'\t'] {
+                    let mut v = alloc_vec(len);
+                    v[at] = bad;
+                    assert!(!json_clean_short(&v), "{len} {at} {bad}");
+                }
+                for ok in [0x20u8, b'!', b'#', b'[', b']', 0x7f, 0x80, 0xff] {
+                    let mut v = alloc_vec(len);
+                    v[at] = ok;
+                    assert!(json_clean_short(&v), "{len} {at} {ok}");
+                }
+            }
+        }
+    }
+
+    fn alloc_vec(len: usize) -> crate::stdalloc::vec::Vec<u8> {
+        crate::stdalloc::vec![b'a'; len]
+    }
+
+    #[test]
+    fn plain_digits() {
+        for (s, want) in [
+            (&b"0"[..], true),
+            (b"7", true),
+            (b"10", true),
+            (b"0123", false),
+            (b"", false),
+            (b"-1", false),
+            (b"1.5", false),
+            (b"1e5", false),
+            (b"1234567", true),
+            (b"12345678", true),
+            (b"1234567890123456", true),
+            (b"123456789012345a", false),
+            (b"a123456789012345", false),
+            (b"12/", false),
+            (b"12:", false),
+            (b"1 ", false),
+            (b"\xb1\xb1\xb1", false),
+        ] {
+            assert_eq!(json_plain_digits(s), want, "{s:?}");
         }
     }
 }
