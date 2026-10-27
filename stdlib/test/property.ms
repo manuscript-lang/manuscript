@@ -300,9 +300,7 @@ def run_case[T](
 
     # The property runs in a forked child so a fault becomes a failing case that shrinks like an error.
     # The child faults with `property_failed` when the property returns an error; that message is then read in full by rerunning.
-    let faulted = expect_fault(
-        lambda: run_property(property, value)
-    )
+    let faulted = expect_fault(lambda: run_property(property, value))
     if faulted.is_error():
         return Outcome(source, none)
 
