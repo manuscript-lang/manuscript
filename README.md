@@ -41,7 +41,7 @@ def grow(var b: Box) -> Int:
     return b.items.length()
 ```
 
-Every place the agent mutates (`var`) or copies (`.clone()`) is visible in the source, so a reviewer sees what a generated change does to data without reading the callee. `Shared[T]` is the one explicit way to share, and its lock is a `with` block the compiler can see. [References](documentation/core-language/types/references.md)
+Every place the agent mutates (`var`) or copies (`.clone()`) is visible in the source, so a reviewer sees what a generated change does to data without reading the callee. [References](documentation/core-language/types/references.md)
 
 ## Mistakes an agent makes often are compile errors, not runtime surprises
 
@@ -51,7 +51,6 @@ A dropped error, a forgotten case and an unclosed handle are the mistakes a mode
 - A `match` missing a case.
 - A `Closeable` opened and never closed, returned or passed on (user types today; [#1590](https://github.com/manuscript-lang/manuscript/issues/1590) widens it).
 - Literal arithmetic that overflows or divides by zero. A literal index outside a list literal.
-- Locking a `Shared` you already hold. Sending a `Shared` to a worker.
 
 Everything the checker cannot prove, the runtime catches as a fault with a source trace: overflow, bounds, deadlock, a cleanup that did not run. [Faults](documentation/core-language/errors/faults.md)
 
@@ -91,17 +90,17 @@ If a model wrote the change, asking a model to summarize it is not a check. `ms 
 
 ## Ordinary code has to be fast, because agents write ordinary code
 
-An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM. On the October 25 run (`c1b81215`, linux/amd64), Manuscript beat hand-written Go on all seven kernels. Against Rust at `opt-level=3`, 26 comparable cases span **0.38× to 3.99× Rust's time**:
+An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM. On the October 25 run (`c1b81215`, linux/amd64), Manuscript beat hand-written Go on all seven kernels. Against Rust at `opt-level=3` with overflow checks on, the configuration that matches Manuscript's checked arithmetic, 28 comparable cases span **0.42× to 4.51× Rust's time**:
 
 | Case | Manuscript | Rust | ms / Rust |
 | --- | ---: | ---: | ---: |
-| Binary trees | 26.1 ms | 30.0 ms | 0.87× |
-| String-keyed map, 10M | 103.2 ms | 206.5 ms | 0.50× |
-| Sort 1M | 23.5 ms | 33.1 ms | 0.71× |
-| n-body | 8.2 ms | 6.7 ms | 1.22× |
-| String append, per op | 5.12 ns | 1.28 ns | 3.99× |
+| Binary trees | 26.1 ms | 33.6 ms | 0.78× |
+| String-keyed map, 10M | 103.2 ms | 207.8 ms | 0.50× |
+| Sort 1M | 23.5 ms | 34.1 ms | 0.69× |
+| n-body | 8.2 ms | 6.7 ms | 1.23× |
+| String append, per op | 5.12 ns | 1.14 ns | 4.51× |
 
-Manuscript checks overflow and bounds on every operation; the linked pages add an overflow-checked Rust column and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP vs Go](bench/perf/web/results.md)
+The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP vs Go](bench/perf/web/results.md)
 
 Native release builds for Linux, macOS and Windows, amd64 and arm64. The conformance corpus runs on all three in CI.
 
