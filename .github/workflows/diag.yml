@@ -70,9 +70,9 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for v in v1 v2 v3 v4 v5 v6 v7; do
+          for v in v5 v6; do
             target/debug/ms.exe build .github/diag/v/$v.ms -o $v.exe
-            timeout 15 ./$v.exe > $v.txt 2>&1
-            echo "$v exit $? : $(tr '\n' ' ' < $v.txt)"
+            MS_DIAG_POLL=1 timeout 12 ./$v.exe > $v.txt 2>&1
+            echo "== $v exit $?"; head -c 3000 $v.txt
           done
           true
