@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_layout_test.go:260 TestFormatExpressionLayouts
 def work() -> Unit:
-    let larger = [1, 2, 3, 4, 5]
-    let nested = [[1, 2], [3, 4]]
+    let _larger = [1, 2, 3, 4, 5]
+    let _nested = [[1, 2], [3, 4]]

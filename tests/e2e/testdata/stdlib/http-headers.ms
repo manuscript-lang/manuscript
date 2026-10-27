@@ -77,8 +77,8 @@ def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     )
 
     let output = received.clone()
-    let removed_connection = output.remove("Connection")
-    let removed_length = output.remove("Content-Length")
+    let _removed_connection = output.remove("Connection")
+    let _removed_length = output.remove("Content-Length")
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":

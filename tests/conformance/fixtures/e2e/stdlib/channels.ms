@@ -28,7 +28,7 @@ def produce(ch: Channel[Int, Unit]) -> Int:
 
 def wait_for_one(ch: Channel[Int, Unit]) -> Int:
     var c = ch
-    if let got = c.receive():
+    if let _got = c.receive():
         return 1
 
     return 2

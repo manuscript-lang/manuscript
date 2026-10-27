@@ -23,7 +23,7 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
             )
         ):
             let message = (try http_result(socket.receive())).get()
-            let sent = (
+            let _sent = (
                 try http_result(
                     socket.send_bytes(
                         data: message.data, text: message.text
@@ -37,8 +37,8 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     chain_1.add(key: "X-Test", value: ["manuscript"])
 
     let headers = (try list_headers(chain_1))
-    let started = try exchange.send_headers(status: 201, headers: headers)
-    let written = (try http_result(exchange.write("hello")))
+    let _started = try exchange.send_headers(status: 201, headers: headers)
+    let _written = (try http_result(exchange.write("hello")))
     return ok(())
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
@@ -80,7 +80,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
                 )
                 ((body.read(5) | try expect_ok).is_none()) | try expect_true
 
-        let limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
+        let _limited: Result[Unit, HttpError] = error(HttpError.LimitExceeded)
 
         match net.request(
             method: HttpMethod.Get, url: url,
@@ -110,7 +110,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
         ) | try expect_ok:
             socket.subprotocol() | try expect_equal("echo")
 
-            let sent = socket.send(data: "é🙂") | try expect_ok
+            let _sent = socket.send(data: "é🙂") | try expect_ok
             let message = (socket.receive() | try expect_ok).get()
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 

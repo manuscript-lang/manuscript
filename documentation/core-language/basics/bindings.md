@@ -56,6 +56,7 @@ let {name, email: customer_email} = customer
 ## Scope and shadowing
 
 - A local name cannot be declared twice in one scope, and a nested scope (a block, match arm, loop, or closure parameter) cannot reuse the name of an enclosing local or parameter: `ms check` rejects the shadowing binding. Rename one of them. A name starting with `_` is exempt.
+- A local or match payload that is never read is an error (`local binding x is never read`); remove it or start the name with `_`. A `var` that is only assigned counts as unread, and unfinished code in the editor is not reported.
 - Every local needs an initial value. The name is visible only after its initializer.
 - Locals are visible in source order; module declaration signatures may refer forward.
 - A `var` keeps the type from its annotation or initializer; later values must fit it.

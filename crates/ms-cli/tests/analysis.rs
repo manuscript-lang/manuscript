@@ -65,7 +65,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     let dir = scratch("lint");
     std::fs::write(
         dir.join("shared.ms"),
-        "export def value() -> Int:\n    let unused = 1\n    return 2\n",
+        include_str!("analysis/lint-shared.ms"),
     )
     .unwrap();
     for name in ["a.ms", "b.ms"] {
@@ -79,7 +79,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert_eq!(stderr.matches("MSL101").count(), 1, "{stderr}");
+    assert_eq!(stderr.matches("MSL102").count(), 1, "{stderr}");
     assert!(!stderr.contains("fix them and re-run"), "{stderr}");
 
     std::fs::write(
@@ -99,7 +99,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     );
     assert_eq!(
         diagnostics[1].get("code").unwrap().as_str().unwrap(),
-        "MSL101"
+        "MSL102"
     );
     let _ = std::fs::remove_dir_all(dir);
 }

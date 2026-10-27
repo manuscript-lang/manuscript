@@ -346,7 +346,7 @@ fn runtime_fault_is_reported_as_json() {
     let source = write(
         &dir,
         "boom.ms",
-        "def div(a: Int, b: Int) -> Int: a / b\n\nexport def main() -> Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let x = div(1, 0)\n",
+        "def div(a: Int, b: Int) -> Int: a / b\n\nexport def main() -> Int:\n    return div(1, 0)\n\ntest \"boom\":\n    let _x = div(1, 0)\n",
     );
     let backend = Engine::new(Native);
     let (status, json, err) = ms(&backend, &["run", &source, "--json"]);

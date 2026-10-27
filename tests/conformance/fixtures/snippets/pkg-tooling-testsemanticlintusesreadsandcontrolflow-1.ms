@@ -4,8 +4,8 @@
 from "@std/collections.ms" import ListBuilder
 
 def answer() -> Int:
-    let unused = 1
-    var written = 2
-    written = 3
+    let _unused = 1
+    var _written = 2
+    _written = 3
     return 0
     return 1

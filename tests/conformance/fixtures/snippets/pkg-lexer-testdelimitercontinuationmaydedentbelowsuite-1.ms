@@ -2,5 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/lexer/lexer_test.go:130 TestDelimiterContinuationMayDedentBelowSuite
 def f() -> Int:
-    let x = [1, 2]
+    let _x = [1, 2]
     return 0

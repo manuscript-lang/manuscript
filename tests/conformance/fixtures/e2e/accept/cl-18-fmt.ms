@@ -8,7 +8,7 @@ def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
 
 test "function suite boundaries":
     var calls: List[Int] = []
-    let dormant = lambda () -> Unit:
+    let _dormant = lambda () -> Unit:
         calls.append(1)
 
     let grouped = apply(

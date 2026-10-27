@@ -10,7 +10,7 @@ from "@std/time.ms" import nanoseconds, sleep
 def holder(box: Shared[Int], chan: Channel[Unit, Unit]) -> Int:
     var ch = chan.clone()
     with var g = lock(box):
-        let never = ch.receive()
+        let _never = ch.receive()
     return 0
 
 def waiter(box: Shared[Int]) -> Int:

@@ -43,7 +43,7 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         ):
             match try socket_result(result: socket.receive()):
                 case some(message):
-                    let sent = try socket_result(
+                    let _sent = try socket_result(
                         result: socket.send_bytes(
                             data: message.data, text: message.text
                         )
@@ -118,7 +118,7 @@ def exercise() -> Result[Unit, Error]:
         ):
             socket.subprotocol() | try expect_equal("echo")
 
-            let sent = try socket_result(result: socket.send(data: "echo me"))
+            let _sent = try socket_result(result: socket.send(data: "echo me"))
 
             match try socket_result(result: socket.receive()):
                 case some(message):

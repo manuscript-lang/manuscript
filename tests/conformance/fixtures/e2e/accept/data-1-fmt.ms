@@ -13,7 +13,7 @@ def positives(values: List[Int]) -> List[Int]:
 test "dynamic mutable data and explicit copies":
     try expect_equal(positives([3, -1, 2]), [3, 2])
 
-    let absent: Optional[Int] = none
+    let _absent: Optional[Int] = none
     try expect_equal([1].get(5, default: -1), -1)
 
     var original = Map[String, Int]()

@@ -8,5 +8,5 @@ def crash() -> TextError:
 
 export def main() -> Int:
     let value: Optional[Int] = none
-    let result = value.ok_or_else(crash)
+    let _result = value.ok_or_else(crash)
     return 0

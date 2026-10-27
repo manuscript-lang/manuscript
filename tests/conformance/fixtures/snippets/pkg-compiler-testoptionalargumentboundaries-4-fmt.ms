@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/optional_test.go:27 TestOptionalArgumentBoundaries
 def call() -> Unit:
-    let value: Optional[Int] = 4
+    let _value: Optional[Int] = 4
