@@ -25,5 +25,6 @@ export def main() -> Int:
     let before = b.n
     var scratch = before
     scratch += 100
-    stdout().write(f"{b.n} {m.get("a")} {cs} {scratch}\n")
+
+    let _ = stdout().write(f"{b.n} {m.get("a")} {cs} {scratch}\n")
     return 0

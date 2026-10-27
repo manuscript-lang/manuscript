@@ -147,8 +147,11 @@ pub fn analyze(cx: &Context) -> Outcome {
         getters: HashMap::new(),
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
+        resources: Vec::new(),
+        closed: HashSet::new(),
     };
     w.run();
+    w.unclosed_resources();
     let declared = Summary::declared(&cx.c.func);
     let result = w.result_origin(&declared);
     // A `ref` result is a borrow on every path: a path that hands back an owned value would
@@ -232,6 +235,10 @@ struct Walker<'a> {
     let_pos: HashMap<usize, Pos>,
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
+    /// Owned `let` and `var` resources: binding, name and declaration position.
+    resources: Vec<(usize, Name, Pos)>,
+    /// Bindings that had `close()` called on them.
+    closed: HashSet<usize>,
 }
 
 /// A fix that inserts `text` at `pos`.
@@ -304,6 +311,47 @@ impl Walker<'_> {
         match c.body() {
             Body::Block(body) => self.block(body),
             Body::Expr(e) => self.returned(e),
+        }
+    }
+
+    /// The value is made from another resource, which owns and closes it: `group.spawn(..)`, or a
+    /// reader that wraps a source it was given.
+    fn derived_from_resource(&self, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
+            ExprKind::Call { callee, args, .. } => {
+                let receiver = match &callee.kind {
+                    ExprKind::Member { left, .. } => self.class_of(left) == Class::Resource,
+                    _ => false,
+                };
+                receiver
+                    || args
+                        .iter()
+                        .any(|a| self.class_of(&a.value) == Class::Resource)
+            }
+            _ => false,
+        }
+    }
+
+    /// Reports an owned resource that no `with` closes and nothing takes: a binding that is
+    /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
+    fn unclosed_resources(&mut self) {
+        let resources = std::mem::take(&mut self.resources);
+        for (uid, name, pos) in resources {
+            let handled = self.closed.contains(&uid)
+                || self
+                    .facts
+                    .uses
+                    .values()
+                    .any(|u| u.binding == uid && u.access == Access::Move);
+            if !handled {
+                self.error(
+                    pos,
+                    format!(
+                        "`{name}` is a resource that is never closed: open it with `with let {name} = ...`, call `{name}.close()`, or return it so the caller owns it"
+                    ),
+                );
+            }
         }
     }
 
@@ -1234,6 +1282,9 @@ impl Walker<'_> {
             None,
             false,
         );
+        if class == Class::Resource && !self.derived_from_resource(value) {
+            self.resources.push((b.uid, b.name, pattern.pos));
+        }
     }
 
     /// `var x = f(place)` where `f` hands back a part of its argument: a mutable borrow when that
@@ -2038,6 +2089,12 @@ impl Walker<'_> {
             (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
             _ => None,
         };
+        if let (ExprKind::Member { name, .. }, Some(r)) = (&callee.kind, receiver_expr)
+            && name.as_str() == "close"
+            && let Resolution::Local(b) = cx.m.resolution(r)
+        {
+            self.closed.insert(b.uid);
+        }
         // Argument markers: `var` exactly where the callee changes the argument.
         let param_names: Vec<Name> =
             cx.m.info(e)

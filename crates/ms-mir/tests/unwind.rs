@@ -197,6 +197,106 @@ b0:
     assert_eq!(count(&m, "hold", Op::CleanupPush), 0);
 }
 
+const SLOT_CALLER: &str = r#"
+fn @main() -> int {
+b0:
+  %s: str = str "held"
+  %t: str = copy %s
+  %slot: ptr = slot str
+  put %slot, %t
+  %r: int = call @hold (%slot)
+  %back: str = take str %slot
+  drop %back
+  ret %r
+}
+"#;
+
+#[test]
+fn covers_a_slot_value_that_the_callee_only_borrows() {
+    let body = format!(
+        r#"
+fn @hold(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %s
+  ret %r
+}}
+{SLOT_CALLER}"#
+    );
+    let (m, changed) = rewrite(&body, true);
+    // The slot holds the only copy while the callee parks, so main registers a view of it.
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(count(&m, "main", Op::Load), 1, "{}", print_module(&m));
+}
+
+#[test]
+fn covers_a_slot_value_that_flows_through_a_block_parameter() {
+    let body = format!(
+        r#"
+fn @hold(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  br b1(%s)
+b1(%own: own str):
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  put %slot, %own
+  ret %r
+}}
+{SLOT_CALLER}"#
+    );
+    let (m, changed) = rewrite(&body, true);
+    // The callee's parameter is still the caller's value, so only the caller registers it.
+    assert!(changed, "{}", print_module(&m));
+    assert_eq!(
+        count(&m, "hold", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        1,
+        "{}",
+        print_module(&m)
+    );
+}
+
+#[test]
+fn leaves_a_slot_value_that_the_callee_consumes() {
+    let body = format!(
+        r#"
+fn @hold(%slot: ptr) -> int {{
+b0:
+  %s: str = take str %slot
+  drop %s
+  %n: int = iconst 5
+  %r: int = call.rt @msrt_task_sleep (%n)
+  %lit: str = str "new"
+  %u: str = copy %lit
+  put %slot, %u
+  ret %r
+}}
+{SLOT_CALLER}"#
+    );
+    let (m, _) = rewrite(&body, true);
+    // Registering the old value too would drop it twice.
+    assert_eq!(
+        count(&m, "main", Op::CleanupPush),
+        0,
+        "{}",
+        print_module(&m)
+    );
+}
+
 const LOOP_HOLDING_STRING: &str = r#"
 fn @main() -> int {
 b0:

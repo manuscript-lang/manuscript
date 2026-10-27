@@ -99,7 +99,7 @@ impl Checker {
             } => self.check_bind(*mutable, pattern, ty.as_ref(), value),
             StmtKind::Assign { target, value, .. } => self.check_assign(s, target, value),
             StmtKind::Return(value) => self.check_return(s, value.as_ref()),
-            StmtKind::Call(value) => self.check_call_statement(value),
+            StmtKind::Call(value) => self.check_call_statement(s.pos, value),
             StmtKind::Break | StmtKind::Continue => {
                 let is_break = matches!(s.kind, StmtKind::Break);
                 if self.loops == 0 {
@@ -295,7 +295,7 @@ impl Checker {
         (false, false)
     }
 
-    fn check_call_statement(&mut self, value: &Expr) -> (bool, bool) {
+    fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
             // not agree on a value.
@@ -323,9 +323,7 @@ impl Checker {
             }
         }
         let t = i.t();
-        let in_test = self.test_function != 0 && self.function == self.test_function;
-        if in_test
-            && t.is_std("Result")
+        if t.is_std("Result")
             && !matches!(
                 &value.kind,
                 ExprKind::Unary {
@@ -335,9 +333,9 @@ impl Checker {
             )
         {
             self.type_error(
-                value.pos,
+                pos,
                 format!(
-                    "this statement discards {t}, so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purpose"
+                    "this statement discards {t}, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose"
                 ),
             );
         }

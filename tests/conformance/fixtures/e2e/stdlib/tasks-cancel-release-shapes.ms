@@ -104,7 +104,7 @@ def run_one(which: Int) -> Unit:
         elif which == 7: group.spawn(lambda ch: t_chan(ch))
         else: group.spawn(lambda ch: t_nested(5))
 
-        group.wait()
+        let _ = group.wait()
 
 export def main() -> Int:
     for which in range(0, 9):

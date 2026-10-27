@@ -26,7 +26,7 @@ export def main() -> Int:
         sleep(nanoseconds(1000000))
 
         let w = g.spawn(lambda ch: waiter(box))
-        stdout().write("waiting\n")
-        w.result()
+        let _ = stdout().write("waiting\n")
+        let _ = w.result()
 
     return 0

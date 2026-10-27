@@ -11,5 +11,5 @@ def stride(a: List[Int]) -> Int:
     return t
 
 export def main() -> Int:
-    stdout().write(f"{stride([1, 2, 3, 4, 5, 6, 7])}\n")
+    let _ = stdout().write(f"{stride([1, 2, 3, 4, 5, 6, 7])}\n")
     return 0

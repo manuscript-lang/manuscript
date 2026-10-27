@@ -23,7 +23,7 @@ interface Hashable:
     def hash() -> Int
 ```
 
-`Self` is the implementing type. An implementation writes its own type for `other`, as `impl Equal for CustomerKey` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults. `Self` is allowed only as a whole parameter type of an interface operation.
+`Self` is the implementing type. An implementation writes its own type for `other`, as `impl Equal for CustomerKey` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults. `Self` is allowed only as a whole parameter or result type of an interface operation.
 
 `==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
 

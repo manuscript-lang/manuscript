@@ -301,24 +301,39 @@ impl BodyDecoder {
         matches!(self.state, State::Done)
     }
 
-    /// How many body bytes the next read may take when the body is raw (a fixed length or
-    /// until close), so they can bypass `feed`; `None` for chunked bodies and finished ones.
+    /// How many body bytes the next read may take when they are raw (a fixed length, the data
+    /// of one chunk, or until close), so they can bypass `feed`; `None` between chunks and
+    /// once the body is finished.
     pub fn raw_room(&self) -> Option<u64> {
         match self.state {
-            State::Length(left) => Some(left),
+            State::Length(left) | State::Data(left) => Some(left),
             State::UntilClose => Some(u64::MAX),
             _ => None,
         }
     }
 
+    /// Whether the raw bytes ahead are the whole rest of the body, so its size is known.
+    pub fn is_fixed_length(&self) -> bool {
+        matches!(self.state, State::Length(_))
+    }
+
     /// Accounts for `n` raw body bytes taken without `feed` (see `raw_room`).
     pub fn took_raw(&mut self, n: usize) -> Decoded {
-        if let State::Length(left) = &mut self.state {
-            *left -= n as u64;
-            if *left == 0 {
-                self.state = State::Done;
-                return Decoded::Done;
+        match &mut self.state {
+            State::Length(left) => {
+                *left -= n as u64;
+                if *left == 0 {
+                    self.state = State::Done;
+                    return Decoded::Done;
+                }
             }
+            State::Data(left) => {
+                *left -= n as u64;
+                if *left == 0 {
+                    self.state = State::DataEnd;
+                }
+            }
+            _ => {}
         }
         Decoded::More
     }

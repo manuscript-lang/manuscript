@@ -45,11 +45,11 @@ export def main() -> Int:
         reader.names.append("n")
         total += 1
 
-    stdout().write(
+    let _ = stdout().write(
         f"{reader.entries[0].length()} {reader.entries[1].length()} {reader.names.length()} {total}\n"
     )
-    stdout().write(
+    let _ = stdout().write(
         f"{holder.reader.names.length()} {holder.reader.entries.length()} {holder.reader.entries[2].length()} {reader.entries.length()}\n"
     )
-    stdout().write(f"{maps[1].length()} {maps[0].length()}\n")
+    let _ = stdout().write(f"{maps[1].length()} {maps[0].length()}\n")
     return 0
