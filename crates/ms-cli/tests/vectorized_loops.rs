@@ -97,6 +97,8 @@ fn per_cpu_copies_report_the_same_fault_frames() {
     let _ = std::fs::remove_dir_all(&dir);
     assert_ne!(native.0, Some(0), "{}", native.1);
     assert_eq!(native, baseline);
+    // One frame for the function: the dispatcher between the caller and the copy leaves none.
+    assert_eq!(native.1.matches(" in scale").count(), 1, "{}", native.1);
     assert!(native.1.contains("fault.ms:3 in scale"), "{}", native.1);
     assert!(native.1.contains("fault.ms:8 in main"), "{}", native.1);
 }

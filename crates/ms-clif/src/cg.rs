@@ -607,6 +607,7 @@ fn compile_with_isa(
     let builder = ObjectBuilder::new(isa, m.name.as_str(), default_libcall_names())
         .map_err(|e| e.to_string())?;
     let module = ObjectModule::new(builder);
+    let x86_64 = module.isa().triple().architecture == target_lexicon::Architecture::X86_64;
     let mut g = Gen {
         m,
         lay: Layouts::new(m),
@@ -641,7 +642,9 @@ fn compile_with_isa(
                 .collect();
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
-            crate::llvm_ir::LlvmModule::new(files, cwd)
+            let mut llvm = crate::llvm_ir::LlvmModule::new(files, cwd);
+            llvm.set_per_cpu(x86_64);
+            llvm
         }),
     };
     for (i, f) in m.funcs.iter().enumerate() {
@@ -1023,7 +1026,7 @@ fn define_with(
             Some(f) => (f.name.as_str(), (0, f.loc.line)),
             None => (name, (0, 0)),
         };
-        llvm.add_function(
+        let copies = llvm.add_function(
             &sym,
             display,
             fn_loc,
@@ -1032,12 +1035,21 @@ fn define_with(
             exported,
         );
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
-        // A function with a vectorizable loop may also have per-CPU copies (`llvm_ir`); each is
-        // listed under the same name, and the tables keep the entries whose symbols exist.
-        for suffix in ["", crate::llvm_ir::AVX2_SUFFIX, crate::llvm_ir::BASE_SUFFIX] {
+        // A function with per-CPU copies is listed as them, under the same name: the dispatcher
+        // between its caller and the copy is no frame of its own. Copies the optimizer drops
+        // have no symbol, and the tables keep the entries whose symbols exist.
+        let symbols = if copies {
+            vec![
+                format!("{sym}{}", crate::llvm_ir::AVX2_SUFFIX),
+                format!("{sym}{}", crate::llvm_ir::BASE_SUFFIX),
+            ]
+        } else {
+            vec![sym.clone()]
+        };
+        for symbol in symbols {
             g.llvm_funcs.push(LlvmFn {
                 id,
-                symbol: format!("{sym}{suffix}"),
+                symbol,
                 name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
                 file: source.map_or(u32::MAX, |f| f.loc.file),
                 line: source.map_or(0, |f| f.loc.line),

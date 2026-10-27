@@ -27,6 +27,8 @@ pub trait Symbols {
 /// An LLVM module under construction.
 pub struct LlvmModule {
     di: DebugInfo,
+    /// Functions with loops over list elements get per-CPU copies (x86-64 only).
+    per_cpu: bool,
     /// Fault call sites numbered so far (unique across the module).
     sites: u32,
     /// Function definitions in emission order.
@@ -84,13 +86,13 @@ fn dispatcher(name: &str, header: &str) -> (String, String) {
         .map(|p| p.replace(" noalias", ""))
         .collect::<Vec<_>>()
         .join(", ");
-    // The return attribute (`zeroext i8`) belongs to the definition, not to the call or `ret`.
-    let (head_ret, ret) = (ret, ret.trim_start_matches("zeroext "));
+    let bare = ret.trim_start_matches("zeroext ");
+    let head_ret = ret;
     let call = |target: &str, r: &str| {
         if ret == "void" {
             format!("  tail call void @\"{name}{target}\"({args})\n  ret void\n")
         } else {
-            format!("  %{r} = tail call {ret} @\"{name}{target}\"({args})\n  ret {ret} %{r}\n")
+            format!("  %{r} = tail call {ret} @\"{name}{target}\"({args})\n  ret {bare} %{r}\n")
         }
     };
     let head = format!("{head_ret} @\"{name}\"({params}) #0 {{\n");
@@ -222,6 +224,7 @@ impl LlvmModule {
         }
         let nfiles = files.len();
         let mut m = LlvmModule {
+            per_cpu: true,
             sites: 0,
             di: DebugInfo {
                 meta: Vec::new(),
@@ -1028,13 +1031,19 @@ impl<'a> Tr<'a> {
 }
 
 impl LlvmModule {
-    /// Appends the definition of `f` named `name`; `local` makes the symbol internal.
     /// Marks parameters `at` of the internal function `name` as exclusive pointers, before any
     /// function that calls it is added.
     pub fn set_exclusive(&mut self, name: &str, at: Vec<usize>) {
         self.exclusive.insert(name.to_string(), at);
     }
 
+    /// Turns the per-CPU copies of vectorizable loops on or off (they exist for x86-64 only).
+    pub fn set_per_cpu(&mut self, on: bool) {
+        self.per_cpu = on;
+    }
+
+    /// Appends the definition of `f` named `name`. Returns whether the symbol became a
+    /// dispatcher between per-CPU copies (`name.avx2`, `name.base`), which hold the code.
     pub fn add_function(
         &mut self,
         name: &str,
@@ -1043,16 +1052,17 @@ impl LlvmModule {
         f: &Function,
         syms: &dyn Symbols,
         public: bool,
-    ) {
+    ) -> bool {
         // A function with a loop over list elements is also compiled for x86-64-v3 (AVX2, FMA),
         // where LLVM vectorizes twice as wide; on x86-64 its symbol becomes a dispatcher that
         // picks a copy by the running CPU (see `finish`).
         let (header, body, vector) = self.translate(name, name, display, fn_loc, f, syms);
-        let avx2 = vector.then(|| {
+        let avx2 = (vector && self.per_cpu).then(|| {
             let clone = format!("{name}{AVX2_SUFFIX}");
             let (h, b, _) = self.translate(&clone, name, display, fn_loc, f, syms);
             (h, b)
         });
+        let copies = avx2.is_some();
         self.defined.push(name.to_string());
         self.defs.push(Def {
             name: name.to_string(),
@@ -1061,6 +1071,7 @@ impl LlvmModule {
             body,
             avx2,
         });
+        copies
     }
 
     /// The `define` header (after the linkage) and body of `f` under `name`, and whether it
@@ -1276,7 +1287,6 @@ impl LlvmModule {
             );
         }
         let deep = self.deep_glue();
-        let dispatch = triple.starts_with("x86_64");
         let mut uses_level = false;
         for d in &self.defs {
             let vis = if d.public {
@@ -1286,7 +1296,7 @@ impl LlvmModule {
             } else {
                 "internal "
             };
-            if let (true, Some((header, body))) = (dispatch, &d.avx2) {
+            if let Some((header, body)) = &d.avx2 {
                 uses_level = true;
                 let (dh, db) = dispatcher(&d.name, &d.header);
                 let _ = write!(s, "define {vis}{dh}{db}");
@@ -1295,6 +1305,9 @@ impl LlvmModule {
                     &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
                     1,
                 );
+                // The copies stay out of line: inlined into the dispatcher, which has no debug
+                // subprogram, their line tables are dropped and a fault loses its frames.
+                let base = base.replacen(" #0 ", " #1 ", 1);
                 let _ = write!(s, "define internal {base}{}", d.body);
                 let fast = header
                     .replacen(" #0 ", " #3 ", 1)
@@ -1350,7 +1363,7 @@ impl LlvmModule {
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
-        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
+        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         if uses_level {
             s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
         }
@@ -1662,11 +1675,11 @@ mod tests {
         assert!(body.contains("call i64 @msrt_cpu_level()"), "{body}");
         let args = "(i64 %a0, ptr %x1, i8 zeroext %a2)";
         assert!(
-            body.contains(&format!("tail call i8 @\"k.avx2\"{args}")),
+            body.contains(&format!("tail call zeroext i8 @\"k.avx2\"{args}")),
             "{body}"
         );
         assert!(
-            body.contains(&format!("tail call i8 @\"k.base\"{args}")),
+            body.contains(&format!("tail call zeroext i8 @\"k.base\"{args}")),
             "{body}"
         );
         let (_, void) = dispatcher("u", "void @\"u\"() #0 !dbg !6 {\n");
