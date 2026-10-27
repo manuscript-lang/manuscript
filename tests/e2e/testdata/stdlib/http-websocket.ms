@@ -116,8 +116,8 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 
 def report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let hosts = exchange.headers().values("Host")
-    let started = try exchange.send_headers(status: 200, headers: headers())
-    let written = (try http_result(exchange.write(hosts.join(","))))
+    let _started = try exchange.send_headers(status: 200, headers: headers())
+    let _written = (try http_result(exchange.write(hosts.join(","))))
     return ok(())
 
 test "HTTP streaming handlers see the Host request header":
