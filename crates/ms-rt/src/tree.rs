@@ -13,7 +13,7 @@ use crate::string::from_bytes;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use ms_rt_abi::{StrVal, TypeDesc, VecVal};
-use ms_rt_hot::Layout;
+use ms_rt_hot::{LIVE, Layout};
 use std::vec::Vec;
 
 pub const NULL: i64 = 0;
@@ -25,6 +25,151 @@ pub const OBJECT: i64 = 5;
 
 /// The compiler's constructor thunk, see the module docs.
 pub type Ctor = unsafe extern "C-unwind" fn(kind: i64, payload: *mut u8, out: *mut u8) -> i64;
+
+/// The compiler's view thunk, the reverse of [`Ctor`]: `view(value, payload)` writes the payload
+/// of the case `value` holds (a `Bool` byte, a `String`, a list or a `String`-keyed map, borrowed
+/// bitwise) at `payload` and returns the node kind.
+pub type View = unsafe extern "C-unwind" fn(value: *const u8, payload: *mut u8) -> i64;
+
+/// The view thunk, as a native argument.
+pub struct TreeView(View);
+
+impl AbiType for TreeView {
+    type Raw = View;
+}
+// SAFETY: the compiler passes a thunk with the [`View`] signature.
+unsafe impl FromAbi<'_> for TreeView {
+    unsafe fn from_raw(raw: View) -> TreeView {
+        TreeView(raw)
+    }
+}
+
+/// A value of the alternative in memory, as a native argument.
+pub struct ValueRef<'a>(*const u8, PhantomData<&'a u8>);
+
+impl AbiType for ValueRef<'_> {
+    type Raw = *const u8;
+}
+// SAFETY: the caller passes the address of one live value of the alternative.
+unsafe impl<'a> FromAbi<'a> for ValueRef<'a> {
+    unsafe fn from_raw(raw: *const u8) -> ValueRef<'a> {
+        ValueRef(raw, PhantomData)
+    }
+}
+
+/// Receives the events of a tree walk, in document order: an `item` before each array element,
+/// a `key` before each member value.
+pub trait TreeSink {
+    fn null(&mut self);
+    fn boolean(&mut self, v: bool);
+    fn number(&mut self, text: &str);
+    fn string(&mut self, text: &str);
+    fn item(&mut self);
+    fn key(&mut self, name: &str);
+    fn begin_array(&mut self);
+    fn end_array(&mut self);
+    fn begin_object(&mut self);
+    fn end_object(&mut self);
+}
+
+/// An open container of a walk.
+enum Open {
+    Array { at: *const u8, left: usize },
+    Object { slots: *const u8, left: usize },
+}
+
+/// Walks `root`, a value of the alternative described by `desc`, feeding `sink`. The walk is
+/// iterative, so nesting depth costs heap and not stack.
+pub fn walk(desc: ValueDesc<'_>, view: TreeView, root: ValueRef<'_>, sink: &mut impl TreeSink) {
+    let (desc, view) = (desc.0, view.0);
+    let size = desc.size as usize;
+    let l = map::string_map_layout(desc);
+    let mut open: Vec<Open> = Vec::new();
+    // Large enough for the biggest payload: a map.
+    let mut payload = MaybeUninit::<[u64; 8]>::uninit();
+    let text = |s: &StrVal| -> &str {
+        // SAFETY: a `String` holds UTF-8, and `s` outlives the borrow (the sink copies it).
+        unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(s.data(), s.len())) }
+    };
+    let mut value = root.0;
+    loop {
+        // SAFETY: `value` is a live value of the alternative and `payload` has room for any
+        // payload; the thunk writes the payload of the value's case.
+        unsafe {
+            let p = payload.as_mut_ptr().cast::<u8>();
+            match view(value, p) {
+                NULL => sink.null(),
+                BOOL => sink.boolean(*p != 0),
+                NUMBER => sink.number(text(&*p.cast::<StrVal>())),
+                STRING => sink.string(text(&*p.cast::<StrVal>())),
+                ARRAY => {
+                    let v = &*p.cast::<VecVal>();
+                    sink.begin_array();
+                    open.push(Open::Array {
+                        at: v.ptr,
+                        left: v.len,
+                    });
+                }
+                _ => {
+                    let m = &*p.cast::<ms_rt_abi::MapVal>();
+                    sink.begin_object();
+                    open.push(Open::Object {
+                        slots: m.slots,
+                        left: m.used,
+                    });
+                }
+            }
+        }
+        // The next value to visit: the following element of the innermost open container, closing
+        // the ones that are done.
+        loop {
+            let Some(top) = open.last_mut() else {
+                return;
+            };
+            match top {
+                Open::Array { at, left } => {
+                    if *left == 0 {
+                        sink.end_array();
+                        open.pop();
+                        continue;
+                    }
+                    sink.item();
+                    value = *at;
+                    // SAFETY: `left` elements of `size` bytes remain in the list.
+                    *at = unsafe { at.add(size) };
+                    *left -= 1;
+                    break;
+                }
+                Open::Object { slots, left } => {
+                    let mut found = None;
+                    while *left > 0 {
+                        let slot = *slots;
+                        // SAFETY: `left` slots of `stride` bytes remain in the map's storage.
+                        unsafe {
+                            *slots = slot.add(l.stride);
+                            *left -= 1;
+                            if *slot.cast::<u64>() & LIVE != 0 {
+                                found = Some(slot);
+                                break;
+                            }
+                        }
+                    }
+                    let Some(slot) = found else {
+                        sink.end_object();
+                        open.pop();
+                        continue;
+                    };
+                    // SAFETY: a live slot holds a `String` key and a value at the layout's offsets.
+                    unsafe {
+                        sink.key(text(&*slot.add(l.koff).cast::<StrVal>()));
+                        value = slot.add(l.voff);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
 
 /// The descriptor of the alternative, as a native argument.
 pub struct ValueDesc<'a>(&'a TypeDesc);

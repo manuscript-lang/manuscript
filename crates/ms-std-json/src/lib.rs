@@ -331,8 +331,8 @@ const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
 use ms_rt::scan::{
-    json_plain_digits, json_special as find_special, push_member_name, push_member_quoted,
-    push_short, push_string_short, skip_spaces,
+    json_plain_digits, json_simple_number, json_special as find_special, push_member_name,
+    push_member_quoted, push_short, push_string_short, skip_spaces,
 };
 
 enum Frame {
@@ -1362,7 +1362,11 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
-        if !(text.len() <= 16 && json_plain_digits(text.as_bytes())) && !number_text_valid(text) {
+        let b = text.as_bytes();
+        if !(b.len() <= 16 && json_plain_digits(b))
+            && !json_simple_number(b)
+            && !number_text_valid(text)
+        {
             return self.fail();
         }
         self.raw(text);

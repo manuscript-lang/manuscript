@@ -96,3 +96,19 @@ linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x; three runs of `sh
 A float that is a decimal of one to four fraction digits (`1234.5`, `0.25`, `99.99`) is scaled to an integer, checked by dividing back, and written two digits at a time with the point placed by position; the check yields the same digits as the shortest-round-trip formatter because the quotient of an exact integer by an exact power of ten is the correctly rounded double. `Writer::float` on `i + 0.5` went from about 218 to 135 instructions. The test `plain_decimals_print_as_rust_displays_them` compares 800,000 values in 1e-3..1e11 against Rust's `{}` byte for byte.
 
 citm_catalog is the remaining gap: its time is in the generated `JsonValue` walker and the per-node calls into `Writer`, not in escaping or numbers.
+
+## 2026-10-27: native tree walker and decimal validation
+
+linux/amd64, four shared cores (noisy: two back-to-back runs differed by up to 25% on canada), Node v22.22.0, serde_json 1.x; `sh bench/perf/json/run.sh` on this branch.
+
+| document | serde_json MB/s | Manuscript MB/s | Manuscript / serde_json |
+|---|---:|---:|---:|
+| small | 586 | 551 | 0.94x |
+| twitter | 1400-1500 | 1627-1659 | 1.11-1.16x |
+| canada | 654-657 | 471-640 | 0.72-0.98x |
+| citm_catalog | 2219-2451 | 2178-2313 | 0.89-1.04x |
+| records | 786 | 750 | 0.95x |
+
+Tree stringify (`JsonValue`) no longer calls `Writer` once per node from generated code. The compiler emits one view thunk per type (`value -> kind, payload`), and `msrt_json_w_tree` walks the tree natively through `ms_rt::tree::walk` into the same `Writer`. citm walker instructions: 61.1M → 52.8M. Number text of up to 32 simple decimal bytes (`-?digits(.digits)?`, no leading zero) is validated with word tests (`json_simple_number`) instead of `scan_number`; canada callgrind total is 378M instructions.
+
+canada and citm remain within noise of serde_json rather than clearly above it, so #1680 stays open.
