@@ -70,6 +70,13 @@ Before/after:
 
 - Propagating `Result` from close, or a split `drop`/`close` pair (rejected): changes the `Closeable` signature and every impl, and adds a second concept.
 
+## Inventory of `with` for stage 3 (2026-10-27, `origin/main`)
+
+- 750 `with let|var` statements in `stdlib/`, `tests/`, `bench/`, `examples/` and the book: 39 in stdlib, about 700 in tests and bench, about 16 in docs; 17 `StmtKind::With` uses in 28 Rust files.
+- 286 of the 750 are followed by more statements in the same block. Removing `with` there extends the resource's life from the block to the enclosing scope, so each needs a manual look: locks, task groups, temporary directories and process groups are held longer, and a `TaskGroup` close that used to join before the next statement would now join at scope end.
+- 11 of those are in stdlib (`tasks.ms`, `processes.ms`, `workers.ms`); 268 are in tests.
+- Mechanical migration rule: a `with` that is the last statement of its block becomes a plain `let`; the other 286 need an explicit `x.close()` where the early close matters, or a helper function to bound the scope.
+
 ## Staging and verification
 
 - Stage 1: checker + lowering + lower/conformance tests (early return, loop `break`, fault, cancellation, generic bound).
