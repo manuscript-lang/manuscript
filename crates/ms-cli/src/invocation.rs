@@ -71,7 +71,6 @@ pub struct Invocation {
     pub watch: bool,
     pub fix: bool,
     pub build_type_name: String,
-    pub build_type_set: bool,
     pub test_timeout: String,
     pub test_filter: String,
     pub test_options: Vec<String>,
@@ -183,14 +182,13 @@ fn parse_options(
                         "--build-type requires a build type; use Debug, Release, or MinSizeRel",
                     ));
                 };
-                if inv.build_type_set {
+                if !inv.build_type_name.is_empty() {
                     return Err(usage_error(
                         io,
                         "--build-type may only be specified once; remove the duplicate flag",
                     ));
                 }
                 inv.build_type_name = value.to_string();
-                inv.build_type_set = true;
             }
             "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
             "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" | "--runs" | "--seed"
@@ -209,17 +207,19 @@ fn parse_options(
                         format!("invalid {flag}: {error}; supply a valid regular expression"),
                     ));
                 }
-                if flag == "--repeat" && !value.parse::<i64>().is_ok_and(|n| n > 0) {
-                    return Err(usage_error(io, "invalid --repeat; use a positive integer"));
+                if matches!(flag, "--repeat" | "--runs" | "--samples" | "--iterations")
+                    && !value.parse::<i64>().is_ok_and(|n| n > 0)
+                {
+                    return Err(usage_error(
+                        io,
+                        format!("invalid {flag}; use a positive integer"),
+                    ));
                 }
-                if flag == "--shuffle" && value.parse::<i64>().is_err() {
-                    return Err(usage_error(io, "invalid --shuffle; use an integer seed"));
-                }
-                if flag == "--runs" && !value.parse::<i64>().is_ok_and(|n| n > 0) {
-                    return Err(usage_error(io, "invalid --runs; use a positive integer"));
-                }
-                if flag == "--seed" && value.parse::<i64>().is_err() {
-                    return Err(usage_error(io, "invalid --seed; use an integer seed"));
+                if matches!(flag, "--shuffle" | "--seed") && value.parse::<i64>().is_err() {
+                    return Err(usage_error(
+                        io,
+                        format!("invalid {flag}; use an integer seed"),
+                    ));
                 }
                 if flag == "--time"
                     && !crate::duration::parse(value).is_some_and(|n| n >= 1_000_000)
@@ -230,14 +230,6 @@ fn parse_options(
                             "invalid --time {}; use a duration of at least 1ms such as 200ms or 1s",
                             quote(value)
                         ),
-                    ));
-                }
-                if (flag == "--samples" || flag == "--iterations")
-                    && !value.parse::<i64>().is_ok_and(|n| n > 0)
-                {
-                    return Err(usage_error(
-                        io,
-                        format!("invalid {flag}; use a positive integer"),
                     ));
                 }
                 if flag == "--fuzz" && !crate::duration::parse(value).is_some_and(|n| n > 0) {
@@ -520,8 +512,12 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     let only = |names: &[&str]| {
         inv.test_options
             .iter()
-            .find(|o| names.iter().any(|n| o.split('=').next() == Some(*n)))
-            .map(|o| o.split('=').next().unwrap_or_default().to_string())
+            .map(|option| {
+                option
+                    .split_once('=')
+                    .map_or(option.as_str(), |(flag, _)| flag)
+            })
+            .find(|flag| names.contains(flag))
     };
     if command == "test"
         && let Some(flag) = only(&["--time", "--samples", "--iterations"])
@@ -601,7 +597,9 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             format!("--link requires build, run, test, or bench, not {command}; remove the flag"),
         ));
     }
-    if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "bench", "profile"]) {
+    if !inv.build_type_name.is_empty()
+        && !inv.is_one_of(&["build", "run", "test", "bench", "profile"])
+    {
         return Err(usage_error(
             io,
             format!(
