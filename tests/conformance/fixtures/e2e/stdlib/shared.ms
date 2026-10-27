@@ -89,6 +89,8 @@ def drop_while_locked() -> Unit:
     if guard.value.length() != 1:
         return
 
+    let _held = [guard]
+
 test "a box dropped while its payload is locked does not free the payload twice":
     drop_while_locked()
 

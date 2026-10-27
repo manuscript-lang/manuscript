@@ -84,13 +84,13 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes. `ms lint` reports advisory `MSL104` for a discarded `Result`, including `Result[Unit, E]`. Handle it with `if let`, `try`, or return it. To ignore it deliberately, bind it to a name starting with `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if let`, `try`, or return it. To ignore it deliberately, bind it to `_`:
 
 ```manuscript
-let _ignored = discount(price: 20d, percent: 10d)
+let _ = discount(price: 20d, percent: 10d)
 ```
 
-The initializer still runs and `_ignored` suppresses the unread-local advisory. This does not handle an error or stop a fault.
+The initializer still runs and the outcome is dropped unread. Several `let _` may share a scope. This does not handle an error or stop a fault.
 
 ## A common error boundary
 

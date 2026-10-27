@@ -5,7 +5,7 @@ from "@std/io.ms" import stdout
 
 export def main() -> Int:
     let a: Int8 = 100
-    stdout().write("before\n")
+    let _ = stdout().write("before\n")
     let b = a + a
-    stdout().write(f"{b}\n")
+    let _ = stdout().write(f"{b}\n")
     return 0

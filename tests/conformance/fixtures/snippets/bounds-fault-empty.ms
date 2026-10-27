@@ -11,5 +11,5 @@ def last_after_loop(a: List[Int]) -> Int:
     return t + a[a.length() - 1]
 
 export def main() -> Int:
-    stdout().write(f"{last_after_loop([])}\n")
+    let _ = stdout().write(f"{last_after_loop([])}\n")
     return 0

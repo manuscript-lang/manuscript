@@ -4,4 +4,4 @@
 def operation() -> Result[Unit, Error]: ok(())
 
 def caller() -> Unit:
-    operation()
+    let _ = operation()

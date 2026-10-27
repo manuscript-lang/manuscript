@@ -5,8 +5,8 @@ from "@std/fs.ms" import filesystem
 
 def explicit() -> Unit:
     let fs = filesystem()
-    fs.write_file("", "", False)
-    fs.copy_file("", "", True)
-    fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
-    fs.create_directory("", True)
-    fs.remove("", False)
+    let _ = fs.write_file("", "", False)
+    let _ = fs.copy_file("", "", True)
+    let _ = fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
+    let _ = fs.create_directory("", True)
+    let _ = fs.remove("", False)

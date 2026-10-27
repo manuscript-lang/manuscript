@@ -12,22 +12,27 @@ def describe(error: TaskError) -> String:
         case _: return "other error"
 
 def say(text: String) -> Unit:
-    stdout().write(text + "\n")
+    let _ = stdout().write(text + "\n")
 
 # A fault in a contained group ends only that task: siblings keep their results.
 export def main() -> Int:
     with let group = TaskGroup[Int](contain_faults: True):
         let bad = group.spawn(lambda ch: boom([1]))
         let good = group.spawn(lambda ch: 7)
+
         match bad.result():
             case ok(value): say("unexpected result")
             case error(reason): say(describe(reason))
+
         match good.result():
             case ok(value): say(f"good {value}")
             case error(other): say("good failed")
+
     with let group = TaskGroup[Int](contain_faults: True):
         group.spawn(lambda ch: boom([1]))
+
         match group.wait():
             case ok(unit): say("wait ok")
             case error(reason): say(describe(reason))
+
     return 0

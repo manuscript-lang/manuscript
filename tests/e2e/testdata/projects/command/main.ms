@@ -12,7 +12,8 @@ def exercise() -> Result[Int, Error]:
             return ok(1)
         case ok(output):
             output.exit_code | try expect_equal(0)
-            stdout().write_bytes(data: output.stdout)
+
+            let _ = stdout().write_bytes(data: output.stdout)
             return ok(0)
 
 export def main() -> Int:

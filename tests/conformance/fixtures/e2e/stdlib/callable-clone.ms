@@ -17,11 +17,22 @@ export def main() -> Int:
     let xs = [10, 20, 30]
     let pick: Callable[[Int], Int] = lambda i: xs[i]
     let hook = Hook(run: pick.clone())
+
     with let g = TaskGroup[Int]():
         g.spawn(entry.clone())
         g.spawn(entry.clone())
         g.spawn(entry)
+
         let total = g.results().get(List[Int]())
-        stdout().write("tasks " + total.length().to_string() + " first " + total[0].to_string() + "\n")
-    stdout().write("pick " + pick(0).to_string() + " hook " + hook.run(1).to_string() + " twice " + twice(pick).to_string() + "\n")
+        let _ = stdout().write(
+            "tasks " + total.length().to_string() + " first " + total[
+                0
+            ].to_string() + "\n"
+        )
+
+    let _ = stdout().write(
+        "pick " + pick(0).to_string() + " hook " + hook.run(
+            1
+        ).to_string() + " twice " + twice(pick).to_string() + "\n"
+    )
     return 0

@@ -35,7 +35,7 @@ def fetch_thread() -> Unit:
         with let group = TaskGroup[Int]():
             for i in range(0, conns):
                 let u = parts.get(0).clone()
-                group.spawn(lambda ch: worker(u, nanos))
+                group.spawn(lambda task: worker(u, nanos))
 
             for r in group.results().get():
                 total += r
@@ -88,5 +88,5 @@ export def main() -> Int:
         for r in group.results().get():
             total += r
 
-    stdout().write(f"req/s {total / secs}\n")
+    let _ = stdout().write(f"req/s {total / secs}\n")
     return 0

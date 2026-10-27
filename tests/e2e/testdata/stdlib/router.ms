@@ -21,8 +21,8 @@ def say(label: String) -> Callable[[HttpExchange, RouteParams], Result[Unit, Htt
     return lambda exchange, params: reply(exchange, text(200, label.clone()))
 
 def show(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let id = params.get("id").get("-")
-    let rest = params.get("rest").get("-")
+    let id = params.get_or("id", "-")
+    let rest = params.get_or("rest", "-")
     return reply(exchange, text(200, f"{id}|{rest}"))
 
 def body_of(response: HttpResponse) -> String:
@@ -208,7 +208,7 @@ test "in-process reads retain the unread body after a bounded chunk":
     try expect_equal(body_of(response), "a|bc|true")
 
 def read_sizes(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let limit = none if params.get("mode").get("") == "default" else some(100000)
+    let limit = none if params.get_or("mode", "") == "default" else some(100000)
 
     let first = try exchange.read(limit).map_error(from_io)
     let second = try exchange.read(limit).map_error(from_io)

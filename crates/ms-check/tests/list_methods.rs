@@ -20,7 +20,7 @@ fn diagnostics(source: &str) -> Vec<String> {
 
 #[test]
 fn bounded_operations_apply_without_an_import() {
-    let source = "type Plain:\n    n: Int\nexport def main() -> Int:\n    let a = [3, 1].sum() + [3, 1].min().get() + [3, 1].max().get() + [3, 1].sorted()[0]\n    let b = [Plain(2)].sorted(lambda x, y: x.n - y.n)\n    return a + b.length()\n";
+    let source = include_str!("list_methods/bounded-operations-apply-without-an-import.ms");
     assert_eq!(diagnostics(source), Vec::<String>::new());
 }
 

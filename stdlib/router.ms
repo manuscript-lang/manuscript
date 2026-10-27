@@ -56,6 +56,10 @@ impl RouteParams:
 
         return none
 
+    # Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
+    def get_or(name: String, fallback: String) -> String:
+        return self.get(name).get(fallback)
+
 # One segment of a route pattern.
 export type Segment:
     # Matches exactly this text.

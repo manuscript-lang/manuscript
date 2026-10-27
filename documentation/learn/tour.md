@@ -5,7 +5,7 @@ weight = 2
 
 # Language tour
 
-Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `#` starts a comment. Fragments belong inside a function or test.
+Short examples in order, after [your first program](getting-started.md). Indentation defines blocks; `#` starts a comment. Examples without imports or test blocks are fragments; put their local statements inside a function or test.
 
 ## Print your first line
 
@@ -47,41 +47,49 @@ test "unread message count":
 
 ## Lists, maps, and sets
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-var tags = ["docs", "release"]
-tags.append("featured")
-let original = tags.clone()
-tags.append("news")
-# original still has three tags.
+from "@std/test.ms" import expect_equal
 
-var visits = {"/help": 12}
-visits.add("/tour", 4)
-var subscribers = Set[String]()
-subscribers.add("sam@example.com")
+test "collections and lookup":
+    var tags = ["docs", "release"]
+    tags.append("featured")
+    let original = tags.clone()
+    tags.append("news")
+    try expect_equal(original.length(), 3)
+    try expect_equal(tags.length(), 4)
 
-if let count = visits.get("/help"):
-    let label = f"{count} visits"
-else:
-    let label = "No visits yet"
+    var visits = {"/help": 12}
+    visits.add("/tour", 4)
+    try expect_equal(visits.get("/help").get(0), 12)
+    try expect_equal(visits.get("/missing").get(0), 0)
+
+    var subscribers = Set[String]()
+    subscribers.add("sam@example.com")
+    subscribers.add("sam@example.com")
+    try expect_equal(subscribers.length(), 1)
 ```
 
 - List, Map, and Set need no import. Updates mutate in place.
 - Collections have one owner; `.clone()` makes a deep copy. Use `var` to mutate a collection.
-- Lookup returns an `Optional` (`some(value)` or `none`); `if let` binds a present value and `else` handles absence.
+- Map lookup returns an `Optional` (`some(value)` or `none`); `get(0)` supplies a fallback when the key is absent. `if let` binds a present value when you want a branch; see [Optional values](../core-language/types/optionals.md).
 
 ## Conditions and loops
 
+<!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
+from "@std/test.ms" import expect_equal
 
-let prices = [12, 8, 25]
-var total = 0
-for price in prices:
-    total += price
+test "free shipping for orders of at least 40":
+    let prices = [12, 8, 25]
+    var total = 0
+    for price in prices:
+        total += price
 
-var shipping = 5
-if total >= 40:
-    shipping = 0
-let checkout_total = total + shipping
+    var shipping = 5
+    if total >= 40:
+        shipping = 0
+    try expect_equal(total + shipping, 45)
 ```
 
 `if` branches; `for` visits items; `while` repeats on a condition; `break` and `continue` control loops.
@@ -122,12 +130,8 @@ Functions are values:
 ```manuscript
 
 let prices = [12, 8, 25]
-let discounted = prices.map(lambda (value: Int) -> Int:
-    return value - 2
-)
-let affordable = discounted.filter(lambda (value: Int) -> Bool:
-    return value <= 10
-)
+let discounted = prices.map(lambda value: value - 2)
+let affordable = discounted.filter(lambda value: value <= 10)
 # affordable contains [10, 6]; prices is unchanged.
 ```
 

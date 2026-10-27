@@ -254,3 +254,23 @@ fn a_large_function_is_handled_in_linear_time() {
     );
     assert_eq!(b[b.len() - 2..], [Op::Drop, Op::IAdd]);
 }
+
+/// `STRAIGHT` with `padding` extra instructions in the entry block.
+fn padded(padding: usize) -> String {
+    let filler: String = (0..padding)
+        .map(|k| format!("  %{}: int = iconst 1\n", k + 10))
+        .collect();
+    STRAIGHT.replace("  %4: int = iadd", &format!("{filler}  %4: int = iadd"))
+}
+
+#[test]
+fn an_unoptimized_build_moves_drops_only_in_a_long_function() {
+    let drop_before_second_list = |padding: usize| {
+        let mut m = parse_module(&padded(padding)).expect("parse");
+        opt::optimize(&mut m, opt::Level::None, false);
+        let b = &ops(&m, "main")[0];
+        b[2] == Op::Drop
+    };
+    assert!(!drop_before_second_list(0));
+    assert!(drop_before_second_list(opt::LONG_FUNCTION_INSTS));
+}

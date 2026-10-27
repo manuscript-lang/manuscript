@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "15\n",
-    "stderr": "map key not found: 2\n  at map-index-fault-int.ms:11 in main\n"
+    "stderr": "map key not found: 2\n  at map-index-fault-int.ms:12 in main\n"
   }
 }
