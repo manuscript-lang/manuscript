@@ -27,6 +27,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          set +e
           $rustTarget = 'x86_64-pc-windows-msvc'
           rustup set default-host $rustTarget
           $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
@@ -41,16 +42,21 @@ jobs:
           arch: ${{ matrix.arch }}
       - name: Build
         run: |
+          set +e
           cargo xtask runtime
           cargo build --locked -p ms-cli
       - name: Probe
         continue-on-error: true
         run: |
+          set +e
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
           f='quoted folding trims'
-          echo "::group::default"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
-          echo "::group::cranelift"; MS_BACKEND=cranelift "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
-          echo "::group::debug"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Debug --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
-          sleep 5
+          echo "::group::default"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
+          echo "::group::cranelift"; MS_BACKEND=cranelift "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
+          echo "::group::debug"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Debug --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
+          sleep 5; msx="$GITHUB_WORKSPACE/$ms"
           for r in ~/Library/Logs/DiagnosticReports/*.ips /Library/Logs/DiagnosticReports/*.ips; do [ -f "$r" ] && { echo "::group::$r"; head -c 6000 "$r"; echo; echo "::endgroup::"; }; done || true
+          echo "::group::keep ll"
+          mkdir -p /tmp/ll && cd /tmp/ll && MS_KEEP_LL=1 "$msx" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms" --build-type Release --filter "$f" 2>&1 | tail -3; ls -la /tmp/ll "$GITHUB_WORKSPACE"/ms-keep.ll 2>&1 | head
+          echo "::endgroup::"
