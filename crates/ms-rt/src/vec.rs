@@ -1803,12 +1803,48 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         // One byte (a character or punctuation) is the common append and needs no call:
         // this path keeps no registers live across a call, so it has no frame.
         let v = &mut *b;
-        if (*s).len() == 1 && v.len < v.cap {
+        let n = (*s).len();
+        if n == 1 && v.len < v.cap {
             *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
             v.len += 1;
             return;
         }
+        // A short word with room to spare is a byte loop, not a `memcpy` call.
+        if n <= 16 && v.cap - v.len >= n {
+            let src = string::bytes(s).as_ptr();
+            let dst = v.ptr.add(v.len);
+            copy_short(src, dst, n);
+            v.len += n;
+            return;
+        }
         append_slow(b, s);
+    }
+}
+
+/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
+/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
+#[inline(always)]
+unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
+    unsafe {
+        if n >= 8 {
+            let head = src.cast::<u64>().read_unaligned();
+            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            dst.cast::<u64>().write_unaligned(head);
+            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
+        } else if n >= 4 {
+            let head = src.cast::<u32>().read_unaligned();
+            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            dst.cast::<u32>().write_unaligned(head);
+            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
+        } else if n > 0 {
+            let first = *src;
+            let mid = *src.add(n / 2);
+            let last = *src.add(n - 1);
+            *dst = first;
+            *dst.add(n / 2) = mid;
+            *dst.add(n - 1) = last;
+        }
     }
 }
 
@@ -1891,6 +1927,21 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn copy_short_matches_slice_copy() {
+        let src: Vec<u8> = (1..=16).collect();
+        for n in 0..=16usize {
+            let mut dst = [0u8; 20];
+            // SAFETY: `src` and `dst` hold at least `n` bytes and do not overlap.
+            unsafe { copy_short(src.as_ptr(), dst.as_mut_ptr().add(2), n) };
+            assert_eq!(&dst[2..2 + n], &src[..n], "length {n}");
+            assert!(
+                dst[..2].iter().chain(&dst[2 + n..]).all(|&b| b == 0),
+                "length {n} overran"
+            );
+        }
+    }
 
     #[test]
     fn strbuilder_freeze_adopts_long_buffers() {
