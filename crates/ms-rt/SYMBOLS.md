@@ -113,6 +113,7 @@ msrt_float_to_bits(value: f64) -> i64
 msrt_float32_from_bits(bits: i64) -> f64
 msrt_float32_to_bits(value: f64) -> i64
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
+msrt_float_to_float32(v: f64, out: *mut f32) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
 msrt_heap_stats(out: *mut i64)
@@ -276,6 +277,7 @@ msrt_bytes_drop(b: *mut VecVal)
 msrt_bytes_copy(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_contains(b: *const VecVal, v: *const VecVal) -> u8
 msrt_bytes_index_of( b: *const VecVal, v: *const VecVal, out: *mut i64, ) -> u8
+msrt_bytes_index_of_byte( b: *const VecVal, value: i64, start: i64, out: *mut i64, ) -> u8
 msrt_bytes_last_index_of( b: *const VecVal, v: *const VecVal, out: *mut i64, ) -> u8
 msrt_bytes_starts_with(b: *const VecVal, v: *const VecVal) -> u8
 msrt_bytes_ends_with(b: *const VecVal, v: *const VecVal) -> u8
@@ -289,6 +291,7 @@ msrt_bytes_join(parts: *const VecVal, out: *mut VecVal)
 msrt_bytes_values(b: *const VecVal, out: *mut VecVal)
 msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal)
 msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8
+msrt_bytes_decode_utf8_range( b: *const VecVal, start: i64, end: i64, out: *mut StrVal, ) -> u8
 msrt_bytes_append(b: *mut VecVal, value: i64)
 msrt_bytes_extend(b: *mut VecVal, values: *const VecVal)
 msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8
@@ -367,6 +370,7 @@ msrt_crypto_aes_ctr(key: *const VecVal, iv: *const VecVal, data: *const VecVal, 
 msrt_crypto_aes_cbc_encrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msstd_decimal_literal(text: *const StrVal, out: *mut Dec)
+msstd_decimal_parse(text: *const StrVal, out: *mut Dec) -> u8
 msstd_decimal_from_int(n: i64, out: *mut Dec)
 msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
 msstd_decimal_negate(a: *const Dec, out: *mut Dec)
@@ -476,6 +480,7 @@ msrt_json_key(d: *const DocObj, id: u32, i: i64, out: *mut StrVal)
 msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, ) -> *mut WriterObj
 msrt_json_w_item(w: *mut WriterObj)
 msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
+msrt_json_w_key_quoted(w: *mut WriterObj, quoted_name: *const StrVal)
 msrt_json_w_undo(w: *mut WriterObj)
 msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)
@@ -560,7 +565,6 @@ msrt_http_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: 
 msrt_http_headers_new() -> *mut Obj
 msrt_http_headers_append( h: *const Obj, name: *const StrVal, value: *const VecVal, ) -> u8
 msrt_http_headers_values( h: *const Obj, name: *const StrVal, out: *mut VecVal, ) -> u8
-msrt_http_headers_text( h: *const Obj, name: *const StrVal, out: *mut VecVal, ) -> u8
 msrt_http_headers_names(h: *const Obj, out: *mut VecVal)
 msrt_http_headers_remove(h: *const Obj, name: *const StrVal) -> u8
 msrt_http_headers_clone(h: *const Obj) -> *mut Obj

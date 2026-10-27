@@ -115,6 +115,8 @@ pub struct Program {
     /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
     /// the ownership pass ran (every program that type checks).
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
+    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
+    pub implicit_closes: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
@@ -124,6 +126,9 @@ pub struct Program {
     /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
     /// identity. Filled together with `borrows`.
     pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
+    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
+    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -929,6 +934,12 @@ impl Checker {
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
                 for method in &i.methods {
+                    for param in method.func.params.iter().filter(|p| p.mutable) {
+                        self.type_error(
+                            param.pos,
+                            "an interface operation cannot take a `var` parameter, only a `var` receiver; return the new value, or pass a type that holds the state",
+                        );
+                    }
                     for param in &method.func.params {
                         let Some(default) = &param.default else {
                             continue;

@@ -11,6 +11,23 @@ fn word(chunk: &[u8]) -> u64 {
     ])
 }
 
+/// Appends `s` to `buf`; up to 16 bytes with room to spare are two overlapping word copies
+/// rather than a `memcpy` call, which dominates writing many short names and numbers.
+#[inline(always)]
+pub fn push_short(buf: &mut crate::stdalloc::vec::Vec<u8>, s: &[u8]) {
+    let n = s.len();
+    if n <= 16 && buf.capacity() - buf.len() >= n {
+        // SAFETY: `n` bytes of spare capacity are writable, `s` has `n` readable bytes, and a
+        // `&mut Vec` cannot alias `s`; the length grows only over the bytes just written.
+        unsafe {
+            crate::vec::copy_short(s.as_ptr(), buf.as_mut_ptr().add(buf.len()), n);
+            buf.set_len(buf.len() + n);
+        }
+    } else {
+        buf.extend_from_slice(s);
+    }
+}
+
 /// The index of the first byte at or after `i` that a JSON string must escape (`"`, `\` or a
 /// control character).
 #[inline]
@@ -81,13 +98,27 @@ pub fn json_special(b: &[u8], mut i: usize) -> Option<usize> {
         i += 8;
     }
     while let Some(&c) = b.get(i) {
-        if c == b'"' || c == b'\\' || c < 0x20 {
+        if JSON_ESCAPE[usize::from(c)] {
             return Some(i);
         }
         i += 1;
     }
     None
 }
+
+/// Bytes a JSON string must escape; short tails use it because one load per byte beats three
+/// compares.
+static JSON_ESCAPE: [bool; 256] = {
+    let mut t = [false; 256];
+    let mut c = 0;
+    while c < 0x20 {
+        t[c] = true;
+        c += 1;
+    }
+    t[b'"' as usize] = true;
+    t[b'\\' as usize] = true;
+    t
+};
 
 /// The index of the first byte at or after `i` that is not a space (`b.len()` when none).
 #[inline]

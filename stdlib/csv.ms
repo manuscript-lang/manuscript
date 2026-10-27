@@ -1,4 +1,5 @@
-from "@std/string.ms" import StringBuilder, from_scalars
+from "@std/string.ms" import StringBuilder
+from "@std/bytes.ms" import Bytes
 from "@std/collections.ms" import range
 
 # Errors returned for malformed CSV input or configured size limits.
@@ -32,16 +33,13 @@ export def parse(
     let valid = check_options(options)
     if valid.is_error(): return error(valid.err())
 
+    let bytes = text.to_bytes()
+    let total = bytes.length()
     var reader = Reader(
-        lines: text.split("\n"), delimiter: options.delimiter.scalar_values() [0],
-        next_line: 0, total_lines: 0
+        bytes: bytes, total: total, delimiter: options.delimiter.scalar_values() [0],
+        delimiter_text: options.delimiter.clone(), at: 0, quote: -1, delimiter_at: -1,
+        line_at: -1
     )
-
-    # A final empty piece after the last newline is not a line.
-    var count = reader.lines.length()
-    if count > 0 and reader.lines[count - 1] == "": count -= 1
-    reader.total_lines = count
-
     var rows = List[List[String]]()
     var cells = 0
 
@@ -87,114 +85,129 @@ def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
 
     return ok(())
 
-# Input split at LF; a record may span several lines when a quoted cell holds a newline.
+# The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
+# after the cursor, or total when there is none; they are searched again only once passed.
 type Reader:
-    lines: List[String]
+    bytes: Bytes
+    total: Int
     delimiter: Int
-    next_line: Int
-    total_lines: Int
+    delimiter_text: String
+    at: Int
+    quote: Int
+    delimiter_at: Int
+    line_at: Int
 
-def text_of(scalars: List[Int]) -> String:
-    if let text = from_scalars(scalars): return text
+def next_quote(var reader: Reader, from: Int) -> Int:
+    if reader.quote < from: reader.quote = reader.bytes.index_of_byte(34, from).get(
+        reader.total
+    )
+    return reader.quote
+
+def next_delimiter(var reader: Reader, from: Int) -> Int:
+    if reader.delimiter_at < from: reader.delimiter_at = reader.bytes.index_of_byte(
+        reader.delimiter, from
+    ).get(reader.total)
+    return reader.delimiter_at
+
+def next_line(var reader: Reader, from: Int) -> Int:
+    if reader.line_at < from: reader.line_at = reader.bytes.index_of_byte(10, from).get(
+        reader.total
+    )
+    return reader.line_at
+
+def text_between(reader: Reader, start: Int, end: Int) -> String:
+    if let text = reader.bytes.decode_utf8_range(start, end): return text
 
     return ""
 
-# One line without its CR terminator, as scalars.
-type Line:
-    cells: List[Int]
-    length: Int
-    ended: Bool
+# The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
+def line_end_after(reader: Reader, at: Int) -> Int:
+    if at >= reader.total: return at
 
-def take_line(var reader: Reader) -> Optional[Line]:
-    if reader.next_line >= reader.total_lines: return none
+    let byte = reader.bytes[at]
+    if byte == 10: return at + 1
+    if byte == 13 and at + 1 >= reader.total: return at + 1
+    if byte == 13 and reader.bytes[at + 1] == 10: return at + 2
 
-    let cells = reader.lines[reader.next_line].scalar_values()
-    var length = cells.length()
-    if length > 0 and cells[length - 1] == 13: length -= 1
-    reader.next_line += 1
-    return some(
-        Line(
-            cells: cells, length: length,
-            ended: reader.next_line < reader.lines.length()
-        )
-    )
+    return at
 
 # Reads the next record, skipping empty lines; none at end of input.
 def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
-    var first = take_line(var reader)
-
     while True:
-        if let candidate = first:
-            if candidate.length > 0: break
+        let skipped = line_end_after(reader, reader.at)
+        if skipped == reader.at: break
 
-            first = take_line(var reader)
-        else:
-            return ok(none)
+        reader.at = skipped
 
-    var line = first.get().clone()
+    if reader.at >= reader.total: return ok(none)
+
+    # A line without quotes is one record whose cells are the delimiter-separated pieces.
+    let line = next_line(var reader, reader.at)
+
+    if next_quote(var reader, reader.at) > line:
+        var last = line
+        if last > reader.at and reader.bytes[last - 1] == 13: last -= 1
+
+        let text = text_between(reader, reader.at, last)
+        reader.at = line
+        if line < reader.total: reader.at = line + 1
+        return ok(some(text.split(reader.delimiter_text)))
+
     var row = List[String]()
-    var cell = List[Int]()
-    var at = 0
 
     while True:
-        if at >= line.length or line.cells[at] != 34:
-            var stop = at
+        var cell = ""
+        var at = reader.at.to_int()
 
-            while stop < line.length and line.cells[stop] != reader.delimiter:
-                if line.cells[stop] == 34: return error(CsvError.InvalidData)
+        if at < reader.total and reader.bytes[at] == 34:
+            at += 1
 
-                stop += 1
+            while True:
+                let close = next_quote(var reader, at)
+                if close >= reader.total: return error(CsvError.InvalidData)
 
-            for index in range(at, stop):
-                cell.append(line.cells[index])
-            row.append(text_of(cell))
-            cell = List[Int]()
-            if stop >= line.length: break
+                cell = cell.concat(text_between(reader, at, close))
+                at = close + 1
 
-            at = stop + 1
-            continue
+                if at < reader.total and reader.bytes[at] == 34:
+                    cell = cell.concat("\"")
+                    at += 1
+                    continue
 
-        at += 1
+                break
 
-        while True:
-            var close = at
-            while close < line.length and line.cells[close] != 34: close += 1
+            if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
 
-            if close >= line.length:
-                if not line.ended: return error(CsvError.InvalidData)
+            let ended = line_end_after(reader, at)
 
-                for index in range(at, line.length):
-                    cell.append(line.cells[index])
-                cell.append(10)
-
-                let following = take_line(var reader)
-                if not following.is_some(): return error(CsvError.InvalidData)
-
-                line = following.get().clone()
-                at = 0
-                continue
-
-            for index in range(at, close):
-                cell.append(line.cells[index])
-            at = close + 1
-
-            if at >= line.length:
-                row.append(text_of(cell))
+            if at >= reader.total or ended > at:
+                row.append(cell)
+                reader.at = ended
                 return ok(some(row))
 
-            if line.cells[at] == 34:
-                cell.append(34)
-                at += 1
-                continue
+            if reader.bytes[at] != reader.delimiter: return error(CsvError.InvalidData)
 
-            if line.cells[at] != reader.delimiter: return error(CsvError.InvalidData)
+            row.append(cell)
+            reader.at = at + 1
+            continue
 
-            at += 1
-            row.append(text_of(cell))
-            cell = List[Int]()
-            break
+        let stop = next_delimiter(var reader, at)
+        let newline = next_line(var reader, at)
+        var end = stop
+        if newline < stop: end = newline
+        if next_quote(var reader, at) < end: return error(CsvError.InvalidData)
 
-    return ok(some(row))
+        if end < stop or stop >= reader.total:
+            # The cell closes the record; drop the CR of a CRLF ending.
+            var last = end
+            if last > at and reader.bytes[last - 1] == 13: last -= 1
+            row.append(text_between(reader, at, last))
+            reader.at = end
+            if end < reader.total: reader.at = end + 1
+            return ok(some(row))
+
+        row.append(text_between(reader, at, end))
+        reader.at = end + 1
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.

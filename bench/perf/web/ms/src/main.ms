@@ -118,7 +118,7 @@ def serve_here(port: String, dir: String, ready: Bool) -> Int:
         with let server = acquired:
             if ready:
                 var ch = worker_channel[Int, Int]()
-                ch.send(1)
+                let _sent = ch.send(1)
 
             let _ignored = server.wait()
             return 0

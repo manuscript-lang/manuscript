@@ -72,9 +72,11 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         // checked for ownership and exclusivity.
         let own = program.hir().ownership();
         program.borrows = Rc::new(own.borrows);
+        program.implicit_closes = Rc::new(own.closes);
         program.getter_borrows = Rc::new(own.getters);
         program.lenders = Rc::new(own.lenders);
         program.borrowed_captures = Rc::new(own.borrowed_captures);
+        program.consumes = Rc::new(own.consumes);
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {

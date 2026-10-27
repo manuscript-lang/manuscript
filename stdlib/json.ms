@@ -96,13 +96,13 @@ impl JsonValue:
             case ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
 
-                return some(values.get(index))
+                return values.get(index)
             case _: return none
 
     # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
     def as_string() -> ref Optional[String]:
         match self:
-            case StringValue(value): return some(value)
+            case StringValue(value): return value
             case _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
@@ -121,19 +121,19 @@ impl JsonValue:
     # Returns a boolean value, or `none` for any other value.
     def as_bool() -> Optional[Bool]:
         match self:
-            case BoolValue(value): return some(value)
+            case BoolValue(value): return value
             case _: return none
 
     # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
     def as_list() -> ref Optional[List[JsonValue]]:
         match self:
-            case ArrayValue(values): return some(values)
+            case ArrayValue(values): return values
             case _: return none
 
     # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
     def as_map() -> ref Optional[Map[String, JsonValue]]:
         match self:
-            case ObjectValue(values): return some(values)
+            case ObjectValue(values): return values
             case _: return none
 
     # Returns True only for the Null case; a missing key or any other value returns False.
@@ -201,8 +201,10 @@ export def parse[T = JsonValue](
 #             case Deleted(id): return tagged("deleted", id)
 #
 # def tagged(kind: String, id: Int) -> JsonValue:
-#     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
-#     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue(f"{id}")))
+#     var fields = Map[String, JsonValue]()
+#     fields.add("type", JsonValue.StringValue(kind))
+#     fields.add("id", JsonValue.NumberValue(f"{id}"))
+#     return JsonValue.ObjectValue(fields)
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.

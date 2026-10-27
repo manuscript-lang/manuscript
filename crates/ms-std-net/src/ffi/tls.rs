@@ -4,8 +4,8 @@ use super::{ConnH, ListenerH, NetH, opt, report};
 use crate::error::{Status as _, TlsErr};
 use crate::tls::{self, TlsOptions};
 use ms_rt::ffi::{
-    Bytes, BytesArray, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList,
-    abi_record, native,
+    Bytes, BytesVec, ErrOut, ObjRef, Object, Out, RecList, StatusCode, Str, StringList, abi_record,
+    native,
 };
 
 abi_record! {
@@ -40,7 +40,7 @@ abi_record! {
         pub version: i64,
         pub cipher_suite: i64,
         pub alpn: Str,
-        pub peer_certificates: BytesArray,
+        pub peer_certificates: BytesVec,
         pub verified: u8,
     }
 }
@@ -120,7 +120,7 @@ native! {
             cipher_suite: d.cipher_suite,
             alpn: Str::new(&d.alpn),
             verified: u8::from(d.verified),
-            peer_certificates: BytesArray::new(&d.peer_certificates),
+            peer_certificates: BytesVec::new(&d.peer_certificates),
         })
     }
 
@@ -214,5 +214,18 @@ mod tests {
             let m = ms_rt::ffi::take_string(|o| msrt_tls_error_message(4, o));
             assert_eq!(m, "TLS: authentication failed");
         }
+    }
+}
+
+#[cfg(test)]
+mod layout_tests {
+    use super::*;
+
+    /// `TlsInfo` is `Int, Int, String, List[Bytes], Bool`: 8 + 8 + 16 + 24 bytes, then the flag.
+    #[test]
+    fn tls_info_wire_matches_the_record_the_compiler_reads() {
+        assert_eq!(core::mem::offset_of!(TlsInfoWire, peer_certificates), 32);
+        assert_eq!(core::mem::offset_of!(TlsInfoWire, verified), 56);
+        assert_eq!(core::mem::size_of::<TlsInfoWire>(), 64);
     }
 }

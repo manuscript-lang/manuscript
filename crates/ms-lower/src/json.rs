@@ -34,6 +34,27 @@ pub struct JsonJob {
     pub hir: Rc<ModuleHir>,
 }
 
+/// `name` as a JSON string literal, so a fixed member name is escaped once at compile time.
+fn json_quote(name: &str) -> String {
+    let mut out = String::with_capacity(name.len() + 2);
+    out.push('"');
+    for c in name.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < ' ' => out.push_str(&format!("\\u{:04x}", u32::from(c))),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 fn borrowed(ty: MTy) -> Param {
     Param {
         ty,
@@ -341,7 +362,7 @@ impl FnLower<'_> {
         } else if t.is_source_type("@std/net.ms", "Cidr") {
             Some((KIND_STRING, "msrt_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
-            Some((KIND_NUMBER, "msstd_decimal_literal", false))
+            Some((KIND_NUMBER, "msstd_decimal_parse", false))
         } else if t.is_std("BigInt") {
             Some((KIND_NUMBER, "msstd_bigint_parse", false))
         } else {
@@ -363,9 +384,6 @@ impl FnLower<'_> {
                 let has_max = self.b.bconst(true);
                 let max = self.b.iconst(10_000);
                 self.status_code(sym, &[text, radix, has_max, max, slot])?
-            } else if sym == "msstd_decimal_literal" {
-                self.call_runtime(sym, &[text, slot], MTy::UNIT)?;
-                self.b.iconst(0)
             } else {
                 self.status_code(sym, &[text, slot])?
             };
@@ -1055,8 +1073,8 @@ impl FnLower<'_> {
         } else {
             (ty.clone(), value)
         };
-        let key = self.b.str_lit(name);
-        self.jw("msrt_json_w_key", &[w, key])?;
+        let key = self.b.str_lit(&json_quote(name));
+        self.jw("msrt_json_w_key_quoted", &[w, key])?;
         let written = self.jencode_nested(&inner_ty, w, inner)?;
         self.jslot_or(w, written, &mut |_| Ok(()))?;
         self.b.br(after, &[]);
@@ -1165,8 +1183,8 @@ impl FnLower<'_> {
         for (i, c) in cases.iter().enumerate() {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
-            let name = self.b.str_lit(c.name.as_str());
-            self.jw("msrt_json_w_key", &[w, name])?;
+            let name = self.b.str_lit(&json_quote(c.name.as_str()));
+            self.jw("msrt_json_w_key_quoted", &[w, name])?;
             self.b.br(join, &[]);
         }
         self.b.seal_block(join);
@@ -1247,8 +1265,8 @@ impl FnLower<'_> {
                 self.jw("msrt_json_w_string", &[w, name])?;
             } else {
                 self.jw("msrt_json_w_begin_object", &[w])?;
-                let key = self.b.str_lit(c.name.as_str());
-                self.jw("msrt_json_w_key", &[w, key])?;
+                let key = self.b.str_lit(&json_quote(c.name.as_str()));
+                self.jw("msrt_json_w_key_quoted", &[w, key])?;
                 self.jw("msrt_json_w_begin_object", &[w])?;
                 for (j, f) in c.fields.iter().enumerate() {
                     let fv = self.b.alt_get(a, i as u32, j as u32, value);

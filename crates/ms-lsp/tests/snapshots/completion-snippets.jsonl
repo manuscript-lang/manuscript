@@ -1,5 +1,5 @@
 {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"codeActionProvider":{"codeActionKinds":["source.fixAll.manuscript","quickfix","source.organizeImports"]},"completionProvider":{"triggerCharacters":[".",":","/"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"inlayHintProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":true,"legend":{"tokenModifiers":[],"tokenTypes":["keyword","variable","number","string","comment","function","type","property","parameter","enumMember","typeParameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",",",":"]},"textDocumentSync":2,"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"manuscript","version":"0.1.0"}}}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-completion-snippets-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL113","message":"some(...) is redundant here: a plain value is wrapped where an Optional is expected; pass the value itself","range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-completion-snippets-PID/main.ms","version":1}}
 #large
 {"id":3,"jsonrpc":"2.0","result":null}
 #large
@@ -682,17 +682,17 @@
 {"id":681,"jsonrpc":"2.0","result":null}
 {"id":682,"jsonrpc":"2.0","result":[]}
 {"id":683,"jsonrpc":"2.0","result":null}
-{"id":684,"jsonrpc":"2.0","result":[]}
+#large
 {"id":685,"jsonrpc":"2.0","result":null}
 {"id":686,"jsonrpc":"2.0","result":[]}
 {"id":687,"jsonrpc":"2.0","result":null}
 {"id":688,"jsonrpc":"2.0","result":[]}
 {"id":689,"jsonrpc":"2.0","result":null}
-{"id":690,"jsonrpc":"2.0","result":[]}
+#large
 {"id":691,"jsonrpc":"2.0","result":null}
-{"id":692,"jsonrpc":"2.0","result":[]}
+{"id":692,"jsonrpc":"2.0","result":[{"detail":"Callable[[], Point]","filterText":"clone","insertTextFormat":2,"kind":2,"label":"clone","sortText":"00_clone","textEdit":{"newText":"clone()$0","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}},{"detail":"Callable[[], String]","filterText":"label","insertTextFormat":2,"kind":2,"label":"label","sortText":"00_label","textEdit":{"newText":"label()$0","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}},{"detail":"Callable[[], Int]","filterText":"norm","insertTextFormat":2,"kind":2,"label":"norm","sortText":"00_norm","textEdit":{"newText":"norm()$0","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}},{"detail":"Callable[[], String]","filterText":"to_string","insertTextFormat":2,"kind":2,"label":"to_string","sortText":"00_to_string","textEdit":{"newText":"to_string()$0","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}},{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}},{"detail":"Int","filterText":"y","insertTextFormat":1,"kind":5,"label":"y","sortText":"00_y","textEdit":{"newText":"y","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}}]}
 {"id":693,"jsonrpc":"2.0","result":null}
-{"id":694,"jsonrpc":"2.0","result":[]}
+{"id":694,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"x","insertTextFormat":1,"kind":5,"label":"x","sortText":"00_x","textEdit":{"newText":"x","range":{"end":{"character":32,"line":50},"start":{"character":31,"line":50}}}}]}
 {"id":695,"jsonrpc":"2.0","result":null}
 #large
 {"id":697,"jsonrpc":"2.0","result":null}
@@ -792,7 +792,7 @@
 {"id":791,"jsonrpc":"2.0","result":null}
 {"id":792,"jsonrpc":"2.0","result":[]}
 {"id":793,"jsonrpc":"2.0","result":null}
-{"id":794,"jsonrpc":"2.0","result":[]}
+#large
 {"id":795,"jsonrpc":"2.0","result":null}
 {"id":796,"jsonrpc":"2.0","result":[]}
 {"id":797,"jsonrpc":"2.0","result":null}
@@ -838,9 +838,9 @@
 {"id":837,"jsonrpc":"2.0","result":null}
 {"id":838,"jsonrpc":"2.0","result":[]}
 {"id":839,"jsonrpc":"2.0","result":null}
-{"id":840,"jsonrpc":"2.0","result":[]}
+#large
 {"id":841,"jsonrpc":"2.0","result":null}
-{"id":842,"jsonrpc":"2.0","result":[]}
+{"id":842,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"tick","insertTextFormat":1,"kind":6,"label":"tick","sortText":"00_tick","textEdit":{"newText":"tick","range":{"end":{"character":27,"line":58},"start":{"character":23,"line":58}}}}]}
 {"id":843,"jsonrpc":"2.0","result":null}
 {"id":844,"jsonrpc":"2.0","result":[]}
 {"id":845,"jsonrpc":"2.0","result":null}
@@ -936,9 +936,9 @@
 {"id":935,"jsonrpc":"2.0","result":null}
 {"id":936,"jsonrpc":"2.0","result":[]}
 {"id":937,"jsonrpc":"2.0","result":null}
-{"id":938,"jsonrpc":"2.0","result":[]}
+#large
 {"id":939,"jsonrpc":"2.0","result":null}
-{"id":940,"jsonrpc":"2.0","result":[]}
+{"id":940,"jsonrpc":"2.0","result":[{"detail":"String","filterText":"text","insertTextFormat":1,"kind":6,"label":"text","sortText":"00_text","textEdit":{"newText":"text","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}},{"additionalTextEdits":[{"newText":"from \"@std/core.ms\" import TextError\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"TextError — @std/core.ms","documentation":{"kind":"markdown","value":"An error that carries only intentional text, for callers that have no domain error to return."},"filterText":"TextError","insertTextFormat":1,"kind":7,"label":"TextError","sortText":"04_TextError","textEdit":{"newText":"TextError","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}},{"additionalTextEdits":[{"newText":"from \"@std/logcore.ms\" import object_text\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[String], String] — @std/logcore.ms","documentation":{"kind":"markdown","value":"Returns stringified JSON as an object text: an object is unchanged, anything else sits under `data`."},"filterText":"object_text","insertTextFormat":2,"kind":3,"label":"object_text","sortText":"04_object_text","textEdit":{"newText":"object_text(${1:text})$0","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}}]}
 {"id":941,"jsonrpc":"2.0","result":null}
 {"id":942,"jsonrpc":"2.0","result":[]}
 {"id":943,"jsonrpc":"2.0","result":null}

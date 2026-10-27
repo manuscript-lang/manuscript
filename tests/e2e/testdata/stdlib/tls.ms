@@ -191,6 +191,12 @@ test "raw TLS listeners and clients handshake and report negotiated details":
             try expect_equal(info.alpn, "http/1.1")
             try expect_false(not info.verified)
             try expect_equal(info.peer_certificates.length(), 1)
+            try expect_false(info.peer_certificates[0].length() < 100)
+
+            var more = info.peer_certificates.clone()
+            more.append(more[0].clone())
+            try expect_equal(more.length(), 2)
+            try expect_equal(more[1].length(), more[0].length())
 
         let served = try group.results()
         try expect_equal(served[0], 1)

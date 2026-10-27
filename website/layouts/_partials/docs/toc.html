@@ -1,3 +1,3 @@
 <div class="toc-label">On this page</div>
 {{ .TableOfContents }}
-<div class="toc-help"><p>Help improve these docs</p>{{ with .File }}<a href="https://github.com/manuscript-lang/manuscript/edit/main/documentation/{{ .Path }}">Edit this page {{ partial "docs/external-icon" . }}</a>{{ end }}<a href="https://github.com/manuscript-lang/manuscript/issues">Report an issue {{ partial "docs/external-icon" . }}</a></div>
+<div class="toc-help"><p>Help improve these docs</p>{{ $edit := .Params.edit_source }}{{ if not $edit }}{{ with .File }}{{ $edit = printf "documentation/%s" .Path }}{{ end }}{{ end }}{{ with $edit }}<a href="https://github.com/manuscript-lang/manuscript/edit/main/{{ . }}">Edit this page {{ partial "docs/external-icon" $ }}</a>{{ end }}<a href="https://github.com/manuscript-lang/manuscript/issues">Report an issue {{ partial "docs/external-icon" . }}</a></div>

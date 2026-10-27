@@ -162,6 +162,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::GlobalSet
         | Op::SharedNew
         | Op::AltUnbox
+        | Op::AltRelease
         | Op::OptUnbox => one(0),
         Op::Put => one(1),
         Op::DropIf => one(1),
@@ -780,7 +781,24 @@ impl Verifier<'_> {
                     "alt.tag takes an alternative and yields int",
                 )
             }
-            Op::AltGet | Op::AltUnbox => {
+            Op::AltRelease => {
+                arity(1)?;
+                let Imm::AltMask(a, c, _) = inst.imm else {
+                    return Err("missing case mask".into());
+                };
+                let case = m
+                    .alts
+                    .get(a.index())
+                    .and_then(|x| x.cases.get(c as usize))
+                    .ok_or("bad case")?;
+                want(
+                    case.fields.len() <= 32
+                        && matches!(m.types.kind(t(0)), TyKind::Alt(x) if *x == a)
+                        && res.is_none(),
+                    "alt.release takes an alternative with at most 32 payload fields",
+                )
+            }
+            Op::AltGet | Op::AltUnbox | Op::AltTake => {
                 arity(1)?;
                 let Imm::AltField(a, c, i) = inst.imm else {
                     return Err("missing case field".into());

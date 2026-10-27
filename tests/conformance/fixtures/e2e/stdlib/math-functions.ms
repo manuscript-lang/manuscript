@@ -128,7 +128,8 @@ test "sign and integer predicates":
     try expect_false(is_integer(nan()))
     try expect_true(is_safe_integer(9007199254740991.0))
     try expect_false(is_safe_integer(9007199254740992.0))
-    try expect_equal(0.1.to_float32().to_float64() == 0.1, False)
+    try expect_equal(0.1.to_float32().get(0.0).to_float64() == 0.1, False)
+    try expect_equal(1e300.to_float32(), none)
 
 test "numeric limits and constants match IEEE and JavaScript":
     try expect_true(infinity() > max_float())

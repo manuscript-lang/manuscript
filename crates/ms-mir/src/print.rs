@@ -356,6 +356,17 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
                 case.fields[f as usize].0
             )
         }
+        Imm::AltMask(a, c, mask) => {
+            let case = &m.alts[a.index()].cases[c as usize];
+            let mut s = format!("{}.{}", m.alts[a.index()].name, case.name);
+            for (i, (name, _)) in case.fields.iter().enumerate() {
+                if mask >> i & 1 == 1 {
+                    s.push('.');
+                    s.push_str(name);
+                }
+            }
+            s
+        }
         Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),
         Imm::Method(ifc, k) => format!(

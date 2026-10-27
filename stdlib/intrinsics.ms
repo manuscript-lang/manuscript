@@ -158,8 +158,8 @@ interface FloatOperations:
     def sign() -> Float
     # Truncates toward zero, or returns none for nonfinite values or Int overflow.
     def truncate_to_int() -> Optional[Int]
-    # Converts to Float32, rounding to the nearest binary32 value; large magnitudes become infinity.
-    def to_float32() -> Float32
+    # Converts to Float32, rounding to the nearest binary32 value. A finite value too large for Float32 returns none instead of becoming infinity; NaN and infinities convert unchanged.
+    def to_float32() -> Optional[Float32]
 
 # Conversion operations for Int8, a signed 8-bit integer.
 interface Int8Operations:

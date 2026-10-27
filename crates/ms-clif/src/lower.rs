@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -1949,7 +1949,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => vec![v[0]],
                 }
             }
-            Op::AltGet => {
+            Op::AltGet | Op::AltTake => {
                 let Imm::AltField(a, c, i) = inst.imm else {
                     unreachable!()
                 };
@@ -1972,6 +1972,45 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::AltRelease => {
+                let Imm::AltMask(a, c, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let case = self.alt_fields(a)[c as usize].clone();
+                let v = self.a(inst, 0);
+                let boxed = match &self.g.lay.shape(ty).alt {
+                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
+                    _ => None,
+                };
+                // Drop the payload fields that were not moved out, then free the block.
+                for (k, (fty, idx)) in case.iter().enumerate() {
+                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
+                        continue;
+                    }
+                    let fv: Vs = match &boxed {
+                        Some(block) => {
+                            let lay = mem_layout(block);
+                            idx.iter()
+                                .map(|j| {
+                                    self.b.ins().load(
+                                        leaf_type(block[*j]),
+                                        flags(),
+                                        v[0],
+                                        lay.offsets[*j] as i32,
+                                    )
+                                })
+                                .collect()
+                        }
+                        None => idx.iter().map(|j| v[*j]).collect(),
+                    };
+                    self.drop_value(*fty, &fv);
+                }
+                if boxed.is_some() {
+                    self.free(v[0]);
+                }
+                vec![]
             }
             Op::AltUnbox => {
                 let Imm::AltField(a, c, i) = inst.imm else {
@@ -2398,11 +2437,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
-                let slot = self.spill(&v, &leaves);
                 let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                let r = self.fref(thunk);
-                let fa = self.b.ins().func_addr(types::I64, r);
-                self.rt_call("msrt_cleanup_push", &[fa, slot])
+                if !self.g.m.funcs[c.index()].unwind_only {
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    self.rt_call("msrt_cleanup_push", &[fa, slot])
+                } else {
+                    // A closer that only acts while a guarded task unwinds: with no guard open the
+                    // registration is skipped, and its handle 0 makes the discard a no-op.
+                    let hdr = self.task_hdr();
+                    let guarded =
+                        self.b
+                            .ins()
+                            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
+                    let none = self.iconst(0);
+                    let push = self.b.create_block();
+                    let join = self.b.create_block();
+                    self.b.append_block_param(join, types::I64);
+                    self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
+                    self.b.switch_to_block(push);
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
+                    self.b.ins().jump(join, &[h.into()]);
+                    self.b.switch_to_block(join);
+                    self.b.block_params(join).to_vec()
+                }
             }
             Op::CleanupRun => {
                 let h = self.a(inst, 0)[0];
@@ -2899,6 +2961,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.string_eq_inline(f, inst);
         }
+        if self.g.m.externs[e.index()].name == "msrt_cleanup_discard" {
+            // Handle 0 is a registration skipped for lack of a guard.
+            let h = self.a(inst, 0)[0];
+            self.if_then(h, |s| {
+                s.call_extern_plain(f, inst);
+            });
+            return vec![];
+        }
         self.call_extern_plain(f, inst)
     }
 
@@ -2963,6 +3033,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             && args.len() == 2
             && self.g.lay.leaves(ret_ty).is_empty()
         {
+            if let Some(&lit) = self.str_lits.get(&inst.args[1].index()) {
+                let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
+                if (1..=16).contains(&bytes.len()) {
+                    return self.strbuilder_append_literal(id, args[0], args[1], &bytes);
+                }
+            }
             return self.strbuilder_append(id, args[0], args[1]);
         }
         if def.name == "msrt_bytes_append"
@@ -2995,6 +3071,70 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             self.load_leaves(out, 0, &leaves)
         }
+    }
+
+    /// `StringBuilder.append` of a literal of 1 to 16 bytes with room to spare is a few constant
+    /// stores and a length bump. The bytes are known here, so no length decode or copy loop
+    /// remains; a full buffer calls the runtime.
+    fn strbuilder_append_literal(
+        &mut self,
+        id: FuncId,
+        builder: Value,
+        text: Value,
+        bytes: &[u8],
+    ) -> Vs {
+        let n = bytes.len();
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_LEN_OFFSET as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
+        let next = self.b.ins().iadd_imm_s(len, n as i64);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let store = self.b.create_block();
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        self.b.ins().brif(room, store, &[], slow, &[]);
+        self.b.switch_to_block(store);
+        let data = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
+        let at = self.b.ins().iadd(data, len);
+        // Overlapping stores of the widest width that fits cover every length without a loop.
+        let unaligned = MemFlagsData::new().with_notrap();
+        let word = |from: usize, w: usize| {
+            let mut x = 0u64;
+            for (i, b) in bytes[from..from + w].iter().enumerate() {
+                x |= (*b as u64) << (8 * i);
+            }
+            x as i64
+        };
+        let (w, ty) = match n {
+            8..=16 => (8, types::I64),
+            4..=7 => (4, types::I32),
+            2..=3 => (2, types::I16),
+            _ => (1, types::I8),
+        };
+        let first = self.b.ins().iconst(ty, word(0, w));
+        self.b.ins().store(unaligned, first, at, 0);
+        if n > w {
+            let last = self.b.ins().iconst(ty, word(n - w, w));
+            self.b.ins().store(unaligned, last, at, (n - w) as i32);
+        }
+        self.b
+            .ins()
+            .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(slow);
+        self.call_id(id, &[builder, text]);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(join);
+        Vec::new()
     }
 
     /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length

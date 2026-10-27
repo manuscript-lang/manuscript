@@ -31,7 +31,7 @@ impl Queue[T]:
             self.items = live
             self.head = 0
 
-        self.items.append(some(value))
+        self.items.append(value)
         return True
 
     # Removes and returns the oldest value, or `none` when empty.
@@ -89,11 +89,11 @@ impl PriorityQueue[T]:
         self.heap.swap(a, b)
         self.orders.swap(a, b)
 
-    # Moves the entry at `at` up while it dequeues before its parent.
-    var def sift_up(start: Int) -> Unit:
+    # Moves the entry at `start` up, but no higher than `floor`, while it dequeues before its parent.
+    var def sift_up(start: Int, floor: Int) -> Unit:
         var at = start
 
-        while at > 0:
+        while at > floor:
             let parent = (at - 1) / 2
             if not self.before(at, parent):
                 break
@@ -101,7 +101,8 @@ impl PriorityQueue[T]:
             self.swap_entries(at, parent)
             at = parent
 
-    # Moves the entry at `start` down while a child dequeues before it.
+    # Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
+    # one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
     var def sift_down(start: Int) -> Unit:
         let size = self.heap.length()
         var at = start
@@ -113,11 +114,10 @@ impl PriorityQueue[T]:
 
             if child + 1 < size and self.before(child + 1, child):
                 child += 1
-            if not self.before(child, at):
-                break
-
             self.swap_entries(child, at)
             at = child
+
+        self.sift_up(at, start)
 
     # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var def enqueue(value: T) -> Bool:
@@ -132,7 +132,7 @@ impl PriorityQueue[T]:
         self.heap.append(value)
         self.orders.append(self.next_order)
         self.next_order += 1
-        self.sift_up(self.heap.length() - 1)
+        self.sift_up(self.heap.length() - 1, 0)
         return True
 
     # Removes and returns the next value by priority, or `none` when empty.
@@ -153,7 +153,7 @@ impl PriorityQueue[T]:
         if self.heap.length() == 0:
             return none
 
-        return some(self.heap.get(0).clone())
+        return self.heap.get(0).clone()
 
     # Returns the number of enqueued values, independent of their priorities.
     def length() -> Int:

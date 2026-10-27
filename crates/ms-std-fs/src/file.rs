@@ -99,6 +99,9 @@ impl Stream {
     pub fn write_at(&mut self, offset: i64, data: &[u8]) -> Res<()> {
         self.admit(Access::Write)?;
         offset_ok(offset)?;
+        if self.append {
+            return Err(Fail::invalid());
+        }
         pwrite_all(self.fd, data, offset)
             .map_err(|e| self.fail("write", e))
             .map(|_| ())
@@ -137,7 +140,7 @@ impl Stream {
     /// `write_vectors`: `offset == -1` appends at the current position.
     pub fn write_vectors(&mut self, buffers: &[&[u8]], mut offset: i64) -> Res<()> {
         self.admit(Access::Write)?;
-        if offset < -1 {
+        if offset < -1 || (offset >= 0 && self.append) {
             return Err(Fail::invalid());
         }
         for b in buffers {
@@ -208,25 +211,37 @@ impl Stream {
         sys::futimens(self.fd, accessed, modified).map_err(|e| self.fail("chtimes", e))
     }
 
-    /// `read_lines`: the remaining text split on `\n`, a trailing `\r` removed from each line.
+    /// `read_lines`: the remaining text split on `\n`, a trailing `\r` removed from each
+    /// terminated line; a final unterminated segment keeps a trailing `\r` as content.
     pub fn read_lines(&mut self, max_bytes: i64, max_lines: i64) -> Res<Vec<Vec<u8>>> {
+        if max_bytes < 0 || max_lines < 0 {
+            return Err(Fail::invalid());
+        }
         let data = self.read_file(max_bytes)?;
         if core::str::from_utf8(&data).is_err() {
             return Err(Fail::status(STATUS_INVALID_DATA));
         }
         let mut lines: Vec<&[u8]> = Vec::new();
+        let mut terminated = true;
         if !data.is_empty() {
             lines = data.split(|&c| c == b'\n').collect();
             if lines.last().is_some_and(|l| l.is_empty()) {
                 lines.pop();
+            } else {
+                terminated = false;
             }
             if lines.len() as i64 > max_lines {
                 return Err(Fail::status(STATUS_LIMIT_EXCEEDED));
             }
         }
+        let last = lines.len().wrapping_sub(1);
         Ok(lines
             .into_iter()
-            .map(|l| l.strip_suffix(b"\r").unwrap_or(l).to_vec())
+            .enumerate()
+            .map(|(i, l)| match i == last && !terminated {
+                true => l.to_vec(),
+                false => l.strip_suffix(b"\r").unwrap_or(l).to_vec(),
+            })
             .collect())
     }
 }
@@ -330,10 +345,43 @@ mod tests {
             h.read_lines(i64::MAX, i64::MAX).unwrap(),
             [b"LINE one".to_vec(), b"line two".to_vec(), b"last".to_vec()]
         );
+        let a = scratch();
+        let mut ah = open(&a, flags_of_mode(b"a+").unwrap() as i64, 0o600).unwrap();
+        ah.write(b"abc").unwrap();
+        assert_eq!(
+            ah.write_at(0, b"X").unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        assert_eq!(
+            ah.write_vectors(&[b"X"], 0).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        ah.write_vectors(&[b"d"], -1).unwrap();
+        ah.seek(0, 0).unwrap();
+        assert_eq!(ah.read_file(i64::MAX).unwrap(), b"abcd");
+        h.seek(0, 0).unwrap();
+        h.truncate(0).unwrap();
+        h.write(b"a\r\nb\r").unwrap();
+        h.seek(0, 0).unwrap();
+        assert_eq!(
+            h.read_lines(i64::MAX, i64::MAX).unwrap(),
+            [b"a".to_vec(), b"b\r".to_vec()]
+        );
+        h.seek(0, 0).unwrap();
+        h.truncate(0).unwrap();
+        h.write(b"LINE one\r\nline two\nlast").unwrap();
         assert_eq!(h.seek(0, 0).unwrap(), 0);
         assert_eq!(
             h.read_lines(i64::MAX, 2).unwrap_err().status,
             STATUS_LIMIT_EXCEEDED
+        );
+        assert_eq!(
+            h.read_lines(-1, i64::MAX).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        assert_eq!(
+            h.read_lines(i64::MAX, -1).unwrap_err().status,
+            STATUS_INVALID_INPUT
         );
         assert_eq!(h.seek(-1, 0).unwrap_err().status, STATUS_INVALID_INPUT);
         assert_eq!(h.stat().unwrap().size, 23);

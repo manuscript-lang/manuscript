@@ -148,6 +148,17 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             continue;
         }
         for finding in ms_tooling::lint::lint_modules(program) {
+            if request.fix
+                && let Some(fix) = &finding.fix
+            {
+                let file = finding.file.as_ref();
+                let path = if pathops::is_abs(file) || checked.source_root.is_empty() {
+                    file.to_string()
+                } else {
+                    pathops::join(&[&checked.source_root, file])
+                };
+                fixes.push((path, fix.clone()));
+            }
             let at = Position {
                 file: finding.file.to_string(),
                 line: finding.pos.line as usize,
@@ -158,6 +169,20 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 code: finding.code.to_string(),
                 message: finding.message,
                 position: selection.position(&checked.source_root, &at),
+                fix: finding.fix.as_ref().map(|fix| {
+                    let place = |pos: ms_driver::Pos| {
+                        selection.position(
+                            &checked.source_root,
+                            &Position {
+                                file: finding.file.to_string(),
+                                line: pos.line as usize,
+                                column: pos.column as usize,
+                                offset: pos.offset as usize,
+                            },
+                        )
+                    };
+                    super::fix_json(&place, fix)
+                }),
                 ..CommandDiagnostic::default()
             });
         }

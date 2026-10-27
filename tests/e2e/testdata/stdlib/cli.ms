@@ -157,6 +157,21 @@ test "help is generated for groups, leaves and the help word":
     let flag = (run(["serve", "--help"]) | try expect_ok)
     flag.path[0] | try expect_contains("Run the server")
 
+test "float flags reject NaN and infinities":
+    let ratio = Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
+    for text in ["NaN", "Infinity", "-Infinity"]:
+        (ratio.parse(["--ratio", text.clone()]) | try expect_error).message() | try expect_equal(
+            f"cli: flag ratio: {text} is not a number"
+        )
+
+    let _ = try expect_ok(ratio.parse(["--ratio", "1e5"]))
+    let bad_default = Command(
+        name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")]
+    )
+    (bad_default.parse([]) | try expect_error).message() | try expect_contains(
+        "default NaN does not fit"
+    )
+
 test "schema mistakes are reported before parsing":
     let duplicate = Command(
         name: "x",
@@ -224,3 +239,17 @@ test "a record that does not match the schema is reported when the handler runs"
                 "does not match"
             )
         case Help(_): return fail("help")
+
+test "help rows without text carry no trailing spaces":
+    let quiet = Command(
+        name: "t",
+        args: [Arg("file")],
+        children: [
+            Command(name: "sub"), Command(name: "other-long", about: "Other")
+        ]
+    )
+    let text = quiet.help() | try expect_some
+    text | try expect_contains("  sub        \n".trim_end() + "\n")
+    text | try expect_contains("  file\n")
+    for line in text.split("\n"):
+        line | try expect_equal(line.trim_end())

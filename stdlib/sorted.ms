@@ -13,8 +13,8 @@ export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
 
 # A map kept in ascending key order, so lookups by position (first, last, floor, ceiling, range) are as cheap as lookups by key.
 # Keys use their Comparable order; keys that compare equal are the same key. Replacing a key's value keeps the original key.
-# Written in Manuscript as a list of sorted chunks of at most 256 entries: get, contains, floor and ceiling take O(log n);
-# add and remove take O(log n) to find the spot plus a shift inside one 256-entry chunk, which stays well under a microsecond per operation up to millions of entries.
+# Written in Manuscript as a list of sorted chunks of at most 128 entries: get, contains, floor and ceiling take O(log n);
+# add and remove take O(log n) to find the spot plus a shift inside one 128-entry chunk, which stays well under a microsecond per operation up to millions of entries.
 # Use clone() for an independent deep copy. Use Map when order does not matter; its operations are O(1).
 export type SortedMap[K: Comparable & Clonable, V: Clonable]:
     # Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.
@@ -94,7 +94,7 @@ impl SortedMap[K, V]:
             at < self.key_chunks[c].length()
             and order(self.key_chunks[c].get(at), key) == 0
         ):
-            return some(self.value_chunks[c].get(at).clone())
+            return self.value_chunks[c].get(at).clone()
 
         return none
 
@@ -126,7 +126,7 @@ impl SortedMap[K, V]:
         self.size += 1
         if at == self.key_chunks[c].length() - 1:
             self.refresh(c)
-        if self.key_chunks[c].length() > 256:
+        if self.key_chunks[c].length() > 128:
             self.split(c)
 
     # Splits chunk `c` into two halves.
@@ -181,10 +181,8 @@ impl SortedMap[K, V]:
         if self.size == 0:
             return none
 
-        return some(
-            SortedEntry(
-                self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
         )
 
     # Returns the entry with the largest key, or none when empty.
@@ -194,10 +192,8 @@ impl SortedMap[K, V]:
 
         let c = self.key_chunks.length() - 1
         let at = self.key_chunks[c].length() - 1
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Removes and returns the entry with the smallest key, or none when empty.
@@ -227,10 +223,8 @@ impl SortedMap[K, V]:
         if at >= self.key_chunks[c].length():
             return none
 
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Returns the entry with the largest key that is at most `key`, or none.
@@ -244,11 +238,8 @@ impl SortedMap[K, V]:
             at < self.key_chunks[c].length()
             and order(self.key_chunks[c].get(at), key) == 0
         ):
-            return some(
-                SortedEntry(
-                    self.key_chunks[c].get(at).clone(),
-                    self.value_chunks[c].get(at).clone()
-                )
+            return SortedEntry(
+                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
             )
 
         if at == 0:
@@ -259,10 +250,8 @@ impl SortedMap[K, V]:
             at = self.key_chunks[c].length()
 
         at -= 1
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Returns a new list of the entries with `low` <= key < `high`, in ascending order.
@@ -362,42 +351,42 @@ impl SortedSet[T]:
     # Returns the smallest member, or none when empty.
     def first() -> Optional[T]:
         if let entry = self.members.first():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the largest member, or none when empty.
     def last() -> Optional[T]:
         if let entry = self.members.last():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Removes and returns the smallest member, or none when empty.
     var def pop_first() -> Optional[T]:
         if let entry = self.members.pop_first():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Removes and returns the largest member, or none when empty.
     var def pop_last() -> Optional[T]:
         if let entry = self.members.pop_last():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the smallest member that is at least `value`, or none.
     def ceiling(value: T) -> Optional[T]:
         if let entry = self.members.ceiling(value):
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the largest member that is at most `value`, or none.
     def floor(value: T) -> Optional[T]:
         if let entry = self.members.floor(value):
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 

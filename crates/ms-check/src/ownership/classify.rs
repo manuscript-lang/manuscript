@@ -19,6 +19,16 @@ pub enum Class {
     Resource,
 }
 
+/// Whether an interface declares the standard `close() -> Unit`, the test `with` applies.
+fn closes(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name == "close" && o.ty.params.is_empty() && o.ty.result_ty().id == "Unit")
+    })
+}
+
 /// Computes classes, caching nothing: types are small and shared.
 pub struct Classifier {
     closeable: HashSet<Name>,
@@ -52,6 +62,9 @@ impl Classifier {
                     Class::Move
                 }
             }
+            // A value of the interface itself; a record or result holding one stays Move, so
+            // handle wrappers whose copies share the end (channels) keep their semantics.
+            Kind::Contract if visiting.is_empty() && closes(t) => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
@@ -66,7 +79,7 @@ impl Classifier {
             let resource = t
                 .args
                 .first()
-                .is_some_and(|a| self.class_in(a, visiting) == Class::Resource);
+                .is_some_and(|a| self.class_in(a, &mut vec![t.id]) == Class::Resource);
             if resource {
                 Class::Resource
             } else {

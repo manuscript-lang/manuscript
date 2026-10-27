@@ -502,3 +502,52 @@ fn a_long_run_of_copy_then_drop_pairs_becomes_moves_in_linear_time() {
     assert_eq!(count(&m, "main", Op::Copy), 0);
     assert_eq!(count(&m, "main", Op::Drop), n);
 }
+
+/// A loop that rebuilds `head` from itself: an unoptimized build must move it, not deep-copy it
+/// on every step (quadratic in the iteration count).
+const REBUILD: &str = r#"module "main"
+file 0 "t.ms"
+record Link { next: opt<Link>, id: int }
+entry @main
+
+fn @main() -> int export {
+b0:
+  %0: opt<Link> = opt.none
+  %2: int = iconst 0
+  %3: Link = rec.new Link %0, %2
+  %4: int = iconst 1
+  %5: int = iconst 5
+  %6: int = iconst 1
+  br b1(%4, %3)
+b1(%7: int, %8: own Link):
+  %9: bool = icmp.lt %7, %5
+  br_if %9, b2(), b4()
+b2():
+  %10: Link = copy %8
+  %11: opt<Link> = opt.some %10
+  %12: Link = rec.new Link %11, %7
+  drop %8
+  br b3()
+b3():
+  %13: int = iadd %7, %6
+  br b1(%13, %12)
+b4():
+  %14: int = rec.get Link.id %8
+  drop %8
+  ret %14
+}
+"#;
+
+#[test]
+fn an_unoptimized_build_moves_a_value_rebuilt_from_itself() {
+    let mut m = ms_mir::parse::parse_module(REBUILD).expect("parse");
+    ms_mir::opt::optimize(&mut m, ms_mir::opt::Level::None, true);
+    let f = &m.funcs[m.func_by_name("main").expect("main").index()];
+    let copies = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.insts)
+        .filter(|i| i.op == ms_mir::ir::Op::Copy)
+        .count();
+    assert_eq!(copies, 0);
+}

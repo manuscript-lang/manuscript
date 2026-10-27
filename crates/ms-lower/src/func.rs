@@ -146,10 +146,45 @@ fn instance_key(c: &Callable, subst: &Subst) -> String {
     key
 }
 
+/// The substitution entry marking an instance that takes its consumed parameters owned.
+pub(crate) const OWNED: &str = "$own";
+
 /// The substitution entry marking an instance that lends its `ref` result.
 pub(crate) const LENT: &str = "$lent";
 
 impl Cx {
+    /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
+    /// returns), for a plain function whose parameters all pass by value. Every other callable,
+    /// and every call through a function value or interface, uses the borrowed signature.
+    pub(crate) fn owned_mask(&self, c: &Callable) -> Option<Vec<bool>> {
+        if c.kind != CallableKind::Function || c.self_binding.is_some() {
+            return None;
+        }
+        let f = c.func.func()?;
+        if f.body.is_empty() || f.result_ref || !self.var_positions(c).is_empty() {
+            return None;
+        }
+        let key = (c.module.file, c.id());
+        if self.lenders.contains(&key) {
+            return None;
+        }
+        let mask = self.consumes.get(&key)?;
+        (mask.len() == c.parameters.len()).then(|| mask.clone())
+    }
+
+    /// The instance of `c` that takes the parameters `owned_mask` names owned.
+    pub(crate) fn function_owned(
+        &mut self,
+        m: &mut Module,
+        c: &Rc<Callable>,
+        subst: &Subst,
+        scope: ct::Name,
+    ) -> Result<FuncId, Error> {
+        let mut owned = subst.clone();
+        owned.insert(ct::n(OWNED), ct::primitive("owned"));
+        self.function_in(m, c, &owned, scope)
+    }
+
     /// The instance of `c` that returns its `ref` result as a borrow instead of a copy.
     pub(crate) fn function_lent(
         &mut self,
@@ -195,15 +230,20 @@ impl Cx {
         let mut params = Vec::new();
         let bindings: Vec<&BindingRef> = c.self_binding.iter().chain(c.parameters.iter()).collect();
         let vars = self.var_positions(c);
+        let owned_mask = subst
+            .contains_key(&ct::n(OWNED))
+            .then(|| self.owned_mask(c))
+            .flatten();
         for (i, b) in bindings.into_iter().enumerate() {
             let t = ct::sub(&b.ty, subst);
             let ty = self.lower_ty(m, &t)?;
             // A changed parameter travels as the address of a slot the callee takes the value
             // from and puts the final value back into.
             let ty = if vars.contains(&i) { MTy::PTR } else { ty };
+            let owned = owned_mask.as_ref().is_some_and(|mask| mask[i]);
             params.push(Param {
                 ty,
-                mode: Mode::Borrow,
+                mode: if owned { Mode::Own } else { Mode::Borrow },
             });
         }
         let result = ct::sub(&self.callable_result(c)?, subst);
@@ -823,6 +863,11 @@ impl<'a> FnLower<'a> {
             .cloned()
             .collect();
         let vars = self.cx.var_positions(c);
+        let owned_mask = self
+            .subst
+            .contains_key(&ct::n(OWNED))
+            .then(|| self.cx.owned_mask(c))
+            .flatten();
         if let ms_check::hir::Body::Block(stmts) = c.body() {
             self.slotted = crate::closure::slotted_in(self, stmts);
         }
@@ -856,6 +901,23 @@ impl<'a> FnLower<'a> {
                 );
                 self.slotify(b.uid);
                 self.var_slots.push(VarSlot { uid: b.uid, ptr: v });
+                continue;
+            }
+            if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
+                // The caller handed the value over: the callee owns it and drops it at scope end.
+                let ty = self.ty_of(v);
+                let var = self.b.declare_var(ty, Mode::Own);
+                self.b.def_var(var, v);
+                self.locals.insert(
+                    b.uid,
+                    Local {
+                        var,
+                        ty,
+                        slot: None,
+                    },
+                );
+                self.slotify(b.uid);
+                self.scopes.last_mut().expect("scope").push(b.uid);
                 continue;
             }
             let own_copy = mutated.contains(&b.uid) && self.needs_drop(self.ty_of(v));

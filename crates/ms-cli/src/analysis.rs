@@ -131,10 +131,12 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
         entries.push((
             entry.file_name().to_string_lossy().into_owned(),
             file_type.is_dir(),
+            // A symlink to a directory is skipped, even when its name ends in `.ms`.
+            file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir()),
         ));
     }
     entries.sort();
-    for (name, is_dir) in entries {
+    for (name, is_dir, linked_dir) in entries {
         let path = pathops::join(&[directory, &name]);
         if is_dir {
             if name.starts_with('.') || name == "vendor" || name == "node_modules" {
@@ -152,7 +154,7 @@ fn walk(directory: &str, files: &mut Vec<String>) -> Result<(), ProjectError> {
                 }
             }
             walk(&path, files)?;
-        } else if pathops::ext(&name) == ".ms" {
+        } else if !linked_dir && pathops::ext(&name) == ".ms" {
             files.push(path);
         }
     }

@@ -114,6 +114,19 @@ fn concat_onto_a_dying_string_appends_in_place() {
     assert_eq!(text.matches("drop").count(), 2, "{text}");
 }
 
+/// An unoptimized build also appends in place, so a loop that grows a string stays linear.
+#[test]
+fn an_unoptimized_build_appends_in_place() {
+    let mut m = parse_module(GROW).expect("parse");
+    opt::optimize(&mut m, opt::Level::None, true);
+    let text = print_module(&m);
+    assert_eq!(
+        text.matches("call.rt @msrt_string_append").count(),
+        1,
+        "{text}"
+    );
+}
+
 const INTERP: &str = r#"module "main"
 file 0 "a.ms"
 extern @msrt_string_concat(str, str) -> str

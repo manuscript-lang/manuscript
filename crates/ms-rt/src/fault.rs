@@ -17,9 +17,13 @@ pub struct Hdr {
     pub limit: usize,
     /// Non-zero (the signal number) once a stop was requested and not shielded.
     pub cancel: AtomicU8,
+    /// Non-zero while a guard (`msrt_guard_call`, `expect_fault`) is open on the task. Generated
+    /// code registers drop-only cleanups (see `ms_mir::unwind`) just then: with no guard a fault
+    /// or cancellation ends the process, which frees nothing. Sits in the padding after `cancel`.
+    pub guarded: AtomicU8,
     /// Nesting depth of the task's stop shields: like `shield`, but only SIGINT/SIGTERM is held
     /// back; a cancel aimed at the task itself (its group closed, its time limit passed) applies.
-    /// Sits in the padding after `cancel`, so the block stays 16 bytes.
+    /// Sits in the padding after `guarded`, so the block stays 16 bytes.
     pub stop_shield: core::sync::atomic::AtomicU16,
     /// Nesting depth of the task's cancellation shields. A signal handler on any thread reads it
     /// for the main isolate's running task, so it lives here and not in a thread-local.
@@ -31,6 +35,7 @@ impl Hdr {
         Hdr {
             limit,
             cancel: AtomicU8::new(0),
+            guarded: AtomicU8::new(0),
             shield: core::sync::atomic::AtomicU32::new(0),
             stop_shield: core::sync::atomic::AtomicU16::new(0),
         }
@@ -377,6 +382,7 @@ pub(crate) unsafe fn isolate_trap_child() {
     unsafe {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
+        (*cur_hdr()).guarded.store(0, Ordering::Relaxed);
         *FAULTING.ptr() = false;
         *PRIMARY.ptr() = None;
         (*SECONDARY.ptr()).clear();
@@ -1132,6 +1138,7 @@ pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: 
     let (name, hi) = match operation {
         0 => ("List.insert", len),
         1 => ("List.remove", len - 1),
+        3 => ("List.swap", len - 1),
         _ => ("List.set", len - 1),
     };
     if operation != 0 && len == 0 {
@@ -1304,6 +1311,34 @@ struct GuardFrame {
 crate::isolate_static! {
     static GUARDS: Vec<GuardFrame> = Vec::new();
 }
+/// Opens a guard frame and tells generated code the running task is guarded.
+///
+/// # Safety
+/// Single threaded access to the guard stack.
+unsafe fn guards_push(frame: GuardFrame) {
+    // SAFETY: single threaded runtime state.
+    unsafe {
+        (*GUARDS.ptr()).push(frame);
+        (*cur_hdr()).guarded.store(1, Ordering::Relaxed);
+    }
+}
+
+/// Closes the innermost guard frame.
+///
+/// # Safety
+/// Single threaded access to the guard stack.
+unsafe fn guards_pop() -> Option<GuardFrame> {
+    // SAFETY: single threaded runtime state.
+    unsafe {
+        let g = &mut *GUARDS.ptr();
+        let frame = g.pop();
+        (*cur_hdr())
+            .guarded
+            .store(u8::from(!g.is_empty()), Ordering::Relaxed);
+        frame
+    }
+}
+
 /// Length of the cleanup stack below the innermost guard (0 outside guards).
 #[inline]
 fn guard_base() -> usize {
@@ -1329,9 +1364,7 @@ fn guard_active() -> bool {
 fn guard_exit(status: u8, message: Vec<u8>) -> ! {
     // SAFETY: single threaded access; the frame belongs to a live `msrt_guard_call`.
     unsafe {
-        let f = (*GUARDS.ptr())
-            .pop()
-            .unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
+        let f = guards_pop().unwrap_or_else(|| fatal(b"runtime invariant: no guard"));
         *FAULTING.ptr() = false;
         *UNWIND_DROPS.ptr() = false;
         (*cur_hdr()).limit = f.limit;
@@ -1367,7 +1400,7 @@ fn guard_exit(status: u8, message: Vec<u8>) -> ! {
 pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
     // SAFETY: single threaded runtime state.
     unsafe {
-        (*GUARDS.ptr()).push(GuardFrame {
+        guards_push(GuardFrame {
             jmp: buf as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
@@ -1386,7 +1419,7 @@ pub(crate) unsafe fn push_trap_guard(buf: *mut usize) {
 pub(crate) unsafe fn pop_trap_guard() {
     // SAFETY: single threaded runtime state.
     unsafe {
-        (*GUARDS.ptr()).pop();
+        guards_pop();
     }
 }
 
@@ -1557,7 +1590,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
             *msg_out = crate::string::NO_STR;
         }
         let mut slot: usize = 0;
-        (*GUARDS.ptr()).push(GuardFrame {
+        guards_push(GuardFrame {
             jmp: core::ptr::addr_of_mut!(slot) as usize,
             cleanups: (*CLEANUPS.ptr()).len(),
             limit: (*cur_hdr()).limit,
@@ -1569,7 +1602,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         {
             let r = msrt_guard_enter(core::ptr::addr_of_mut!(slot), code, data);
             if r == 0 {
-                (*GUARDS.ptr()).pop();
+                guards_pop();
                 return GUARD_OK;
             }
             if !msg_out.is_null() {
@@ -1585,7 +1618,7 @@ pub unsafe extern "C-unwind" fn msrt_guard_call(
         {
             let limit = (*cur_hdr()).limit;
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| code(data)));
-            (*GUARDS.ptr()).pop();
+            guards_pop();
             match r {
                 Ok(()) => GUARD_OK,
                 Err(e) => {
@@ -1613,6 +1646,7 @@ pub fn reset_for_tests() {
     unsafe {
         (*CLEANUPS.ptr()).clear();
         (*GUARDS.ptr()).clear();
+        (*cur_hdr()).guarded.store(0, Ordering::Relaxed);
         *FAULTING.ptr() = false;
         SHIELD.set(0);
         (*SECONDARY.ptr()).clear();
@@ -1704,6 +1738,10 @@ mod tests {
         assert_eq!(
             core::mem::offset_of!(Hdr, cancel),
             ms_rt_abi::symbols::ISOLATE_HDR_CANCEL as usize,
+        );
+        assert_eq!(
+            core::mem::offset_of!(Hdr, guarded),
+            ms_rt_abi::symbols::ISOLATE_HDR_GUARDED as usize,
         );
         assert_eq!(core::mem::size_of::<Hdr>(), 16);
     }
@@ -1860,7 +1898,7 @@ mod tests {
             *STACK_HI.ptr() = 1000;
             (*cur_hdr()).limit = 200;
             (*CLEANUPS.ptr()).push((0, 0));
-            (*GUARDS.ptr()).push(GuardFrame {
+            guards_push(GuardFrame {
                 jmp: 0,
                 cleanups: 1,
                 limit: 200,

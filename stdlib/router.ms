@@ -52,7 +52,7 @@ impl RouteParams:
     # Returns the text captured for `name`, or none when the pattern has no such parameter.
     def get(name: String) -> Optional[String]:
         if let index = self.names.index_of(name):
-            return some(self.values[index].clone())
+            return self.values[index].clone()
 
         return none
 
@@ -294,8 +294,8 @@ def segment_of(part: String) -> Segment:
 def segment_name(segment: Segment) -> Optional[String]:
     match segment:
         case Literal(_): return none
-        case Param(name): return some(name.clone())
-        case Rest(name): return some(name.clone())
+        case Param(name): return name.clone()
+        case Rest(name): return name.clone()
 
 def valid_segment(segment: Segment, names: List[String], last: Bool) -> Bool:
     match segment:
@@ -346,7 +346,7 @@ def lookup(routes: List[Route], method: String, parts: List[String]) -> Lookup:
                     or (fallback and route.method == method)
                 )
             ):
-                found = some(index)
+                found = index
                 fallback = route.method != method
                 params = RouteParams(names: names_of(route.segments), values: captured)
 
@@ -373,14 +373,14 @@ def capture(segments: List[Segment], parts: List[String]) -> Optional[List[Strin
     for entry in segments.entries():
         if take_rest(entry.value):
             values.append(parts.drop(entry.index).join("/"))
-            return some(values)
+            return values
 
         if entry.index >= parts.length(): return none
         if not accepts(entry.value, parts[entry.index], var values): return none
 
     if parts.length() != segments.length(): return none
 
-    return some(values)
+    return values
 
 def take_rest(segment: Segment) -> Bool:
     match segment:
@@ -482,7 +482,7 @@ def finish(
     if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
 
     let response = text(405 if method != "OPTIONS" else 204, "")
-    try response.headers.append("Allow", allow_text(found.allow).to_bytes())
+    try response.headers.append("Allow", allow_text(found.allow))
     return reply(exchange, response)
 
 # Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
@@ -500,7 +500,7 @@ impl Router:
         let state = share(
             TestState(
                 status: 0, sent: False, complete: False, closed: False, head: headers(),
-                body: BytesBuilder(), unread: some(request.body.clone())
+                body: BytesBuilder(), unread: request.body.clone()
             )
         )
         let exchange = TestExchange(request: request.clone(), state: state)
@@ -575,20 +575,16 @@ impl HttpExchange for TestExchange:
                 let n = max if max < bytes.length() else bytes.length()
 
                 if n < bytes.length():
-                    guard.value.unread = some(bytes.slice(n, bytes.length()).get())
-                return ok(some(bytes.slice(0, n).get()))
+                    guard.value.unread = bytes.slice(n, bytes.length()).get()
+                return ok(bytes.slice(0, n).get())
 
             return ok(none)
 
     def send_headers(status: Int, headers: HttpHeaders) -> Result[Unit, HttpError]:
         if status < 200 or status > 599: return error(HttpError.InvalidInput)
-        if headers.values("Content-Length").is_some(): return error(
-            HttpError.InvalidInput
-        )
-        if headers.values("Transfer-Encoding").is_some(): return error(
-            HttpError.InvalidInput
-        )
-        if headers.values("Connection").is_some(): return error(HttpError.InvalidInput)
+        if headers.contains("Content-Length"): return error(HttpError.InvalidInput)
+        if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
+        if headers.contains("Connection"): return error(HttpError.InvalidInput)
 
         with var guard = lock(self.state):
             if guard.value.closed: return error(HttpError.Closed)
@@ -664,8 +660,8 @@ def snapshot(state: Shared[TapState]) -> TapState:
 def with_extra(sent: HttpHeaders, extra: HttpHeaders) -> HttpHeaders:
     let all = sent.clone()
     for name in extra.names():
-        if all.values(name).is_none():
-            for value in extra.values(name).get([]):
+        if not all.contains(name):
+            for value in extra.values(name):
                 all.append(name, value).get(())
     return all
 
@@ -732,17 +728,15 @@ def with_request_id(
     next: Callable[[HttpExchange], Result[Unit, HttpError]]
 ) -> Result[Unit, HttpError]:
     let request = exchange.headers()
-    let given = try request.text("X-Request-Id")
-    var id = ""
-    if let values = given: id = values.first().get("")
+    var id = request.values("X-Request-Id").first().get("")
 
     if not usable_id(id):
         id = try new_id()
         request.remove("X-Request-Id")
-        try request.append("X-Request-Id", id.to_bytes())
+        try request.append("X-Request-Id", id)
 
     let extra = headers()
-    try extra.append("X-Request-Id", id.to_bytes())
+    try extra.append("X-Request-Id", id)
     return next(new_tap(exchange, extra))
 
 def usable_id(id: String) -> Bool:

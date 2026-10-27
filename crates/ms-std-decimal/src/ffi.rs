@@ -81,6 +81,13 @@ native! {
             .into()
     }
 
+    /// The Decimal of runtime text, or `InvalidInput` when it is malformed or not exactly representable.
+    fn msstd_decimal_parse(text: &str) -> Result<DecRec, RoundFail> {
+        Dec::parse(text)
+            .map(DecRec::from)
+            .ok_or(RoundFail::InvalidInput)
+    }
+
     fn msstd_decimal_from_int(n: i64) -> out DecRec {
         Dec::from_int(n).into()
     }
