@@ -427,7 +427,7 @@ mod imp {
                     crate::dbgf!("[wd] {i} base={base:x} pc=+{:x} sp={sp:x}", pc.wrapping_sub(base));
                     for (n, w) in words.iter().enumerate() {
                         let off = w.wrapping_sub(base);
-                        if off < 0x4000000 {
+                        if off < 0x10000000 {
                             crate::dbgf!("[wd]   +{n} ret=+{off:x}");
                         }
                     }
