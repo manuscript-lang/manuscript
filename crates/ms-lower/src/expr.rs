@@ -174,7 +174,7 @@ impl<'a> FnLower<'a> {
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
         let t = self.ety(e);
         match t.id.as_str() {
-            "Int" | "Int8" | "Int16" | "Int32" | "Int64" => {
+            "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
                 let n: i128 = parse_int(text)
                     .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
                 let n = if negate { -n } else { n };
