@@ -239,3 +239,17 @@ test "a record that does not match the schema is reported when the handler runs"
                 "does not match"
             )
         case Help(_): return fail("help")
+
+test "help rows without text carry no trailing spaces":
+    let quiet = Command(
+        name: "t",
+        args: [Arg("file")],
+        children: [
+            Command(name: "sub"), Command(name: "other-long", about: "Other")
+        ]
+    )
+    let text = quiet.help() | try expect_some
+    text | try expect_contains("  sub        \n".trim_end() + "\n")
+    text | try expect_contains("  file\n")
+    for line in text.split("\n"):
+        line | try expect_equal(line.trim_end())

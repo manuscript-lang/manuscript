@@ -265,11 +265,13 @@ def quoted(var flow: Flow) -> Result[String, YamlError]:
 def digit_text(text: String) -> Bool:
     if text == "": return False
 
-    for c in text.split(""):
-        if not "0123456789".contains(c): return False
+    for code in text.scalar_values():
+        if code < 48 or code > 57: return False
     return True
 
 def numeric(text: String) -> Bool:
+    if not "+-.0123456789".contains(text.get(0, default: "x")): return False
+
     var clean = text.clone()
     if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
         1, clean.scalar_length()
@@ -612,6 +614,11 @@ def boundary(text: String, colon: Bool) -> Int:
     if not colon and not text.contains("#"): return -1
     if not quoted_or_nested(text): return plain_boundary(text, colon)
 
+    # The first candidate also decides when no quote or bracket precedes it.
+    let first = plain_boundary(text, colon)
+    if first < 0: return -1
+    if not quoted_or_nested(text.slice_scalars(0, first).get("")): return first
+
     let chars = text.split("")
     var quote = ""
     var depth = 0
@@ -667,6 +674,7 @@ def uncomment(text: String) -> String:
     let index = boundary(text, colon: False)
 
     if index < 0:
+        if not (text.ends_with(" ") or text.ends_with("\t")): return text.clone()
         if not complete(text): return text.clone()
 
         return text.trim_end().clone()
@@ -687,10 +695,11 @@ def indentation(context: Context, text: String) -> Result[Int, YamlError]:
     return ok(spaces)
 
 def skip(var context: Context) -> Unit:
-    while (
-        context.index < context.lines.length()
-        and uncomment((context.lines.get(context.index))).trim() == ""
-    ): context.index = (context.index + 1)
+    while context.index < context.lines.length():
+        let line = context.lines.get(context.index).trim_start()
+        if line != "" and not line.starts_with("#"): break
+
+        context.index += 1
 
 # A document start or end marker at column zero ends a plain scalar that would otherwise continue.
 def document_marker(text: String) -> Bool:
@@ -741,6 +750,16 @@ def complete(text: String) -> Bool:
 def inline_value(var context: Context, text: String, depth: Int) -> Result[
     YamlValue, YamlError
 ]:
+    # A plain scalar needs no character scan: only its trimmed text and a count.
+    if (
+        text != ""
+        and not " \t\n['\"{*&!".contains(text.get(0))
+        and not text.contains(": ")
+        and plain_may_start(text.trim())
+    ):
+        try count(var context, depth)
+        return ok(plain(text.trim().clone()))
+
     var joined = text.clone()
     let line = context.index
     let structured = (
@@ -1046,7 +1065,8 @@ def sequence_items(
         let item = line.trim_start().slice(
             1, (line.trim_start().scalar_length())
         ).get("").trim_start()
-        let chain = nested_columns(line, base)
+        var chain: List[Int] = []
+        if item.starts_with("-"): chain = nested_columns(line, base)
 
         if chain.length() > 0:
             # A run of compact sequence indicators (`- - x`) opens one level per
@@ -1224,9 +1244,7 @@ def validate(var context: Context, value: YamlValue, depth: Int) -> Result[
         case ArrayValue(values):
             for item in values: try validate(var context, item, (depth + 1))
         case ObjectValue(values):
-            for entry in values: try validate(
-                var context, entry.value.clone(), (depth + 1)
-            )
+            for entry in values: try validate(var context, entry.value, (depth + 1))
         case _: ()
 
     return ok(())
@@ -1330,7 +1348,7 @@ export def parse(
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
     context.values = 0
-    try validate(var context, result.clone(), 1)
+    try validate(var context, result, 1)
     return ok(result)
 
 def hex4(code: Int) -> String:

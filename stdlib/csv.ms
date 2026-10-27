@@ -1,4 +1,4 @@
-from "@std/string.ms" import StringBuilder, from_scalars
+from "@std/string.ms" import StringBuilder
 from "@std/collections.ms" import range
 
 # Errors returned for malformed CSV input or configured size limits.
@@ -33,8 +33,8 @@ export def parse(
     if valid.is_error(): return error(valid.err())
 
     var reader = Reader(
-        lines: text.split("\n"), delimiter: options.delimiter.scalar_values() [0],
-        next_line: 0, total_lines: 0
+        lines: text.split("\n"), delimiter: options.delimiter.clone(), next_line: 0,
+        total_lines: 0
     )
 
     # A final empty piece after the last newline is not a line.
@@ -90,31 +90,18 @@ def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
 # Input split at LF; a record may span several lines when a quoted cell holds a newline.
 type Reader:
     lines: List[String]
-    delimiter: Int
+    delimiter: String
     next_line: Int
     total_lines: Int
 
-def text_of(scalars: List[Int]) -> String:
-    if let text = from_scalars(scalars): return text
-
-    return ""
-
-# One line without its CR terminator, as scalars.
-type Line:
-    cells: List[Int]
-    length: Int
-    ended: Bool
-
-def take_line(var reader: Reader) -> Optional[Line]:
+# The next line without its CR terminator; none at end of input.
+def take_line(var reader: Reader) -> Optional[String]:
     if reader.next_line >= reader.total_lines: return none
 
-    let cells = reader.lines[reader.next_line].scalar_values()
-    var length = cells.length()
-    if length > 0 and cells[length - 1] == 13: length -= 1
+    var text = reader.lines[reader.next_line].clone()
+    if text.ends_with("\r"): text = text.take(text.scalar_length() - 1)
     reader.next_line += 1
-    return Line(
-        cells: cells, length: length, ended: reader.next_line < reader.lines.length()
-    )
+    return some(text)
 
 # Reads the next record, skipping empty lines; none at end of input.
 def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
@@ -122,74 +109,71 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
 
     while True:
         if let candidate = first:
-            if candidate.length > 0: break
+            if candidate != "": break
 
             first = take_line(var reader)
         else:
             return ok(none)
 
-    var line = first.get().clone()
+    var text = first.get().clone()
+
+    # A line without quotes is one record whose cells are the delimiter-separated pieces.
+    if not text.contains("\""): return ok(some(text.split(reader.delimiter)))
+
+    # Splitting at quotes alternates unquoted and quoted pieces; an odd quote count means a
+    # quoted cell continues on the next line.
+    var pieces = text.split("\"")
+
+    while pieces.length() % 2 == 0:
+        let following = take_line(var reader)
+        if not following.is_some(): return error(CsvError.InvalidData)
+
+        text = f"{text}\n{following.get()}"
+        pieces = text.split("\"")
+
+    return ok(some(try record_of(pieces, reader.delimiter)))
+
+# The cells of one record split at its quotes: pieces at odd positions are inside quotes.
+def record_of(pieces: List[String], delimiter: String) -> Result[List[String], CsvError]:
+    let last = pieces.length() - 1
     var row = List[String]()
-    var cell = List[Int]()
-    var at = 0
+    var cell = ""
 
-    while True:
-        if at >= line.length or line.cells[at] != 34:
-            var stop = at
+    for index in range(0, pieces.length()):
+        let piece = pieces[index]
 
-            while stop < line.length and line.cells[stop] != reader.delimiter:
-                if line.cells[stop] == 34: return error(CsvError.InvalidData)
-
-                stop += 1
-
-            for index in range(at, stop):
-                cell.append(line.cells[index])
-            row.append(text_of(cell))
-            cell = List[Int]()
-            if stop >= line.length: break
-
-            at = stop + 1
+        if index % 2 == 1:
+            cell = cell.concat(piece)
             continue
 
-        at += 1
+        # A doubled quote is an empty unquoted piece between two quoted ones.
+        if index > 0 and index < last and piece == "":
+            cell = cell.concat("\"")
+            continue
 
-        while True:
-            var close = at
-            while close < line.length and line.cells[close] != 34: close += 1
+        if index > 0:
+            if piece == "":
+                row.append(cell.clone())
+                break
 
-            if close >= line.length:
-                if not line.ended: return error(CsvError.InvalidData)
+            if not piece.starts_with(delimiter): return error(CsvError.InvalidData)
 
-                for index in range(at, line.length):
-                    cell.append(line.cells[index])
-                cell.append(10)
+            row.append(cell.clone())
 
-                let following = take_line(var reader)
-                if not following.is_some(): return error(CsvError.InvalidData)
+        let parts = piece.split(delimiter)
+        var first = 0
+        if index > 0: first = 1
 
-                line = following.get().clone()
-                at = 0
-                continue
+        var cells_end = parts.length()
+        if index < last: cells_end -= 1
+        for part in range(first, cells_end):
+            row.append(parts[part].clone())
 
-            for index in range(at, close):
-                cell.append(line.cells[index])
-            at = close + 1
+        # A quote opens a cell only at its start.
+        if index < last:
+            if parts[cells_end] != "": return error(CsvError.InvalidData)
 
-            if at >= line.length:
-                row.append(text_of(cell))
-                return ok(row)
-
-            if line.cells[at] == 34:
-                cell.append(34)
-                at += 1
-                continue
-
-            if line.cells[at] != reader.delimiter: return error(CsvError.InvalidData)
-
-            at += 1
-            row.append(text_of(cell))
-            cell = List[Int]()
-            break
+            cell = ""
 
     return ok(row)
 

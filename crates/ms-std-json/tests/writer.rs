@@ -85,3 +85,72 @@ fn nesting_past_the_ceiling_fails() {
     }
     assert!(matches!(w.finish(), Err(Fail::InvalidData)));
 }
+
+#[test]
+fn escapes_agree_for_short_and_long_strings() {
+    let unit = "a\"b\\c\u{8}\u{c}\n\r\t\u{1f}é";
+    let want = "a\\\"b\\\\c\\b\\f\\n\\r\\t\\u001fé";
+    for reps in [1, 2, 8] {
+        let mut w = Writer::new(None, None);
+        w.string(&unit.repeat(reps));
+        assert_eq!(w.finish().unwrap(), format!("\"{}\"", want.repeat(reps)));
+    }
+}
+
+#[test]
+fn quoted_keys_and_whole_floats() {
+    let mut w = Writer::new(None, Some(1));
+    w.begin_object();
+    w.key_quoted("\"k\\n\"");
+    w.begin_array();
+    for v in [3.0, -0.0, -7.0, 1e14, 1e15, 1.5, 0.0] {
+        w.item();
+        w.float(v);
+    }
+    w.end_array();
+    w.end_object();
+    assert_eq!(
+        w.finish().unwrap(),
+        "{\n \"k\\n\": [\n  3,\n  -0,\n  -7,\n  100000000000000,\n  1000000000000000,\n  1.5,\n  0\n ]\n}"
+    );
+}
+
+#[test]
+fn floats_match_the_shortest_round_trip_text() {
+    // A seeded walk over magnitudes and digit counts; `f64`'s own `{}` is the oracle for the digits.
+    let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+    let mut next = || {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        x
+    };
+    for i in 0..200_000u64 {
+        let v = match i % 4 {
+            0 => f64::from_bits(next()),
+            1 => (next() % 1_000_000) as f64 / 100.0,
+            2 => (next() % 100_000_000_000) as f64 / 10f64.powi((next() % 15) as i32),
+            _ => (next() % 10_000) as f64 * 10f64.powi((next() % 40) as i32 - 20),
+        };
+        if !v.is_finite() {
+            continue;
+        }
+        let mut w = Writer::new(None, None);
+        w.float(v);
+        let got = w.finish().unwrap();
+        let back: f64 = got.parse().unwrap();
+        assert_eq!(back.to_bits(), v.to_bits(), "{v:e} -> {got}");
+        // Shortest: Rust's shortest digits, however placed, have the same count.
+        let digits = |t: &str| {
+            t.split(['e', 'E'])
+                .next()
+                .unwrap()
+                .chars()
+                .filter(char::is_ascii_digit)
+                .collect::<String>()
+                .trim_matches('0')
+                .len()
+        };
+        assert_eq!(digits(&got), digits(&format!("{v:e}")), "{v:e} -> {got}");
+    }
+}
