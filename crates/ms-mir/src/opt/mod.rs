@@ -50,6 +50,10 @@ pub fn instruction_count(f: &crate::ir::Func) -> usize {
 /// the first failure panics with the pass name (used by tests and debug builds).
 pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     if level == Level::None {
+        // A copy whose source dies right after it is a move; keeping the copies makes rebuilding a
+        // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
+        simplify::run_phis(m);
+        copyelim::run(m);
         // Owned values otherwise live to scope end, and register allocation grows with the number
         // that are live at once, so only a long function pays for the earlier drops.
         lastuse::run_where(m, |f| instruction_count(f) > LONG_FUNCTION_INSTS);
