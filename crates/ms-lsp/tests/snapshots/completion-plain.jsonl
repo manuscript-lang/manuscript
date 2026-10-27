@@ -390,7 +390,7 @@
 {"id":389,"jsonrpc":"2.0","result":null}
 #large
 {"id":391,"jsonrpc":"2.0","result":null}
-{"id":392,"jsonrpc":"2.0","result":[{"filterText":"var","insertTextFormat":1,"kind":14,"label":"var","sortText":"05_var","textEdit":{"newText":"var ","range":{"end":{"character":7,"line":29},"start":{"character":4,"line":29}}}}]}
+{"id":392,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"from \"@std/fs.ms\" import NativeTemporary\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"NativeTemporary — @std/fs.ms","documentation":{"kind":"markdown","value":"The runtime handle behind a `TemporaryDirectory`."},"filterText":"NativeTemporary","insertTextFormat":1,"kind":7,"label":"NativeTemporary","sortText":"04_NativeTemporary","textEdit":{"newText":"NativeTemporary","range":{"end":{"character":7,"line":29},"start":{"character":4,"line":29}}}},{"filterText":"var","insertTextFormat":1,"kind":14,"label":"var","sortText":"05_var","textEdit":{"newText":"var ","range":{"end":{"character":7,"line":29},"start":{"character":4,"line":29}}}}]}
 {"id":393,"jsonrpc":"2.0","result":null}
 #large
 {"id":395,"jsonrpc":"2.0","result":null}

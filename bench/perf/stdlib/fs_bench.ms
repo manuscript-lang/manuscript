@@ -17,7 +17,7 @@ bench "fs.write_file_64k":
     let fs = filesystem()
     let data = block()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         let root = dir.path()
 
         def work() -> Result[Unit, Error]:
@@ -33,7 +33,7 @@ bench "fs.write_file_64k":
 bench "fs.read_file_64k":
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         let root = dir.path()
         populate(fs, root)
 
@@ -50,7 +50,7 @@ bench "fs.read_file_64k":
 bench "fs.stat":
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         let root = dir.path()
         populate(fs, root)
 
@@ -67,7 +67,7 @@ bench "fs.stat":
 bench "fs.list_200":
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         let root = dir.path()
         populate(fs, root)
 
@@ -83,7 +83,7 @@ bench "fs.list_200":
 bench "log.info":
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         if let transport = file_transport(f"{dir.path()}/log.txt"):
             if let logger = create(transport, timestamp: False):
                 def work() -> Result[Unit, Error]:

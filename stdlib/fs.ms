@@ -512,16 +512,37 @@ impl FileHandle:
     ) -> Result[List[String], FileSystemError]:
         return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
+# The runtime handle behind a `Directory`.
+export extern type NativeDirectory
+
+extern def msstd_fs_directory_read(
+    dir: NativeDirectory
+) -> Result[Optional[DirectoryEntry], FileSystemError]
+
+extern def msstd_fs_directory_path(dir: NativeDirectory) -> String
+
+extern def msstd_fs_directory_close(dir: NativeDirectory) -> Unit
+
 # An open directory that yields one child per read and must be closed.
-export interface Directory:
-    # Returns the path this cursor was opened with.
-    def path() -> String
+export type Directory:
+    # The runtime handle for the open directory; it is released by `close` and owned by this value.
+    native: NativeDirectory
+
+impl Closeable for Directory:
     # Releases the directory handle.
     # Safe to call repeatedly; later reads return Closed.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_fs_directory_close(self.native)
+
+impl Directory:
+    # Returns the path this cursor was opened with.
+    def path() -> String:
+        return msstd_fs_directory_path(self.native)
+
     # Returns the next child in native directory order, or none after the last one.
     # The order is not sorted.
-    def read() -> Result[Optional[DirectoryEntry], FileSystemError]
+    def read() -> Result[Optional[DirectoryEntry], FileSystemError]:
+        return msstd_fs_directory_read(self.native)
 
 # A change stream returned by a filesystem watch operation.
 export interface FileWatcher:
@@ -532,13 +553,30 @@ export interface FileWatcher:
     # Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
     def next() -> Result[List[FileEvent], FileSystemError]
 
+# The runtime handle behind a `TemporaryDirectory`.
+export extern type NativeTemporary
+
+extern def msstd_fs_temporary_path(temporary: NativeTemporary) -> String
+
+extern def msstd_fs_temporary_close(
+    temporary: NativeTemporary
+) -> Result[Unit, FileSystemError]
+
 # A temporary directory whose contents are removed when it is closed.
-export interface TemporaryDirectory:
+export type TemporaryDirectory:
+    # The runtime handle for the directory; it is released by `close` and owned by this value.
+    native: NativeTemporary
+
+impl Closeable for TemporaryDirectory:
     # Removes the directory and everything inside it.
     # Safe to call repeatedly.
-    def close() -> Unit
+    var def close() -> Unit:
+        let _ = msstd_fs_temporary_close(self.native)
+
+impl TemporaryDirectory:
     # Returns the absolute path of the directory, created under the host's temporary root.
-    def path() -> String
+    def path() -> String:
+        return msstd_fs_temporary_path(self.native)
 
 # One filesystem change and the affected path.
 export type FileEvent:
