@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,faults,interpolation,lists,maps,modules,stdlib-http,stdlib-net,stdlib-testing,stdlib-time,stdlib-tls,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok
+from "@std/test.ms" import expect_equal, expect_false, expect_ok
 from "./support/http.ms" import http_result
 from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers

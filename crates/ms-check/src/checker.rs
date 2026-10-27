@@ -1002,7 +1002,9 @@ impl Checker {
         pos: Pos,
         report: bool,
     ) -> BindingRef {
+        // `_` names a value nothing reads, so several may share a scope.
         if report
+            && name.as_str() != "_"
             && (self.scope.bindings.borrow().contains_key(&name)
                 || self.scope.types.borrow().contains_key(&name))
         {
@@ -1459,7 +1461,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
             );
             return;
         }

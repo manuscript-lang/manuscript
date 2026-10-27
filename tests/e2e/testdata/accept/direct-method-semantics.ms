@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 interface Shape:
     def area() -> Int

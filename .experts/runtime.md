@@ -143,7 +143,7 @@ Verify: iteration after removals and re-adds keeps insertion order for the remai
 Verified: listing and fail-fast complete a plan with unrun entries; repeat creates separate indexed executions of one declaration. Reader completion must account for skip and intentional unrun outcomes without masking an active incomplete test. `ms test` runs each test in its own process invocation so a fault fails only that test ([design contract](../crates/DESIGN.md)).
 
 Apply when: changing test options, event reporting, or testing helpers.
-Evidence: [test runner lowering](../crates/ms-lower/src/runner.rs), [testing lowering](../crates/ms-lower/src/testing.rs), [helper contracts](../stdlib/testing.ms), [testing fixture](../tests/e2e/testdata/stdlib/testing.ms).
+Evidence: [test runner lowering](../crates/ms-lower/src/runner.rs), [testing lowering](../crates/ms-lower/src/testing.rs), [helper contracts](../stdlib/test.ms), [testing fixture](../tests/e2e/testdata/stdlib/testing.ms).
 Verify: list executes no bodies, fail-fast retains later not_run entries, repeated names retain indices, and fault assertions propagate cancellation and skip.
 
 ### Testing helpers do not duplicate test blocks
@@ -151,7 +151,7 @@ Verify: list executes no bodies, fail-fast retains later not_run entries, repeat
 Decision: the user removed `describe` and `it` callback helpers because wrapping those steps in an existing `test` block duplicates grouping without creating independently selectable or reported cases. Keep assertions directly usable in ordinary test blocks; do not restore these wrappers without a new direction.
 
 Apply when: adding BDD helpers or test suite grouping.
-Evidence: the user's explicit removal request; [testing declarations](../stdlib/testing.ms).
+Evidence: the user's explicit removal request; [testing declarations](../stdlib/test.ms).
 Verify: standard testing exports contain assertions, fail and skip, with no callback suite wrappers.
 
 ### File fixtures own a separate lifetime from each test
@@ -161,7 +161,7 @@ Decision: the user chose an ordinary local `make_fixture()` convention and a con
 Verified (design from the retired runtime): file roots retain fixture resources while each test uses independent hosts and work scopes. Listing performs no setup. Unjoined fixture work poisons further use and suppresses owner teardown; closing resources concurrently with that work would race the resource owner. Cooperative cancellation runs teardown with a fresh bounded cleanup context.
 
 Apply when: changing fixture injection, runner hook ordering, or default hooks.
-Evidence: [fixture lowering](../crates/ms-lower/src/fixture.rs), [fixture fixture](../tests/e2e/testdata/stdlib/testing-fixture.ms), [testing declarations](../stdlib/testing.ms).
+Evidence: [fixture lowering](../crates/ms-lower/src/fixture.rs), [fixture fixture](../tests/e2e/testdata/stdlib/testing-fixture.ms), [testing declarations](../stdlib/test.ms).
 Verify: no setup for `--list`, one construction across repetitions, per-file isolation, ordinary interface calls to omitted hooks, and failure/cancellation cleanup with preserved machine outcomes.
 
 ### Typed JSON is generated per type, like format and equality

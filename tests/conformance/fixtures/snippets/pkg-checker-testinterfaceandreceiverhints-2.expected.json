@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-2.ms:4:16: resolution: unknown type Sq; declare it with 'type Sq:' / 'interface Sq:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-2.ms:4:16: resolution: unknown type Sq; declare it with 'type Sq:' / 'interface Sq:', declare it as a type parameter, or import it\n   |\n 4 | impl Shape for Sq:\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

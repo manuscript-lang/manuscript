@@ -26,30 +26,41 @@ export def main() -> Int:
     var l: List[Int32] = []
     for i in range(0, 1000):
         l.append((1000 - i).to_int32().get(0))
+
     let sorted = l.sorted(lambda a, b: a.compare(b))
-    stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
+    let _ = stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
     var m = Map[Int16, Int8]()
     for i in range(0, 300):
         m.add(i.to_int16().get(0), (i % 100).to_int8().get(0))
+
     var tot = 0
     for e in m.entries():
         tot += e.value.to_int64()
-    stdout().write(f"{m.length()} {tot} {m.get(299)}\n")
+
+    let _ = stdout().write(f"{m.length()} {tot} {m.get(299)}\n")
     var st = Set[Int8]()
     for i in range(0, 50):
         st.add((i % 7).to_int8().get(0))
-    stdout().write(f"{st.length()} {st.contains(3)} {st.contains(9)}\n")
+
+    let _ = stdout().write(f"{st.length()} {st.contains(3)} {st.contains(9)}\n")
     let k: Int8 = -4
     let f: Float32 = 1.25
     let cl: Callable[[Int], Int] = lambda x: (x.to_int8().get(0) + k).to_int64()
-    stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
+    let _ = stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
     var cells: List[Cell] = []
     for i in range(0, 5):
         cells.append(Cell(a: -1, b: 100000, c: 0.5, d: True, e: -7))
-    stdout().write(f"{cells[4].b} {cells[2].e} {cells[1].c} {cells[0] == cells[3]} {cells[0].d}\n")
-    stdout().write(f"{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n")
+
+    let _ = stdout().write(
+        f"{cells[4].b} {cells[2].e} {cells[1].c} {cells[0] == cells[3]} {cells[0].d}\n"
+    )
+    let _ = stdout().write(
+        f"{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
+    )
     let opts: List[Optional[Int8]] = [some(3), none, some(-1)]
-    stdout().write(f"{opts} {opts[0] == opts[2]}\n")
+    let _ = stdout().write(f"{opts} {opts[0] == opts[2]}\n")
     let ints: List[Int8] = [5, 3, -9, 1]
-    stdout().write(f"{ints.sorted(lambda a, b: a.compare(b))} {ints.map(lambda x: x + 1)} {ints.fold(0, lambda a, x: a + x.to_int64())}\n")
+    let _ = stdout().write(
+        f"{ints.sorted(lambda a, b: a.compare(b))} {ints.map(lambda x: x + 1)} {ints.fold(0, lambda a, x: a + x.to_int64())}\n"
+    )
     return 0

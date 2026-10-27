@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,interfaces,match,modules,parser,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/standalone-try.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/core.ms" import Closeable
 from "@std/fs.ms" import filesystem
 
@@ -60,25 +60,24 @@ test "standalone try propagates and cleans up before returning":
         try expect_true(closed(marker))
 
 test "standalone try preserves concrete errors at Error boundaries":
-    var state = State(0, "")
-    let outcome = widened(var state)
-    try expect_false(outcome.is_ok())
+    with var state = State(0, ""):
+        let outcome = widened(var state)
+        try expect_false(outcome.is_ok())
 
-    let cause = outcome.err()
+        let cause = outcome.err()
 
-    match cause:
-        case Failure(value):
-            try expect_equal(value.code, 42)
-        case _: return fail("concrete error lost")
+        match cause:
+            case Failure(value):
+                try expect_equal(value.code, 42)
+            case _: return fail("concrete error lost")
 
-    try expect_equal(state.calls, 1)
+        try expect_equal(state.calls, 1)
 
 test "standalone try in closure returns from that closure":
     let callback = lambda () -> Result[Unit, Failure]:
-        var inner = State(0, "")
-        if True: try operation(var inner, fail: True)
-        return ok(())
-
+        with var inner = State(0, ""):
+            if True: try operation(var inner, fail: True)
+            return ok(())
     let outcome = callback()
     try expect_false(outcome.is_ok())
     try expect_equal(outcome.err().code, 42)

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/time.ms" import clock
 from "@std/html.ms" import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError
 

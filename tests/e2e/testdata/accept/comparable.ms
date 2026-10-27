@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 from "@std/math.ms" import max, min
 from "@std/decimal.ms" import Decimal
 

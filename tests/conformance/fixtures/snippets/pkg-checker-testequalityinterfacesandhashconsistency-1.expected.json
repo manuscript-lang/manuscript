@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:10:37: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testequalityinterfacesandhashconsistency-1.ms:10:37: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n    |\n 10 | def keys() -> Map[Key, Int]: return Map[Key, Int]()\n    |                                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

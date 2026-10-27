@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def keep(var list: List[Callable[[], Int]], value: Int) -> Unit:
     list.append(value: lambda () -> Int: value)

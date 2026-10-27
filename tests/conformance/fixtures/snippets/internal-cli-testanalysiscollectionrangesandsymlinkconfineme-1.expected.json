@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms:5:48: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testanalysiscollectionrangesandsymlinkconfineme-1.ms:5:48: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 | from \"@std/collections.ms\" import ListBuilder, List\n   |                                                ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

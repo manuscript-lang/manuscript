@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 from "@std/collections.ms" import range
 
 type Element:

@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:6:38: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-4.ms:6:71: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:6:38: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:\n   |                                      ^\n<DIR>/core-language-errors-results-4.ms:6:71: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:\n   |                                                                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

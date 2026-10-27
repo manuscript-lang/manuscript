@@ -1,7 +1,7 @@
 # conform: tags=aliasing,control-flow,faults,generics,lists,modules,mutation,stdlib-bytes,stdlib-compress,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/compression-defaults.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/archive.ms" import compress, decompress, CompressionFormat, CompressionError
 from "@std/bytes.ms" import Bytes
 

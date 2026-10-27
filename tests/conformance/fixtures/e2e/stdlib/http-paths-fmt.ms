@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,interpolation,lists,maps,match,modules,optional,parser,stdlib-bytes,stdlib-errors,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/http-paths.ms
-from "@std/testing.ms" import expect_ok
+from "@std/test.ms" import expect_ok
 from "./support/http.ms" import http_result
 from "@std/core.ms" import TextError
 from "@std/http.ms" import headers, HttpMethod, buffered

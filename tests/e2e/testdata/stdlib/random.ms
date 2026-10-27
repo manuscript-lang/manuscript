@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/random.ms" import Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice
 from "@std/bytes.ms" import Bytes
 from "@std/collections.ms" import filled

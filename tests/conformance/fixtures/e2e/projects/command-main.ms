@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,interpolation,match,modules,stdlib-io,stdlib-process,stdlib-testing,tier-io,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/command/main.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/io.ms" import stderr
 from "@std/process.ms" import commands
 from "@std/io.ms" import stdout
@@ -15,7 +15,8 @@ def exercise() -> Result[Int, Error]:
             return ok(1)
         case ok(output):
             output.exit_code | try expect_equal(0)
-            stdout().write_bytes(data: output.stdout)
+
+            let _ = stdout().write_bytes(data: output.stdout)
             return ok(0)
 
 export def main() -> Int:

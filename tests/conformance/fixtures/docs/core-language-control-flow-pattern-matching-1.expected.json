@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-control-flow-pattern-matching-1.ms:4:23: resolution: unknown type Payment; declare it with 'type Payment:' / 'interface Payment:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-control-flow-pattern-matching-1.ms:4:23: resolution: unknown type Payment; declare it with 'type Payment:' / 'interface Payment:', declare it as a type parameter, or import it\n   |\n 4 | def describe(payment: Payment) -> String:\n   |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

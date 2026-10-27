@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,lists,modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-18.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
     return transform(value)

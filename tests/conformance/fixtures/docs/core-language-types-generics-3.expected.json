@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-3.ms:13:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-generics-3.ms:14:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-generics-3.ms:15:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-3.ms:13:11: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 13 | let box = Box[Int](1)\n    |           ^\n<DIR>/core-language-types-generics-3.ms:14:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 14 | let exact = identity[Int](1)\n    |             ^\n<DIR>/core-language-types-generics-3.ms:15:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 15 | let inferred = identity(1)\n    |                ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

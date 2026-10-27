@@ -14,5 +14,8 @@ export def main() -> Int:
     var empty = 0
     for i in 5..2:
         empty += 1
-    stdout().write(f"{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n")
+
+    let _ = stdout().write(
+        f"{total(4)} {xs.length()} {xs[0]} {empty} {(2..2).length()}\n"
+    )
     return 0

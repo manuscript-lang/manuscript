@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0115.ms:19:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n<DIR>/seed-0115.ms:19:41: type: too many positional arguments; every parameter is already supplied, so remove this argument\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0115.ms:19:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 19 |     let bad = Map[Int, Int]().get(1, 2, 3)\n    |                                      ^\n<DIR>/seed-0115.ms:19:41: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 19 |     let bad = Map[Int, Int]().get(1, 2, 3)\n    |                                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

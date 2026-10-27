@@ -5,7 +5,7 @@ from "@std/crypto.ms" import HashAlgorithm, sha256
 from "@std/bytes.ms" import Bytes
 from "@std/core.ms" import panic
 from "@std/fs.ms" import filesystem
-from "@std/testing.ms" import expect_ok
+from "@std/test.ms" import expect_ok
 
 def upper(chunk: Bytes) -> Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()

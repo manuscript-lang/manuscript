@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_not_equal, fail
+from "@std/test.ms" import expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/yaml.ms" import parse, stringify, YamlValue
 from "./support/generator.ms" import Rng, next, text, mutate

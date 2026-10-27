@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:15: type: recursive generic applications must preserve their parameters in Tree.Pair.left; keep the same type arguments in the same positions along a recursive cycle\n<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:32: type: recursive generic applications must preserve their parameters in Tree.Pair.right; keep the same type arguments in the same positions along a recursive cycle\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:15: type: recursive generic applications must preserve their parameters in Tree.Pair.left; keep the same type arguments in the same positions along a recursive cycle\n   |\n 6 |     case Pair(left: Tree[Int], right: Tree[String])\n   |               ^\n<DIR>/pkg-checker-testrecursivegenericdiagnosticnameseachfieldonce-1.ms:6:32: type: recursive generic applications must preserve their parameters in Tree.Pair.right; keep the same type arguments in the same positions along a recursive cycle\n   |\n 6 |     case Pair(left: Tree[Int], right: Tree[String])\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

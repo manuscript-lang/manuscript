@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-1.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/decimal.ms" import Decimal
 
 def amount() -> Result[Decimal, TextError]:

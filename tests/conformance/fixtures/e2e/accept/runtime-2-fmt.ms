@@ -1,7 +1,7 @@
 # conform: tags=alternatives,formatter,match,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/runtime-2.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Items:
     count: Int

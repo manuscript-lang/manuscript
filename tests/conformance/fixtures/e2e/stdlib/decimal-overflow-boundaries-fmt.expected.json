@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal, expect_false\nfrom \"@std/decimal.ms\" import Decimal\n\ntest \"Decimal magnitude rounding and underflow boundaries remain unchanged\":\n    let maximum = 9.999999999999999999999999999999999e6144d\n    try expect_false(maximum + 0d != maximum or maximum * 1d != maximum)\n    try expect_false(-maximum * 1d != -maximum or - maximum - 0d != -maximum)\n    try expect_false(1e-6176d / 10d != 0d or - 1e-6176d / 10d != 0d)\n    try expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal, expect_false\nfrom \"@std/decimal.ms\" import Decimal\n\ntest \"Decimal magnitude rounding and underflow boundaries remain unchanged\":\n    let maximum = 9.999999999999999999999999999999999e6144d\n    try expect_false(maximum + 0d != maximum or maximum * 1d != maximum)\n    try expect_false(-maximum * 1d != -maximum or - maximum - 0d != -maximum)\n    try expect_false(1e-6176d / 10d != 0d or - 1e-6176d / 10d != 0d)\n    try expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)\n"
   }
 }

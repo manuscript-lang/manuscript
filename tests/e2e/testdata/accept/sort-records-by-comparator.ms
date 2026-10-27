@@ -1,5 +1,5 @@
 from "@std/collections.ms" import range
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Entry:
     key: Int

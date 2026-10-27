@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 def describe(name: Optional[String]) -> String:
     if let value = name:

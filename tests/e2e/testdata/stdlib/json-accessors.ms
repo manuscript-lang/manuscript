@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true, expect_false
+from "@std/test.ms" import expect_equal, expect_true, expect_false
 from "@std/json.ms" import parse, JsonValue
 
 def doc() -> JsonValue:

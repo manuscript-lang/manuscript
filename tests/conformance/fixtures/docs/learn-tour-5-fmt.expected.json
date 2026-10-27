@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/collections.ms\" import range\nfrom \"@std/testing.ms\" import expect_equal\n\ntest \"count five iterations\":\n    var total = 0\n    for index in range(0, 5):\n        total += index\n    try expect_equal(total, 10)\n"
+    "fmt": "from \"@std/collections.ms\" import range\nfrom \"@std/test.ms\" import expect_equal\n\ntest \"count five iterations\":\n    var total = 0\n    for index in range(0, 5):\n        total += index\n    try expect_equal(total, 10)\n"
   }
 }

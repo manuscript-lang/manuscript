@@ -1,7 +1,7 @@
 # conform: tags=alternatives,closures,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=pkg/tooling/format/testdata/compact.golden.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def apply(value: Int, transform: Callable[[Int], Int]) -> Int: transform(value)
 

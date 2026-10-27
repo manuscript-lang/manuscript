@@ -104,7 +104,8 @@ fn clif_type(c: char) -> ir::Type {
 pub fn leaf_type(l: Leaf) -> ir::Type {
     match l {
         Leaf::I64 | Leaf::N8 | Leaf::N16 | Leaf::N32 => types::I64,
-        Leaf::F64 | Leaf::F32 => types::F64,
+        Leaf::F64 => types::F64,
+        Leaf::F32 => types::F32,
         Leaf::I8 => types::I8,
     }
 }
@@ -549,11 +550,13 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
 
 /// MIR instructions in one function above which a Debug module is allocated with the single-pass
 /// register allocator.
-const SINGLE_PASS_INSTS: usize = 4000;
+const SINGLE_PASS_INSTS: usize = ms_mir::opt::LONG_FUNCTION_INSTS;
 
 fn single_pass(m: &Module, opts: &Options) -> bool {
-    let insts = |f: &Func| f.blocks.iter().map(|b| b.insts.len()).sum::<usize>();
-    opts.opt_level == "none" && m.funcs.iter().any(|f| insts(f) > SINGLE_PASS_INSTS)
+    opts.opt_level == "none"
+        && m.funcs
+            .iter()
+            .any(|f| ms_mir::opt::instruction_count(f) > SINGLE_PASS_INSTS)
 }
 
 fn compile_with_isa(

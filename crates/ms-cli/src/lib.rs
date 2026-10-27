@@ -23,6 +23,7 @@ pub mod json;
 pub mod process;
 pub mod profile;
 mod regexp;
+mod snippet;
 pub mod util;
 pub mod verify;
 

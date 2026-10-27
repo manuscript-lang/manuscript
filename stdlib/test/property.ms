@@ -1,9 +1,10 @@
 from "@std/collections.ms" import Pair
+from "@std/core.ms" import panic
 from "@std/io.ms" import stderr
 from "@std/math.ms" import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int
 from "@std/process.ms" import control
 from "@std/random.ms" import entropy, secure_int
-from "@std/testing.ms" import fail
+from "@std/test.ms" import expect_fault, fail
 from "@std/time.ms" import clock, milliseconds
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
@@ -297,11 +298,27 @@ def run_case[T](
     if source.invalid:
         return Outcome(source, none)
 
-    let outcome = property(value)
-    if outcome.is_error():
-        return Outcome(source, some(outcome.err().message()))
+    # The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
+    # It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
+    # on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
+    let faulted = expect_fault(lambda: run_property(property, value))
+    if faulted.is_error():
+        return Outcome(source, none)
 
-    return Outcome(source, none)
+    let message = faulted.get("")
+    if message != property_failed:
+        return Outcome(source, some(f"fault: {message}"))
+
+    let replayed = Source(source.choices.take(source.pos), 0, 0, False, False)
+    let {value: again} = gen.make(replayed)
+    let outcome = property(again)
+    return Outcome(source, some(outcome.err().message()))
+
+let property_failed = "property returned an error"
+
+def run_property[T](property: Callable[[T], Result[Unit, Error]], value: T) -> Unit:
+    if property(value).is_error():
+        panic(property_failed)
 
 # Order used to guarantee shrinking terminates: fewer draws first, then lexicographically smaller.
 def simpler(candidate: List[Int], current: List[Int]) -> Bool:
@@ -318,9 +335,7 @@ def replay[T](
     property: Callable[[T], Result[Unit, Error]],
     choices: List[Int]
 ) -> Outcome:
-    # Bind the source first: passing a freshly built record straight into the call miscompiles in Release builds (issue 1517).
-    let replayed = Source(choices.clone(), 0, 0, False, False)
-    return run_case(gen, property, replayed)
+    return run_case(gen, property, Source(choices.clone(), 0, 0, False, False))
 
 # Tries `candidate`; returns the used draws when it still fails and is simpler than `current`.
 def attempt[T](
@@ -387,7 +402,7 @@ def shrink[T](
 
 # Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
 # Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
-# A fault (`panic`) inside a property ends the process before it can shrink: rerun with the printed `--seed` to reproduce.
+# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
 export def check[T](
     name: String,
     gen: Gen[T],
@@ -409,7 +424,7 @@ export def check[T](
 
     let fuzzing = config.fuzz_milliseconds > 0
     if fuzzing:
-        # A fault inside the property ends the process before it can report; this seed replays the run.
+        # Printed first so an interrupted run can still be replayed.
         (
             stderr()
             .write(
@@ -431,8 +446,7 @@ export def check[T](
         let case_seed = wrapping_add(base, case_index)
         case_index += 1
 
-        let fresh = source(case_seed)
-        let outcome = run_case(gen, property, fresh)
+        let outcome = run_case(gen, property, source(case_seed))
 
         if outcome.source.invalid:
             discarded += 1
@@ -463,8 +477,7 @@ def report[T](
     let used = failing.choices.take(failing.pos)
     let small = shrink(gen, property, used, 2000)
     let final = replay(gen, property, small)
-    let replayed = Source(small.clone(), 0, 0, False, False)
-    let {value: shown} = gen.make(replayed)
+    let {value: shown} = gen.make(Source(small.clone(), 0, 0, False, False))
     let reason = final.failure.get(message)
     return fail(
         f"property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason}"

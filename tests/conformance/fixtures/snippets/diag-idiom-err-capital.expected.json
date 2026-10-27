@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-err-capital.ms:5:13: resolution: unknown binding Err; write error(cause) for a failed Result, where cause is a value implementing Error\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-err-capital.ms:5:13: resolution: unknown binding Err; write error(cause) for a failed Result, where cause is a value implementing Error\n   |\n 5 |     let a = Err(1)\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

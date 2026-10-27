@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interpolation,lists,modules,optional,parser,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-fs,stdlib-io,stdlib-process,stdlib-string,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host-contracts.ms
-from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/test.ms" import expect_equal, expect_error, expect_false
 from "@std/fs.ms" import filesystem, FileSystemError
 from "@std/io.ms" import files, IoError
 from "@std/process.ms" import control

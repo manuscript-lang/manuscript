@@ -85,7 +85,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import List\n   |                                   ^^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 5 | from \"@std/collections.ms\" import List\n   |                                   ^^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-12.ms:5:35: resolution: duplicate or intrinsic name List; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | from \"@std/collections.ms\" import List\n   |                                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

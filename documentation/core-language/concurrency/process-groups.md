@@ -11,7 +11,7 @@ A `ProcessGroup[T, In, Out]` runs functions of your program in child processes a
 ```manuscript
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/processes.ms" import ProcessGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
     var c = ch

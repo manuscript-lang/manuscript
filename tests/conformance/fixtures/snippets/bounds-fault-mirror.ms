@@ -11,5 +11,5 @@ def mirror(a: List[Int]) -> Int:
     return t
 
 export def main() -> Int:
-    stdout().write(f"{mirror([1, 2, 3, 4])}\n")
+    let _ = stdout().write(f"{mirror([1, 2, 3, 4])}\n")
     return 0

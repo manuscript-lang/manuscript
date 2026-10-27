@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:4:1: resolution: declaration List reuses a prelude name; rename it, because List always refers to the standard declaration\n<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:6:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:4:1: resolution: declaration List reuses a prelude name; rename it, because List always refers to the standard declaration\n   |\n 4 | type List[T]: ...\n   | ^\n<DIR>/pkg-parser-testemptyfunctiondeclarations-2.ms:6:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 6 | impl List[T]:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

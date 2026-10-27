@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:12:14: type: cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-testeffectsincludetransitivecallsandimplicitclea-1.ms:12:14: type: cannot change `self.state`: this method does not change its receiver; declare it `var fn` to allow that\n    |\n 12 |         self.state.dequeue()\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

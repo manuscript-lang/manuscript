@@ -114,7 +114,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:6:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:8:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-14.ms:5:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n   |\n 5 |     let a = SetBuilder[Int]()\n   |             ^\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:6:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n   |\n 6 |     let b = SetBuilder[Int]()\n   |             ^\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:7:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n   |\n 7 |     var m = Queue[Int]()\n   |             ^\n<DIR>/pkg-checker-testdiagnosticfixes-14.ms:8:13: resolution: unknown binding Queue; add: from \"@std/queue.ms\" import Queue\n   |\n 8 |     var n = Queue[Int]()\n   |             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

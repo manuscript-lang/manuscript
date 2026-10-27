@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interfaces,modules,records,stdlib-http,stdlib-io,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/http.ms" import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered
 from "@std/io.ms" import IoError, ReadStream, read_all
 from "@std/sse.ms" import body_stream
