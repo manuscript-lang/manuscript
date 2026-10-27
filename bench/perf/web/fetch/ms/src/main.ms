@@ -88,5 +88,5 @@ export def main() -> Int:
         for r in group.results().get():
             total += r
 
-    stdout().write(f"req/s {total / secs}\n")
+    let _ = stdout().write(f"req/s {total / secs}\n")
     return 0

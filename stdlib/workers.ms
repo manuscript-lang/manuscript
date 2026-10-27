@@ -246,4 +246,5 @@ impl Closeable for WorkerGroup[In, Out]:
         with var started = lock(self.workers):
             for index in range(0, started.value.length()):
                 started.value[index].cancel()
-                started.value[index].wait()
+
+                let _ = started.value[index].wait()

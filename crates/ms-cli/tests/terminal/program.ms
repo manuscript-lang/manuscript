@@ -12,24 +12,24 @@ export def main() -> Int:
     let raw = terminal().raw_mode(alternate_screen: False)
     if let t = raw:
         with let term = t:
-            term.move_cursor(1, 2)
-            term.show_cursor(False)
-            term.erase(EraseRegion.LineEnd)
+            let _ = term.move_cursor(1, 2)
+            let _ = term.show_cursor(False)
+            let _ = term.erase(EraseRegion.LineEnd)
             if let size = term.size():
-                stdout().write(f"size {size.columns}x{size.rows}\r\n")
+                let _ = stdout().write(f"size {size.columns}x{size.rows}\r\n")
             var done = False
             while not done:
                 let next = term.next_event(nanoseconds(5000000000))
                 if let maybe = next:
                     if let e = maybe:
-                        stdout().write(describe(e.clone()) + "\r\n")
+                        let _ = stdout().write(describe(e.clone()) + "\r\n")
                         done = describe(e) == "text:q"
                     else:
-                        stdout().write("timeout\r\n")
+                        let _ = stdout().write("timeout\r\n")
                         done = True
                 else:
-                    stdout().write("error\r\n")
+                    let _ = stdout().write("error\r\n")
                     done = True
         return 0
-    stdout().write("no raw mode\n")
+    let _ = stdout().write("no raw mode\n")
     return 1

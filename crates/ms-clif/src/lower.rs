@@ -325,7 +325,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         let fault = self.b.create_block();
         let cont = self.b.create_block();
         self.b.set_cold_block(fault);
-        self.b.ins().brif(cond, fault, &[], cont, &[]);
+        // Cranelift lays out the second successor first. The fault goes second so that the code
+        // after the check follows the branch: a fault block placed after the rest of the function
+        // keeps every value it reads live across it, and allocation is quadratic in a long function.
+        let ok = self.negate(cond);
+        self.b.ins().brif(ok, cont, &[], fault, &[]);
         self.b.switch_to_block(fault);
         self.rt_call(name, &args);
         self.b.ins().trap(TrapCode::unwrap_user(1));

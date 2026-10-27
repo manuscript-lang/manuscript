@@ -35,17 +35,7 @@ printf fresh > "$target/release/libms_native.a"
     executable(
         &root,
         "bin/cc",
-        r#"#!/bin/sh
-set -eu
-out=
-for arg do
-    if [ "$arg" = -o ]; then next=out; continue; fi
-    if [ "${next-}" = out ]; then out=$arg; next=; fi
-    case "$arg" in */libms_native.a) test "$(cat "$arg")" = fresh ;; esac
-done
-printf '#!/bin/sh\nexit 0\n' > "$out"
-chmod +x "$out"
-"#,
+        include_str!("c_smoke/c-benchmark-uses-the-built-archive-from-another-directory.ms"),
     );
     let path = std::env::join_paths(
         std::iter::once(root.join("bin"))

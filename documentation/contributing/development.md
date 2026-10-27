@@ -19,7 +19,7 @@ make verify
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
-`make repo-check` (the `ms-repo-check` crate) also rejects invalid syntax in any `stdlib/*.ms` file, nested matches in repository Manuscript sources, and Markdown fences (`manuscript`, `ms`, `text`), including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+`make repo-check` (the `ms-repo-check` crate) also caps multi-line Manuscript programs held in Rust string literals per file (`BASELINE` in `inline_source.rs`; the counts only go down), and rejects invalid syntax in any `stdlib/*.ms` file, nested matches in repository Manuscript sources, and Markdown fences (`manuscript`, `ms`, `text`), including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
 - Allowance: a deliberate regression puts `# manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
