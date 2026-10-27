@@ -238,6 +238,25 @@ fn dg(text: &str) {
     }
 }
 
+fn probe(label: &str, sock: &socket2::Socket) {
+    if std::env::var_os("MS_DIAG_PROBE").is_none() {
+        return;
+    }
+    let Ok(clone) = sock.try_clone() else {
+        dg(&format!("probe {label}: clone failed"));
+        return;
+    };
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let r = clone.accept();
+        let _ = tx.send(r.is_ok());
+    });
+    match rx.recv_timeout(Duration::from_millis(300)) {
+        Ok(_) => dg(&format!("probe {label}: nonblocking")),
+        Err(_) => dg(&format!("probe {label}: BLOCKING")),
+    }
+}
+
 // -------------------------------------------------------------------- reactor
 
 enum Target {
@@ -756,11 +775,17 @@ impl Server {
             .targets
             .borrow_mut()
             .insert(token, Target::Listener(Rc::downgrade(&server)));
+        if let Some(l) = server.listener.borrow().as_ref() {
+            probe("before add", l);
+        }
         let watched = server
             .listener
             .borrow()
             .as_ref()
             .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
+        if let Some(l) = server.listener.borrow().as_ref() {
+            probe("after add", l);
+        }
         if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
@@ -933,6 +958,9 @@ impl Server {
             match accepted {
                 Ok((sock, _peer)) => {
                     dg("accepted");
+                    if let Some(l) = self.listener.borrow().as_ref() {
+                        probe("after accept", l);
+                    }
                     if self.st.borrow().closing {
                         continue;
                     }
@@ -940,9 +968,15 @@ impl Server {
                         continue;
                     }
                     dg("nonblocking set");
+                    if let Some(l) = self.listener.borrow().as_ref() {
+                        probe("after accepted nonblocking", l);
+                    }
                     let _ = sock.set_tcp_nodelay(true);
                     dg("nodelay set");
                     self.add_conn(sock, reactor);
+                    if let Some(l) = self.listener.borrow().as_ref() {
+                        probe("after add_conn", l);
+                    }
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
