@@ -641,6 +641,16 @@ impl Verifier<'_> {
                     "operand and result must be bool",
                 )
             }
+            Op::UICmp => {
+                arity(2)?;
+                want(
+                    matches!(inst.imm, Imm::Cc(_))
+                        && t(0) == t(1)
+                        && m.types.is_int(t(0))
+                        && res == Some(Ty::BOOL),
+                    "uicmp compares two ints and yields bool",
+                )
+            }
             Op::ICmp => {
                 arity(2)?;
                 let Imm::Cc(cc) = inst.imm else {

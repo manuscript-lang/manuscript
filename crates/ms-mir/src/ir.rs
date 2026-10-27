@@ -209,7 +209,12 @@ impl Cc {
         })
     }
 
-    /// Evaluates the condition on two integers.
+    /// Evaluates the condition on two integers read as unsigned.
+    pub fn eval_uint(self, a: i64, b: i64) -> bool {
+        self.eval_int((a as u64 ^ (1 << 63)) as i64, (b as u64 ^ (1 << 63)) as i64)
+    }
+
+    /// Evaluates the condition on two signed integers.
     pub fn eval_int(self, a: i64, b: i64) -> bool {
         match self {
             Cc::Eq => a == b,
@@ -271,7 +276,7 @@ pub enum Op {
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
     And, Or, Xor, Shl, Sshr, Not,
     // Comparisons.
-    ICmp, FCmp,
+    ICmp, UICmp, FCmp,
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
@@ -393,7 +398,7 @@ impl Op {
         Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
-        Op::ICmp, Op::FCmp,
+        Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
@@ -447,6 +452,7 @@ impl Op {
             Op::Sshr => ("sshr", K::None, true, effects!()),
             Op::Not => ("not", K::None, true, effects!()),
             Op::ICmp => ("icmp", K::Cc, true, effects!()),
+            Op::UICmp => ("uicmp", K::Cc, true, effects!()),
             Op::FCmp => ("fcmp", K::Cc, true, effects!()),
             Op::FAdd => ("fadd", K::None, true, effects!()),
             Op::FSub => ("fsub", K::None, true, effects!()),

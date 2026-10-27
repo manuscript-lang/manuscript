@@ -1852,6 +1852,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
             }],
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let cc = match cc {
+                    Cc::Eq => IntCC::Equal,
+                    Cc::Ne => IntCC::NotEqual,
+                    Cc::Lt => IntCC::UnsignedLessThan,
+                    Cc::Le => IntCC::UnsignedLessThanOrEqual,
+                    Cc::Gt => IntCC::UnsignedGreaterThan,
+                    Cc::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                };
+                vec![self.b.ins().icmp(cc, x, y)]
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     unreachable!()

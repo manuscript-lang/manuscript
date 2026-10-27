@@ -636,6 +636,12 @@ impl<'m> Interp<'m> {
             Op::Shl => set!(Val::Int(int!(0).wrapping_shl(int!(1) as u32))),
             Op::Sshr => set!(Val::Int(int!(0).wrapping_shr(int!(1) as u32))),
             Op::Not => set!(Val::Bool(!boolean!(0))),
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err(Raw::internal("uicmp without condition"));
+                };
+                set!(Val::Bool(cc.eval_uint(int!(0), int!(1))));
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     return Err(Raw::internal("icmp without condition"));
