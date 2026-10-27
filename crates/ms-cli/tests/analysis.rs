@@ -65,7 +65,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     let dir = scratch("lint");
     std::fs::write(
         dir.join("shared.ms"),
-        "from \"@std/io.ms\" import stdout\n\nexport def value() -> Int:\n    return 2\n",
+        include_str!("analysis/lint-shared.ms"),
     )
     .unwrap();
     for name in ["a.ms", "b.ms"] {
