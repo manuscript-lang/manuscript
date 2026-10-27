@@ -177,7 +177,7 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
         positions: SourcePositions::new(&d.text),
         tokens: lexical::tokens(&module),
     };
-    let declarations: Vec<&DeclRef> = module.decls.iter().collect();
+    let declarations = &module.decls;
     let mut out = Vec::new();
     for (i, decl) in declarations.iter().enumerate() {
         if decl.0.decl.synthetic && matches!(decl.decl().kind, DeclKind::Interface(_)) {

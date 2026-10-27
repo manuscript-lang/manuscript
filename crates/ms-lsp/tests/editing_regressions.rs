@@ -221,6 +221,34 @@ fn rename_keeps_the_open_percent_encoded_uri_and_version() {
     assert_versioned(&edit, &uri);
 }
 
+#[test]
+fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
+    let ws = Workspace::new("rename-lengths");
+    let source = include_str!("editing_regressions/repeated-rename.ms");
+    for source in [source.to_string(), source.replace('\n', "\r\n")] {
+        for name in ["x", "renamed_value"] {
+            let d = Document::new(ws.uri("repeat.ms"), &source);
+            let docs = Documents::from([(d.uri.clone(), d.clone())]);
+            let checked = analyze(&d, &docs);
+            assert!(checked.success(), "{:?}", checked.diagnostics);
+            // Select the final use after a supplementary Unicode character.
+            let offset = source.rfind("value").unwrap();
+            let edit = ms_lsp::rename::rename(
+                &checked,
+                checked.index(),
+                &d,
+                text::position(&source, offset),
+                name,
+                None,
+                Some(&docs),
+            )
+            .expect("rename");
+            let action = ms_lsp::json::obj([("edit", edit)]);
+            assert_eq!(apply(&source, &action), source.replace("value", name));
+        }
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn rename_through_a_symlink_keeps_the_open_uri_and_version() {
