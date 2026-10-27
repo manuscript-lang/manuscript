@@ -178,8 +178,8 @@ pub struct Ownership {
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
     /// `ref` functions that can hand back a borrow on every path, by module file and node.
     pub lenders: HashSet<Key>,
-    /// For each callable with a `Consume` parameter, which parameters (declaration order, receiver
-    /// excluded) the body moves, stores or returns.
+    /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
+    /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
 }
 
@@ -404,15 +404,15 @@ impl Hir<'_> {
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
-            if out.facts.parameters.contains(&ParamMode::Consume) {
-                consumes.insert(
-                    (c.module.file, c.id()),
-                    out.facts
-                        .parameters
-                        .iter()
-                        .map(|m| *m == ParamMode::Consume)
-                        .collect(),
-                );
+            let modes: Vec<bool> = out
+                .facts
+                .receiver
+                .iter()
+                .chain(&out.facts.parameters)
+                .map(|m| *m == ParamMode::Consume)
+                .collect();
+            if modes.contains(&true) {
+                consumes.insert((c.module.file, c.id()), modes);
             }
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);

@@ -11,6 +11,8 @@
 
 Proposal, 2026-10-27, checked against main `7fd67983`. Driven by #1650. Project direction: "getting perf back to rust level" (Chinmay, 2026-10-27).
 
+Stage 2 (methods), 2026-10-27: a method's consumed receiver and parameters are owned at direct calls too (`nd = nd.up(i)` in Debug at n=40000: 40 s to 0.007 s). Calls through function values and interfaces keep the borrowed signature on purpose: the caller cannot know the callee consumes, so an owned entry there only moves the copy.
+
 Skeptical review: see the Review note at the end.
 
 Stage 1 prototype, 2026-10-27: parameters inferred Consume are owned at direct calls (part A), and `alt.take`/`alt.release` move payloads out of a dying scrutinee (part B, `copyelim::run_takes`). BST insert at n=40000 takes 0.023s in Release and 0.017s in Debug (was 90s+ in both); `wrap` is linear in both. `cargo test --workspace`, conform, leak-check and e2e pass.
