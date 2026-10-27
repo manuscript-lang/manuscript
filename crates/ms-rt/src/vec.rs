@@ -1866,12 +1866,14 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         if v.cap - v.len >= n {
             let src = string::bytes(s).as_ptr();
             let dst = v.ptr.add(v.len);
+            // The length moves first so that the copy is the last thing the function does: a
+            // long copy is then a tail call to `memcpy`, and the function needs no frame.
+            v.len += n;
             if n <= 16 {
                 copy_short(src, dst, n);
             } else {
                 core::ptr::copy_nonoverlapping(src, dst, n);
             }
-            v.len += n;
             return;
         }
         append_slow(b, s);
