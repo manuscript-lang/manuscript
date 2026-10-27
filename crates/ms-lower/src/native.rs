@@ -186,35 +186,6 @@ impl<'a> FnLower<'a> {
                     .expect("lanes op");
                 return Ok(Val { v, own: false });
             }
-            // `@std/vec.ms` kernels on the compute pool write their results in place through a
-            // borrowed list, so pool threads never write the list's own storage.
-            if symbol == "msrt_float32_store_unchecked" {
-                let args = self.native_args(view)?;
-                if self.dead {
-                    return Ok(self.dummy(MTy::UNIT));
-                }
-                let xs: Vec<_> = args.iter().map(|a| self.borrow(a.val)).collect();
-                self.at(e.pos);
-                let at = self
-                    .b
-                    .emit(
-                        ms_mir::ir::Op::ListAddrU,
-                        &xs[..2],
-                        ms_mir::ir::Imm::None,
-                        Some(MTy::PTR),
-                    )
-                    .expect("list.addr.u");
-                self.b.emit(
-                    ms_mir::ir::Op::Store,
-                    &[at, xs[2]],
-                    ms_mir::ir::Imm::None,
-                    None,
-                );
-                return Ok(Val {
-                    v: self.b.unit(),
-                    own: false,
-                });
-            }
             // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
             if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
                 matches!(

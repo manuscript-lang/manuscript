@@ -45,18 +45,10 @@ extern def msrt_lanes_sum(values: Lanes) -> Float32
 
 extern def msrt_lanes_hmax(values: Lanes) -> Float32
 
-# Sets `values[at]` without a range check or a write to the list itself, for the compute pool:
-# threads writing disjoint elements must not also write the list's shared storage.
-extern def msrt_float32_store_unchecked(
-    values: List[Float32],
-    at: Int,
-    value: Float32
-) -> Unit
-
 # Runs `body(start, end)` over `0 .. count` in chunks of at least `grain` rows on the runtime's
 # compute pool, the calling thread included, and returns when all have finished. `body` runs on
-# other threads, so it may only read its captures and write disjoint elements of them with
-# `msrt_float32_store_unchecked`: no allocation, recursion or faults. Small ranges run on the calling thread.
+# other threads, so it may only read its captures and write disjoint elements of a `var` capture:
+# no allocation, recursion or faults. Small ranges run on the calling thread.
 extern def msrt_parallel_rows(
     count: Int,
     grain: Int,
@@ -350,9 +342,7 @@ export def matvec_rows(
             var r = start
 
             while r < end:
-                msrt_float32_store_unchecked(
-                    out, r, dot_at(m.data, r * cols, x, 0, cols)
-                )
+                out[r] = dot_at(m.data, r * cols, x, 0, cols)
                 r += 1
     )
 
