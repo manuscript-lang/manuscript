@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let b1 = (
@@ -15,7 +15,7 @@ export def main() -> Int:
     )
     say(f"b1 = {b1}")
 
-    let bad = say
+    let _bad = say
     let l2 = [1, 2, 3].take(0)
     say(f"l2 = {l2} len {l2.length()}")
     return 0

@@ -16,12 +16,12 @@ from "@std/bytes.ms" import Bytes
 
 def repeated_headers() -> Result[HttpHeaders, Error]:
     let fields = headers()
-    let first = fields.append("x-dup", "first".to_bytes()) | try expect_ok
-    let second = fields.append("X-Dup", "second".to_bytes()) | try expect_ok
-    let cookie = fields.append(
+    let _first = fields.append("x-dup", "first".to_bytes()) | try expect_ok
+    let _second = fields.append("X-Dup", "second".to_bytes()) | try expect_ok
+    let _cookie = fields.append(
         "Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
     ) | try expect_ok
-    let other = fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok
+    let _other = fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok
     return ok(fields)
 
 def header_failure(message: String) -> HttpResponse:
@@ -68,7 +68,7 @@ test "one header type preserves repeated values through buffered requests":
             )
         )
 
-        let appended = (
+        let _appended = (
             (
                 metadata
                 .headers
@@ -93,8 +93,8 @@ def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     )
 
     let output = received.clone()
-    let removed_connection = output.remove("Connection")
-    let removed_length = output.remove("Content-Length")
+    let _removed_connection = output.remove("Connection")
+    let _removed_length = output.remove("Content-Length")
     return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
@@ -119,26 +119,26 @@ test "streaming proxy uses the same byte-valued header type":
 
 test "lookup returns membership and clone separates it":
     let fields = (try repeated_headers())
-    let appended = fields.append("x-dup", "third".to_bytes()) | try expect_ok
+    let _appended = fields.append("x-dup", "third".to_bytes()) | try expect_ok
     let values = fields.values("X-DUP").get().clone()
     values.length() | try expect_equal(3)
 
     let copy = fields.clone()
-    let copy_appended = copy.append("x-dup", "copy".to_bytes()) | try expect_ok
+    let _copy_appended = copy.append("x-dup", "copy".to_bytes()) | try expect_ok
     fields.values("x-dup").get().length() | try expect_equal(3)
     (fields.values("missing").is_none()) | try expect_true
 
-    let k = fields.append("K", "ASCII".to_bytes()) | try expect_ok
+    let _k = fields.append("K", "ASCII".to_bytes()) | try expect_ok
     (fields.values("K").is_none()) | try expect_true
 
-    let removed = fields.remove("X-DUP")
-    let new_field = fields.append("X-Dup", "new".to_bytes()) | try expect_ok
+    let _removed = fields.remove("X-DUP")
+    let _new_field = fields.append("X-Dup", "new".to_bytes()) | try expect_ok
     (fields.values("x-dup").get().length() != 1) | try expect_false
 
 test "explicit text extraction fails with typed UTF8 error":
     let fields = headers()
-    let valid = fields.append("Raw", "first".to_bytes()) | try expect_ok
-    let invalid = fields.append("raw", Bytes(values: [255])) | try expect_ok
+    let _valid = fields.append("Raw", "first".to_bytes()) | try expect_ok
+    let _invalid = fields.append("raw", Bytes(values: [255])) | try expect_ok
 
     match fields.text("RAW"):
         case ok(_): return fail("invalid UTF8 accepted")

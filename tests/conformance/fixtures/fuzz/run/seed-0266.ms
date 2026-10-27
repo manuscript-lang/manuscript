@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let b1 = ((-((-1) + 593975)) >= ((42 * (-31)) + (29 - (-8))))

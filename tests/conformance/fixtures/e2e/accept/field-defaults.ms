@@ -95,6 +95,6 @@ def no_op() -> Unit: ...
 test "ordinary empty declarations and interface omission":
     no_op()
 
-    let marker = Marker()
+    let _marker = Marker()
     let view: ReadWithDefault = Reader()
     (view.get() != 5 or view.get(fallback: 7) != 7) | try expect_false

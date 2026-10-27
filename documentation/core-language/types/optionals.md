@@ -33,8 +33,8 @@ An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wra
 from "@std/queue.ms" import Queue
 
 def main() -> Unit:
-    var bounded = Queue[Int](capacity: 4)
-    var unbounded = Queue[Int]()
+    var _bounded = Queue[Int](capacity: 4)
+    var _unbounded = Queue[Int]()
 ```
 
 - Applies to functions, methods, function values, constructor fields, and alternative payloads.

@@ -7,7 +7,7 @@ from "@std/io.ms" import stdout
 from "@std/collections.ms" import range
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let f1 = ((578.860 - (6.0e-8 + 213.380)) / (539.458 * (815.929 + 612.792)))

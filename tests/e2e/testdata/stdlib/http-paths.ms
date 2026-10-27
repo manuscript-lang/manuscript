@@ -35,10 +35,10 @@ def stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
-    let sent = try exchange.send_headers(
+    let _sent = try exchange.send_headers(
         status: 200, headers: (try list_headers(chain_1))
     )
-    let written = (
+    let _written = (
         try http_result(exchange.write(f"{exchange.path()}|{exchange.query()}"))
     )
     return ok(())

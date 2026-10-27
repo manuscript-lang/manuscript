@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "tasks 3 first 6\n",
+    "stderr": ""
+  }
+}

@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let i1 = (((-(-36)) + (-9)) * ((14 - 619318) + (0 + (-28))))

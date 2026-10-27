@@ -25,8 +25,8 @@ def next(var count: Int) -> Int:
 
 def branch(var box: Box, take: Bool) -> Unit:
     if take:
-        var count = box.count
-        invoke(lambda: count += 3)
+        var _count = box.count
+        invoke(lambda: _count += 3)
 
     box.count += 1
 

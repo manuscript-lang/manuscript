@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 def fact(n: Int) -> Int:
     if n <= 1:
@@ -26,5 +26,5 @@ export def main() -> Int:
     say(f"fact(16) = {fact(16)}")
     say(f"gcd(378, 4850) = {gcd(378, 4850)}")
 
-    let bad = say
+    let _bad = say
     return 0

@@ -17,5 +17,5 @@ export def main() -> Int:
     let e: Error = TextError("bad")
     let a = Key(id: 1, label: "a")
     let b = Key(id: 1, label: "b")
-    let r = stdout().write(f"{e} {a == b}\n")
+    let _r = stdout().write(f"{e} {a == b}\n")
     return 0

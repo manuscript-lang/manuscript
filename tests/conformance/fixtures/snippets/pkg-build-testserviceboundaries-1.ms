@@ -5,4 +5,4 @@ from "@std/queue.ms" import Queue
 
 test "opaque":
     var queue = Queue[Int](capacity: 1)
-    let capacity = queue.capacity
+    let _capacity = queue.capacity

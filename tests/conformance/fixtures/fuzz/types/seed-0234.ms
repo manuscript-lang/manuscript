@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 def fact(n: Int) -> Int:
     if n <= 1:
@@ -20,5 +20,5 @@ export def main() -> Int:
         f"{(-(-497041928210))} {(8 * (502953 % (-101580214352)))} {((-(-497041928210)) < (8 * (502953 % (-101580214352))))} sum {(-(-497041928210)) + (8 * (502953 % (-101580214352)))}"
     )
 
-    let bad = say
+    let _bad = say
     return 0

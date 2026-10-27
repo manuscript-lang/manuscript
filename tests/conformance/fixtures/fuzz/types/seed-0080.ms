@@ -6,13 +6,13 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let b1 = ("gamma".ends_with("x") and ("gamma" + "naïve").is_empty())
     say(f"b1 = {b1}")
 
-    let bad = say
+    let _bad = say
     let i2 = 26
     say(f"i2 = {i2}")
 
