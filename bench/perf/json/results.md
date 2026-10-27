@@ -58,3 +58,25 @@ linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x `Value` (`bench/pe
 `Writer::finish` validated the whole output as UTF-8 again (12% of twitter stringify instructions) though only whole `&str`s and ASCII are appended; it now hands the buffer over unchecked. Strings under 24 bytes took a byte-at-a-time table walk; the vector scan with its word tail is cheaper at every length measured (twitter 70.96M → 57.59M instructions, citm 132.6M → 126.3M).
 
 Typed stringify of a tree is still 0.62-0.89x serde_json on this machine, so the gap in #1680 is narrowed, not closed: what remains is spread over the generated walker (`json_encode`, ~15% on citm), key and separator bookkeeping and per-value runtime calls.
+
+## 2026-10-27: short names, strings and numbers in one write
+
+linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x. Three runs of `sh bench/perf/json/run.sh`; ranges are the three MB/s values per row. `records` is new: 10,000 typed rows (`id`, `name`, `tags`, `score`, `ok`) written without a `JsonValue`, against serde_json's derived `Serialize` over `Vec<Row>` and Node's `JSON.stringify` of the same objects.
+
+| document | serde_json MB/s | Manuscript before | Manuscript after | after / serde_json |
+|---|---:|---:|---:|---:|
+| small | 565-624 | 384-393 | 519-549 | 0.86-0.92x |
+| twitter | 1453-1585 | 683-693 | 1037-1153 | 0.70-0.79x |
+| canada | 651-678 | 598-608 | 640-671 | 0.96-1.03x |
+| citm_catalog | 2483-2545 | 1508-1514 | 1736-1781 | 0.69-0.70x |
+| records | 738-793 | not measured | 626-666 | 0.80-0.87x |
+
+"Before" is the table above (main at 9f41921f, same machine class, so compare within a row only). Callgrind instructions for the stringify walker on citm (`ms build` then `valgrind --tool=callgrind --toggle-collect='*json_encode*' jb quick citm_catalog:stringify`, one warm-up and five runs): 77.4M → 61.1M.
+
+What changed, all in `Writer` and `ms_rt::scan`:
+
+- A name or string of at most 16 bytes with nothing to escape is checked with two overlapping word tests and written, quotes and colon included, after one capacity check (`push_member_name`, `push_member_quoted`, `push_string_short`). Names were about 190 instructions each in the walker; most of that was bookkeeping around three capacity checks and a byte loop.
+- Number text of 1-16 digits with no sign, point or leading zero skips the number grammar (`json_plain_digits`); every other number still goes through `scan_number`.
+- The short checks load through raw pointers inside `ms-rt`, which allows `unsafe`; `ms-std-json` still has none.
+
+Remaining profile on `records`: float formatting (~16%, about 300 instructions per float against serde's ~150), the call chain from generated code into `Writer` (wrapper plus method per node), and buffer growth copies. Typed `records` and tree stringify are still below serde_json except on canada, so #1680 stays open.

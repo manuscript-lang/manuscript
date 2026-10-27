@@ -1,3 +1,4 @@
+from "@std/collections.ms" import range
 from "@std/fs.ms" import filesystem
 from "@std/io.ms" import stdout
 from "@std/json.ms" import parse, stringify, JsonValue
@@ -23,7 +24,43 @@ def median_ns(body: Callable[[], Int], budget: Int, runs: Int) -> Int:
 def say(text: String) -> Unit:
     let _ignored = stdout().write(text)
 
+# The typed case: a list of records, written without building a `JsonValue` first. The size is
+# the text produced, the same 10,000 rows in `node.js` and `rust/`.
+type Row:
+    id: Int
+    name: String
+    tags: List[String]
+    score: Float
+    ok: Bool
+
+def row_list() -> List[Row]:
+    var rows: List[Row] = []
+    for i in range(0, 10000):
+        rows.append(
+            Row(
+                id: i, name: f"user{i}", tags: ["a", "b"], score: i.to_float() + 0.5,
+                ok: i % 2 == 0
+            )
+        )
+    return rows
+
+def records_body(rows: List[Row]) -> Callable[[], Int]:
+    return lambda () -> Int:
+        if let out = stringify(rows): return out.byte_length()
+
+        return 0
+
+def bench_records(budget: Int, runs: Int) -> Unit:
+    let rows = row_list()
+    let size = records_body(rows.clone())()
+    let s = median_ns(records_body(rows), budget, runs)
+    say(f"records\tstringify\t{s}\t{size}\n")
+
 def bench_one(name: String, op: String, budget: Int, runs: Int) -> Unit:
+    if name == "records":
+        bench_records(budget, runs)
+        return
+
     let read = filesystem().read_file(f"bench/perf/json/data/{name}.json")
 
     if let bytes = read:

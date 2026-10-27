@@ -330,7 +330,10 @@ fn unicode_valid(s: &[u8]) -> bool {
 const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
-use ms_rt::scan::{json_special as find_special, push_short, skip_spaces};
+use ms_rt::scan::{
+    json_plain_digits, json_special as find_special, push_member_name, push_member_quoted,
+    push_short, push_string_short, skip_spaces,
+};
 
 enum Frame {
     /// An array whose items so far are `vals[start..]`.
@@ -1206,6 +1209,18 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_name(&mut self.buf, top.count > 0, key.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
+        }
         self.buf.reserve(key.len() + 8);
         self.separate();
         self.quoted(key);
@@ -1220,6 +1235,18 @@ impl Writer {
     pub fn key_quoted(&mut self, quoted_name: &str) {
         if self.err.is_some() {
             return;
+        }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_quoted(&mut self.buf, top.count > 0, quoted_name.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
         }
         self.separate();
         push_short(&mut self.buf, quoted_name.as_bytes());
@@ -1335,7 +1362,7 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
-        if !number_text_valid(text) {
+        if !(text.len() <= 16 && json_plain_digits(text.as_bytes())) && !number_text_valid(text) {
             return self.fail();
         }
         self.raw(text);
@@ -1358,6 +1385,10 @@ impl Writer {
 
     fn quoted(&mut self, s: &str) {
         let b = s.as_bytes();
+        // Most names and short values: no escape, one capacity check.
+        if push_string_short(&mut self.buf, b) {
+            return;
+        }
         self.buf.reserve(b.len() + 2);
         self.buf.push(b'"');
         let mut at = 0;
