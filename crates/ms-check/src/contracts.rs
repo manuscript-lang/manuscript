@@ -171,6 +171,7 @@ fn builtin_comparable(t: &Ty) -> bool {
             | "UInt8"
             | "UInt16"
             | "UInt32"
+            | "UInt64"
             | "Float"
             | "Float32"
             | "Float64"

@@ -1731,12 +1731,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
                 let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let (lo, hi) = inner
-                    .and_then(|i| self.g.lay.m.types.int_range(i))
-                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+                let from = f.ty(inst.args[0]);
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    self.g.lay.m.types.narrow_range(from, i)
+                });
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, lo as i64),
-                    self.b.ins().iconst(types::I64, hi as i64),
+                    self.b.ins().iconst(types::I64, lo),
+                    self.b.ins().iconst(types::I64, hi),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
@@ -3140,9 +3141,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         Vec::new()
     }
 
-    /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length
-    /// bump; everything else (longer text, a full buffer) calls the runtime. This is the same
-    /// test the runtime makes first, so the common character-at-a-time append needs no call.
+    /// `StringBuilder.append` of a string with room to spare is a capacity check, a copy and a
+    /// length bump: a one-byte string is a store, anything longer one `memcpy`. An inline string
+    /// (whose length sits in different bits) and a full buffer call the runtime, which makes the
+    /// same tests first.
     fn strbuilder_append(&mut self, id: FuncId, builder: Value, text: Value) -> Vs {
         let len = self
             .b
@@ -3152,14 +3154,16 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
-        let size = self
+        let tagged = self
             .b
             .ins()
             .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
-        let size = self.b.ins().band_imm_s(size, STR_LEN_MASK as i64);
-        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
-        let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
-        let fast = self.b.ins().band(single, room);
+        let size = self.b.ins().band_imm_s(tagged, STR_LEN_MASK as i64);
+        let tag = self.b.ins().ushr_imm_u(tagged, 62);
+        let flat = self.b.ins().icmp_imm_s(IntCC::NotEqual, tag, 1);
+        let next = self.b.ins().iadd(len, size);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let fast = self.b.ins().band(flat, room);
         let store = self.b.create_block();
         let slow = self.b.create_block();
         self.b.set_cold_block(slow);
@@ -3170,14 +3174,25 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), text, STR_PTR_OFFSET as i32);
-        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         let data = self
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
         let at = self.b.ins().iadd(data, len);
+        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
+        let one = self.b.create_block();
+        let many = self.b.create_block();
+        let done = self.b.create_block();
+        self.b.ins().brif(single, one, &[], many, &[]);
+        self.b.switch_to_block(one);
+        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         self.b.ins().store(flags(), byte, at, 0);
-        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(many);
+        self.b
+            .call_memcpy(self.g.module.target_config(), at, bytes, size);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(done);
         self.b
             .ins()
             .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
@@ -3242,6 +3257,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::UInt8
             | TyKind::UInt16
             | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr

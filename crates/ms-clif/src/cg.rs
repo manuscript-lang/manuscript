@@ -411,7 +411,7 @@ impl<'m> Gen<'m> {
         let (key, scope) = (ty, ty.scope());
         let ty = ty.unscoped();
         let builtin = match m.types.kind(ty) {
-            // `Int8`..`Int32` and `UInt8`..`UInt32` are plain bits of their width and take the `POD` path below.
+            // `Int8`..`Int32` and `UInt8`..`UInt64` are plain bits of their width and take the `POD` path below.
             TyKind::Int => Some("msrt_desc_int"),
             TyKind::Float => Some("msrt_desc_float"),
             TyKind::Float32 => Some("msrt_desc_float32"),

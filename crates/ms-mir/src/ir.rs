@@ -1235,6 +1235,7 @@ impl Module {
             | TyKind::UInt8
             | TyKind::UInt16
             | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr => false,

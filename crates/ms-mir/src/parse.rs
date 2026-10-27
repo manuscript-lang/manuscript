@@ -639,6 +639,7 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "uint8" => Ty::UINT8,
         "uint16" => Ty::UINT16,
         "uint32" => Ty::UINT32,
+        "uint64" => Ty::UINT64,
         "str" => Ty::STR,
         "bytes" => Ty::BYTES,
         "ptr" => Ty::PTR,

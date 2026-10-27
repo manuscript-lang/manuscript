@@ -136,6 +136,8 @@ interface IntOperations:
     def to_uint16() -> Optional[UInt16]
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
     def to_uint32() -> Optional[UInt32]
+    # Converts to UInt64, or returns none when the value is negative.
+    def to_uint64() -> Optional[UInt64]
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -196,6 +198,8 @@ interface Int8Operations:
     def to_uint16() -> Optional[UInt16]
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
     def to_uint32() -> Optional[UInt32]
+    # Converts to UInt64, or returns none when the value is negative.
+    def to_uint64() -> Optional[UInt64]
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -230,6 +234,8 @@ interface Int16Operations:
     def to_uint16() -> Optional[UInt16]
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
     def to_uint32() -> Optional[UInt32]
+    # Converts to UInt64, or returns none when the value is negative.
+    def to_uint64() -> Optional[UInt64]
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -264,6 +270,8 @@ interface Int32Operations:
     def to_uint16() -> Optional[UInt16]
     # Converts to UInt32, or returns none when the value is outside UInt32's range.
     def to_uint32() -> Optional[UInt32]
+    # Converts to UInt64, or returns none when the value is negative.
+    def to_uint64() -> Optional[UInt64]
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -294,6 +302,8 @@ interface UInt8Operations:
     def to_uint16() -> UInt16
     # Converts to UInt32; every value fits, so no check is needed.
     def to_uint32() -> UInt32
+    # Converts to UInt64; every value fits, so no check is needed.
+    def to_uint64() -> UInt64
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -324,6 +334,8 @@ interface UInt16Operations:
     def to_uint8() -> Optional[UInt8]
     # Converts to UInt32; every value fits, so no check is needed.
     def to_uint32() -> UInt32
+    # Converts to UInt64; every value fits, so no check is needed.
+    def to_uint64() -> UInt64
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.
@@ -354,6 +366,40 @@ interface UInt32Operations:
     def to_uint8() -> Optional[UInt8]
     # Converts to UInt16, or returns none when the value is outside UInt16's range.
     def to_uint16() -> Optional[UInt16]
+    # Converts to UInt64; every value fits, so no check is needed.
+    def to_uint64() -> UInt64
+    # Converts to Float32, rounding to the nearest binary32 value.
+    def to_float32() -> Float32
+    # Converts to Float64, rounding to the nearest binary64 value.
+    def to_float64() -> Float64
+
+# Conversion operations for UInt64, an unsigned 32-bit integer.
+interface UInt64Operations:
+    # Formats the integer in a radix from 2 through 36 using lowercase digits.
+    # A radix outside 2 through 36 is a programming fault.
+    def to_string_radix(radix: Int) -> String
+    # Converts to the nearest Float; the nearest representable value is used above 2^53.
+    def to_float() -> Float
+    # Converts to the exactly equal Decimal; no rounding occurs.
+    def to_decimal() -> Decimal
+    # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+    def compare(other: UInt64) -> Int
+    # Converts to Int8, or returns none when the value is outside Int8's range.
+    def to_int8() -> Optional[Int8]
+    # Converts to Int16, or returns none when the value is outside Int16's range.
+    def to_int16() -> Optional[Int16]
+    # Converts to Int32, or returns none when the value is outside Int32's range.
+    def to_int32() -> Optional[Int32]
+    # Converts to Int64, or returns none when the value is above Int64's maximum.
+    def to_int64() -> Optional[Int64]
+    # Converts to Int, or returns none when the value is above Int's maximum.
+    def to_int() -> Optional[Int]
+    # Converts to UInt8, or returns none when the value is outside UInt8's range.
+    def to_uint8() -> Optional[UInt8]
+    # Converts to UInt16, or returns none when the value is outside UInt16's range.
+    def to_uint16() -> Optional[UInt16]
+    # Converts to UInt32, or returns none when the value is outside UInt32's range.
+    def to_uint32() -> Optional[UInt32]
     # Converts to Float32, rounding to the nearest binary32 value.
     def to_float32() -> Float32
     # Converts to Float64, rounding to the nearest binary64 value.

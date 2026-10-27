@@ -253,6 +253,7 @@ impl Cx {
                     "UInt8" => Ok(MTy::UINT8),
                     "UInt16" => Ok(MTy::UINT16),
                     "UInt32" => Ok(MTy::UINT32),
+                    "UInt64" => Ok(MTy::UINT64),
                     "Float" | "Float64" => Ok(MTy::FLOAT),
                     "Float32" => Ok(MTy::FLOAT32),
                     "Bool" => Ok(MTy::BOOL),

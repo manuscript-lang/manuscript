@@ -22,7 +22,8 @@ fn payload_kind(kind: &TyKind, t: MTy) -> &'static str {
         | TyKind::Int32
         | TyKind::UInt8
         | TyKind::UInt16
-        | TyKind::UInt32 => "i64",
+        | TyKind::UInt32
+        | TyKind::UInt64 => "i64",
         TyKind::Float | TyKind::Float32 => "f64",
         _ if t == MTy::STR => "*const StrVal",
         TyKind::Alt(_) => "i64",
