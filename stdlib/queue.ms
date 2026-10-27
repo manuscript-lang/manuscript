@@ -63,12 +63,13 @@ impl Queue[T]:
     def is_empty() -> Bool:
         return self.head >= self.items.length()
 
-# Negative compare results put left before right; equal priorities remain FIFO.
+# Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
+def order[T: Comparable](left: T, right: T) -> Int:
+    return left.compare(right)
+
+# Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
 # A priority queue is an owned value: a copy is an independent queue.
-export type PriorityQueue[T: Clonable]:
-    # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
-    # Comparisons must stay consistent.
-    compare: Callable[[T, T], Int]
+export type PriorityQueue[T: Comparable & Clonable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Binary heap of waiting values. Internal state: use the operations, not this field.
@@ -81,7 +82,7 @@ export type PriorityQueue[T: Clonable]:
 impl PriorityQueue[T]:
     # Reports whether the entry at `a` dequeues before the entry at `b`.
     def before(a: Int, b: Int) -> Bool:
-        let order = self.compare(self.heap.get(a), self.heap.get(b))
+        let order = order(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
     # Exchanges the heap entries at `a` and `b`.
@@ -165,10 +166,3 @@ impl PriorityQueue[T]:
     # Reports whether the queue has no values to peek or dequeue.
     def is_empty() -> Bool:
         return self.heap.length() == 0
-
-# Creates a PriorityQueue that dequeues the smallest value first, using the value type's `Comparable` order.
-# Example: `ordered_priority_queue[Int]()` dequeues 1 before 2; pass `capacity` to bound it.
-export def ordered_priority_queue[T: Comparable & Clonable](
-    capacity: Optional[Int] = none
-) -> PriorityQueue[T]:
-    return PriorityQueue[T](compare: lambda a, b: a.compare(b), capacity: capacity)

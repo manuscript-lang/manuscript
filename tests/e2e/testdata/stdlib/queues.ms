@@ -1,8 +1,6 @@
 from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "@std/queue.ms" import PriorityQueue, Queue, ordered_priority_queue
+from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/collections.ms" import range
-
-def compare(left: Int, right: Int) -> Int: left - right
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)
@@ -13,7 +11,7 @@ test "FIFO capacity empty reads draining and reuse":
     try expect_false(not queue.dequeue().is_none() or not queue.enqueue(4))
 
 test "priority queue orders values and honors capacity":
-    var queue = PriorityQueue(compare, 3)
+    var queue = PriorityQueue[Int](3)
     queue.enqueue(3)
     queue.enqueue(1)
     queue.enqueue(2)
@@ -24,7 +22,7 @@ test "priority queue orders values and honors capacity":
     try expect_false(not queue.is_empty())
 
 test "priority queue sorts many values and copies are independent":
-    var queue = PriorityQueue[Int](compare)
+    var queue = PriorityQueue[Int]()
     for index in range(0, 200):
         queue.enqueue((index * 37) % 101)
 
@@ -41,8 +39,8 @@ test "priority queue sorts many values and copies are independent":
 
     try expect_equal(copy.length(), 199)
 
-test "ordered priority queue uses natural order and honors capacity":
-    var queue = ordered_priority_queue[String](2)
+test "ordered priority queue defaults to natural order and honors capacity":
+    var queue = PriorityQueue[String](capacity: 2)
     try expect_true(queue.enqueue("b"))
     try expect_true(queue.enqueue("a"))
     try expect_false(queue.enqueue("c"))

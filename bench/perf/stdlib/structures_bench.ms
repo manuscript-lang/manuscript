@@ -5,14 +5,6 @@ from "@std/deque.ms" import Deque
 from "@std/bitset.ms" import BitSet
 from "@std/sorted.ms" import SortedMap
 
-def ascending(left: Int, right: Int) -> Int:
-    if left < right:
-        return -1
-    if left > right:
-        return 1
-
-    return 0
-
 # Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
 bench "queue.enqueue_dequeue_100000":
     def work() -> Result[Unit, Error]:
@@ -29,7 +21,7 @@ bench "queue.enqueue_dequeue_100000":
 
 bench "priority_queue.enqueue_dequeue_100000":
     def work() -> Result[Unit, Error]:
-        var queue = PriorityQueue[Int](ascending)
+        var queue = PriorityQueue[Int]()
         for i in range(0, 100000):
             queue.enqueue((i * 7919) % 100003)
 
@@ -116,7 +108,7 @@ bench "queue.enqueue_dequeue_400000":
 
 bench "priority_queue.enqueue_dequeue_400000":
     def work() -> Result[Unit, Error]:
-        var queue = PriorityQueue[Int](ascending)
+        var queue = PriorityQueue[Int]()
         for i in range(0, 400000):
             queue.enqueue((i * 7919) % 100003)
 

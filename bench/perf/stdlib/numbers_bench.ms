@@ -103,9 +103,7 @@ bench "queue.enqueue_dequeue":
 
 bench "priority_queue.enqueue_dequeue":
     def work() -> Result[Unit, Error]:
-        var q = PriorityQueue[Int](
-            compare: lambda (left: Int, right: Int) -> Int: (left - right)
-        )
+        var q = PriorityQueue[Int]()
         for i in range(0, 50000):
             q.enqueue((i * 7919) % 10007)
 

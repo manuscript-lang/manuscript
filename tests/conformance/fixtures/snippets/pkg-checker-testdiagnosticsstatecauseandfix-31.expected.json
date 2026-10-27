@@ -7,6 +7,28 @@
     "format": 1,
     "diagnostics": [
       {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+          "line": 7,
+          "column": 13,
+          "offset": 244
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order, orders",
+        "position": {
+          "file": "pkg-checker-testdiagnosticsstatecauseandfix-31.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 267
+        }
+      },
+      {
         "code": "MS2001",
         "phase": "resolution",
         "message": "unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod",
@@ -62,7 +84,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:32: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n   |\n 8 |         compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0\n   |                                ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:51: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n   |\n 8 |         compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0\n   |                                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:7:13: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 7 |     var q = PriorityQueue(\n   |             ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:9: type: unknown argument compare; parameters of PriorityQueue: capacity, heap, next_order, orders\n   |\n 8 |         compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0\n   |         ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:32: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n   |\n 8 |         compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0\n   |                                ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-31.ms:8:51: resolution: unknown type HttpMethod; add: from \"@std/http.ms\" import HttpMethod\n   |\n 8 |         compare: lambda (left: HttpMethod, right: HttpMethod) -> Int: return 0\n   |                                                   ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
