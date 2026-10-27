@@ -102,3 +102,33 @@ fn per_cpu_copies_report_the_same_fault_frames() {
     assert!(native.1.contains("fault.ms:3 in scale"), "{}", native.1);
     assert!(native.1.contains("fault.ms:8 in main"), "{}", native.1);
 }
+
+/// `MS_VECTORIZE=off` leaves the list loops scalar.
+#[test]
+fn vectorize_off_keeps_loops_scalar() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-vectorize-off-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("k.ms"), KERNELS).unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_KEEP_LL", "1")
+        .env("MS_VECTORIZE", "off")
+        .args(["build", "k.ms", "-o", "k"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        !ir.contains(".avx2"),
+        "per-CPU copies with vectorization off"
+    );
+}

@@ -645,7 +645,7 @@ fn compile_with_isa(
             let cwd = std::env::current_dir()
                 .map_or_else(|_| ".".into(), |d| d.to_string_lossy().into_owned());
             let mut llvm = crate::llvm_ir::LlvmModule::new(files, cwd);
-            llvm.set_per_cpu(x86_64);
+            llvm.set_per_cpu(x86_64 && crate::vectorize());
             llvm
         }),
     };
