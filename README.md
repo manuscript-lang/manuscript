@@ -100,6 +100,12 @@ An agent writes the straightforward loop, not the clever one, so the compiler ha
 
 The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP vs Go](bench/perf/web/results.md)
 
+Library results from the October 27 runs (linux/amd64, 4 shared cores; compare only within one page):
+
+- **HTTP server:** at parity with hyper on two workers. `/health` 113k–119k req/s against 114k–119k, p99 2.2 ms against 1.9–2.7 ms, and 62 MB against 104 MB resident with 10,000 idle connections. [Web results](bench/perf/web/results.md#2026-10-27-rust-baseline-equal-cores)
+- **CSV:** `parse` on plain input takes 476–535 µs against the Rust `csv` crate's 974–1212 µs, about 2× faster. On quoted input it takes 785–832 µs against 804–911 µs, within run-to-run noise. [CSV](bench/perf/csv/README.md)
+- **JSON:** parsing `twitter.json` into a tree runs at 451 MB/s against `serde_json::Value` at 137 MB/s, about 3×. [JSON](bench/perf/json/results.md#2026-10-27-against-serde_json-and-the-writer)
+
 Native release builds for Linux, macOS and Windows, amd64 and arm64. The conformance corpus runs on all three in CI.
 
 ## The language is built the way it will be used
