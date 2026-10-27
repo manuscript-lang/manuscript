@@ -18,3 +18,14 @@ Compare numbers only from the same machine.
 An earlier run of the same programs gave quoted 887 µs against 943 µs, so on quoted input the two are within run-to-run noise; Rust is ahead on that shape in this run. Plain input is about twice as fast in Manuscript.
 
 Before #1659 `parse` built a `List[Int]` of scalars per line; the same quoted shape took about 1.3 ms per parse in the stdlib micro-benchmark.
+
+## 2026-10-27, Linux amd64, 4 cores, after the byte-scan parser
+
+Three runs each; ranges are best-of-200 per run.
+
+| Shape | Manuscript | Rust csv |
+| --- | --- | --- |
+| quoted | 785-832 µs | 804-911 µs |
+| plain | 476-535 µs | 974-1212 µs |
+
+`parse` scans the input once as `Bytes` with `index_of_byte` and decodes each cell with `decode_utf8_range`; lines without quotes still take one native `split`.

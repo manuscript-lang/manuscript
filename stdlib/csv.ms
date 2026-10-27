@@ -1,4 +1,5 @@
 from "@std/string.ms" import StringBuilder
+from "@std/bytes.ms" import Bytes
 from "@std/collections.ms" import range
 
 # Errors returned for malformed CSV input or configured size limits.
@@ -32,16 +33,13 @@ export def parse(
     let valid = check_options(options)
     if valid.is_error(): return error(valid.err())
 
+    let bytes = text.to_bytes()
+    let total = bytes.length()
     var reader = Reader(
-        lines: text.split("\n"), delimiter: options.delimiter.clone(), next_line: 0,
-        total_lines: 0
+        bytes: bytes, total: total, delimiter: options.delimiter.scalar_values() [0],
+        delimiter_text: options.delimiter.clone(), at: 0, quote: -1, delimiter_at: -1,
+        line_at: -1
     )
-
-    # A final empty piece after the last newline is not a line.
-    var count = reader.lines.length()
-    if count > 0 and reader.lines[count - 1] == "": count -= 1
-    reader.total_lines = count
-
     var rows = List[List[String]]()
     var cells = 0
 
@@ -87,95 +85,129 @@ def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
 
     return ok(())
 
-# Input split at LF; a record may span several lines when a quoted cell holds a newline.
+# The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
+# after the cursor, or total when there is none; they are searched again only once passed.
 type Reader:
-    lines: List[String]
-    delimiter: String
-    next_line: Int
-    total_lines: Int
+    bytes: Bytes
+    total: Int
+    delimiter: Int
+    delimiter_text: String
+    at: Int
+    quote: Int
+    delimiter_at: Int
+    line_at: Int
 
-# The next line without its CR terminator; none at end of input.
-def take_line(var reader: Reader) -> Optional[String]:
-    if reader.next_line >= reader.total_lines: return none
+def next_quote(var reader: Reader, from: Int) -> Int:
+    if reader.quote < from: reader.quote = reader.bytes.index_of_byte(34, from).get(
+        reader.total
+    )
+    return reader.quote
 
-    var text = reader.lines[reader.next_line].clone()
-    if text.ends_with("\r"): text = text.take(text.scalar_length() - 1)
-    reader.next_line += 1
-    return some(text)
+def next_delimiter(var reader: Reader, from: Int) -> Int:
+    if reader.delimiter_at < from: reader.delimiter_at = reader.bytes.index_of_byte(
+        reader.delimiter, from
+    ).get(reader.total)
+    return reader.delimiter_at
+
+def next_line(var reader: Reader, from: Int) -> Int:
+    if reader.line_at < from: reader.line_at = reader.bytes.index_of_byte(10, from).get(
+        reader.total
+    )
+    return reader.line_at
+
+def text_between(reader: Reader, start: Int, end: Int) -> String:
+    if let text = reader.bytes.decode_utf8_range(start, end): return text
+
+    return ""
+
+# The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
+def line_end_after(reader: Reader, at: Int) -> Int:
+    if at >= reader.total: return at
+
+    let byte = reader.bytes[at]
+    if byte == 10: return at + 1
+    if byte == 13 and at + 1 >= reader.total: return at + 1
+    if byte == 13 and reader.bytes[at + 1] == 10: return at + 2
+
+    return at
 
 # Reads the next record, skipping empty lines; none at end of input.
 def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
-    var first = take_line(var reader)
-
     while True:
-        if let candidate = first:
-            if candidate != "": break
+        let skipped = line_end_after(reader, reader.at)
+        if skipped == reader.at: break
 
-            first = take_line(var reader)
-        else:
-            return ok(none)
+        reader.at = skipped
 
-    var text = first.get().clone()
+    if reader.at >= reader.total: return ok(none)
 
     # A line without quotes is one record whose cells are the delimiter-separated pieces.
-    if not text.contains("\""): return ok(some(text.split(reader.delimiter)))
+    let line = next_line(var reader, reader.at)
 
-    # Splitting at quotes alternates unquoted and quoted pieces; an odd quote count means a
-    # quoted cell continues on the next line.
-    var pieces = text.split("\"")
+    if next_quote(var reader, reader.at) > line:
+        var last = line
+        if last > reader.at and reader.bytes[last - 1] == 13: last -= 1
 
-    while pieces.length() % 2 == 0:
-        let following = take_line(var reader)
-        if not following.is_some(): return error(CsvError.InvalidData)
+        let text = text_between(reader, reader.at, last)
+        reader.at = line
+        if line < reader.total: reader.at = line + 1
+        return ok(some(text.split(reader.delimiter_text)))
 
-        text = f"{text}\n{following.get()}"
-        pieces = text.split("\"")
-
-    return ok(some(try record_of(pieces, reader.delimiter)))
-
-# The cells of one record split at its quotes: pieces at odd positions are inside quotes.
-def record_of(pieces: List[String], delimiter: String) -> Result[List[String], CsvError]:
-    let last = pieces.length() - 1
     var row = List[String]()
-    var cell = ""
 
-    for index in range(0, pieces.length()):
-        let piece = pieces[index]
+    while True:
+        var cell = ""
+        var at = reader.at.to_int()
 
-        if index % 2 == 1:
-            cell = cell.concat(piece)
-            continue
+        if at < reader.total and reader.bytes[at] == 34:
+            at += 1
 
-        # A doubled quote is an empty unquoted piece between two quoted ones.
-        if index > 0 and index < last and piece == "":
-            cell = cell.concat("\"")
-            continue
+            while True:
+                let close = next_quote(var reader, at)
+                if close >= reader.total: return error(CsvError.InvalidData)
 
-        if index > 0:
-            if piece == "":
-                row.append(cell.clone())
+                cell = cell.concat(text_between(reader, at, close))
+                at = close + 1
+
+                if at < reader.total and reader.bytes[at] == 34:
+                    cell = cell.concat("\"")
+                    at += 1
+                    continue
+
                 break
 
-            if not piece.starts_with(delimiter): return error(CsvError.InvalidData)
+            if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
 
-            row.append(cell.clone())
+            let ended = line_end_after(reader, at)
 
-        let parts = piece.split(delimiter)
-        var first = 0
-        if index > 0: first = 1
+            if at >= reader.total or ended > at:
+                row.append(cell)
+                reader.at = ended
+                return ok(some(row))
 
-        var cells_end = parts.length()
-        if index < last: cells_end -= 1
-        for part in range(first, cells_end):
-            row.append(parts[part].clone())
+            if reader.bytes[at] != reader.delimiter: return error(CsvError.InvalidData)
 
-        # A quote opens a cell only at its start.
-        if index < last:
-            if parts[cells_end] != "": return error(CsvError.InvalidData)
+            row.append(cell)
+            reader.at = at + 1
+            continue
 
-            cell = ""
+        let stop = next_delimiter(var reader, at)
+        let newline = next_line(var reader, at)
+        var end = stop
+        if newline < stop: end = newline
+        if next_quote(var reader, at) < end: return error(CsvError.InvalidData)
 
-    return ok(row)
+        if end < stop or stop >= reader.total:
+            # The cell closes the record; drop the CR of a CRLF ending.
+            var last = end
+            if last > at and reader.bytes[last - 1] == 13: last -= 1
+            row.append(text_between(reader, at, last))
+            reader.at = end
+            if end < reader.total: reader.at = end + 1
+            return ok(some(row))
+
+        row.append(text_between(reader, at, end))
+        reader.at = end + 1
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.
