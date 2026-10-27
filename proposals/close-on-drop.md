@@ -5,7 +5,8 @@
 - Today a `Closeable` binding that is never moved or closed is a compile error (`ownership/walk.rs` `unclosed_resources`, #1526); only `with` or `.close()` closes it.
 - Change: that same binding is closed implicitly when its scope exits, exactly as if the rest of the block were wrapped in `with`. No new syntax.
 - Cost: one checker fact per binding plus a lowering path that reuses `with_stmt` machinery (`ms-lower/src/with.rs`).
-- Decision requested: approve the narrow rule below (never-moved bindings only).
+- Direction: if this works, remove `with` entirely (Chinmay), after the rule proves out.
+- Decision requested: approve the narrow rule below (never-moved bindings only), with `with` removal as stage 3.
 
 ## Status
 
@@ -25,7 +26,7 @@ Proposal, 2026-10-27, against `dcdaee5d`. Direction (Chinmay): "can we follow dr
 - Explicit `.close()` or `with` on the binding suppresses the implicit close (no double close).
 - Lowering: treat the binding as a `with` whose body is the rest of the block, reusing `CleanupPush`, `closer_for` and `close_call`, so faults and cancellation behave as `with` does.
 - `close()` is `var def close() -> Unit`; it cannot return an error, same as `with` today.
-- `with` stays valid; it only narrows the close to a sub-block.
+- `with` stays valid in stages 1-2 and is removed in stage 3; until then it only narrows the close to a sub-block.
 - The "never closed" diagnostic is removed; a binding that is moved on some path still needs an explicit close per existing rules.
 
 Before/after:
@@ -59,6 +60,7 @@ Before/after:
 
 - Stage 1: checker + lowering + lower/conformance tests (early return, loop `break`, fault, cancellation, generic bound).
 - Stage 2: docs, lint for redundant `with`.
+- Stage 3 (removal of `with`, language change): migrate stdlib, docs, fixtures and tests to the implicit rule, deprecate `with` for one release, then delete the syntax from parser, checker, lowering, formatter, LSP snippets. Needs an early-close answer: explicit `.close()` ends the resource early, which the rule already allows. Gate: no use of `with` remains and every migrated fixture passes unchanged in behavior.
 - Gate: `make verify`; every existing `with` fixture still passes.
 
 ## Open questions
