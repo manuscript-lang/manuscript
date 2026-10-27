@@ -80,3 +80,19 @@ What changed, all in `Writer` and `ms_rt::scan`:
 - The short checks load through raw pointers inside `ms-rt`, which allows `unsafe`; `ms-std-json` still has none.
 
 Remaining profile on `records`: float formatting (~16%, about 300 instructions per float against serde's ~150), the call chain from generated code into `Writer` (wrapper plus method per node), and buffer growth copies. Typed `records` and tree stringify are still below serde_json except on canada, so #1680 stays open.
+
+## 2026-10-27: floats with a short fraction
+
+linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x; three runs of `sh bench/perf/json/run.sh` on main with this change (it includes other changes merged since the section above, so only the last column is the comparison to read).
+
+| document | serde_json MB/s | Manuscript MB/s | Manuscript / serde_json |
+|---|---:|---:|---:|
+| small | 569-601 | 548-577 | 0.91-1.01x |
+| twitter | 1425-1495 | 1575-1640 | 1.05-1.15x |
+| canada | 622-656 | 688-767 | 1.09-1.23x |
+| citm_catalog | 2454-2639 | 1783-1832 | 0.68-0.73x |
+| records | 770-811 | 720-756 | 0.93-0.94x |
+
+A float that is a decimal of one to four fraction digits (`1234.5`, `0.25`, `99.99`) is scaled to an integer, checked by dividing back, and written two digits at a time with the point placed by position; the check yields the same digits as the shortest-round-trip formatter because the quotient of an exact integer by an exact power of ten is the correctly rounded double. `Writer::float` on `i + 0.5` went from about 218 to 135 instructions. The test `plain_decimals_print_as_rust_displays_them` compares 800,000 values in 1e-3..1e11 against Rust's `{}` byte for byte.
+
+citm_catalog is the remaining gap: its time is in the generated `JsonValue` walker and the per-node calls into `Writer`, not in escaping or numbers.
