@@ -55,6 +55,42 @@ export def main() -> Int:
 ms run args.ms -- Sam Ada
 ```
 
+## Parse subcommands and flags
+
+Save as `tool.ms`. `@std/cli.ms` resolves nested commands, typed flags and positional arguments, writes `--help`, and hands your handler a record you define: each field is filled from the flag or argument with the same name (`dry-run` fills `dry_run`). Usage errors print a message and exit with status 2.
+
+<!-- manuscript-example: {"mode":"run","args":["hello","Ada","-n","2"],"stdout":"Hello, Ada!\nHello, Ada!\n"} -->
+```manuscript
+from "@std/cli.ms" import Arg, Command, Flag, FlagKind, command
+from "@std/io.ms" import stdout
+from "@std/process.ms" import arguments
+
+type Greeting:
+    name: String
+    times: Int
+
+def greet(options: Greeting) -> Result[Int, Error]:
+    for round in 0..options.times:
+        try stdout().write(f"Hello, {options.name}!\n")
+    try stdout().flush()
+    return ok(0)
+
+export def main() -> Int:
+    let hello = command[Greeting](
+        name: "hello",
+        about: "Print a greeting",
+        flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],
+        args: [Arg("name", "Who to greet")],
+        run: lambda options: greet(options)
+    )
+    return Command(name: "tool", about: "Example tool", children: [hello]).execute(arguments())
+```
+
+```sh
+ms run tool.ms -- hello Ada -n 2
+ms run tool.ms -- hello --help
+```
+
 ## Read a UTF-8 text file
 
 Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
