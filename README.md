@@ -10,13 +10,17 @@ A small, regular language makes intent explicit. Strong types and ownership give
 
 *Alpha: syntax and APIs can change. These examples follow current source; releases may lag. First builds download pinned tools. [Setup and platform requirements](documentation/learn/getting-started.md).*
 
-## Correctness starts with the language
+## Catch mistakes before you run
 
-**Types carry intent.** There is no built-in `any` escape hatch. Collections, `Optional[T]` and `Result[T, E]` use the same generic type system: the compiler knows what a value contains, whether it can be absent, and how an operation can fail. Expected failures use returned values rather than exceptions, with `try` making propagation explicit.
+Give your agent a compiler that checks assumptions you would otherwise have to chase through generated code.
 
-**Ownership makes change deliberate.** `let` keeps data immutable; `var` marks mutation. Borrows let code use a value without taking ownership or writing lifetime annotations; `.clone()` makes copies of ordinary data explicit. `with` ties resource cleanup to a visible block, and scoped task, worker and process groups own the work they start.
+**Keep wrong values out.** Strong types, simple generics and no built-in `any` prevent a `List[Int]` from quietly accepting a string. `Optional[T]` keeps “might be missing” in the type instead of leaving you to infer it from every caller.
 
-**Feedback completes the loop.** The compiler rejects incompatible types, missing `match` cases and discarded error results, then supplies diagnostics with causes and suggested repairs. `ms search_symbol` finds actual APIs; structured output and available `ms check --fix` repairs help agents iterate. `ms verify` checks types, formatting and lint, then runs tests. Tests establish the behavior they exercise; compilation alone does not prove a program correct.
+**Make failure handling a visible choice.** Expected failures are `Result` values, not exceptions. The agent handles them or propagates them with `try`. A bare call that drops its `Result` is rejected, so ignoring failure requires an explicit choice. Missing `match` cases are caught before the unhandled path runs.
+
+**Catch invalid mutation and missed cleanup.** `let` keeps data immutable; `var` marks where changes are allowed. Borrow checks reject conflicting access without lifetime annotations. Resource checks flag owned `Closeable` bindings left without cleanup or ownership transfer. `with` closes resources when its block exits, including on early returns and errors; task, worker and process groups keep concurrent work within explicit scopes.
+
+**Give your agent a concrete repair target.** Diagnostics identify the cause, location and suggested fix; structured output and available `ms check --fix` edits support automated repair. `ms search_symbol` finds actual APIs, and `ms verify` checks types, formatting and lint, then runs tests. Tests and review still check whether the program does what you intended.
 
 ## Fast by design. Measured against Rust.
 
