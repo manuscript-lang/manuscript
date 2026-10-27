@@ -160,3 +160,18 @@ test "builder appends literals of every short length across growth":
     for i in range(0, 40):
         want.append(one)
     try expect_equal(sb.build(), want.build())
+
+test "builder appends variable text of every length across growth":
+    let unit = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
+    var sb = StringBuilder()
+    var want = 0
+
+    for round in range(0, 3):
+        for n in range(0, 70):
+            let piece = try unit.slice(0, n)
+            sb.append(piece)
+            want += n
+
+    let built = sb.build()
+    try expect_equal(built.byte_length(), want)
+    try expect_equal((try built.slice(0, 10)), "0010120123")
