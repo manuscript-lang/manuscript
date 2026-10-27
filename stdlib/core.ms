@@ -171,7 +171,7 @@ export interface Comparable:
 # There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
     # Returns an independent deep copy of this value.
-    def clone() -> Clonable
+    def clone() -> Self
 
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:
