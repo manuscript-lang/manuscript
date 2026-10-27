@@ -1670,16 +1670,17 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
     // SAFETY: caller contract.
     unsafe {
         let s = bslice(b);
+        // A `List[UInt8]` stores one byte per element, the layout of the bytes themselves.
         let p = if s.is_empty() {
             core::ptr::null_mut()
         } else {
-            alloc::alloc(s.len() * 8)
-        } as *mut i64;
-        for (i, &x) in s.iter().enumerate() {
-            *p.add(i) = x as i64;
+            alloc::alloc(s.len())
+        };
+        if !s.is_empty() {
+            core::ptr::copy_nonoverlapping(s.as_ptr(), p, s.len());
         }
         *out = VecVal {
-            ptr: p as *mut u8,
+            ptr: p,
             len: s.len(),
             cap: s.len(),
         };
@@ -1721,23 +1722,17 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
     }
 }
 
-/// `Bytes(values)`: each element must be 0..=255.
+/// `Bytes(values)`: a `List[UInt8]` already holds one byte per element, so this copies it.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
         let v = &*values;
-        let mut buf = Vec::with_capacity(v.len);
-        for i in 0..v.len {
-            let x = *(v.ptr as *const i64).add(i);
-            if !(0..=255).contains(&x) {
-                fault::fault_fmt(format_args!(
-                    "Bytes: values[{i}] must be between 0 and 255, found {x}"
-                ));
-            }
-            buf.push(x as u8);
+        if v.len == 0 {
+            bytes_from(&[], out);
+        } else {
+            bytes_from(core::slice::from_raw_parts(v.ptr, v.len), out);
         }
-        bytes_from(buf.as_slice(), out);
     }
 }
 
@@ -1866,12 +1861,14 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         if v.cap - v.len >= n {
             let src = string::bytes(s).as_ptr();
             let dst = v.ptr.add(v.len);
+            // The length moves first so that the copy is the last thing the function does: a
+            // long copy is then a tail call to `memcpy`, and the function needs no frame.
+            v.len += n;
             if n <= 16 {
                 copy_short(src, dst, n);
             } else {
                 core::ptr::copy_nonoverlapping(src, dst, n);
             }
-            v.len += n;
             return;
         }
         append_slow(b, s);

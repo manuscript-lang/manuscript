@@ -72,7 +72,7 @@ impl Outline<'_> {
                 selection_name = String::new();
             }
             DeclKind::Test(t) => {
-                name = format!("test {}", t.name);
+                name = format!("{} {}", if t.bench { "bench" } else { "test" }, t.name);
                 selection_name = String::new();
             }
             _ => {}
@@ -177,7 +177,7 @@ pub fn document_symbols(analysis: &Analysis, d: &Document) -> Json {
         positions: SourcePositions::new(&d.text),
         tokens: lexical::tokens(&module),
     };
-    let declarations: Vec<&DeclRef> = module.decls.iter().collect();
+    let declarations = &module.decls;
     let mut out = Vec::new();
     for (i, decl) in declarations.iter().enumerate() {
         if decl.0.decl.synthetic && matches!(decl.decl().kind, DeclKind::Interface(_)) {

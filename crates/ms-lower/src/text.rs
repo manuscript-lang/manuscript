@@ -53,7 +53,9 @@ pub(crate) fn scalar_text(
     v: Value,
     repr: bool,
 ) -> Option<(Value, bool)> {
-    let sym = if b.m.types.is_int(t) {
+    let sym = if t == MTy::UINT64 {
+        "msrt_uint_to_string"
+    } else if b.m.types.is_int(t) {
         "msrt_int_to_string"
     } else if t == MTy::FLOAT32 {
         "msrt_float32_to_string"
@@ -280,10 +282,10 @@ pub(crate) fn build_format(
         }
         TyKind::Bytes => {
             let acc = start(&mut b, "Bytes(");
-            let list_ty = b.m.types.list(MTy::INT);
+            let list_ty = b.m.types.list(MTy::UINT8);
             let ext = runtime_fn(b.m, "msrt_bytes_values", &[t], list_ty);
             let values = b.call_rt(ext, &[x]);
-            append_items(cx, &mut b, acc, values, MTy::INT, repr, depth);
+            append_items(cx, &mut b, acc, values, MTy::UINT8, repr, depth);
             b.emit(Op::Drop, &[values], Imm::None, None);
             append_lit(&mut b, acc, ")");
             let r = finish(&mut b, acc);

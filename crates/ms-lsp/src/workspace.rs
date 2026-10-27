@@ -2,7 +2,7 @@
 //! and workspace symbols.
 
 use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
-use crate::index::{Occurrence, source_index};
+use crate::index::Occurrence;
 use crate::json::{Json, obj};
 use crate::nav::{self, go_location_order};
 use crate::text::Position;
@@ -82,13 +82,7 @@ pub fn workspace_documents(
         }
     }
     files.insert(identity(&path), d.clone());
-    match walk(
-        Path::new(&root),
-        Path::new(&root),
-        nested,
-        &mut files,
-        cancel,
-    ) {
+    match walk(Path::new(&root), nested, &mut files, cancel) {
         Ok(()) => {}
         Err(ScanError::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(e),
@@ -99,7 +93,6 @@ pub fn workspace_documents(
 }
 
 fn walk(
-    root: &Path,
     dir: &Path,
     nested: bool,
     files: &mut BTreeMap<String, Document>,
@@ -120,7 +113,7 @@ fn walk(
             if !nested || name.starts_with('.') || name == "node_modules" || name == "vendor" {
                 continue;
             }
-            walk(root, &path, nested, files, cancel)?;
+            walk(&path, nested, files, cancel)?;
             continue;
         }
         let text_path = path.to_string_lossy().into_owned();
@@ -136,7 +129,6 @@ fn walk(
             Document::new(uri::file_uri(&text_path), String::from_utf8_lossy(&data)),
         );
     }
-    let _ = root;
     Ok(())
 }
 
@@ -180,7 +172,6 @@ pub fn workspace_references(
             return nav::references_with_index(analysis, index, d, p, include);
         }
     };
-    let selected_key = selected.key.clone();
     let mut locations: Vec<Json> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     for file in &documents {
@@ -191,14 +182,14 @@ pub fn workspace_references(
         if canceled(cancel).is_err() {
             return Vec::new();
         }
-        for entry in source_index(&checked) {
+        for entry in checked.index() {
             if canceled(cancel).is_err() {
                 return Vec::new();
             }
-            if entry.key != selected_key || (!include && entry.declaration) {
+            if entry.key != selected.key || (!include && entry.declaration) {
                 continue;
             }
-            let Some(location) = nav::occurrence_location(&checked, &entry) else {
+            let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
             if seen.insert(go_location_order(&location)) {

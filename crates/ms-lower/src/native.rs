@@ -888,6 +888,34 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// The `UInt64` operations whose runtime function treats the word as unsigned.
+    fn uint64_method(
+        &mut self,
+        native: &str,
+        result: MTy,
+        recv: Val,
+        args: &[NArg],
+    ) -> Result<Option<Val>, Error> {
+        let name = native.rsplit('/').next().unwrap_or(native);
+        let v = self.borrow(recv);
+        let out = match name {
+            "format_int" => {
+                let radix = self.borrow(args[0].val);
+                self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
+            }
+            "compare_int" => {
+                let other = self.borrow(args[0].val);
+                self.call_runtime("msrt_uint_compare", &[v, other], MTy::INT)?
+            }
+            "to_decimal" => self.call_runtime("msstd_decimal_from_uint", &[v], result)?,
+            _ => return Ok(None),
+        };
+        Ok(Some(Val {
+            v: out,
+            own: name != "compare_int",
+        }))
+    }
+
     /// `to_int8()` ... `to_float64()`: widening is exact, narrowing an integer yields an
     /// optional, and a float conversion rounds to the target.
     fn numeric_conversion(&mut self, result: MTy, recv: Val) -> Result<Val, Error> {
@@ -897,7 +925,9 @@ impl<'a> FnLower<'a> {
         let v = if let Some(inner) = self.b.m.opt_inner(result) {
             self.b.inarrow_opt(x, inner)
         } else if types.is_float(result) {
-            let float = if types.is_int(from) {
+            let float = if from == MTy::UINT64 {
+                self.call_runtime("msrt_uint_to_float", &[x], MTy::FLOAT)?
+            } else if types.is_int(from) {
                 self.b.i2f(x, result)
             } else {
                 x
@@ -1093,11 +1123,25 @@ impl<'a> FnLower<'a> {
         let float_to_float32 = native == "to_float32" && self.b.m.types.is_float(recv_ty);
         if (matches!(
             native,
-            "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
+            "to_int8"
+                | "to_int16"
+                | "to_int32"
+                | "to_int64"
+                | "to_uint8"
+                | "to_uint16"
+                | "to_uint32"
+                | "to_uint64"
+                | "to_float32"
+                | "to_float64"
         ) || (numeric_recv && matches!(native, "to_int" | "to_float")))
             && !float_to_float32
         {
             return self.numeric_conversion(result, recv);
+        }
+        if recv_ty == MTy::UINT64
+            && let Some(v) = self.uint64_method(native, result, recv, &args)?
+        {
+            return Ok(v);
         }
         // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
         let recv_nums = {
@@ -1851,6 +1895,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
+        if name == "set"
+            && !hands_back
+            && let Some(done) = self.slot_list_set(recv_expr, &args)?
+        {
+            return Ok(done);
+        }
         if !self.is_place(recv_expr) {
             let x = self.expr(recv_expr)?;
             if self.dead {
@@ -1879,6 +1929,51 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: u, own: false })
             }
         }
+    }
+
+    /// `xs.set(i, v)` on a list variable that lives in memory (a closure shares it): the element
+    /// is written where it lies. Taking the list out of its slot and putting the unchanged header
+    /// back would store ptr, len and cap again after every write.
+    fn slot_list_set(&mut self, recv_expr: &Expr, args: &[NArg]) -> Result<Option<Val>, Error> {
+        use ms_mir::ir::{Cc, Imm, Op};
+        let ExprKind::Name(_) = &recv_expr.kind else {
+            return Ok(None);
+        };
+        let Resolution::Local(binding) = self.hir.resolution(recv_expr) else {
+            return Ok(None);
+        };
+        if self.aliases.contains_key(&binding.uid) {
+            return Ok(None);
+        }
+        let l = self.local(&binding)?;
+        let (Some(_), TyKind::List(elem)) = (l.slot, self.b.m.types.kind(l.ty).clone()) else {
+            return Ok(None);
+        };
+        let list = self.read_local(&binding)?.v;
+        let i = self.borrow(args[0].val);
+        let n = self.b.list_len(list);
+        let zero = self.b.iconst(0);
+        let neg = self.b.icmp(Cc::Lt, i, zero);
+        let shifted = self.b.binop(Op::IAdd, i, n);
+        let r = self.b.select(neg, shifted, i);
+        self.check_index(2, i, r, n, false);
+        let v = self.element_value(&args[1]);
+        let at = self
+            .b
+            .emit(Op::ListAddrU, &[list, r], Imm::None, Some(MTy::PTR))
+            .expect("list.addr.u");
+        if self.needs_drop(elem) {
+            let old = self
+                .b
+                .emit(Op::Take, &[at], Imm::Ty(elem), Some(elem))
+                .expect("take");
+            self.drop_value(old);
+            self.b.emit(Op::Put, &[at, v], Imm::None, None);
+        } else {
+            self.b.emit(Op::Store, &[at, v], Imm::None, None);
+        }
+        let u = self.b.unit();
+        Ok(Some(Val { v: u, own: false }))
     }
 
     /// Runs two branches that each produce an owned value of `ty` (or diverge with `None`).

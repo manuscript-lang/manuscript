@@ -558,6 +558,9 @@ impl Verifier<'_> {
             | Op::IAddChk
             | Op::ISubChk
             | Op::IMulChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
             | Op::SDivChk
             | Op::SRemChk
             | Op::SDiv
@@ -636,6 +639,16 @@ impl Verifier<'_> {
                 want(
                     t(0) == Ty::BOOL && res == Some(Ty::BOOL),
                     "operand and result must be bool",
+                )
+            }
+            Op::UICmp => {
+                arity(2)?;
+                want(
+                    matches!(inst.imm, Imm::Cc(_))
+                        && t(0) == t(1)
+                        && m.types.is_int(t(0))
+                        && res == Some(Ty::BOOL),
+                    "uicmp compares two ints and yields bool",
                 )
             }
             Op::ICmp => {

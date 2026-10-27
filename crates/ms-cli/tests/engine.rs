@@ -339,6 +339,95 @@ fn native_tests_run_one_process_each() {
     assert!(json.contains("\"passed\": 1"), "{json}");
 }
 
+const BENCHES: &str = include_str!("engine/benches.ms");
+
+/// `ms bench` times `bench` blocks in their own processes; `ms test` leaves them out.
+#[test]
+fn native_benches_report_statistics_and_failures() {
+    let dir = scratch("native-bench");
+    let source = write(&dir, "sample_bench.ms", BENCHES);
+    let backend = Engine::new(Native);
+    let flags = ["--time", "5ms", "--samples", "3"];
+
+    let (status, stdout, err) = ms(&backend, &[&["bench", &source], &flags[..]].concat());
+    assert_eq!(status, 1, "{err}");
+    for line in [
+        "BENCH sample_bench.ms::sums a range: ",
+        "/op median (min ",
+        "FAIL sample_bench.ms::breaks: not measurable",
+        "4 benches, 1 failed",
+        "BENCH sample_bench.ms::measures after setup: ",
+        "BENCH sample_bench.ms::reports per operation: ",
+    ] {
+        assert!(stdout.contains(line), "{line} missing in {stdout}");
+    }
+    assert!(!stdout.contains("is not a bench"), "{stdout}");
+
+    let args = [&["bench", &source, "--json", "--match", "sums"], &flags[..]].concat();
+    let (status, json, _) = ms(&backend, &args);
+    assert_eq!(status, 0, "{json}");
+    for field in [
+        "\"benches\"",
+        "\"stats\"",
+        "\"median_ns\"",
+        "\"samples\": 3",
+    ] {
+        assert!(json.contains(field), "{field} missing in {json}");
+    }
+
+    let (status, stdout, _) = ms(&backend, &["bench", &source, "--list"]);
+    assert_eq!(status, 0);
+    assert_eq!(
+        stdout,
+        "sample_bench.ms::sums a range\nsample_bench.ms::breaks\nsample_bench.ms::measures after setup\nsample_bench.ms::reports per operation\n"
+    );
+
+    let (status, stdout, _) = ms(&backend, &["test", &source]);
+    assert_eq!(status, 0, "{stdout}");
+    assert!(stdout.contains("1 tests, 0 failed"), "{stdout}");
+}
+
+/// A fixed iteration count skips calibration and is reported as given.
+#[test]
+fn bench_iterations_flag_fixes_the_count() {
+    let dir = scratch("native-bench-iterations");
+    let source = write(&dir, "fixed_bench.ms", BENCHES);
+    let backend = Engine::new(Native);
+    let args = [
+        "bench",
+        &source,
+        "--match",
+        "sums",
+        "--iterations",
+        "7",
+        "--samples",
+        "2",
+    ];
+    let (status, stdout, err) = ms(&backend, &args);
+    assert_eq!(status, 0, "{err}");
+    assert!(stdout.contains("7 iterations x 2 samples"), "{stdout}");
+}
+
+/// A project loads `bench.ms` and `*_bench.ms` for `ms bench`.
+#[test]
+fn project_benches_are_discovered() {
+    let dir = scratch("project-bench");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    write(
+        &dir,
+        "ms.toml",
+        "[project]\nname = \"p\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+    );
+    write(&dir, "src/main.ms", MAIN);
+    write(&dir, "bench.ms", include_str!("engine/noop-bench.ms"));
+    let manifest = dir.join("ms.toml").to_string_lossy().into_owned();
+    let backend = Engine::new(Native);
+    let args = ["bench", &manifest, "--iterations", "3", "--samples", "1"];
+    let (status, stdout, err) = ms(&backend, &args);
+    assert_eq!(status, 0, "{err}{stdout}");
+    assert!(stdout.contains("BENCH bench.ms::noop: "), "{stdout}");
+}
+
 /// A runtime fault is structured data under `--json` for `ms run` and `ms test`.
 #[test]
 fn runtime_fault_is_reported_as_json() {

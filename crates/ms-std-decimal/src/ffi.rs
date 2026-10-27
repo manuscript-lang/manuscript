@@ -92,6 +92,10 @@ native! {
         Dec::from_int(n).into()
     }
 
+    fn msstd_decimal_from_uint(n: i64) -> out DecRec {
+        Dec::from_uint(n as u64).into()
+    }
+
     fn msstd_decimal_divide(a: &DecRec, b: &DecRec) -> out DecRec {
         let (a, b) = (Dec::from(a), Dec::from(b));
         if b.is_zero() {

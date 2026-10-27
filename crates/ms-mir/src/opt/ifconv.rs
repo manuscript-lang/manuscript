@@ -167,6 +167,7 @@ fn speculatable(m: &Module, f: &Func, i: &Inst, positive: &HashSet<Value>) -> bo
         | Op::Sshr
         | Op::Not
         | Op::ICmp
+        | Op::UICmp
         | Op::FCmp
         | Op::FAdd
         | Op::FSub

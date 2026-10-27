@@ -435,6 +435,32 @@ pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
     value.to_bits() as i64
 }
 
+/// The instruction-set level of this CPU for compiled loops: 3 when it has x86-64-v3's AVX2 and
+/// FMA, else 1 (the architecture baseline). `MS_CPU_LEVEL=baseline` forces 1 so every copy can
+/// be tested on one machine. Computed once.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cpu_level() -> i64 {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    static LEVEL: AtomicI64 = AtomicI64::new(0);
+    let known = LEVEL.load(Ordering::Relaxed);
+    if known != 0 {
+        return known;
+    }
+    #[cfg(target_arch = "x86_64")]
+    let level = if std::env::var("MS_CPU_LEVEL").is_ok_and(|v| v == "baseline")
+        || !std::arch::is_x86_feature_detected!("avx2")
+        || !std::arch::is_x86_feature_detected!("fma")
+    {
+        1
+    } else {
+        3
+    };
+    #[cfg(not(target_arch = "x86_64"))]
+    let level = 1;
+    LEVEL.store(level, Ordering::Relaxed);
+    level
+}
+
 /// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
@@ -487,6 +513,69 @@ pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
     (a > b) as i64 - (a < b) as i64
 }
 
+/// `UInt64.compare`: the operands are bit patterns.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
+    let (a, b) = (a as u64, b as u64);
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `UInt64./`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        crate::fault::msrt_fault_div_zero();
+    }
+    ((a as u64) / (b as u64)) as i64
+}
+
+/// `UInt64.%`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        crate::fault::msrt_fault_rem_zero();
+    }
+    ((a as u64) % (b as u64)) as i64
+}
+
+/// `UInt64.to_float`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
+    v as u64 as f64
+}
+
+/// `UInt64` in decimal digits.
+pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
+    let mut n = v;
+    let mut i = tmp.len();
+    loop {
+        i -= 1;
+        tmp[i] = b'0' + (n % 10) as u8;
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+    &tmp[i..]
+}
+
+/// `UInt64.to_string_radix`.
+pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
+    let mut tmp = [0u8; 64];
+    let mut i = tmp.len();
+    let mut n = v;
+    loop {
+        i -= 1;
+        let d = (n % radix as u64) as u8;
+        tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
+        n /= radix as u64;
+        if n == 0 {
+            break;
+        }
+    }
+    out.extend_from_slice(&tmp[i..]);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -494,6 +583,21 @@ mod tests {
 
     fn s(b: Vec<u8>) -> String {
         String::from_utf8(b.as_slice().to_vec()).unwrap()
+    }
+
+    #[test]
+    fn uint64_helpers() {
+        let big = u64::MAX as i64;
+        assert_eq!(msrt_uint_compare(big, 1), 1);
+        assert_eq!(msrt_uint_compare(1, big), -1);
+        assert_eq!(msrt_uint_div(big, 2) as u64, u64::MAX / 2);
+        assert_eq!(msrt_uint_rem(big, 10), 5);
+        assert_eq!(msrt_uint_to_float(big), u64::MAX as f64);
+        let mut tmp = [0u8; 20];
+        assert_eq!(format_u64(u64::MAX, &mut tmp), b"18446744073709551615");
+        let mut out = Vec::new();
+        format_radix_u64(u64::MAX, 16, &mut out);
+        assert_eq!(out, b"ffffffffffffffff");
     }
 
     #[test]

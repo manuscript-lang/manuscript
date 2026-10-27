@@ -28,7 +28,7 @@ Verify: time and allocation counts before and after on one machine; behavior tes
 
 ### Consume library checksums and separate allocation phase from local cost
 
-Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Print each checksum after stopping the clock and reject missing, duplicate, or changed counts/checksums on every trial (`compare_stdlib.py` validates all stdlib cases). Changing an earlier allocating workload can move later allocation costs, so an apparent unrelated regression in a full-suite run may not reproduce when the same cases run repeatedly in separate focused processes. Keep both results and state the distinction; do not silently replace the full run.
+Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`). Changing an earlier allocating workload can move later allocation costs, so an apparent unrelated regression in a full-suite run may not reproduce when the same cases run repeatedly in separate focused processes. Keep both results and state the distinction; do not silently replace the full run.
 
 Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown.
 Evidence: [stdlib validator](../bench/perf/compare_stdlib.py), [program measurements](../bench/perf/programs/results.md).

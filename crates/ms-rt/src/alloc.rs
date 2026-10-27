@@ -35,6 +35,13 @@ const LARGE_MIN_SHIFT: usize = 12;
 const LARGE_MAX: usize = 16 << 20;
 /// Smallest system block that grows by remapping rather than by copying.
 const REMAP_MIN: usize = 128 << 10;
+/// Address space reserved for one growing buffer per isolate (main, worker).
+const GROW_SIZE: usize = if cfg!(miri) { 16 << 20 } else { 1 << 30 };
+const WORKER_GROW_SIZE: usize = if cfg!(miri) { 16 << 20 } else { 256 << 20 };
+/// A block grows in the growth region once it reaches this size.
+const GROW_MIN: usize = 32 << 10;
+/// Resident bytes the growth region keeps after its block is freed; the rest goes back.
+const GROW_KEEP: usize = 64 << 20;
 /// Bytes the large free lists may hold before further frees go back to the system.
 const LARGE_CACHE_LIMIT: usize = 64 << 20;
 /// Most blocks of one large class a thread keeps for itself; further frees go to the shared
@@ -166,6 +173,13 @@ struct State {
     large_count: [u8; NUM_LARGE],
     /// Usable bytes held in `large_free`.
     large_cached: usize,
+    /// The growth region: address space for the one buffer that is growing, so that it extends in
+    /// place instead of being copied at every doubling. Mapped on first use; `grow_len` is the
+    /// size of the block living in it, 0 when it is free.
+    grow_base: usize,
+    grow_size: usize,
+    grow_committed: usize,
+    grow_len: usize,
     /// The arena is mapped (or mapping failed and the system allocator serves everything).
     initialized: bool,
     /// This thread asked for an arena; set by [`claim_arena`].
@@ -185,6 +199,10 @@ struct Arena {
     base: AtomicUsize,
     end: AtomicUsize,
     page_class: AtomicPtr<u8>,
+    /// The growth region (see `State::grow_base`), so that a block freed by another thread is
+    /// recognised and not handed to the system allocator.
+    grow_base: AtomicUsize,
+    grow_end: AtomicUsize,
     /// Head of the blocks other threads freed into this arena.
     remote: AtomicPtr<u8>,
 }
@@ -195,6 +213,8 @@ impl Arena {
             base: AtomicUsize::new(0),
             end: AtomicUsize::new(0),
             page_class: AtomicPtr::new(null_mut()),
+            grow_base: AtomicUsize::new(0),
+            grow_end: AtomicUsize::new(0),
             remote: AtomicPtr::new(null_mut()),
         }
     }
@@ -217,6 +237,10 @@ static STATE: State = State {
     large_free: [null_mut(); NUM_LARGE],
     large_count: [0; NUM_LARGE],
     large_cached: 0,
+    grow_base: 0,
+    grow_size: 0,
+    grow_committed: 0,
+    grow_len: 0,
     initialized: false,
     claimed: false,
     released: false,
@@ -289,6 +313,15 @@ pub fn release_arena() {
             sys::unmap(s.base as *mut u8, size);
             sys::unmap(s.page_class, size >> PAGE_SHIFT);
         }
+    }
+    if s.grow_base != 0 {
+        let a = &ARENAS[s.slot];
+        a.grow_base.store(0, Ordering::Release);
+        // SAFETY: the region was mapped by `grow_map` and is no longer reachable.
+        unsafe { sys::unmap(s.grow_base as *mut u8, s.grow_size) };
+        s.grow_base = 0;
+        s.grow_len = 0;
+        s.grow_committed = 0;
     }
     for class in 0..NUM_LARGE {
         let mut p = s.large_free[class];
@@ -598,6 +631,10 @@ pub unsafe fn free(p: *mut u8) {
     } else if let Some(a) = arena_of(s, p) {
         // SAFETY: a live small block of another isolate's arena, owned by the caller.
         unsafe { remote_free(a, p) };
+    } else if in_grow(s, p) {
+        grow_release(s);
+    } else if grow_of_other(p) {
+        // Another isolate's growing buffer: it stays with its region until that isolate ends.
     } else {
         // SAFETY: not an arena block, so it came from malloc/realloc.
         unsafe { free_large(s, p) };
@@ -638,6 +675,9 @@ unsafe fn free_large(s: &mut State, p: *mut u8) {
 pub unsafe fn usable_size(p: *mut u8) -> usize {
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &*STATE.ptr() };
+    if in_grow(s, p) {
+        return s.grow_len;
+    }
     match small_size(s, p) {
         Some(n) => n,
         // SAFETY: not an arena block, so it came from malloc/realloc.
@@ -670,6 +710,9 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     }
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &mut *STATE.ptr() };
+    if in_grow(s, p) {
+        return grow_resize(s, p, new_size);
+    }
     if let Some(old) = small_size(s, p) {
         if new_size <= old && new_size > old / 2 {
             return p;
@@ -694,6 +737,19 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
     } else {
         // SAFETY: `p` came from malloc/realloc.
         let old = unsafe { sys::malloc_usable_size(p.cast()) };
+        // A big block that is growing moves into the growth region once, and extends there in
+        // place from then on.
+        if new_size > old
+            && new_size >= GROW_MIN
+            && let Some(q) = grow_take(s, new_size)
+        {
+            // SAFETY: both blocks are valid for `old` bytes and do not overlap.
+            unsafe {
+                core::ptr::copy_nonoverlapping(p, q, old);
+                free(p);
+            }
+            return q;
+        }
         // Growing a big block with no cached block to move into: let the system remap its
         // pages instead of copying them into fresh (page-faulting) memory.
         let uncached = new_size > old
@@ -718,6 +774,102 @@ pub unsafe fn realloc(p: *mut u8, new_size: usize) -> *mut u8 {
         }
         q
     }
+}
+
+#[inline(always)]
+fn in_grow(s: &State, p: *mut u8) -> bool {
+    s.grow_len != 0 && (p as usize).wrapping_sub(s.grow_base) < s.grow_size
+}
+
+/// Whether `p` is the growing buffer of another isolate.
+#[cold]
+fn grow_of_other(p: *mut u8) -> bool {
+    let n = ARENA_COUNT.load(Ordering::Relaxed).min(MAX_ARENAS);
+    let addr = p as usize;
+    ARENAS[..n].iter().any(|a| {
+        let base = a.grow_base.load(Ordering::Acquire);
+        base != 0 && addr.wrapping_sub(base) < a.grow_end.load(Ordering::Relaxed) - base
+    })
+}
+
+/// Reserves the growth region of this isolate; false when it cannot (no arena, no address space).
+#[cold]
+fn grow_map(s: &mut State) -> bool {
+    if s.base == 0 {
+        return false;
+    }
+    let size = if s.main { GROW_SIZE } else { WORKER_GROW_SIZE };
+    let region = sys::map_anon(size);
+    if region.is_null() {
+        return false;
+    }
+    s.grow_base = region as usize;
+    s.grow_size = size;
+    s.grow_committed = 0;
+    let a = &ARENAS[s.slot];
+    a.grow_end.store(s.grow_base + size, Ordering::Relaxed);
+    a.grow_base.store(s.grow_base, Ordering::Release);
+    true
+}
+
+/// Makes the first `len` bytes of the growth region usable; false when the system refuses.
+fn grow_commit(s: &mut State, len: usize) -> bool {
+    if len > s.grow_committed {
+        let to = len.next_multiple_of(COMMIT_STEP).min(s.grow_size);
+        if !sys::commit(
+            (s.grow_base + s.grow_committed) as *mut u8,
+            to - s.grow_committed,
+        ) {
+            return false;
+        }
+        s.grow_committed = to;
+    }
+    true
+}
+
+/// A block of `size` bytes at the start of the growth region, or null when it is taken or too small.
+fn grow_take(s: &mut State, size: usize) -> Option<*mut u8> {
+    if s.grow_len != 0 || (s.grow_base == 0 && !grow_map(s)) || size > s.grow_size {
+        return None;
+    }
+    if !grow_commit(s, size) {
+        return None;
+    }
+    s.grow_len = size;
+    #[cfg(any(test, feature = "stats"))]
+    {
+        s.live += 1;
+    }
+    Some(s.grow_base as *mut u8)
+}
+
+/// Frees the block in the growth region. Its pages stay resident for the next buffer unless
+/// there are many.
+fn grow_release(s: &mut State) {
+    s.grow_len = 0;
+    if s.grow_committed > GROW_KEEP {
+        // SAFETY: nothing lives in the region now.
+        unsafe { sys::release(s.grow_base as *mut u8, s.grow_committed) };
+        s.grow_committed = 0;
+    }
+}
+
+/// Resizes the block in the growth region: in place while it stays big, otherwise out of it.
+fn grow_resize(s: &mut State, p: *mut u8, new_size: usize) -> *mut u8 {
+    if new_size >= GROW_MIN && new_size <= s.grow_size && grow_commit(s, new_size) {
+        s.grow_len = new_size;
+        return p;
+    }
+    let old = s.grow_len;
+    let q = alloc(new_size);
+    // SAFETY: `q` holds `new_size` bytes and `p` holds `old`; the blocks are disjoint.
+    unsafe { core::ptr::copy_nonoverlapping(p, q, old.min(new_size)) };
+    grow_release(s);
+    #[cfg(any(test, feature = "stats"))]
+    {
+        s.live -= 1;
+    }
+    q
 }
 
 /// Small-block heap figures in bytes: `[used, in_use_pages]`. `used` counts
@@ -828,6 +980,56 @@ mod tests {
                 }
             }
             free(p);
+        }
+        assert_eq!(live_blocks(), before);
+    }
+
+    #[test]
+    fn a_growing_block_extends_in_place_and_shrinks_out() {
+        let _g = lock();
+        let before = live_blocks();
+        let small = alloc(64); // maps the arena
+        let mut size = 4096;
+        let mut p = alloc(size);
+        // SAFETY: each block is live and holds `size` bytes when written and read.
+        unsafe {
+            for i in 0..size {
+                *p.add(i) = (i % 251) as u8;
+            }
+            let mut home: *mut u8 = null_mut();
+            while size < 8 << 20 {
+                let old = size;
+                size *= 2;
+                p = realloc(p, size);
+                if size >= GROW_MIN {
+                    if home.is_null() {
+                        home = p;
+                    }
+                    assert_eq!(p, home, "grew in place at {size}");
+                    assert_eq!(usable_size(p), size);
+                }
+                for i in (0..old).step_by(89) {
+                    assert_eq!(*p.add(i), (i % 251) as u8, "byte {i} at {size}");
+                }
+                for i in old..size {
+                    *p.add(i) = (i % 251) as u8;
+                }
+            }
+            // A second big block does not get the region while the first lives.
+            let other = realloc(alloc(GROW_MIN / 2), GROW_MIN);
+            assert_ne!(other, home);
+            free(other);
+            // Shrinking below the threshold moves the bytes out and frees the region.
+            let q = realloc(p, 1000);
+            assert_ne!(q, home);
+            for i in (0..1000).step_by(7) {
+                assert_eq!(*q.add(i), (i % 251) as u8);
+            }
+            let again = realloc(alloc(GROW_MIN / 2), GROW_MIN);
+            assert_eq!(again, home, "the region is free again");
+            free(again);
+            free(q);
+            free(small);
         }
         assert_eq!(live_blocks(), before);
     }

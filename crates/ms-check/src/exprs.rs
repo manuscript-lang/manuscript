@@ -102,21 +102,26 @@ fn literal_tree_fractional(e: &Expr) -> Option<bool> {
 /// The sized number type a literal operand takes from the other operand, if any. Only a literal
 /// (or arithmetic over literals) of the same kind adopts it, so a mismatch keeps the ordinary
 /// operand-type diagnostic.
-fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+pub(crate) fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+    if let ExprKind::List(items) = &literal.kind {
+        // A list of plain literals takes the element type of a `List` of a sized number.
+        let element = (other.is_std("List") && other.args.len() == 1).then(|| &other.args[0])?;
+        let all = !items.is_empty() && items.iter().all(|i| literal_hint(i, element).is_some());
+        return all.then_some(other);
+    }
     let fractional = literal_tree_fractional(literal)?;
     let sized_int = int_bits(other).is_some() && other.id != "Int";
     let sized_float = float_bits(other).is_some() && other.id != "Float";
     ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
 }
 
-/// Whether the decimal integer literal `text`, negated when `negated`, fits a signed type of `bits` bits.
-fn int_literal_fits(text: &str, negated: bool, bits: u32) -> bool {
+/// Whether the decimal integer literal `text`, negated when `negated`, fits the integer type `t`.
+fn int_literal_fits(text: &str, negated: bool, t: &Ty) -> bool {
     let Ok(v) = text.parse::<i128>() else {
         return false;
     };
     let v = if negated { -v } else { v };
-    let half = 1i128 << (bits - 1);
-    (-half..half).contains(&v)
+    int_range(t).is_some_and(|(lo, hi)| (lo..=hi).contains(&v))
 }
 
 fn is_time_operand(types: &[&Ty]) -> bool {
@@ -381,16 +386,14 @@ impl Checker {
             let sized = expected.filter(|t| int_bits(t).is_some() && t.id != "Int");
             match sized {
                 Some(t) => {
-                    let bits = int_bits(t).unwrap_or(64);
-                    if !int_literal_fits(text, negated, bits) {
-                        let half = 1i128 << (bits - 1);
+                    if !int_literal_fits(text, negated, t) {
+                        let (lo, hi) = int_range(t).unwrap_or_default();
                         self.type_error(
                             e.pos,
                             format!(
                                 "literal {}{text} is out of range for {t}; use a value between {} and {}",
                                 if negated { "-" } else { "" },
-                                -half,
-                                half - 1
+                                lo, hi
                             ),
                         );
                     }
@@ -950,6 +953,12 @@ impl Checker {
             }
             UnaryOp::Try => self.check_try(e, &v, &mut i),
             UnaryOp::Neg | UnaryOp::Plus => {
+                if op == UnaryOp::Neg && int_unsigned(&vt) {
+                    self.type_error(
+                        e.pos,
+                        format!("unary - is not defined for {vt}; subtract from zero with a wider signed type, e.g. 0 - x.to_int()"),
+                    );
+                }
                 if !numeric(&vt) {
                     self.type_error(
                         e.pos,

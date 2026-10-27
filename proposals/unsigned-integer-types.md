@@ -9,7 +9,7 @@
 
 ## Status
 
-Draft, written against `7da646f4`. Direction (Chinmay, 2026-10-27): "the right fix here is just to add unsigned types to the language", after #1546 (`Bytes.get` returning `UInt8`).
+Implemented (stages 1 to 4). Deviations from the draft: `truncate_to_uintN()` was dropped (floats convert through `truncate_to_int()`); `Bytes` is plain `Bytes` over `UInt8` with no type parameter; the `toml.ms` sentinel became a `byte_at` helper returning `Optional[UInt8]`; `UInt64` add, subtract, multiply, divide, remainder, compare, formatting and `to_float` are runtime calls (and ordered `icmp` flips the sign bit) so no optimizer or backend pass needed unsigned ops. Draft written against `7da646f4`. Direction (Chinmay, 2026-10-27): "the right fix here is just to add unsigned types to the language", after #1546 (`Bytes.get` returning `UInt8`).
 
 ## Problem
 

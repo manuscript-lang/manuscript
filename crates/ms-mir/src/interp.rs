@@ -294,7 +294,14 @@ impl<'m> Interp<'m> {
     pub fn default_val(&self, t: Ty) -> Val {
         match self.m.types.kind(t) {
             TyKind::Bool => Val::Bool(false),
-            TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => Val::Int(0),
+            TyKind::Int
+            | TyKind::Int8
+            | TyKind::Int16
+            | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64 => Val::Int(0),
             TyKind::Float | TyKind::Float32 => Val::Float(0.0),
             TyKind::Str => Val::str(""),
             TyKind::Ptr => Val::Ptr(0),
@@ -541,10 +548,12 @@ impl<'m> Interp<'m> {
                 }
             }
             Op::NarrowChk => {
-                let bits = m.types.int_bits(f.values[a[0].index()]).unwrap_or(64);
+                let (lo, hi) = m
+                    .types
+                    .int_range(f.values[a[0].index()])
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 let v = int!(0);
-                let half = 1i64 << (bits - 1);
-                if !(-half..half).contains(&v) {
+                if !(lo..=hi).contains(&i128::from(v)) {
                     return Err(overflow());
                 }
                 set!(Val::Int(v));
@@ -559,15 +568,25 @@ impl<'m> Interp<'m> {
             Op::INarrowOpt => {
                 let v = int!(0);
                 let inner = inst.res.and_then(|r| m.opt_inner(f.values[r.index()]));
-                let bits = inner.and_then(|i| m.types.int_bits(i)).unwrap_or(64);
-                let half = 1i128 << (bits - 1);
-                let fits = (-half..half).contains(&i128::from(v));
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    m.types.narrow_range(f.values[a[0].index()], i)
+                });
+                let fits = (lo..=hi).contains(&v);
                 set!(Val::Opt(fits.then(|| Rc::new(Val::Int(v)))));
             }
             Op::F32Round => set!(Val::Float(flt!(0) as f32 as f64)),
             Op::IAddChk => set!(Val::Int(int!(0).checked_add(int!(1)).ok_or_else(overflow)?)),
             Op::ISubChk => set!(Val::Int(int!(0).checked_sub(int!(1)).ok_or_else(overflow)?)),
             Op::IMulChk => set!(Val::Int(int!(0).checked_mul(int!(1)).ok_or_else(overflow)?)),
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (int!(0) as u64, int!(1) as u64);
+                let r = match inst.op {
+                    Op::UAddChk => x.checked_add(y),
+                    Op::USubChk => x.checked_sub(y),
+                    _ => x.checked_mul(y),
+                };
+                set!(Val::Int(r.ok_or_else(overflow)? as i64))
+            }
             Op::INegChk => set!(Val::Int(int!(0).checked_neg().ok_or_else(overflow)?)),
             Op::SDivChk => {
                 let (x, y) = (int!(0), int!(1));
@@ -617,6 +636,12 @@ impl<'m> Interp<'m> {
             Op::Shl => set!(Val::Int(int!(0).wrapping_shl(int!(1) as u32))),
             Op::Sshr => set!(Val::Int(int!(0).wrapping_shr(int!(1) as u32))),
             Op::Not => set!(Val::Bool(!boolean!(0))),
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err(Raw::internal("uicmp without condition"));
+                };
+                set!(Val::Bool(cc.eval_uint(int!(0), int!(1))));
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     return Err(Raw::internal("icmp without condition"));

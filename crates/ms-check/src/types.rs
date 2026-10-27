@@ -527,8 +527,27 @@ pub fn int_bits(t: &Type) -> Option<u32> {
         "Int16" => Some(16),
         "Int32" => Some(32),
         "Int64" => Some(64),
+        "UInt8" => Some(8),
+        "UInt16" => Some(16),
+        "UInt32" => Some(32),
+        "UInt64" => Some(64),
         _ => None,
     }
+}
+
+/// Whether `t` is an unsigned integer type.
+pub fn int_unsigned(t: &Type) -> bool {
+    matches!(t.id.as_str(), "UInt8" | "UInt16" | "UInt32" | "UInt64")
+}
+
+/// The inclusive range of values an integer type holds, or none for any other type.
+pub fn int_range(t: &Type) -> Option<(i128, i128)> {
+    let bits = int_bits(t)?;
+    Some(if int_unsigned(t) {
+        (0, (1i128 << bits) - 1)
+    } else {
+        (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1)
+    })
 }
 
 /// Bit width of a floating-point type, or none for any other type.
@@ -862,7 +881,7 @@ pub fn constructor_signature(t: &Ty) -> Ty {
     if t.is_std("Bytes") {
         params = vec![Param {
             name: n("values"),
-            ty: standard("List", vec![int()]),
+            ty: standard("List", vec![primitive("UInt8")]),
         }];
     }
     if t.is_std("Set") && t.args.len() == 1 {

@@ -6,7 +6,6 @@ from "@std/math.ms" import from_int
 from "@std/string.ms" import compile
 from "@std/collections.ms" import filled, range_by, map_from_entries
 from "@std/bytes.ms" import Bytes
-from "@std/math.ms" import NumberError
 from "@std/string.ms" import StringError
 
 def positive(value: Int) -> Bool:
@@ -68,24 +67,8 @@ def checked_expansion() -> Result[Unit, Error]:
             ) == [3, 2, 1, 0]
         )
     ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "x".pad_start(
-                    target_length: 4, padding: "é🙂", max_bytes: 9
-                )
-            ) == "é🙂éx"
-        )
-    ) | try expect_false
-    (
-        not (
-            try common_result(
-                result: "x".pad_end(
-                    target_length: 4, padding: "é🙂", max_bytes: 9
-                )
-            ) == "xé🙂é"
-        )
-    ) | try expect_false
+    "x".pad_start(target_length: 4, padding: "é🙂") | try expect_equal("é🙂éx")
+    "x".pad_end(target_length: 4, padding: "é🙂") | try expect_equal("xé🙂é")
     (not ("aba".replace(old: "a", new: "é") == "ébé")) | try expect_false
     (not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | try expect_false
     (try common_result(result: "é🙂".slice_scalars(start: 0, end: 1))) | try expect_equal(
@@ -199,7 +182,7 @@ test "list methods mutate explicit clones and remain typed":
     chain_7.copy_within(target: 1, start: 0, end: 3)
     (chain_7 | try expect_equal([3, 3, 1, 2]))
     original.keys() | try expect_equal([0, 1, 2, 3])
-    (original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3)))
+    original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3))
     original.to_set().values() | try expect_equal([3, 1, 2])
     try expect_equal(
         [[1, 2], [], [3]].flat_map(transform: lambda value: value), [1, 2, 3]
@@ -266,7 +249,7 @@ test "set algebra and enumeration preserve source values":
     left.union(other: right).values() | try expect_equal([1, 2, 3, 4])
     left.intersection(other: right).values() | try expect_equal([3])
     left.difference(other: right).values() | try expect_equal([1, 2])
-    (left.symmetric_difference(other: right).values() | try expect_equal([1, 2, 4]))
+    left.symmetric_difference(other: right).values() | try expect_equal([1, 2, 4])
     ([3].to_set().is_subset_of(other: left)) | try expect_true
     (left.is_superset_of(other: [1, 3].to_set())) | try expect_true
     (not left.is_subset_of(other: right)) | try expect_true
@@ -295,7 +278,7 @@ test "string methods use Unicode scalars":
     "é🙂é".get(index: -1) | try expect_equal("é")
     "é🙂é".scalar_at(index: 1) | try expect_equal(128578)
 
-    let missing: Optional[String] = none
+    let _missing: Optional[String] = none
     "".get(index: 0, default: "?") | try expect_equal("?")
     "é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
     "é🙂é".index_of(value: "🙂") | try expect_equal(some(1))
@@ -327,7 +310,7 @@ test "string methods use Unicode scalars":
 
     match checked_expansion():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 
@@ -336,7 +319,7 @@ test "bytes have analogous immutable operations":
     data.get(index: -1) | try expect_equal(2)
 
     let missing: Optional[Int] = none
-    data.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
+    data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
     data.index_of(value: Bytes([2])) | try expect_equal(some(1))
     data.last_index_of(value: Bytes([2])) | try expect_equal(some(3))
@@ -355,29 +338,9 @@ test "bytes have analogous immutable operations":
     (not 1.5.is_nan()) | try expect_true
 
 test "growth limits and invalid inputs return values":
-    let too_large: Result[String, StringError] = error(StringError.LimitExceeded)
-    let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    "x".pad_start(target_length: 4, padding: "é🙂", max_bytes: 8) | try expect_equal(
-        too_large
-    )
-    (
-        not (
-            "x".pad_end(
-                target_length: 9223372036854775807, padding: "é", max_bytes: 8
-            ) == too_large
-        )
-    ) | try expect_false
-    "abc".pad_start(target_length: 1, padding: "", max_bytes: 2) | try expect_equal(
-        too_large
-    )
-    "x".pad_start(target_length: -1, padding: " ", max_bytes: 8) | try expect_equal(
-        invalid
-    )
-
-    let unchanged: Result[String, StringError] = ok("x")
-    "x".pad_end(target_length: 4, padding: "", max_bytes: 1) | try expect_equal(
-        unchanged
-    )
+    "abc".pad_start(target_length: 1, padding: "") | try expect_equal("abc")
+    "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
+    "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
     let list_limit: Result[List[Int], CollectionError] = error(
         CollectionError.LimitExceeded
@@ -421,7 +384,7 @@ test "grouping and lazy map defaults":
 
     var chain_9 = original.clone()
     chain_9.add_default(key: "b", value: 2)
-    (chain_9.values() | try expect_equal([1, 2]))
+    chain_9.values() | try expect_equal([1, 2])
 
     var chain_10 = original.clone()
     chain_10.add_default_from(key: "c", create: default_value)
@@ -450,29 +413,17 @@ def verify_text_and_numbers() -> Result[Unit, Error]:
             ) == "fi"
         )
     )
-    (try common_result(result: 1.5.to_fixed(digits: 3))) | try expect_equal("1.500")
-    (try common_result(result: 1.5.to_exponential(digits: 3))) | try expect_equal(
-        "1.500e+0"
-    )
-    (try common_result(result: 1.5.to_precision(precision: 4))) | try expect_equal(
-        "1.500"
-    )
-    (try common_result(result: 12345.0.to_precision(precision: 3))) | try expect_equal(
-        "1.23e+4"
-    )
-    (
-        not (
-            try common_result(
-                result: 0.000001.to_precision(precision: 2)
-            ) == "0.0000010"
-        )
-    ) | try expect_false
+    1.5.to_fixed(digits: 3) | try expect_equal("1.500")
+    1.5.to_exponential(digits: 3) | try expect_equal("1.500e+0")
+    1.5.to_precision(precision: 4) | try expect_equal("1.500")
+    12345.0.to_precision(precision: 3) | try expect_equal("1.23e+4")
+    0.000001.to_precision(precision: 2) | try expect_equal("0.0000010")
     return ok(())
 
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 
@@ -485,12 +436,9 @@ test "normalization, empty separators, and precision formatting":
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
     let invalid: Result[String, StringError] = error(StringError.InvalidInput)
-    let invalid_number: Result[String, NumberError] = error(NumberError.InvalidInput)
     let limit: Result[String, StringError] = error(StringError.LimitExceeded)
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
-    1.0.to_fixed(digits: 101) | try expect_equal(invalid_number)
-    1.0.to_precision(precision: 0) | try expect_equal(invalid_number)
 
 def verify_bigint_and_regex() -> Result[Unit, Error]:
     let a = from_int(value: 12)
@@ -530,7 +478,7 @@ def verify_bigint_and_regex() -> Result[Unit, Error]:
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 

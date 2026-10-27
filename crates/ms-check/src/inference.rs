@@ -2,7 +2,7 @@
 //! callback return inference it shares.
 
 use crate::checker::{CheckedArgument, Checker};
-use crate::exprs::is_plain_literal;
+use crate::exprs::{is_plain_literal, literal_hint};
 use crate::hints::arity_mismatch_hint;
 use crate::syntax::*;
 use crate::types::Param;
@@ -159,16 +159,37 @@ impl Checker {
     ) {
         let vars = variable_set(variables);
         let mut pending: Vec<Arg> = Vec::new();
+        // Literals passed for a bare type variable wait for the other arguments, so they can
+        // take a sized number type those bind instead of fixing the variable to `Int`.
+        let mut literals: Vec<Arg> = Vec::new();
         for arg in args {
             if matches!(arg.value.kind, ExprKind::Lambda(_)) {
                 pending.push(*arg);
             } else if is_plain_literal(arg.value) && sized_number(parameter_type(params, arg.name))
             {
                 // The literal takes the parameter's own sized type when it is checked.
+            } else if sized_literal_list(arg.value, parameter_type(params, arg.name)) {
+                // The elements take the parameter's sized element type when it is checked.
+            } else if is_plain_literal(arg.value)
+                && parameter_type(params, arg.name).is_some_and(|p| vars.contains(&p.id))
+            {
+                literals.push(*arg);
             } else if !self.contextual(arg.value)
                 && let Some(actual) = self.independent_argument(arg.value)
             {
                 self.contribute(arg, &actual, params, &vars, s);
+            }
+        }
+        for arg in literals {
+            let bound = parameter_type(params, arg.name).map(|p| sub(&p, s));
+            let adopts = bound
+                .as_ref()
+                .is_some_and(|t| literal_hint(arg.value, t).is_some());
+            if !adopts
+                && !self.contextual(arg.value)
+                && let Some(actual) = self.independent_argument(arg.value)
+            {
+                self.contribute(&arg, &actual, params, &vars, s);
             }
         }
         if let Some(c) = context {
@@ -441,6 +462,18 @@ impl Checker {
 
 fn parameter_type(params: &[Param], name: Name) -> Option<Ty> {
     params.iter().find(|p| p.name == name).map(|p| p.ty.clone())
+}
+
+/// Whether `e` is a list of plain number literals passed for a `List` of a sized number type.
+fn sized_literal_list(e: &Expr, parameter: Option<Ty>) -> bool {
+    let ExprKind::List(items) = &e.kind else {
+        return false;
+    };
+    !items.is_empty()
+        && items.iter().all(is_plain_literal)
+        && parameter.is_some_and(|p| {
+            p.is_std("List") && p.args.len() == 1 && sized_number(Some(p.args[0].clone()))
+        })
 }
 
 /// Whether `t` is a sized integer or `Float32`, which a number literal takes as its own type.

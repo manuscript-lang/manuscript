@@ -1282,7 +1282,8 @@ impl FnLower<'_> {
         Ok(self.jwritten())
     }
 
-    /// A stored `JsonValue` is written as it is.
+    /// A stored `JsonValue` is written as it is, by the runtime walking the value through
+    /// [`Self::json_tree_view`].
     fn jencode_tree(
         &mut self,
         t: &ct::Ty,
@@ -1290,59 +1291,16 @@ impl FnLower<'_> {
         w: Value,
         value: Value,
     ) -> Result<Value, Error> {
-        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
-            return Err(Error::new("JsonValue is an alternative"));
-        };
-        let cases = ct::cases(t);
-        let tag = self.b.alt_tag(value);
-        let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
-        let join = self.b.new_block();
-        let arms: Vec<(i64, _)> = blocks
-            .iter()
-            .enumerate()
-            .map(|(i, b)| (i as i64, *b))
-            .collect();
-        let other = self.b.new_block();
-        self.b.switch(tag, &arms, other);
-        self.b.seal_block(other);
-        self.b.switch_to(other);
-        self.b.unreachable();
-        for (i, c) in cases.iter().enumerate() {
-            self.b.seal_block(blocks[i]);
-            self.b.switch_to(blocks[i]);
-            match c.name.as_str() {
-                "Null" => self.jw("msrt_json_w_null", &[w])?,
-                "BoolValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_bool", &[w, v])?;
-                }
-                "NumberValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_number", &[w, v])?;
-                }
-                "StringValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_string", &[w, v])?;
-                }
-                "ArrayValue" => {
-                    let l = self.b.alt_get(a, i as u32, 0, value);
-                    self.jencode_list(t, w, l)?;
-                }
-                "ObjectValue" => {
-                    let m = self.b.alt_get(a, i as u32, 0, value);
-                    let map = &c.fields[0].ty;
-                    self.jencode_map(&map.args[0], &map.args[1], w, m)?;
-                }
-                other => {
-                    return Err(Error::new(format!(
-                        "json: unexpected JsonValue case {other}"
-                    )));
-                }
-            }
-            self.b.br(join, &[]);
-        }
-        self.b.seal_block(join);
-        self.b.switch_to(join);
+        let view = self.json_tree_view(t, mt)?;
+        let view = self
+            .b
+            .emit(Op::FuncAddr, &[], Imm::Func(view), Some(MTy::PTR))
+            .expect("func.addr");
+        let desc = self.type_desc(mt);
+        // The runtime reads the value from memory; the copy is bitwise and never dropped.
+        let slot = self.jslot(mt);
+        self.b.emit(Op::Store, &[slot, value], Imm::None, None);
+        self.jw("msrt_json_w_tree", &[w, desc, view, slot])?;
         Ok(self.jwritten())
     }
 
@@ -1528,6 +1486,70 @@ impl FnLower<'_> {
             tb.emit(Op::Put, &[out, v], Imm::None, None);
             let zero = tb.iconst(0);
             tb.ret(Some(zero));
+        }
+        let thunk = tb.into_func();
+        let id = self.b.m.add_func(thunk);
+        self.cx.helpers.insert(key, id);
+        Ok(id)
+    }
+
+    /// The thunk the runtime calls to read a `JsonValue`: `view(value, payload)` returns the node
+    /// kind of the case `value` holds and writes the case's payload (`Bool` byte, `String`, list
+    /// or map; nothing for `Null`) at `payload`, bitwise.
+    fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
+        let key = format!("json-tree-view:{}", ct::type_key(t));
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return Ok(*f);
+        }
+        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("JsonValue is an alternative"));
+        };
+        let cases = ct::cases(t);
+        let kinds = [
+            "Null",
+            "BoolValue",
+            "NumberValue",
+            "StringValue",
+            "ArrayValue",
+            "ObjectValue",
+        ];
+        let mut tb = FuncBuilder::new(
+            self.b.m,
+            "json_tree_view",
+            vec![borrowed(MTy::PTR), borrowed(MTy::PTR)],
+            MTy::INT,
+        );
+        tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = tb.params();
+        let (value, out) = (args[0], args[1]);
+        let v = tb
+            .emit(Op::Load, &[value], Imm::Ty(mt), Some(mt))
+            .expect("load");
+        let tag = tb.alt_tag(v);
+        let blocks: Vec<_> = cases.iter().map(|_| tb.new_block()).collect();
+        let arms: Vec<(i64, _)> = blocks
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (i as i64, *b))
+            .collect();
+        let other = tb.new_block();
+        tb.switch(tag, &arms, other);
+        tb.seal_block(other);
+        tb.switch_to(other);
+        tb.unreachable();
+        for (i, c) in cases.iter().enumerate() {
+            tb.seal_block(blocks[i]);
+            tb.switch_to(blocks[i]);
+            let kind = kinds
+                .iter()
+                .position(|k| *k == c.name.as_str())
+                .ok_or_else(|| Error::new("json: unexpected JsonValue case"))?;
+            if !c.fields.is_empty() {
+                let payload = tb.alt_get(a, i as u32, 0, v);
+                tb.emit(Op::Store, &[out, payload], Imm::None, None);
+            }
+            let k = tb.iconst(kind as i64);
+            tb.ret(Some(k));
         }
         let thunk = tb.into_func();
         let id = self.b.m.add_func(thunk);
