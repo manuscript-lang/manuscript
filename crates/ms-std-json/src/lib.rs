@@ -1342,7 +1342,6 @@ impl Writer {
 
     fn quoted(&mut self, s: &str) {
         let b = s.as_bytes();
-        let mut next = find_special(b, 0);
         self.buf.reserve(b.len() + 2);
         self.buf.push(b'"');
         // Names and short values: a table walk beats the vector scan's setup.
