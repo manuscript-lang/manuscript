@@ -2,7 +2,7 @@
 
 use crate::analysis::{Analysis, Document};
 use crate::json::{Json, obj};
-use crate::text::{self, Range};
+use crate::text::{self, Range, SourcePositions};
 use ms_check::types::BindingRef;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -42,9 +42,8 @@ pub fn folding_ranges(d: &Document) -> Json {
 }
 
 struct Hints<'a> {
-    analysis: &'a Analysis,
     module: ms_check::syntax::ModRef,
-    source: &'a str,
+    positions: SourcePositions<'a>,
     requested: Range,
     hints: Vec<(text::Position, Json)>,
 }
@@ -65,15 +64,11 @@ impl Visitor for Hints<'_> {
         if binding.ty.id.as_str() == "<invalid>" {
             return;
         }
-        let p = text::position(
-            self.source,
-            pattern.pos.offset as usize + name.as_str().len(),
-        );
+        let p = self
+            .positions
+            .position(pattern.pos.offset as usize + name.as_str().len());
         let (a, b) = (self.requested.start, self.requested.end);
-        let after_start = p.line > a.line || (p.line == a.line && p.character >= a.character);
-        let before_end = p.line < b.line || (p.line == b.line && p.character <= b.character);
-        if after_start && before_end {
-            let _ = self.analysis;
+        if a <= p && p <= b {
             self.hints.push((
                 p,
                 obj([
@@ -94,9 +89,8 @@ pub fn inlay_hints(analysis: &Analysis, d: &Document, requested: Range) -> Json 
         return Json::Arr(Vec::new());
     };
     let mut hints = Hints {
-        analysis,
         module: module.clone(),
-        source: &d.text,
+        positions: SourcePositions::new(&d.text),
         requested,
         hints: Vec::new(),
     };
