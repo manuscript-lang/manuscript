@@ -1,6 +1,7 @@
 # conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
 from "@std/test/property.ms" import check, ints, bools, lists, strings, optionals, pairs, floats, element_of, one_of, constant
+from "@std/core.ms" import panic
 from "@std/testing.ms" import expect_equal, expect_true, expect_contains, expect_error
 
 test "a true property passes":
@@ -108,3 +109,17 @@ test "the same seed reproduces the same failure":
     )
     try expect_equal(first.message(), second.message())
     try expect_contains(first.message(), "counterexample: [0, 0, 0]")
+
+test "a fault inside a property shrinks like an error":
+    let cause = try expect_error(
+        check(
+            "no big values", ints(0, 1000), lambda n: faults_at(n, 100), seed: 4
+        )
+    )
+    try expect_contains(cause.message(), "counterexample: 100\n")
+    try expect_contains(cause.message(), "fault:")
+
+def faults_at(n: Int, limit: Int) -> Result[Unit, Error]:
+    if n >= limit:
+        panic("too big")
+    return ok(())
