@@ -58,7 +58,7 @@ Measured result (`bench/perf/listloops/README.md`): fma32 3.06 to 12.68, scale64
 | 2. `for i in 0..n` overflow check | Already removed: `range.rs` `ASSUME_BOUNDED_COUNTERS` turns the increment into a plain `iadd` (visible in the optimized MIR). Nothing to do. |
 | 3. List header in registers | Not a blocker: lists are SSA values in MIR, written back once. Nothing to do for these loops. |
 | 4. `Float32` round-trips | Not a blocker: `fma32` matches C. Nothing to do. |
-| 5. AVX2 multiversioning | Payoff is small for L1-resident element-wise loops: ms at baseline SSE2 equals or beats C AVX2 on 5 of 8 kernels here. Defer to the SIMD branch. |
+| 5. AVX2 multiversioning | Later measured and built (2026-10-27): 1.6x to 1.8x on `fma32`, `stencil`, `base` and `clamp` for 2% more code on a large program; see `bench/perf/listloops/README.md`. |
 
 ## Components touched
 
@@ -72,7 +72,7 @@ Measured result (`bench/perf/listloops/README.md`): fma32 3.06 to 12.68, scale64
 
 - Do nothing: element-wise loops stay 4x to 6x below C; the only fast path is `@std/vec`.
 - Loop versioning in MIR: measured above, no gain, 600 lines. Revisit only if an LLVM upgrade or a non-affine-index kernel shows bounds exits blocking vectorization.
-- Make `Int` loops vectorizable: `intadd` runs at 1.34 against 2.55 to 2.94 for C because the checked add is an early exit. Hypothesis, unmeasured: version the loop on an overflow scan (a read-only, vectorizable pass that ORs `sadd.with.overflow` flags, then an unchecked loop, else the checked one). It would need its own proposal with numbers.
+- Make `Int` loops vectorizable: `intadd` runs at 1.34 against 2.55 to 2.94 for C because the checked add is an early exit. Measured (2026-10-27, `bench/perf/listloops/README.md`): versioning on an overflow scan gains 17 to 19% over the checked loop in C (1.53 to 1.80 GFLOPS) because the data is read twice; a single storing pass would break "same stores, same fault". Not built.
 
 ## Staging and verification
 

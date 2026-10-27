@@ -972,7 +972,7 @@ fn parse_line(
         (op, None)
     } else if let Some((head, tail)) = mn.rsplit_once('.') {
         match (Op::from_name(head), Cc::from_name(tail)) {
-            (Some(op @ (Op::ICmp | Op::FCmp)), Some(cc)) => (op, Some(cc)),
+            (Some(op @ (Op::ICmp | Op::UICmp | Op::FCmp)), Some(cc)) => (op, Some(cc)),
             _ => return c.err(format!("unknown instruction '{mn}'")),
         }
     } else {

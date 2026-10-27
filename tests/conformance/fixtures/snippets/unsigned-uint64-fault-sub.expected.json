@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 67,
+    "stdout": "before\n",
+    "stderr": "Int overflow; the result does not fit the sized integer type's range, so bound the operands or use a wider type\n  at unsigned-uint64-fault-sub.ms:11 in main\n"
+  }
+}

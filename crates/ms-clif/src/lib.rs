@@ -15,6 +15,12 @@ mod dwarf;
 pub mod llvm_ir;
 mod llvm_obj;
 pub use llvm_obj::available as llvm_available;
+
+/// Whether LLVM builds vectorize loops (and build AVX2 copies of them). `MS_VECTORIZE=off` (or
+/// `0`) disables the loop and SLP vectorizers and the per-CPU copies; the default is on.
+pub fn vectorize() -> bool {
+    !std::env::var("MS_VECTORIZE").is_ok_and(|v| v == "off" || v == "0")
+}
 mod llvm_tables;
 mod lower;
 mod spill;

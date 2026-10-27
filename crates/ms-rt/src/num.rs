@@ -435,6 +435,32 @@ pub extern "C-unwind" fn msrt_float_to_bits(value: f64) -> i64 {
     value.to_bits() as i64
 }
 
+/// The instruction-set level of this CPU for compiled loops: 3 when it has x86-64-v3's AVX2 and
+/// FMA, else 1 (the architecture baseline). `MS_CPU_LEVEL=baseline` forces 1 so every copy can
+/// be tested on one machine. Computed once.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_cpu_level() -> i64 {
+    use std::sync::atomic::{AtomicI64, Ordering};
+    static LEVEL: AtomicI64 = AtomicI64::new(0);
+    let known = LEVEL.load(Ordering::Relaxed);
+    if known != 0 {
+        return known;
+    }
+    #[cfg(target_arch = "x86_64")]
+    let level = if std::env::var("MS_CPU_LEVEL").is_ok_and(|v| v == "baseline")
+        || !std::arch::is_x86_feature_detected!("avx2")
+        || !std::arch::is_x86_feature_detected!("fma")
+    {
+        1
+    } else {
+        3
+    };
+    #[cfg(not(target_arch = "x86_64"))]
+    let level = 1;
+    LEVEL.store(level, Ordering::Relaxed);
+    level
+}
+
 /// The binary32 with this bit pattern (the low 32 bits), widened exactly to the `f64` a `Float32` register holds.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_float32_from_bits(bits: i64) -> f64 {
@@ -492,33 +518,6 @@ pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
 pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
     let (a, b) = (a as u64, b as u64);
     (a > b) as i64 - (a < b) as i64
-}
-
-/// `UInt64.+`: faults when the sum exceeds 2^64 - 1.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_add(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_add(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
-}
-
-/// `UInt64.-`: faults when `b` exceeds `a`.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_sub(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_sub(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
-}
-
-/// `UInt64.*`: faults when the product leaves 0 to 2^64 - 1.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_mul(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_mul(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
 }
 
 /// `UInt64./`.

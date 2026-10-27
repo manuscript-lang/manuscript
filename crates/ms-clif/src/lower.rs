@@ -1766,6 +1766,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                     vec![v]
                 }
             }
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                if !checks {
+                    vec![match inst.op {
+                        Op::UAddChk => self.b.ins().iadd(x, y),
+                        Op::USubChk => self.b.ins().isub(x, y),
+                        _ => self.mul(x, y),
+                    }]
+                } else {
+                    let (v, of) = match inst.op {
+                        Op::UAddChk => self.b.ins().uadd_overflow(x, y),
+                        Op::USubChk => self.b.ins().usub_overflow(x, y),
+                        _ => self.b.ins().umul_overflow(x, y),
+                    };
+                    self.fault_if(of, "msrt_fault_int_range", vec![]);
+                    vec![v]
+                }
+            }
             Op::INegChk => {
                 let x = self.a(inst, 0)[0];
                 if checks {
@@ -1834,6 +1852,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
             }],
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let cc = match cc {
+                    Cc::Eq => IntCC::Equal,
+                    Cc::Ne => IntCC::NotEqual,
+                    Cc::Lt => IntCC::UnsignedLessThan,
+                    Cc::Le => IntCC::UnsignedLessThanOrEqual,
+                    Cc::Gt => IntCC::UnsignedGreaterThan,
+                    Cc::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                };
+                vec![self.b.ins().icmp(cc, x, y)]
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     unreachable!()
