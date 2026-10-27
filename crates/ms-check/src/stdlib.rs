@@ -40,9 +40,9 @@ pub const STANDARD_PRELUDE_NAMES: [&str; 14] = [
 ];
 
 /// The built-in types every module sees without an import.
-pub const PRIMITIVE_NAMES: [&str; 12] = [
-    "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "Float32", "Float64", "String",
-    "Unit", "Never",
+pub const PRIMITIVE_NAMES: [&str; 15] = [
+    "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
+    "Float32", "Float64", "String", "Unit", "Never",
 ];
 
 /// The result of checking one bundled source module.
@@ -572,6 +572,15 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
         if let Some(extension) = standard_source_module(n(path)) {
             visit(&extension, &mut state, &mut ordered, &mut diagnostics);
         }
+    }
+    // A `bench` block runs under the driver in `@std/bench.ms`, which its module need not import.
+    let benching = modules.iter().any(|m| {
+        m.decls
+            .iter()
+            .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
+    });
+    if benching && let Some(driver) = standard_source_module(n("@std/bench.ms")) {
+        visit(&driver, &mut state, &mut ordered, &mut diagnostics);
     }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);

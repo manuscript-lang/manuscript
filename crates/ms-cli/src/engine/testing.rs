@@ -1,5 +1,11 @@
-//! `ms test`: every test runs in its own process, so a fault, abort or hang
-//! fails only that test.
+//! `ms test` and `ms bench`: every test (or bench) runs in its own process, so a
+//! fault, abort or hang fails only that one.
+//!
+//! `ms bench` uses the same protocol over the `bench` blocks. Each runs under the
+//! `@std/bench.ms` driver, which calibrates, repeats and times the body, reads its
+//! settings from `MS_BENCH_TIME_MS`, `MS_BENCH_SAMPLES` and `MS_BENCH_ITERATIONS`,
+//! and writes one `MSBENCH {json}` line of per-iteration statistics to standard
+//! output. The bench's other standard output is discarded.
 //!
 //! # The test executable protocol
 //!
@@ -32,7 +38,7 @@ use ms_build::FAILURE_MARKER;
 /// Written to standard error, ahead of the reason, by a test that skips itself and exits 0.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
 
-use super::{Engine, TempDir, compile};
+use super::{Engine, Target, TempDir, compile_target};
 use crate::backend::{BackendResult, Io, TestRequest};
 use crate::diagnostic::{CommandDiagnostic, Position};
 use crate::fault::{EXIT_FAULT, Fault};
@@ -43,6 +49,12 @@ use crate::util::emit_json;
 
 /// Each test gets this long unless `--timeout` says otherwise.
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Each bench gets this long unless `--timeout` says otherwise: calibration and every sample count.
+const DEFAULT_BENCH_TIMEOUT: Duration = Duration::from_secs(600);
+
+/// Written to standard output by the bench driver, ahead of a JSON object of statistics.
+const BENCH_MARKER: &str = "MSBENCH ";
 
 #[derive(Debug, Default)]
 struct Options {
@@ -65,6 +77,14 @@ struct Options {
     fuzz: Option<Duration>,
     /// Arguments for the programs under test.
     program: Vec<String>,
+    /// Running `bench` blocks (`ms bench`) instead of tests.
+    bench: bool,
+    /// Target duration of one sample (`--time`).
+    bench_time: Option<Duration>,
+    /// Timed samples per bench (`--samples`).
+    bench_samples: Option<u64>,
+    /// Fixed iterations per sample (`--iterations`); calibrated when unset.
+    bench_iterations: Option<u64>,
 }
 
 /// Reads the selection options the CLI forwards; the first unrecognized
@@ -135,6 +155,35 @@ fn parse_options(args: &[String]) -> Result<Options, String> {
                         options.fuzz =
                             Some(Duration::from_nanos(nanos.min(u64::MAX as i128) as u64));
                     }
+                    "--time" => {
+                        let nanos = crate::duration::parse(value)
+                            .filter(|n| *n >= 1_000_000)
+                            .ok_or_else(|| {
+                                format!(
+                                    "invalid --time {value:?}; use a duration of at least 1ms such as 200ms or 1s"
+                                )
+                            })?;
+                        options.bench_time =
+                            Some(Duration::from_nanos(nanos.min(u64::MAX as i128) as u64));
+                    }
+                    "--samples" => {
+                        options.bench_samples = Some(
+                            value
+                                .parse::<u64>()
+                                .ok()
+                                .filter(|n| *n > 0)
+                                .ok_or("invalid --samples; use a positive integer")?,
+                        );
+                    }
+                    "--iterations" => {
+                        options.bench_iterations = Some(
+                            value
+                                .parse::<u64>()
+                                .ok()
+                                .filter(|n| *n > 0)
+                                .ok_or("invalid --iterations; use a positive integer")?,
+                        );
+                    }
                     "--timeout" => {
                         options.timeout_set = true;
                         let nanos = crate::duration::parse(value)
@@ -189,6 +238,8 @@ struct Case {
     failure: String,
     fault: Option<Fault>,
     duration: Duration,
+    /// The bench driver's statistics (`ms bench`).
+    stats: Option<Json>,
 }
 
 /// Where the command's own output goes: the terminal, or the `--json` document.
@@ -220,27 +271,55 @@ pub(super) fn test<L: Lower>(
     request: &TestRequest,
     io: &mut Io,
 ) -> BackendResult {
+    run(backend, request, io, false)
+}
+
+/// `ms bench`: the same run over `bench` blocks; `request.arguments` also carries `--time=`,
+/// `--samples=` and `--iterations=`.
+pub(super) fn bench<L: Lower>(
+    backend: &Engine<L>,
+    request: &TestRequest,
+    io: &mut Io,
+) -> BackendResult {
+    run(backend, request, io, true)
+}
+
+fn run<L: Lower>(
+    backend: &Engine<L>,
+    request: &TestRequest,
+    io: &mut Io,
+    bench: bool,
+) -> BackendResult {
     let structured = request.json;
-    let options = match parse_options(&request.arguments) {
+    let mut options = match parse_options(&request.arguments) {
         Ok(options) => options,
         Err(message) => {
             let _ = writeln!(io.stderr, "{message}");
             return Ok(2);
         }
     };
-    let mut compiled = match compile(backend, &request.filename, true) {
+    options.bench = bench;
+    if bench && !options.timeout_set {
+        options.timeout = Some(DEFAULT_BENCH_TIMEOUT);
+    }
+    let target = if bench {
+        Target::Benches
+    } else {
+        Target::Tests
+    };
+    let mut compiled = match compile_target(backend, &request.filename, target) {
         Ok(compiled) => compiled,
         Err(failure) => {
             if !structured {
                 return Ok(failure.report(io));
             }
-            let mut document = Document::new(&failure.source_root);
+            let mut document = Document::new(&failure.source_root, bench);
             document.reason = Some("compile_error".into());
             document.diagnostics = failure.command_diagnostics();
             return Ok(emit_json(io, &document.to_json(), 1));
         }
     };
-    let mut document = Document::new(&compiled.source_root);
+    let mut document = Document::new(&compiled.source_root, bench);
     let failed_early = |io: &mut Io, document: &mut Document, phase: &str, message: &str| {
         let _ = writeln!(io.stderr, "{message}");
         if !structured {
@@ -257,7 +336,11 @@ pub(super) fn test<L: Lower>(
         });
         emit_json(io, &document.to_json(), 1)
     };
-    let directory = match TempDir::create("manuscript-test-") {
+    let directory = match TempDir::create(if bench {
+        "manuscript-bench-"
+    } else {
+        "manuscript-test-"
+    }) {
         Ok(directory) => directory,
         Err(error) => {
             return Ok(failed_early(
@@ -318,6 +401,11 @@ struct Runner<'a> {
 impl Runner<'_> {
     fn run_all(&mut self, available: &[String], document: &mut Document, out: &mut Out) -> i32 {
         let options = self.options;
+        let (noun, nouns) = if options.bench {
+            ("bench", "benches")
+        } else {
+            ("test", "tests")
+        };
         let total = available.len();
         let matching = regex::Regex::new(&options.matching).expect("validated pattern");
         let exclude = regex::Regex::new(&options.exclude).expect("validated pattern");
@@ -342,7 +430,7 @@ impl Runner<'_> {
         }
         if let Some(position) = found.iter().position(|f| !f) {
             let message = format!(
-                "unknown test {}; use --list to find full module::name identities",
+                "unknown {noun} {}; use --list to find full module::name identities",
                 crate::quote(&options.names[position])
             );
             let _ = writeln!(out.io.stderr, "{message}");
@@ -373,7 +461,7 @@ impl Runner<'_> {
             || !options.names.is_empty();
         if plan.is_empty() && filtered {
             out.line(format!(
-                "no tests match selection ({total} tests available); use --list to find full module::name identities"
+                "no {nouns} match selection ({total} {nouns} available); use --list to find full module::name identities"
             ));
             document.finish("no_match", Duration::ZERO);
             return 1;
@@ -406,6 +494,11 @@ impl Runner<'_> {
                     out.line(format!("PASS {name}"));
                     case.status = Status::Passed;
                 }
+                Ran::Measured(stats) => {
+                    out.line(format!("BENCH {name}: {}", describe_stats(&stats)));
+                    case.status = Status::Passed;
+                    case.stats = Some(stats);
+                }
                 Ran::Skipped(why) => {
                     out.line(format!("SKIP {name}: {why}"));
                     case.status = Status::Skipped;
@@ -430,18 +523,21 @@ impl Runner<'_> {
                 break;
             }
         }
-        if plan.is_empty() {
+        if plan.is_empty() && options.bench {
+            out.line("no bench blocks found: add bench blocks to bench.ms or *_bench.ms files in the project, or pass a .ms file");
+            reason = "no_benches".into();
+        } else if plan.is_empty() {
             out.line("no test blocks found: add test blocks to test.ms or *_test.ms files in the project, or pass a .ms file");
             reason = "no_tests".into();
         }
         let skipped = document.count(Status::Skipped);
         if skipped > 0 {
             out.line(format!(
-                "{} tests, {failed} failed, {skipped} skipped",
+                "{} {nouns}, {failed} failed, {skipped} skipped",
                 plan.len()
             ));
         } else {
-            out.line(format!("{} tests, {failed} failed", plan.len()));
+            out.line(format!("{} {nouns}, {failed} failed", plan.len()));
         }
         document.finish(&reason, started.elapsed());
         // Failure counts belong in the summary, not the process status: on Unix
@@ -466,6 +562,17 @@ impl Runner<'_> {
         if let Some(fuzz) = self.options.fuzz {
             command.env("MS_TEST_FUZZ_MS", fuzz.as_millis().to_string());
         }
+        if let Some(time) = self.options.bench_time {
+            command.env("MS_BENCH_TIME_MS", time.as_millis().to_string());
+        }
+        if let Some(samples) = self.options.bench_samples {
+            command.env("MS_BENCH_SAMPLES", samples.to_string());
+        }
+        if let Some(iterations) = self.options.bench_iterations {
+            command.env("MS_BENCH_ITERATIONS", iterations.to_string());
+        }
+        // A bench's own output would repeat once per iteration; only its statistics are kept.
+        let mut printed: Vec<u8> = Vec::new();
         let spawned = command
             .stdin(Stdio::inherit())
             .stdout(Stdio::piped())
@@ -478,9 +585,14 @@ impl Runner<'_> {
         let stdout = pipe_reader(child.stdout.take().expect("piped stdout"));
         let stderr = pipe_reader(child.stderr.take().expect("piped stderr"));
         let mut errors: Vec<u8> = Vec::new();
+        let bench = self.options.bench;
         let waited = wait_supervised(&mut child, &stops, self.options.timeout, &mut || {
             while let Ok(chunk) = stdout.try_recv() {
-                out.write(&chunk);
+                if bench {
+                    printed.extend_from_slice(&chunk);
+                } else {
+                    out.write(&chunk);
+                }
             }
             while let Ok(chunk) = stderr.try_recv() {
                 errors.extend_from_slice(&chunk);
@@ -488,7 +600,11 @@ impl Runner<'_> {
         });
         // Output written just before exit; a silent pipe held open elsewhere ends the wait.
         while let Ok(chunk) = stdout.recv_timeout(Duration::from_millis(100)) {
-            out.write(&chunk);
+            if bench {
+                printed.extend_from_slice(&chunk);
+            } else {
+                out.write(&chunk);
+            }
         }
         while let Ok(chunk) = stderr.recv_timeout(Duration::from_millis(100)) {
             errors.extend_from_slice(&chunk);
@@ -518,6 +634,12 @@ impl Runner<'_> {
                 return Ran::Skipped(reason.trim_end_matches('\n').to_string());
             }
             let _ = out.io.stderr.write_all(errors.as_bytes());
+            if bench {
+                return match measurement(&printed) {
+                    Some(stats) => Ran::Measured(stats),
+                    None => Ran::Failed("the bench reported no statistics".into()),
+                };
+            }
             return Ran::Passed;
         }
         let text = errors.trim_end_matches('\n');
@@ -532,6 +654,46 @@ impl Runner<'_> {
             Ran::Failed(text.to_string())
         }
     }
+}
+
+/// The statistics object of the `MSBENCH` line a bench driver wrote.
+fn measurement(printed: &[u8]) -> Option<Json> {
+    let text = String::from_utf8_lossy(printed);
+    let line = text
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix(BENCH_MARKER))?;
+    crate::json::parse(line).ok()
+}
+
+/// A duration given in nanoseconds with a fitting unit: `12.3 ns`, `4.56 µs`, `7.89 ms`, `1.23 s`.
+fn format_ns(nanos: f64) -> String {
+    let (value, unit) = match nanos {
+        n if n < 1e3 => (n, "ns"),
+        n if n < 1e6 => (n / 1e3, "µs"),
+        n if n < 1e9 => (n / 1e6, "ms"),
+        n => (n / 1e9, "s"),
+    };
+    format!("{value:.3} {unit}")
+}
+
+/// The one-line summary of a bench's statistics.
+fn describe_stats(stats: &Json) -> String {
+    let number = |key: &str| match stats.get(key) {
+        Some(Json::Num(text)) => text.parse::<f64>().unwrap_or(f64::NAN),
+        _ => f64::NAN,
+    };
+    let count = |key: &str| stats.get(key).and_then(Json::as_i64).unwrap_or(0);
+    format!(
+        "{}/op median (min {}, mean {}, max {}, stddev {}; {} iterations x {} samples)",
+        format_ns(number("median_ns")),
+        format_ns(number("min_ns")),
+        format_ns(number("mean_ns")),
+        format_ns(number("max_ns")),
+        format_ns(number("stddev_ns")),
+        count("iterations"),
+        count("samples"),
+    )
 }
 
 /// Streams a child's pipe through a channel. The thread is detached: a
@@ -556,6 +718,8 @@ enum Ran {
     /// The test process ended in a runtime fault: the report text and its parse.
     Faulted(String, Fault),
     Cancelled,
+    /// A bench finished and reported these statistics.
+    Measured(Json),
 }
 
 fn describe_exit(status: &std::process::ExitStatus) -> String {
@@ -600,6 +764,8 @@ fn failure_position(failure: &str) -> Option<Position> {
 
 /// The `--json` document of `ms test`.
 struct Document {
+    /// A bench run: the cases are listed under `benches`.
+    bench: bool,
     listed: bool,
     repeat: usize,
     shuffle_seed: Option<i64>,
@@ -616,8 +782,9 @@ struct Document {
 }
 
 impl Document {
-    fn new(source_root: &str) -> Document {
+    fn new(source_root: &str, bench: bool) -> Document {
         Document {
+            bench,
             listed: false,
             repeat: 0,
             shuffle_seed: None,
@@ -652,6 +819,7 @@ impl Document {
                 failure: String::new(),
                 fault: None,
                 duration: Duration::ZERO,
+                stats: None,
             })
             .collect();
     }
@@ -696,6 +864,9 @@ impl Document {
                 if let Some(fault) = &case.fault {
                     item = item.with("fault", fault.to_json());
                 }
+                if let Some(stats) = &case.stats {
+                    item = item.with("stats", stats.clone());
+                }
                 item
             })
             .collect();
@@ -709,7 +880,10 @@ impl Document {
         document = document
             .with("format", Json::int(1))
             .with("source_root", Json::str(&self.source_root))
-            .with("tests", Json::Arr(tests))
+            .with(
+                if self.bench { "benches" } else { "tests" },
+                Json::Arr(tests),
+            )
             .with(
                 "summary",
                 Json::object()
@@ -868,7 +1042,7 @@ esac
             stdout: &mut stdout,
             stderr: &mut stderr,
         };
-        let mut document = Document::new("");
+        let mut document = Document::new("", false);
         let mut out = Out {
             io: &mut io,
             captured: Some(Vec::new()),

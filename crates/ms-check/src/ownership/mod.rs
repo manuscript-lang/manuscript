@@ -181,8 +181,8 @@ pub struct Ownership {
     /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
     /// binding identity: the closure may point at the variable instead of copying it.
     pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
-    /// For each callable with a `Consume` parameter, which parameters (declaration order, receiver
-    /// excluded) the body moves, stores or returns.
+    /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
+    /// order, the receiver first for a method) the body moves, stores or returns.
     pub consumes: HashMap<Key, Vec<bool>>,
 }
 
@@ -415,15 +415,15 @@ impl Hir<'_> {
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
-            if out.facts.parameters.contains(&ParamMode::Consume) {
-                consumes.insert(
-                    (c.module.file, c.id()),
-                    out.facts
-                        .parameters
-                        .iter()
-                        .map(|m| *m == ParamMode::Consume)
-                        .collect(),
-                );
+            let modes: Vec<bool> = out
+                .facts
+                .receiver
+                .iter()
+                .chain(&out.facts.parameters)
+                .map(|m| *m == ParamMode::Consume)
+                .collect();
+            if modes.contains(&true) {
+                consumes.insert((c.module.file, c.id()), modes);
             }
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);

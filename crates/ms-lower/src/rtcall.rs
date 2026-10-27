@@ -113,7 +113,13 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         TyKind::Str => "string",
         TyKind::List(_) => "list",
         TyKind::Bytes => "bytes",
-        TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => "int",
+        TyKind::Int
+        | TyKind::Int8
+        | TyKind::Int16
+        | TyKind::Int32
+        | TyKind::UInt8
+        | TyKind::UInt16
+        | TyKind::UInt32 => "int",
         TyKind::Float | TyKind::Float32 => "float",
         TyKind::Obj(n, _) if n == "Map" => "map",
         TyKind::Obj(n, _) if n == "Set" => "set",

@@ -453,7 +453,7 @@ impl<'a> Parser<'a> {
             for mut d in decls {
                 if exported && matches!(d.kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
                     let t = self.previous();
-                    return self.fail(t, "only types, interfaces, and named functions can be exported; remove 'export' before this impl or test");
+                    return self.fail(t, "only types, interfaces, and named functions can be exported; remove 'export' before this impl, test, or bench");
                 }
                 d.export = exported;
                 module.decls.push(d);
@@ -860,6 +860,33 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses the rest of `test "name":` or `bench "name":` after the keyword.
+    fn test_block(&mut self, bench: bool) -> PResult<DeclKind> {
+        let name = self.need(Tok::String)?;
+        let mut parts = self.text_parts_of(name)?;
+        let text = match (parts.len(), parts.pop()) {
+            (1, Some(TextPart::Lit(text))) => text,
+            _ if bench => {
+                return self.fail(
+                    name,
+                    "bench names cannot interpolate; use plain text, e.g. bench \"sums a list\":",
+                );
+            }
+            _ => {
+                return self.fail(
+                    name,
+                    "test names cannot interpolate; use plain text, e.g. test \"adds numbers\":",
+                );
+            }
+        };
+        let body = self.suite()?;
+        Ok(DeclKind::Test(TestDecl {
+            name: text,
+            body,
+            bench,
+        }))
+    }
+
     fn declaration(&mut self) -> PResult<Decl> {
         let token = self.peek();
         let mut export_pos_dummy = ();
@@ -930,14 +957,11 @@ impl<'a> Parser<'a> {
             }
             Tok::Test => {
                 self.at += 1;
-                let name = self.need(Tok::String)?;
-                let mut parts = self.text_parts_of(name)?;
-                let text = match (parts.len(), parts.pop()) {
-                    (1, Some(TextPart::Lit(text))) => text,
-                    _ => return self.fail(name, "test names cannot interpolate; use plain text, e.g. test \"adds numbers\":"),
-                };
-                let body = self.suite()?;
-                DeclKind::Test(TestDecl { name: text, body })
+                self.test_block(false)?
+            }
+            Tok::Name if self.text(token) == "bench" && self.ahead(1).kind == Tok::String => {
+                self.at += 1;
+                self.test_block(true)?
             }
             Tok::Impl => {
                 self.at += 1;

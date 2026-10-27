@@ -1093,7 +1093,15 @@ impl<'a> FnLower<'a> {
         let float_to_float32 = native == "to_float32" && self.b.m.types.is_float(recv_ty);
         if (matches!(
             native,
-            "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
+            "to_int8"
+                | "to_int16"
+                | "to_int32"
+                | "to_int64"
+                | "to_uint8"
+                | "to_uint16"
+                | "to_uint32"
+                | "to_float32"
+                | "to_float64"
         ) || (numeric_recv && matches!(native, "to_int" | "to_float")))
             && !float_to_float32
         {

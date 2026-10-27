@@ -12,6 +12,7 @@ Commands:
   emit           Emit the lowered intermediate code as text
   run            Build and run an application
   test           Execute test blocks, including imported modules
+  bench          Run and time bench blocks, including imported modules
   fmt            Format source files or a project
   verify         Run check, fmt --check, lint, and test; one result
   inspect        Emit checked source metadata as JSON
@@ -170,6 +171,38 @@ Examples:
   ms test ms.toml --seed 1234 --filter "sorting"
   ms test ms.toml --build-type Debug
   ms test ms.toml --filter "nick collisions" --timeout 10s
+"#;
+
+pub const HELP_BENCH: &str = r#"Usage: ms bench <file.ms|ms.toml> [--json] [--filter text] [--time duration] [--samples count] [--iterations count] [--timeout duration] [--build-type level] [-- program arguments]
+
+Build and run bench blocks in the module and its imported modules. A project also loads bench.ms and *_bench.ms files.
+A bench body is one iteration: the @std/bench.ms driver repeats it until a sample takes --time (this calibration is the warmup),
+then times --samples samples and reports per-iteration min, median, mean, max, and standard deviation.
+Each bench runs in its own process with the project directory (or the file's directory) as the working directory. A bench that
+fails (an error, a fault, or the timeout) fails by name. Standard output written by a bench is discarded.
+Arguments after -- are passed to the bench executable; its exit status is 1 when any bench failed.
+
+Options:
+  --json              Emit one versioned result with each bench's statistics under stats (nanoseconds per iteration)
+  --time <duration>    Target duration of one sample (default 100ms; at least 1ms)
+  --samples <count>    Timed samples per bench (default 10)
+  --iterations <count> Fixed iterations per sample; skips calibration
+  --filter <text>      Run only benches whose module::name contains text
+  --timeout <duration> Fail a bench that runs longer (default 10m; 0 disables)
+  --bench <full-name>  Select exact module::name (repeatable); --test is the same option
+  --match <regex>      Include names matching a regular expression
+  --exclude <regex>    Exclude names matching a regular expression
+  --list              List selected benches without running them
+  --fail-fast         Stop after the first failed bench
+  --repeat <count>     Run the selected benches count times
+  --build-type <level>  Debug, Release, or MinSizeRel (case-insensitive); benchmark with the default Release
+  --link <file>         Link an object or static library that defines `extern fn` symbols (repeatable)
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms bench bench.ms
+  ms bench ms.toml --filter "parse" --time 500ms
+  ms bench ms.toml --json --samples 20 > bench.json
 "#;
 
 pub const HELP_FMT: &str = r#"Usage: ms fmt <file.ms|directory|ms.toml>... [--check [--json]] [--drop-labels]
