@@ -29,6 +29,10 @@ impl Bytes:
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     def index_of(value: Bytes) -> Optional[Int]: ...
 
+    # Returns the first offset at or after `start` holding the unsigned byte `value`, or `none`.
+    # A `value` outside 0..255 or a `start` past length() gives `none`; a negative `start` counts as zero.
+    def index_of_byte(value: Int, start: Int) -> Optional[Int]: ...
+
     # Returns the last matching byte offset or `none`; empty `value` matches at length().
     def last_index_of(value: Bytes) -> Optional[Int]: ...
 
@@ -59,6 +63,10 @@ impl Bytes:
 
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     def decode_utf8() -> Optional[String]: ...
+
+    # Decodes [start, end) as `decode_utf8` does, without copying the range into a new Bytes first.
+    # Bounds outside 0 <= start <= end <= length() raise a fault.
+    def decode_utf8_range(start: Int, end: Int) -> Optional[String]: ...
 
 # Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
 export def join(parts: List[Bytes]) -> Bytes: ...

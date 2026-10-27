@@ -1466,6 +1466,31 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
     }
 }
 
+/// `index_of_byte(value, start)`: first offset at or after `start` holding `value`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
+    b: *const VecVal,
+    value: i64,
+    start: i64,
+    out: *mut i64,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = bslice(b);
+        if !(0..=255).contains(&value) || start > s.len() as i64 {
+            return 0;
+        }
+        let from = start.max(0) as usize;
+        match s[from..].iter().position(|&x| x as i64 == value) {
+            Some(i) => {
+                *out = (from + i) as i64;
+                1
+            }
+            None => 0,
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
     b: *const VecVal,
@@ -1726,6 +1751,33 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
             return 0;
         }
         out.write(from_bytes(s));
+        1
+    }
+}
+
+/// `decode_utf8_range(start, end)`: like `decode_utf8` over `[start, end)` without copying the range
+/// first; bounds outside `0 <= start <= end <= length()` fault.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
+    b: *const VecVal,
+    start: i64,
+    end: i64,
+    out: *mut StrVal,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = bslice(b);
+        if start < 0 || end < start || end > s.len() as i64 {
+            fault::fault_fmt(format_args!(
+                "Bytes.decode_utf8_range: bounds {start}..{end} are outside 0..{}",
+                s.len()
+            ));
+        }
+        let part = &s[start as usize..end as usize];
+        if core::str::from_utf8(part).is_err() {
+            return 0;
+        }
+        out.write(from_bytes(part));
         1
     }
 }

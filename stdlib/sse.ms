@@ -121,12 +121,37 @@ impl SseDecoder for Decoder:
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
-        var index = 0
         let total = chunk.length()
+        var start = 0
+        var lf = chunk.index_of_byte(10, 0).get(total)
+        var cr = chunk.index_of_byte(13, 0).get(total)
 
-        while index < total:
-            let step = consume(var self, chunk.get(index), var events)
-            index += 1
+        while start < total:
+            var end = lf
+            if cr < end: end = cr
+            if end == total: break
+
+            let byte = chunk.get(end)
+
+            if byte == 10 and self.carriage and end == start:
+                self.carriage = False
+            else:
+                let step = complete(var self, chunk, start, end, var events)
+                self.carriage = byte == 13
+
+                if step.is_error():
+                    let failure = step.err().clone()
+                    self.failure = failure.clone()
+                    return error(failure)
+
+            start = end + 1
+            if lf < start: lf = chunk.index_of_byte(10, start).get(total)
+            if cr < start: cr = chunk.index_of_byte(13, start).get(total)
+
+        if start < total:
+            self.carriage = False
+
+            let step = hold(var self, chunk.slice(start, total).get())
 
             if step.is_error():
                 let failure = step.err().clone()
@@ -150,44 +175,51 @@ impl SseDecoder for Decoder:
     def retry() -> Optional[Int]:
         return self.retry_ms
 
-def consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) -> Result[
-    Unit, SseError
-]:
-    let after_carriage = decoder.carriage
-    decoder.carriage = False
-    if byte == 10 and after_carriage: return ok(())
-
-    if byte == 10 or byte == 13:
-        decoder.carriage = byte == 13
-        return end_line(var decoder, var events)
-
-    decoder.line.append(byte)
-    decoder.line_bytes += 1
+# Buffers the unterminated tail of a chunk as part of the line being assembled.
+def hold(var decoder: Decoder, segment: Bytes) -> Result[Unit, SseError]:
+    decoder.line_bytes += segment.length()
     if exceeds(decoder.line_bytes, decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
     )
 
+    decoder.line.append_bytes(segment)
     return ok(())
 
-def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, SseError]:
-    var bytes = decoder.line.build()
+# Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
+def complete(
+    var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
+) -> Result[Unit, SseError]:
+    if decoder.line_bytes == 0:
+        if exceeds(end - start, decoder.limits.max_line_bytes): return error(
+            SseError.LimitExceeded
+        )
+
+        return end_line(var decoder, chunk, start, end, var events)
+
+    try hold(var decoder, chunk.slice(start, end).get())
+
+    let joined = decoder.line.build()
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
+    return end_line(var decoder, joined, 0, joined.length(), var events)
+
+def end_line(
+    var decoder: Decoder, bytes: Bytes, start: Int, end: Int, var events: List[SseEvent]
+) -> Result[Unit, SseError]:
+    var from = start
 
     if not decoder.started:
         decoder.started = True
-        if bytes.starts_with(f"\u{feff}".to_bytes()): bytes = bytes.slice(
-            3, bytes.length()
-        ).get()
+        if bytes.slice(start, end).get().starts_with(f"\u{feff}".to_bytes()): from += 3
 
-    if bytes.is_empty():
+    if from == end:
         dispatch(var decoder, var events)
         return ok(())
 
-    let line = try bytes.decode_utf8().ok_or(SseError.InvalidData)
+    let line = try bytes.decode_utf8_range(from, end).ok_or(SseError.InvalidData)
     if line.starts_with(":"): return ok(())
 
-    decoder.event_bytes += bytes.length()
+    decoder.event_bytes += end - from
     if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
         SseError.LimitExceeded
     )
@@ -197,19 +229,30 @@ def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, S
     return ok(())
 
 def apply(var decoder: Decoder, line: String) -> Unit:
-    var name = line.clone()
-    var value = ""
-    let colon = line.index_of(":")
+    if line.starts_with("data:"):
+        decoder.data.append(value_after(line, 5, line.starts_with("data: ")))
+    elif line.starts_with("event:"):
+        decoder.event_type = value_after(line, 6, line.starts_with("event: "))
+    elif line.starts_with("id:"):
+        identify(var decoder, value_after(line, 3, line.starts_with("id: ")))
+    elif line.starts_with("retry:"):
+        reconnect(var decoder, value_after(line, 6, line.starts_with("retry: ")))
+    else: apply_other(var decoder, line)
 
-    if let at = colon:
-        name = line.slice(0, at).get()
-        value = line.slice(at + 1, line.length()).get()
-        if value.starts_with(" "): value = value.slice(1, value.length()).get()
+# The value after the colon, skipping one leading space when `spaced`.
+def value_after(line: String, colon_end: Int, spaced: Bool) -> String:
+    if spaced: return line.slice(colon_end + 1, line.length()).get()
 
-    if name == "event": decoder.event_type = value
-    elif name == "data": decoder.data.append(value)
-    elif name == "id": identify(var decoder, value)
-    elif name == "retry": reconnect(var decoder, value)
+    return line.slice(colon_end, line.length()).get()
+
+# Lines without a colon name a field with an empty value; other names are ignored.
+def apply_other(var decoder: Decoder, line: String) -> Unit:
+    if line.index_of(":").is_some(): return ()
+
+    if line == "data": decoder.data.append("")
+    elif line == "event": decoder.event_type = ""
+    elif line == "id": identify(var decoder, "")
+    elif line == "retry": reconnect(var decoder, "")
 
 # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
 def identify(var decoder: Decoder, value: String) -> Unit:
