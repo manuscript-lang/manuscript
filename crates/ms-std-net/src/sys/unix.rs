@@ -1,6 +1,7 @@
 //! Unix: descriptors, `poll(2)`, `eventfd` (a pipe off Linux) and a mio readiness set.
 
 use super::{Ev, Raised};
+use crate::idmap::IdMap;
 use crate::rt;
 use mio::unix::SourceFd;
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -9,7 +10,6 @@ use rustix::event::{self, PollFd, PollFlags};
 use rustix::io;
 use rustix::time::Timespec;
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 use std::os::fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd};
 use std::time::Duration;
@@ -120,8 +120,8 @@ pub struct Poller {
     poll: ManuallyDrop<RefCell<mio::Poll>>,
     registry: mio::Registry,
     events: RefCell<mio::Events>,
-    sockets: RefCell<HashMap<Raw, Watched>>,
-    by_token: RefCell<HashMap<u64, Raw>>,
+    sockets: RefCell<IdMap<Raw, Watched>>,
+    by_token: RefCell<IdMap<u64, Raw>>,
     /// Tokens whose remembered readiness met new interest, reported by the next poll.
     pending: RefCell<Vec<u64>>,
     /// Registered in `poll` under `WAKE_TOKEN`: wakes a parked reactor when work appears
@@ -157,8 +157,8 @@ impl Poller {
             poll: ManuallyDrop::new(RefCell::new(poll)),
             registry,
             events: RefCell::new(mio::Events::with_capacity(MAX_EVENTS)),
-            sockets: RefCell::new(HashMap::new()),
-            by_token: RefCell::new(HashMap::new()),
+            sockets: RefCell::new(IdMap::default()),
+            by_token: RefCell::new(IdMap::default()),
             pending: RefCell::new(Vec::new()),
             wake,
             parked: Cell::new(false),
