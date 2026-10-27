@@ -234,22 +234,30 @@ def end_text_line(var decoder: Decoder, bytes: Bytes, var events: List[SseEvent]
     return ok(())
 
 def apply(var decoder: Decoder, line: String) -> Unit:
-    let colon = line.index_of(":")
+    if line.starts_with("data:"):
+        decoder.data.append(value_after(line, 5, line.starts_with("data: ")))
+    elif line.starts_with("event:"):
+        decoder.event_type = value_after(line, 6, line.starts_with("event: "))
+    elif line.starts_with("id:"):
+        identify(var decoder, value_after(line, 3, line.starts_with("id: ")))
+    elif line.starts_with("retry:"):
+        reconnect(var decoder, value_after(line, 6, line.starts_with("retry: ")))
+    else: apply_other(var decoder, line)
 
-    if colon.is_none():
-        field(var decoder, line, "")
-        return ()
+# The value after the colon, skipping one leading space when `spaced`.
+def value_after(line: String, colon_end: Int, spaced: Bool) -> String:
+    if spaced: return line.slice(colon_end + 1, line.length()).get()
 
-    let at = colon.get(0)
-    var value = line.slice(at + 1, line.length()).get()
-    if value.starts_with(" "): value = value.slice(1, value.length()).get()
-    field(var decoder, line.slice(0, at).get(), value)
+    return line.slice(colon_end, line.length()).get()
 
-def field(var decoder: Decoder, name: String, value: String) -> Unit:
-    if name == "data": decoder.data.append(value)
-    elif name == "event": decoder.event_type = value
-    elif name == "id": identify(var decoder, value)
-    elif name == "retry": reconnect(var decoder, value)
+# Lines without a colon name a field with an empty value; other names are ignored.
+def apply_other(var decoder: Decoder, line: String) -> Unit:
+    if line.index_of(":").is_some(): return ()
+
+    if line == "data": decoder.data.append("")
+    elif line == "event": decoder.event_type = ""
+    elif line == "id": identify(var decoder, "")
+    elif line == "retry": reconnect(var decoder, "")
 
 # An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
 def identify(var decoder: Decoder, value: String) -> Unit:
