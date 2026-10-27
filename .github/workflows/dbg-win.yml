@@ -46,7 +46,8 @@ jobs:
             timeout 30 ./prog.exe > out.txt 2>&1
             code=$?
             echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start ))" >> summary.txt
-            grep -n "\[wd\]" dbg.log | tail -60 | cut -c1-70 >> summary.txt
+            grep -n "\[srv\]" dbg.log | tail -14 | cut -c1-70 >> summary.txt
+            grep -n "\[wd\]" dbg.log | tail -12 | cut -c1-70 >> summary.txt
             tail -14 trace.txt 2>/dev/null | cut -c1-60 | sed "s/^/  t: /" >> summary.txt
             echo "END CASE $1 code=$code" >> summary.txt
           }
