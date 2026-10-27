@@ -929,7 +929,9 @@ impl Server {
                     if sock.set_nonblocking(true).is_err() {
                         continue;
                     }
+                    dg("nonblocking set");
                     let _ = sock.set_tcp_nodelay(true);
+                    dg("nodelay set");
                     self.add_conn(sock, reactor);
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
@@ -972,6 +974,7 @@ impl Server {
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
         let token = reactor.token();
+        dg("add_conn begin");
         let (io, tls_pending, phase) = match &self.tls {
             None => (
                 Some(Rc::new(Plain::new(sock)) as Rc<dyn Io>),
@@ -1020,9 +1023,12 @@ impl Server {
             if self.tls.is_none() {
                 st.idle_deadline = st.deadline.is_some();
             }
+            dg("add_conn registering");
             if !reactor.add(st.fd(), token, Ev::IN) {
+                dg("add failed");
                 return;
             }
+            dg("add_conn registered");
             st.registered = true;
             reactor.note_deadline(st.deadline);
         }
@@ -1031,6 +1037,7 @@ impl Server {
             .borrow_mut()
             .insert(token, Target::Conn(Rc::downgrade(&conn)));
         self.st.borrow_mut().conns.insert(token, conn.clone());
+        dg("add_conn done");
         if self.tls.is_some() {
             self.drive_handshake(&conn, reactor);
         }
