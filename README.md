@@ -88,7 +88,9 @@ If a model wrote the change, asking a model to summarize it is not a check. `ms 
 
 ## Ordinary code has to be fast, because agents write ordinary code
 
-An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM. On the October 25 run (`c1b81215`, linux/amd64), Manuscript beat hand-written Go on all seven kernels. Against Rust at `opt-level=3` with overflow checks on, the configuration that matches Manuscript's checked arithmetic, 28 comparable cases span **0.42× to 4.51× Rust's time**:
+An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM.
+
+Manuscript is now comparable to Rust. On the October 25 run (`c1b81215`, linux/amd64), it beat hand-written Go on all seven kernels, and 28 cases against Rust at `opt-level=3` with overflow checks on, the configuration that matches Manuscript's checked arithmetic, span 0.42× to 4.51× Rust's time. Four library cases against hyper, `csv` and `serde_json` span 0.30× to 1.0×, so across all 32 the range is **0.30× to 4.51×**:
 
 | Case | Manuscript | Rust | ms / Rust |
 | --- | ---: | ---: | ---: |
