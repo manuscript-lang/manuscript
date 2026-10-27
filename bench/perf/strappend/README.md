@@ -1,8 +1,8 @@
 # String append against Rust
 
-`StringBuilder.append` against Rust's `String::push_str` (glibc, `rustc -C opt-level=3`), building about 1 MB from pieces of 4 B to 8 KiB. Manuscript is the default Release build (LLVM). `MS=ms sh bench/perf/strappend/run.sh 5` prints the best of N runs (each the best of 40 builds) in microseconds.
+`StringBuilder.append` against Rust's `String::push_str` (glibc, `rustc -C opt-level=3`), building about 1 MB from pieces of 4 B to 8 KiB. Manuscript is the default Release build (LLVM). `MS=ms sh bench/perf/strappend/run.sh 5` prints the best of N runs (each the best of 40 builds) in microseconds. It also builds `List[Int]`s of 10K to 1M items with `append` in a `while` loop against `Vec::push`. The `Platform benchmarks` workflow (run it by hand on a branch) runs the allocator tests and this table on Linux, macOS and Windows.
 
-## 2026-10-27
+## 2026-10-27 (Linux)
 
 Linux x86-64, Intel Xeon 2.1 GHz (virtualized), rustc 1.99.1, median of two sets of 5 and 9 runs; differences under about 10% are noise. Ratio is Manuscript over Rust.
 
