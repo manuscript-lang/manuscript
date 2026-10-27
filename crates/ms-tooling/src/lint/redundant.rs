@@ -31,7 +31,8 @@ struct Scan<'a> {
 
 impl Scan<'_> {
     /// A `ref` result lends part of a parameter: the explicit `some(...)` is what
-    /// makes the Optional wrap that borrow, so those bodies are left alone.
+    /// makes the Optional wrap that borrow, so those bodies are left alone until
+    /// issue #1596 (implicit wrapping into `ref Optional`) is fixed.
     fn func(&mut self, f: &Func) {
         if !f.result_ref {
             walk_callable(self, &f.params, &f.body);
