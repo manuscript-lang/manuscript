@@ -18,7 +18,7 @@ def receiver(ch: Channel[Int, Int]) -> Int:
 def sender(ch: Channel[Int, Int]) -> Int:
     var c = ch
     for i in 0..100:
-        c.send(i)
+        let _ = c.send(i)
     return 0
 
 def cancel_receiver() -> Unit:
@@ -34,7 +34,7 @@ def cancel_sender() -> Unit:
 def timeout_receiver() -> Unit:
     with let group = TaskGroup[Int, Int, Int]():
         let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
-        task.result()
+        let _ = task.result()
 
 def churn() -> Int:
     var total = 0

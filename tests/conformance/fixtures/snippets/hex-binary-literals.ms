@@ -11,5 +11,7 @@ export def main() -> Int:
     let e: Int32 = 0x7FFF_FFFF
     let m = {0xFF: "x"}
     let f = 3.141_592
-    stdout().write(f"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\n")
+    let _ = stdout().write(
+        f"{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\n"
+    )
     return 0
