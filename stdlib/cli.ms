@@ -94,7 +94,7 @@ export type FlagKind:
     case String
     # `Int` field. A whole number that fits in Int; other text is an InvalidValue error.
     case Int
-    # `Float` field. A decimal number that parses as Float; other text is an InvalidValue error.
+    # `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, is an InvalidValue error.
     case Float
     # `List[String]` field. The flag may repeat; every occurrence is kept in order.
     case List
@@ -387,7 +387,10 @@ def fits(flag: Flag, value: String) -> Bool:
     match flag.kind:
         case Bool: return value == "true" or value == "false"
         case Int: return value.parse_int().is_some()
-        case Float: return value.parse_float().is_some()
+        case Float:
+            if let number = value.parse_float(): return number.is_finite()
+
+            return False
         case _: return True
 
 # Checks one flag name or short against names already seen.

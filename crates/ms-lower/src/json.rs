@@ -341,7 +341,7 @@ impl FnLower<'_> {
         } else if t.is_source_type("@std/net.ms", "Cidr") {
             Some((KIND_STRING, "msrt_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
-            Some((KIND_NUMBER, "msstd_decimal_literal", false))
+            Some((KIND_NUMBER, "msstd_decimal_parse", false))
         } else if t.is_std("BigInt") {
             Some((KIND_NUMBER, "msstd_bigint_parse", false))
         } else {
@@ -363,9 +363,6 @@ impl FnLower<'_> {
                 let has_max = self.b.bconst(true);
                 let max = self.b.iconst(10_000);
                 self.status_code(sym, &[text, radix, has_max, max, slot])?
-            } else if sym == "msstd_decimal_literal" {
-                self.call_runtime(sym, &[text, slot], MTy::UNIT)?;
-                self.b.iconst(0)
             } else {
                 self.status_code(sym, &[text, slot])?
             };

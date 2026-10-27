@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
 from "@std/collections.ms" import range
@@ -362,6 +362,20 @@ test "YAML document markers end a root plain scalar":
     )
     parse(text: "null\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
     try expect_true(parse(text: "x\n---\ny\n").is_error())
+
+test "YAML plain scalars cannot start with an indicator":
+    for text in [
+        "a: - b\n", "a: -\n", "a: ? b\n", "a: @x\n", "a: `x\n", "a: ]\n", "a: ,\n",
+        "a: %d\n", "- ? x\n"
+    ]:
+        try expect_true(parse(text: text).is_error())
+
+    let _ = try expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))
+    let explicit = parse(text: "{? a : 1}\n") | try expect_error
+    try expect_equal(
+        explicit,
+        YamlError.UnsupportedFeature(1, "explicit mapping keys are unsupported")
+    )
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
