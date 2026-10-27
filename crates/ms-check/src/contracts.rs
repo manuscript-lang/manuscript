@@ -231,11 +231,14 @@ impl Checker {
             && !self.standard_declarations
             && !own_extern
             && !self.m().is_standard();
-        if nominal.is_none()
-            || foreign_native
-            || !(own_extern
-                || matches!(receiver.kind, Kind::Record | Kind::Alternative)
-                || (self.m().is_standard() && receiver.kind == Kind::Native))
+        // A bundled module may add source-written methods to a built-in scalar or String.
+        let scalar_extension = self.m().is_standard() && builtin_comparable(&receiver);
+        if !scalar_extension
+            && (nominal.is_none()
+                || foreign_native
+                || !(own_extern
+                    || matches!(receiver.kind, Kind::Record | Kind::Alternative)
+                    || (self.m().is_standard() && receiver.kind == Kind::Native)))
         {
             if receiver.id != "<invalid>" {
                 self.type_error(

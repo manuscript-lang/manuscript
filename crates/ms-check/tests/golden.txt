@@ -1414,7 +1414,7 @@ def f() -> Int:
 resolution	2	19	34	unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?def f() -> Int:
     let n = "abc".foo()
     return 0
-resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
+resolution	2	19	34	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperdef f() -> String:
     return [1.5].join(separator: ",")
 resolution	2	18	36	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f"{value}").join(separator: ",")def double(n: Int) -> Int:
     return n * 2
@@ -1695,12 +1695,12 @@ resolution	1	33	32	unknown type Layer32; declare it with 'type Layer32:' / 'inte
     let x = 1
     let y: Int = x.foo
     return y
-resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def g(v: Int) -> Int:
+resolution	3	20	49	unknown or ambiguous member foo on Int; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def g(v: Int) -> Int:
     return v
 def f() -> Int:
     let x = 1
     return g(v: x.foo())
-resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def f(first: Int, second: Int = first + 1) -> Int: ...
+resolution	5	19	83	unknown or ambiguous member foo on Int; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def f(first: Int, second: Int = first + 1) -> Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(value: Int = True) -> Int: ...
 type	1	20	19	expected Int, found Bool
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)def f(first: Int = second, second: Int = 1) -> Int: ...
@@ -4636,10 +4636,10 @@ def run(n: Int) -> Int:
 def run(n: Int) -> Int:
     let a = n |.size()|try.m()| .k
     return a
-resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def run(n: Int) -> Int:
+resolution	2	17	40	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def run(n: Int) -> Int:
     let a = n | .size() | try .m() | .k
     return a
-resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def f() -> Int:
+resolution	2	18	41	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8def f() -> Int:
     for mode in [1]:
         if not (
                 mode == 2
