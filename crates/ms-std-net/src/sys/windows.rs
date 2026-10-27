@@ -189,8 +189,11 @@ impl Poller {
         let token = mio::Token(token as usize);
         let mut views = self.views.borrow_mut();
         if let Some(view) = views.get_mut(&sock) {
-            return self.registry.reregister(view, token, mio_interest(ev));
+            let r = self.registry.reregister(view, token, mio_interest(ev));
+            ms_rt::dbgf!("[arm] {sock} REREGISTER existing view -> {:?}", r.is_ok());
+            return r;
         }
+        ms_rt::dbgf!("[arm] {sock} register new view");
         // SAFETY: the view never closes the socket: it ends in `into_raw_socket`.
         let stream = unsafe { std::net::TcpStream::from_raw_socket(sock) };
         let mut view = TcpStream::from_std(stream);
@@ -224,6 +227,7 @@ impl Poller {
 
     pub fn delete(&self, sock: Borrowed<'_>) {
         let sock = raw(sock);
+        ms_rt::dbgf!("[arm] {sock} delete (had view: {})", self.views.borrow().contains_key(&sock));
         if let Some(mut view) = self.views.borrow_mut().remove(&sock) {
             let _ = self.registry.deregister(&mut view);
             let _ = view.into_raw_socket();
