@@ -2,6 +2,17 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27 (PriorityQueue sift-down guards)
+
+Revision: this branch on top of `9f41921f`; callgrind on 100k enqueue and dequeue, plus `run.sh 7` twice on the same host.
+
+| Measure | Before | After | Rust |
+| --- | ---: | ---: | ---: |
+| Instructions, 100k enqueue and dequeue | 110.7M | 87.4M | 44.9M |
+| ns/op (`run.sh 7`, two runs) | 112 | 97 to 100 | 81 to 97 |
+
+`sift_down` now loops while `0 <= at < (size - 1) / 2`, so the range analysis proves the child indices non-negative and in range and drops their normalization and bounds checks (75 to 52 instructions per level); the one-child last level is handled after the loop. Without the explicit `at >= 0` guard the analysis lost the lower bound of `at` and kept the checks. What remains: the `orders` list is a separate list whose length the analysis does not tie to `heap`, and the comparator's checked subtraction.
+
 ## 2026-10-27 (SortedMap)
 
 Revision: this branch on top of `d370bb89`; best of 10 runs of the `sorted_map_add_contains` row, same machine class.
