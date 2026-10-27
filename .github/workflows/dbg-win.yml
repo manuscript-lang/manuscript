@@ -47,6 +47,7 @@ jobs:
             echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start ))" >> summary.txt
             tail -70 out.txt | cut -c1-90 | sed "s/^/  o: /" >> summary.txt
             tail -14 trace.txt 2>/dev/null | cut -c1-60 | sed "s/^/  t: /" >> summary.txt
+            echo "END CASE $1 code=$code" >> summary.txt
           }
           run v6 Debug dbg/win/v6_two_servers_fast.ms
           exit 0

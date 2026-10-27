@@ -129,6 +129,7 @@ native! {
         out: Out<Object<ConnH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
+        eprintln!("[ffi] connect enter {address}");
         let c = report(net.connect(address, opt(has_timeout, timeout)), &err)?;
         out.write(Object(ConnH(c)));
         Ok(())

@@ -824,6 +824,7 @@ impl Network {
         address: &str,
         timeout: Option<i64>,
     ) -> Result<Rc<Connection>, NetErr> {
+        eprintln!("[conn] connect enter closed={}", self.is_closed());
         if self.is_closed() {
             return Err(NetErr::Closed);
         }
