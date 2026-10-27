@@ -52,3 +52,19 @@ Same workflow, after a non-inline string that fits the buffer is appended with a
 | 1M items | 0.30x | 0.28x | 0.11x | 0.17x |
 
 The Linux runner (AMD EPYC 7763) is still behind at 256 B (1.38x) and 1 KiB (1.19x), and macOS arm64 at 64 B (1.17x); everything else is at or ahead of Rust.
+
+### After dispatching `memcpy` to an AVX2 body
+
+`memcpy` jumps through a pointer set on first use to an AVX2 body (128-byte blocks) or an SSE one, instead of a four-level call chain with its own frame: a 256 B copy drops from 65 to 38 instructions (Rust with glibc: 32). Only Linux x86_64 uses it; macOS and Windows already call their system `memcpy`. Runner noise is 10-20%, so Linux's 1.02-1.19x and arm64's 1.11-1.26x are within a run or two of each other.
+
+| piece / items | linux-amd64 | darwin-arm64 | darwin-amd64 | windows-amd64 |
+|---|---|---|---|---|
+| 4 B | 0.79x | 0.96x | 0.81x | 0.68x |
+| 16 B | 0.65x | 1.00x | 0.62x | 0.39x |
+| 64 B | 1.02x | 1.26x | 0.32x | 0.22x |
+| 256 B | 1.19x | 1.11x | 0.12x | 0.09x |
+| 1 KiB | 1.10x | 1.07x | 0.08x | 0.06x |
+| 8 KiB | 0.07x | 0.93x | 0.07x | 0.05x |
+| 10K items | 0.33x | 1.00x | 0.21x | 0.56x |
+| 100K items | 0.32x | 0.57x | 0.10x | 0.24x |
+| 1M items | 0.30x | 0.39x | 0.09x | 0.16x |
