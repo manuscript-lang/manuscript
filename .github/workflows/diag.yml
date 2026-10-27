@@ -51,21 +51,8 @@ jobs:
         run: |
           set +e
           mkdir -p ydir && cd ydir
-          MS_DIAG_COPY_EXE=$PWD/ytest MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > out.txt 2>&1
-          grep -E "SEGV|diag" out.txt | cut -c1-220 | head -20
-          lldb -b -s ../.github/diag/lldb.cmd -- ./ytest 5 > lldb.txt 2>&1; tail -260 lldb.txt | cut -c1-160
-          true
-      - name: mac repros under lldb
-        if: runner.os == 'macOS'
-        continue-on-error: true
-        run: |
-          set +e
-          for f in ym; do
-            target/debug/ms build .github/diag/$f.ms -o $f-bin
-            ./$f-bin 2>&1 | tail -3
-            echo "exit $?"
-            lldb -b -o run -o "bt 15" -o "image lookup -a \$lr" -o "disassemble -p -c 12" -o "register read pc lr" -o "image lookup -a \$pc" -- ./$f-bin 2>&1 | tail -30
-          done
+          MS_DIAG_COPY_EXE=$PWD/ytest MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --filter yaml.ms > out.txt 2>&1
+          grep -E "SEGV|diag|FAIL" out.txt | cut -c1-220 | head -20; tail -3 out.txt
           true
       - name: workers remaining tests
         if: runner.os == 'Windows'
@@ -83,9 +70,10 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for v in s0 s1 s2 s3; do
-            echo "== $v"
-            timeout 40 target/debug/ms.exe run .github/diag/$v.ms > h.txt 2>&1
-            echo "exit $?"; head -20 h.txt
-          done
+          target/debug/ms.exe build .github/diag/pl.ms -o pl.exe
+          timeout 25 ./pl.exe > h.txt 2>&1
+          echo "pl exit $?"; cat h.txt
+          target/debug/ms.exe build .github/diag/pg.ms -o pg.exe
+          timeout 40 ./pg.exe > g.txt 2>&1
+          echo "pg exit $?"; cat g.txt
           true

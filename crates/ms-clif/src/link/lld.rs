@@ -284,6 +284,9 @@ fn macos_arguments(
         .arg("-syslibroot")
         .arg(&sdk)
         .arg("-dead_strip")
+        // lld turns `adrp x10, got; ...; ldr x8, [x10, got]` into `adr x8` at the adrp, clobbering
+        // an x8 the code in between still uses (a list of string literals stored a shift result).
+        .arg("-ignore_optimization_hints")
         .arg("-o")
         .arg(out);
     if strip {
