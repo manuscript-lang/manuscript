@@ -50,27 +50,16 @@ jobs:
         run: |
           set +e
           ms="$GITHUB_WORKSPACE/target/debug/ms"
-          mkdir -p "$RUNNER_TEMP/probe" && cd "$RUNNER_TEMP/probe"
-          MS_KEEP_LL=1 "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms" --build-type Release --filter "quoted folding trims" 2>&1 | tail -3
-          ls -la
-          sleep 5
-          cp ~/Library/Logs/DiagnosticReports/program-*.ips . 2>/dev/null
-          python3 - <<'PY'
-          import json,glob
-          for f in glob.glob('program-*.ips'):
-              t=open(f).read().split('\n',1)
-              d=json.loads(t[1])
-              th=d['threads'][d['faultingThread']]
-              print(f, d.get('exception'))
-              print('x regs', [r['value'] for r in th['threadState']['x']][:31])
-              print('pc/lr', th['threadState'].get('pc'), th['threadState'].get('lr'))
-              imgs=d['usedImages']
-              for fr in th['frames'][:12]:
-                  im=imgs[fr['imageIndex']] if 'imageIndex' in fr else {}
-                  print(fr.get('imageOffset'), fr.get('symbol'), im.get('name'), im.get('base'))
-          PY
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: probe-${{ matrix.os }}
-          path: ${{ runner.temp }}/probe
+          f="quoted folding trims"
+          y="$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms"
+          for v in "" "MS_RT_HOT=0" "MS_VECTORIZE=off"; do
+            echo "::group::variant [$v] Release"
+            env $v "$ms" test "$y" --build-type Release --filter "$f" 2>&1 | tail -3
+            echo "::endgroup::"
+          done
+          echo "::group::MinSizeRel"
+          "$ms" test "$y" --build-type MinSizeRel --filter "$f" 2>&1 | tail -3
+          echo "::endgroup::"
+          echo "::group::other tests"
+          "$ms" test "$y" --build-type Release 2>&1 | grep -a -E "FAIL|tests,"
+          echo "::endgroup::"
