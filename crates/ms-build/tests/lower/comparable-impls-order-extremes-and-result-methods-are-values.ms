@@ -16,5 +16,5 @@ export def main() -> Int:
     let b = Version(2)
     let c: Result[Int, Error] = ok(1)
     let e = c.is_ok
-    let r = stdout().write(f"{max(a, b).major} {e()}\n")
+    let _r = stdout().write(f"{max(a, b).major} {e()}\n")
     return 0

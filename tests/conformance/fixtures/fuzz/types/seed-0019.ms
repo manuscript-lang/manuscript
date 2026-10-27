@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let l1 = [(-15), (-8), 8, (-25), 9]
@@ -29,7 +29,7 @@ export def main() -> Int:
     say(f"acc4 = {acc4}")
     say(f"{676709} {i3} {(676709 < i3)} sum {676709 + i3}")
 
-    let bad = say
+    let _bad = say
     let f5 = (518.816 * 4.5)
     say(f"f5 = {f5}")
     return 0

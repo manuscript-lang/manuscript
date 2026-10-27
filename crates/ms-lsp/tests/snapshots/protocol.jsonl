@@ -7,10 +7,10 @@
 {"id":11,"jsonrpc":"2.0","result":null}
 {"id":2,"jsonrpc":"2.0","result":[]}
 {"error":{"code":-32602,"message":"document is not open"},"id":3,"jsonrpc":"2.0"}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL113","message":"some(...) is redundant here: a plain value is wrapped where an Optional is expected; pass the value itself","range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"severity":2,"source":"manuscript-lint"},{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
 #large
 {"error":{"code":-32602,"message":"unknown standard-library module"},"id":5,"jsonrpc":"2.0"}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL113","message":"some(...) is redundant here: a plain value is wrapped where an Optional is expected; pass the value itself","range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"severity":2,"source":"manuscript-lint"},{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"file://$TMP/ms-lsp-protocol-PID/main.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[],"uri":"manuscript-stdlib:///io.ms","version":1}}
 {"id":6,"jsonrpc":"2.0","result":null}
 {"id":7,"jsonrpc":"2.0","result":null}

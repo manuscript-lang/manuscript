@@ -167,7 +167,7 @@ export interface Comparable:
     # Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
     def compare(other: Self) -> Int
 
-# A type whose values can be duplicated. Plain data and functions are Clonable; resource handles are not.
+# A type whose values can be duplicated. Plain data is Clonable; functions and resource handles are not.
 # There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
     # Returns an independent deep copy of this value.

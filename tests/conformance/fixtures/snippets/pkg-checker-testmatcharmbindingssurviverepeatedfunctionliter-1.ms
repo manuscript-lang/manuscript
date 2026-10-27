@@ -12,8 +12,8 @@ def run() -> Unit:
     call(
         operation: lambda () -> Int:
             match get():
-                case ok(n): note()
-                case error(e): note()
+                case ok(_n): note()
+                case error(_e): note()
 
             return 0
     )

@@ -5,4 +5,4 @@ def divide(value: Int, divisor: Int) -> Int:
     return value / divisor
 
 test "fault":
-    let impossible = divide(value: 3, divisor: 0)
+    let _impossible = divide(value: 3, divisor: 0)

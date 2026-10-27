@@ -5,7 +5,7 @@ def total(values: Map[String, Int]) -> Int:
     var sum = 0
 
     for entry in values:
-        let {key, value} = entry
+        let {key: _key, value} = entry
         sum += value
 
     return sum

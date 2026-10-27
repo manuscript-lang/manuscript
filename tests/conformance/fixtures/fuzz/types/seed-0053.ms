@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let f1 = 22.25
@@ -15,7 +15,7 @@ export def main() -> Int:
     let i2 = (-7)
     say(f"i2 = {i2}")
 
-    let bad = say
+    let _bad = say
     let b3 = ("gamma".replace("héllo", "日本語") + "ms".upper()).contains("日本語")
     say(f"b3 = {b3}")
 

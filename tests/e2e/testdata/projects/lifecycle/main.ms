@@ -65,7 +65,7 @@ def exercise() -> Result[Int, Error]:
     )
     (pair.first + pair.second) | try expect_equal(3)
     with let resource = Resource(label: "normal", output: stdout()):
-        let completed = ()
+        let _completed = ()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0
@@ -84,7 +84,7 @@ def exercise() -> Result[Int, Error]:
         case ok(_):
             try fail(message: "Unexpected case")
         case error(_):
-            let completed = ()
+            let _completed = ()
 
     var early_out = stdout()
     early(output: var early_out) | try expect_equal(5)
@@ -96,5 +96,5 @@ export def main() -> Int:
     match exercise():
         case ok(status): return status
         case error(cause):
-            let written = stderr().write(f"{cause.message()}\n")
+            let _written = stderr().write(f"{cause.message()}\n")
             return 1

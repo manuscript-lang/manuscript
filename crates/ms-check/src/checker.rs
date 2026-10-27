@@ -898,7 +898,11 @@ impl Checker {
                     self.declare_self(&s.ty());
                     self.operation_variables(s.ty().id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
-                    self.check_self_use(&ty, m.pos);
+                    // An inherent `impl` is desugared to a synthesized interface that no
+                    // interface value can reach, so `Self` may appear anywhere in its methods.
+                    if !d.decl().synthetic {
+                        self.check_self_use(&ty, m.pos);
+                    }
                     def.operations.borrow_mut().push(Operation {
                         name: m.func.name,
                         ty,
@@ -1129,6 +1133,11 @@ impl Checker {
                     self.unknown_type = true;
                     return invalid();
                 };
+                if name == "Self" && args.is_empty() && !base.args.is_empty() {
+                    // `Self` in an implementation already carries the receiver's arguments.
+                    self.m().facts_mut().type_refs.insert(t.id, base.clone());
+                    return base;
+                }
                 let mut r = (*base).clone();
                 r.args = args.iter().map(|a| self.resolve(Some(a))).collect();
                 let (arity, required) = match &base.def {
@@ -1320,6 +1329,10 @@ impl Checker {
             }
         }
         if let Some(receiver) = receiver {
+            self.scope
+                .types
+                .borrow_mut()
+                .insert(n("Self"), receiver.clone());
             let b = self.bind(n("self"), receiver, false, d.pos());
             self.m()
                 .facts_mut()

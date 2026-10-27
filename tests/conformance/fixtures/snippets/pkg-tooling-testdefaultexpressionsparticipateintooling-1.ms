@@ -10,5 +10,5 @@ def named(state: Queue[Int], value: Int = read(state)) -> Int:
     return value
 
 def nested(state: Queue[Int]) -> Unit:
-    let callback = lambda (value: Int = read(state)) -> Int:
+    let _callback = lambda (value: Int = read(state)) -> Int:
         return value

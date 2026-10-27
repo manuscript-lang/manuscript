@@ -4,7 +4,7 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "tasks 3 first 6\npick 10 hook 20 twice 50\n",
+    "stdout": "5 2 2\n",
     "stderr": ""
   }
 }

@@ -21,7 +21,7 @@ def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
 
 def compute() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let finished = serve(var ch)
+    let _finished = serve(var ch)
 
 def run(workers: Int, jobs: Int, n: Int) -> Result[Int, Error]:
     var total = 0

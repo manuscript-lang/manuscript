@@ -63,13 +63,13 @@ type Nothing:
 
 def doc_body(text: String) -> Callable[[], Int]:
     return lambda () -> Int:
-        if let v = parse[Nothing](text): return 1
+        if let _v = parse[Nothing](text): return 1
 
         return 0
 
 def parse_body(text: String) -> Callable[[], Int]:
     return lambda () -> Int:
-        if let v = parse(text): return 1
+        if let _v = parse(text): return 1
 
         return 0
 

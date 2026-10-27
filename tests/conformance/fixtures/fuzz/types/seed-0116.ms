@@ -7,7 +7,7 @@ from "@std/io.ms" import stdout
 from "@std/collections.ms" import range
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     var acc1 = 0
@@ -18,5 +18,5 @@ export def main() -> Int:
     let f2 = ((522.194 * 924.132) * ((4.0e24 - 54.955) - (125.094 / 495.250)))
     say(f"f2 = {f2}")
 
-    let bad = say
+    let _bad = say
     return 0

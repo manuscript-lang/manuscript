@@ -104,8 +104,8 @@ test "the parent reads what a finished child sent, then the end":
 
 test "results come back in start order":
     with let group = ProcessGroup[Job]():
-        let first = group.spawn(describe) | try expect_ok
-        let second = group.spawn(describe) | try expect_ok
+        let _first = group.spawn(describe) | try expect_ok
+        let _second = group.spawn(describe) | try expect_ok
         let all = group.results() | try expect_ok
         try expect_equal(all.length(), 2)
         try expect_equal(all[1].name, "child")
@@ -114,7 +114,7 @@ test "results come back in start order":
 test "a group forgets a closed process":
     with let group = ProcessGroup[Job]():
         var first = group.spawn(describe) | try expect_ok
-        let second = group.spawn(describe) | try expect_ok
+        let _second = group.spawn(describe) | try expect_ok
         let kept = first.result() | try expect_ok
         try expect_equal(kept.name, "child")
         first.close()
@@ -131,7 +131,7 @@ test "a child that faults is data, not a parent fault":
     with let group = ProcessGroup[Unit]():
         var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
         child.result() | try expect_error | try expect_equal(ProcessError.Exited(67))
-        let refused = child.channel.send(()) | try expect_error
+        let _refused = child.channel.send(()) | try expect_error
 
 test "piped standard streams reach the parent":
     with let group = ProcessGroup[Int]():

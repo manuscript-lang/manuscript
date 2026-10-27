@@ -3,7 +3,7 @@ from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import WorkerGroup, worker_channel
 
 def long() -> Unit:
-    var ch = worker_channel[Int, Int]()
+    var _ch = worker_channel[Int, Int]()
     for i in 0..600:
         sleep(nanoseconds(100000000))
 

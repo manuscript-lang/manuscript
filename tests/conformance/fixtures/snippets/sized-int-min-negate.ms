@@ -3,5 +3,5 @@
 # conform: origin=sized numeric types stage 1
 export def main() -> Int:
     let low: Int8 = -128
-    let flipped = -low
+    let _flipped = -low
     return 0

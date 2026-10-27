@@ -24,7 +24,7 @@ def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
 
 def squares() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let finished = serve(var ch)
+    let _finished = serve(var ch)
 
 test "a worker answers over its channel":
     with let group = WorkerGroup[Int, Int]():
