@@ -21,7 +21,7 @@ fn findings(source: &str) -> Vec<Finding> {
 
 #[test]
 fn wrapped_values_are_reported_with_a_fix() {
-    let source = "def f(x: Optional[Int] = some(3)) -> Optional[Int]:\n    return some(x.get(0) + 1)\nexport def main() -> Int:\n    let o: Optional[Int] = some(4)\n    return f(some(2)).get(0) + o.get(0)\n";
+    let source = include_str!("lint_redundant_some/wrapped.ms");
     let found = findings(source);
     assert_eq!(found.len(), 4);
     let fix = found[1].fix.as_ref().expect("fix");
@@ -30,7 +30,7 @@ fn wrapped_values_are_reported_with_a_fix() {
 
 #[test]
 fn needed_somes_are_kept() {
-    let source = "def n(x: Optional[Optional[Int]]) -> Int:\n    return 1\nexport def main() -> Int:\n    let keep = some(5)\n    return n(some(none)) + n(some(some(1))) + keep.get(0)\n";
+    let source = include_str!("lint_redundant_some/kept.ms");
     let found = findings(source);
     // Only the inner `some(1)`: `some(none)` and the outer wrapper change the value.
     assert_eq!(found.len(), 1);
