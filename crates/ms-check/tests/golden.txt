@@ -843,7 +843,7 @@ export def main() -> Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-type	4	5	105	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
+type	4	5	108	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
