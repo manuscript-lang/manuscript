@@ -86,6 +86,15 @@ fn primitive_documentation(id: &str) -> &'static str {
             "Signed 32-bit whole numbers (-2147483648 to 2147483647); arithmetic faults when the result leaves the range."
         }
         "Int64" => "Signed 64-bit whole numbers; the same type as Int while Int is 64 bits wide.",
+        "UInt8" => {
+            "Unsigned 8-bit whole numbers (0 to 255); arithmetic faults when the result leaves the range."
+        }
+        "UInt16" => {
+            "Unsigned 16-bit whole numbers (0 to 65535); arithmetic faults when the result leaves the range."
+        }
+        "UInt32" => {
+            "Unsigned 32-bit whole numbers (0 to 4294967295); arithmetic faults when the result leaves the range."
+        }
         "Float32" => {
             "Binary32 floating-point values; each operation rounds to binary32, and literals need a Float32 type to adopt it."
         }

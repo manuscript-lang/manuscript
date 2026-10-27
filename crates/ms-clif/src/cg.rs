@@ -103,7 +103,9 @@ fn clif_type(c: char) -> ir::Type {
 /// Cranelift type of a leaf in a register.
 pub fn leaf_type(l: Leaf) -> ir::Type {
     match l {
-        Leaf::I64 | Leaf::N8 | Leaf::N16 | Leaf::N32 => types::I64,
+        Leaf::I64 | Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+            types::I64
+        }
         Leaf::F64 => types::F64,
         Leaf::F32 => types::F32,
         Leaf::I8 => types::I8,
@@ -113,9 +115,9 @@ pub fn leaf_type(l: Leaf) -> ir::Type {
 /// Cranelift type of a leaf in memory.
 pub fn mem_type(l: Leaf) -> ir::Type {
     match l {
-        Leaf::N8 => types::I8,
-        Leaf::N16 => types::I16,
-        Leaf::N32 => types::I32,
+        Leaf::N8 | Leaf::U8 => types::I8,
+        Leaf::N16 | Leaf::U16 => types::I16,
+        Leaf::N32 | Leaf::U32 => types::I32,
         Leaf::F32 => types::F32,
         _ => leaf_type(l),
     }
@@ -409,7 +411,7 @@ impl<'m> Gen<'m> {
         let (key, scope) = (ty, ty.scope());
         let ty = ty.unscoped();
         let builtin = match m.types.kind(ty) {
-            // `Int8`..`Int32` are plain bits of their width and take the `POD` path below.
+            // `Int8`..`Int32` and `UInt8`..`UInt32` are plain bits of their width and take the `POD` path below.
             TyKind::Int => Some("msrt_desc_int"),
             TyKind::Float => Some("msrt_desc_float"),
             TyKind::Float32 => Some("msrt_desc_float32"),
