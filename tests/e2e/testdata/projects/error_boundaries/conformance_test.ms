@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "./domain.ms" import DomainFailure
 from "./first.ms" import first_error, first_result, first_propagated, first_generic, first_box
 from "./second.ms" import second_error, relay

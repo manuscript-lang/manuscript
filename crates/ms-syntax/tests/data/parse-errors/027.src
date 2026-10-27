@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 
 fn insert[T: Hashable](values: Set[T], value: T) Set[T]: values.add(value)
 

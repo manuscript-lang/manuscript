@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 test "Map remove direct and bound preserve order and no-op absence":
     var values = Map[Int, String]()

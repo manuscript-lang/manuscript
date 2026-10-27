@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-var-param-function-value.ms:16:16: type: child has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call child from a lambda\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-var-param-function-value.ms:16:16: type: child has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call child from a lambda\n    |\n 16 |     return run(child) - 1\n    |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-7.ms:8:14: type: unknown argument amunt; did you mean 'amount'?\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-7.ms:8:12: type: missing argument amount: Int in call to g; add 'amount: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-7.ms:8:14: type: unknown argument amunt; did you mean 'amount'?\n   |\n 8 |     return g(amunt: 1)\n   |              ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-7.ms:8:12: type: missing argument amount: Int in call to g; add 'amount: <Int>'\n   |\n 8 |     return g(amunt: 1)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

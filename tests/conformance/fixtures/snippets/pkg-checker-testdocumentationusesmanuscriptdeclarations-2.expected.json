@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-2.ms:5:11: resolution: unknown type DnsKind; add: from \"@std/net.ms\" import DnsKind\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdocumentationusesmanuscriptdeclarations-2.ms:5:11: resolution: unknown type DnsKind; add: from \"@std/net.ms\" import DnsKind\n   |\n 5 |     kind: DnsKind\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

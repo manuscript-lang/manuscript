@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-grammar-3.ms:5:12: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'def apply(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-grammar-3.ms:5:12: resolution: unknown binding apply; declare it with 'let apply = ...' before use, define 'def apply(...) -> T:', or import it from a module\n   |\n 5 |     return apply(value: 3, transform: lambda (value: Int) -> Int: return value - 1)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

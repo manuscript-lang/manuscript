@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-8.ms:8:5: type: cannot assign to function helper; assignment targets are 'var' bindings and record fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-8.ms:8:5: type: cannot assign to function helper; assignment targets are 'var' bindings and record fields\n   |\n 8 |     helper = 2\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

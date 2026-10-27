@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-generic-callback-real-conflict.ms:6:38: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/diag-generic-callback-real-conflict.ms:6:38: type: expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-generic-callback-real-conflict.ms:6:38: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 6 | def exercise() -> Int: apply(source, 3)\n   |                                      ^\n<DIR>/diag-generic-callback-real-conflict.ms:6:38: type: expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 6 | def exercise() -> Int: apply(source, 3)\n   |                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

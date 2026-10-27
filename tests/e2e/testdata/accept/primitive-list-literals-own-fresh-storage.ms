@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def fresh() -> List[Int]:
     return [1, 2, 3]

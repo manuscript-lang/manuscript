@@ -1461,7 +1461,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
             );
             return;
         }

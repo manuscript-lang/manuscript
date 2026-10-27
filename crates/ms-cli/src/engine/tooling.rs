@@ -209,6 +209,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             files,
         );
     }
+    let mut sources = crate::snippet::Sources::default();
     for issue in &diagnostics {
         let mut position = issue.position.clone();
         if !root.is_empty() && !pathops::is_abs(&position.file) {
@@ -219,7 +220,9 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         } else {
             &issue.phase
         };
-        let _ = writeln!(io.stderr, "{position}: {label}: {}", issue.message);
+        let end = issue.end.as_ref().map(|e| (e.line, e.column));
+        let excerpt = sources.excerpt(&position.file, position.line, position.column, end);
+        let _ = writeln!(io.stderr, "{position}: {label}: {}{excerpt}", issue.message);
     }
     if has_errors {
         let count = diagnostics.iter().filter(|d| !d.phase.is_empty()).count();

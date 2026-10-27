@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,formatter,interfaces,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-14.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Problem:
     case Missing(reason: String)

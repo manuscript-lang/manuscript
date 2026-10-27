@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/learn-tour-6.ms:10:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-6.ms:11:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/learn-tour-6.ms:12:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/learn-tour-6.ms:10:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 10 | let welcome = greeting(\"Sam\")\n    |               ^\n<DIR>/learn-tour-6.ms:11:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 11 | let default_welcome = greeting()  # \"Hello, world!\"\n    |                       ^\n<DIR>/learn-tour-6.ms:12:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | let subtotal = line_total(12, 3)\n    |                ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

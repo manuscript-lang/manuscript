@@ -15,7 +15,7 @@ for name, statement, expected in [("positive", "try assert_true(true)", 0),
                                   ("negative", "try assert_true(false)", 1),
                                   ("ignored-result", "assert_true(false)", 0)]:
     path = args.out / f"{name}.ms"
-    path.write_text(f'import assert_true from "@std/testing.ms"\n\ntest "{name}":\n    {statement}\n')
+    path.write_text(f'import assert_true from "@std/test.ms"\n\ntest "{name}":\n    {statement}\n')
     run = subprocess.run([str(args.binary.resolve()), "test", str(path.resolve())],
                          capture_output=True, text=True, timeout=180)
     row = {"name": name, "expected_exit": expected, "actual_exit": run.returncode,

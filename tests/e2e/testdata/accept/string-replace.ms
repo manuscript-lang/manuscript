@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "replace changes every nonoverlapping match and replace_first changes one":
     try expect_equal("aaaa".replace("a", "b"), "bbbb")

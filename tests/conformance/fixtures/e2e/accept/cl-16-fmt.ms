@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-16.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 type Input:
     names: List[Optional[String]]

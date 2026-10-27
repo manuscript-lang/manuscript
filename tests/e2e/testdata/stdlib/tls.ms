@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok
+from "@std/test.ms" import expect_equal, expect_false, expect_ok
 from "./support/http.ms" import http_result
 from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers

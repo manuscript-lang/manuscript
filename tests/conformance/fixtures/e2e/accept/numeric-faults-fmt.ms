@@ -1,7 +1,7 @@
 # conform: tags=closures,formatter,modules,mutation,numbers,parser,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/numeric-faults.ms
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault, expect_true
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault, expect_true
 from "@std/string.ms" import StringBuilder
 
 def add(a: Int, b: Int) -> Int: return a + b

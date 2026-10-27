@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal, expect_error\nfrom \"@std/json.ms\" import parse, JsonError\n\ntype Config:\n    port: Int = 8080\n\ndef port_of(text: String) -> Result[Int, Error]:\n    return ok(try parse[Config](text) | .port)\n\ntest \"configuration defaults\":\n    try expect_equal(try port_of(\"{}\"), 8080)\n    try expect_equal(try port_of(\"{\\\"port\\\": 9000}\"), 9000)\n\ntest \"configuration rejects a wrong type\":\n    try expect_error(parse[Config](\"{\\\"port\\\": true}\")) | try expect_equal(\n        JsonError.InvalidData\n    )\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal, expect_error\nfrom \"@std/json.ms\" import parse, JsonError\n\ntype Config:\n    port: Int = 8080\n\ndef port_of(text: String) -> Result[Int, Error]:\n    return ok(try parse[Config](text) | .port)\n\ntest \"configuration defaults\":\n    try expect_equal(try port_of(\"{}\"), 8080)\n    try expect_equal(try port_of(\"{\\\"port\\\": 9000}\"), 9000)\n\ntest \"configuration rejects a wrong type\":\n    try expect_error(parse[Config](\"{\\\"port\\\": true}\")) | try expect_equal(\n        JsonError.InvalidData\n    )\n"
   }
 }

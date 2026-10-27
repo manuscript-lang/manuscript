@@ -1,7 +1,7 @@
 # conform: tags=control-flow,lists,maps,modules,mutation,records,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=bug bash: lowering and codegen
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import range
 
 type Pt:

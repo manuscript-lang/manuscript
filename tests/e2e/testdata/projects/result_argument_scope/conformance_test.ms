@@ -1,7 +1,7 @@
 from "./first.ms" import first, first_generic
 from "./second.ms" import second, second_generic
 from "./domain.ms" import Cause
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 def describe(r: Result[Int, Error]) -> String:
     match r:
