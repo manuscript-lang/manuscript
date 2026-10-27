@@ -1,6 +1,6 @@
 # Web server benchmark
 
-The same HTTP server written with Manuscript's standard library ([`ms/`](ms)) and Go's `net/http` ([`go/`](go)), driven by one keep-alive load generator ([`load/`](load)). It measures the runtime's I/O path: the reactor, parking, timers, and, through `/io`, file and DNS calls that the kernel cannot poll.
+The same HTTP server written with Manuscript's standard library ([`ms/`](ms)), Go's `net/http` ([`go/`](go)) and, when `cargo` is installed, hyper ([`rust/`](rust), two tokio workers; no `/io`), driven by one keep-alive load generator ([`load/`](load)). It measures the runtime's I/O path: the reactor, parking, timers, and, through `/io`, file and DNS calls that the kernel cannot poll.
 
 | Endpoint | Work |
 | --- | --- |
@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-cli
 sh bench/perf/web/run.sh 5
 ```
 
-`run.sh [seconds]` needs Go and, for the system-call rows, `strace`. On a machine with at least four CPUs it pins the server to `SERVER_CPUS` (default `0,1`) and the load generator to `LOAD_CPUS` (default `2,3`). It runs each server in turn and prints one line per measurement:
+`run.sh [seconds]` serves Manuscript from `MS_THREADS` workers (default 2, matching `SERVER_CPUS`), so every server gets the same two cores. It needs Go and, for the system-call rows, `strace`. On a machine with at least four CPUs it pins the server to `SERVER_CPUS` (default `0,1`) and the load generator to `LOAD_CPUS` (default `2,3`). It runs each server in turn and prints one line per measurement:
 
 - each endpoint twice, 64 connections: requests per second, p50, p99, failed requests;
 - `io`, then `health-during-io`: 32 connections on `/health` while 32 others run `/io`;

@@ -353,6 +353,58 @@ fn hash_key(k: &[u8]) -> u64 {
     h ^ (h >> 29)
 }
 
+/// Advances `pos` over ASCII digits; false when there were none.
+fn scan_digits(text: &[u8], pos: &mut usize) -> bool {
+    let start = *pos;
+    // Eight digits at a time: a byte is a digit when `b ^ 0x30` is below ten.
+    while let Some(chunk) = text.get(*pos..*pos + 8) {
+        let w = u64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+        ]) ^ (ONES * 0x30);
+        let non_digit = (w.wrapping_add(ONES * 0x76) | w) & HIGHS;
+        if non_digit != 0 {
+            *pos += (non_digit.trailing_zeros() / 8) as usize;
+            return *pos > start;
+        }
+        *pos += 8;
+    }
+    while text.get(*pos).is_some_and(u8::is_ascii_digit) {
+        *pos += 1;
+    }
+    *pos > start
+}
+
+/// Advances `pos` over one JSON number; false when the text there is not one.
+fn scan_number(text: &[u8], pos: &mut usize) -> bool {
+    if text.get(*pos) == Some(&b'-') {
+        *pos += 1;
+    }
+    let Some(&c) = text.get(*pos) else {
+        return false;
+    };
+    if c == b'0' {
+        *pos += 1;
+    } else if !scan_digits(text, pos) {
+        return false;
+    }
+    if text.get(*pos) == Some(&b'.') {
+        *pos += 1;
+        if !scan_digits(text, pos) {
+            return false;
+        }
+    }
+    if matches!(text.get(*pos), Some(b'e' | b'E')) {
+        *pos += 1;
+        if matches!(text.get(*pos), Some(b'+' | b'-')) {
+            *pos += 1;
+        }
+        if !scan_digits(text, pos) {
+            return false;
+        }
+    }
+    true
+}
+
 struct Scanner<'a> {
     src: &'a str,
     text: &'a [u8],
@@ -391,54 +443,8 @@ impl Scanner<'_> {
         }
     }
 
-    fn digits(&mut self) -> bool {
-        let start = self.pos;
-        // Eight digits at a time: a byte is a digit when `b ^ 0x30` is below ten.
-        while let Some(chunk) = self.text.get(self.pos..self.pos + 8) {
-            let w = u64::from_le_bytes([
-                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-            ]) ^ (ONES * 0x30);
-            let non_digit = (w.wrapping_add(ONES * 0x76) | w) & HIGHS;
-            if non_digit != 0 {
-                self.pos += (non_digit.trailing_zeros() / 8) as usize;
-                return self.pos > start;
-            }
-            self.pos += 8;
-        }
-        while self.text.get(self.pos).is_some_and(u8::is_ascii_digit) {
-            self.pos += 1;
-        }
-        self.pos > start
-    }
-
     fn number(&mut self) -> bool {
-        if self.text[self.pos] == b'-' {
-            self.pos += 1;
-        }
-        let Some(&c) = self.text.get(self.pos) else {
-            return false;
-        };
-        if c == b'0' {
-            self.pos += 1;
-        } else if !self.digits() {
-            return false;
-        }
-        if self.text.get(self.pos) == Some(&b'.') {
-            self.pos += 1;
-            if !self.digits() {
-                return false;
-            }
-        }
-        if matches!(self.text.get(self.pos), Some(b'e' | b'E')) {
-            self.pos += 1;
-            if matches!(self.text.get(self.pos), Some(b'+' | b'-')) {
-                self.pos += 1;
-            }
-            if !self.digits() {
-                return false;
-            }
-        }
-        true
+        scan_number(self.text, &mut self.pos)
     }
 
     fn hex4(&self, at: usize) -> Option<u32> {
@@ -895,11 +901,8 @@ pub fn parse_tree(text: &str, limits: Limits, b: &mut TreeBuilder<'_>) -> Result
 
 /// Whether `s` is exactly one JSON number.
 pub fn number_text_valid(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
-    let mut p = scanner(s, 0, 0, Doc::default());
-    p.number() && p.pos == s.len()
+    let mut pos = 0;
+    scan_number(s.as_bytes(), &mut pos) && pos == s.len()
 }
 
 // ---- serialization ----
@@ -1176,6 +1179,7 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        self.buf.reserve(key.len() + 8);
         self.separate();
         self.quoted(key);
         self.buf.push(':');
@@ -1305,10 +1309,17 @@ impl Writer {
     fn quoted(&mut self, s: &str) {
         const HEX: &[u8; 16] = b"0123456789abcdef";
         let b = s.as_bytes();
+        let mut next = find_special(b, 0);
         self.buf.reserve(b.len() + 2);
         self.buf.push('"');
+        if next.is_none() {
+            // Most strings need no escapes: one copy.
+            self.buf.push_str(s);
+            self.buf.push('"');
+            return;
+        }
         let mut at = 0;
-        while let Some(i) = find_special(b, at) {
+        while let Some(i) = next {
             // Runs end at ASCII bytes, so they are character boundaries.
             self.buf.push_str(s.get(at..i).unwrap_or(""));
             match b[i] {
@@ -1326,6 +1337,7 @@ impl Writer {
                 }
             }
             at = i + 1;
+            next = find_special(b, at);
         }
         self.buf.push_str(s.get(at..).unwrap_or(""));
         self.buf.push('"');
