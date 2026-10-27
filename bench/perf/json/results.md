@@ -112,3 +112,19 @@ linux/amd64, four shared cores (noisy: two back-to-back runs differed by up to 2
 Tree stringify (`JsonValue`) no longer calls `Writer` once per node from generated code. The compiler emits one view thunk per type (`value -> kind, payload`), and `msrt_json_w_tree` walks the tree natively through `ms_rt::tree::walk` into the same `Writer`. citm walker instructions: 61.1M → 52.8M. Number text of up to 32 simple decimal bytes (`-?digits(.digits)?`, no leading zero) is validated with word tests (`json_simple_number`) instead of `scan_number`; canada callgrind total is 378M instructions.
 
 canada and citm remain within noise of serde_json rather than clearly above it, so #1680 stays open.
+
+## 2026-10-27: 17-32 byte numbers and fractions
+
+linux/amd64, four shared cores (noisy: wall ratios swing ±15% between runs, so medians of repeated `sh bench/perf/json/run.sh` runs), Node v22.22.0, serde_json 1.x.
+
+| document | serde_json MB/s | Manuscript / serde_json (median of rounds) | range |
+|---|---:|---:|---|
+| small | 580 | 0.96x | 0.93-1.02x |
+| twitter | 1450 | 1.14x | 1.11-1.25x |
+| canada | 650 | 1.27x | 1.11-1.73x |
+| citm_catalog | 2400 | 0.91x | 0.64-1.36x |
+| records | 780 | 0.92x | 0.89-1.26x |
+
+canada's numbers are 17-19 bytes (`-65.613616999999977`), which missed both the 16-byte copy and the byte tail of the decimal check. `push_short` now copies up to 32 bytes with two overlapping 16-byte moves, and the fraction check tests whole words plus one word overlapping the end (`all_digits`). canada tree stringify went from about 0.98x to about 1.27x; `Writer::number` callgrind instructions fell 105M → 76M.
+
+serde_json's own callgrind cost for one `to_vec` of the tree (`valgrind --toggle-collect='*enc*'`, six calls): citm 53.7M, canada 96.8M, twitter 24.5M. Manuscript's citm walker is about 8% more instructions per stringify than serde_json's, matching the 0.91x wall ratio; the cost is spread over the walker (~50 instructions a node), `Writer::key` (~95 a key) and `close`. Inlining `Writer` methods into the walker did not reduce it.
