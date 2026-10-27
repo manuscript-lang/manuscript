@@ -539,6 +539,7 @@ impl Network {
         sock.listen(4096).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
             .map_err(|e| self.io_failure(&e))?;
+        probe("end of listen_tcp", &sock);
         Ok(sock)
     }
 
@@ -827,3 +828,28 @@ mod tests {
         assert!(n.restrict(&[], &[], false).is_err());
     }
 }
+
+#[cfg(not(windows))]
+pub(crate) fn probe(_: &str, _: &socket2::Socket) {}
+
+#[cfg(windows)]
+pub(crate) fn probe(label: &str, sock: &socket2::Socket) {
+    use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket};
+    if std::env::var_os("MS_DIAG_PROBE").is_none() {
+        return;
+    }
+    let raw = sock.as_raw_socket();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        // SAFETY: diagnostic: borrows the live listener's handle, never closed here.
+        let s = unsafe { socket2::Socket::from_raw_socket(raw) };
+        let r = s.accept().is_ok();
+        let _ = s.into_raw_socket();
+        let _ = tx.send(r);
+    });
+    match rx.recv_timeout(std::time::Duration::from_millis(300)) {
+        Ok(_) => eprintln!("[srv] probe {label}: nonblocking"),
+        Err(_) => eprintln!("[srv] probe {label}: BLOCKING"),
+    }
+}
+

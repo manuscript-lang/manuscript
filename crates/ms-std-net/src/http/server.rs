@@ -238,28 +238,8 @@ fn dg(text: &str) {
     }
 }
 
-#[cfg(not(windows))]
-fn probe(_: &str, _: &socket2::Socket) {}
-
-#[cfg(windows)]
 fn probe(label: &str, sock: &socket2::Socket) {
-    use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket};
-    if std::env::var_os("MS_DIAG_PROBE").is_none() {
-        return;
-    }
-    let raw = sock.as_raw_socket();
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        // SAFETY: diagnostic: borrows the live listener's handle, never closed here.
-        let s = unsafe { socket2::Socket::from_raw_socket(raw) };
-        let r = s.accept().is_ok();
-        let _ = s.into_raw_socket();
-        let _ = tx.send(r);
-    });
-    match rx.recv_timeout(Duration::from_millis(300)) {
-        Ok(_) => dg(&format!("probe {label}: nonblocking")),
-        Err(_) => dg(&format!("probe {label}: BLOCKING")),
-    }
+    crate::net::probe(label, sock);
 }
 
 // -------------------------------------------------------------------- reactor
@@ -746,8 +726,11 @@ impl Server {
             .local_addr()
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
+        probe("start of serve", &listener);
         let reactor = Reactor::get();
+        probe("after Reactor::get", &listener);
         reactor.spawn_task();
+        probe("after spawn_task", &listener);
         let id = NEXT_ID.with(|n| {
             let id = n.get();
             n.set(id + 1);
