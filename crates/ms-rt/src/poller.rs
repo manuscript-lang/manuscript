@@ -403,10 +403,46 @@ mod imp {
                 crate::isolate::set_wake(Some(Box::new(move || {
                     let _ = waker.wake();
                 })));
+                if crate::isolate::is_main() {
+                    dbg_watchdog_start();
+                }
             }
             Err(_) => fault::fault(b"cannot create the I/O poller"),
         }
         0
+    }
+
+    static WD_THREAD: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+    unsafe extern "system" fn dbg_watchdog(_: *mut core::ffi::c_void) -> u32 {
+        let base = crate::sys::dbg_image_base();
+        let thread = WD_THREAD.load(core::sync::atomic::Ordering::Relaxed) as *mut core::ffi::c_void;
+        for i in 0..10 {
+            crate::sys::sleep_ms(2000);
+            let mut words = [0usize; 48];
+            // SAFETY: `thread` is the runtime thread's sampling handle.
+            let snap = unsafe { crate::sys::dbg_snapshot(thread, &mut words) };
+            match snap {
+                Some((pc, sp)) => {
+                    crate::dbgf!("[wd] {i} base={base:x} pc=+{:x} sp={sp:x}", pc.wrapping_sub(base));
+                    for (n, w) in words.iter().enumerate() {
+                        let off = w.wrapping_sub(base);
+                        if off < 0x4000000 {
+                            crate::dbgf!("[wd]   +{n} ret=+{off:x}");
+                        }
+                    }
+                }
+                None => crate::dbgf!("[wd] {i} snapshot failed"),
+            }
+        }
+        0
+    }
+
+    fn dbg_watchdog_start() {
+        let h = crate::sys::current_thread_for_sampling();
+        WD_THREAD.store(h as usize, core::sync::atomic::Ordering::Relaxed);
+        // SAFETY: the entry is a valid thread function.
+        unsafe { crate::sys::thread_spawn(0, dbg_watchdog) };
     }
 
     /// Interrupts the wait; the stop request comes from a console handler thread.

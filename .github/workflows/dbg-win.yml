@@ -41,15 +41,24 @@ jobs:
           set +e
           run() { # label build-type file
             rm -f trace.txt dbg.log
+            target/debug/ms.exe build "$3" -o prog.exe --build-type "$2" > build.txt 2>&1
             start=$(date +%s)
-            timeout 30 target/debug/ms.exe run "$3" --build-type "$2" > out.txt 2>&1
+            timeout 30 ./prog.exe > out.txt 2>&1
             code=$?
             echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start ))" >> summary.txt
-            tail -70 dbg.log | cut -c1-90 | sed "s/^/  o: /" >> summary.txt
+            grep -n "\[wd\]" dbg.log | tail -60 | cut -c1-70 >> summary.txt
             tail -14 trace.txt 2>/dev/null | cut -c1-60 | sed "s/^/  t: /" >> summary.txt
             echo "END CASE $1 code=$code" >> summary.txt
           }
           run v6 Debug dbg/win/v6_two_servers_fast.ms
+          nm=$(find "$XDG_CACHE_HOME/ms/llvm" -iname 'llvm-nm*' | head -1)
+          echo "nm=$nm" >> summary.txt
+          "$nm" --numeric-sort prog.exe > syms.txt 2>/dev/null
+          echo "syms: $(wc -l < syms.txt)" >> summary.txt
+          for off in $(grep -o 'pc=+[0-9a-f]*\|ret=+[0-9a-f]*' dbg.log | sed 's/.*+//' | sort -u | head -60); do
+            addr=$(printf '%016x' $((0x140000000 + 0x$off)))
+            awk -v a="$addr" '$1 <= a { last=$0 } $1 > a { print "  sym " last; exit }' syms.txt >> summary.txt
+          done
           exit 0
       - name: Summary
         if: always()

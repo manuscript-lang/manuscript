@@ -95,6 +95,7 @@ unsafe extern "system" {
     fn ConvertThreadToFiberEx(param: *mut c_void, flags: DWORD) -> *mut c_void;
     fn GetCurrentThreadStackLimits(lo: *mut usize, hi: *mut usize);
     fn GetCurrentProcess() -> HANDLE;
+    fn GetModuleHandleW(name: *const u16) -> HANDLE;
     fn GetCurrentThread() -> HANDLE;
     fn DuplicateHandle(
         src_process: HANDLE,
@@ -709,4 +710,35 @@ pub unsafe fn register_repeating_wait(
         )
     };
     if ok == 0 { core::ptr::null_mut() } else { wait }
+}
+
+/// TEMPORARY: image base, for turning addresses into offsets.
+pub fn dbg_image_base() -> usize {
+    // SAFETY: null name is the executable.
+    unsafe { GetModuleHandleW(core::ptr::null()) as usize }
+}
+
+/// TEMPORARY: suspends `thread`, returns its `(pc, sp)` and up to 48 words of its stack.
+///
+/// # Safety
+/// `thread` is a handle from [`current_thread_for_sampling`] of a live other thread.
+pub unsafe fn dbg_snapshot(thread: *mut c_void, words: &mut [usize; 48]) -> Option<(usize, usize)> {
+    let mut c = Context([0; ctx::SIZE]);
+    // SAFETY: as `sample_thread`; the stack words are read while the thread is suspended.
+    unsafe {
+        c.0.as_mut_ptr().add(ctx::FLAGS_OFFSET).cast::<u32>().write(ctx::FLAGS);
+        if SuspendThread(thread) == u32::MAX {
+            return None;
+        }
+        let got = GetThreadContext(thread, c.0.as_mut_ptr().cast()) != 0;
+        let word = |off: usize| c.0.as_ptr().add(off).cast::<usize>().read_unaligned();
+        let (pc, sp) = (word(ctx::PC), word(ctx::SP));
+        if got {
+            for (i, w) in words.iter_mut().enumerate() {
+                *w = ((sp + i * 8) as *const usize).read_volatile();
+            }
+        }
+        ResumeThread(thread);
+        got.then_some((pc, sp))
+    }
 }
