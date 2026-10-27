@@ -405,7 +405,7 @@ impl Exchange {
                 && allowed
                 && !st.is_head
             {
-                h1::header_line(&mut out, "Content-Length", n.to_string().as_bytes());
+                h1::header_number(&mut out, "Content-Length", n);
             }
             if allowed && !has_type && !first.is_empty() {
                 h1::header_line(&mut out, "Content-Type", sniff::detect(first).as_bytes());

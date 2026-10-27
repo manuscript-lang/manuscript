@@ -17,6 +17,7 @@ use super::sniff;
 use super::target;
 use crate::conn::{Io, Plain, Step};
 use crate::error::{HttpErr, NetErr};
+use crate::idmap::IdMap;
 use crate::net::{Network, Resource};
 use crate::rt;
 use crate::sys::{AsSock, Borrowed, Ev, Poller};
@@ -241,7 +242,7 @@ enum Target {
 pub struct Reactor {
     poller: Poller,
     next: Cell<u64>,
-    targets: RefCell<HashMap<u64, Target>>,
+    targets: RefCell<IdMap<u64, Target>>,
     ready: RefCell<VecDeque<Rc<Conn>>>,
     retry: RefCell<Vec<Rc<Conn>>>,
     task_started: Cell<bool>,
@@ -268,7 +269,7 @@ impl Reactor {
             let reactor = Rc::new(Reactor {
                 poller: Poller::new(),
                 next: Cell::new(1),
-                targets: RefCell::new(HashMap::new()),
+                targets: RefCell::new(IdMap::default()),
                 ready: RefCell::new(VecDeque::new()),
                 retry: RefCell::new(Vec::new()),
                 task_started: Cell::new(false),
@@ -655,7 +656,7 @@ pub struct Server {
 }
 
 struct ServerSt {
-    conns: HashMap<u64, Rc<Conn>>,
+    conns: IdMap<u64, Rc<Conn>>,
     closing: bool,
     closed: bool,
     /// Requests queued or running (the admission count).
@@ -724,7 +725,7 @@ impl Server {
             tls: options.tls,
             dispatch,
             st: RefCell::new(ServerSt {
-                conns: HashMap::new(),
+                conns: IdMap::default(),
                 closing: false,
                 closed: false,
                 admitted: 0,
@@ -1395,7 +1396,9 @@ impl Server {
         }
         let framing = h1::request_framing(&head).map_err(|b| (b.status, b.reason))?;
         let target = target::parse(&head.target).map_err(|e| (400, e.0))?;
-        if !Headers::from_received(head.fields.iter().cloned()).is_text() {
+        if !head.fields.iter().all(|(n, v)| {
+            std::str::from_utf8(n.as_bytes()).is_ok() && std::str::from_utf8(v).is_ok()
+        }) {
             return Err((400, "invalid UTF-8 request"));
         }
         let expect = h1::has_token(&head.fields, "Expect", "100-continue");

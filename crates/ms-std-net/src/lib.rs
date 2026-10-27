@@ -13,6 +13,7 @@ pub mod error;
 pub mod ffi;
 pub mod h2;
 pub mod http;
+mod idmap;
 pub mod ip;
 pub mod net;
 pub mod policy;

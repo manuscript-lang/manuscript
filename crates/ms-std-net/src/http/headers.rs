@@ -36,25 +36,30 @@ pub fn valid_value(value: &[u8]) -> bool {
 /// `textproto.CanonicalMIMEHeaderKey`: keys with a space or non-token byte are
 /// returned as they are.
 pub fn canonical(name: &str) -> String {
+    canonical_owned(name.to_string())
+}
+
+/// `canonical` over an owned name, edited in place.
+pub fn canonical_owned(name: String) -> String {
     if !name
         .bytes()
         .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
         || name.is_empty()
     {
-        return name.to_string();
+        return name;
     }
     let mut upper = true;
-    name.bytes()
-        .map(|b| {
-            let c = if upper {
-                b.to_ascii_uppercase()
-            } else {
-                b.to_ascii_lowercase()
-            };
-            upper = b == b'-';
-            c as char
-        })
-        .collect()
+    let mut bytes = name.into_bytes();
+    for b in &mut bytes {
+        let was = *b;
+        if upper {
+            b.make_ascii_uppercase();
+        } else {
+            b.make_ascii_lowercase();
+        }
+        upper = was == b'-';
+    }
+    String::from_utf8(bytes).unwrap_or_default()
 }
 
 impl Headers {
@@ -145,7 +150,7 @@ impl Headers {
     pub fn from_received(fields: impl IntoIterator<Item = (String, Vec<u8>)>) -> Headers {
         let mut sorted: Vec<(String, Vec<Vec<u8>>)> = Vec::new();
         for (name, value) in fields {
-            let key = canonical(&name);
+            let key = canonical_owned(name);
             match sorted.iter_mut().find(|(k, _)| *k == key) {
                 Some((_, values)) => values.push(value),
                 None => sorted.push((key, vec![value])),
