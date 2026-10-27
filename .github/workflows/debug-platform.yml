@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows, arch: amd64, runner: windows-2025 }
+          
           - { os: darwin, arch: arm64, runner: macos-15 }
     defaults:
       run:
@@ -48,9 +48,9 @@ jobs:
         run: |
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          for bt in Release Debug; do
-            echo "::group::yaml $bt"
-            "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type $bt 2>&1 | grep -a -v "^PASS\|^RUN\|DBG" | tail -25 || true
-            echo "::endgroup::"
-          done
-          "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --list 2>&1 | sed -n 1,12p
+          f='quoted folding trims'
+          echo "::group::default"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
+          echo "::group::cranelift"; MS_BACKEND=cranelift "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
+          echo "::group::debug"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Debug --filter "$f" 2>&1 | tail -5; echo "::endgroup::"
+          sleep 5
+          for r in ~/Library/Logs/DiagnosticReports/*.ips /Library/Logs/DiagnosticReports/*.ips; do [ -f "$r" ] && { echo "::group::$r"; head -c 6000 "$r"; echo; echo "::endgroup::"; }; done || true
