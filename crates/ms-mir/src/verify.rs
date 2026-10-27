@@ -126,6 +126,9 @@ pub fn verify_func_with(m: &Module, f: &Func, opts: VerifyOptions) -> Result<(),
     };
     v.run();
     if v.errs.is_empty() {
+        v.scoped_closures();
+    }
+    if v.errs.is_empty() {
         Ok(())
     } else {
         Err(v.errs)
@@ -192,6 +195,81 @@ impl Verifier<'_> {
 
     fn tn(&self, t: Ty) -> String {
         crate::print::ty_str(self.m, t)
+    }
+
+    /// A closure that points into its maker's frame must not outlive it: follow each one
+    /// through copies and block arguments, and reject a use that keeps or returns it.
+    fn scoped_closures(&mut self) {
+        let f = self.f;
+        let mut family: BTreeSet<Value> = BTreeSet::new();
+        for b in &f.blocks {
+            for inst in &b.insts {
+                if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
+                    && self.m.funcs.get(g.index()).is_some_and(|c| c.scoped)
+                {
+                    family.insert(r);
+                }
+            }
+        }
+        if family.is_empty() {
+            return;
+        }
+        loop {
+            let before = family.len();
+            for b in &f.blocks {
+                for inst in &b.insts {
+                    if inst.op == Op::Copy
+                        && let (Some(a), Some(r)) = (inst.args.first(), inst.res)
+                        && family.contains(a)
+                    {
+                        family.insert(r);
+                    }
+                }
+                b.term.for_each_target(|t| {
+                    let params = &f.blocks[t.block.index()].params;
+                    for (a, p) in t.args.iter().zip(params) {
+                        if family.contains(a) {
+                            family.insert(p.value);
+                        }
+                    }
+                });
+            }
+            if family.len() == before {
+                break;
+            }
+        }
+        for (bi, b) in f.blocks.iter().enumerate() {
+            for inst in &b.insts {
+                let modes = arg_modes(self.m, inst);
+                for (i, a) in inst.args.iter().enumerate() {
+                    if !family.contains(a) {
+                        continue;
+                    }
+                    let keeps = match inst.op {
+                        Op::Drop | Op::DropIf | Op::Copy | Op::CallInd => false,
+                        Op::Store => i == 1,
+                        _ => modes.get(i) == Some(&Mode::Own),
+                    };
+                    if keeps {
+                        self.err(
+                            Some(bi),
+                            format!(
+                                "a closure that borrows its maker's variables is kept by {}",
+                                inst.op.info().name
+                            ),
+                        );
+                    }
+                }
+            }
+            if let Term::Ret(Some(v)) = &b.term
+                && family.contains(v)
+            {
+                self.err(
+                    Some(bi),
+                    "a closure that borrows its maker's variables is returned",
+                );
+            }
+        }
     }
 
     fn run(&mut self) {

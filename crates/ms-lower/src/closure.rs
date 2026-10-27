@@ -45,11 +45,14 @@ impl FnLower<'_> {
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
         let changed = lambda_changes(self, lam, &captures);
+        // Whether the closure's environment points into this frame.
+        let mut scoped = false;
         for b in &captures {
             if changed.contains(&b.uid)
                 && let Some(alias) = self.aliases.get(&b.uid).cloned()
             {
                 saved.push(self.capture_alias(b, alias, &mut cap_tys, &mut cap_vals)?);
+                scoped = true;
                 continue;
             }
             if !changed.contains(&b.uid)
@@ -71,6 +74,7 @@ impl FnLower<'_> {
                         .expect("slot");
                     self.b.emit(Op::Store, &[slot, v], Imm::None, None);
                     saved.push(LambdaCapture::Lent(b.clone(), cap_vals.len()));
+                    scoped = true;
                     cap_tys.push(MTy::PTR);
                     cap_vals.push(slot);
                     continue;
@@ -91,6 +95,7 @@ impl FnLower<'_> {
                     })?;
                 cap_tys.push(MTy::PTR);
                 cap_vals.push(slot);
+                scoped = true;
                 continue;
             }
             let x = self.read_local(b)?;
@@ -107,6 +112,7 @@ impl FnLower<'_> {
         }));
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
+        f.scoped = scoped;
         let id = self.b.m.add_func(f);
         let _ = lam;
         self.cx.queue.push(Job {
@@ -1356,6 +1362,7 @@ pub(crate) fn build_lambda(
     let file = m.add_file(job.hir.data.file.as_str());
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().scoped = proto.scoped;
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();
