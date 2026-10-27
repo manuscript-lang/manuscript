@@ -11,7 +11,7 @@ from "@std/time.ms" import nanoseconds, sleep
 
 def receiver(ch: Channel[Int, Int]) -> Int:
     var c = ch
-    if let got = c.receive():
+    if let _got = c.receive():
         return 1
     return 0
 

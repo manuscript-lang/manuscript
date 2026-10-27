@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/math.ms" import min_int, max_int
 
 # Integer interpolations are written straight into the joined text (the `strfuse` pass passes the

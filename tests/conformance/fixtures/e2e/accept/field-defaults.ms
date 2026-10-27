@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/field-defaults.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 
 type Counter:
     value: Int = 0
@@ -95,6 +95,6 @@ def no_op() -> Unit: ...
 test "ordinary empty declarations and interface omission":
     no_op()
 
-    let marker = Marker()
+    let _marker = Marker()
     let view: ReadWithDefault = Reader()
     (view.get() != 5 or view.get(fallback: 7) != 7) | try expect_false

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def singleton(var values: List[Int]) -> List[Int]:
     values.append(1)
@@ -10,7 +10,7 @@ def bump(var values: List[Int]) -> Unit:
 test "closure direct":
     var values: List[Int] = []
     let callback = lambda () -> List[Int]: singleton(var values)
-    let r = callback()
+    let _r = callback()
     values.length() | try expect_equal(1)
 
 test "closure unit":

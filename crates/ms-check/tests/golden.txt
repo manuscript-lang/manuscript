@@ -51,7 +51,7 @@ export def main() -> Int:
 def g() -> Int:
     let x = 1
     return 2
-# Local value.
+type	5	9	57	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it# Local value.
 export def value() -> Int:
     return 0
 export def value() -> Int:
@@ -214,7 +214,7 @@ test "never execute":
 resolution	1	30	29	unknown standard module @std/faults.ms
 resolution	3	12	68	unknown binding panic; add: from "@std/core.ms" import panictest "valid":
     let n = 1
-
+type	2	9	22	local binding n is never read; remove it, use it, or name it with a leading '_' to ignore it
 def broken() -> Int: return "bad"
 type	2	29	29	expected Int, found String (in the return value)export def main() -> Int: return 0
 def value() -> Int: return 1
@@ -697,13 +697,13 @@ def propagated() -> Result[Unit, Error]:
     return ok(value: ())
 def constructed() -> Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
-fn diagnostic(cause: %s) String:
+type	10	9	333	local binding bytes is never read; remove it, use it, or name it with a leading '_' to ignore itfn diagnostic(cause: %s) String:
     return cause.message()
 fn view(cause: %s) Error:
     return cause
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'test "native module identity":
     let value = 1
-def poll_literal_up(log: List[Int], start: Int) -> Unit:
+type	2	9	39	local binding value is never read; remove it, use it, or name it with a leading '_' to ignore itdef poll_literal_up(log: List[Int], start: Int) -> Unit:
     var i = -137
     while i < 1000:
         log.append(i)
@@ -893,7 +893,7 @@ def call() -> Int:
     value: Callable[[Int], Int]
 def example() -> Unit:
     let callback = Callback(lambda value: value + 1)
-type Value:
+type	4	9	78	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore ittype Value:
     children: Map[String, Value]
 type Wrapper:
     entries: Map[String, Node]
@@ -925,7 +925,7 @@ def first() -> Result[Int, Error]: fail_cause(Failure("empty"))
 type	4	22	78	`message` returns part of a parameter or the receiver: write `ref` before its result type to lend it, or return an owned copy with `.clone()`def from_callback[T](factory: Callable[[], T]) -> T: factory()
 def first() -> Unit:
     let callback: Callable[[Int], Int] = from_callback(lambda: lambda (value: Int = 4): value)
-from "@std/errors.ms" import TextError
+type	3	9	92	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/errors.ms" import TextError
 def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
 def first() -> Result[Int, Missing]: fail("empty")
 resolution	1	30	29	unknown standard module @std/errors.ms
@@ -1030,7 +1030,7 @@ type	6	16	149	expected Callable[[], Int], found Callable[[Int], Int] (in argumen
         return outer
     )()) -> Int:
         return value
-def grow[T](value: T, optional: Int = grow(value: [value])) -> Int:
+type	3	9	43	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itdef grow[T](value: T, optional: Int = grow(value: [value])) -> Int:
     return optional
 type	1	39	38	recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])def f(value: Int = 3) -> Int:
     return value
@@ -1046,7 +1046,7 @@ def call(view: Read) -> Unit:
     let task = lambda () -> Int:
         return callback()
     let result = run(task)
-def peek() -> Missing:
+type	10	9	283	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itdef peek() -> Missing:
     return 0
 def f() -> Int:
     match peek():
@@ -1397,7 +1397,7 @@ def f(c: Choice[Int]) -> Int:
 type	7	14	161	pattern belongs to a different alternative; qualify arms with the matched type, Choice.<case>def f() -> Int:
     let s = Set[String]()
     return 0
-def f() -> Int:
+type	2	9	24	local binding s is never read; remove it, use it, or name it with a leading '_' to ignore itdef f() -> Int:
     let s = SetBuilder[String]()
     return 0
 resolution	2	13	28	unknown binding SetBuilder; add: from "@std/collections.ms" import SetBuilderdef pick[T](items: List[T], keep: Callable[[T], Bool]) -> Optional[T]:
@@ -1738,7 +1738,8 @@ def run() -> Unit:
             case error(e): note()
         return 0
     )
-type Cell:
+type	8	21	250	local binding n is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	9	24	284	local binding e is never read; remove it, use it, or name it with a leading '_' to ignore ittype Cell:
     value: Int
 def identity[T](value: T) -> T: value
 def use() -> Unit: ...
@@ -1767,7 +1768,7 @@ impl Equal for Key:
     def equals(other: Equal) -> Bool: return True
 def keys() -> Map[Key, Int]: return Map[Key, Int]()
 type	4	9	50	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Bool
-type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
+type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/test.ms" import TestHooks
 type State:
     value: Int
 impl TestHooks for State:
@@ -1777,7 +1778,7 @@ test "reads fixture":
     let value: Int = fixture.value
 resolution	2	23	48	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module
 resolution	5	22	125	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     def before_each() -> Unit:
@@ -1789,7 +1790,7 @@ test "closure captures fixture":
     let value: Int = read()
 resolution	4	23	115	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	93	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	93	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	133	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module
 resolution	7	34	215	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     def before_each(value: Int) -> Unit:
@@ -1800,7 +1801,7 @@ test "test":
     return
 resolution	4	23	104	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	82	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	82	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	122	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduleimpl TestHooks for State:
 def make_fixture(value: Int) -> State:
     return State(value)
@@ -1822,15 +1823,15 @@ def make_fixture() -> TestHooks:
     return State(1)
 test "test":
     return
-resolution	2	23	48	unknown type TestHooks; add: from "@std/testing.ms" import TestHooks
+resolution	2	23	48	unknown type TestHooks; add: from "@std/test.ms" import TestHooks
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	70	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduledef make_fixture() -> State:
     return State(1)
 test "test":
     return
 resolution	1	23	22	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	1	1	0	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	1	1	0	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	2	12	40	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduleimpl TestHooks for State:
 def make_fixture() -> State:
     return State(fixture.value)
@@ -1838,7 +1839,7 @@ test "test":
     return
 resolution	2	23	48	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduletest "test":
     let value = fixture.value
 resolution	2	17	29	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileinterface TestHooks:
@@ -1852,7 +1853,7 @@ def make_fixture() -> State:
     return State(1)
 test "test":
     return
-type	8	1	146	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
+type	8	1	146	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
     resolution	1	13	12	unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a modulelet read = lambda () -> String: b.freeze()
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet read = lambda (value: String = b.freeze()) -> String: value
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet frozen = b.freeze()
@@ -1908,7 +1909,7 @@ def first() -> Unit:
     let offset = 7
     let result = apply(value: 1, transform: lambda outer: apply(value: 2, transform: lambda inner: outer + inner + offset))
     wrap(lambda (item: Int = 4): item + offset)
-from "@std/errors.ms" import TextError
+type	5	9	194	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/errors.ms" import TextError
 def apply[T, U](value: T, transform: Callable[[T], U]) -> U: transform(value)
 def chain[T, U](first: Callable[[], T], second: Callable[[T], U]) -> U: second(first())
 def result[T](transform: Callable[[], Result[T, TextError]]) -> Result[T, TextError]: transform()
@@ -2116,7 +2117,7 @@ resolution	3	43	116	unknown type TextError; add: from "@std/core.ms" import Text
 resolution	3	61	134	unknown binding TextError; add: from "@std/core.ms" import TextError
 resolution	10	34	520	unknown binding panic; add: from "@std/core.ms" import panicdef first() -> Unit:
     let result: Result[Int, TextError] = fail("empty")resolution	2	29	49	unknown type TextError; add: from "@std/core.ms" import TextError
-resolution	2	42	62	unknown binding fail; add: from "@std/testing.ms" import faildef first() -> Unit:
+resolution	2	42	62	unknown binding fail; add: from "@std/test.ms" import faildef first() -> Unit:
     let callback: Callable[[], Optional[Int]] = lambda: absent()resolution	2	57	77	unknown binding absent; declare it with 'let absent = ...' before use, define 'def absent(...) -> T:', or import it from a moduledef failed[T]() -> Result[T, Failure]: error(Failure("empty"))
 def first() -> Result[Int, Error]: failed()resolution	1	30	29	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
 resolution	1	46	45	unknown binding Failure; did you mean 'failed'?
@@ -2138,7 +2139,7 @@ def first() -> Unit:
     callback()resolution	3	42	101	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module
 type	5	5	183	missing argument _0: Int in call to callback; add '_0: <Int>'def first() -> Unit:
     let value: Callable[[String], Result[Int, TextError]] = failresolution	2	47	67	unknown type TextError; add: from "@std/core.ms" import TextError
-resolution	2	61	81	unknown binding fail; add: from "@std/testing.ms" import faildef cause(value: Int) -> String: "cause"
+resolution	2	61	81	unknown binding fail; add: from "@std/test.ms" import faildef cause(value: Int) -> String: "cause"
 def wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or_else(cause)type	2	74	114	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest
 type	2	63	103	String does not satisfy Error; pass a type that already implements it
 type	2	74	114	expected Callable[[], String], found Callable[[Int], String] (in argument 'create' of value.ok_or_else)
@@ -2571,7 +2572,7 @@ def call() -> Unit: f(4)
 def call() -> Unit: f()
 type	2	21	64	missing argument value: Optional[Int] in call to f; add 'value: <Optional[Int]>'def call() -> Unit:
     let value: Optional[Int] = 4
-def f() -> Optional[Int]: return 4
+type	2	9	28	local binding value is never read; remove it, use it, or name it with a leading '_' to ignore itdef f() -> Optional[Int]: return 4
 def f(value: Optional[Int] = 4) -> Unit: return
 def f(value: Optional[Optional[Int]]) -> Unit: return
 def call() -> Unit: f(4)
@@ -3059,7 +3060,7 @@ test "unit":
     return ()
 test "fall":
     let x = 1
-def wrong() -> Int:
+type	6	9	72	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore itdef wrong() -> Int:
     let compare = "a".compare
     return compare(value: "b")type	3	20	69	unknown argument value; parameters of compare: other
 type	3	12	61	missing argument other: String in call to compare; add 'other: <String>'def f(first: Int, second: Int) -> Int: return first + second
@@ -3069,7 +3070,7 @@ type	3	12	61	missing argument other: String in call to compare; add 'other: <Str
     let value = f(first + 1, first: 2)parse	2	5	18	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itdef test_case() -> Unit: ...
     def f() -> Unit:
     let value = {1: 2}
-test "a":
+type	2	9	25	local binding value is never read; remove it, use it, or name it with a leading '_' to ignore ittest "a":
     return ()
 test "b":
     return ()
@@ -3118,18 +3119,18 @@ def value() -> Int:
 2,
 ]
     return 0
-def f() -> Int:
+type	2	9	24	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore itdef f() -> Int:
     let x = (1 +
 2)
     return 0
-def f() -> Int:
+type	2	9	24	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore itdef f() -> Int:
     if True:
         let x = [
 1
 ]
         return 0
     return 1
-fn f() Int:
+type	3	13	41	local binding x is never read; remove it, use it, or name it with a leading '_' to ignore itfn f() Int:
     let a = 1 |
         g
     return a
@@ -3338,7 +3339,10 @@ def main() -> Unit:
         d = "Hi"
     )
     a += 1
-let (
+type	8	9	76	local binding a is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	9	9	91	local binding b is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	13	9	168	local binding c is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	14	9	183	local binding d is never read; remove it, use it, or name it with a leading '_' to ignore itlet (
 )
 parse	2	1	6	a binding group cannot be empty; add 'name = value' lines or remove the grouplet (
     a = 1, b = 2
@@ -3824,7 +3828,8 @@ type Box:
 impl Read for Box:
     def read(value: Int = choose(8)) -> Int:
         return choose(9)
-def update() -> Unit:
+type	4	9	106	local binding callbacks is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	11	9	292	local binding text is never read; remove it, use it, or name it with a leading '_' to ignore itdef update() -> Unit:
     owner().value = replacement()
 resolution	2	5	26	unknown binding owner; declare it with 'let owner = ...' before use, define 'def owner(...) -> T:', or import it from a module
 type	2	13	34	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'
@@ -4033,14 +4038,14 @@ def example() -> Int:
     )
 def work() -> Unit:
     try expect_false(try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [["line\n\nbreak"], [""]])
-resolution	2	9	28	unknown binding expect_false; add: from "@std/testing.ms" import expect_falsedef work() -> Unit:
+resolution	2	9	28	unknown binding expect_false; add: from "@std/test.ms" import expect_falsedef work() -> Unit:
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
             ["line\n\nbreak"],
             [""]
         ]
     )
-resolution	2	9	28	unknown binding expect_false; add: from "@std/testing.ms" import expect_falsedef work() -> Unit:
+resolution	2	9	28	unknown binding expect_false; add: from "@std/test.ms" import expect_falsedef work() -> Unit:
     send_message(condition: account_is_active and payment_is_allowed and remaining_balance > 0)
 resolution	2	5	24	unknown binding send_message; declare it with 'let send_message = ...' before use, define 'def send_message(...) -> T:', or import it from a moduledef work() -> Unit:
     send_message(
@@ -4116,23 +4121,23 @@ resolution	4	6	146	unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type B
 def work() -> Unit:
     let values = [1, # Keep the first value explained.
         2, 3, 4]
-def work() -> Unit:
+type	2	9	28	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itdef work() -> Unit:
     let values = [
         1,  # Keep the first value explained.
         2,
         3,
         4
     ]
-def work() -> Unit:
+type	2	9	28	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itdef work() -> Unit:
     let values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
-def work() -> Unit:
+type	2	9	28	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itdef work() -> Unit:
     let values = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
         23, 24, 25, 26, 27, 28, 29, 30
     ]
-def work() -> Unit:
+type	2	9	28	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itdef work() -> Unit:
     let values = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 0: 0}
-let prices = [12, 8, 25]
+type	2	9	28	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itlet prices = [12, 8, 25]
 let affordable = prices.length > 1 and prices.keep(predicate: lambda (value: Int) -> Bool:
     return value <= 10
 ).length > 0
@@ -4178,7 +4183,8 @@ let affordable = (
 resolution	2	5	24	unknown binding send; declare it with 'let send = ...' before use, define 'def send(...) -> T:', or import it from a moduledef work() -> Unit:
     let larger = [1, 2, 3, 4, 5]
     let nested = [[1, 2], [3, 4]]
-def work() -> Int:
+type	2	9	28	local binding larger is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	3	9	61	local binding nested is never read; remove it, use it, or name it with a leading '_' to ignore itdef work() -> Int:
     if active and allowed and remaining > 0: return 1
     return 0
 resolution	2	8	26	unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module
@@ -4761,7 +4767,8 @@ def answer() -> Int:
     written = 3
     return 0
     return 1
-from "@std/json.ms" import parse
+type	3	9	75	local binding unused is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	4	9	94	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/json.ms" import parse
 def answer(parse: Int) -> Int:
     return parse
 from "@std/json.ms" import parse
@@ -4773,7 +4780,7 @@ def answer() -> Item:
     var total = 0
     total = total + 2
     return 0
-def answer() -> Int:
+type	2	9	29	local binding total is never read; remove it, use it, or name it with a leading '_' to ignore itdef answer() -> Int:
     var total = 0
     total = total + 2
     return total
@@ -4859,10 +4866,10 @@ fn compare[T: Compare[T]](first: T, second: T) Int: first.|
 def changed() -> Int: 2
 def answer() -> Unit:
     let values = [1, 2].map(lambda value: value + 1)
-def answer() -> Unit:
+type	2	9	30	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itdef answer() -> Unit:
     let offset = 7
     let values = [1].map(lambda outer: [2].map(lambda inner: outer + inner + offset))
-fn answer() Unit:
+type	3	9	49	local binding values is never read; remove it, use it, or name it with a leading '_' to ignore itfn answer() Unit:
     let values = parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'interface ${1:Name}:
     ${0:fn operation() Unit}parse	1	11	10	unexpected source character '$'; this character is not part of Manuscript's syntax outside textfn ${1:name}(${2}) ${3:Unit}:
     ${0:return unit}parse	1	4	3	unexpected source character '$'; this character is not part of Manuscript's syntax outside texttype ${1:Name}:
@@ -4988,7 +4995,7 @@ fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found
     entries.ad|
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn use(entries: Map[String, Int]) Unit:
     entries.add(key: "a", value: |
-parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/testing.ms"
+parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/test.ms"
 type State:
     count: Int
 fn make_fixture() State:
@@ -5030,7 +5037,8 @@ def transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback
 def answer() -> Unit:
     let empty: Optional[Int] = absent()
     let callback: Callable[[Int], String] = transform(lambda item: item.to_string())
-def identity[T](value: T) -> T: value
+type	4	9	145	local binding empty is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	5	9	185	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itdef identity[T](value: T) -> T: value
 def first() -> String: identity(1)
 def second() -> Int: identity(2)
 type	2	24	61	expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. f"{value}"def answer(value: Int = (lambda () -> Int:
@@ -5130,7 +5138,7 @@ def answer() -> Int:
 def extract(data: Bytes) -> List[Int]:
     let bound: Callable[[], List[Int]] = data.values
     return data.values()
-from "@std/bytes.ms" import Bytes
+type	3	9	81	local binding bound is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/bytes.ms" import Bytes
 def make() -> Bytes:
     return type	3	5	59	bare return requires Unit; this function returns Bytes, so write 'return <value>'export def first() -> Int:
     return 1
@@ -5154,7 +5162,7 @@ def use(callback: Callable[[Int], Int]) -> Int: identity(callback)(2)
 from "@std/http.ms" import HttpRequest
 from "@std/bytes.ms" import Bytes
 def content_type(request: HttpRequest) -> Optional[List[Bytes]]:
-    return request.headers.values("content-type")
+    return request.headers.values_bytes("content-type")
 type HttpHeaders:
     value: String
 def lookup(fields: HttpHeaders) -> Unit:
@@ -5199,7 +5207,9 @@ test "methods":
     let labels = [1].map(transform: label)
     let convert = [2].map[String]
     let text = " hello ".trim()
-from "@std/json.ms" import JsonError
+type	4	9	79	local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	5	9	122	local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	6	9	156	local binding text is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/json.ms" import JsonError
 def describe(cause: Error) -> String:
     match cause:
         case JsonError(json):
@@ -5209,7 +5219,7 @@ def describe(cause: Error) -> String:
 from "@std/toml.ms" import parse, TomlValue
 def read() -> Unit:
     let result = parse(text: "a=1")
-def read() -> Int:
+type	3	9	72	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itdef read() -> Int:
     return 1
 def named(value: Int = read()) -> Int:
     return value
@@ -5307,7 +5317,7 @@ def read(node: Node) -> Int:
 type	1	22	21	expected Int, found String (in the return value)export def value() -> Int:
     let unused = 1
     return 2
-export def value() -> Int: "wrong"
+type	2	9	35	local binding unused is never read; remove it, use it, or name it with a leading '_' to ignore itexport def value() -> Int: "wrong"
 type	1	28	27	expected Int, found String (in the return value)export def value() -> Int: "private error"
 type	1	28	27	expected Int, found String (in the return value)export def value() -> Int: 1
 export def bad() -> Int: "wrong"
@@ -5418,7 +5428,7 @@ type Envelope:
 def use(value: Envelope) -> Int:
     match value:
         case Pair(payload, NotFound): return 1
-type Item:
+type	8	19	176	local binding payload is never read; remove it, use it, or name it with a leading '_' to ignore ittype Item:
     value: Int
 def use(value: Optional[Item]) -> Int:
     match value:
@@ -5475,7 +5485,7 @@ def use(value: Optional[Int]) -> Int:
     match value:
         case some(Ready): return Ready
         case none: return 0
-    let NotFound = 2
+type	4	9	72	local binding Flag is never read; remove it, use it, or name it with a leading '_' to ignore it    let NotFound = 2
     match result:parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itdef NotFound() -> Int: 2
 type Failure:
     case NotFound
@@ -5662,7 +5672,7 @@ export def main() -> Int:
 def read_number() -> Int:
     let input = stdin().read(max_bytes: 1)
     return 41
-from "@std/io.ms" import stdout, stderr
+type	11	9	227	local binding input is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/io.ms" import stdout, stderr
 from "@std/faults.ms" import panic
 
 test "pass=a=b":
@@ -5859,7 +5869,7 @@ resolution	3	34	97	unknown binding Bytes; add: from "@std/bytes.ms" import Bytes
 export def main() -> Int:
     return depth(0)
 from "@std/io.ms" import stdout, stderr
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
@@ -6077,36 +6087,36 @@ impl Shape for Rect:
 test "method fault frame":
     let rect = Rect(w: 9223372036854775807, h: 2)
     rect.area()
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "arithmetic":
     2 + 3 | try expect_equal(expected: 5)
 test "fault":
     let missing: Optional[Int] = none
     let impossible = missing.get()
-from "@std/testing.ms" import expect_equal
+type	3	9	60	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/test.ms" import expect_equal
 test "failed assertion":
     2 + 3 | try expect_equal(expected: 6)
 def sum(value: Int) -> Int:
     return value + 1
 test "fault":
     let impossible = sum(value: 9223372036854775807)
-def divide(value: Int, divisor: Int) -> Int:
+type	4	9	71	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itdef divide(value: Int, divisor: Int) -> Int:
     return value / divisor
 test "fault":
     let impossible = divide(value: 3, divisor: 0)
-def difference(values: List[Int]) -> Int:
+type	4	9	94	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itdef difference(values: List[Int]) -> Int:
     let [first, second] = values
     return first - second
 test "fault":
     let impossible = difference(values: [1])
-def one( ) -> Int:
+type	5	9	123	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itdef one( ) -> Int:
     return 1 # keep
 def wrong() -> Int:
     return missing
 resolution	2	12	31	unknown binding missing; declare it with 'let missing = ...' before use, define 'def missing(...) -> T:', or import it from a modulefn wrong():
   return
-parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4from "@std/testing.ms" import expect_true, fail
+parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4from "@std/test.ms" import expect_true, fail
 
 interface Read:
     def get() -> Int
@@ -6120,7 +6130,7 @@ test "encoded nominal identity":
     let view = Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-type	12	16	249	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfrom "@std/io.ms" import stdout
+type	12	16	246	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfrom "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 from "@std/time.ms" import Instant
 
@@ -6367,7 +6377,7 @@ type	7	9	80	duplicate implementation operation m; define each operation once per
     x: Int
 impl B:
     def m() -> Int: ...
-type	4	9	35	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/testing.ms" import expect_equal
+type	4	9	35	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/test.ms" import expect_equal
 from "@std/faults.ms" import panic
 
 def positive(value: Int) -> Int:
@@ -6382,9 +6392,9 @@ def discard(value: Int) -> Unit:
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
     discard(value: 1) | try expect_equal(expected: ())
-resolution	2	30	72	unknown standard module @std/faults.ms
-resolution	8	9	169	unknown binding panic; add: from "@std/core.ms" import panic
-type	4	1	79	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/testing.ms" import expect_contains, expect_fault
+resolution	2	30	69	unknown standard module @std/faults.ms
+resolution	8	9	166	unknown binding panic; add: from "@std/core.ms" import panic
+type	4	1	76	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/test.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
 
 def failed_initializer() -> Never:
@@ -6412,15 +6422,15 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-resolution	2	30	89	unknown standard module @std/faults.ms
-resolution	5	27	157	unknown binding panic; add: from "@std/core.ms" import panic
-type	4	1	96	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
-resolution	8	12	244	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/testing.ms" import expect_contains, expect_fault
+resolution	2	30	86	unknown standard module @std/faults.ms
+resolution	5	27	154	unknown binding panic; add: from "@std/core.ms" import panic
+type	4	1	93	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
+resolution	8	12	241	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/test.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(lambda: panic("boom")), "boom")
-resolution	2	30	89	unknown standard module @std/faults.ms
-resolution	4	50	192	unknown binding panic; add: from "@std/core.ms" import panicinterface Read:
+resolution	2	30	86	unknown standard module @std/faults.ms
+resolution	4	50	189	unknown binding panic; add: from "@std/core.ms" import panicinterface Read:
     def read() -> Int
 type Reader:
     operation: Callable[[], Int]
@@ -6433,13 +6443,13 @@ export def main() -> Int:
 type	9	16	202	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfn prepare() fn() Int:
     let invalid = 1 / 0
     return fn() Int: 1
-export fn main()parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'from "@std/testing.ms" import fail
+export fn main()parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'from "@std/test.ms" import fail
 export def other() -> Int: return 4
 test "unimported":
     if other() != 4: return fail("bad other")
 test "nested":
     return ()
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 export def other() -> Int: return 4
 test "unimported":
     return fail("changed unimported test")
@@ -6655,7 +6665,7 @@ type	27	10	638	cannot change `copy.label`: `copy` is declared with let, which is
     let divide = minimum.divide
 parse	1	6	5	expected text in double quotes, found '%'test "continues after numeric faults":
     let valid = 1
-import panic from "@std/faults.ms"
+type	2	9	47	local binding valid is never read; remove it, use it, or name it with a leading '_' to ignore itimport panic from "@std/faults.ms"
 fn fail() Int: panic("first supplied argument")
 fn later() Int: panic("later argument or default")
 fn outer(first: Int, second: Int = later()) Int: panic("outer body")
@@ -6681,7 +6691,7 @@ resolution	3	30	127	unknown standard module @std/bigint.ms; did you mean '@std/b
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
     let valid = 1
-test "new set":
+type	2	9	46	local binding valid is never read; remove it, use it, or name it with a leading '_' to ignore ittest "new set":
     [1].set(1, 2)
 test "bound set":
     let set = [1].set
@@ -6808,7 +6818,7 @@ resolution	28	26	827	unknown or ambiguous member freeze on ListBuilder[Int]; ava
 resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
 resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queue
 type	44	56	1301	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
@@ -6817,7 +6827,7 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         case error(_):
             return fail("fixture not found")
-from "@std/testing.ms" import TestHooks, expect_equal, fail, skip
+from "@std/test.ms" import TestHooks, expect_equal, fail, skip
 from "@std/io.ms" import stdout
 from "@std/faults.ms" import panic
 def println(message: String) -> Unit:
@@ -6842,7 +6852,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-resolution	3	30	127	unknown standard module @std/faults.msfrom "@std/testing.ms" import TestHooks, expect_equal
+resolution	3	30	124	unknown standard module @std/faults.msfrom "@std/test.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 def println(message: String) -> Unit:
     let written = stdout().write(f"{message}\n").get()
@@ -6857,7 +6867,7 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
-type	13	17	333	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyfrom "@std/testing.ms" import TestHooks, expect_equal, expect_ok
+type	13	17	330	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyfrom "@std/test.ms" import TestHooks, expect_equal, expect_ok
 from "@std/http.ms" import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers
 from "@std/net.ms" import network
 type ApiFixture:
@@ -6875,7 +6885,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
+type	9	80	469	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
     return
 test "interruptible":
     println("READY")
@@ -6884,8 +6894,8 @@ test "second request uses same server":
 test "later":
     try fail("must not run")
 resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")
-resolution	4	13	71	unknown binding expect_equal; add: from "@std/testing.ms" import expect_equal
-resolution	6	9	112	unknown binding fail; add: from "@std/testing.ms" import failfrom "@std/testing.ms" import TestHooks, expect_equal
+resolution	4	13	71	unknown binding expect_equal; add: from "@std/test.ms" import expect_equal
+resolution	6	9	112	unknown binding fail; add: from "@std/test.ms" import failfrom "@std/test.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 type UnusedFixture:
     value: Int
@@ -6900,7 +6910,10 @@ impl TestHooks for UnusedFixture:
         let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
-from "@std/testing.ms" import expect_equal, skip
+type	7	13	194	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	9	13	289	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	11	13	384	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	13	13	477	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/test.ms" import expect_equal, skip
 test "passing":
     try expect_equal(2 + 2, 4)
 test "skipped":

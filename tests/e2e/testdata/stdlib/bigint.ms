@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/math.ms" import parse, from_int, BigInt, BigIntError
 
 test "big integers exceed machine range without losing precision":
@@ -50,7 +50,7 @@ test "big integers support sign pow shifts and conversion":
     try expect_equal((try five.shift_left(3)).to_int(), some(40))
     try expect_equal((try from_int(-5).shift_right(1)).to_int(), some(-3))
     try expect_equal(
-        (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
+        (try from_int(1).shift_left(70)).to_float(), some(1180591620717411303424.0)
     )
 
     let invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)

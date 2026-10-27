@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interpolation,modules,optional,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/http.ms" import (
     headers,
     HttpClientOptions,
@@ -16,7 +16,7 @@ from "@std/net.ms" import network
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = headers()
-    try sent.append("Content-Type", "text/event-stream".to_bytes())
+    try sent.append("Content-Type", "text/event-stream")
     try exchange.send_headers(200, sent)
     exchange.write("event: greet\r\ndata: h").get()
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()

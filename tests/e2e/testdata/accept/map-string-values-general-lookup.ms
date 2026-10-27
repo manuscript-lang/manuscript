@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 
 # A `String` value is two words, so `Map[Int, String]` and `Map[String, String]` take the general
 # lookup entry points; the word-layout fast paths read a 24-byte slot and missed the second key.

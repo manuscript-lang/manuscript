@@ -4,7 +4,7 @@ from "@std/io.ms" import stderr
 from "@std/math.ms" import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int
 from "@std/process.ms" import control
 from "@std/random.ms" import entropy, secure_int
-from "@std/testing.ms" import expect_fault, fail
+from "@std/test.ms" import expect_fault, fail
 from "@std/time.ms" import clock, milliseconds
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
@@ -210,7 +210,7 @@ def optional_draw[T](gen: Gen[T], s: Source) -> Drawn[Optional[T]]:
         return Drawn(none, middle)
 
     let {value, source} = gen.make(middle)
-    return Drawn(some(value), source)
+    return Drawn(value, source)
 
 # Generates lists of `min_length` through `max_length` elements, shrinking toward fewer and simpler elements.
 export def lists[T](
@@ -298,18 +298,21 @@ def run_case[T](
     if source.invalid:
         return Outcome(source, none)
 
-    # The property runs in a forked child so a fault becomes a failing case that shrinks like an error.
-    # The child faults with `property_failed` when the property returns an error; that message is then read in full by rerunning.
+    # The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
+    # It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
+    # on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     let faulted = expect_fault(lambda: run_property(property, value))
     if faulted.is_error():
         return Outcome(source, none)
 
     let message = faulted.get("")
     if message != property_failed:
-        return Outcome(source, some(f"fault: {message}"))
+        return Outcome(source, f"fault: {message}")
 
-    let outcome = property(value)
-    return Outcome(source, some(outcome.err().message()))
+    let replayed = Source(source.choices.take(source.pos), 0, 0, False, False)
+    let {value: again} = gen.make(replayed)
+    let outcome = property(again)
+    return Outcome(source, outcome.err().message())
 
 let property_failed = "property returned an error"
 
@@ -332,9 +335,7 @@ def replay[T](
     property: Callable[[T], Result[Unit, Error]],
     choices: List[Int]
 ) -> Outcome:
-    # Bind the source first: passing a freshly built record straight into the call miscompiles in Release builds (issue 1517).
-    let replayed = Source(choices.clone(), 0, 0, False, False)
-    return run_case(gen, property, replayed)
+    return run_case(gen, property, Source(choices.clone(), 0, 0, False, False))
 
 # Tries `candidate`; returns the used draws when it still fails and is simpler than `current`.
 def attempt[T](
@@ -351,7 +352,7 @@ def attempt[T](
     if not simpler(used, current):
         return none
 
-    return some(used)
+    return used
 
 # Shrinks failing `choices`: deletes spans, then lowers values, until a full pass makes no progress or `budget` replays run.
 def shrink[T](
@@ -401,7 +402,7 @@ def shrink[T](
 
 # Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
 # Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
-# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs in a forked child.
+# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
 export def check[T](
     name: String,
     gen: Gen[T],
@@ -445,8 +446,7 @@ export def check[T](
         let case_seed = wrapping_add(base, case_index)
         case_index += 1
 
-        let fresh = source(case_seed)
-        let outcome = run_case(gen, property, fresh)
+        let outcome = run_case(gen, property, source(case_seed))
 
         if outcome.source.invalid:
             discarded += 1
@@ -477,8 +477,7 @@ def report[T](
     let used = failing.choices.take(failing.pos)
     let small = shrink(gen, property, used, 2000)
     let final = replay(gen, property, small)
-    let replayed = Source(small.clone(), 0, 0, False, False)
-    let {value: shown} = gen.make(replayed)
+    let {value: shown} = gen.make(Source(small.clone(), 0, 0, False, False))
     let reason = final.failure.get(message)
     return fail(
         f"property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason}"

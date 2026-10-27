@@ -1,6 +1,6 @@
 # conform: tags=optional,stdlib-deque,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/deque.ms" import Deque
 from "@std/collections.ms" import range
 

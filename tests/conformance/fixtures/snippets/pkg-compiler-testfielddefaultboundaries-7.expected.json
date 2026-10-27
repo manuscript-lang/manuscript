@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-7.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-7.ms:4:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n   |\n 4 | def missing() -> Int: ...\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

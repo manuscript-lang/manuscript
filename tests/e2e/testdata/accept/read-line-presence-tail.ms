@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/io.ms" import ReadStream, IoError, read_line
 from "@std/fs.ms" import filesystem
 from "@std/core.ms" import Closeable
@@ -38,7 +38,7 @@ type LineTailCleanup:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for LineTailCleanup:
     var def close() -> Unit:
-        let written = filesystem().write_file(self.marker, "closed", True)
+        let _written = filesystem().write_file(self.marker, "closed", True)
 
 def with_cleanup(var input: ReadStream, marker: String) -> Bool:
     with let resource = LineTailCleanup(marker):
@@ -98,7 +98,7 @@ test "presence and text reads share buffered consumption":
 
     with let temporary = fs.temporary("manuscript-presence-") | try expect_ok:
         let path = f"{temporary.path()}/lines"
-        let written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
+        let _written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
 
         with let handle = fs.open(path, "r", 384) | try expect_ok:
             let input = handle.reader()

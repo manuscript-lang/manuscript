@@ -8,4 +8,4 @@ test "unit":
     return ()
 
 test "fall":
-    let x = 1
+    let _x = 1

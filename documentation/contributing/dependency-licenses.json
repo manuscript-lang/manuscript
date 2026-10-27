@@ -67,7 +67,7 @@
     },
     {
       "name": "base64",
-      "version": "0.22.1",
+      "version": "0.23.1",
       "license": "MIT OR Apache-2.0"
     },
     {
@@ -386,6 +386,11 @@
       "license": "MIT OR Apache-2.0"
     },
     {
+      "name": "gimli",
+      "version": "0.34.0",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
       "name": "group",
       "version": "0.14.0",
       "license": "MIT/Apache-2.0"
@@ -521,6 +526,11 @@
       "license": "MIT OR Apache-2.0"
     },
     {
+      "name": "num-bigint",
+      "version": "0.5.1",
+      "license": "MIT OR Apache-2.0"
+    },
+    {
       "name": "num-conv",
       "version": "0.2.2",
       "license": "MIT OR Apache-2.0"
@@ -622,7 +632,7 @@
     },
     {
       "name": "psl",
-      "version": "2.1.243",
+      "version": "2.1.245",
       "license": "MIT/Apache-2.0"
     },
     {

@@ -236,7 +236,7 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos)>,
+    resources: Vec<(usize, Name, Pos, bool)>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -333,18 +333,25 @@ impl Walker<'_> {
         }
     }
 
-    /// Reports an owned resource that no `with` closes and nothing takes: a binding that is
-    /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
+    /// Closes at scope end an owned resource nothing takes (a binding never moved: returned,
+    /// passed on, stored, captured), or reports one with no close operation; it is
+    /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos) in resources {
-            let handled = self.closed.contains(&uid)
-                || self
-                    .facts
-                    .uses
-                    .values()
-                    .any(|u| u.binding == uid && u.access == Access::Move);
-            if !handled {
+        for (uid, name, pos, closable) in resources {
+            let moved = self
+                .facts
+                .uses
+                .values()
+                .any(|u| u.binding == uid && u.access == Access::Move);
+            if moved {
+                continue;
+            }
+            if closable {
+                // Never handed on: the scope closes it, after any early `.close()` of its own
+                // (close is idempotent).
+                self.facts.implicit_closes.insert(uid);
+            } else if !self.closed.contains(&uid) {
                 self.error(
                     pos,
                     format!(
@@ -1283,7 +1290,8 @@ impl Walker<'_> {
             false,
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
-            self.resources.push((b.uid, b.name, pattern.pos));
+            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
     }
 
@@ -2000,11 +2008,18 @@ impl Walker<'_> {
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error_fix(
-                e.pos,
-                format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
-                insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
-            );
+            if b.ty.kind == Kind::Function {
+                self.error(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed"),
+                );
+            } else {
+                self.error_fix(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a value has one owner, so pass `{name}.{COPY}()` to keep the original, or move it only at its last use"),
+                    insert_at(forward(e.pos, name.as_str().len()), &format!(".{COPY}()")),
+                );
+            }
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
         self.mark_mutated(b.uid);
@@ -2476,11 +2491,18 @@ impl Walker<'_> {
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error_fix_opt(
-                e.pos,
-                format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
-                copy_after(e),
-            );
+            if b.ty.kind == Kind::Function {
+                self.error(
+                    e.pos,
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `def` instead"),
+                );
+            } else {
+                self.error_fix_opt(
+                    e.pos,
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
+                    copy_after(e),
+                );
+            }
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));
         self.record(e.id, b, Access::Move);

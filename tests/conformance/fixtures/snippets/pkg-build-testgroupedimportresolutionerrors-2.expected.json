@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:5:35: resolution: duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-2.ms:5:35: resolution: duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | from \"@std/collections.ms\" import ListBuilder\n   |                                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

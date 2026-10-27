@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,generics,interpolation,match,modules,mutation,optional,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/fs.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, fail
 from "@std/core.ms" import TextError
 from "@std/fs.ms" import filesystem, FileSystemError, FileHandle, GlobOptions, PathEntry
 from "@std/io.ms" import files, read_all, IoError
@@ -68,17 +68,17 @@ test "ordinary filesystem misuse retains typed cases":
     with let temporary = (fs.temporary("manuscript-errors-") | try expect_ok):
         let directory = f"{temporary.path()}/directory"
         let file = f"{temporary.path()}/file"
-        let created = (
+        let _created = (
             fs.create_directory(
                 path: directory, recursive: False
             ) | try expect_ok
         )
-        let child = (
+        let _child = (
             fs.write_file(
                 path: f"{directory}/child", data: "x", replace: False
             ) | try expect_ok
         )
-        let written = (
+        let _written = (
             fs.write_file(
                 path: file, data: "abc", replace: False
             ) | try expect_ok
@@ -125,7 +125,7 @@ test "filesystem scoped temporary directories and bounded file reads":
         directory = temporary.path()
 
         let path = f"{directory}/data.txt"
-        let written = (
+        let _written = (
             fs.write_file(
                 path: path, data: "hello", replace: False
             ) | try expect_ok
@@ -158,7 +158,7 @@ test "file handles positional I/O stream adapters and closed errors":
 
     with let temporary = (fs.temporary("manuscript-handles-") | try expect_ok):
         let path = f"{temporary.path()}/data.txt"
-        let written = (
+        let _written = (
             fs.write_file(
                 path: path, data: "abcdef", replace: False
             ) | try expect_ok
@@ -169,10 +169,12 @@ test "file handles positional I/O stream adapters and closed errors":
         )
         (handle.write_at(offset: 1, data: "XY") | try expect_ok)
 
-        let resized = (handle.truncate(4) | try expect_ok)
+        let _resized = (handle.truncate(4) | try expect_ok)
         (handle.stat() | try expect_ok).size | try expect_equal(4)
 
-        let sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
+        let _sought = (handle.seek(offset: 0, origin: 0) | try expect_ok)
+        (handle.read_lines(max_bytes: some(-1)) | try expect_fs_error(FileSystemError.InvalidInput))
+        (handle.read_lines(max_lines: some(-1)) | try expect_fs_error(FileSystemError.InvalidInput))
         read_all(input: handle.reader()) | try expect_ok | try expect_equal(
             "aXYd".to_bytes()
         )

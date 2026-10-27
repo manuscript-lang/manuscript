@@ -1,7 +1,7 @@
 # conform: tags=decimal,modules,optional,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/decimal-math.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/decimal.ms" import Decimal
 from "@std/math.ms" import (
     ceil,
@@ -23,7 +23,8 @@ test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(0.1d + 0.2d, 0.3d)
     try expect_equal(1.00d, 1d)
     try expect_equal((-1.9d).truncate_to_int(), some(-1))
-    try expect_equal(2d.to_float(), 2.0)
+    try expect_equal(2d.to_float(), some(2.0))
+    try expect_equal(1e400d.to_float(), none)
     try expect_equal(123.to_decimal(), 123d)
 
 test "math rounding signs and exact identities":

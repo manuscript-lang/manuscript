@@ -73,7 +73,7 @@ impl BitSet:
 
         while True:
             if bits != 0:
-                return some(word * 64 + trailing_zeros(bits))
+                return word * 64 + trailing_zeros(bits)
 
             word += 1
             if word >= self.words.length():

@@ -1,11 +1,11 @@
 from "@std/io.ms" import stdout
 from "@std/time.ms" import clock
-from "@std/vec.ms" import Matrix
+from "@std/vec.ms" import Matrix, matvec
 
 def say(text: String) -> Unit:
     let _ignored = stdout().write(text)
 
-# The matrix-vector product as a plain loop, for comparison with `Matrix.matvec`.
+# The matrix-vector product as a plain loop, for comparison with `matvec`.
 def scalar_matvec(
     w: List[Float32],
     x: List[Float32],
@@ -40,7 +40,7 @@ def run(rows: Int, cols: Int, reps: Int) -> Unit:
     var out = List[Float32]()
     let t = clock().now()
     for _r in 0..reps:
-        m.matvec(x, var out)
+        matvec(m, x, var out)
 
     let ns = clock().now().difference(t).to_nanoseconds().to_float()
     say(f"vec {rows}x{cols} {flops / ns} {out[0]}\n")

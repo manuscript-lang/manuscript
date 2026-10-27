@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
 from "@std/core.ms" import Closeable
 from "@std/fs.ms" import filesystem
@@ -58,7 +58,7 @@ type TailCleanup:
 # Cleanup runs on a moved copy, so the marker file is the only way to observe it.
 impl Closeable for TailCleanup:
     var def close() -> Unit:
-        let written = filesystem().write_file(self.marker, "closed", True)
+        let _written = filesystem().write_file(self.marker, "closed", True)
 
 def tail_cleanup(
     result: Result[Int, TextError],

@@ -8,7 +8,7 @@ fn dash_prefixed_target_reaches_every_verification_step() {
     std::fs::create_dir_all(&root).unwrap();
     std::fs::write(
         root.join("-input.ms"),
-        "from \"@std/testing.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n",
+        "from \"@std/test.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n",
     )
     .unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_ms"))

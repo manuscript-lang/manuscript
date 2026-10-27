@@ -137,13 +137,6 @@ impl<'a> FnLower<'a> {
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         let native = json_native(native);
-        if native == "extern:msrt_parallel_rows" && !self.lend_captures {
-            // The pool runs the body before the call returns, so its captures can be lent.
-            self.lend_captures = true;
-            let r = self.native_function(e, view, native, params, sym);
-            self.lend_captures = false;
-            return r;
-        }
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
@@ -444,8 +437,8 @@ impl<'a> FnLower<'a> {
                 let (ity, want) = (self.ety(e), self.emty(e)?);
                 self.handle_interface(&ity, want, module, make, constant)
             }
-            other if other.starts_with("testing/") => {
-                self.testing_native(e, view, &other["testing/".len()..])
+            other if other.starts_with("test/") => {
+                self.testing_native(e, view, &other["test/".len()..])
             }
             other => {
                 if !self.has_native_call(other) {
@@ -1150,10 +1143,13 @@ impl<'a> FnLower<'a> {
         let native = m.native.as_str();
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
-        if matches!(
+        // `Float.to_float32()` is a runtime call: it returns none when the value overflows.
+        let float_to_float32 = native == "to_float32" && self.b.m.types.is_float(recv_ty);
+        if (matches!(
             native,
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
-        ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
+        ) || (numeric_recv && matches!(native, "to_int" | "to_float")))
+            && !float_to_float32
         {
             return self.numeric_conversion(result, recv);
         }
@@ -2512,18 +2508,22 @@ impl<'a> FnLower<'a> {
         copy_result: bool,
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
-        let runtime_only = !matches!(
-            name,
-            "append"
-                | "set"
-                | "replace"
-                | "prepend"
-                | "insert"
-                | "remove"
-                | "pop"
-                | "reverse"
-                | "sort"
-        );
+        // Swapping scalars is two loads and two stores; other elements move through the runtime without a copy.
+        let scalar_swap = name == "swap"
+            && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if self.b.m.types.is_scalar(*e));
+        let runtime_only = !scalar_swap
+            && !matches!(
+                name,
+                "append"
+                    | "set"
+                    | "replace"
+                    | "prepend"
+                    | "insert"
+                    | "remove"
+                    | "pop"
+                    | "reverse"
+                    | "sort"
+            );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
         let in_place = matches!(name, "insert" | "remove");
@@ -2572,6 +2572,23 @@ impl<'a> FnLower<'a> {
                 self.check_index(2, i, r, n, false);
                 let v = self.element_value(&args[1]);
                 Ok((self.b.list_set(old, i, v), None))
+            }
+            "swap" => {
+                let n = self.b.list_len(old);
+                let zero = self.b.iconst(0);
+                let mut at = [old; 2];
+                let mut got = [old; 2];
+                for (k, a) in args.iter().enumerate().take(2) {
+                    let i = self.borrow(a.val);
+                    let neg = self.b.icmp(Cc::Lt, i, zero);
+                    let shifted = self.b.binop(Op::IAdd, i, n);
+                    let r = self.b.select(neg, shifted, i);
+                    self.check_index(3, i, r, n, false);
+                    at[k] = r;
+                    got[k] = self.b.list_get(old, r);
+                }
+                let first = self.b.list_set(old, at[0], got[1]);
+                Ok((self.b.list_set(first, at[1], got[0]), None))
             }
             "replace" => {
                 // The element moves out through a slot and the new value moves in; nothing is copied.

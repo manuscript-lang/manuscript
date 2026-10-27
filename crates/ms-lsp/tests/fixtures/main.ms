@@ -1,6 +1,6 @@
 from "@std/core.ms" import Iterator
 from "@std/io.ms" import stdout
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 # A point in the plane.
 type Point:
@@ -51,7 +51,7 @@ def describe(p: Point) -> String:
     return f"norm is {n} at {p.x}"
 
 export def main() -> Int:
-    let p = Point(x: 1, y: 2)
+    let _p = Point(x: 1, y: 2)
     let values = [1, 2, 3]
     for v in values:
         let _ = say(f"{v}")

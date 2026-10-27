@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/math.ms" import infinity, parse_float
 
 test "parse_float reads integers decimals and exponents":

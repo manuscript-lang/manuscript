@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_ok
+from "@std/test.ms" import expect_ok
 from "./support/http.ms" import http_result
 from "@std/core.ms" import TextError
 from "@std/http.ms" import headers, HttpMethod, buffered
@@ -35,10 +35,10 @@ def stream_route(exchange: HttpExchange) -> Result[Unit, HttpError]:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
-    let sent = try exchange.send_headers(
+    let _sent = try exchange.send_headers(
         status: 200, headers: (try list_headers(chain_1))
     )
-    let written = (
+    let _written = (
         try http_result(exchange.write(f"{exchange.path()}|{exchange.query()}"))
     )
     return ok(())
@@ -51,14 +51,9 @@ def check_route(url: String, expected: String) -> Result[Unit, Error]:
     if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
         TextError("path or raw query changed")
     )
-    if (
-        (
-            response
-            .metadata()
-            .headers
-            .text("SET-cookie") | try expect_ok
-        ) != some(["a=1", "b=2"])
-    ): return error(TextError("#257 repeated cookies regressed"))
+    if ((response.metadata().headers.values("SET-cookie")) != ["a=1", "b=2"]): return error(
+        TextError("#257 repeated cookies regressed")
+    )
 
     return ok(())
 

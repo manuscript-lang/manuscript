@@ -1,7 +1,7 @@
 # conform: tags=modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:237
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Reading:
     celsius: Int

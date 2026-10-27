@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interpolation,lists,maps,match,modules,mutation,optional,records,stdlib-collections,stdlib-errors,stdlib-string,stdlib-testing,stdlib-yaml,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/yaml.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
 from "@std/collections.ms" import range
@@ -394,7 +394,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             case error(cause): cause
 
         match cause:
-            case UnsupportedFeature(_, _): let expected = ()
+            case UnsupportedFeature(_, _): let _expected = ()
             case _: return fail("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
@@ -682,13 +682,13 @@ test "YAML flow mapping keys without a colon map to null":
 
     match parse(text: "{x, x}"):
         case ok(_): return fail("duplicate null keys")
-        case error(_): let ignored = ()
+        case error(_): let _ignored = ()
 
     let limited = limits(bytes: none, depth: none, values: some(2))
 
     match parse(text: "{a, b, c}", limits: limited):
         case ok(_): return fail("null keys count against the value limit")
-        case error(_): let ignored = ()
+        case error(_): let _ignored = ()
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)

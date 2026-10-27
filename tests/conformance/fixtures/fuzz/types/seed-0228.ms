@@ -6,13 +6,13 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let l1 = [18, (-22), 20]
     say(f"l1 = {l1} len {l1.length()}")
 
-    let bad = say
+    let _bad = say
 
     if ((851.465 * 617.113) < (0.0 + 0.0)):
         say(("日本語" + "ms"))

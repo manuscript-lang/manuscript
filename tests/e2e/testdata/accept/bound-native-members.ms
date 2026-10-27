@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_contains, expect_fault, expect_true
+from "@std/test.ms" import expect_contains, expect_fault, expect_true
 from "@std/string.ms" import StringBuilder
 from "@std/collections.ms" import MapBuilder, SetBuilder
 
@@ -55,13 +55,13 @@ test "sealed builder":
 
 test "sealed map and set builders fault on every add":
     var map_builder = MapBuilder[String, Int]()
-    let map_sealed = map_builder.build()
+    let _map_sealed = map_builder.build()
     (try expect_fault(lambda: map_builder.add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
 
     var set_builder = SetBuilder[Int]()
-    let set_sealed = set_builder.build()
+    let _set_sealed = set_builder.build()
     (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
         "builder is sealed"
     )
@@ -77,14 +77,14 @@ test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
         lambda:
-            let ignored = smallest.abs()
+            let _ignored = smallest.abs()
     )
     message | try expect_contains("Int overflow")
 
 test "negative split cap faults":
     let message = try expect_fault(
         lambda:
-            let ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
+            let _ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")
 

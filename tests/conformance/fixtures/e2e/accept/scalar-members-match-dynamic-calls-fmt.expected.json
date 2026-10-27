@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_true\n\ntest \"string and float members\":\n    let text = \"héllo\"\n    try expect_true((text.length() == 5 and not text.is_empty() and \"\".is_empty()))\n    try expect_true((\"a\".compare(other: \"b\") == 0 - 1 and \"b\".compare(other: \"b\") == 0))\n    try expect_true((text.concat(other: \"!\") == \"héllo!\"))\n    try expect_true(((0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite()))\n"
+    "fmt": "from \"@std/test.ms\" import expect_true\n\ntest \"string and float members\":\n    let text = \"héllo\"\n    try expect_true((text.length() == 5 and not text.is_empty() and \"\".is_empty()))\n    try expect_true((\"a\".compare(other: \"b\") == 0 - 1 and \"b\".compare(other: \"b\") == 0))\n    try expect_true((text.concat(other: \"!\") == \"héllo!\"))\n    try expect_true(((0.0 / 0.0).is_nan() and not (1.0).is_nan() and (1.0).is_finite()))\n"
   }
 }

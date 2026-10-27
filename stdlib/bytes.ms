@@ -29,6 +29,10 @@ impl Bytes:
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     def index_of(value: Bytes) -> Optional[Int]: ...
 
+    # Returns the first offset at or after `start` holding the unsigned byte `value`, or `none`.
+    # A `value` outside 0..255 or a `start` past length() gives `none`; a negative `start` counts as zero.
+    def index_of_byte(value: Int, start: Int) -> Optional[Int]: ...
+
     # Returns the last matching byte offset or `none`; empty `value` matches at length().
     def last_index_of(value: Bytes) -> Optional[Int]: ...
 
@@ -59,6 +63,10 @@ impl Bytes:
 
     # Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
     def decode_utf8() -> Optional[String]: ...
+
+    # Decodes [start, end) as `decode_utf8` does, without copying the range into a new Bytes first.
+    # Bounds outside 0 <= start <= end <= length() raise a fault.
+    def decode_utf8_range(start: Int, end: Int) -> Optional[String]: ...
 
 # Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
 export def join(parts: List[Bytes]) -> Bytes: ...
@@ -213,12 +221,12 @@ impl BytesCodecs for Bytes:
     # Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float32_le(at: Int) -> Result[Float32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, True)
-        return ok(msrt_float32_from_bits(raw).to_float32())
+        return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float32_be(at: Int) -> Result[Float32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, False)
-        return ok(msrt_float32_from_bits(raw).to_float32())
+        return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float64_le(at: Int) -> Result[Float, BinaryError]:

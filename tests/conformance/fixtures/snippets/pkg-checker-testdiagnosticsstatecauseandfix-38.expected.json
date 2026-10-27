@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-38.ms:5:19: resolution: unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-38.ms:5:19: resolution: unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?\n   |\n 5 |     let n = \"abc\".len()\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

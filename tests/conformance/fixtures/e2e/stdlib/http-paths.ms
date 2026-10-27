@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,generics,interpolation,lists,maps,match,modules,optional,stdlib-bytes,stdlib-errors,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/http-paths.ms
-from "@std/testing.ms" import expect_ok
+from "@std/test.ms" import expect_ok
 from "./support/http.ms" import http_result
 from "@std/core.ms" import TextError
 from "@std/http.ms" import headers, HttpMethod, buffered
@@ -62,8 +62,8 @@ def check_route(url: String, expected: String) -> Result[Unit, Error]:
             response
             .metadata()
             .headers
-            .text("SET-cookie") | try expect_ok
-        ) != some(["a=1", "b=2"])
+            .values("SET-cookie")
+        ) != ["a=1", "b=2"]
     ): return error(TextError("#257 repeated cookies regressed"))
 
     return ok(())

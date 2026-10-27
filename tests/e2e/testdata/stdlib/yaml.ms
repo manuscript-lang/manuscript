@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
 from "@std/collections.ms" import range
@@ -353,6 +353,30 @@ test "YAML documents BOM CRLF empty input and version directive":
         2
     )
 
+test "YAML document markers end a root plain scalar":
+    parse(text: "x\n...\n") | try expect_ok | try expect_equal(
+        YamlValue.StringValue("x")
+    )
+    parse(text: "x\ny\n...\n") | try expect_ok | try expect_equal(
+        YamlValue.StringValue("x y")
+    )
+    parse(text: "null\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
+    try expect_true(parse(text: "x\n---\ny\n").is_error())
+
+test "YAML plain scalars cannot start with an indicator":
+    for text in [
+        "a: - b\n", "a: -\n", "a: ? b\n", "a: @x\n", "a: `x\n", "a: ]\n", "a: ,\n",
+        "a: %d\n", "- ? x\n"
+    ]:
+        try expect_true(parse(text: text).is_error())
+
+    let _ = try expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))
+    let explicit = parse(text: "{? a : 1}\n") | try expect_error
+    try expect_equal(
+        explicit,
+        YamlError.UnsupportedFeature(1, "explicit mapping keys are unsupported")
+    )
+
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
         "a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2", "a:\n  b: 1\n c: 2",
@@ -379,7 +403,7 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
             case error(cause): cause
 
         match cause:
-            case UnsupportedFeature(_, _): let expected = ()
+            case UnsupportedFeature(_, _): let _expected = ()
             case _: return fail("expected unsupported feature")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
@@ -661,13 +685,13 @@ test "YAML flow mapping keys without a colon map to null":
 
     match parse(text: "{x, x}"):
         case ok(_): return fail("duplicate null keys")
-        case error(_): let ignored = ()
+        case error(_): let _ignored = ()
 
     let limited = limits(bytes: none, depth: none, values: some(2))
 
     match parse(text: "{a, b, c}", limits: limited):
         case ok(_): return fail("null keys count against the value limit")
-        case error(_): let ignored = ()
+        case error(_): let _ignored = ()
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)

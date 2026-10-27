@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/boolean-optimization.ms
-from "@std/testing.ms" import expect_false
+from "@std/test.ms" import expect_false
 
 type Counter:
     calls: Int

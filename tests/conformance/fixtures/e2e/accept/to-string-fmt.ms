@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/to-string.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 from "@std/bytes.ms" import Bytes
 from "@std/decimal.ms" import Decimal
 from "@std/queue.ms" import Queue

@@ -33,8 +33,8 @@ An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wra
 from "@std/queue.ms" import Queue
 
 def main() -> Unit:
-    var bounded = Queue[Int](capacity: 4)
-    var unbounded = Queue[Int]()
+    var _bounded = Queue[Int](capacity: 4)
+    var _unbounded = Queue[Int]()
 ```
 
 - Applies to functions, methods, function values, constructor fields, and alternative payloads.
@@ -42,7 +42,7 @@ def main() -> Unit:
 - The expression evaluates once, in argument order. Zero, `False`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `def present[T](value: Optional[T]) -> Optional[T]` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
 - An `Optional[T]` parameter is still required unless it has a default or a library omission permission.
-- The same wrapping applies wherever an `Optional[T]` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Optional[Int] = 3`). A user-defined `Optional` gets no wrapping.
+- The same wrapping applies wherever an `Optional[T]` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Optional[Int] = 3`). A user-defined `Optional` gets no wrapping. Write the plain value rather than `some(value)` there; `ms lint` reports the redundant form as **MSL113** and `ms lint --fix` removes it.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 

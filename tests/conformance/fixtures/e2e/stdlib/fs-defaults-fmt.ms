@@ -1,7 +1,7 @@
 # conform: tags=aliasing,faults,formatter,generics,interpolation,lists,match,modules,parser,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/fs-defaults.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
 from "@std/fs.ms" import filesystem, FileSystem, FileSystemError
 from "@std/bytes.ms" import Bytes

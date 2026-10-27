@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:7:42: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:11:5: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:7:42: resolution: unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module\n   |\n 7 |     var callback: Callable[[Int], Int] = from_callback(\n   |                                          ^\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-4.ms:11:5: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n    |\n 11 |     callback()\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

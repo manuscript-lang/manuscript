@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interpolation,lists,maps,match,modules,optional,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-numbers,stdlib-regex,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/builtin-parity.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/math.ms" import from_int
 from "@std/string.ms" import compile
 from "@std/collections.ms" import filled, range_by, map_from_entries

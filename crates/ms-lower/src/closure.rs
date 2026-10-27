@@ -14,7 +14,7 @@ use std::rc::Rc;
 /// Captures use environment indices, never SSA values from the enclosing function.
 pub(crate) enum LambdaCapture {
     Local(ct::BindingRef, usize),
-    /// A pointer to a borrowed copy of a variable the closure only reads (`lend_captures`).
+    /// A pointer to the maker's value of a variable the non-escaping closure only reads.
     Lent(ct::BindingRef, usize),
     Alias {
         binding: ct::BindingRef,
@@ -45,20 +45,28 @@ impl FnLower<'_> {
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
         let changed = lambda_changes(self, lam, &captures);
+        // Whether the closure's environment points into this frame.
+        let mut scoped = false;
         for b in &captures {
             if changed.contains(&b.uid)
                 && let Some(alias) = self.aliases.get(&b.uid).cloned()
             {
                 saved.push(self.capture_alias(b, alias, &mut cap_tys, &mut cap_vals)?);
+                scoped = true;
                 continue;
             }
-            let lend = self.lend_captures && !changed.contains(&b.uid);
-            if lend {
+            if !changed.contains(&b.uid)
+                && self
+                    .cx
+                    .borrowed_captures
+                    .contains(&(self.hir.data.file, e.id, b.uid))
+            {
                 let x = self.read_local(b)?;
                 let ty = self.ty_of(x.v);
                 if self.needs_drop(ty) {
-                    // The maker outlives the closure's every call, so the closure reads the
-                    // variable through a pointer instead of owning a copy.
+                    // The closure does not outlive its maker and the variable stays unchanged
+                    // while it lives, so the closure reads the variable through a pointer
+                    // instead of owning a copy.
                     let v = self.borrow(x);
                     let slot = self
                         .b
@@ -66,6 +74,7 @@ impl FnLower<'_> {
                         .expect("slot");
                     self.b.emit(Op::Store, &[slot, v], Imm::None, None);
                     saved.push(LambdaCapture::Lent(b.clone(), cap_vals.len()));
+                    scoped = true;
                     cap_tys.push(MTy::PTR);
                     cap_vals.push(slot);
                     continue;
@@ -86,6 +95,7 @@ impl FnLower<'_> {
                     })?;
                 cap_tys.push(MTy::PTR);
                 cap_vals.push(slot);
+                scoped = true;
                 continue;
             }
             let x = self.read_local(b)?;
@@ -102,6 +112,7 @@ impl FnLower<'_> {
         }));
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
+        f.scoped = scoped;
         let id = self.b.m.add_func(f);
         let _ = lam;
         self.cx.queue.push(Job {
@@ -1351,6 +1362,7 @@ pub(crate) fn build_lambda(
     let file = m.add_file(job.hir.data.file.as_str());
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
+    b.func_mut().scoped = proto.scoped;
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();

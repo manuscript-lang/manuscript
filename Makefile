@@ -5,7 +5,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check stdlib-bench
+.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench
 
 setup: tools
 
@@ -16,7 +16,7 @@ doctor:
 	HUGO="$(HUGO)" sh scripts/doctor.sh
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check lint repo-check unit docs-check licenses-check
+verify: check lint repo-check bench-check unit docs-check licenses-check
 
 verify-full: verify conform e2e book-check dist-check
 
@@ -99,6 +99,12 @@ dist-check: dist
 agent-bench-check: build
 	PATH="$(dir $(RELEASE_MS)):$$PATH" python3 bench/agent/run.py oracle
 	python3 -m unittest discover -s bench/agent/tests
+
+# Type-checks every benchmark project so the suites cannot rot unnoticed.
+bench-check: build
+	@for t in $$(find bench/perf -name ms.toml | sort); do \
+		(cd $$(dirname $$t) && "$(RELEASE_MS)" check ms.toml) || exit 1; \
+	done
 
 stdlib-bench: build
 	MS="$(RELEASE_MS)" bench/perf/stdlib-bench.sh $(BENCHREPEATS) $(BENCHFILTER)

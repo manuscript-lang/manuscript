@@ -1,6 +1,6 @@
 from "./src/main.ms" import insertion_sort
 from "@std/test/property.ms" import check, ints, lists
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 
 # Each property runs on 100 generated lists. A failure prints a shrunk counterexample and a seed.
 test "sorting keeps every element":

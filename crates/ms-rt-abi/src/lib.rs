@@ -587,6 +587,8 @@ pub mod symbols {
     /// `u8` at this offset of the block: non-zero when a stop request (SIGINT, SIGTERM) is
     /// pending and not shielded.
     pub const ISOLATE_HDR_CANCEL: i64 = 8;
+    /// `u8` at this offset of the block: non-zero while a guard is open on the task.
+    pub const ISOLATE_HDR_GUARDED: i64 = 9;
     pub const DESC_INT: &str = "msrt_desc_int";
     pub const DESC_FLOAT: &str = "msrt_desc_float";
     pub const DESC_FLOAT32: &str = "msrt_desc_float32";

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import ListBuilder
 from "@std/collections.ms" import MapBuilder
 from "@std/collections.ms" import SetBuilder

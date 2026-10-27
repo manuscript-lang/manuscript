@@ -1,7 +1,7 @@
 # conform: tags=interpolation,modules,records,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/best-practices.md:28
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/json.ms" import parse, JsonError
 
 type Config:

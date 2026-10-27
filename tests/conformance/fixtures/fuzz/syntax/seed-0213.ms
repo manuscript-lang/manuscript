@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let l1 = [11, 17, (-21)]
@@ -18,7 +18,7 @@ export def main() -> Int:
     let s3 = "42"
     say(f"s3 = [{s3}]")
 
-    let l4 = [8]
+    let _l4 = [8]
     let s5 = "alpha"
     say(f"s5 = [{s5}]")
 

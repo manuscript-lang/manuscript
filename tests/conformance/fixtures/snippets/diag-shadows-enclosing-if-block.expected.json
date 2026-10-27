@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-shadows-enclosing-if-block.ms:7:13: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-shadows-enclosing-if-block.ms:7:13: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 7 |         let x = 2\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

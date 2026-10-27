@@ -61,7 +61,7 @@ Increment the counter before any `continue` that would skip its update.
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/collections.ms" import range_by
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)
@@ -90,7 +90,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 def total(values: Map[String, Int]) -> Int:
     var sum = 0
     for entry in values:
-        let {key, value} = entry
+        let {key: _key, value} = entry
         sum += value
     return sum
 ```
@@ -114,7 +114,7 @@ impl Iterator[Int] for Countdown:
         if self.left == 0:
             return none
         self.left -= 1
-        return some(self.left + 1)
+        return self.left + 1
 
 export def main() -> Int:
     for n in Countdown(3):

@@ -2,7 +2,7 @@
 # conform: phase=test
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/test.ms" import expect_equal, expect_fault
 
 type Config:
     name: String
@@ -70,7 +70,7 @@ test "a read while the payload is locked faults":
     with var held = lock(shared):
         let message = try expect_fault(
             lambda () -> Unit:
-                let length = shared.get().values.length()
+                let _length = shared.get().values.length()
         )
         try expect_equal(message, "shared value is in use")
         held.value.bump()

@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-fixed-callback-mismatch-1-named.ms:6:25: type: cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/diag-fixed-callback-mismatch-1-named.ms:6:31: type: expected Callable[[<invalid>], Int], found Callable[[Int], String] (in argument 'callback' of apply)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-fixed-callback-mismatch-1-named.ms:6:25: type: cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | def exercise() -> Unit: apply(source)\n   |                         ^\n<DIR>/diag-fixed-callback-mismatch-1-named.ms:6:31: type: expected Callable[[<invalid>], Int], found Callable[[Int], String] (in argument 'callback' of apply)\n   |\n 6 | def exercise() -> Unit: apply(source)\n   |                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -3,7 +3,7 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import nanoseconds, sleep
 
 def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
@@ -28,7 +28,7 @@ def produce(ch: Channel[Int, Unit]) -> Int:
 
 def wait_for_one(ch: Channel[Int, Unit]) -> Int:
     var c = ch
-    if let got = c.receive():
+    if let _got = c.receive():
         return 1
 
     return 2

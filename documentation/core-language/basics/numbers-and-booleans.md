@@ -33,7 +33,7 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 - Conversions between existing values use the [methods below](#numeric-conversion). A literal can take a sized type from context, as described below.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
-- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). A literal never changes kind: `let x: Float32 = 1` is rejected.
+- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`let x: Float32 = 0.1 + 0.2`, `let y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `let x: Float32 = 1` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
@@ -69,12 +69,12 @@ def sized() -> Unit:
 | Receiver | Signature/result |
 | --- | --- |
 | `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
-| `Float` | `truncate_to_int() -> Optional[Int]` |
 | Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_int()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
-| `Float`, `Float32` | `to_float32()`, `to_float64()`, `to_float()` (`Float32` only), `truncate_to_int() -> Optional[Int]` |
-| `Decimal` | `to_float() -> Float`; `truncate_to_int() -> Optional[Int]` |
+| `Float` | `to_float32() -> Optional[Float32]` (none when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() -> Optional[Int]` |
+| `Float32` | `to_float32()`, `to_float64()`, `to_float()`, `truncate_to_int() -> Optional[Int]` |
+| `Decimal`, `BigInt` | `to_float() -> Optional[Float]` (none beyond the `Float` range); `truncate_to_int() -> Optional[Int]` |
 
-`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float and Decimal→Float round once to nearest binary64, ties to even. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
 `abs()` and `sign()` are methods on every integer and float type, so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. `math.min`, `math.max`, `List.min` and `List.max` already accept any `Comparable` width.
 
@@ -150,7 +150,7 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 ```manuscript
 from "@std/decimal.ms" import Decimal
 from "@std/math.ms" import NumberError
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def amount_text() -> Result[String, NumberError]:
     let subtotal = 19.99d * 3d

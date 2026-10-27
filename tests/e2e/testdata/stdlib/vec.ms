@@ -1,5 +1,5 @@
-from "@std/testing.ms" import expect_close, expect_equal, expect_fault, expect_true
-from "@std/vec.ms" import Matrix, add_to, argmax, axpy, dot, dot_at, fast_sum, multiply_by, rms_norm, scale, silu, softmax
+from "@std/test.ms" import expect_close, expect_equal, expect_fault, expect_true
+from "@std/vec.ms" import Matrix, add_to, argmax, axpy, dot, dot_at, fast_sum, matvec, matvec_rows, multiply_by, rms_norm, scale, silu, softmax
 
 # Small integers times a power of two, so every partial sum is exact in binary32 and the vector
 # kernels must match a left-to-right loop exactly whatever order they add in.
@@ -10,7 +10,7 @@ def ramp(n: Int, step: Int) -> List[Float32]:
     return out
 
 def f32s(values: List[Float]) -> List[Float32]:
-    return values.map(lambda x: x.to_float32())
+    return values.map(lambda x: x.to_float32().get(0.0))
 
 def scalar_dot(
     a: List[Float32],
@@ -68,7 +68,7 @@ test "argmax and the softmax maximum find the largest element":
         softmax(var xs, n)
         try expect_close(xs[n / 2].to_float(), 1.0, 1e-6)
 
-    let nan: Float32 = (0.0 / 0.0).to_float32()
+    let nan: Float32 = (0.0 / 0.0).to_float32().get(0.0)
     var with_nan = ramp(20, 1)
     with_nan[3] = nan
     softmax(var with_nan, 20)
@@ -111,14 +111,14 @@ test "matvec multiplies by each row":
     let x = ramp(cols, 7)
     let m = Matrix(rows: rows, cols: cols, data: data.clone())
     var out = List[Float32]()
-    m.matvec(x, var out)
+    matvec(m, x, var out)
     try expect_equal(out.length(), rows)
     for r in 0..rows:
         try expect_equal(out[r], scalar_dot(data, r * cols, x, 0, cols))
-    m.matvec_rows(x, 4, var out)
+    matvec_rows(m, x, 4, var out)
     try expect_equal(out.length(), 4)
 
-    let _ = try expect_fault(lambda (): m.matvec(ramp(36, 1), var out))
+    let _ = try expect_fault(lambda (): matvec(m, ramp(36, 1), var out))
 
 test "a large matvec split across threads matches a scalar loop":
     # 1501 x 1001 is past the size where matvec uses the compute pool; odd sizes leave a short
@@ -131,11 +131,11 @@ test "a large matvec split across threads matches a scalar loop":
     var out = List[Float32]()
 
     for _round in 0..3:
-        m.matvec(x, var out)
+        matvec(m, x, var out)
         try expect_equal(out.length(), rows)
         for r in 0..rows:
             try expect_equal(out[r], scalar_dot(data, r * cols, x, 0, cols))
 
-    m.matvec_rows(x, 1100, var out)
+    matvec_rows(m, x, 1100, var out)
     try expect_equal(out.length(), 1100)
     try expect_equal(out[1099], scalar_dot(data, 1099 * cols, x, 0, cols))

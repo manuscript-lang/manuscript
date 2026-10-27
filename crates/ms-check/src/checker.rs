@@ -115,12 +115,20 @@ pub struct Program {
     /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
     /// the ownership pass ran (every program that type checks).
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
+    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
+    pub implicit_closes: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
     /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
+    /// identity. Filled together with `borrows`.
+    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
+    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
+    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -910,7 +918,11 @@ impl Checker {
                     self.declare_self(&s.ty());
                     self.operation_variables(s.ty().id, m);
                     let ty = self.signature(&m.func.params, Some(&m.func.result));
-                    self.check_self_use(&ty, m.pos);
+                    // An inherent `impl` is desugared to a synthesized interface that no
+                    // interface value can reach, so `Self` may appear anywhere in its methods.
+                    if !d.decl().synthetic {
+                        self.check_self_use(&ty, m.pos);
+                    }
                     def.operations.borrow_mut().push(Operation {
                         name: m.func.name,
                         ty,
@@ -934,6 +946,12 @@ impl Checker {
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
                 for method in &i.methods {
+                    for param in method.func.params.iter().filter(|p| p.mutable) {
+                        self.type_error(
+                            param.pos,
+                            "an interface operation cannot take a `var` parameter, only a `var` receiver; return the new value, or pass a type that holds the state",
+                        );
+                    }
                     for param in &method.func.params {
                         let Some(default) = &param.default else {
                             continue;
@@ -1141,6 +1159,11 @@ impl Checker {
                     self.unknown_type = true;
                     return invalid();
                 };
+                if name == "Self" && args.is_empty() && !base.args.is_empty() {
+                    // `Self` in an implementation already carries the receiver's arguments.
+                    self.m().facts_mut().type_refs.insert(t.id, base.clone());
+                    return base;
+                }
                 let mut r = (*base).clone();
                 r.args = args.iter().map(|a| self.resolve(Some(a))).collect();
                 let (arity, required) = match &base.def {
@@ -1332,6 +1355,10 @@ impl Checker {
             }
         }
         if let Some(receiver) = receiver {
+            self.scope
+                .types
+                .borrow_mut()
+                .insert(n("Self"), receiver.clone());
             let b = self.bind(n("self"), receiver, false, d.pos());
             self.m()
                 .facts_mut()
@@ -1473,7 +1500,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
             );
             return;
         }

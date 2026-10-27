@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/io.ms" import stderr
 from "@std/process.ms" import commands
 from "@std/io.ms" import stdout
@@ -20,5 +20,5 @@ export def main() -> Int:
     match exercise():
         case ok(status): return status
         case error(cause):
-            let written = stderr().write(f"{cause.message()}\n")
+            let _written = stderr().write(f"{cause.message()}\n")
             return 1

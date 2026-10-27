@@ -534,11 +534,29 @@ pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: *const TypeDes
             index_fault("List.swap", v.len, j);
         }
         if a != b {
-            core::ptr::swap_nonoverlapping(
+            swap_slots(
                 elem(v, d, a as usize),
                 elem(v, d, b as usize),
                 d.size as usize,
             );
+        }
+    }
+}
+
+/// Exchanges two distinct slots of `size` bytes, a word at a time when the size allows: a byte-wise swap of a runtime length costs tens of instructions per slot.
+#[inline]
+unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
+    // SAFETY: caller contract; the slots are distinct, so they do not overlap.
+    unsafe {
+        if !size.is_multiple_of(8) {
+            core::ptr::swap_nonoverlapping(a, b, size);
+            return;
+        }
+        let (a, b) = (a as *mut u64, b as *mut u64);
+        for k in 0..size / 8 {
+            let t = a.add(k).read_unaligned();
+            a.add(k).write_unaligned(b.add(k).read_unaligned());
+            b.add(k).write_unaligned(t);
         }
     }
 }
@@ -1448,6 +1466,31 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of(
     }
 }
 
+/// `index_of_byte(value, start)`: first offset at or after `start` holding `value`.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
+    b: *const VecVal,
+    value: i64,
+    start: i64,
+    out: *mut i64,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = bslice(b);
+        if !(0..=255).contains(&value) || start > s.len() as i64 {
+            return 0;
+        }
+        let from = start.max(0) as usize;
+        match s[from..].iter().position(|&x| x as i64 == value) {
+            Some(i) => {
+                *out = (from + i) as i64;
+                1
+            }
+            None => 0,
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_last_index_of(
     b: *const VecVal,
@@ -1712,6 +1755,33 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *m
     }
 }
 
+/// `decode_utf8_range(start, end)`: like `decode_utf8` over `[start, end)` without copying the range
+/// first; bounds outside `0 <= start <= end <= length()` fault.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
+    b: *const VecVal,
+    start: i64,
+    end: i64,
+    out: *mut StrVal,
+) -> u8 {
+    // SAFETY: caller contract.
+    unsafe {
+        let s = bslice(b);
+        if start < 0 || end < start || end > s.len() as i64 {
+            fault::fault_fmt(format_args!(
+                "Bytes.decode_utf8_range: bounds {start}..{end} are outside 0..{}",
+                s.len()
+            ));
+        }
+        let part = &s[start as usize..end as usize];
+        if core::str::from_utf8(part).is_err() {
+            return 0;
+        }
+        out.write(from_bytes(part));
+        1
+    }
+}
+
 /// `BytesBuilder.append(value)`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
@@ -1785,12 +1855,53 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         // One byte (a character or punctuation) is the common append and needs no call:
         // this path keeps no registers live across a call, so it has no frame.
         let v = &mut *b;
-        if (*s).len() == 1 && v.len < v.cap {
+        let n = (*s).len();
+        if n == 1 && v.len < v.cap {
             *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
             v.len += 1;
             return;
         }
+        // Text that fits is copied in place: a short word as overlapping word moves, longer
+        // text with a single `memcpy`. Only a full buffer reaches the growth path.
+        if v.cap - v.len >= n {
+            let src = string::bytes(s).as_ptr();
+            let dst = v.ptr.add(v.len);
+            if n <= 16 {
+                copy_short(src, dst, n);
+            } else {
+                core::ptr::copy_nonoverlapping(src, dst, n);
+            }
+            v.len += n;
+            return;
+        }
         append_slow(b, s);
+    }
+}
+
+/// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
+/// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
+#[inline(always)]
+pub(crate) unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+    // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
+    unsafe {
+        if n >= 8 {
+            let head = src.cast::<u64>().read_unaligned();
+            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            dst.cast::<u64>().write_unaligned(head);
+            dst.add(n - 8).cast::<u64>().write_unaligned(tail);
+        } else if n >= 4 {
+            let head = src.cast::<u32>().read_unaligned();
+            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            dst.cast::<u32>().write_unaligned(head);
+            dst.add(n - 4).cast::<u32>().write_unaligned(tail);
+        } else if n > 0 {
+            let first = *src;
+            let mid = *src.add(n / 2);
+            let last = *src.add(n - 1);
+            *dst = first;
+            *dst.add(n / 2) = mid;
+            *dst.add(n - 1) = last;
+        }
     }
 }
 
@@ -1873,6 +1984,21 @@ pub unsafe extern "C-unwind" fn msrt_hash_list(v: *const VecVal, d: *const TypeD
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn copy_short_matches_slice_copy() {
+        let src: Vec<u8> = (1..=16).collect();
+        for n in 0..=16usize {
+            let mut dst = [0u8; 20];
+            // SAFETY: `src` and `dst` hold at least `n` bytes and do not overlap.
+            unsafe { copy_short(src.as_ptr(), dst.as_mut_ptr().add(2), n) };
+            assert_eq!(&dst[2..2 + n], &src[..n], "length {n}");
+            assert!(
+                dst[..2].iter().chain(&dst[2 + n..]).all(|&b| b == 0),
+                "length {n} overran"
+            );
+        }
+    }
 
     #[test]
     fn strbuilder_freeze_adopts_long_buffers() {

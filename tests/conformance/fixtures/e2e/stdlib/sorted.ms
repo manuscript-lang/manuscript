@@ -1,6 +1,6 @@
 # conform: tags=optional,stdlib-sorted,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-from "@std/testing.ms" import expect_equal, expect_true, expect_false
+from "@std/test.ms" import expect_equal, expect_true, expect_false
 from "@std/sorted.ms" import SortedMap, SortedSet
 from "@std/collections.ms" import range
 

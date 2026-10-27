@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/json.ms" import parse, JsonError, JsonLimits
 from "@std/encoding.ms" import EncodingError, hex_decode
 
@@ -61,11 +61,11 @@ impl Error for TaggedError[T]:
         return "tagged failure"
 
 def decode_generically() -> Result[Unit, Error]:
-    let bytes = try hex_decode(text: "zz", max_bytes: 10)
+    let _bytes = try hex_decode(text: "zz", max_bytes: 10)
     return ok(())
 
 def propagate_generic() -> Result[Unit, Error]:
-    let completed = try decode_generically()
+    let _completed = try decode_generically()
     return ok(())
 
 def describe_error(cause: Error) -> String:
@@ -168,7 +168,7 @@ def failed_read() -> Result[Unit, ReadError]:
     )
 
 def propagate_read() -> Result[Unit, ReadError]:
-    let completed = try failed_read()
+    let _completed = try failed_read()
     return ok(())
 
 test "domain error fields survive propagation without a wrapper":
@@ -202,7 +202,7 @@ def read_failure(cause: ReadError) -> Result[Unit, ReadError]:
     return error(cause)
 
 def general_read(cause: ReadError) -> Result[Unit, Error]:
-    let completed = try read_failure(cause)
+    let _completed = try read_failure(cause)
     return ok(())
 
 def forward_read(cause: ReadError) -> Result[Unit, Error]:
@@ -212,7 +212,7 @@ def generic_failure[E: Error](cause: E) -> Result[Unit, E]:
     return error(cause)
 
 def generic_propagation[E: Error](cause: E) -> Result[Unit, Error]:
-    let completed = try generic_failure(cause)
+    let _completed = try generic_failure(cause)
     return ok(())
 
 def describe_direct(cause: Error) -> String:
@@ -384,7 +384,7 @@ def check_missing_file() -> Result[Unit, Error]:
                 stat_cause.message(), "filesystem: file or directory not found"
             )
 
-    let removed = try fs.remove(path: directory, recursive: False)
+    let _removed = try fs.remove(path: directory, recursive: False)
     return ok(())
 
 test "missing file diagnostics preserve the filesystem case":

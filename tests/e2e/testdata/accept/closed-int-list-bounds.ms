@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def filled_sum() -> Int:
     var values: List[Int] = []
@@ -97,21 +97,21 @@ test "closed list reads preserve defaults and evaluation order":
     visits | try expect_equal([7, 0, 8, 9])
 
 test "recursive appends keep overflow checks":
-    (try expect_fault(lambda: let ignored = self_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = self_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "list prefixes and Optional defaults keep overflow checks":
-    (try expect_fault(lambda: let ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = optional_overflow(none))) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = optional_overflow(none))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = optional_overflow(some(0)))) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = optional_overflow(some(0)))) | try expect_contains(
         "Int overflow;"
     )
 
@@ -154,7 +154,7 @@ def scalar_append_overflow() -> Int:
 def match_length() -> Int:
     var values: List[Int] = []
 
-    let ignored = match some(1):
+    let _ignored = match some(1):
         case some(n):
             values.append(n)
             n
@@ -169,14 +169,14 @@ def singleton(var values: List[Int]) -> List[Int]:
 def default_length() -> Int:
     var values: List[Int] = []
     let callback = lambda (value: List[Int] = singleton(var values)) -> Int: value.length()
-    let ignored = callback()
+    let _ignored = callback()
     return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":
-    (try expect_fault(lambda: let ignored = reordered_default_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = reordered_default_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = scalar_append_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = scalar_append_overflow())) | try expect_contains(
         "Int overflow;"
     )
 

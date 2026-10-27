@@ -21,8 +21,8 @@ def map_key() -> Result[Int, Error]:
     return ok(m.length())
 
 export def main() -> Int:
-    let a = list()
-    let b = nested()
-    let c = map_value()
-    let d = map_key()
+    let _a = list()
+    let _b = nested()
+    let _c = map_value()
+    let _d = map_key()
     return 0

@@ -26,7 +26,7 @@ impl ReadStream for BytesSource:
 
         let piece = (self.data.slice(self.offset, self.offset + size)).get()
         self.offset += size
-        return ok(some(piece))
+        return ok(piece)
 
 # Streams the bytes in `data` in chunks of at most `chunk_bytes` (default 64 KiB).
 # A non-positive chunk size makes reads fail with InvalidInput.
@@ -47,7 +47,7 @@ impl ReadStream for MappedStream:
 
             if let bytes = chunk:
                 let mapped = self.transform(bytes)
-                if mapped.length() > 0: return ok(some(mapped))
+                if mapped.length() > 0: return ok(mapped)
             else:
                 return ok(none)
 
@@ -76,11 +76,11 @@ impl ReadStream for LimitedStream:
         var size = available
         if wanted < self.remaining: size = wanted
 
-        let chunk = try self.input.read(some(size))
+        let chunk = try self.input.read(size)
 
         if let bytes = chunk:
             self.remaining -= bytes.length()
-            return ok(some(bytes))
+            return ok(bytes)
 
         return ok(none)
 
@@ -109,7 +109,7 @@ impl ReadStream for ConcatStream:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
-            if let bytes = chunk: return ok(some(bytes))
+            if let bytes = chunk: return ok(bytes)
 
             self.inputs[self.index].close()
             self.index += 1
@@ -133,7 +133,7 @@ impl ReadStream for TeeStream:
 
         if let bytes = chunk:
             try self.sink.write_bytes(bytes)
-            return ok(some(bytes))
+            return ok(bytes)
 
         return ok(none)
 

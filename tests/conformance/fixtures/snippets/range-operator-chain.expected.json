@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/range-operator-chain.ms:5:18: parse: a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/range-operator-chain.ms:5:18: parse: a range cannot chain; write one 'start..end', or use range_by for a step from \"@std/collections.ms\"\n   |\n 5 |     for i in 0..2..4:\n   |                  ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

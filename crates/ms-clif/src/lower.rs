@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -180,7 +180,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
-            Leaf::F64 | Leaf::F32 => self.b.ins().f64const(0.0),
+            Leaf::F64 => self.b.ins().f64const(0.0),
+            Leaf::F32 => self.b.ins().f32const(0.0),
             Leaf::V4 | Leaf::V8 => {
                 let z = self.b.ins().f32const(0.0);
                 self.b.ins().splat(leaf_type(l), z)
@@ -211,8 +212,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             (0..4).map(|k| op(self, e[k], e[k + 4])).collect()
         };
         let (t0, t1) = (op(self, s[0], s[2]), op(self, s[1], s[3]));
-        let r = op(self, t0, t1);
-        self.b.ins().fpromote(types::F64, r)
+        op(self, t0, t1)
     }
 
     fn zeros(&mut self, ty: Ty) -> Vs {
@@ -237,9 +237,36 @@ impl<'a, 'm> Lower<'a, 'm> {
         r
     }
 
+    /// `v` as the float type `to`: runtime and native signatures carry `Float32` as `f64`, and
+    /// the binary32 value converts exactly both ways.
+    fn float_as(&mut self, v: Value, to: ir::Type) -> Value {
+        let from = self.b.func.dfg.value_type(v);
+        if from == to || !from.is_float() || !to.is_float() {
+            v
+        } else if to == types::F64 {
+            self.b.ins().fpromote(types::F64, v)
+        } else {
+            self.b.ins().fdemote(types::F32, v)
+        }
+    }
+
     fn call_id(&mut self, id: FuncId, args: &[Value]) -> Vs {
         let r = self.fref(id);
-        let i = self.b.ins().call(r, args);
+        let sig = self.b.func.dfg.ext_funcs[r].signature;
+        let want: Vec<ir::Type> = self.b.func.dfg.signatures[sig]
+            .params
+            .iter()
+            .map(|p| p.value_type)
+            .collect();
+        let args: Vec<Value> = args
+            .iter()
+            .enumerate()
+            .map(|(k, a)| match want.get(k) {
+                Some(t) => self.float_as(*a, *t),
+                None => *a,
+            })
+            .collect();
+        let i = self.b.ins().call(r, &args);
         self.b.inst_results(i).to_vec()
     }
 
@@ -292,7 +319,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
-            Leaf::F32 => self.b.ins().fpromote(types::F64, v),
             _ => v,
         }
     }
@@ -301,7 +327,6 @@ impl<'a, 'm> Lower<'a, 'm> {
     fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
-            Leaf::F32 => self.b.ins().fdemote(types::F32, v),
             _ => v,
         };
         self.b.ins().store(flags(), v, ptr, off);
@@ -1620,6 +1645,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 vec![self.iconst(v)]
             }
+            Op::FConst if res_ty == Some(Ty::FLOAT32) => {
+                vec![self.b.ins().f32const(inst.imm.float() as f32)]
+            }
             Op::FConst => vec![self.b.ins().f64const(inst.imm.float())],
             Op::BConst => {
                 let Imm::Bool(v) = inst.imm else {
@@ -1719,13 +1747,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::Conv => {
                 let x = self.a(inst, 0)[0];
-                let round = res_ty == Some(Ty::FLOAT32) && f.ty(inst.args[0]) != Ty::FLOAT32;
-                if round {
-                    let narrow = self.b.ins().fdemote(types::F32, x);
-                    vec![self.b.ins().fpromote(types::F64, narrow)]
+                let to = if res_ty == Some(Ty::FLOAT32) {
+                    types::F32
                 } else {
-                    vec![x]
-                }
+                    types::F64
+                };
+                vec![self.float_as(x, to)]
             }
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
@@ -1745,7 +1772,6 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::LanesSplat => {
                 let x = self.a(inst, 0)[0];
-                let x = self.b.ins().fdemote(types::F32, x);
                 self.lane_leaves()
                     .into_iter()
                     .map(|l| self.b.ins().splat(leaf_type(l), x))
@@ -1807,8 +1833,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::F32Round => vec![{
                 let x = self.a(inst, 0)[0];
-                let narrow = self.b.ins().fdemote(types::F32, x);
-                self.b.ins().fpromote(types::F64, narrow)
+                self.float_as(x, types::F32)
             }],
             Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1953,14 +1978,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::I2F => vec![{
                 let x = self.a(inst, 0)[0];
                 if res_ty == Some(Ty::FLOAT32) {
-                    let narrow = self.b.ins().fcvt_from_sint(types::F32, x);
-                    self.b.ins().fpromote(types::F64, narrow)
+                    self.b.ins().fcvt_from_sint(types::F32, x)
                 } else {
                     self.b.ins().fcvt_from_sint(types::F64, x)
                 }
             }],
             Op::F2IOpt => {
                 let v = self.a(inst, 0)[0];
+                let v = self.float_as(v, types::F64);
                 let lo = self.b.ins().f64const(-9223372036854775808.0);
                 let hi = self.b.ins().f64const(9223372036854775808.0);
                 let ge = self.b.ins().fcmp(FloatCC::GreaterThanOrEqual, v, lo);
@@ -2015,7 +2040,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => vec![v[0]],
                 }
             }
-            Op::AltGet => {
+            Op::AltGet | Op::AltTake => {
                 let Imm::AltField(a, c, i) = inst.imm else {
                     unreachable!()
                 };
@@ -2038,6 +2063,45 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::AltRelease => {
+                let Imm::AltMask(a, c, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let case = self.alt_fields(a)[c as usize].clone();
+                let v = self.a(inst, 0);
+                let boxed = match &self.g.lay.shape(ty).alt {
+                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
+                    _ => None,
+                };
+                // Drop the payload fields that were not moved out, then free the block.
+                for (k, (fty, idx)) in case.iter().enumerate() {
+                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
+                        continue;
+                    }
+                    let fv: Vs = match &boxed {
+                        Some(block) => {
+                            let lay = mem_layout(block);
+                            idx.iter()
+                                .map(|j| {
+                                    self.b.ins().load(
+                                        leaf_type(block[*j]),
+                                        flags(),
+                                        v[0],
+                                        lay.offsets[*j] as i32,
+                                    )
+                                })
+                                .collect()
+                        }
+                        None => idx.iter().map(|j| v[*j]).collect(),
+                    };
+                    self.drop_value(*fty, &fv);
+                }
+                if boxed.is_some() {
+                    self.free(v[0]);
+                }
+                vec![]
             }
             Op::AltUnbox => {
                 let Imm::AltField(a, c, i) = inst.imm else {
@@ -2464,11 +2528,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
-                let slot = self.spill(&v, &leaves);
                 let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                let r = self.fref(thunk);
-                let fa = self.b.ins().func_addr(types::I64, r);
-                self.rt_call("msrt_cleanup_push", &[fa, slot])
+                if !self.g.m.funcs[c.index()].unwind_only {
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    self.rt_call("msrt_cleanup_push", &[fa, slot])
+                } else {
+                    // A closer that only acts while a guarded task unwinds: with no guard open the
+                    // registration is skipped, and its handle 0 makes the discard a no-op.
+                    let hdr = self.task_hdr();
+                    let guarded =
+                        self.b
+                            .ins()
+                            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
+                    let none = self.iconst(0);
+                    let push = self.b.create_block();
+                    let join = self.b.create_block();
+                    self.b.append_block_param(join, types::I64);
+                    self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
+                    self.b.switch_to_block(push);
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
+                    self.b.ins().jump(join, &[h.into()]);
+                    self.b.switch_to_block(join);
+                    self.b.block_params(join).to_vec()
+                }
             }
             Op::CleanupRun => {
                 let h = self.a(inst, 0)[0];
@@ -2494,6 +2581,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                     vec![]
                 }
             }
+        };
+        let out = match res_ty {
+            Some(t) => {
+                let leaves = self.g.lay.leaves(t);
+                if leaves.len() == out.len() {
+                    out.into_iter()
+                        .zip(leaves)
+                        .map(|(v, l)| self.float_as(v, leaf_type(l)))
+                        .collect()
+                } else {
+                    out
+                }
+            }
+            None => out,
         };
         self.set(inst, out);
     }
@@ -2951,6 +3052,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.string_eq_inline(f, inst);
         }
+        if self.g.m.externs[e.index()].name == "msrt_cleanup_discard" {
+            // Handle 0 is a registration skipped for lack of a guard.
+            let h = self.a(inst, 0)[0];
+            self.if_then(h, |s| {
+                s.call_extern_plain(f, inst);
+            });
+            return vec![];
+        }
         self.call_extern_plain(f, inst)
     }
 
@@ -2978,6 +3087,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                     params.push(Leaf::I64);
                     Vec::new()
                 };
+                // Native code takes and returns a `Float32` as `f64`.
+                let wide = |ls: &mut Vec<Leaf>| {
+                    for l in ls.iter_mut().filter(|l| **l == Leaf::F32) {
+                        *l = Leaf::F64;
+                    }
+                };
+                wide(&mut params);
+                let mut rets = rets;
+                wide(&mut rets);
                 let sig = self.g.sig(&params, &rets);
                 let id = self
                     .g
@@ -3006,6 +3124,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             && args.len() == 2
             && self.g.lay.leaves(ret_ty).is_empty()
         {
+            if let Some(&lit) = self.str_lits.get(&inst.args[1].index()) {
+                let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
+                if (1..=16).contains(&bytes.len()) {
+                    return self.strbuilder_append_literal(id, args[0], args[1], &bytes);
+                }
+            }
             return self.strbuilder_append(id, args[0], args[1]);
         }
         if def.name == "msrt_bytes_append"
@@ -3038,6 +3162,70 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             self.load_leaves(out, 0, &leaves)
         }
+    }
+
+    /// `StringBuilder.append` of a literal of 1 to 16 bytes with room to spare is a few constant
+    /// stores and a length bump. The bytes are known here, so no length decode or copy loop
+    /// remains; a full buffer calls the runtime.
+    fn strbuilder_append_literal(
+        &mut self,
+        id: FuncId,
+        builder: Value,
+        text: Value,
+        bytes: &[u8],
+    ) -> Vs {
+        let n = bytes.len();
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_LEN_OFFSET as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
+        let next = self.b.ins().iadd_imm_s(len, n as i64);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let store = self.b.create_block();
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        self.b.ins().brif(room, store, &[], slow, &[]);
+        self.b.switch_to_block(store);
+        let data = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
+        let at = self.b.ins().iadd(data, len);
+        // Overlapping stores of the widest width that fits cover every length without a loop.
+        let unaligned = MemFlagsData::new().with_notrap();
+        let word = |from: usize, w: usize| {
+            let mut x = 0u64;
+            for (i, b) in bytes[from..from + w].iter().enumerate() {
+                x |= (*b as u64) << (8 * i);
+            }
+            x as i64
+        };
+        let (w, ty) = match n {
+            8..=16 => (8, types::I64),
+            4..=7 => (4, types::I32),
+            2..=3 => (2, types::I16),
+            _ => (1, types::I8),
+        };
+        let first = self.b.ins().iconst(ty, word(0, w));
+        self.b.ins().store(unaligned, first, at, 0);
+        if n > w {
+            let last = self.b.ins().iconst(ty, word(n - w, w));
+            self.b.ins().store(unaligned, last, at, (n - w) as i32);
+        }
+        self.b
+            .ins()
+            .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(slow);
+        self.call_id(id, &[builder, text]);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(join);
+        Vec::new()
     }
 
     /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length

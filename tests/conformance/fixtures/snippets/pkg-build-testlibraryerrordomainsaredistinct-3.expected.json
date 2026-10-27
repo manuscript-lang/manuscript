@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:4:16: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:5:12: resolution: unknown binding JsonError; add: from \"@std/json.ms\" import JsonError\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:4:16: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def wrong() -> JsonError:\n   |                ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:5:12: resolution: unknown binding JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 5 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

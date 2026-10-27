@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-generic-callback-arity.ms:6:30: type: callback mismatch: the function takes 2 parameters but this position expects 1; pass a function with 1 parameter, or wrap it in a lambda that supplies the rest\n<DIR>/diag-generic-callback-arity.ms:6:30: type: expected Callable[[Int], Int], found Callable[[Int, Int], Int] (in argument 'callback' of apply)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-generic-callback-arity.ms:6:30: type: callback mismatch: the function takes 2 parameters but this position expects 1; pass a function with 1 parameter, or wrap it in a lambda that supplies the rest\n   |\n 6 | def exercise() -> Int: apply(source, 3)\n   |                              ^\n<DIR>/diag-generic-callback-arity.ms:6:30: type: expected Callable[[Int], Int], found Callable[[Int, Int], Int] (in argument 'callback' of apply)\n   |\n 6 | def exercise() -> Int: apply(source, 3)\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

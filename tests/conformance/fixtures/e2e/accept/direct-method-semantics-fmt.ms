@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-method-semantics.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 interface Shape:
     def area() -> Int
@@ -81,7 +81,7 @@ test "direct methods":
         case error(cause): return fail(cause.message())
 
     match tried(rect: rect, limit: 11):
-        case ok(value): return fail("expected failure")
+        case ok(_value): return fail("expected failure")
         case error(cause): (cause.message() == "too big") | try expect_true
 
     var log = List[String]()

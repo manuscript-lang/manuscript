@@ -83,7 +83,7 @@ export def bench_conc() -> Unit:
                 var n = 0
 
                 for i in range(0, 20000):
-                    t.channel.send(i)
+                    let _ = t.channel.send(i)
                     n += t.channel.receive().get(none).get(0)
 
                 t.channel.close()
@@ -93,7 +93,7 @@ export def bench_conc() -> Unit:
 def produce(ch: Channel[Int, Unit]) -> Int:
     var c = ch
     for i in range(0, 100000):
-        c.send(i)
+        let _ = c.send(i)
     return 0
 
 def echo(ch: Channel[Int, Int]) -> Int:
@@ -104,6 +104,6 @@ def echo(ch: Channel[Int, Int]) -> Int:
         if r.is_none():
             break
 
-        c.send(r.get(0))
+        let _ = c.send(r.get(0))
 
     return 0

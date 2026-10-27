@@ -58,7 +58,7 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     std::fs::create_dir_all(&dir).unwrap();
     let source = "type Color:\n    case Red\n    case Green\n\n\
         def pick() -> Color:\n    return Red()\n\n\
-        def main() -> Int:\n    let fixed = 1\n    fixed = 2\n    let a = Some(1)\n    let b = true\n    let d = 1.5d\n    return fixed\n";
+        def main() -> Int:\n    let fixed = 1\n    fixed = 2\n    let _a = Some(1)\n    let _b = true\n    let _d = 1.5d\n    return fixed\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
@@ -70,8 +70,8 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     );
     assert!(fixed.contains("return Red\n"), "{fixed}");
     assert!(fixed.contains("var fixed = 1"), "{fixed}");
-    assert!(fixed.contains("let a = some(1)"), "{fixed}");
-    assert!(fixed.contains("let b = True"), "{fixed}");
+    assert!(fixed.contains("let _a = some(1)"), "{fixed}");
+    assert!(fixed.contains("let _b = True"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -91,19 +91,61 @@ fn fix_wraps_expressions_to_convert_types() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let source = "def say(text: String) -> Unit:\n    return ()\n\n\
-        export def main() -> Int:\n    let n = 3\n    let m = 4\n    let a: Float = n\n    let b: Float = n + m\n    let d: Float = 7\n    let e = 1.5 * n\n    say(text: n + 1)\n    return 0\n";
+        export def main() -> Int:\n    let n = 3\n    let m = 4\n    let _a: Float = n\n    let _b: Float = n + m\n    let _d: Float = 7\n    let _e = 1.5 * n\n    say(text: n + 1)\n    return 0\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
-    assert!(fixed.contains("let a: Float = n.to_float()"), "{fixed}");
+    assert!(fixed.contains("let _a: Float = n.to_float()"), "{fixed}");
     assert!(
-        fixed.contains("let b: Float = (n + m).to_float()"),
+        fixed.contains("let _b: Float = (n + m).to_float()"),
         "{fixed}"
     );
-    assert!(fixed.contains("let d: Float = 7.0"), "{fixed}");
+    assert!(fixed.contains("let _d: Float = 7.0"), "{fixed}");
     assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
     assert!(fixed.contains("say(text: f\"{n + 1}\")"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn lint_json_carries_the_fix_that_fix_applies() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-json-fix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "def present(value: Int) -> Optional[Int]:\n    return some(value)\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+
+    let (status, text) = ms(&["lint", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("\"code\": \"MSL113\""), "{text}");
+    assert!(text.contains("\"fix\""), "{text}");
+    assert!(text.contains("\"replacement\": \"value\""), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+
+    let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("return value\n"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn directory_symlink_named_like_source_is_skipped() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-dir-link-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("real")).unwrap();
+    std::os::unix::fs::symlink("real", dir.join("linked.ms")).unwrap();
+
+    for args in [
+        &["fmt", ".", "--check", "--json"][..],
+        &["check", ".", "--json"],
+        &["lint", ".", "--json"],
+    ] {
+        let (status, text) = ms(args, &dir);
+        assert_eq!(status, Some(0), "{args:?}: {text}");
+        assert!(!text.contains("is a directory"), "{args:?}: {text}");
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

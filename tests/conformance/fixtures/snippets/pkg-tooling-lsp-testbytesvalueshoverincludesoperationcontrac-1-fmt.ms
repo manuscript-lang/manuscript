@@ -4,5 +4,5 @@
 from "@std/bytes.ms" import Bytes
 
 def extract(data: Bytes) -> List[Int]:
-    let bound: Callable[[], List[Int]] = data.values
+    let _bound: Callable[[], List[Int]] = data.values
     return data.values()

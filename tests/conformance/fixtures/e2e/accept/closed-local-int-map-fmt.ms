@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,lists,maps,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
-from "@std/testing.ms" import expect_contains, expect_equal, expect_false, expect_fault, expect_true
+from "@std/test.ms" import expect_contains, expect_equal, expect_false, expect_fault, expect_true
 
 def effect(var visits: List[Int], value: Int) -> Int:
     visits.append(value)
@@ -40,7 +40,7 @@ test "closed map arguments retain written evaluation order":
     values.get(3).get() | try expect_equal(30)
 
 test "missing local lookups keep Optional faults":
-    (try expect_fault(lambda: let ignored = missing())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = missing())) | try expect_contains(
         "Optional.get"
     )
 

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok
+from "@std/test.ms" import expect_equal, expect_false, expect_ok
 from "./support/http.ms" import http_result
 from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
@@ -12,10 +12,10 @@ from "@std/net.ms" import Listener, Connection
 from "./support/certificates.ms" import certificate, private_key
 
 def hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = try exchange.send_headers(
+    let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let written = (try http_result(exchange.write("secure")))
+    let _written = (try http_result(exchange.write("secure")))
     return ok(())
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -32,7 +32,7 @@ test "TLS certificate parsing verification hostname and expiration":
     )
 
     let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
-    let verified = (
+    let _verified = (
         verify_certificates(
             chain_pem: certificate(), roots_pem: certificate(),
             server_name: "stdlib.test", now: now
@@ -105,10 +105,10 @@ test "HTTPS trusts only the explicitly supplied local test root":
                 )
 
 def report_protocol(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = try exchange.send_headers(
+    let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let written = (try http_result(exchange.write(exchange.protocol())))
+    let _written = (try http_result(exchange.write(exchange.protocol())))
     return ok(())
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
@@ -191,6 +191,12 @@ test "raw TLS listeners and clients handshake and report negotiated details":
             try expect_equal(info.alpn, "http/1.1")
             try expect_false(not info.verified)
             try expect_equal(info.peer_certificates.length(), 1)
+            try expect_false(info.peer_certificates[0].length() < 100)
+
+            var more = info.peer_certificates.clone()
+            more.append(more[0].clone())
+            try expect_equal(more.length(), 2)
+            try expect_equal(more[1].length(), more[0].length())
 
         let served = try group.results()
         try expect_equal(served[0], 1)
@@ -216,7 +222,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         )
         try expect_false(refused.is_ok())
 
-        let served = try group.results()
+        let _served = try group.results()
 
     listener.get().close()
     with let plain = try net.listen("127.0.0.1:0"):

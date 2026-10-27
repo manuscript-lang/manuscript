@@ -165,7 +165,7 @@ pub fn call_modes(
                 None => {
                     // A native function keeps function arguments it is given, except the
                     // testing helpers and the compute pool, which run them at once.
-                    let runs_now = s.module.as_str() == "@std/testing.ms"
+                    let runs_now = s.module.as_str() == "@std/test.ms"
                         || s.native.as_str() == "extern:msrt_parallel_rows";
                     let params = s.ty().params.clone();
                     CallModes {
@@ -328,17 +328,18 @@ fn native_method_modes(
             let Some(p) = label(i).and_then(|l| params.iter().find(|p| p.name == l)) else {
                 return ParamMode::Borrow;
             };
-            if p.ty.kind == Kind::Function {
+            // A mutator stores the elements it is given, a function among them
+            // (`fs.append(lambda ...)` on a list of callables).
+            let stored = p.ty.kind == Kind::Variable
+                || same(&p.ty, receiver)
+                || receiver.args.iter().any(|a| same(a, &p.ty));
+            if p.ty.kind == Kind::Function && !(mutator && stored) {
                 return if callbacks_borrowed {
                     ParamMode::Borrow
                 } else {
                     ParamMode::Consume
                 };
             }
-            // A mutator stores the elements it is given.
-            let stored = p.ty.kind == Kind::Variable
-                || same(&p.ty, receiver)
-                || receiver.args.iter().any(|a| same(a, &p.ty));
             if (mutator && stored) || method.native.as_str() == "shared/put" {
                 ParamMode::Consume
             } else {

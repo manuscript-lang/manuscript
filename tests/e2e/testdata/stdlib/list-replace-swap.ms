@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Entry:
     name: String
@@ -42,3 +42,16 @@ test "replace takes a scalar optional slot":
     var slots: List[Optional[Int]] = [1, 2]
     try expect_equal(slots.replace(1, none), some(2))
     try expect_equal(slots, [some(1), none])
+
+test "swap exchanges scalars, counting negative indexes from the end":
+    var numbers = [1, 2, 3, 4]
+    numbers.swap(0, 3)
+    try expect_equal(numbers, [4, 2, 3, 1])
+    numbers.swap(-3, -2)
+    try expect_equal(numbers, [4, 3, 2, 1])
+    numbers.swap(1, 1)
+    try expect_equal(numbers, [4, 3, 2, 1])
+
+    var flags = [True, False]
+    flags.swap(0, -1)
+    try expect_equal(flags, [False, True])

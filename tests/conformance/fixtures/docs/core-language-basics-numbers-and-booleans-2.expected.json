@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:10:27: type: expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 7 |     let precise: Decimal = 1e3d\n   |                  ^\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:10:27: type: expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n    |\n 10 |     let mismatch: Float = 1\n    |                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

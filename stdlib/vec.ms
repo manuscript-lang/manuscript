@@ -1,7 +1,7 @@
 # Fast numeric kernels over `List[Float32]`: dot products, sums, element-wise updates and
 # matrix-vector products, the building blocks of neural-network inference.
 #
-# The reductions (`dot`, `dot_at`, `fast_sum`, `Matrix.matvec`, and the maximum inside `softmax`)
+# The reductions (`dot`, `dot_at`, `fast_sum`, `matvec`, and the maximum inside `softmax`)
 # use the CPU's vector instructions. Each binary carries a baseline copy and, on x86-64, an AVX2
 # and FMA copy of these kernels, and runs the best one the machine supports. A `matvec` of more
 # than about 250,000 multiply-adds also splits its rows across every core. Nothing needs to be
@@ -14,16 +14,16 @@
 # tolerance (`expect_close`).
 #
 # ```manuscript
-# from "@std/vec.ms" import Matrix, dot
+# from "@std/vec.ms" import Matrix, dot, matvec
 #
 # let w = Matrix(rows: 2, cols: 3, data: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
 # var out = List[Float32]()
-# w.matvec([1.0, 1.0, 1.0], var out)   # out is [6.0, 15.0]
+# matvec(w, [1.0, 1.0, 1.0], var out)  # out is [6.0, 15.0]
 # let d = dot([1.0, 2.0], [3.0, 4.0])  # 11.0
 # ```
 from "@std/core.ms" import panic
 from "@std/lanes.ms" import Lanes
-from "@std/math.ms" import exp, sqrt
+from "@std/math.ms" import exp, infinity, sqrt
 
 extern def msrt_lanes_splat(value: Float32) -> Lanes
 
@@ -247,7 +247,7 @@ export def softmax(var values: List[Float32], count: Int) -> Unit:
     var i = 0
 
     while i < count:
-        let e = exp((values[i] - top).to_float()).to_float32()
+        let e = narrow(exp((values[i] - top).to_float()))
         values[i] = e
         total += e
         i += 1
@@ -264,7 +264,7 @@ export def silu(var values: List[Float32]) -> Unit:
 
     while i < values.length():
         let x = values[i].to_float()
-        values[i] = (x / (1.0 + exp(-x))).to_float32()
+        values[i] = narrow(x / (1.0 + exp(-x)))
         i += 1
 
 # Writes the RMS-normalized `values`, scaled element-wise by `weight`, into `out`, which is resized
@@ -278,7 +278,7 @@ export def rms_norm(
         panic(f"rms_norm: lengths differ ({n} and {weight.length()})")
 
     let mean = dot_at(values, 0, values, 0, n).to_float() / n.to_float()
-    let inv = (1.0 / sqrt(mean + epsilon.to_float())).to_float32()
+    let inv = narrow(1.0 / sqrt(mean + epsilon.to_float()))
     resize(var out, n)
 
     var i = 0
@@ -286,6 +286,18 @@ export def rms_norm(
     while i < n:
         out[i] = weight[i] * (values[i] * inv)
         i += 1
+
+# `x` rounded to the nearest `Float32`, overflowing to an infinity like Float32 arithmetic does.
+def narrow(x: Float) -> Float32:
+    if let y = x.to_float32():
+        return y
+
+    let big = narrow_infinity()
+
+    return big if x > 0.0 else - big
+
+def narrow_infinity() -> Float32:
+    return infinity().to_float32().get(0.0)
 
 # A copy of `values[i]`, so a `var` can start from it without borrowing the list.
 def element(values: List[Float32], i: Int) -> Float32:
@@ -307,40 +319,42 @@ export type Matrix:
     # The elements, row by row; its length must be `rows * cols`.
     data: List[Float32]
 
-impl Matrix:
-    # Writes `self * x` into `out`, which is resized to `rows`: `out[r]` is the dot product of row
-    # `r` with `x`. Faults when `x` does not have `cols` elements or `data` is too short.
-    def matvec(x: List[Float32], var out: List[Float32]) -> Unit:
-        self.matvec_rows(x, self.rows, var out)
+# Writes `m * x` into `out`, which is resized to `m.rows`: `out[r]` is the dot product of row `r`
+# with `x`. Faults when `x` does not have `m.cols` elements or `m.data` is too short.
+export def matvec(m: Matrix, x: List[Float32], var out: List[Float32]) -> Unit:
+    matvec_rows(m, x, m.rows, var out)
 
-    # Like `matvec`, but for the first `count` rows only; `out` is resized to `count`. Useful
-    # when only part of a preallocated matrix is filled, such as an attention cache.
-    def matvec_rows(x: List[Float32], count: Int, var out: List[Float32]) -> Unit:
-        if x.length() != self.cols:
-            panic(
-                f"matvec: vector has {x.length()} elements, matrix has {self.cols} columns"
-            )
-        if count < 0 or count > self.rows:
-            panic(f"matvec: {count} rows requested, matrix has {self.rows}")
-        resize(var out, count)
+# Like `matvec`, but for the first `count` rows only; `out` is resized to `count`. Useful when only
+# part of a preallocated matrix is filled, such as an attention cache.
+export def matvec_rows(
+    m: Matrix,
+    x: List[Float32],
+    count: Int,
+    var out: List[Float32]
+) -> Unit:
+    if x.length() != m.cols:
+        panic(f"matvec: vector has {x.length()} elements, matrix has {m.cols} columns")
+    if count < 0 or count > m.rows:
+        panic(f"matvec: {count} rows requested, matrix has {m.rows}")
+    resize(var out, count)
 
-        let cols = self.cols
-        check_range("matvec", self.data.length(), 0, count * cols)
+    let cols = m.cols
+    check_range("matvec", m.data.length(), 0, count * cols)
 
-        # Rows are independent, so the result does not depend on how the pool splits them. Each
-        # chunk does at least `PARALLEL_WORK` multiply-adds.
-        msrt_parallel_rows(
-            count,
-            PARALLEL_WORK / max_int(cols, 1),
-            lambda (start: Int, end: Int):
-                var r = start
+    # Rows are independent, so the result does not depend on how the pool splits them. Each
+    # chunk does at least `PARALLEL_WORK` multiply-adds.
+    msrt_parallel_rows(
+        count,
+        PARALLEL_WORK / max_int(cols, 1),
+        lambda (start: Int, end: Int):
+            var r = start
 
-                while r < end:
-                    msrt_float32_store_unchecked(
-                        out, r, dot_at(self.data, r * cols, x, 0, cols)
-                    )
-                    r += 1
-        )
+            while r < end:
+                msrt_float32_store_unchecked(
+                    out, r, dot_at(m.data, r * cols, x, 0, cols)
+                )
+                r += 1
+    )
 
 # The fewest multiply-adds `matvec` hands to one thread: waking the pool costs a few
 # microseconds, a small part of what one core needs for this many.

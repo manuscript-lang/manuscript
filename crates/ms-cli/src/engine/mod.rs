@@ -157,6 +157,7 @@ pub(crate) struct Failure {
 impl Failure {
     /// The terminal report: `file:line:col: phase: message` per diagnostic, then a count.
     pub fn report(&self, io: &mut Io) -> i32 {
+        let mut sources = crate::snippet::Sources::default();
         for issue in self.in_source_order() {
             let mut issue = issue.clone();
             if !self.source_root.is_empty()
@@ -165,7 +166,14 @@ impl Failure {
             {
                 issue.file = format!("{}/{}", self.source_root, issue.file).into();
             }
-            let _ = writeln!(io.stderr, "{issue}");
+            let end = issue.end.map(|e| (e.line as usize, e.column as usize));
+            let excerpt = sources.excerpt(
+                &issue.file,
+                issue.pos.line as usize,
+                issue.pos.column as usize,
+                end,
+            );
+            let _ = writeln!(io.stderr, "{issue}{excerpt}");
         }
         let count = self.diagnostics.len();
         let _ = writeln!(
@@ -208,13 +216,16 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         message: issue.message.clone(),
         position: position(issue.pos),
         end: issue.end.map(position),
-        fix: issue.fix.as_ref().map(|fix| {
-            Json::object()
-                .with("position", position(fix.pos).to_json())
-                .with("end", position(fix.end).to_json())
-                .with("replacement", Json::str(&fix.replacement))
-        }),
+        fix: issue.fix.as_ref().map(|fix| fix_json(&position, fix)),
     }
+}
+
+/// The JSON `fix` object of an edit, placed with `position`.
+pub(crate) fn fix_json(position: &dyn Fn(Pos) -> Position, fix: &ms_driver::DiagnosticFix) -> Json {
+    Json::object()
+        .with("position", position(fix.pos).to_json())
+        .with("end", position(fix.end).to_json())
+        .with("replacement", Json::str(&fix.replacement))
 }
 
 /// A checked and lowered program.

@@ -10,7 +10,7 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `w
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square(n: Int) -> Int:
     return n * n
@@ -37,13 +37,13 @@ test "a group collects its results in start order":
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(entry, timeout: some(nanoseconds(...)))` limits one task. `TaskGroup[T](timeout: some(nanoseconds(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
+A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds(...))` limits one task. `TaskGroup[T](timeout: nanoseconds(...))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/time.ms" import nanoseconds, sleep
 
 def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
@@ -52,7 +52,7 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
 
 test "a task that passes its timeout is cancelled":
     with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: some(nanoseconds(10000000)))
+        let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
@@ -72,7 +72,7 @@ Values reach a task by being captured or sent on its channel, and come back as m
 ```manuscript
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     var c = ch

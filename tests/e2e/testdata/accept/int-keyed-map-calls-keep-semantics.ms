@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def lookup(m: Map[Int, String], key: Int) -> String:
     match m.get(key: key):

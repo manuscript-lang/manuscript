@@ -78,20 +78,32 @@ pub(crate) fn is_plain_literal(e: &Expr) -> bool {
     }
 }
 
+/// Whether `e` is a plain literal or arithmetic over plain literals only, and if so whether its
+/// literals are fractional. Mixed integer and fractional literals have no common kind.
+fn literal_tree_fractional(e: &Expr) -> Option<bool> {
+    match &e.kind {
+        ExprKind::Number(t) if !t.ends_with('d') => Some(t.contains(['.', 'e', 'E'])),
+        ExprKind::Unary {
+            op: UnaryOp::Neg,
+            operand,
+        } => literal_tree_fractional(operand),
+        ExprKind::Binary {
+            op: BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem,
+            left,
+            right,
+        } => {
+            let l = literal_tree_fractional(left)?;
+            (l == literal_tree_fractional(right)?).then_some(l)
+        }
+        _ => None,
+    }
+}
+
 /// The sized number type a literal operand takes from the other operand, if any. Only a literal
-/// of the same kind adopts it, so a mismatch keeps the ordinary operand-type diagnostic.
+/// (or arithmetic over literals) of the same kind adopts it, so a mismatch keeps the ordinary
+/// operand-type diagnostic.
 fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
-    if !is_plain_literal(literal) {
-        return None;
-    }
-    let mut e = literal;
-    while let ExprKind::Unary { operand, .. } = &e.kind {
-        e = operand;
-    }
-    let ExprKind::Number(text) = &e.kind else {
-        return None;
-    };
-    let fractional = text.contains(['.', 'e', 'E']);
+    let fractional = literal_tree_fractional(literal)?;
     let sized_int = int_bits(other).is_some() && other.id != "Int";
     let sized_float = float_bits(other).is_some() && other.id != "Float";
     ((!fractional && sized_int) || (fractional && sized_float)).then_some(other)
@@ -312,7 +324,7 @@ impl Checker {
                 return self.infer_unary(e, *op, operand, expected, i);
             }
             ExprKind::Binary { op, left, right } => {
-                return self.infer_binary(e, *op, left, right, i);
+                return self.infer_binary(e, *op, left, right, expected, i);
             }
         }
         finish_info(i)
@@ -918,7 +930,10 @@ impl Checker {
             i.ty = literal.ty.clone();
             return finish_info(i);
         }
-        let v = self.expression(operand, None);
+        let hint = expected
+            .filter(|_| op == UnaryOp::Neg && matches!(operand.kind, ExprKind::Binary { .. }))
+            .filter(|t| literal_hint(operand, t).is_some());
+        let v = self.expression(operand, hint);
         i.no_return = v.no_return;
         let vt = v.t();
         match op {
@@ -993,6 +1008,7 @@ impl Checker {
         op: BinaryOp,
         left: &Expr,
         right: &Expr,
+        expected: Option<&Ty>,
         mut i: Info,
     ) -> Info {
         if matches!(op, BinaryOp::Eq | BinaryOp::Ne) && (is_none_name(left) || is_none_name(right))
@@ -1009,7 +1025,22 @@ impl Checker {
             return i;
         }
         // An unsuffixed literal beside a sized number takes that number's type: `x / 2`, `x == 0`.
-        let (a, b) = if is_plain_literal(left) && !is_plain_literal(right) {
+        // Arithmetic over literals alone takes the expected sized number type: `let x: Float32 = 0.1 + 0.2`.
+        let arithmetic = matches!(
+            op,
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
+        );
+        let (a, b) = if let Some(hint) = expected
+            .filter(|_| arithmetic)
+            .filter(|t| literal_hint(left, t).is_some() && literal_hint(right, t).is_some())
+        {
+            (
+                self.expression(left, Some(hint)),
+                self.expression(right, Some(hint)),
+            )
+        } else if literal_tree_fractional(left).is_some()
+            && literal_tree_fractional(right).is_none()
+        {
             let b = self.expression(right, None);
             let bt = b.t();
             (self.expression(left, literal_hint(left, &bt)), b)

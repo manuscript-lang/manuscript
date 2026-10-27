@@ -40,7 +40,7 @@ def fetch_thread() -> Unit:
             for r in group.results().get():
                 total += r
 
-        ch.send(total)
+        let _ = ch.send(total)
 
 # Spreads `conns` connections over `threads` worker threads and sums their requests.
 def run_threads(url: String, conns: Int, secs: Int, threads: Int) -> Int:
@@ -51,7 +51,7 @@ def run_threads(url: String, conns: Int, secs: Int, threads: Int) -> Int:
 
         for i in range(0, threads):
             var worker = group.spawn(fetch_thread).get(none)
-            worker.channel.send(f"{url} {conns / threads} {secs}")
+            let _ = worker.channel.send(f"{url} {conns / threads} {secs}")
             workers.append(worker)
 
         for i in range(0, threads):

@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/list-go-range.ms
-from "@std/testing.ms" import expect_false
+from "@std/test.ms" import expect_false
 
 def replace[T](var values: List[T], value: T) -> Unit:
     values.set(1, value)
@@ -191,7 +191,6 @@ test "clone slice and nested values keep their own contracts":
 test "function values can replace later backing elements":
     var seen: List[Int] = []
     let original = lambda () -> Int: 7
-    let replacement = lambda () -> Int: 9
     let twin = lambda () -> Int: 7
     var functions = [original, twin]
     let clone = functions.clone()
@@ -200,7 +199,7 @@ test "function values can replace later backing elements":
         functions.clone().for_each(
             lambda value:
                 seen.append(value())
-                functions.fill(replacement, 0, 2)
+                functions.fill(lambda () -> Int: 9, 0, 2)
         )
     )
 

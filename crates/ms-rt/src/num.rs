@@ -489,6 +489,19 @@ pub unsafe extern "C-unwind" fn msrt_float_truncate_to_int(v: f64, out: *mut i64
     1
 }
 
+/// `Float.to_float32()`: present flag, value through `out` only when present. A finite value
+/// too large for binary32 is absent (Float32 payloads are stored as 4 bytes); NaN and infinities convert unchanged.
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_float_to_float32(v: f64, out: *mut f32) -> u8 {
+    let narrowed = v as f32;
+    if v.is_finite() && narrowed.is_infinite() {
+        return 0;
+    }
+    // SAFETY: the caller passes a writable out.
+    unsafe { *out = narrowed };
+    1
+}
+
 /// `Float.compare`: a total order in which `-0.0 == 0.0` and NaN is equal to itself and sorts last.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_float_compare(a: f64, b: f64) -> i64 {

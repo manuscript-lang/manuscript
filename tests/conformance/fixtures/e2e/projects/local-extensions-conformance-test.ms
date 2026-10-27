@@ -1,7 +1,7 @@
 # conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "./first.ms" import first_view, first_method, first_generic, first_resource
 from "./second.ms" import second_view, second_method, second_generic, second_resource
 from "./domain.ms" import Item, Resource

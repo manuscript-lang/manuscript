@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,generics,lists,match,modules,mutation,optional,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/bounded-int-arithmetic.ms
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def identity[T](value: T) -> T: return value
 
@@ -112,26 +112,26 @@ test "bounded scalar sums preserve values":
     optional_overflow(flag: False) | try expect_equal(9223372036854775807)
 
 test "intermediate carry updates still fault":
-    (try expect_fault(lambda: let ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "counter phases and optional updates still fault":
-    (try expect_fault(lambda: let ignored = after_step_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = after_step_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = optional_overflow(flag: True))) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = optional_overflow(flag: True))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(lambda: let ignored = descending_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = descending_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "statement expression writes discard scalar bounds":
-    (try expect_fault(lambda: let ignored = expression_overflow())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = expression_overflow())) | try expect_contains(
         "Int overflow;"
     )
 

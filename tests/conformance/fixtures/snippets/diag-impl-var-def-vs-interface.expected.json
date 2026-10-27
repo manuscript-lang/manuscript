@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-impl-var-def-vs-interface.ms:9:13: type: implementation of put is declared var def but Sink declares it def; an operation that changes its receiver is declared `var def` in the interface too\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-impl-var-def-vs-interface.ms:9:13: type: implementation of put is declared var def but Sink declares it def; an operation that changes its receiver is declared `var def` in the interface too\n   |\n 9 |     var def put(x: Int) -> Unit:\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,14 +1,14 @@
 # conform: tags=closures,control-flow,formatter,lists,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-18.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
     return transform(value)
 
 test "function suite boundaries":
     var calls: List[Int] = []
-    let dormant = lambda () -> Unit:
+    let _dormant = lambda () -> Unit:
         calls.append(1)
 
     let grouped = apply(

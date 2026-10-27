@@ -28,3 +28,33 @@ Manuscript is ahead of V8 on every row here, and three further runs on the same 
 | Runtime builds the tree while scanning; SSE2 scans | 1.0-1.3x | 2.2x | 0.85-1.0x | #1209 |
 | Exactly sized reserved maps | 1.05-1.08x | 2.0-2.5x | 1.13-1.44x | #1210 |
 | Bulk object fill, cheaper tree drop | 1.13-1.16x | 2.0-2.3x | 1.2-1.5x | #1212 |
+
+## 2026-10-27: against serde_json, and the writer
+
+linux/amd64, four shared cores (a slower machine than the table above; compare only within this section), Node v22.22.0. serde_json 1.x `Value` (`from_slice`, `to_vec`, release) measured in the same process protocol: warm-up, then the median of at least five runs over one second.
+
+| document | operation | serde_json MB/s | Manuscript before | Manuscript after |
+|---|---|---:|---:|---:|
+| twitter | parse | 137 | 465 | 451 |
+| twitter | stringify | 827 | 584 | 687 |
+| canada | stringify | 425 | 267 | 321 |
+| citm_catalog | stringify | 914 | 544 | 689 |
+
+Parse into a tree is about 3x serde_json's `Value`. Stringify was 1.4-1.7x behind; `number_text_valid` built a `Scanner` (and a `Doc`) for every number it wrote, and `Writer::quoted` paid a boundary check and a second scan per string. Validating numbers on the bytes and taking a single-copy path for strings with nothing to escape gives +18% to +27%. What remains is `Writer` call overhead per node (about 30 instructions per node in the generated walker plus the runtime call) and buffer growth.
+
+## 2026-10-27: serde_json harness, writer without revalidation (9f41921f + this change)
+
+linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x `Value` (`bench/perf/json/rust`: `from_slice`, `to_vec`, release). `sh bench/perf/json/run.sh`; MB/s is document size over time, so compare columns within a row. Callgrind counts are `ms ... quick <doc>:stringify` totals (one parse, one tree copy and six stringify runs).
+
+| document | operation | serde_json MB/s | Manuscript before | Manuscript after | after / serde_json |
+|---|---|---:|---:|---:|---:|
+| small | stringify | 593 | 384 | 393 | 0.66x |
+| twitter | stringify | 1420 | 693 | 933 | 0.66x |
+| citm_catalog | stringify | 2461 | 1508 | 1514 | 0.62x |
+| canada | stringify | 681 | 598 | 608 | 0.89x |
+| twitter | parse | 190 | 669 | 707 | 3.7x |
+| citm_catalog | parse | 365 | 873 | 850 | 2.3x |
+
+`Writer::finish` validated the whole output as UTF-8 again (12% of twitter stringify instructions) though only whole `&str`s and ASCII are appended; it now hands the buffer over unchecked. Strings under 24 bytes took a byte-at-a-time table walk; the vector scan with its word tail is cheaper at every length measured (twitter 70.96M → 57.59M instructions, citm 132.6M → 126.3M).
+
+Typed stringify of a tree is still 0.62-0.89x serde_json on this machine, so the gap in #1680 is narrowed, not closed: what remains is spread over the generated walker (`json_encode`, ~15% on citm), key and separator bookkeeping and per-value runtime calls.

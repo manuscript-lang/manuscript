@@ -1,7 +1,7 @@
 # conform: tags=interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:292
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Counter:
     value: Int

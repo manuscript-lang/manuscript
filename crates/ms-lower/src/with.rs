@@ -81,23 +81,35 @@ impl FnLower<'_> {
         if self.dead {
             return Ok(());
         }
-        let kind = self.closer_for(&cleanup, &binding.ty)?;
         self.push_scope();
-        // A `var` binding the block changes lives in memory, so a fault or cancellation closes
-        // its value at that moment and not the one it started with.
+        self.bind_closing(&binding, x, &cleanup)?;
+        self.flush_temps(mark);
+        let r = self.stmts(body);
+        self.pop_scope();
+        r
+    }
+
+    /// Binds `binding` to `x` and registers its close operation: a fault runs it through the
+    /// runtime's cleanup stack, and leaving the binding's scope closes the current value.
+    pub(crate) fn bind_closing(
+        &mut self,
+        binding: &ct::BindingRef,
+        x: crate::func::Val,
+        cleanup: &ct::MethodRef,
+    ) -> Result<(), Error> {
+        let kind = self.closer_for(cleanup, &binding.ty)?;
+        // A `var` binding that changes lives in memory, so a fault or cancellation closes its
+        // value at that moment and not the one it started with.
         if binding.mutable {
             self.slotted.insert(binding.uid);
         }
-        self.bind_local(&binding, x);
-        self.flush_temps(mark);
-        // A fault inside the block runs the close through the runtime's cleanup stack; leaving
-        // normally discards the entry and closes the current value.
+        self.bind_local(binding, x);
         let ty = self.locals[&binding.uid].ty;
         let slot = self.locals[&binding.uid].slot;
         let thunk = self.close_thunk(&kind, ty, slot.is_some());
         let registered = match slot {
             Some(ptr) => ptr,
-            None => self.read_local(&binding)?.v,
+            None => self.read_local(binding)?.v,
         };
         let handle = self
             .b
@@ -114,9 +126,7 @@ impl FnLower<'_> {
         if !scope.contains(&binding.uid) {
             scope.push(binding.uid);
         }
-        let r = self.stmts(body);
-        self.pop_scope();
-        r
+        Ok(())
     }
 
     fn closer_for(&mut self, cleanup: &ct::MethodRef, ty: &ct::Ty) -> Result<CloseKind, Error> {
@@ -169,7 +179,7 @@ impl FnLower<'_> {
     }
 
     /// The function the cleanup stack calls with the registered value.
-    fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
+    pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
         let key = match kind {
             CloseKind::Iface(i, k) => format!("close:iface{}:{k}:{in_slot}", i.0),
             CloseKind::Func { fid, writes_back } => {

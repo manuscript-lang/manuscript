@@ -31,14 +31,16 @@ fn unfinished_functions_do_not_swallow_constants_or_externs() {
 #[test]
 fn multiline_parameters_remain_continuations() {
     let file = Arc::from("recover.ms");
-    let function = "def valid(\nas : Int,\n) -> Int: return as\n";
-    ms_syntax::parser::parse(&file, function).unwrap();
-    for source in [function.to_string(), function.replace('\n', "\r\n")] {
-        let damaged = source.clone() + "def broken(\n";
-        let (module, diagnostics) = ms_syntax::parse_partial(&file, &damaged);
-        assert_eq!(module.decls.len(), 1);
-        assert_eq!(module.decls[0].pos.offset, 0);
-        assert_eq!(diagnostics.len(), 1);
-        assert_eq!(module.source.as_ref(), damaged);
+    for name in ["as", "from"] {
+        let function = format!("def valid(\n{name} : Int,\n) -> Int: return {name}\n");
+        ms_syntax::parser::parse(&file, &function).unwrap();
+        for source in [function.clone(), function.replace('\n', "\r\n")] {
+            let damaged = source.clone() + "def broken(\n";
+            let (module, diagnostics) = ms_syntax::parse_partial(&file, &damaged);
+            assert_eq!(module.decls.len(), 1);
+            assert_eq!(module.decls[0].pos.offset, 0);
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(module.source.as_ref(), damaged);
+        }
     }
 }

@@ -55,7 +55,7 @@ To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var
 ```manuscript
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Counter:
     values: List[Int]
@@ -99,6 +99,6 @@ A factory can return an open resource for its caller's `with`. A resource return
 | Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
 | Returns a resource registered in a local `with` block | A reference to the resource after that block has closed it. |
 
-Using a closed resource raises its runtime closed-state error. A `let` or `var` that holds a resource must be closed: bind it with `with`, call `close()` on it, or move it on (return it, pass it to a consuming parameter, or store it). Otherwise the checker rejects the binding as never closed. A resource made by another resource, such as a child of a `ProcessGroup`, is closed by its owner. Use after close is still a runtime error, and ownership transfer does not replace explicit resource cleanup.
+Using a closed resource raises its runtime closed-state error. A `let` or `var` that holds a resource and is never moved on is closed when its scope ends; move it on (return it, pass it to a consuming parameter, or store it) to hand the duty to a new owner. A resource made by another resource, such as a child of a `ProcessGroup`, is closed by its owner. Use after close is still a runtime error, and ownership transfer does not replace explicit resource cleanup.
 
 See [Closeable](../cleanup/closeable.md), [using with](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

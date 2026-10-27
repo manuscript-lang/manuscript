@@ -10,7 +10,9 @@
 
 ## Status
 
-Spike, 2026-10-27, against `0284e42`. Not implemented. Benchmark sources: `architecture/inference-spike/` in the project files (`matvec_f32.ms`, `matvec.c`, `dot_kernel.c`).
+Spike, 2026-10-27, against `0284e42`. Stage 1 Float32 register class implemented (below); the rest is not implemented.
+
+Stage 1a result, 2026-10-27, same machine and benchmark: `Float32` now lives in an f32 register in Cranelift and LLVM codegen (native boundaries still pass `f64`). Matvec on `List[Float32]` went from 0.43 to 3.7 to 4.0 GFLOPS at 768x288 (Float64 1.64, scalar C 1.84) and from 0.42 to 1.4 to 2.0 GFLOPS at 4096x4096 (three runs each, noisy). Reductions remain strictly ordered, so SIMD still needs the general design. Benchmark sources: `architecture/inference-spike/` in the project files (`matvec_f32.ms`, `matvec.c`, `dot_kernel.c`).
 
 ## What exists
 

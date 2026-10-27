@@ -2,7 +2,7 @@ from "@std/core.ms" import Closeable
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/time.ms" import nanoseconds, sleep
 
 type Counter:
@@ -34,6 +34,6 @@ test "a cancelled with var block closes the value it had reached":
     with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
         group.spawn(lambda ch: count_then_wait(mine))
 
-        let ignored = group.wait()
+        let _ignored = group.wait()
 
     log.get().clone() | try expect_equal([7])

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/io.ms" import IoError, LineReader, lines
 from "@std/core.ms" import Iterator
 from "./support/streams.ms" import MemoryStream

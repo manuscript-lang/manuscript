@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel
 from "@std/io.ms" import stdout
 from "@std/process.ms" import control
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_ok
 
 # A task cancelled while parked in a channel receive must release the channel end it holds in a
 # stack slot while it waits. Debug builds keep that value in the slot, so the unwind pass has to
@@ -21,7 +21,7 @@ def waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) -> Unit:
     var started = ready
     started.send(()).get()
     var end = ch
-    end.receive()
+    let _ignored = end.receive()
 
 def cancel_one(ch: Channel[Int, Int]) -> Result[Unit, Error]:
     with var group = TaskGroup[Unit]():

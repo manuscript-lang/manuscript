@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/json.ms" import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode
 from "@std/time.ms" import timestamp, nanoseconds, clock, Timestamp, Duration, Instant
@@ -612,3 +612,14 @@ test "JSON parse and stringify bound to a type argument pipe like the call":
     let items = "[{\"id\":1},{\"id\":2}]" | read
     try expect_equal(items, ok([BoundReading(1), BoundReading(2)]))
     try expect_equal(BoundReading(1) | write, ok("{\"id\":1}"))
+
+test "JSON Decimal fields out of range or inexact are InvalidData":
+    let invalid: Result[Price, JsonError] = error(JsonError.InvalidData)
+    let tiny = "{\"amount\":1e-9990,\"cents\":1}"
+    try expect_equal(parse[Price](tiny), invalid)
+
+    let huge = "{\"amount\":1e9990,\"cents\":1}"
+    try expect_equal(parse[Price](huge), invalid)
+
+    let wide = "{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1}"
+    try expect_equal(parse[Price](wide), invalid)

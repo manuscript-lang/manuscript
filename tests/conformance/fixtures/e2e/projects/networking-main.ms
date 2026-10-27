@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,generics,interpolation,match,modules,optional,stdlib-http,stdlib-io,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/networking/main.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/http.ms" import headers, HttpMethod, buffered
 from "@std/net.ms" import network
 from "@std/http.ms" import HttpError
@@ -46,7 +46,7 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         ):
             match try socket_result(result: socket.receive()):
                 case some(message):
-                    let sent = try socket_result(
+                    let _sent = try socket_result(
                         result: socket.send_bytes(
                             data: message.data, text: message.text
                         )
@@ -57,8 +57,8 @@ def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
         return ok(())
 
     let fields = headers()
-    let appended = try fields.append("X-Test", "stream".to_bytes())
-    let started = try exchange.send_headers(status: 200, headers: fields)
+    let _appended = try fields.append("X-Test", "stream")
+    let _started = try exchange.send_headers(status: 200, headers: fields)
 
     match exchange.write(data: "hello from streaming Manuscript"):
         case ok(_):
@@ -121,7 +121,7 @@ def exercise() -> Result[Unit, Error]:
         ):
             socket.subprotocol() | try expect_equal("echo")
 
-            let sent = try socket_result(result: socket.send(data: "echo me"))
+            let _sent = try socket_result(result: socket.send(data: "echo me"))
 
             match try socket_result(result: socket.receive()):
                 case some(message):

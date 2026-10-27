@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-map-callback-mismatch-named.ms:5:69: type: expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-map-callback-mismatch-named.ms:5:69: type: expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)\n   |\n 5 | def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)\n   |                                                                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

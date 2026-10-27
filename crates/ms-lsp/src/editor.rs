@@ -70,7 +70,20 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         c.end += 1;
     }
     c.prefix = String::from_utf8_lossy(&bytes[c.start..offset]).into_owned();
-    let tokens = text::editor_tokens(&d.text);
+    // Inside an f-string interpolation the cursor is in an ordinary expression:
+    // scan from that expression so the surrounding literal does not hide it.
+    let interpolation = interpolation_start(&d.text, offset);
+    let tokens: Vec<EditorToken> = match interpolation {
+        Some(from) => text::editor_tokens(&d.text[from..])
+            .into_iter()
+            .map(|t| EditorToken {
+                start: t.start + from,
+                end: t.end + from,
+                ..t
+            })
+            .collect(),
+        None => text::editor_tokens(&d.text),
+    };
     let mut before: Vec<EditorToken> = Vec::new();
     for t in &tokens {
         let in_comment_or_string = matches!(t.kind, EditorKind::Comment | EditorKind::Str);
@@ -86,6 +99,9 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         if t.end <= c.start {
             before.push(*t);
         }
+    }
+    if interpolation.is_some() {
+        c.literal = false;
     }
     if before.last().is_some_and(|t| t.is(b'.')) {
         c.member = true;
@@ -191,6 +207,70 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
     Ok(c)
 }
 
+/// The offset where the f-string interpolation containing `offset` begins
+/// (just after its `{`), or `None` when the cursor is outside every
+/// interpolation. Literals sit on one line, so only the cursor's line is read.
+fn interpolation_start(source: &str, offset: usize) -> Option<usize> {
+    #[derive(PartialEq)]
+    enum State {
+        Code,
+        Text,
+        FText,
+        Expr,
+        ExprText,
+    }
+    let bytes = source.as_bytes();
+    let line = bytes[..offset]
+        .iter()
+        .rposition(|&b| b == b'\n')
+        .map_or(0, |at| at + 1);
+    let (mut state, mut depth, mut from) = (State::Code, 0, 0);
+    let mut at = line;
+    while at < offset {
+        let b = bytes[at];
+        match state {
+            State::Code => match b {
+                b'#' => return None,
+                b'"' => {
+                    let prefixed = at > line
+                        && bytes[at - 1] == b'f'
+                        && (at - 1 == line || !text::identifier(bytes[at - 2]));
+                    state = if prefixed { State::FText } else { State::Text };
+                }
+                _ => {}
+            },
+            State::Text | State::ExprText => match b {
+                b'\\' => at += 1,
+                b'"' => {
+                    state = if state == State::Text {
+                        State::Code
+                    } else {
+                        State::Expr
+                    };
+                }
+                _ => {}
+            },
+            State::FText => match b {
+                b'\\' => at += 1,
+                b'"' => state = State::Code,
+                b'{' => {
+                    (state, depth, from) = (State::Expr, 0, at + 1);
+                }
+                _ => {}
+            },
+            State::Expr => match b {
+                b'"' => state = State::ExprText,
+                b'{' => depth += 1,
+                b'}' if depth == 0 => state = State::FText,
+                b'}' => depth -= 1,
+                _ => {}
+            },
+        }
+        at += 1;
+    }
+    (state == State::Expr).then_some(from)
+}
+
 fn text_between(source: &str, from: usize, to: usize) -> String {
     if from >= to {
         return String::new();
@@ -242,11 +322,15 @@ pub fn close_delimiters(source: &str, line: usize) -> String {
             stack.pop();
         }
     }
+    // Only the cursor's own declaration is repaired. An opener left unmatched
+    // by an earlier declaration is independent of it, and closing it here
+    // would damage the cursor's valid declaration.
+    let declaration = declaration_start(source, start);
     let mut tail = String::new();
     for t in stack.iter().rev() {
         // A later broken declaration must not close its opener on the cursor's
         // earlier, valid line and erase that declaration's scope.
-        if t.start <= end {
+        if t.start >= declaration && t.start <= end {
             tail.push(match t.kind {
                 EditorKind::Char(b'(') => ')',
                 EditorKind::Char(b'[') => ']',
@@ -255,6 +339,27 @@ pub fn close_delimiters(source: &str, line: usize) -> String {
         }
     }
     format!("{}{}{}", &source[..end], tail, &source[end..])
+}
+
+/// The start of the top-level declaration containing byte `at`: the nearest
+/// line at or before it that begins in column zero with something other than a
+/// comment or a closing delimiter.
+fn declaration_start(source: &str, at: usize) -> usize {
+    let mut start = at;
+    loop {
+        let line = &source[start..];
+        if line
+            .bytes()
+            .next()
+            .is_some_and(|b| !matches!(b, b' ' | b'\t' | b'\r' | b'\n' | b'#' | b')' | b']' | b'}'))
+        {
+            return start;
+        }
+        if start == 0 {
+            return 0;
+        }
+        start = source[..start - 1].rfind('\n').map_or(0, |i| i + 1);
+    }
 }
 
 /// A checked repaired snapshot with the captured scope of the marker.

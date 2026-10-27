@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-4.ms:7:1: type: impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-4.ms:7:1: type: impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'\n   |\n 7 | impl B:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

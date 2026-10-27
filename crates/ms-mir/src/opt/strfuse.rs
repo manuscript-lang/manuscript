@@ -24,6 +24,16 @@ const CONCAT: &str = "msrt_string_concat";
 const APPEND_STR: &str = "msrt_string_append";
 const INT_TO_STRING: &str = "msrt_int_to_string";
 
+/// Only the in-place `s = s + piece` append, which an unoptimized build needs to keep a loop that
+/// grows a string linear.
+pub fn run_append(m: &mut Module) -> bool {
+    let mut changed = false;
+    for fi in 0..m.funcs.len() {
+        changed |= append_in_place(m, fi);
+    }
+    changed
+}
+
 /// Runs the pass; returns whether anything changed.
 pub fn run(m: &mut Module) -> bool {
     let mut changed = false;

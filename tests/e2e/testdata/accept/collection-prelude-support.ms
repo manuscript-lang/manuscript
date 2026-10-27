@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 
 def slice(values: List[Int]) -> Result[List[Int], CollectionError]: values.slice(0, 1)
 

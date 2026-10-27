@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/math.ms" import from_int
 from "@std/string.ms" import compile
 from "@std/collections.ms" import filled, range_by, map_from_entries
@@ -275,7 +275,7 @@ test "string methods use Unicode scalars":
     "é🙂é".get(index: -1) | try expect_equal("é")
     "é🙂é".scalar_at(index: 1) | try expect_equal(128578)
 
-    let missing: Optional[String] = none
+    let _missing: Optional[String] = none
     "".get(index: 0, default: "?") | try expect_equal("?")
     "é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
     "é🙂é".index_of(value: "🙂") | try expect_equal(some(1))
@@ -307,7 +307,7 @@ test "string methods use Unicode scalars":
 
     match checked_expansion():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 
@@ -420,7 +420,7 @@ def verify_text_and_numbers() -> Result[Unit, Error]:
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 
@@ -475,7 +475,7 @@ def verify_bigint_and_regex() -> Result[Unit, Error]:
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(cause):
             return fail(message: cause.message())
 

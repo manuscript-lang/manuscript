@@ -10,7 +10,7 @@ A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS thre
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/channels.ms" import Channel, ChannelError
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 from "@std/workers.ms" import WorkerGroup, worker_channel
 
 def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
@@ -24,7 +24,7 @@ def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
 
 def squares() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let finished = serve(var ch)
+    let _finished = serve(var ch)
 
 test "a worker answers over its channel":
     with let group = WorkerGroup[Int, Int]():

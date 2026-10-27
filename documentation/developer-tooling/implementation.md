@@ -226,7 +226,6 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | --- | --- |
 | MSL001 | Trailing whitespace |
 | MSL002 | Missing final newline |
-| MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
 | MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
@@ -235,6 +234,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL110 | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | `while True` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
+| MSL113 | `some(x)` where a plain `x` is wrapped to the same Optional (argument, return, binding, assignment, field, default, element); `ms lint --fix` removes the `some(...)`. See [passing optional arguments](../core-language/types/optionals.md#passing-optional-arguments) |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 

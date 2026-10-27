@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,lists,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/list-items-cache.ms
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def grow(var values: List[Int]) -> Unit:
     values.append(values.length())
@@ -88,10 +88,10 @@ test "an out of range read or write inside a cached loop faults":
     let read = try expect_fault(
         lambda:
             var i = 0
-            var total = 0
+            var _total = 0
 
             while i < 5:
-                total += values.get(i)
+                _total += values.get(i)
                 i += 1
     )
 

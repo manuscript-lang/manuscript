@@ -67,6 +67,20 @@ fn escape_path(decoded: &[u8]) -> String {
     out
 }
 
+/// Escapes the bytes of a query that cannot appear in a request target (spaces, non-ASCII and the
+/// characters RFC 3986 excludes), leaving existing escapes and delimiters alone.
+fn escape_query(query: &str) -> String {
+    let mut out = String::with_capacity(query.len());
+    for &c in query.as_bytes() {
+        if c <= b' ' || c >= 0x7f || b"\"<>\\^`{|}".contains(&c) {
+            out.push_str(&format!("%{c:02X}"));
+        } else {
+            out.push(c as char);
+        }
+    }
+    out
+}
+
 fn valid_host_text(host: &str) -> bool {
     host.bytes()
         .all(|b| b > 0x20 && b != 0x7f && !b"\\^`{|}#?/@".contains(&b) && b != b'%')
@@ -124,7 +138,7 @@ pub fn parse(text: &str) -> Option<Url> {
         port: port.to_string(),
         authority: authority.to_string(),
         path,
-        query: query.to_string(),
+        query: escape_query(query),
         has_query,
     })
 }
@@ -267,6 +281,13 @@ mod tests {
         assert_eq!(parse("http://h").unwrap().request_uri(), "/");
         assert_eq!(parse("http://h?q").unwrap().request_uri(), "/?q");
         assert_eq!(parse("http://h/%41%2f").unwrap().path, "/%41%2f");
+        // A query cannot carry a space or non-ASCII text onto the request line.
+        assert_eq!(
+            parse("http://h/a?b c&d=\u{fc}%41|\"")
+                .unwrap()
+                .request_uri(),
+            "/a?b%20c&d=%C3%BC%41%7C%22"
+        );
     }
 
     #[test]

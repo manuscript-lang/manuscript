@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interpolation,modules,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/time.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/time.ms" import (
     timestamp,
     parse_timestamp,

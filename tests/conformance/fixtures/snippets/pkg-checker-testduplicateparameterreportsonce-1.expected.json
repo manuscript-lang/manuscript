@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testduplicateparameterreportsonce-1.ms:4:15: type: duplicate parameter or field a; each name may appear once, so rename one\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testduplicateparameterreportsonce-1.ms:4:15: type: duplicate parameter or field a; each name may appear once, so rename one\n   |\n 4 | def f(a: Int, a: Int) -> Int:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

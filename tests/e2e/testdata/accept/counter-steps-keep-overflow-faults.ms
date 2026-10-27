@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def count_up(limit: Int) -> Int:
     var i = limit - 3
@@ -46,13 +46,13 @@ test "counts reach the extreme without a fault":
 test "reassigned counter still faults":
     let message = try expect_fault(
         lambda:
-            let ignored = reset_then_step()
+            let _ignored = reset_then_step()
     )
     message | try expect_contains("Int overflow;")
 
 test "conditionally reassigned counter still faults":
     let message = try expect_fault(
         lambda:
-            let ignored = nested_reset(flag: True)
+            let _ignored = nested_reset(flag: True)
     )
     message | try expect_contains("Int overflow;")

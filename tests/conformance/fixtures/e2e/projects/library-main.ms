@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/process.ms" import control
 from "@std/process.ms" import arguments
 from "@std/random.ms" import entropy
@@ -22,7 +22,7 @@ def common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
             return error(cause)
 
 def exercise(path: String) -> Result[Unit, Error]:
-    let written = try common_result(
+    let _written = try common_result(
         result: filesystem().write_file(
             path: path, data: "hello", replace: False
         )
@@ -61,7 +61,7 @@ def exercise(path: String) -> Result[Unit, Error]:
     with let file = try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
     ):
-        let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
+        let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
         try expect_false(
             not (
                 try common_result(
@@ -70,8 +70,8 @@ def exercise(path: String) -> Result[Unit, Error]:
             )
         )
 
-        let synced = try common_result(result: file.sync())
-        let resized = try common_result(result: file.truncate(size: 3))
+        let _synced = try common_result(result: file.sync())
+        let _resized = try common_result(result: file.truncate(size: 3))
         (try common_result(result: file.stat())).size | try expect_equal(3)
 
     with let watcher = try common_result(
@@ -80,7 +80,7 @@ def exercise(path: String) -> Result[Unit, Error]:
             overflow: "error"
         )
     ):
-        let appended = try common_result(
+        let _appended = try common_result(
             result: filesystem().append_file(path: path, data: "!")
         )
         let events = try common_result(result: watcher.next())
@@ -106,7 +106,7 @@ def exercise(path: String) -> Result[Unit, Error]:
     let memory = try common_result(result: control().memory_usage())
     (memory.heap_system > 0) | try expect_true
 
-    let removed = try common_result(
+    let _removed = try common_result(
         result: filesystem().remove(path: path, recursive: False)
     )
     return ok(())

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-5.ms:7:36: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-5.ms:7:36: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n   |\n 7 | def first() -> Holder[Int]: Holder(f())\n   |                                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

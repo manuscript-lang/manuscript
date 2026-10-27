@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-trailing-sep.ms:5:14: parse: a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-trailing-sep.ms:5:14: parse: a digit separator goes between two digits; write e.g. 1_000_000 or 0xFF_FF\n   |\n 5 |     let x = 1_\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

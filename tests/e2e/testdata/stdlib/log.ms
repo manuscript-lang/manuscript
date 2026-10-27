@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true
 from "@std/log.ms" import (
     Transport,
     LogLevel,
@@ -251,7 +251,7 @@ impl Transport for CaptureTransport:
         return ok(())
 
     def close() -> Unit:
-        let marked = filesystem().write_file(f"{self.path}.closed", "closed", True)
+        let _marked = filesystem().write_file(f"{self.path}.closed", "closed", True)
 
 test "source transports receive complete records and close through their contract":
     let fs = filesystem()

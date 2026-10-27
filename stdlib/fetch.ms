@@ -229,8 +229,8 @@ def outgoing(options: FetchOptions) -> Outgoing:
             kind = "application/json"
             data = value.to_bytes()
 
-    if kind != "" and fields.values("Content-Type").is_none():
-        let _ignored = fields.append("Content-Type", kind.to_bytes())
+    if kind != "" and not fields.contains("Content-Type"):
+        let _ignored = fields.append("Content-Type", kind)
     return Outgoing(headers: fields, body: data)
 
 # Creates a reusable fetcher on `net`, whose restrictions apply to every request and redirect.

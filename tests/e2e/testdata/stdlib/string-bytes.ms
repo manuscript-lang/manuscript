@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/collections.ms" import range
 from "@std/string.ms" import from_scalars, StringError, StringBuilder
 from "@std/bytes.ms" import Bytes, BytesBuilder, values
@@ -139,3 +139,39 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 
     let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
+
+test "builder appends literals of every short length across growth":
+    var sb = StringBuilder()
+
+    for i in range(0, 40):
+        sb.append("a")
+        sb.append("bc")
+        sb.append("def")
+        sb.append("ghij")
+        sb.append("klmno")
+        sb.append("pqrstuv")
+        sb.append("wxyzABCD")
+        sb.append("EFGHIJKLMNOPQRS")
+        sb.append("0123456789abcdef")
+        sb.append("é€")
+
+    let one = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
+    var want = StringBuilder()
+    for i in range(0, 40):
+        want.append(one)
+    try expect_equal(sb.build(), want.build())
+
+test "builder appends variable text of every length across growth":
+    let unit = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
+    var sb = StringBuilder()
+    var want = 0
+
+    for round in range(0, 3):
+        for n in range(0, 70):
+            let piece = try unit.slice(0, n)
+            sb.append(piece)
+            want += n
+
+    let built = sb.build()
+    try expect_equal(built.byte_length(), want)
+    try expect_equal((try built.slice(0, 10)), "0010120123")
