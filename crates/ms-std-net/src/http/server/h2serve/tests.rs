@@ -272,6 +272,12 @@ impl Client {
 
     /// Collects the response of `id`, returning data credit as it arrives.
     fn response(&mut self, id: u32) -> Response {
+        self.outcome(id)
+            .unwrap_or_else(|code| panic!("stream reset with code {code}"))
+    }
+
+    /// The response to stream `id`, or the code the server reset the stream with.
+    fn outcome(&mut self, id: u32) -> Result<Response, u32> {
         let mut response = Response {
             status: String::new(),
             headers: Vec::new(),
@@ -298,7 +304,7 @@ impl Client {
                             }
                         }
                         if end_stream {
-                            return response;
+                            return Ok(response);
                         }
                     }
                     Event::Data {
@@ -309,11 +315,11 @@ impl Client {
                         self.core.release(id, data.len());
                         response.body.extend_from_slice(&data);
                         if end_stream {
-                            return response;
+                            return Ok(response);
                         }
                     }
                     Event::Reset { id: sid, code } if sid == id => {
-                        panic!("stream reset with code {code}")
+                        return Err(code);
                     }
                     _ => {}
                 }
@@ -427,6 +433,25 @@ fn large_upload_honors_flow_control() {
         c.response(id)
     });
     assert_eq!(r.text(), "300000");
+}
+
+#[test]
+fn request_bodies_must_match_content_length() {
+    let (_net, server) = start(Box::new(Buffered(App)), limits());
+    let addr = server.address().to_string();
+    let outcomes = with_client(move || {
+        ["3", "100", "1", "x"].map(|declared| {
+            let mut c = Client::connect(&addr, big_window());
+            let id = c.post("/size", b"abc", &[("content-length", declared)]);
+            c.outcome(id).map(|r| r.text())
+        })
+    });
+    assert_eq!(outcomes[0], Ok("3".to_string()));
+    for (declared, outcome) in ["100", "1"].into_iter().zip(&outcomes[1..]) {
+        assert!(outcome.is_err(), "content-length {declared}: {outcome:?}");
+    }
+    // A value that is not a number is answered, not guessed at.
+    assert_eq!(outcomes[3], Ok("invalid Content-Length\n".to_string()));
 }
 
 #[test]

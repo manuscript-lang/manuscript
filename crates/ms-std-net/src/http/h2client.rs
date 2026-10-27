@@ -108,6 +108,53 @@ struct Queue {
     ended: bool,
     reset: Option<u32>,
     unprocessed: bool,
+    /// The request was HEAD, so a `content-length` describes a body that is not sent.
+    head_request: bool,
+    /// The declared body length, once the response head arrived.
+    expected: Option<u64>,
+    /// Body bytes received so far.
+    received: u64,
+    /// The body does not match its `content-length` (RFC 9113 section 8.1.1).
+    malformed: bool,
+}
+
+impl Queue {
+    /// Flags a body that is longer than declared, or ended shorter than declared.
+    fn check_length(&mut self) {
+        if let Some(n) = self.expected
+            && (self.received > n || (self.ended && self.received != n))
+        {
+            self.malformed = true;
+        }
+    }
+}
+
+/// The `content-length` a response declares: none when absent or when the message has no body,
+/// an error when the values are not one number.
+fn declared_length(headers: &[Header], head_request: bool) -> Result<Option<u64>, ()> {
+    let status = headers
+        .iter()
+        .find(|(n, _)| n == b":status")
+        .and_then(|(_, v)| std::str::from_utf8(v).ok()?.parse::<u16>().ok())
+        .unwrap_or(0);
+    let mut found: Option<u64> = None;
+    for (_, value) in headers.iter().filter(|(n, _)| n == b"content-length") {
+        if value.is_empty() || !value.iter().all(u8::is_ascii_digit) {
+            return Err(());
+        }
+        let n: u64 = std::str::from_utf8(value)
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .ok_or(())?;
+        if found.is_some_and(|f| f != n) {
+            return Err(());
+        }
+        found = Some(n);
+    }
+    if head_request || matches!(status, 204 | 304) {
+        return Ok(None);
+    }
+    Ok(found)
 }
 
 struct State {
@@ -371,9 +418,15 @@ impl Session {
                     };
                     q.ended |= end_stream;
                     if q.head_seen || is_interim(&headers) {
+                        q.check_length();
                         continue;
                     }
                     q.head_seen = true;
+                    match declared_length(&headers, q.head_request) {
+                        Ok(expected) => q.expected = expected,
+                        Err(()) => q.malformed = true,
+                    }
+                    q.check_length();
                     q.head = Some(headers);
                 }
                 Event::Data {
@@ -386,6 +439,8 @@ impl Session {
                         continue;
                     };
                     q.ended |= end_stream;
+                    q.received += data.len() as u64;
+                    q.check_length();
                     if !data.is_empty() {
                         q.data.push_back(data);
                     }
@@ -417,6 +472,7 @@ impl Session {
         if !self.usable() {
             return Err(OpenErr::Unavailable);
         }
+        let head_request = headers.iter().any(|(n, v)| n == b":method" && v == b"HEAD");
         let mut st = self.state.borrow_mut();
         let opened = st.core.open_stream(headers, end_stream);
         let id = match opened {
@@ -426,7 +482,13 @@ impl Session {
             }
             Err(e) => return Err(OpenErr::Invalid(e.reason)),
         };
-        st.streams.insert(id, Queue::default());
+        st.streams.insert(
+            id,
+            Queue {
+                head_request,
+                ..Queue::default()
+            },
+        );
         self.used.set(Instant::now());
         Ok(H2Stream {
             session: self.clone(),
@@ -505,7 +567,7 @@ impl H2Stream {
         let st = self.session.state.borrow();
         st.streams
             .get(&self.id)
-            .is_some_and(|q| q.ended && q.data.is_empty())
+            .is_some_and(|q| q.ended && q.data.is_empty() && !q.malformed)
     }
 
     fn failure(q: &Queue, dead: bool) -> Poll {
@@ -545,6 +607,9 @@ impl H2Stream {
             }
             st.core.release(self.id, chunk.len());
             return Poll::Data(chunk);
+        }
+        if q.malformed {
+            return Poll::Reset(error_code::PROTOCOL_ERROR);
         }
         if q.ended {
             return Poll::End;

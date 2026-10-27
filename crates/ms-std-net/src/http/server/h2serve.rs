@@ -83,6 +83,10 @@ struct H2Stream {
     deadline: Option<Instant>,
     /// The task running the stream's handler (`0`: none).
     task: u64,
+    /// The request's `content-length`, once its head was read.
+    declared: Option<u64>,
+    /// Request body bytes received so far.
+    received: u64,
 }
 
 impl H2Stream {
@@ -98,7 +102,16 @@ impl H2Stream {
             started,
             deadline: timeout.map(|t| started + t),
             task: 0,
+            declared: None,
+            received: 0,
         }
+    }
+
+    /// Whether the body received so far contradicts the declared length: longer than declared,
+    /// or complete and shorter (RFC 9113 section 8.1.1).
+    fn length_violated(&self) -> bool {
+        self.declared
+            .is_some_and(|n| self.received > n || (self.remote_done && self.received != n))
     }
 }
 
@@ -479,12 +492,27 @@ impl Server {
                 return;
             }
         };
-        with_h2(conn, |h| {
-            if let Some(s) = h.streams.get_mut(&id) {
-                s.head = Some(head);
-            }
-        });
+        let violated = with_h2(conn, |h| {
+            let Some(s) = h.streams.get_mut(&id) else {
+                return false;
+            };
+            s.declared = declared_length(&head.fields).ok().flatten();
+            s.head = Some(head);
+            s.length_violated()
+        })
+        .unwrap_or(false);
+        if violated {
+            self.h2_length_error(conn, reactor, id);
+            return;
+        }
         self.h2_queue(conn, reactor, id);
+    }
+
+    /// Resets a stream whose body contradicts its `content-length`.
+    fn h2_length_error(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32) {
+        with_h2(conn, |h| h.core.send_rst(id, error_code::PROTOCOL_ERROR));
+        self.h2_reset(conn, id);
+        self.h2_pump_out(conn, reactor);
     }
 
     /// Turns a validated header block into the request head.
@@ -518,10 +546,7 @@ impl Server {
         if !Headers::from_received(fields.iter().cloned()).is_text() {
             return Err((400, "invalid UTF-8 request"));
         }
-        let declared = fields
-            .iter()
-            .find(|(n, _)| n == "content-length")
-            .and_then(|(_, v)| std::str::from_utf8(v).ok()?.trim().parse::<u64>().ok());
+        let declared = declared_length(&fields).map_err(|()| (400, "invalid Content-Length"))?;
         if declared.is_some_and(|n| n > self.limits.body as u64) {
             return Err((413, "invalid or oversized request body"));
         }
@@ -571,33 +596,47 @@ impl Server {
     }
 
     fn h2_remote_end(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32, end: bool) {
-        let complete = with_h2(conn, |h| {
-            h.streams.get_mut(&id).is_some_and(|s| {
+        let (complete, violated) = with_h2(conn, |h| {
+            h.streams.get_mut(&id).map_or((false, false), |s| {
                 s.remote_done |= end;
-                end && s.stage == Stage::Collecting
+                (end && s.stage == Stage::Collecting, s.length_violated())
             })
         })
-        .unwrap_or(false);
+        .unwrap_or((false, false));
+        if violated {
+            self.h2_length_error(conn, reactor, id);
+            return;
+        }
         if complete {
             self.h2_queue(conn, reactor, id);
         }
     }
 
-    fn h2_data(&self, conn: &Rc<Conn>, _reactor: &Reactor, id: u32, data: Vec<u8>, end: bool) {
-        with_h2(conn, |h| {
+    fn h2_data(&self, conn: &Rc<Conn>, reactor: &Reactor, id: u32, data: Vec<u8>, end: bool) {
+        let violated = with_h2(conn, |h| {
             let n = data.len();
             let Some(s) = h.streams.get_mut(&id) else {
                 h.core.release(id, n);
-                return;
+                return false;
             };
             s.remote_done |= end;
+            s.received += n as u64;
+            if s.length_violated() {
+                h.core.release(id, n);
+                return true;
+            }
             if matches!(s.stage, Stage::Queued | Stage::Running) {
                 // The handler returns the credit as it reads.
                 s.body.extend_from_slice(&data);
             } else {
                 h.core.release(id, n);
             }
-        });
+            false
+        })
+        .unwrap_or(false);
+        if violated {
+            self.h2_length_error(conn, reactor, id);
+        }
     }
 
     fn h2_reset(&self, conn: &Rc<Conn>, id: u32) {
@@ -641,6 +680,25 @@ impl Server {
 }
 
 impl H2Conn {}
+
+/// The `content-length` of a request: none when absent, an error unless the values are one number.
+fn declared_length(fields: &[(String, Vec<u8>)]) -> Result<Option<u64>, ()> {
+    let mut found: Option<u64> = None;
+    for (_, value) in fields.iter().filter(|(n, _)| n == "content-length") {
+        if value.is_empty() || !value.iter().all(u8::is_ascii_digit) {
+            return Err(());
+        }
+        let n: u64 = std::str::from_utf8(value)
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .ok_or(())?;
+        if found.is_some_and(|f| f != n) {
+            return Err(());
+        }
+        found = Some(n);
+    }
+    Ok(found)
+}
 
 /// The response header block: handler headers lowercased and sorted without
 /// the connection-specific ones, then `date`, `content-length` and the sniffed
