@@ -603,3 +603,13 @@ impl ListKeyedExtremes[T] for List[T]:
                 best = k
 
         return some(self[at].clone())
+
+# Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned for storage.
+interface MapUpdate[T: Hashable & Clonable, U]:
+    var def update(key: T, initial: U, change: Callable[[U], U]) -> Unit
+
+impl MapUpdate[T, U] for Map[T, U]:
+    # Stores `change` applied to the value for `key`, or to `initial` when the key is absent.
+    # Example: `counts.update(word, 0, lambda n: n + 1)` counts occurrences.
+    var def update(key: T, initial: U, change: Callable[[U], U]) -> Unit:
+        self.add(key.clone(), change(self.get_or(key, initial)))
