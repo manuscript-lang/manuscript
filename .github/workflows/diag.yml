@@ -1,7 +1,7 @@
 name: diag
 on:
-  pull_request:
-    paths: ['.github/workflows/diag.yml']
+  push:
+    branches: [claude/project-thread-dtfx0d]
 jobs:
   diag:
     strategy:
