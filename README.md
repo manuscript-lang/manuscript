@@ -1,10 +1,10 @@
 # Manuscript
 
-**AI writes more code. You still have to understand it.**
+**The language for the agentic era.**
 
 A native programming language built for agents to write and humans to understand.
 
-Get readable source, compiler feedback your agent can act on, and checked facts to help you review the next change.
+Keep a clear view of what your agent builds: readable source, actionable compiler feedback, and checked facts to help you review the next change.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Rust performance](#native-speed-measured-against-rust) · [How we're building it](#built-with-agents-improved-through-evidence)
 
