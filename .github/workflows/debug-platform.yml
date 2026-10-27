@@ -51,12 +51,20 @@ jobs:
           set +e
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          f='quoted folding trims'
-          echo "::group::default"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
-          echo "::group::cranelift"; MS_BACKEND=cranelift "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
-          echo "::group::debug"; "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Debug --filter "$f" 2>&1 | tail -5 || true; echo "::endgroup::"
-          sleep 5; msx="$GITHUB_WORKSPACE/$ms"
-          for r in ~/Library/Logs/DiagnosticReports/*.ips /Library/Logs/DiagnosticReports/*.ips; do [ -f "$r" ] && { echo "::group::$r"; head -c 6000 "$r"; echo; echo "::endgroup::"; }; done || true
-          echo "::group::keep ll"
-          mkdir -p /tmp/ll && cd /tmp/ll && MS_KEEP_LL=1 "$msx" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms" --build-type Release --filter "$f" 2>&1 | tail -3; ls -la /tmp/ll "$GITHUB_WORKSPACE"/ms-keep.ll 2>&1 | head
-          echo "::endgroup::"
+          touch /tmp/marker
+          sleep 1
+          "$ms" test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type Release --filter "a fault" 2>&1 | grep -a -E "DBG|at "
+          echo "cache: $XDG_CACHE_HOME $HOME"
+          exe=$(find "${XDG_CACHE_HOME:-$HOME/.cache}" "$HOME/Library/Caches" "$TMPDIR" /tmp -type f -newer /tmp/marker \( -perm -u+x -o -name '*.exe' \) 2>/dev/null | head -20)
+          echo "candidates: $exe"
+          for e in $exe; do
+            if llvm-objdump -d -l "$e" 2>/dev/null | grep -a -q "teardown-on-skip.ms:35"; then
+              echo "::group::disasm $e"
+              llvm-objdump -d -l --no-show-raw-insn "$e" 2>/dev/null | awk '/teardown-on-skip.ms:/{keep=40} keep>0{print; keep--}' | head -500
+              echo "::endgroup::"
+              echo "::group::dwarf line $e"
+              llvm-dwarfdump --debug-line "$e" 2>/dev/null | grep -a -B1 -A1 -E " (15|35) +[0-9]+" | head -80
+              echo "::endgroup::"
+              break
+            fi
+          done
