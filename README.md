@@ -53,7 +53,7 @@ A dropped error, a forgotten case and an unclosed handle are the mistakes a mode
 
 - A `Result` silently dropped.
 - A `match` missing a case.
-- A `Closeable` opened and never closed, returned or passed on (user types today; [#1590](https://github.com/manuscript-lang/manuscript/issues/1590) widens it).
+- A `Closeable` opened and never closed, returned or passed on (your own types and `FileHandle` today; the other standard handles follow, [#1590](https://github.com/manuscript-lang/manuscript/issues/1590)).
 - Literal arithmetic that overflows or divides by zero. A literal index outside a list literal.
 
 Everything the checker cannot prove, the runtime catches as a fault with a source trace: overflow, bounds, deadlock, a cleanup that did not run. [Faults](documentation/core-language/errors/faults.md)

@@ -18,6 +18,8 @@ interface Closeable:
 - A contract value whose own declaration contains exactly `var def close() -> Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
 - A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
+The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. A stream interface such as `ReadStream` or `WriteStream` is never owned by its holder, because `stdout()` and a file's `writer()` share one type.
+
 A similarly named method without `impl Closeable`, or an unconstrained type parameter, is insufficient.
 
 `close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.

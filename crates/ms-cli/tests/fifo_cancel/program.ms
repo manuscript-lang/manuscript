@@ -11,7 +11,7 @@ def read_whole(path: String) -> Int:
 
 def open_then_read(path: String) -> Int:
     let opened = filesystem().open(path, "r", 420)
-    if let file = opened:
+    if var file = opened:
         let _data = file.read_file()
         file.close()
         return 1
