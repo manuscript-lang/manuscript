@@ -17,7 +17,12 @@ def greater[T: Comparable](left: T, right: T) -> T:
 def clamped[T: Comparable](value: T, low: T, high: T) -> T:
     if low.compare(high) > 0:
         panic("clamp: low must not be greater than high")
-    return greater(low, lesser(value, high))
+    if value.compare(low) < 0:
+        return low
+    if value.compare(high) > 0:
+        return high
+
+    return value
 
 interface IntOrder:
     def min(other: Int) -> Int
