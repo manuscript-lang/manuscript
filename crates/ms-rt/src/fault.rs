@@ -821,6 +821,31 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
                 return true;
             };
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
+            {
+                let mut d: Vec<u8> = Vec::new();
+                d.extend_from_slice(b"\nDBG ret=");
+                crate::num::push_i64(&mut d, ret as i64);
+                d.extend_from_slice(b" faddr=");
+                crate::num::push_i64(&mut d, func.addr as i64);
+                d.extend_from_slice(b" fsize=");
+                crate::num::push_i64(&mut d, func.size as i64);
+                d.extend_from_slice(b" fname=");
+                d.extend_from_slice(cstr(t, func.name_off));
+                d.extend_from_slice(b" line=");
+                crate::num::push_i64(&mut d, line as i64);
+                d.extend_from_slice(b" scope=");
+                crate::num::push_i64(&mut d, scope as i64);
+                let mut sid = scope;
+                while let Some(sc) = scope_entry(t, sid) {
+                    d.extend_from_slice(b" [");
+                    d.extend_from_slice(cstr(t, sc.name_off));
+                    d.extend_from_slice(b" call_line=");
+                    crate::num::push_i64(&mut d, sc.call_line as i64);
+                    d.extend_from_slice(b"]");
+                    sid = sc.parent;
+                }
+                out.extend_from_slice(&d);
+            }
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
                 return true;

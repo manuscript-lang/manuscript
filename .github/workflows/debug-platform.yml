@@ -48,8 +48,4 @@ jobs:
         run: |
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          for bt in Debug Release; do
-            echo "::group::teardown $bt"
-            "$ms" test tests/e2e/testdata/stdlib/../../../conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type $bt 2>&1 | tail -30 || true
-            echo "::endgroup::"
-          done
+          "$ms" test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type Release 2>&1 | grep -a -E "DBG|at " || true
