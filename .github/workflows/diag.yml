@@ -55,7 +55,7 @@ jobs:
           grep -E "SEGV|diag|FAIL" out.txt | cut -c1-220 | head -20; tail -3 out.txt
           true
       - name: workers remaining tests
-        if: runner.os == 'Windows'
+        if: false
         continue-on-error: true
         run: |
           set +e
@@ -72,7 +72,13 @@ jobs:
           set +e
           for v in v5 v6; do
             target/debug/ms.exe build .github/diag/v/$v.ms -o $v.exe
-            MS_DIAG_POLL=1 timeout 12 ./$v.exe > $v.txt 2>&1
-            echo "== $v exit $?"; head -c 3000 $v.txt
+            for i in 1 2 3 4 5 6; do
+              MS_DIAG_POLL=1 timeout 8 ./$v.exe > $v.$i.txt 2>&1
+              code=$?
+              echo "== $v run $i exit $code lines $(wc -l < $v.$i.txt)"
+              if [ $i = 1 ] || [ $code != 0 ]; then
+                if [ ! -e $v.shown.$code ]; then touch $v.shown.$code; echo "---- trace $v run $i"; head -c 4000 $v.$i.txt; fi
+              fi
+            done
           done
           true

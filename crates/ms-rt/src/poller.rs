@@ -602,6 +602,7 @@ mod imp {
 
     pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
+        tdiag(&format!("[poll] wait enter timeout_ns={timeout_ns}\n"));
         // The completion port waits in whole milliseconds, rounded up, and on the system tick
         // unless the process raised its resolution. A high-resolution timer wakes the wait at
         // the deadline; the poll timeout is only a bound.
@@ -679,6 +680,12 @@ mod imp {
             let _ = signals.waker.wake();
         }
         Some(count)
+    }
+}
+
+pub(crate) fn tdiag(text: &str) {
+    if std::env::var_os("MS_DIAG_POLL").is_some() {
+        crate::sys::write_all(crate::sys::STDERR, text.as_bytes());
     }
 }
 
