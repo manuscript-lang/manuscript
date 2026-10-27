@@ -70,17 +70,9 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          target/debug/ms.exe build .github/diag/pl.ms -o pl.exe
-          timeout 25 ./pl.exe > h.txt 2>&1
-          echo "pl exit $?"; cat h.txt
-          for f in c0 c1; do
-            target/debug/ms.exe build .github/diag/$f.ms -o $f.exe
-            timeout 20 ./$f.exe > $f.txt 2>&1
-            echo "$f exit $?"; cat $f.txt
+          for v in v1 v2 v3 v4 v5 v6 v7; do
+            target/debug/ms.exe build .github/diag/v/$v.ms -o $v.exe
+            timeout 15 ./$v.exe > $v.txt 2>&1
+            echo "$v exit $? : $(tr '\n' ' ' < $v.txt)"
           done
-          timeout 40 target/debug/ms.exe run tests/conformance/fixtures/e2e/stdlib/http-close-drains.ms > d.txt 2>&1
-          echo "drains exit $?"; cat d.txt
-          target/debug/ms.exe build .github/diag/pg.ms -o pg.exe
-          timeout 40 ./pg.exe > g.txt 2>&1
-          echo "pg exit $?"; cat g.txt
           true
