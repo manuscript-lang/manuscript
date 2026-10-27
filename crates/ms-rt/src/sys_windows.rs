@@ -26,6 +26,7 @@ type DWORD = u32;
 
 const MEM_COMMIT: DWORD = 0x1000;
 const MEM_RESERVE: DWORD = 0x2000;
+const MEM_DECOMMIT: DWORD = 0x4000;
 const MEM_RELEASE: DWORD = 0x8000;
 const PAGE_READWRITE: DWORD = 0x04;
 const PAGE_NOACCESS: DWORD = 0x01;
@@ -329,6 +330,15 @@ pub fn map_anon(len: usize) -> *mut u8 {
 pub fn commit(p: *mut u8, len: usize) -> bool {
     // SAFETY: the range lies inside a reservation of this process.
     !unsafe { VirtualAlloc(p.cast(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null()
+}
+
+/// Decommits `len` bytes at `p` (inside a [`map_anon`] reservation); [`commit`] makes them usable again.
+///
+/// # Safety
+/// The range lies inside a live reservation and holds nothing in use.
+pub unsafe fn release(p: *mut u8, len: usize) {
+    // SAFETY: forwarded; the caller guarantees the range.
+    unsafe { VirtualFree(p.cast(), len, MEM_DECOMMIT) };
 }
 
 /// Returns a [`map_anon`] reservation to the system.
