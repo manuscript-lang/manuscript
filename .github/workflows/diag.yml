@@ -82,9 +82,9 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for v in plain shortsleep cancel; do
+          for v in s0 s1 s2 s3; do
             echo "== $v"
-            timeout 25 target/debug/ms.exe run .github/diag/$v.ms > h.txt 2>&1
+            timeout 40 target/debug/ms.exe run .github/diag/$v.ms > h.txt 2>&1
             echo "exit $?"; head -20 h.txt
           done
           true
