@@ -72,6 +72,21 @@ native! {
         out: Out<Object<ServerH>>,
         err: ErrOut,
     ) -> Result<(), StatusCode> {
+        if std::env::var_os("MS_DIAG_POLL").is_some() {
+            let raw = unsafe {
+                std::slice::from_raw_parts(
+                    (opts as *const HttpServerOptionsWire).cast::<u8>(),
+                    std::mem::size_of::<HttpServerOptionsWire>(),
+                )
+            };
+            eprintln!(
+                "[srv] serve opts: tls_present={} shared={} size={} raw={:02x?}",
+                opts.tls_present,
+                opts.shared,
+                raw.len(),
+                raw
+            );
+        }
         let program = Program::streaming(&env);
         let limits = server_limits(
             opts.max_requests.get(),

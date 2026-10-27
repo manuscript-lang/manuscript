@@ -70,7 +70,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for v in v6; do
+          for v in v5 v6; do
             target/debug/ms.exe build .github/diag/v/$v.ms -o $v.exe
             for i in 1 2 3; do
               if [ $i -gt 1 ]; then export MS_DIAG_PROBE=1; fi
