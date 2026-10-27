@@ -50,36 +50,18 @@ jobs:
         run: |
           set +e
           ms="$GITHUB_WORKSPACE/target/debug/ms"
-          f="quoted folding trims"
           y="$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms"
           "$ms" test "$y" --build-type Release --filter "does not exist" >/dev/null 2>&1
           real=$(ls -d "$XDG_CACHE_HOME"/ms/llvm/*/ | head -1)
-          echo "tools: $real"; ls "$real"
           W="$RUNNER_TEMP/wrap"; mkdir -p "$W"
           cp "$real"/* "$W"/ 2>/dev/null
           mv "$W/opt" "$W/opt.real"
-          cat > "$W/opt" <<EOS
-          #!/bin/sh
-          exec "$W/opt.real" -opt-bisect-limit=\${BISECT:--1} "\$@" 2>>"$RUNNER_TEMP/bisect.log"
-          EOS
-          sed -i 's/^          //' "$W/opt"
-          chmod +x "$W/opt"; cat "$W/opt"
-          snap="$RUNNER_TEMP/snap"; cp -R "$XDG_CACHE_HOME" "$snap"
-          crashes() {
-            rm -rf "$RUNNER_TEMP/c"; cp -R "$snap" "$RUNNER_TEMP/c"
-            : > "$RUNNER_TEMP/bisect.log"
-            out=$(BISECT=$1 XDG_CACHE_HOME="$RUNNER_TEMP/c" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "$f" 2>&1)
-            case "$out" in *"signal 11"*) return 0;; *) return 1;; esac
-          }
-          BISECT=-1 XDG_CACHE_HOME="$snap" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "$f" 2>&1 | tail -8
-          crashes -1; echo "full: crash=$?"; total=$(grep -a -c "BISECT: running" "$RUNNER_TEMP/bisect.log"); echo "passes: $total"
-          crashes 0; echo "limit0: crash=$?"
-          lo=0; hi=$total
-          while [ $((hi-lo)) -gt 1 ]; do
-            mid=$(( (lo+hi)/2 ))
-            if crashes $mid; then echo "mid $mid: crash"; hi=$mid; else echo "mid $mid: pass"; lo=$mid; fi
-          done
-          echo "first crashing limit: $hi"
-          crashes $hi
-          grep -a "BISECT: running pass ($hi)" "$RUNNER_TEMP/bisect.log"
-          grep -a "BISECT: running pass ($lo)" "$RUNNER_TEMP/bisect.log"
+          printf '#!/bin/sh\nexec "%s/opt.real" -opt-bisect-limit=5489 "$@" 2>/dev/null\n' "$W" > "$W/opt"
+          chmod +x "$W/opt"
+          touch "$RUNNER_TEMP/stamp"; sleep 1
+          MS_KEEP_LL="$RUNNER_TEMP/keep.ll" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "quoted folding trims" 2>&1 | tail -5
+          echo "--- candidates"
+          find / -xdev -type f -perm -u+x -newer "$RUNNER_TEMP/stamp" -size +1M 2>/dev/null | grep -v -e '^/proc' -e target/debug | head
+          exe=$(find / -xdev -type f -perm -u+x -newer "$RUNNER_TEMP/stamp" -size +1M 2>/dev/null | grep -v target/debug | head -1)
+          echo "exe=$exe"
+          [ -n "$exe" ] && lldb -b -o run -o "bt 8" -o "register read" -o "disassemble -p -c 24" -o "image lookup -a \$pc" -- "$exe" --filter "quoted folding trims" 2>&1 | tail -90
