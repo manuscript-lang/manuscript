@@ -903,7 +903,12 @@ impl Server {
     fn accept_all(&self, reactor: &Reactor) {
         loop {
             let accepted = match self.listener.borrow().as_ref() {
-                Some(listener) => listener.accept(),
+                Some(listener) => {
+                    ms_rt::dbgf!("[srv] accept enter");
+                    let r = listener.accept();
+                    ms_rt::dbgf!("[srv] accept exit ok={}", r.is_ok());
+                    r
+                }
                 None => break,
             };
             match accepted {
