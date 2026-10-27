@@ -8,12 +8,11 @@
 #
 # ```manuscript
 # def double_all() -> Unit:
-#     let ch = worker_channel[Int, Int]()
+#     var ch = worker_channel[Int, Int]()
 #     while True:
-#         if let n = ch.receive().unwrap():
-#             ch.send(n * 2)
-#         else:
-#             return
+#         let received = ch.receive().get(none)
+#         if received.is_none(): return
+#         let _ = ch.send(received.get() * 2)
 # ```
 from "@std/bytes.ms" import Bytes
 from "@std/channels.ms" import Channel, ChannelError, Transport
