@@ -4,95 +4,64 @@
 
 Manuscript helps agents write correct, fast programs that are easy to review.
 
-Agents get a small, regular language, actionable compiler feedback and executable tests. You get native executables, readable source and compiler-backed evidence for reviewing changes.
+A small, regular language makes intent explicit. Strong types and ownership give the compiler more to check. Native builds support fast iteration and execution, while readable source keeps changes understandable.
 
-[Try Manuscript](documentation/learn/getting-started.md) · [Rust performance](#native-speed-measured-against-rust) · [How we're building it](#built-with-agents-improved-through-evidence)
+[Try Manuscript](documentation/learn/getting-started.md) · [Explore the language](documentation/learn/tour.md) · [Performance results](bench/perf/README.md)
 
-*Alpha: syntax and APIs can change. These examples follow current source; releases may lag. The first native build downloads pinned tools. [Setup and platform requirements](documentation/learn/getting-started.md).*
+*Alpha: syntax and APIs can change. These examples follow current source; releases may lag. First builds download pinned tools. [Setup and platform requirements](documentation/learn/getting-started.md).*
 
-## Give agents a path to correct code
+## Correctness starts with the language
 
-Manuscript moves correctness rules out of the prompt and into the language. A small, regular core makes types, errors and resource lifetimes explicit. The compiler catches concrete mistakes: incompatible values, missing `match` cases and discarded error results.
+**Types carry intent.** There is no built-in `any` escape hatch. Collections, `Optional[T]` and `Result[T, E]` use the same generic type system: the compiler knows what a value contains, whether it can be absent, and how an operation can fail. Expected failures use returned values rather than exceptions, with `try` making propagation explicit.
 
-When something fails, the agent gets a cause and a suggested repair, with `--json` output for tools. `ms search_symbol` finds actual project and standard-library APIs; `ms check --fix` applies available mechanical fixes. The next attempt can start from evidence.
+**Ownership makes change deliberate.** `let` keeps data immutable; `var` marks mutation. Borrows let code use a value without taking ownership or writing lifetime annotations; `.clone()` makes copies of ordinary data explicit. `with` ties resource cleanup to a visible block, and scoped task, worker and process groups own the work they start.
 
-## Catch the mistake. Check the repair.
+**Feedback completes the loop.** The compiler rejects incompatible types, missing `match` cases and discarded error results, then supplies diagnostics with causes and suggested repairs. `ms search_symbol` finds actual APIs; structured output and available `ms check --fix` repairs help agents iterate. `ms verify` checks types, formatting and lint, then runs tests. Tests establish the behavior they exercise; compilation alone does not prove a program correct.
 
-An agent writes a helper that saves a report and returns `"saved"`. But it forgets to handle a failed write. This function fragment is rejected:
+## Fast by design. Measured against Rust.
 
-```manuscript
-def save_report(path: String, report: String) -> Result[String, Error]:
-    filesystem().write_file(path, report)
-    return ok("saved")
-```
+**Fast to iterate. Fast to run.** Debug builds use Cranelift for fast edit–build–run feedback. Optimized builds lower directly to LLVM IR for LLVM optimization and native code generation on supported platforms. [Build modes and toolchain](documentation/contributing/rust-toolchain.md).
 
-The diagnostic explains why and suggests a repair (excerpt):
+**No tracing GC. Ownership lets the compiler release plain data at its last safe use.** Resources, closures and handles retain their scoped lifetimes. Generics specialize to concrete types, short strings can live inline, and borrowing lets programs read data without paying for a copy.
 
-> this statement discards `Result[Unit, FileSystemError]`, so a failure would be lost; write 'try ...' to propagate it, …
+The same function model covers sequential and concurrent work. Cooperative tasks overlap I/O; workers spread CPU work across cores; process groups provide a separate process boundary. There is no `async`/`await` split to carry through the call graph. [Concurrency and its guarantees](documentation/core-language/concurrency/_index.md).
 
-The repair is one word: `try` forwards the write error to the caller. Save this complete version as `report.ms`:
+Across the published October 25 [kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25), [competence tests](bench/perf/competence/README.md#latest-2026-10-25) and [operation benchmarks](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25), comparable timed cases span **0.38–3.99× Rust's execution time** at revision `c1b81215` (`opt-level=3`), excluding loops optimized away. Lower is faster. Wins in maps and sorting sit alongside slower string appends. The linked results include the full tables, overflow-checked Rust comparisons and methodology.
 
-```manuscript
-from "@std/fs.ms" import filesystem
-from "@std/test.ms" import expect_true
+## Code you can actually review
 
-def save_report(path: String, report: String) -> Result[String, Error]:
-    try filesystem().write_file(path, report)
-    return ok("saved")
+Familiar, consistent syntax keeps the program's decisions visible. Imports expose dependencies; signatures state contracts. Mutation, error propagation and resource cleanup appear alongside the work they affect, so reviewers can follow both the normal path and its boundaries.
 
-test "a directory is not a report file":
-    try expect_true(save_report(".", "report").is_error())
-```
-
-```sh
-ms test report.ms
-```
-
-```text
-RUN report.ms::a directory is not a report file
-PASS report.ms::a directory is not a report file
-1 tests, 0 failed
-```
-
-The compiler rejects the lost result; the test checks the repaired error path. For a whole project, `ms verify` combines checking, formatting, linting and executable tests. Compiling alone does not establish that a program does what you intended.
-
-## Native speed, measured against Rust
-
-**As fast as Rust on the measured tree and map-counting workloads.** The published run also shows where Rust is ahead:
-
-| Workload | Manuscript | Rust |
-| --- | ---: | ---: |
-| Binary trees | 26.1 ms | 30.0 ms |
-| Map counting | 14.4 ms | 23.8 ms |
-| Collatz | 242.7 ms | 178.6 ms |
-
-Recorded on four-core Linux at `c1b81215` (October 25): Manuscript LLVM Release versus Rust at `opt-level=3`. The harness requires matching checksums across implementations. The [full seven-kernel results](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) include source, run commands and a separate overflow-checked Rust configuration.
-
-## Keep changes easy to review
-
-Read the error path in the example above: `try` makes the early return visible. For larger changes, [`ms review`](documentation/developer-tooling/implementation.md#review-report) compares checked before-and-after source and reports changes to contracts, error flow and resource scopes, giving reviewers concrete places to look.
+Review tools build on that source. [`ms review --diff`](documentation/developer-tooling/implementation.md#review-report) compares checked versions and reports changes to contracts, error flow and resource scopes. It gives you concrete places to look while the code and tests explain what the change does.
 
 ## Built with agents. Improved through evidence.
 
-We use coding agents to build Manuscript itself, with shared [repository skills](skills/README.md) and [recorded lessons](.experts/README.md). The compiler is written in Rust; standard-library declarations and many implementations are written in Manuscript.
+We use coding agents to build Manuscript itself. The compiler is written in Rust; standard-library declarations and many implementations are written in Manuscript. Shared [repository skills](skills/README.md), [recorded lessons](.experts/README.md) and [development checks](documentation/contributing/development.md) carry what we learn into the next change.
 
-Alongside native performance, we measure how agents write programs. The [agent benchmark](bench/agent/README.md) uses fresh workspaces and hidden tests, recording failures, build attempts, tokens and cost.
-
-A passing solution and a clean first attempt are different outcomes. We publish [both, including failed attempts and reruns](bench/agent/results/summary-2026-10-22.md), and use the friction to improve the language, APIs, diagnostics and guidance. These coding evaluations are separate from execution-speed benchmarks.
-
-Changes face [unit tests, source-conformance fixtures and native examples](documentation/contributing/development.md). [Explore the architecture](documentation/contributing/architecture.md).
+We study where agents struggle: misunderstood APIs, failed builds, repair attempts and unnecessary context. The [agent benchmark](bench/agent/README.md) uses fresh workspaces and hidden tests, recording success, build attempts, tokens and cost. [Published results](bench/agent/results/summary-2026-10-22.md) include failures and reruns. Those coding evaluations guide the language and tools; the native benchmarks measure execution speed separately.
 
 ## Try it on one real task
 
-Give your agent a small CLI you actually need. Have it look up APIs, write tests and work through the compiler's feedback.
+[Get the compiler](documentation/learn/getting-started.md), then give your agent a small CLI you actually need. Have it look up APIs, write tests and work through the compiler's feedback.
 
-[Get the compiler](documentation/learn/getting-started.md), then start:
+Save this example as `config.ms`: JSON is parsed into a declared type, a parse error propagates to the caller, and an unset port gets a default.
 
-```sh
-ms init my-app
-cd my-app
-ms verify ms.toml
-ms build ms.toml -o my-app
+```manuscript
+from "@std/json.ms" import parse
+from "@std/test.ms" import expect_equal
+
+type Config:
+    port: Optional[Int]
+
+def port_from(text: String) -> Result[Int, Error]:
+    let config = try parse[Config](text)
+    return ok(config.port.get(8080))
+
+test "an unset port uses the default":
+    let port = try port_from("{\"port\":null}")
+    try expect_equal(port, 8080)
 ```
+
+Run `ms test config.ms` to check the example: `1 tests, 0 failed`. Use `ms init my-app` to start a project, then follow the [quickstart](documentation/learn/getting-started.md) through running, testing and building a native executable.
 
 [Language tour](documentation/learn/tour.md) · [Task recipes](documentation/learn/common-tasks.md) · [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) · [Project vision](VISION.md)
