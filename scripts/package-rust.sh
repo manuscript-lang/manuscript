@@ -36,8 +36,10 @@ if [ "$target_os" = windows ]; then executable=ms.exe; fi
 cargo xtask runtime
 # Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
 # the profiler); they made it about 130 MB.
-# Keep Cargo's output where the copy below reads it, even with a caller's target-dir override.
-CARGO_PROFILE_RELEASE_STRIP=debuginfo cargo build --release --locked -p ms-cli --target-dir "$repository/target"
+# Build for the host triple explicitly, so CARGO_BUILD_TARGET or `build.target` cannot move the
+# output away from where the copy below reads it; a caller's target-dir override is pinned too.
+host=$(rustc -vV | sed -n 's/^host: //p')
+CARGO_PROFILE_RELEASE_STRIP=debuginfo cargo build --release --locked -p ms-cli --target "$host" --target-dir "$repository/target"
 
 name="manuscript-rust-$target_os-$target_arch"
 mkdir -p dist
@@ -45,7 +47,7 @@ staging=$(mktemp -d "$repository/dist/.package-XXXXXX")
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
 bundle="$staging/$name"
 mkdir -p "$bundle/examples/hello/src"
-cp "target/release/$executable" "$bundle/$executable"
+cp "target/$host/release/$executable" "$bundle/$executable"
 cp examples/hello/ms.toml examples/hello/test.ms "$bundle/examples/hello/"
 cp examples/hello/src/main.ms "$bundle/examples/hello/src/"
 

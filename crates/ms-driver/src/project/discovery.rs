@@ -40,13 +40,20 @@ fn walk_entry(
         let file_type = entry
             .file_type()
             .map_err(|e| ProjectError::path("lstat", path, &e))?;
+        // A symlink to a directory is skipped, even when its name ends in `.ms`.
+        let linked_dir =
+            file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
         entries.push((
             entry.file_name().to_string_lossy().into_owned(),
             file_type.is_dir(),
+            linked_dir,
         ));
     }
     entries.sort();
-    for (child, child_is_dir) in entries {
+    for (child, child_is_dir, linked_dir) in entries {
+        if linked_dir {
+            continue;
+        }
         walk_entry(&pathops::join(&[path, &child]), &child, child_is_dir, visit)?;
     }
     Ok(())

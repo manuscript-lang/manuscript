@@ -72,7 +72,7 @@ pub fn run_init(args: &[String], io: &mut Io) -> i32 {
     let _ = writeln!(
         io.stdout,
         "Next: ms run {} -- first second",
-        shell_quote(&pathops::join(&[&directory, "ms.toml"]))
+        shell_quote(&operand(&pathops::join(&[&directory, "ms.toml"])))
     );
     0
 }
@@ -127,6 +127,15 @@ fn project_name(directory: &str) -> String {
     }
 }
 
+/// A path spelled so the argument parser reads it as a file, not an option.
+fn operand(path: &str) -> String {
+    if path.starts_with('-') {
+        format!("./{path}")
+    } else {
+        path.to_string()
+    }
+}
+
 /// Quote a path for display in a command the user can paste.
 fn shell_quote(path: &str) -> String {
     if !path.contains(|c| " \t\n'\"\\$`!&;|<>()*?[]{}#~".contains(c)) {
@@ -144,6 +153,12 @@ mod tests {
         assert_eq!(project_name("/x/My App.v2"), "my-app-v2");
         assert_eq!(project_name("/x/___"), "app");
         assert_eq!(project_name("/x/Hello"), "hello");
+    }
+
+    #[test]
+    fn operands() {
+        assert_eq!(operand("-demo/ms.toml"), "./-demo/ms.toml");
+        assert_eq!(operand("demo/ms.toml"), "demo/ms.toml");
     }
 
     #[test]

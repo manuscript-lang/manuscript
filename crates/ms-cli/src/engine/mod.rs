@@ -216,13 +216,16 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         message: issue.message.clone(),
         position: position(issue.pos),
         end: issue.end.map(position),
-        fix: issue.fix.as_ref().map(|fix| {
-            Json::object()
-                .with("position", position(fix.pos).to_json())
-                .with("end", position(fix.end).to_json())
-                .with("replacement", Json::str(&fix.replacement))
-        }),
+        fix: issue.fix.as_ref().map(|fix| fix_json(&position, fix)),
     }
+}
+
+/// The JSON `fix` object of an edit, placed with `position`.
+pub(crate) fn fix_json(position: &dyn Fn(Pos) -> Position, fix: &ms_driver::DiagnosticFix) -> Json {
+    Json::object()
+        .with("position", position(fix.pos).to_json())
+        .with("end", position(fix.end).to_json())
+        .with("replacement", Json::str(&fix.replacement))
 }
 
 /// A checked and lowered program.
