@@ -92,11 +92,13 @@ jobs:
           sudo sysctl -w kernel.perf_event_paranoid=-1
           target/release/ms build bench/perf/json/ms.toml -o jb
           (cd bench/perf/json/rust && cargo build --release --quiet)
+          counters() {
+            echo "== $*"
+            perf stat -e cycles,instructions,branches,branch-misses,L1-dcache-load-misses "$@" 2>&1 >/dev/null | tail -14
+          }
           for doc in citm_catalog small; do
-            for who in "./jb quick $doc:stringify" "bench/perf/json/rust/target/release/json-bench-rust $doc"; do
-              echo "== $who"
-              perf stat -e cycles,instructions,branches,branch-misses,L1-dcache-load-misses $who 2>&1 >/dev/null | tail -14
-            done
+            counters ./jb quick "$doc:stringify"
+            counters bench/perf/json/rust/target/release/json-bench-rust "$doc"
           done | tee counters-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
         with:
