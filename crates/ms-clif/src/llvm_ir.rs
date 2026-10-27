@@ -1298,6 +1298,13 @@ impl LlvmModule {
             };
             if let Some((header, body)) = &d.avx2 {
                 uses_level = true;
+                // Where the tables address functions by symbol (COFF, Mach-O), the copies the
+                // tables list need visible symbols too, as the dispatcher has.
+                let copy_vis = if !anchored || pinned.contains(&d.name) {
+                    "hidden "
+                } else {
+                    "internal "
+                };
                 let (dh, db) = dispatcher(&d.name, &d.header);
                 let _ = write!(s, "define {vis}{dh}{db}");
                 let base = d.header.replacen(
@@ -1308,11 +1315,11 @@ impl LlvmModule {
                 // The copies stay out of line: inlined into the dispatcher, which has no debug
                 // subprogram, their line tables are dropped and a fault loses its frames.
                 let base = base.replacen(" #0 ", " #1 ", 1);
-                let _ = write!(s, "define internal {base}{}", d.body);
+                let _ = write!(s, "define {copy_vis}{base}{}", d.body);
                 let fast = header
                     .replacen(" #0 ", " #3 ", 1)
                     .replacen(" #2 ", " #3 ", 1);
-                let _ = write!(s, "define internal {fast}{body}");
+                let _ = write!(s, "define {copy_vis}{fast}{body}");
                 continue;
             }
             let header = if deep.contains(&d.name) {
