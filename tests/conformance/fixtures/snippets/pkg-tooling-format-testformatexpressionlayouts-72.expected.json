@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:6:54: resolution: unknown binding format; add: from \"@std/fs.ms\" import format\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:7:8: resolution: unknown binding enabled; declare it with 'let enabled = ...' before use, define 'def enabled(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:6:54: resolution: unknown binding format; add: from \"@std/fs.ms\" import format\n   |\n 6 |     let text = f\"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n   |                                                      ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-72.ms:7:8: resolution: unknown binding enabled; declare it with 'let enabled = ...' before use, define 'def enabled(...) -> T:', or import it from a module\n   |\n 7 |     if enabled: return text\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

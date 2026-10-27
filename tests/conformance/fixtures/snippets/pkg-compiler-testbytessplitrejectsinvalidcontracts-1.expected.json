@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:17: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:32: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:17: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def wrong(data: Bytes) -> List[Bytes]:\n   |                 ^\n<DIR>/pkg-compiler-testbytessplitrejectsinvalidcontracts-1.ms:4:32: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def wrong(data: Bytes) -> List[Bytes]:\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

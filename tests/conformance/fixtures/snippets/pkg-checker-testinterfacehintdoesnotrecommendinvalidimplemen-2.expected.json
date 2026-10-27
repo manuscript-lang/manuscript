@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-2.ms:10:23: type: expected B, found A (in the return value); use a concrete value implementing B\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-2.ms:10:23: type: expected B, found A (in the return value); use a concrete value implementing B\n    |\n 10 | def f(value: A) -> B: value\n    |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-11.ms:8:12: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-11.ms:8:12: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n   |\n 8 |     return callback()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

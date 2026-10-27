@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:6:14: resolution: unknown case Some of Optional; cases: none, some; did you mean 'some'?\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:8:14: resolution: unknown case None of Optional; cases: none, some; did you mean 'none'?\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:6:14: resolution: unknown case Some of Optional; cases: none, some; did you mean 'some'?\n   |\n 6 |         case Some(v):\n   |              ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:8:14: resolution: unknown case None of Optional; cases: none, some; did you mean 'none'?\n   |\n 8 |         case None:\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

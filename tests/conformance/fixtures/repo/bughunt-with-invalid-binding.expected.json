@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/bughunt-with-invalid-binding.ms:4:18: type: try requires Result, found Int; apply try only to a call returning Result[T, E]\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/bughunt-with-invalid-binding.ms:4:18: type: try requires Result, found Int; apply try only to a call returning Result[T, E]\n   |\n 4 |     with let g = try 5:\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatmapandshorthand-1.ms:5:32: type: expected Int, found Map[Int, Int] (in entry 4 of the literal, whose entries share one type)\n<DIR>/pkg-tooling-format-testformatmapandshorthand-1.ms:6:5: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatmapandshorthand-1.ms:5:32: type: expected Int, found Map[Int, Int] (in entry 4 of the literal, whose entries share one type)\n   |\n 5 |     let values = {\"a\": 1, \"b\": {1: 2}}\n   |                                ^\n<DIR>/pkg-tooling-format-testformatmapandshorthand-1.ms:6:5: resolution: unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module\n   |\n 6 |     consume(values, other: {})\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

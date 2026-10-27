@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-8.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-8.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n   |\n 6 |     value += 1\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-lock-shared-inside-own-guard.ms:9:9: type: box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-lock-shared-inside-own-guard.ms:9:9: type: box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first\n   |\n 9 |         with var inner = lock(box):\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

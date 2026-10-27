@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknownmemberreportsonce-1.ms:5:14: resolution: unknown or ambiguous member foo on T; this type has no fields or operations\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknownmemberreportsonce-1.ms:5:14: resolution: unknown or ambiguous member foo on T; this type has no fields or operations\n   |\n 5 |     return a.foo()\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

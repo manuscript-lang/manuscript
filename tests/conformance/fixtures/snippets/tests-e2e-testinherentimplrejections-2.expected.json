@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-2.ms:7:1: type: I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interface\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-2.ms:7:1: type: I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interface\n   |\n 7 | impl I:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

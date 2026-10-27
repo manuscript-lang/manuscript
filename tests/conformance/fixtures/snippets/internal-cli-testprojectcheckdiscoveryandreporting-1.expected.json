@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testprojectcheckdiscoveryandreporting-1.ms:4:1: resolution: cannot find module ./lib/value.ms (looked for lib); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testprojectcheckdiscoveryandreporting-1.ms:4:1: resolution: cannot find module ./lib/value.ms (looked for lib); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | from \"./lib/value.ms\" import value\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-10.ms:6:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-10.ms:6:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n   |\n 6 |         case JsonError.InvalidData(value):\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:29: resolution: unknown type TextError; add: from \"@std/core.ms\" import TextError\n<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:42: resolution: unknown binding fail; add: from \"@std/test.ms\" import fail\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:29: resolution: unknown type TextError; add: from \"@std/core.ms\" import TextError\n   |\n 5 |     let result: Result[Int, TextError] = fail(\"empty\")\n   |                             ^\n<DIR>/pkg-compiler-testexpectedresultgenericinference-1.ms:5:42: resolution: unknown binding fail; add: from \"@std/test.ms\" import fail\n   |\n 5 |     let result: Result[Int, TextError] = fail(\"empty\")\n   |                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

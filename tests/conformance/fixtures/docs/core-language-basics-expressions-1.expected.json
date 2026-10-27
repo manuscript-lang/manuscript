@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:34: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:4:42: resolution: unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'def validate(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:34: resolution: unknown type Config; declare it with 'type Config:' / 'interface Config:', declare it as a type parameter, or import it\n   |\n 4 | def load(path: String) -> Result[Config, ConfigError]:\n   |                                  ^\n<DIR>/core-language-basics-expressions-1.ms:4:42: resolution: unknown type ConfigError; declare it with 'type ConfigError:' / 'interface ConfigError:', declare it as a type parameter, or import it\n   |\n 4 | def load(path: String) -> Result[Config, ConfigError]:\n   |                                          ^\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'let validate = ...' before use, define 'def validate(...) -> T:', or import it from a module\n   |\n 8 |         | try validate\n   |               ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
