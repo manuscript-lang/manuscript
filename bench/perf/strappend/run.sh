@@ -11,7 +11,12 @@ W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT HUP INT TERM
 cp -r "$HERE/ms" "$W/"
 (cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o "bench$EXE" >&2)
-"$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rust$EXE" "$HERE/rust/main.rs"
+# RUSTC_LINKER names the linker when PATH has the wrong one (Git's `link` shadows MSVC's on Windows runners).
+if [ -n "${RUSTC_LINKER:-}" ]; then
+  "$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -C linker="$RUSTC_LINKER" -o "$W/rust$EXE" "$HERE/rust/main.rs"
+else
+  "$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rust$EXE" "$HERE/rust/main.rs"
+fi
 : > "$W/raw.txt"
 i=0
 while [ "$i" -lt "$N" ]; do
