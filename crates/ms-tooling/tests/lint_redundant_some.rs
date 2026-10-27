@@ -35,3 +35,9 @@ fn needed_somes_are_kept() {
     // Only the inner `some(1)`: `some(none)` and the outer wrapper change the value.
     assert_eq!(found.len(), 1);
 }
+
+#[test]
+fn ref_results_keep_the_explicit_some() {
+    let found = findings(include_str!("lint_redundant_some/ref_result.ms"));
+    assert!(found.is_empty(), "{found:?}");
+}
