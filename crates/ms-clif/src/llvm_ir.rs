@@ -259,6 +259,35 @@ fn pure_runtime_attrs(name: &str) -> Option<&'static str> {
     }
 }
 
+/// Returned scalar leaves above which a function is marked `noimplicitfloat`. The SLP vectorizer
+/// skips such functions; it spends tens of milliseconds on the thousands of `insertvalue` and
+/// `phi` lines that build a large flattened result (`FileSystem.stat`) and finds nothing to pack.
+const WIDE_RETURN_LEAVES: usize = 16;
+
+/// Loops in one function above which LLVM does not optimize it. `LoopRotate` and `GVN` grow
+/// superlinearly with the loops in a function: eight hundred inlined `.map` links took 5 s and
+/// sixteen hundred 27 s, against 1.2 s unoptimized. Code that large is generated, not hot.
+const MAX_OPTIMIZED_LOOPS: usize = 256;
+
+/// Back edges in `f`, taking the block order as reverse post-order: a branch to the same or an
+/// earlier block closes a loop.
+fn loop_count(f: &Function, blocks: &[Block]) -> usize {
+    let position: HashMap<Block, usize> = blocks.iter().enumerate().map(|(i, b)| (*b, i)).collect();
+    let mut loops = 0;
+    for (at, b) in blocks.iter().enumerate() {
+        let Some(last) = f.layout.last_inst(*b) else {
+            continue;
+        };
+        let targets =
+            f.dfg.insts[last].branch_destination(&f.dfg.jump_tables, &f.dfg.exception_tables);
+        loops += targets
+            .iter()
+            .filter(|t| position[&t.block(&f.dfg.value_lists)] <= at)
+            .count();
+    }
+    loops
+}
+
 fn ret_ty(rets: &[ir::AbiParam]) -> String {
     match rets {
         [] => "void".into(),
@@ -1036,9 +1065,16 @@ impl LlvmModule {
         // Allocas must sit in the entry block, right after its label.
         let (first, rest) = text.split_once('\n').expect("entry label");
         let header = format!(
-            "{} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
+            "{} @\"{name}\"({}) #{} !dbg !{sp} {{\n",
             ret_ty(&f.signature.returns),
-            params.join(", ")
+            params.join(", "),
+            if loop_count(f, &blocks) > MAX_OPTIMIZED_LOOPS {
+                3
+            } else if f.signature.returns.len() > WIDE_RETURN_LEAVES {
+                2
+            } else {
+                0
+            }
         );
         let mut body = String::new();
         body.push_str(first);
@@ -1172,6 +1208,8 @@ impl LlvmModule {
         }
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
+        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
+        s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
@@ -1405,6 +1443,77 @@ mod tests {
         m.defs
             .extend(glue_module(&[vec![1], vec![0, 2], vec![3], vec![4], vec![]]).defs);
         m.finish(triple, &HashSet::new(), false)
+    }
+
+    fn returning(leaves: usize) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.returns = vec![AbiParam::new(types::I64); leaves];
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        b.switch_to_block(entry);
+        let zero = b.ins().iconst(types::I64, 0);
+        b.ins().return_(&vec![zero; leaves]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    /// A function of `loops` blocks that each branch back to themselves.
+    fn looping(loops: usize) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.params = vec![AbiParam::new(types::I64)];
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        b.append_block_params_for_function_params(entry);
+        b.switch_to_block(entry);
+        let c = b.block_params(entry)[0];
+        let blocks: Vec<_> = (0..=loops).map(|_| b.create_block()).collect();
+        b.ins().jump(blocks[0], &[]);
+        for k in 0..loops {
+            b.switch_to_block(blocks[k]);
+            b.ins().brif(c, blocks[k], &[], blocks[k + 1], &[]);
+        }
+        b.switch_to_block(blocks[loops]);
+        b.ins().return_(&[]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    #[test]
+    fn a_function_with_very_many_loops_is_not_optimized() {
+        let text_for = |loops| {
+            let mut m = LlvmModule::new(vec![Some("loops.ms".into())], ".".into());
+            let f = looping(loops);
+            m.add_function("loops", "loops", (0, 1), &f, &TestSymbols, true);
+            m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false)
+        };
+        assert!(text_for(MAX_OPTIMIZED_LOOPS + 1).contains("(i64 %a0) #3"));
+        assert!(text_for(MAX_OPTIMIZED_LOOPS).contains("(i64 %a0) #0"));
+    }
+
+    #[test]
+    fn a_wide_result_skips_the_slp_vectorizer() {
+        let text_for = |leaves| {
+            let mut m = LlvmModule::new(vec![Some("wide.ms".into())], ".".into());
+            let f = returning(leaves);
+            m.add_function("wide", "wide", (0, 1), &f, &TestSymbols, true);
+            m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false)
+        };
+        assert!(text_for(WIDE_RETURN_LEAVES + 1).contains("@\"wide\"() #2"));
+        assert!(text_for(WIDE_RETURN_LEAVES).contains("@\"wide\"() #0"));
     }
 
     #[test]
