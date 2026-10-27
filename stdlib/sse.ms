@@ -121,12 +121,37 @@ impl SseDecoder for Decoder:
         if let failure = self.failure: return error(failure.clone())
         if self.closed: return error(SseError.InvalidInput)
 
-        var index = 0
         let total = chunk.length()
+        var start = 0
+        var index = 0
 
         while index < total:
-            let step = consume(var self, chunk.get(index), var events)
+            let byte = chunk.get(index)
+
+            if byte != 10 and byte != 13:
+                index += 1
+                continue
+
+            if byte == 10 and self.carriage and index == start:
+                self.carriage = False
+                index += 1
+                start = index
+                continue
+
+            let step = complete(var self, chunk.slice(start, index).get(), var events)
+            self.carriage = byte == 13
             index += 1
+            start = index
+
+            if step.is_error():
+                let failure = step.err().clone()
+                self.failure = failure.clone()
+                return error(failure)
+
+        if start < total:
+            self.carriage = False
+
+            let step = hold(var self, chunk.slice(start, total).get())
 
             if step.is_error():
                 let failure = step.err().clone()
@@ -150,36 +175,48 @@ impl SseDecoder for Decoder:
     def retry() -> Optional[Int]:
         return self.retry_ms
 
-def consume(var decoder: Decoder, byte: Int, var events: List[SseEvent]) -> Result[
-    Unit, SseError
-]:
-    let after_carriage = decoder.carriage
-    decoder.carriage = False
-    if byte == 10 and after_carriage: return ok(())
-
-    if byte == 10 or byte == 13:
-        decoder.carriage = byte == 13
-        return end_line(var decoder, var events)
-
-    decoder.line.append(byte)
-    decoder.line_bytes += 1
+# Buffers the unterminated tail of a chunk as part of the line being assembled.
+def hold(var decoder: Decoder, segment: Bytes) -> Result[Unit, SseError]:
+    decoder.line_bytes += segment.length()
     if exceeds(decoder.line_bytes, decoder.limits.max_line_bytes): return error(
         SseError.LimitExceeded
     )
 
+    decoder.line.append_bytes(segment)
     return ok(())
 
-def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, SseError]:
-    var bytes = decoder.line.build()
+# Finishes the line ending at a terminator, joining it with any bytes held from earlier chunks.
+def complete(var decoder: Decoder, segment: Bytes, var events: List[SseEvent]) -> Result[
+    Unit, SseError
+]:
+    if decoder.line_bytes == 0:
+        if exceeds(segment.length(), decoder.limits.max_line_bytes): return error(
+            SseError.LimitExceeded
+        )
+
+        return end_line(var decoder, segment, var events)
+
+    try hold(var decoder, segment)
+
+    let joined = decoder.line.build()
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
+    return end_line(var decoder, joined, var events)
 
+def end_line(var decoder: Decoder, line_bytes: Bytes, var events: List[SseEvent]) -> Result[
+    Unit, SseError
+]:
     if not decoder.started:
         decoder.started = True
-        if bytes.starts_with(f"\u{feff}".to_bytes()): bytes = bytes.slice(
-            3, bytes.length()
-        ).get()
+        if line_bytes.starts_with(f"\u{feff}".to_bytes()): return end_line(
+            var decoder, line_bytes.slice(3, line_bytes.length()).get(), var events
+        )
 
+    return end_text_line(var decoder, line_bytes, var events)
+
+def end_text_line(var decoder: Decoder, bytes: Bytes, var events: List[SseEvent]) -> Result[
+    Unit, SseError
+]:
     if bytes.is_empty():
         dispatch(var decoder, var events)
         return ok(())
@@ -197,17 +234,20 @@ def end_line(var decoder: Decoder, var events: List[SseEvent]) -> Result[Unit, S
     return ok(())
 
 def apply(var decoder: Decoder, line: String) -> Unit:
-    var name = line.clone()
-    var value = ""
     let colon = line.index_of(":")
 
-    if let at = colon:
-        name = line.slice(0, at).get()
-        value = line.slice(at + 1, line.length()).get()
-        if value.starts_with(" "): value = value.slice(1, value.length()).get()
+    if colon.is_none():
+        field(var decoder, line, "")
+        return ()
 
-    if name == "event": decoder.event_type = value
-    elif name == "data": decoder.data.append(value)
+    let at = colon.get(0)
+    var value = line.slice(at + 1, line.length()).get()
+    if value.starts_with(" "): value = value.slice(1, value.length()).get()
+    field(var decoder, line.slice(0, at).get(), value)
+
+def field(var decoder: Decoder, name: String, value: String) -> Unit:
+    if name == "data": decoder.data.append(value)
+    elif name == "event": decoder.event_type = value
     elif name == "id": identify(var decoder, value)
     elif name == "retry": reconnect(var decoder, value)
 
