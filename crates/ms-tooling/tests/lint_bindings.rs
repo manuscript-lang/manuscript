@@ -41,20 +41,9 @@ fn recursive(source: &str) -> usize {
 #[test]
 fn recursion_without_a_base_case_is_reported() {
     assert_eq!(
-        recursive(
-            "def forever(n: Int) -> Int:
-    return forever(n - 1)
-
-def both(n: Int) -> Int:
-    if n > 0:
-        return both(n - 1)
-    else:
-        return both(n + 1)
-
-export def main() -> Int:
-    return 0
-"
-        ),
+        recursive(include_str!(
+            "lint_bindings/recursion-without-a-base-case-is-reported.ms"
+        )),
         2
     );
 }
@@ -62,29 +51,9 @@ export def main() -> Int:
 #[test]
 fn recursion_with_a_base_case_is_clean() {
     assert_eq!(
-        recursive(
-            "def fact(n: Int) -> Int:
-    if n <= 1:
-        return 1
-    return n * fact(n - 1)
-
-def sum(n: Int) -> Int:
-    return 0 if n <= 0 else n + sum(n - 1)
-
-def count(n: Int) -> Int:
-    for i in 0..n:
-        return i
-    return count(n - 1)
-
-def walk(n: Int) -> Int:
-    if n > 0 and walk(n - 1) > 0:
-        return 1
-    return 0
-
-export def main() -> Int:
-    return fact(3) + sum(2) + count(1) + walk(1)
-"
-        ),
+        recursive(include_str!(
+            "lint_bindings/recursion-with-a-base-case-is-clean.ms"
+        )),
         0
     );
 }
