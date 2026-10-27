@@ -72,7 +72,7 @@ impl Outline<'_> {
                 selection_name = String::new();
             }
             DeclKind::Test(t) => {
-                name = format!("test {}", t.name);
+                name = format!("{} {}", if t.bench { "bench" } else { "test" }, t.name);
                 selection_name = String::new();
             }
             _ => {}

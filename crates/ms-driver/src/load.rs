@@ -15,7 +15,7 @@ use ms_syntax::{Diagnostic, Phase, Pos};
 /// What to load besides the modules reachable from the entry.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct LoadOptions {
-    /// Add the project's `test.ms` and `*_test.ms` files.
+    /// Add the project's `test.ms`, `*_test.ms`, `bench.ms` and `*_bench.ms` files.
     pub tests: bool,
 }
 
