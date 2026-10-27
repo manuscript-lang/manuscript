@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/task-stored-closure-reuse.ms:8:21: type: `entry` is moved here but used again at 9:21; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/task-stored-closure-reuse.ms:8:21: type: `entry` is moved here but used again at 9:21; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed\n   |\n 8 |         group.spawn(entry)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
