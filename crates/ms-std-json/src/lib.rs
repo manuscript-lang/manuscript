@@ -330,7 +330,7 @@ fn unicode_valid(s: &[u8]) -> bool {
 const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
-use ms_rt::scan::{json_special as find_special, skip_spaces};
+use ms_rt::scan::{json_special as find_special, push_short, skip_spaces};
 
 enum Frame {
     /// An array whose items so far are `vals[start..]`.
@@ -1213,7 +1213,7 @@ impl Writer {
             return;
         }
         self.separate();
-        self.buf.extend_from_slice(quoted_name.as_bytes());
+        push_short(&mut self.buf, quoted_name.as_bytes());
         self.buf.push(b':');
         if self.width > 0 {
             self.buf.push(b' ');
@@ -1298,7 +1298,7 @@ impl Writer {
         if v < 0 {
             self.buf.push(b'-');
         }
-        self.buf.extend_from_slice(&digits[at..]);
+        push_short(&mut self.buf, &digits[at..]);
         self.check();
     }
 
@@ -1335,7 +1335,7 @@ impl Writer {
 
     fn raw(&mut self, text: &str) {
         if self.err.is_none() {
-            self.buf.extend_from_slice(text.as_bytes());
+            push_short(&mut self.buf, text.as_bytes());
             self.check();
         }
     }
@@ -1350,20 +1350,20 @@ impl Writer {
             for (i, &c) in b.iter().enumerate() {
                 let code = ESCAPES[usize::from(c)];
                 if code != 0 {
-                    self.buf.extend_from_slice(&b[at..i]);
+                    push_short(&mut self.buf, &b[at..i]);
                     self.escape(c, code);
                     at = i + 1;
                 }
             }
-            self.buf.extend_from_slice(&b[at..]);
+            push_short(&mut self.buf, &b[at..]);
         } else {
             let mut at = 0;
             while let Some(i) = find_special(b, at) {
-                self.buf.extend_from_slice(&b[at..i]);
+                push_short(&mut self.buf, &b[at..i]);
                 self.escape(b[i], ESCAPES[usize::from(b[i])]);
                 at = i + 1;
             }
-            self.buf.extend_from_slice(&b[at..]);
+            push_short(&mut self.buf, &b[at..]);
         }
         self.buf.push(b'"');
     }
@@ -1425,14 +1425,87 @@ impl core::fmt::Write for Sci {
     }
 }
 
+/// Powers of ten that a double holds exactly.
+const POW10: [f64; 23] = [
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+    1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+];
+
+/// The shortest digits of `abs` (1e-6 <= abs < 1e15) when it is a decimal of at most 15
+/// significant digits, written to `buf` with the decimal exponent of the first digit. Two
+/// different 15-digit decimals never round to one double, so a decimal that divides back to `abs`
+/// is the only candidate and, once trailing zeros are dropped, the shortest one: the same digits
+/// the shortest-round-trip formatter finds.
+fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
+    if !(1e-6..1e15).contains(&abs) {
+        return None;
+    }
+    // floor(log10(abs)) from the binary exponent: right or one too low or high, which the
+    // 15-digit range below catches and the second try fixes.
+    let e2 = ((abs.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+    let mut exp = (e2 * 1233) >> 12;
+    let (mut scale, mut n, mut pow);
+    let mut tries = 0;
+    loop {
+        scale = 14 - exp; // 10^scale puts 15 digits before the point
+        pow = *POW10.get(usize::try_from(scale).ok()?)?;
+        n = (abs * pow + 0.5) as u64; // rounds to nearest; the check below catches a bad tie
+        tries += 1;
+        if n >= 1_000_000_000_000_000 && tries < 3 {
+            exp += 1;
+        } else if n < 100_000_000_000_000 && tries < 3 {
+            exp -= 1;
+        } else {
+            break;
+        }
+    }
+    if !(100_000_000_000_000..1_000_000_000_000_000).contains(&n) || n as f64 / pow != abs {
+        return None;
+    }
+    // Drop trailing zeros, then write what is left from the end.
+    let mut len = 15;
+    for (step, zeros) in [(100_000_000, 8), (10_000, 4), (100, 2), (10, 1)] {
+        if n % step == 0 {
+            n /= step;
+            len -= zeros;
+        }
+    }
+    for slot in buf[..len].iter_mut().rev() {
+        *slot = b'0' + (n % 10) as u8;
+        n /= 10;
+    }
+    Some((len, 14 - scale))
+}
+
+/// The shortest round-trip digits of `abs` through the standard formatter, as in
+/// [`short_digits`].
+fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
+    use core::fmt::Write;
+    let mut sci = Sci {
+        bytes: [0; 32],
+        len: 0,
+    };
+    write!(sci, "{abs:e}").ok()?;
+    let text = &sci.bytes[..sci.len];
+    let e_at = text.iter().position(|&c| c == b'e')?;
+    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
+    let mut n = 0;
+    for &c in &text[..e_at] {
+        if c != b'.' {
+            *buf.get_mut(n)? = c;
+            n += 1;
+        }
+    }
+    Some((n, exp))
+}
+
 /// Appends [`float_text`] to `out`; `None` (and nothing appended) for NaN and infinities.
 fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
-    use core::fmt::Write;
     if !v.is_finite() {
         return None;
     }
     let abs = v.abs();
-    if abs < 1e15 && abs.fract() == 0.0 {
+    if abs < 1e15 && (abs as u64) as f64 == abs {
         // A whole number prints as its digits, with no point or exponent.
         if v.is_sign_negative() {
             out.push(b'-');
@@ -1448,27 +1521,15 @@ fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
                 break;
             }
         }
-        out.extend_from_slice(&digits[at..]);
+        push_short(out, &digits[at..]);
         return Some(());
     }
-    let mut sci = Sci {
-        bytes: [0; 32],
-        len: 0,
+    let mut buf = [0u8; 24];
+    let (n, exp) = match short_digits(abs, &mut buf) {
+        Some(found) => found,
+        None => sci_digits(abs, &mut buf)?,
     };
-    write!(sci, "{abs:e}").ok()?;
-    let text = &sci.bytes[..sci.len];
-    let e_at = text.iter().position(|&c| c == b'e')?;
-    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
-    // Mantissa digits without the point.
-    let mut digits = [0u8; 20];
-    let mut n = 0;
-    for &c in &text[..e_at] {
-        if c != b'.' {
-            *digits.get_mut(n)? = c;
-            n += 1;
-        }
-    }
-    let digits = &digits[..n];
+    let digits = &buf[..n];
     if v.is_sign_negative() {
         out.push(b'-');
     }
