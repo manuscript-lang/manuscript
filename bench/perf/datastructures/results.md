@@ -2,6 +2,20 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27 (Bytes append and SortedMap re-measure)
+
+Revision: this branch on top of `main` after #1692 (`buildmove`); `run.sh 7` twice, plus callgrind and `getrusage` on the standalone 4M-byte append and 300k-key SortedMap programs.
+
+| Operation | Manuscript | Rust | Ratio |
+| --- | ---: | ---: | ---: |
+| Bytes append (ns/byte, two runs) | 0.9 to 1.0 | 0.9 | 1.00 to 1.12 (was 1.39 to 1.55) |
+| Bytes append, page faults (4M bytes) | 1053 | 1087 | 0.97 (was 2033 vs 1086) |
+| SortedMap add and contains (ns/op, `run.sh`) | 191 to 199 | 207 to 217 | 0.92 |
+| SortedMap add and contains, 300k keys, process min of 15 | 127 ms | 121 ms | 1.05 |
+| SortedMap instructions, 300k keys | 328M | 252M | 1.30 |
+
+Bytes: the earlier gap was the copy `build()` made of the whole buffer, which doubled page faults; `buildmove` moves the buffer for a builder that is not built again, so faults are at Rust's level. The append loop itself is still 13 against 8 instructions per byte (the sealed-flag test and the length write-back each iteration); wall time is within noise of Rust. SortedMap: wall time is at parity, with more instructions than `BTreeMap` that the cache misses hide.
+
 ## 2026-10-27 (PriorityQueue sift-down guards)
 
 Revision: this branch on top of `9f41921f`; callgrind on 100k enqueue and dequeue, plus `run.sh 7` twice on the same host.
