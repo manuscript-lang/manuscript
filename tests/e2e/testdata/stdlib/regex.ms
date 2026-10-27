@@ -25,7 +25,7 @@ test "regex captures groups spans and splits":
     let date = try compile("(?P<y>[0-9]{4})-(?P<m>[0-9]{2})")
     try expect_equal(date.captures("on 2026-10 ok"), ["2026-10", "2026", "10"])
     try expect_equal(date.captures("none"), [])
-    try expect_equal(date.named_captures("2026-10").get("y").get(), "2026")
+    try expect_equal(date.named_captures("2026-10") ["y"], "2026")
     try expect_equal(date.named_captures("none").is_empty(), True)
     try expect_equal(date.find_span("on 2026-10").get(), [3, 10])
     try expect_equal(date.find_span("none").is_none(), True)

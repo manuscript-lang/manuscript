@@ -80,11 +80,11 @@ ms test ms.toml --repeat 10 --shuffle 42
 
 ## Property tests and fuzzing
 
-A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
+A property test checks a rule on many generated inputs instead of a few hand-picked ones. `check` in `@std/test/property.ms` takes a name, a generator, and a function that returns a `Result` like any assertion. It runs 100 cases by default.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/property.ms" import check, ints, lists
+from "@std/test/property.ms" import check, ints, lists
 from "@std/testing.ms" import expect_equal
 
 test "reversing twice restores a list":
@@ -100,10 +100,10 @@ expected true, got false
 ```
 
 - Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
-- Combine them with `mapped`, `zipped`, `flat_mapped`, and `filtered`. A `filtered` generator that cannot find a kept value discards the case; too many discards fail the test.
+- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(lambda n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
 - Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `none`, `bools` toward `False`.
 - A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
-- A `panic` inside a property ends the test process before it can shrink; return errors with `expect_*` and `try`, and use `expect_fault` for faults you expect.
+- A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs in a forked child.
 
 `ms test` controls property runs from the command line:
 

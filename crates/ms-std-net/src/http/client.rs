@@ -1802,18 +1802,53 @@ impl ResponseBody {
         if self.deadline.expired() {
             return Err(IoErr::Failed("context deadline exceeded".into()));
         }
-        let direct = state.gzip.is_none()
+        let plain = state.gzip.is_none()
             && !state.done
-            && state
-                .wire
-                .as_ref()
-                .is_some_and(|w| w.h2.is_none() && w.pending().is_empty());
-        let Some(room) = state.decoder.raw_room().filter(|_| direct) else {
+            && state.wire.as_ref().is_some_and(|w| w.h2.is_none());
+        if !plain {
             return state.produce(self.deadline);
+        }
+        let wire = state.wire.as_mut().expect("wire");
+        if !wire.pending().is_empty() {
+            // Input already received (the head's tail, or a read that crossed chunk framing).
+            let before = out.len();
+            let (used, progress) = state
+                .decoder
+                .feed(wire.pending(), out)
+                .map_err(|m| IoErr::Failed(m.to_string()))?;
+            wire.consume(used);
+            if (out.len() - before) as u64 > state.remaining {
+                return Err(IoErr::Failed("response body limit exceeded".into()));
+            }
+            state.remaining -= (out.len() - before) as u64;
+            if progress == Decoded::Done {
+                state.done = true;
+            }
+            return Ok(());
+        }
+        let Some(room) = state.decoder.raw_room() else {
+            // Chunk framing: read it into the wire buffer, then decode it above.
+            let n = wire.fill(self.deadline).map_err(|e| match e {
+                IoErr::Failed(m) if m == "operation timed out" => {
+                    IoErr::Failed("context deadline exceeded".into())
+                }
+                other => other,
+            })?;
+            if n == 0 {
+                state.wire_eof = true;
+                if state.decoder.finish_on_eof() {
+                    state.done = true;
+                    return Ok(());
+                }
+                return Err(IoErr::Failed(
+                    "connection closed before the exchange completed".into(),
+                ));
+            }
+            return Ok(());
         };
         let budget = state.remaining.saturating_add(1);
         let want = (room.min(budget) as usize).clamp(1, READ_BUF);
-        if room != u64::MAX {
+        if state.decoder.is_fixed_length() {
             // The rest of a fixed-length body fits without growing the buffer again.
             out.reserve_exact(room.min(budget).min(1 << 30) as usize);
         }

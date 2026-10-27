@@ -7,7 +7,6 @@ mod matches;
 mod patterns;
 mod recursion;
 mod redundant;
-mod results;
 mod tasks;
 
 use ms_check::{ModuleData, Program};
@@ -87,7 +86,6 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
     let mut findings = Vec::new();
     for module in program.modules.iter().filter(|m| !m.is_standard()) {
         bindings::lint(program, module, &mut findings);
-        results::lint(module, &mut findings);
         faults::lint(module, &mut findings);
         recursion::lint(program, module, &mut findings);
         patterns::lint(module, &mut findings);

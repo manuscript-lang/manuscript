@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "9223372036854775807 + 1 overflows Int and always faults; use a smaller value or a wider type such as BigInt",
+        "position": {
+          "file": "diag-constant-fault-add-overflow.ms",
+          "line": 5,
+          "column": 32,
+          "offset": 178
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-constant-fault-add-overflow.ms:5:32: type: 9223372036854775807 + 1 overflows Int and always faults; use a smaller value or a wider type such as BigInt\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

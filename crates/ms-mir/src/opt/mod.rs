@@ -37,10 +37,22 @@ pub enum Level {
     Speed,
 }
 
+/// Instructions in one function above which an unoptimized build treats it as long: owned values
+/// drop at their last use and the Cranelift backend allocates registers in a single pass.
+pub const LONG_FUNCTION_INSTS: usize = 4000;
+
+/// The number of instructions in `f`, excluding terminators.
+pub fn instruction_count(f: &crate::ir::Func) -> usize {
+    f.blocks.iter().map(|b| b.insts.len()).sum()
+}
+
 /// Runs the pipeline. With `verify`, the module is re-verified after every pass and
 /// the first failure panics with the pass name (used by tests and debug builds).
 pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     if level == Level::None {
+        // Owned values otherwise live to scope end, and register allocation grows with the number
+        // that are live at once, so only a long function pays for the earlier drops.
+        lastuse::run_where(m, |f| instruction_count(f) > LONG_FUNCTION_INSTS);
         return;
     }
     let check = |m: &Module, pass: &str| {

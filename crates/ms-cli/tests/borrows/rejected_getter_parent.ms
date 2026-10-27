@@ -15,5 +15,5 @@ def main_body(var b: Box) -> Int:
 
 export def main() -> Int:
     var b = Box(items: [])
-    stdout().write(f"{main_body(var b)}\n")
+    let _ = stdout().write(f"{main_body(var b)}\n")
     return 0

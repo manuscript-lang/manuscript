@@ -1,5 +1,5 @@
 {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"codeActionProvider":{"codeActionKinds":["source.fixAll.manuscript","quickfix","source.organizeImports"]},"completionProvider":{"triggerCharacters":[".",":","/"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"inlayHintProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":true,"legend":{"tokenModifiers":[],"tokenTypes":["keyword","variable","number","string","comment","function","type","property","parameter","enumMember","typeParameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",",",":"]},"textDocumentSync":2,"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"manuscript","version":"0.1.0"}}}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL113","message":"some(...) is redundant here: a plain value is wrapped where an Optional is expected; pass the value itself","range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"severity":2,"source":"manuscript-lint"},{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":56},"start":{"character":8,"line":56}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":58},"start":{"character":8,"line":58}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":2,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":3,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":4,"jsonrpc":"2.0"}
@@ -280,86 +280,92 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":279,"jsonrpc":"2.0"}
 {"id":280,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":55},"start":{"character":13,"line":55}}}}
 {"id":281,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":55},"start":{"character":13,"line":55}}}}
-{"id":282,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":56},"start":{"character":8,"line":56}}}}
-{"id":283,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":56},"start":{"character":8,"line":56}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":284,"jsonrpc":"2.0"}
-{"id":285,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":16,"line":56},"start":{"character":15,"line":56}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":286,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":282,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":283,"jsonrpc":"2.0"}
+{"id":284,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":13,"line":56},"start":{"character":12,"line":56}}}}
+{"id":285,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}}
+{"id":286,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":287,"jsonrpc":"2.0"}
-{"id":288,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
-{"id":289,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
+{"id":288,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":24,"line":56},"start":{"character":23,"line":56}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":289,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":290,"jsonrpc":"2.0"}
-{"id":291,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
-{"id":292,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
-{"id":293,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":25,"line":57},"start":{"character":24,"line":57}}}}
-{"id":294,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":58},"start":{"character":8,"line":58}}}}
-{"id":295,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":11,"line":58},"start":{"character":8,"line":58}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":296,"jsonrpc":"2.0"}
-{"id":297,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":19,"line":58},"start":{"character":15,"line":58}}}}
-{"id":298,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":19,"line":58},"start":{"character":15,"line":58}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":299,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":300,"jsonrpc":"2.0"}
-{"id":301,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":60},"start":{"character":8,"line":60}}}}
-{"id":302,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":60},"start":{"character":8,"line":60}}}}
-{"id":303,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":60},"start":{"character":17,"line":60}}}}
-{"id":304,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":60},"start":{"character":17,"line":60}}}}
+{"id":291,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
+{"id":292,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":293,"jsonrpc":"2.0"}
+{"id":294,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
+{"id":295,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
+{"id":296,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":25,"line":57},"start":{"character":24,"line":57}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":297,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":298,"jsonrpc":"2.0"}
+{"id":299,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":13,"line":58},"start":{"character":12,"line":58}}}}
+{"id":300,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}}
+{"id":301,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":302,"jsonrpc":"2.0"}
+{"id":303,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":27,"line":58},"start":{"character":23,"line":58}}}}
+{"id":304,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":27,"line":58},"start":{"character":23,"line":58}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":305,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":306,"jsonrpc":"2.0"}
-{"id":307,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
-{"id":308,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":309,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":310,"jsonrpc":"2.0"}
-{"id":311,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":63},"start":{"character":4,"line":63}}}}
-{"id":312,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":63},"start":{"character":4,"line":63}}}}
-{"id":313,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":63},"start":{"character":8,"line":63}}}}
-{"id":314,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":63},"start":{"character":8,"line":63}}}}
+{"id":307,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":60},"start":{"character":8,"line":60}}}}
+{"id":308,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":14,"line":60},"start":{"character":8,"line":60}}}}
+{"id":309,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":60},"start":{"character":17,"line":60}}}}
+{"id":310,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":60},"start":{"character":17,"line":60}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":311,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":312,"jsonrpc":"2.0"}
+{"id":313,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
+{"id":314,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":315,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":316,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":317,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":318,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":319,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":320,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":321,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":322,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":323,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":324,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":325,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":326,"jsonrpc":"2.0"}
+{"id":317,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":63},"start":{"character":4,"line":63}}}}
+{"id":318,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":7,"line":63},"start":{"character":4,"line":63}}}}
+{"id":319,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":63},"start":{"character":8,"line":63}}}}
+{"id":320,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":12,"line":63},"start":{"character":8,"line":63}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":321,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":322,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":323,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":324,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":325,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":326,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":327,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":328,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":329,"jsonrpc":"2.0"}
-{"id":330,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}}
-{"id":331,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":332,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":333,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":334,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":335,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":336,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":337,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":338,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":330,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":331,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":332,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":333,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":334,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":335,"jsonrpc":"2.0"}
+{"id":336,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}}
+{"id":337,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":30,"line":64},"start":{"character":26,"line":64}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":338,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":339,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":340,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":341,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":342,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":343,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":344,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":345,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":346,"jsonrpc":"2.0"}
-{"id":347,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}
-{"id":348,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":341,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":342,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":343,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":344,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":345,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":346,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":347,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":348,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":349,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":350,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":351,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":352,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":353,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":354,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":351,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":352,"jsonrpc":"2.0"}
+{"id":353,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}
+{"id":354,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":355,"jsonrpc":"2.0"}
-{"id":356,"jsonrpc":"2.0","result":[]}
-{"id":357,"jsonrpc":"2.0","result":[{"newText":"from \"@std/core.ms\" import Iterator\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/testing.ms\" import expect_equal\n\n# A point in the plane.\ntype Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Square(side: Int)\n    case Empty\n\ninterface Named:\n    def label() -> String\n\nimpl Point:\n    def norm() -> Int:\n        return self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n    def label() -> String:\n        return \"point\"\n\ntype Counter:\n    n: Int\n\nimpl Iterator[Int] for Counter:\n    var def next() -> Optional[Int]:\n        if self.n == 0: return none\n\n        self.n -= 1\n        return some(self.n)\n\ndef add(a: Int, b: Int) -> Int:\n    let total = a + b\n    return total\n\ndef area(shape: Shape) -> Int:\n    match shape:\n        case Circle(r):\n            return r * r * 3\n        case Square(s):\n            return s * s\n        case _:\n            return 0\n\ndef describe(p: Point) -> String:\n    let n = p.norm()\n    return f\"norm is {n} at {p.x}\"\n\nexport def main() -> Int:\n    let p = Point(x: 1, y: 2)\n    let values = [1, 2, 3]\n    for v in values:\n        say(f\"{v}\")\n    for tick in Counter(n: 2):\n        say(f\"{tick}\")\n\n    let result = add(1, 2)\n    return result\n\ndef say(text: String) -> Result[Unit, Error]:\n    try stdout().write(f\"{text}\\n\")\n    return stdout().flush()\n\ntest \"addition\":\n    try expect_equal(add(1, 2), 3)\n","range":{"end":{"character":0,"line":69},"start":{"character":0,"line":0}}}]}
-{"id":358,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":36}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":49}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":53}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":54}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":60}}]}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL113","message":"some(...) is redundant here: a plain value is wrapped where an Optional is expected; pass the value itself","range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"severity":2,"source":"manuscript-lint"},{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":56},"start":{"character":8,"line":56}},"severity":2,"source":"manuscript-lint"},{"code":"MSL104","message":"Result is discarded; handle it with try or if let, return it, or bind it to _ignored to discard intentionally","range":{"end":{"character":11,"line":58},"start":{"character":8,"line":58}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":356,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":357,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":358,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":359,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":360,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":361,"jsonrpc":"2.0"}
+{"id":362,"jsonrpc":"2.0","result":[]}
+{"id":363,"jsonrpc":"2.0","result":[{"newText":"from \"@std/core.ms\" import Iterator\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/testing.ms\" import expect_equal\n\n# A point in the plane.\ntype Point:\n    x: Int\n    y: Int = 0\n\ntype Shape:\n    case Circle(radius: Int)\n    case Square(side: Int)\n    case Empty\n\ninterface Named:\n    def label() -> String\n\nimpl Point:\n    def norm() -> Int:\n        return self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n    def label() -> String:\n        return \"point\"\n\ntype Counter:\n    n: Int\n\nimpl Iterator[Int] for Counter:\n    var def next() -> Optional[Int]:\n        if self.n == 0: return none\n\n        self.n -= 1\n        return some(self.n)\n\ndef add(a: Int, b: Int) -> Int:\n    let total = a + b\n    return total\n\ndef area(shape: Shape) -> Int:\n    match shape:\n        case Circle(r):\n            return r * r * 3\n        case Square(s):\n            return s * s\n        case _:\n            return 0\n\ndef describe(p: Point) -> String:\n    let n = p.norm()\n    return f\"norm is {n} at {p.x}\"\n\nexport def main() -> Int:\n    let p = Point(x: 1, y: 2)\n    let values = [1, 2, 3]\n    for v in values:\n        let _ = say(f\"{v}\")\n    for tick in Counter(n: 2):\n        let _ = say(f\"{tick}\")\n\n    let result = add(1, 2)\n    return result\n\ndef say(text: String) -> Result[Unit, Error]:\n    try stdout().write(f\"{text}\\n\")\n    return stdout().flush()\n\ntest \"addition\":\n    try expect_equal(add(1, 2), 3)\n","range":{"end":{"character":0,"line":69},"start":{"character":0,"line":0}}}]}
+{"id":364,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":36}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":49}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":53}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":54}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":56}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":13,"line":58}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":14,"line":60}}]}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL101","message":"Local binding p is never read","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS2002","message":"module does not export unused; @std/json.ms exports: JsonEncode, JsonError, JsonLimits, JsonValue, parse, stringify; namespace imports are unsupported, so import individual exports with 'from \"@std/json.ms\" import Name, OtherName'","range":{"end":{"character":33,"line":2},"start":{"character":27,"line":2}},"severity":1,"source":"manuscript"},{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":42,"line":0},"start":{"character":42,"line":0}},"severity":2,"source":"manuscript-lint"},{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}
-{"id":359,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"diagnostics":[{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":42,"line":0},"start":{"character":42,"line":0}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"","range":{"end":{"character":45,"line":0},"start":{"character":42,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Remove trailing whitespace"},{"diagnostics":[{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"\n","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Insert final newline"},{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":360,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":361,"jsonrpc":"2.0","result":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}]}
-{"id":362,"jsonrpc":"2.0","result":null}
+{"id":365,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"diagnostics":[{"code":"MSL001","message":"Remove trailing whitespace","range":{"end":{"character":42,"line":0},"start":{"character":42,"line":0}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"","range":{"end":{"character":45,"line":0},"start":{"character":42,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Remove trailing whitespace"},{"diagnostics":[{"code":"MSL002","message":"End the file with a newline","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"\n","range":{"end":{"character":12,"line":4},"start":{"character":12,"line":4}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Insert final newline"},{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":366,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"from \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\nfrom \"@std/testing.ms\" import expect_equal   \n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":367,"jsonrpc":"2.0","result":[{"newText":"from \"@std/testing.ms\" import expect_equal\nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\n\ndef main() -> Int:\n    return 0\n","range":{"end":{"character":12,"line":4},"start":{"character":0,"line":0}}}]}
+{"id":368,"jsonrpc":"2.0","result":null}

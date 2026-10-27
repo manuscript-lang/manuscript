@@ -12,7 +12,7 @@ def talker(ch: Channel[Int, Unit]) -> Int:
 
     for i in 0..3:
         sleep(nanoseconds(20000000))
-        c.send(i)
+        let _ = c.send(i)
 
     return 42
 

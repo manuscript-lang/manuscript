@@ -549,11 +549,13 @@ pub fn compile(m: &Module, opts: &Options) -> Result<crate::Parts, Error> {
 
 /// MIR instructions in one function above which a Debug module is allocated with the single-pass
 /// register allocator.
-const SINGLE_PASS_INSTS: usize = 4000;
+const SINGLE_PASS_INSTS: usize = ms_mir::opt::LONG_FUNCTION_INSTS;
 
 fn single_pass(m: &Module, opts: &Options) -> bool {
-    let insts = |f: &Func| f.blocks.iter().map(|b| b.insts.len()).sum::<usize>();
-    opts.opt_level == "none" && m.funcs.iter().any(|f| insts(f) > SINGLE_PASS_INSTS)
+    opts.opt_level == "none"
+        && m.funcs
+            .iter()
+            .any(|f| ms_mir::opt::instruction_count(f) > SINGLE_PASS_INSTS)
 }
 
 fn compile_with_isa(
@@ -588,6 +590,15 @@ fn compile_with_isa(
         .map_err(|e| e.to_string())?;
     flags
         .set("unwind_info", "false")
+        .map_err(|e| e.to_string())?;
+    // Windows commits stack one guard page at a time, so a frame larger than a page that is not
+    // probed in order faults with no diagnostic. Inline probing needs no `__rust_probestack`
+    // symbol, which this runtime does not provide.
+    flags
+        .set("enable_probestack", "true")
+        .map_err(|e| e.to_string())?;
+    flags
+        .set("probestack_strategy", "inline")
         .map_err(|e| e.to_string())?;
     let isa = isa_builder
         .finish(settings::Flags::new(flags))

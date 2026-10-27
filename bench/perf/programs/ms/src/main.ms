@@ -100,7 +100,7 @@ def bench_map() -> Int:
     i = 0
 
     while i < 8000:
-        sum += m.get(i).get()
+        sum += m[i]
         i += 1
 
     report("map_put_get_8k", 16000, t)

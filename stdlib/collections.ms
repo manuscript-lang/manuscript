@@ -55,6 +55,14 @@ impl List[T]:
     # Invalid indexes fault.
     var def set(index: Int, value: T) -> Unit: ...
 
+    # Stores value at index in place and returns the element that was there, moving both without copying.
+    # Negative indexes count from the end; invalid indexes fault.
+    var def replace(index: Int, value: T) -> T: ...
+
+    # Exchanges the elements at i and j in place without copying them; equal indexes change nothing.
+    # Negative indexes count from the end; invalid indexes fault.
+    var def swap(i: Int, j: Int) -> Unit: ...
+
     # Removes an element in place; negative indexes count from the end.
     # Invalid indexes fault.
     # Shifts the suffix without clearing prior values retained in spare backing capacity.
@@ -595,3 +603,13 @@ impl ListKeyedExtremes[T] for List[T]:
                 best = k
 
         return self[at].clone()
+
+# Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned for storage.
+interface MapUpdate[T: Hashable & Clonable, U]:
+    var def update(key: T, initial: U, change: Callable[[U], U]) -> Unit
+
+impl MapUpdate[T, U] for Map[T, U]:
+    # Stores `change` applied to the value for `key`, or to `initial` when the key is absent.
+    # Example: `counts.update(word, 0, lambda n: n + 1)` counts occurrences.
+    var def update(key: T, initial: U, change: Callable[[U], U]) -> Unit:
+        self.add(key.clone(), change(self.get_or(key, initial)))

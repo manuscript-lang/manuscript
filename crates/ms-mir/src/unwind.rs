@@ -15,14 +15,20 @@
 //! cancellation or a fault is leaving a guarded task; a fault outside any guard or a process
 //! exit frees nothing.
 //!
+//! A value a function parks while it sits in a stack slot (`put` into a slot, a call that takes it
+//! out and puts it back, `take`) is registered the same way when every callee that receives the
+//! slot only borrows what it takes from it (a "cell"). The registration keeps a bitwise copy of
+//! the slot's contents, which stays valid because no such callee consumes or moves a part out of
+//! them. Any other use of the slot leaves its contents to leak.
+//!
 //! Only programs that start tasks or workers are rewritten. A value moved out of a field and
 //! not yet filled back leaves a hole in its owner, so calls inside that window are skipped, as
-//! are values held in stack slots (a call may leave a `var` local there); both only leak.
+//! are values held in stack slots that a callee may consume or rearrange; both only leak.
 
 use crate::builder::FuncBuilder;
 use crate::ir::*;
 use crate::types::Ty;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// Runtime symbols whose presence means the program starts tasks that can be cancelled.
 const SPAWNERS: &[&str] = &["msrt_scope_spawn", "msrt_worker_start"];
@@ -88,6 +94,8 @@ pub fn run(m: &mut Module) -> bool {
     let mut cx = Cx {
         parks,
         faults,
+        safe: slot_safe_params(m),
+        cells: BTreeMap::new(),
         discard,
         closers: HashMap::new(),
         with_closers: HashMap::new(),
@@ -105,6 +113,12 @@ struct Cx {
     parks: Vec<bool>,
     /// Which functions can fault, directly or through a callee.
     faults: Vec<bool>,
+    /// Per function and parameter: whether the parameter is a slot pointer whose contents the
+    /// function only borrows while it runs, so the caller may keep covering them.
+    safe: Vec<Vec<bool>>,
+    /// The slots of the function being rewritten that hold an owned value between a `put` and a
+    /// `take`, with the type held.
+    cells: BTreeMap<u32, Ty>,
     discard: ExtId,
     /// The cleanup that drops a value of a type while a cancellation unwinds.
     closers: HashMap<Ty, FuncId>,
@@ -361,6 +375,14 @@ fn analyze(
             for c in &consumed {
                 live.remove(c);
             }
+            if inst.op == Op::Take
+                && inst
+                    .args
+                    .first()
+                    .is_some_and(|a| cx.cells.contains_key(&a.0))
+            {
+                live.remove(&inst.args[0].0);
+            }
             if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
                 // `with` open or close would discard an entry that is not its own.
@@ -383,6 +405,14 @@ fn analyze(
                 }
             }
             open = hole_step(open, inst.op);
+            if inst.op == Op::Put
+                && inst
+                    .args
+                    .first()
+                    .is_some_and(|a| cx.cells.contains_key(&a.0))
+            {
+                live.insert(inst.args[0].0);
+            }
             if let Some(r) = inst.res.filter(|r| owned_def[r.index()]) {
                 live.insert(r.0);
             }
@@ -487,7 +517,10 @@ fn hoist_loops(
         let held: Vec<Value> = live
             .iter()
             .filter(|v| {
-                !closed_by_with.contains(v) && !covered[*h].contains(v) && !used.contains(v)
+                !closed_by_with.contains(v)
+                    && !covered[*h].contains(v)
+                    && !used.contains(v)
+                    && !cx.cells.contains_key(v)
             })
             .map(|v| Value(*v))
             .collect();
@@ -633,6 +666,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     let rc = |v: Value| m.needs_drop(f.ty(v));
     let slot_params: BTreeSet<u32> = f.blocks[0].params.iter().map(|p| p.value.0).collect();
     let mut owned_def = vec![false; f.values.len()];
+    let mut from_slot: BTreeSet<u32> = BTreeSet::new();
     for b in &f.blocks {
         for p in &b.params {
             owned_def[p.value.index()] = rc(p.value) && p.mode == Mode::Own;
@@ -645,11 +679,30 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
                 i.op == Op::Take && i.args.first().is_some_and(|a| slot_params.contains(&a.0));
             if let (Some(r), Some(Mode::Own)) = (i.res, m.result_mode(f, i)) {
                 owned_def[r.index()] = !from_caller_slot;
+                if from_caller_slot {
+                    from_slot.insert(r.0);
+                }
             }
         }
     }
+    // A block parameter that receives such a value stays the caller's too.
+    let mut moved = true;
+    while moved {
+        moved = false;
+        for b in &f.blocks {
+            b.term.for_each_target(|t| {
+                for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                    if from_slot.contains(&a.0) && from_slot.insert(p.value.0) {
+                        owned_def[p.value.index()] = false;
+                        moved = true;
+                    }
+                }
+            });
+        }
+    }
+    cx.cells = find_cells(m, cx, f);
     // Quick exit: nothing can be live across a call without an owned definition.
-    if !owned_def.iter().any(|o| *o) {
+    if !owned_def.iter().any(|o| *o) && cx.cells.is_empty() {
         return false;
     }
     let wrapped = wrap_with_closers(m, cx, f);
@@ -744,11 +797,25 @@ fn push_all(
 ) -> Value {
     let mut first = None;
     for v in values {
-        let c = closer(m, cx, f.ty(*v));
+        let mut held = *v;
+        let mut ty = f.ty(*v);
+        if let Some(cell) = cx.cells.get(&v.0).copied() {
+            // A cell registers a view of what its slot holds now.
+            ty = cell;
+            held = f.new_value(cell);
+            out.push(Inst {
+                op: Op::Load,
+                args: vec![*v],
+                imm: Imm::Ty(cell),
+                res: Some(held),
+                loc,
+            });
+        }
+        let c = closer(m, cx, ty);
         let h = f.new_value(Ty::INT);
         out.push(Inst {
             op: Op::CleanupPush,
-            args: vec![*v],
+            args: vec![held],
             imm: Imm::Func(c),
             res: Some(h),
             loc,
@@ -791,4 +858,202 @@ fn hole_step(open: u32, op: Op) -> u32 {
         Op::RecFill | Op::ListFill => open.saturating_sub(1),
         _ => open,
     }
+}
+
+/// The slots of `f` that hold an owned value across calls, each with the type it holds. A slot
+/// qualifies when every use is a `put` into it, a `take` out of it, a `load`, or a call whose
+/// callee only borrows what it takes from the slot, and each such use sits between a `put` and
+/// its `take` in one block.
+fn find_cells(m: &Module, cx: &Cx, f: &Func) -> BTreeMap<u32, Ty> {
+    let mut slots: BTreeMap<u32, Ty> = BTreeMap::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::Slot, Imm::Ty(ty), Some(r)) = (inst.op, inst.imm, inst.res)
+            && m.needs_drop(ty)
+        {
+            slots.insert(r.0, ty);
+        }
+    }
+    if slots.is_empty() {
+        return slots;
+    }
+    let mut bad: BTreeSet<u32> = BTreeSet::new();
+    for blk in &f.blocks {
+        let mut full: BTreeSet<u32> = BTreeSet::new();
+        for inst in &blk.insts {
+            for (k, a) in inst.args.iter().enumerate() {
+                let Some(&ty) = slots.get(&a.0) else { continue };
+                let ok = match (inst.op, inst.imm) {
+                    (Op::Put, _) if k == 0 => full.insert(a.0) && f.ty(inst.args[1]) == ty,
+                    (Op::Take, _) => full.remove(&a.0),
+                    (Op::Load, _) => full.contains(&a.0),
+                    (Op::Call, Imm::Func(g)) => {
+                        full.contains(&a.0)
+                            && cx.safe.get(g.index()).and_then(|p| p.get(k)).copied() == Some(true)
+                    }
+                    _ => false,
+                };
+                if !ok {
+                    bad.insert(a.0);
+                }
+            }
+        }
+        // A `put` left unmatched at the end of the block spans blocks, which this does not follow.
+        bad.extend(full);
+        blk.term.for_each_target(|t| {
+            bad.extend(t.args.iter().map(|a| a.0).filter(|a| slots.contains_key(a)));
+        });
+        if let Term::Ret(Some(v)) = blk.term {
+            bad.insert(v.0);
+        }
+    }
+    slots.retain(|s, _| !bad.contains(s));
+    slots
+}
+
+/// Per function and parameter, whether the parameter is a pointer to a slot whose contents the
+/// function only borrows: it `take`s them, uses them as borrows, and `put`s the same value back.
+fn slot_safe_params(m: &Module) -> Vec<Vec<bool>> {
+    let mut safe: Vec<Vec<bool>> = m
+        .funcs
+        .iter()
+        .map(|f| f.params.iter().map(|p| p.ty == Ty::PTR).collect())
+        .collect();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (fi, f) in m.funcs.iter().enumerate() {
+            for k in 0..f.params.len() {
+                if safe[fi][k] && !borrows_slot_param(m, &safe, f, k) {
+                    safe[fi][k] = false;
+                    changed = true;
+                }
+            }
+        }
+    }
+    safe
+}
+
+fn borrows_slot_param(m: &Module, safe: &[Vec<bool>], f: &Func, k: usize) -> bool {
+    let Some(p) = f
+        .blocks
+        .first()
+        .and_then(|b| b.params.get(k))
+        .map(|p| p.value)
+    else {
+        return false;
+    };
+    // What `p` holds (taken, or passed on to a block parameter), and the borrows derived from it.
+    let mut taken: BTreeSet<u32> = BTreeSet::new();
+    let mut derived: BTreeSet<u32> = BTreeSet::new();
+    for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+        if let (Op::Take, Some(r)) = (inst.op, inst.res)
+            && inst.args.first() == Some(&p)
+        {
+            taken.insert(r.0);
+        }
+    }
+    let mut grew = true;
+    while grew {
+        grew = false;
+        for inst in f.blocks.iter().flat_map(|b| &b.insts) {
+            let Some(r) = inst.res else { continue };
+            let from_held = inst
+                .args
+                .iter()
+                .any(|a| taken.contains(&a.0) || derived.contains(&a.0));
+            let view = inst.op == Op::Load && inst.args.first() == Some(&p);
+            if (from_held || view)
+                && !taken.contains(&r.0)
+                && m.result_mode(f, inst) != Some(Mode::Own)
+                && derived.insert(r.0)
+            {
+                grew = true;
+            }
+        }
+        for blk in &f.blocks {
+            blk.term.for_each_target(|t| {
+                for (a, bp) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                    if taken.contains(&a.0) && taken.insert(bp.value.0) {
+                        grew = true;
+                    }
+                }
+            });
+        }
+    }
+    // A parameter that takes the value on some edges takes it on all, or it could swap values.
+    for blk in &f.blocks {
+        let mut mixed = false;
+        blk.term.for_each_target(|t| {
+            for (a, bp) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                mixed |= taken.contains(&bp.value.0) && !taken.contains(&a.0);
+            }
+        });
+        if mixed {
+            return false;
+        }
+    }
+    for blk in &f.blocks {
+        for inst in &blk.insts {
+            let modes = crate::verify::arg_modes(m, inst);
+            for (i, a) in inst.args.iter().enumerate() {
+                if *a == p {
+                    let ok = match (inst.op, inst.imm) {
+                        (Op::Take | Op::Load, _) => i == 0,
+                        (Op::Put, _) => i == 0 && taken.contains(&inst.args[1].0),
+                        (Op::Call, Imm::Func(g)) => {
+                            safe.get(g.index()).and_then(|s| s.get(i)).copied() == Some(true)
+                        }
+                        _ => false,
+                    };
+                    if !ok {
+                        return false;
+                    }
+                } else if taken.contains(&a.0) || derived.contains(&a.0) {
+                    let putback = inst.op == Op::Put && i == 1 && inst.args[0] == p;
+                    // A method call hands its receiver to every implementation of the method,
+                    // which may take the payload out of its slot.
+                    let method = match (inst.op, inst.imm) {
+                        (Op::CallMethod, Imm::Method(iface, slot)) if i == 0 => {
+                            m.vtables.iter().filter(|v| v.iface == iface).all(|v| {
+                                v.methods.get(slot as usize).is_some_and(|g| {
+                                    safe.get(g.index()).and_then(|s| s.first()).copied()
+                                        == Some(true)
+                                })
+                            })
+                        }
+                        _ => true,
+                    };
+                    let borrowed = modes.get(i) == Some(&Mode::Borrow)
+                        && method
+                        && !matches!(
+                            inst.op,
+                            Op::MoveOut
+                                | Op::Store
+                                | Op::Put
+                                | Op::CleanupPush
+                                | Op::RecFill
+                                | Op::ListFill
+                                | Op::CallInd
+                        );
+                    if !putback && !borrowed {
+                        return false;
+                    }
+                }
+            }
+        }
+        let mut leaves = false;
+        if let Term::Ret(Some(v)) = &blk.term {
+            leaves |= *v == p || taken.contains(&v.0) || derived.contains(&v.0);
+        }
+        // An edge may pass only the value itself on, never a borrow of it or the slot.
+        blk.term.for_each_target(|t| {
+            for a in &t.args {
+                leaves |= *a == p || derived.contains(&a.0);
+            }
+        });
+        if leaves {
+            return false;
+        }
+    }
+    true
 }

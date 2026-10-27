@@ -57,7 +57,7 @@ struct Options {
     timeout: Option<Duration>,
     /// Whether `--timeout` was given, so `--fuzz` knows not to replace it.
     timeout_set: bool,
-    /// Cases per property (`MS_TEST_RUNS` for `@std/property.ms`).
+    /// Cases per property (`MS_TEST_RUNS` for `@std/test/property.ms`).
     runs: Option<u64>,
     /// First property case seed (`MS_TEST_SEED`).
     seed: Option<i64>,

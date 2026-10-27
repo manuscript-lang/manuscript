@@ -30,7 +30,7 @@ test "map and set members":
     m.add("b", 3)
 
     let updated = m
-    try expect_equal(updated.get("a").get(), 2)
+    try expect_equal(updated["a"], 2)
     try expect_false(updated.get("z").is_some())
     try expect_false(not updated.contains("b"))
 

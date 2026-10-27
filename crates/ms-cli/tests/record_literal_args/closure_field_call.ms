@@ -27,5 +27,5 @@ def ints_draw(s: Source) -> Drawn[Int]:
 
 export def main() -> Int:
     let c = ints().make(Source([0, 3, 0, 7], 0))
-    stdout().write(f"{c.value} {c.source.choices}\n")
+    let _ = stdout().write(f"{c.value} {c.source.choices}\n")
     return 0

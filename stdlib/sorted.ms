@@ -98,6 +98,10 @@ impl SortedMap[K, V]:
 
         return none
 
+    # Returns the value stored for an equal key, or `fallback` when absent.
+    def get_or(key: K, fallback: V) -> V:
+        return self.get(key).get(fallback)
+
     # Inserts a key or replaces the value of an equal key, which keeps its original key.
     var def add(key: K, value: V) -> Unit:
         if self.size == 0:
