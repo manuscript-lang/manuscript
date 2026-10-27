@@ -558,6 +558,9 @@ impl Verifier<'_> {
             | Op::IAddChk
             | Op::ISubChk
             | Op::IMulChk
+            | Op::UAddChk
+            | Op::USubChk
+            | Op::UMulChk
             | Op::SDivChk
             | Op::SRemChk
             | Op::SDiv

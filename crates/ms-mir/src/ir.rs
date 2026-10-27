@@ -263,7 +263,7 @@ pub enum Op {
     // Constants.
     IConst, FConst, BConst, UnitConst, StrLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
-    IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
+    IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
     NarrowChk, F32Round,
     // Conversions: `Conv` retypes a number to another type of its kind (rounding to binary32 for `Float32`); `INarrowOpt` yields some(value) when an int fits the smaller type.
@@ -390,7 +390,7 @@ impl Op {
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
-        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
+        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
@@ -432,6 +432,9 @@ impl Op {
             Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
             Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
             Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
+            Op::UAddChk => ("uadd.chk", K::None, true, effects!(faults)),
+            Op::USubChk => ("usub.chk", K::None, true, effects!(faults)),
+            Op::UMulChk => ("umul.chk", K::None, true, effects!(faults)),
             Op::INegChk => ("ineg.chk", K::None, true, effects!(faults)),
             Op::SDivChk => ("sdiv.chk", K::None, true, effects!(faults)),
             Op::SRemChk => ("srem.chk", K::None, true, effects!(faults)),

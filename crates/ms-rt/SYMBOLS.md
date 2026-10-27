@@ -117,9 +117,6 @@ msrt_float_to_float32(v: f64, out: *mut f32) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
 msrt_uint_compare(a: i64, b: i64) -> i64
-msrt_uint_add(a: i64, b: i64) -> i64
-msrt_uint_sub(a: i64, b: i64) -> i64
-msrt_uint_mul(a: i64, b: i64) -> i64
 msrt_uint_div(a: i64, b: i64) -> i64
 msrt_uint_rem(a: i64, b: i64) -> i64
 msrt_uint_to_float(v: i64) -> f64

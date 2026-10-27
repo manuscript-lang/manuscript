@@ -494,33 +494,6 @@ pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
     (a > b) as i64 - (a < b) as i64
 }
 
-/// `UInt64.+`: faults when the sum exceeds 2^64 - 1.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_add(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_add(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
-}
-
-/// `UInt64.-`: faults when `b` exceeds `a`.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_sub(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_sub(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
-}
-
-/// `UInt64.*`: faults when the product leaves 0 to 2^64 - 1.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_uint_mul(a: i64, b: i64) -> i64 {
-    match (a as u64).checked_mul(b as u64) {
-        Some(p) => p as i64,
-        None => crate::fault::msrt_fault_int_range(),
-    }
-}
-
 /// `UInt64./`.
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
