@@ -578,6 +578,15 @@ impl<'m> Interp<'m> {
             Op::IAddChk => set!(Val::Int(int!(0).checked_add(int!(1)).ok_or_else(overflow)?)),
             Op::ISubChk => set!(Val::Int(int!(0).checked_sub(int!(1)).ok_or_else(overflow)?)),
             Op::IMulChk => set!(Val::Int(int!(0).checked_mul(int!(1)).ok_or_else(overflow)?)),
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (int!(0) as u64, int!(1) as u64);
+                let r = match inst.op {
+                    Op::UAddChk => x.checked_add(y),
+                    Op::USubChk => x.checked_sub(y),
+                    _ => x.checked_mul(y),
+                };
+                set!(Val::Int(r.ok_or_else(overflow)? as i64))
+            }
             Op::INegChk => set!(Val::Int(int!(0).checked_neg().ok_or_else(overflow)?)),
             Op::SDivChk => {
                 let (x, y) = (int!(0), int!(1));
@@ -627,6 +636,12 @@ impl<'m> Interp<'m> {
             Op::Shl => set!(Val::Int(int!(0).wrapping_shl(int!(1) as u32))),
             Op::Sshr => set!(Val::Int(int!(0).wrapping_shr(int!(1) as u32))),
             Op::Not => set!(Val::Bool(!boolean!(0))),
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    return Err(Raw::internal("uicmp without condition"));
+                };
+                set!(Val::Bool(cc.eval_uint(int!(0), int!(1))));
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     return Err(Raw::internal("icmp without condition"));

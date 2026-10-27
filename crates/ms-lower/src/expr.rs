@@ -532,9 +532,9 @@ impl<'a> FnLower<'a> {
     fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
         if t == MTy::UINT64 {
             let sym = match op {
-                BinaryOp::Add => "msrt_uint_add",
-                BinaryOp::Sub => "msrt_uint_sub",
-                BinaryOp::Mul => "msrt_uint_mul",
+                BinaryOp::Add => return Ok(self.b.binop(Op::UAddChk, l.v, r.v)),
+                BinaryOp::Sub => return Ok(self.b.binop(Op::USubChk, l.v, r.v)),
+                BinaryOp::Mul => return Ok(self.b.binop(Op::UMulChk, l.v, r.v)),
                 BinaryOp::Div => "msrt_uint_div",
                 _ => "msrt_uint_rem",
             };
