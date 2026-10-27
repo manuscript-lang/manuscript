@@ -11,6 +11,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`workloads/`](workloads) | ordinary agent-style programs (parsing, strings, maps, stdin) against Go and Rust on ~3 MB of input, outputs compared | `MS=./target/release/ms sh bench/perf/workloads/run.sh 3` | [`workloads/results.md`](workloads/results.md) |
 | [`datastructures/`](datastructures) | core List, Map, Set, String, Bytes, PriorityQueue and SortedMap operations against Go and Rust, ns per operation | `MS=./target/release/ms sh bench/perf/datastructures/run.sh 5` | [`results.md`](datastructures/results.md) |
 | [`json/`](json) | `@std/json` parse and stringify against Node (V8) on twitter, canada and citm_catalog | `sh bench/perf/json/run.sh` | [`json/results.md`](json/results.md) |
+| [`vec/`](vec) | `@std/vec.ms` fp32 matrix-vector products against the same kernel in C, GFLOPS | `sh bench/perf/vec/run.sh 5` | [`vec/README.md`](vec/README.md) |
 | [`workers/`](workers) | eight CPU-bound jobs over 1, 2 and 4 `WorkerGroup` workers | `MS=./target/release/ms sh bench/perf/workers/run.sh 3` | [`workers/README.md`](workers/README.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 

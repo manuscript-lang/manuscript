@@ -181,7 +181,38 @@ impl<'a, 'm> Lower<'a, 'm> {
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
             Leaf::F64 | Leaf::F32 => self.b.ins().f64const(0.0),
+            Leaf::V4 | Leaf::V8 => {
+                let z = self.b.ins().f32const(0.0);
+                self.b.ins().splat(leaf_type(l), z)
+            }
         }
+    }
+
+    /// The vector leaves of a `lanes` value.
+    fn lane_leaves(&self) -> Vec<Leaf> {
+        self.g.lay.leaves(Ty::LANES)
+    }
+
+    /// `lanes.sum` and `lanes.hmax`: the high half combined into the low half lane-wise, then
+    /// lanes (0 + 2) and (1 + 3) combined, then those two. Both leaf shapes use this order.
+    fn lanes_reduce(&mut self, v: &[Value], max: bool) -> Value {
+        let op = |l: &mut Self, a: Value, b: Value| {
+            if max {
+                l.b.ins().fmax(a, b)
+            } else {
+                l.b.ins().fadd(a, b)
+            }
+        };
+        let s: Vec<Value> = if v.len() == 2 {
+            let half = op(self, v[0], v[1]);
+            (0..4).map(|k| self.b.ins().extractlane(half, k)).collect()
+        } else {
+            let e: Vec<Value> = (0..8).map(|k| self.b.ins().extractlane(v[0], k)).collect();
+            (0..4).map(|k| op(self, e[k], e[k + 4])).collect()
+        };
+        let (t0, t1) = (op(self, s[0], s[2]), op(self, s[1], s[3]));
+        let r = op(self, t0, t1);
+        self.b.ins().fpromote(types::F64, r)
     }
 
     fn zeros(&mut self, ty: Ty) -> Vs {
@@ -1712,6 +1743,68 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ok = self.b.ins().band(ge, le);
                 vec![ok, x]
             }
+            Op::LanesSplat => {
+                let x = self.a(inst, 0)[0];
+                let x = self.b.ins().fdemote(types::F32, x);
+                self.lane_leaves()
+                    .into_iter()
+                    .map(|l| self.b.ins().splat(leaf_type(l), x))
+                    .collect()
+            }
+            Op::LanesLoad | Op::LanesLoadU => {
+                let l = self.a(inst, 0);
+                let i = self.a(inst, 1)[0];
+                if checks && inst.op == Op::LanesLoad {
+                    let neg = self.b.ins().icmp_imm_s(IntCC::SignedLessThan, i, 0);
+                    let end = self.b.ins().iadd_imm_s(i, 8);
+                    let over = self.b.ins().icmp(IntCC::SignedGreaterThan, end, l[1]);
+                    let oob = self.b.ins().bor(neg, over);
+                    self.fault_if(oob, "msrt_index_fault", vec![i, l[1]]);
+                }
+                let off = self.b.ins().imul_imm_s(i, 4);
+                let addr = self.b.ins().iadd(l[0], off);
+                // List storage is only four-byte aligned.
+                let unaligned = MemFlagsData::new().with_notrap();
+                let mut at = 0;
+                self.lane_leaves()
+                    .into_iter()
+                    .map(|leaf| {
+                        let v = self.b.ins().load(leaf_type(leaf), unaligned, addr, at);
+                        at += leaf.size() as i32;
+                        v
+                    })
+                    .collect()
+            }
+            Op::LanesAdd | Op::LanesMul | Op::LanesMax => {
+                let (x, y) = (self.a(inst, 0), self.a(inst, 1));
+                x.iter()
+                    .zip(&y)
+                    .map(|(a, b)| match inst.op {
+                        Op::LanesAdd => self.b.ins().fadd(*a, *b),
+                        Op::LanesMul => self.b.ins().fmul(*a, *b),
+                        _ => self.b.ins().fmax(*a, *b),
+                    })
+                    .collect()
+            }
+            Op::LanesFma => {
+                let (x, y, z) = (self.a(inst, 0), self.a(inst, 1), self.a(inst, 2));
+                let fuse = self.g.lay.wide_lanes;
+                (0..x.len())
+                    .map(|k| {
+                        if fuse {
+                            // LLVM translates this to `llvm.fmuladd`: fused where the CPU has FMA.
+                            self.b.ins().fma(x[k], y[k], z[k])
+                        } else {
+                            let p = self.b.ins().fmul(x[k], y[k]);
+                            self.b.ins().fadd(p, z[k])
+                        }
+                    })
+                    .collect()
+            }
+            Op::LanesSum | Op::LanesHMax => {
+                let v = self.a(inst, 0);
+                vec![self.lanes_reduce(&v, inst.op == Op::LanesHMax)]
+            }
             Op::F32Round => vec![{
                 let x = self.a(inst, 0)[0];
                 let narrow = self.b.ins().fdemote(types::F32, x);
@@ -3048,6 +3141,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int32
             | TyKind::Float
             | TyKind::Float32
+            | TyKind::Lanes
             | TyKind::Ptr
             | TyKind::Fn(..)
             | TyKind::Iface(_) => true,

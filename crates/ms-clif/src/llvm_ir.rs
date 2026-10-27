@@ -55,6 +55,53 @@ struct Def {
     header: String,
     /// The entry label, the stack slots, then the rest of the body.
     body: String,
+    /// The x86-64-v3 copy of a function that computes on `lanes`: its header and body.
+    avx2: Option<(String, String)>,
+}
+
+/// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
+const AVX2_SUFFIX: &str = ".avx2";
+/// Symbol suffix of a dispatched function's baseline copy.
+const BASE_SUFFIX: &str = ".base";
+/// `msrt_cpu_level` at or above this runs the x86-64-v3 copies.
+const AVX2_LEVEL: u32 = 3;
+
+/// The dispatcher `define` header and body for a function whose definition `header` names
+/// `name`: it calls the AVX2 copy when the CPU supports it, else the baseline copy.
+fn dispatcher(name: &str, header: &str) -> (String, String) {
+    // `RET @"name"(PARAMS) #N !dbg !K {`: the dispatcher keeps the signature, drops the debug
+    // subprogram (each belongs to one function), and passes its parameters through.
+    let (ret, rest) = header
+        .split_once(" @\"")
+        .expect("header names the function");
+    let params = rest
+        .split_once('(')
+        .and_then(|(_, p)| p.rsplit_once(')'))
+        .map(|(p, _)| p)
+        .unwrap_or("");
+    let args: Vec<String> = if params.is_empty() {
+        Vec::new()
+    } else {
+        params
+            .split(", ")
+            .map(|p| p.replace(" noalias", ""))
+            .collect()
+    };
+    let args = args.join(", ");
+    let call = |target: &str, r: &str| {
+        if ret == "void" {
+            format!("  tail call void @\"{name}{target}\"({args})\n  ret void\n")
+        } else {
+            format!("  %{r} = tail call {ret} @\"{name}{target}\"({args})\n  ret {ret} %{r}\n")
+        }
+    };
+    let head = format!("{ret} @\"{name}\"({params}) #0 {{\n");
+    let body = format!(
+        "entry:\n  %l = call i64 @msrt_cpu_level()\n  %v3 = icmp sge i64 %l, {AVX2_LEVEL}\n  br i1 %v3, label %fast, label %base\nfast:\n{}base:\n{}}}\n\n",
+        call(AVX2_SUFFIX, "fast.r"),
+        call(BASE_SUFFIX, "base.r")
+    );
+    (head, body)
 }
 
 /// Line-table metadata under construction.
@@ -66,10 +113,11 @@ struct DebugInfo {
     cwd: String,
     /// Location node per `(file, line, scope)`.
     locs: HashMap<(usize, u32, u32, u32), usize>,
-    /// Subprogram per inlined-callee scope.
-    scope_sp: HashMap<u32, usize>,
-    /// `inlinedAt` location per inlined-callee scope.
-    scope_at: HashMap<u32, usize>,
+    /// Subprogram per (inlined-callee scope, function subprogram): a function translated twice
+    /// (its AVX2 copy) needs its own chain.
+    scope_sp: HashMap<(u32, usize), usize>,
+    /// `inlinedAt` location per (inlined-callee scope, function subprogram).
+    scope_at: HashMap<(u32, usize), usize>,
     /// File-switching scope per `(subprogram, file)`.
     lexical: HashMap<(usize, u32), usize>,
 }
@@ -86,7 +134,7 @@ impl DebugInfo {
 
     /// Subprogram for inlined scope `idx`, creating it and its enclosing chain.
     fn scope_sp(&mut self, syms: &dyn Symbols, idx: u32, fn_sp: usize) -> usize {
-        if let Some(&n) = self.scope_sp.get(&idx) {
+        if let Some(&n) = self.scope_sp.get(&(idx, fn_sp)) {
             return n;
         }
         let (name, file, ..) = syms.scope(idx).unwrap_or_default();
@@ -95,14 +143,13 @@ impl DebugInfo {
             "distinct !DISubprogram(name: \"{}\", scope: !{fnode}, file: !{fnode}, line: 1, type: !4, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)",
             name.replace(['"', '\\'], "'")
         ));
-        self.scope_sp.insert(idx, n);
-        let _ = fn_sp;
+        self.scope_sp.insert((idx, fn_sp), n);
         n
     }
 
     /// `inlinedAt` location for scope `idx` (the call site in its parent).
     fn scope_at(&mut self, syms: &dyn Symbols, idx: u32, fn_sp: usize) -> usize {
-        if let Some(&n) = self.scope_at.get(&idx) {
+        if let Some(&n) = self.scope_at.get(&(idx, fn_sp)) {
             return n;
         }
         let (_, _, parent, call_line) = syms.scope(idx).unwrap_or_default();
@@ -119,7 +166,7 @@ impl DebugInfo {
             None => format!("!DILocation(line: {call_line}, scope: !{scope})"),
         };
         let n = self.push(text);
-        self.scope_at.insert(idx, n);
+        self.scope_at.insert((idx, fn_sp), n);
         n
     }
 
@@ -207,7 +254,20 @@ fn llty(t: Type) -> &'static str {
         types::I64 => "i64",
         types::F32 => "float",
         types::F64 => "double",
+        types::F32X4 => "<4 x float>",
+        types::F32X8 => "<8 x float>",
         _ => panic!("unsupported type {t}"),
+    }
+}
+
+/// The type suffix of an overloaded float intrinsic (`llvm.maximum.v8f32`).
+fn fsuffix(t: Type) -> &'static str {
+    match t {
+        types::F32 => "f32",
+        types::F64 => "f64",
+        types::F32X4 => "v4f32",
+        types::F32X8 => "v8f32",
+        _ => panic!("unsupported float type {t}"),
     }
 }
 
@@ -495,6 +555,18 @@ impl<'a> Tr<'a> {
             InstructionData::UnaryIeee64 { imm, .. } => {
                 self.set(inst, 0, double_lit(imm.bits()));
             }
+            InstructionData::UnaryIeee32 { imm, .. } => {
+                // LLVM spells every float constant as the binary64 with the same value.
+                let x = f64::from(f32::from_bits(imm.bits()));
+                self.set(inst, 0, double_lit(x.to_bits()));
+            }
+            InstructionData::BinaryImm8 { arg, imm, .. } => {
+                assert_eq!(opc, Opcode::Extractlane, "binary-imm8 {opc}");
+                let v = self.op(arg);
+                let lt = llty(self.ty(arg));
+                let r = self.def(format!("extractelement {lt} {v}, i64 {imm}"));
+                self.set(inst, 0, r);
+            }
             InstructionData::Binary { args, .. } => self.binary(inst, opc, args),
             InstructionData::IntCompare { args, cond, .. } => {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
@@ -510,6 +582,16 @@ impl<'a> Tr<'a> {
                 self.set(inst, 0, z);
             }
             InstructionData::Unary { arg, .. } => self.unary(inst, opc, arg),
+            InstructionData::Ternary { args, .. } if opc == Opcode::Fma => {
+                let t = self.ty(args[0]);
+                let (lt, sfx) = (llty(t), fsuffix(t));
+                let (a, b, c) = (self.op(args[0]), self.op(args[1]), self.op(args[2]));
+                // `fmuladd`, not `fma`: one rounding where the target has FMA, two otherwise.
+                let r = self.def(format!(
+                    "call {lt} @llvm.fmuladd.{sfx}({lt} {a}, {lt} {b}, {lt} {c})"
+                ));
+                self.set(inst, 0, r);
+            }
             InstructionData::Ternary { args, .. } => {
                 assert_eq!(opc, Opcode::Select, "ternary {opc}");
                 let c = self.cond_i1(args[0]);
@@ -825,10 +907,14 @@ impl<'a> Tr<'a> {
             Opcode::Band => simple("and"),
             Opcode::Bor => simple("or"),
             Opcode::Bxor => simple("xor"),
-            Opcode::Fadd => format!("fadd double {a}, {b}"),
-            Opcode::Fsub => format!("fsub double {a}, {b}"),
-            Opcode::Fmul => format!("fmul double {a}, {b}"),
-            Opcode::Fdiv => format!("fdiv double {a}, {b}"),
+            Opcode::Fadd => simple("fadd"),
+            Opcode::Fsub => simple("fsub"),
+            Opcode::Fmul => simple("fmul"),
+            Opcode::Fdiv => simple("fdiv"),
+            Opcode::Fmax => format!(
+                "call {lt} @llvm.maximum.{0}({lt} {a}, {lt} {b})",
+                fsuffix(t)
+            ),
             Opcode::Ishl | Opcode::Sshr | Opcode::Ushr => {
                 // Cranelift masks the shift amount to the type width; LLVM makes oversize shifts poison.
                 let mask = t.bits() - 1;
@@ -909,6 +995,11 @@ impl<'a> Tr<'a> {
                 format!("call {0} @llvm.fptosi.sat.{0}.f64(double {a})", llty(rt))
             }
             Opcode::Bnot => format!("xor {} {a}, -1", llty(t)),
+            Opcode::Splat => {
+                let (lt, n) = (llty(rt), rt.lane_count());
+                let one = self.def(format!("insertelement {lt} poison, float {a}, i64 0"));
+                format!("shufflevector {lt} {one}, {lt} poison, <{n} x i32> zeroinitializer")
+            }
             other => panic!("unsupported unary op {other}"),
         };
         let d = self.def(rhs);
@@ -933,6 +1024,35 @@ impl LlvmModule {
         syms: &dyn Symbols,
         public: bool,
     ) {
+        // A function computing on `lanes` is also compiled for x86-64-v3 (AVX2, FMA); on x86-64
+        // its symbol becomes a dispatcher that picks a copy by the running CPU (see `finish`).
+        let vector = f.dfg.values().any(|v| f.dfg.value_type(v).is_vector());
+        let avx2 = vector.then(|| {
+            let clone = format!("{name}{AVX2_SUFFIX}");
+            self.translate(&clone, name, display, fn_loc, f, syms)
+        });
+        let (header, body) = self.translate(name, name, display, fn_loc, f, syms);
+        self.defined.push(name.to_string());
+        self.defs.push(Def {
+            name: name.to_string(),
+            public,
+            header,
+            body,
+            avx2,
+        });
+    }
+
+    /// The `define` header (after the linkage) and body of `f` under `name`; `source` is the
+    /// symbol the function was declared as, which keys its exclusive parameters.
+    fn translate(
+        &mut self,
+        name: &str,
+        source: &str,
+        display: &str,
+        fn_loc: (u32, u32),
+        f: &Function,
+        syms: &dyn Symbols,
+    ) -> (String, String) {
         let blocks: Vec<Block> = f.layout.blocks().collect();
         let entry = blocks[0];
         // Debug info: a subprogram per function and one location node per (file, line, scope).
@@ -967,7 +1087,7 @@ impl LlvmModule {
         // addresses them through the parameter itself so the `noalias` fact reaches each access.
         let mut casts = String::new();
         let all = tr.exclusive;
-        let exclusive = all.get(name).map(Vec::as_slice).unwrap_or(&[]);
+        let exclusive = all.get(source).map(Vec::as_slice).unwrap_or(&[]);
         for (i, p) in f.dfg.block_params(entry).iter().enumerate() {
             let t = f.dfg.value_type(*p);
             tr.ops.insert(*p, format!("%a{i}"));
@@ -1056,13 +1176,7 @@ impl LlvmModule {
         body.push_str(&allocas);
         body.push_str(rest);
         body.push_str("}\n\n");
-        self.defined.push(name.to_string());
-        self.defs.push(Def {
-            name: name.to_string(),
-            public,
-            header,
-            body,
-        });
+        (header, body)
     }
 
     /// Glue functions at the top of a chain of glue calls three or more levels deep. They stay
@@ -1133,12 +1247,9 @@ impl LlvmModule {
             );
         }
         let deep = self.deep_glue();
+        let dispatch = triple.starts_with("x86_64");
+        let mut uses_level = false;
         for d in &self.defs {
-            let header = if deep.contains(&d.name) {
-                d.header.replacen(" #0 ", " #1 ", 1)
-            } else {
-                d.header.clone()
-            };
             let vis = if d.public {
                 ""
             } else if !anchored || pinned.contains(&d.name) {
@@ -1146,7 +1257,32 @@ impl LlvmModule {
             } else {
                 "internal "
             };
+            if let (true, Some((header, body))) = (dispatch, &d.avx2) {
+                uses_level = true;
+                let (dh, db) = dispatcher(&d.name, &d.header);
+                let _ = write!(s, "define {vis}{dh}{db}");
+                let base = d.header.replacen(
+                    &format!("@\"{}\"(", d.name),
+                    &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
+                    1,
+                );
+                let _ = write!(s, "define internal {base}{}", d.body);
+                let fast = header
+                    .replacen(" #0 ", " #3 ", 1)
+                    .replacen(" #2 ", " #3 ", 1);
+                let _ = write!(s, "define internal {fast}{body}");
+                continue;
+            }
+            let header = if deep.contains(&d.name) {
+                d.header.replacen(" #0 ", " #1 ", 1)
+            } else {
+                d.header.clone()
+            };
             let _ = write!(s, "define {vis}{header}{}", d.body);
+        }
+        if uses_level {
+            // Constant for the life of the process, so LLVM may hoist the query out of loops.
+            s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
         }
         for (name, decl) in &self.decls {
             if !self.defined.contains(name) {
@@ -1170,7 +1306,10 @@ impl LlvmModule {
              declare double @llvm.floor.f64(double)\n\
              declare double @llvm.ceil.f64(double)\n\
              declare double @llvm.trunc.f64(double)\n\
-             declare i64 @llvm.fptosi.sat.i64.f64(double)\n",
+             declare i64 @llvm.fptosi.sat.i64.f64(double)\n\
+             declare float @llvm.maximum.f32(float, float)\n\
+             declare <8 x float> @llvm.maximum.v8f32(<8 x float>, <8 x float>)\n\
+             declare <8 x float> @llvm.fmuladd.v8f32(<8 x float>, <8 x float>, <8 x float>)\n",
         );
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             for t in ["i64", "i32", "i8"] {
@@ -1183,6 +1322,7 @@ impl LlvmModule {
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
+        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind \"target-features\"=\"+sse4.2,+popcnt,+avx,+avx2,+fma,+f16c,+bmi,+bmi2,+lzcnt,+movbe\" }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
@@ -1240,9 +1380,23 @@ mod tests {
                 name,
                 public: false,
                 body,
+                avx2: None,
             });
         }
         module
+    }
+
+    #[test]
+    fn dispatcher_passes_parameters_to_both_copies() {
+        let (head, body) = dispatcher(
+            "k",
+            "double @\"k\"(i64 %a0, ptr noalias %x1) #0 !dbg !9 {\n",
+        );
+        assert_eq!(head, "double @\"k\"(i64 %a0, ptr noalias %x1) #0 {\n");
+        assert!(body.contains("tail call double @\"k.avx2\"(i64 %a0, ptr %x1)"));
+        assert!(body.contains("tail call double @\"k.base\"(i64 %a0, ptr %x1)"));
+        let (_, void) = dispatcher("u", "void @\"u\"() #0 !dbg !3 {\n");
+        assert!(void.contains("tail call void @\"u.avx2\"()\n  ret void"));
     }
 
     fn assert_deep_glue(edges: &[&[usize]], expected: &[usize]) {

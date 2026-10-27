@@ -50,6 +50,7 @@ fn plain(m: &Module, t: crate::types::Ty, seen: &mut Vec<crate::types::Ty>) -> b
         | TyKind::Int32
         | TyKind::Float
         | TyKind::Float32
+        | TyKind::Lanes
         | TyKind::Str
         | TyKind::Bytes => true,
         TyKind::Ptr | TyKind::Fn(..) | TyKind::Iface(_) => false,

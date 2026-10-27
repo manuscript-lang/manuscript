@@ -274,6 +274,10 @@ pub enum Op {
     ICmp, FCmp,
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
+    // Eight `Float32` lanes (`lanes`): broadcast, load from a `List[Float32]` (faulting unless all
+    // eight elements are in range; `.u` trusts the caller's range check), lane-wise arithmetic, `fma` (`a * b + c`, fused or not), and
+    // reductions to one `Float32` in a fixed pairwise order.
+    LanesSplat, LanesLoad, LanesLoadU, LanesAdd, LanesMul, LanesFma, LanesMax, LanesSum, LanesHMax,
     // Records and alternatives.
     RecNew, RecGet, RecSet, RecFill, AltNew, AltTag, AltGet, AltUnbox,
     // Lists.
@@ -393,6 +397,7 @@ impl Op {
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
         Op::ICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
+        Op::LanesSplat, Op::LanesLoad, Op::LanesLoadU, Op::LanesAdd, Op::LanesMul, Op::LanesFma, Op::LanesMax, Op::LanesSum, Op::LanesHMax,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
@@ -457,6 +462,15 @@ impl Op {
             Op::F2IOpt => ("f2i.opt", K::None, true, effects!()),
             Op::B2I => ("b2i", K::None, true, effects!()),
             Op::Select => ("select", K::None, true, effects!()),
+            Op::LanesSplat => ("lanes.splat", K::None, true, effects!()),
+            Op::LanesLoad => ("lanes.load", K::None, true, effects!(reads, faults)),
+            Op::LanesLoadU => ("lanes.load.u", K::None, true, effects!(reads)),
+            Op::LanesAdd => ("lanes.add", K::None, true, effects!()),
+            Op::LanesMul => ("lanes.mul", K::None, true, effects!()),
+            Op::LanesFma => ("lanes.fma", K::None, true, effects!()),
+            Op::LanesMax => ("lanes.max", K::None, true, effects!()),
+            Op::LanesSum => ("lanes.sum", K::None, true, effects!()),
+            Op::LanesHMax => ("lanes.hmax", K::None, true, effects!()),
             Op::RecNew => ("rec.new", K::Rec, true, effects!()),
             Op::RecGet => ("rec.get", K::Field, true, effects!()),
             Op::RecSet => ("rec.set", K::Field, true, effects!(rc)),
@@ -1219,6 +1233,7 @@ impl Module {
             | TyKind::Int32
             | TyKind::Float
             | TyKind::Float32
+            | TyKind::Lanes
             | TyKind::Ptr => false,
             TyKind::Opt(inner) => self.needs_drop_in(*inner, seen),
             TyKind::Rec(r) => {

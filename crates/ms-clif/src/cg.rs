@@ -106,6 +106,8 @@ pub fn leaf_type(l: Leaf) -> ir::Type {
         Leaf::I64 | Leaf::N8 | Leaf::N16 | Leaf::N32 => types::I64,
         Leaf::F64 | Leaf::F32 => types::F64,
         Leaf::I8 => types::I8,
+        Leaf::V4 => types::F32X4,
+        Leaf::V8 => types::F32X8,
     }
 }
 
@@ -608,7 +610,11 @@ fn compile_with_isa(
     let module = ObjectModule::new(builder);
     let mut g = Gen {
         m,
-        lay: Layouts::new(m),
+        lay: {
+            let mut lay = Layouts::new(m);
+            lay.wide_lanes = opts.llvm.is_some();
+            lay
+        },
         module,
         opts: opts.clone(),
         funcs: Vec::new(),

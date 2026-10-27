@@ -296,6 +296,7 @@ impl<'m> Interp<'m> {
             TyKind::Bool => Val::Bool(false),
             TyKind::Int | TyKind::Int8 | TyKind::Int16 | TyKind::Int32 => Val::Int(0),
             TyKind::Float | TyKind::Float32 => Val::Float(0.0),
+            TyKind::Lanes => lanes_val([0.0; 8]),
             TyKind::Str => Val::str(""),
             TyKind::Ptr => Val::Ptr(0),
             TyKind::List(_) => Val::List(Rc::new(Vec::new())),
@@ -737,6 +738,67 @@ impl<'m> Interp<'m> {
                 };
                 set!(Val::Int(l.len() as i64));
             }
+            Op::LanesSplat => set!(lanes_val([flt!(0) as f32; 8])),
+            Op::LanesLoad | Op::LanesLoadU => {
+                let i = int!(1);
+                let Val::List(l) = &regs[a[0].index()] else {
+                    return Err(Raw::internal("lanes.load on a non-list"));
+                };
+                if i < 0 || i.checked_add(8).is_none_or(|end| end as usize > l.len()) {
+                    return Err(Raw::new(
+                        FaultKind::IndexOutOfRange,
+                        format!("index {i} out of range for length {}", l.len()),
+                    ));
+                }
+                let mut out = [0f32; 8];
+                for (k, o) in out.iter_mut().enumerate() {
+                    let Val::Float(x) = l[i as usize + k] else {
+                        return Err(Raw::internal("lanes.load of a non-float element"));
+                    };
+                    *o = x as f32;
+                }
+                set!(lanes_val(out));
+            }
+            Op::LanesAdd | Op::LanesMul | Op::LanesMax | Op::LanesFma => {
+                let x = lanes_of(&regs[a[0].index()])?;
+                let y = lanes_of(&regs[a[1].index()])?;
+                let z = if inst.op == Op::LanesFma {
+                    lanes_of(&regs[a[2].index()])?
+                } else {
+                    [0f32; 8]
+                };
+                let mut out = [0f32; 8];
+                for k in 0..8 {
+                    out[k] = match inst.op {
+                        Op::LanesAdd => x[k] + y[k],
+                        Op::LanesMul => x[k] * y[k],
+                        Op::LanesMax => {
+                            if x[k] > y[k] {
+                                x[k]
+                            } else {
+                                y[k]
+                            }
+                        }
+                        _ => x[k] * y[k] + z[k],
+                    };
+                }
+                set!(lanes_val(out));
+            }
+            Op::LanesSum | Op::LanesHMax => {
+                let x = lanes_of(&regs[a[0].index()])?;
+                let f = |p: f32, q: f32| match inst.op {
+                    Op::LanesSum => p + q,
+                    _ => {
+                        if p > q {
+                            p
+                        } else {
+                            q
+                        }
+                    }
+                };
+                let s: Vec<f32> = (0..4).map(|k| f(x[k], x[k + 4])).collect();
+                set!(Val::Float(f64::from(f(f(s[0], s[2]), f(s[1], s[3])))));
+            }
             Op::ListGet | Op::ListGetNn | Op::ListGetU => {
                 let i = int!(1);
                 let Val::List(l) = &regs[a[0].index()] else {
@@ -1059,6 +1121,27 @@ fn imm_int(i: Imm) -> i64 {
         Imm::Int(v) => v,
         _ => 0,
     }
+}
+
+/// `lanes` are modelled as a list of eight `Float32` values.
+fn lanes_val(x: [f32; 8]) -> Val {
+    Val::List(Rc::new(
+        x.iter().map(|v| Val::Float(f64::from(*v))).collect(),
+    ))
+}
+
+fn lanes_of(v: &Val) -> R<[f32; 8]> {
+    let Val::List(l) = v else {
+        return Err(Raw::internal("expected lanes"));
+    };
+    let mut out = [0f32; 8];
+    for (o, v) in out.iter_mut().zip(l.iter()) {
+        let Val::Float(x) = v else {
+            return Err(Raw::internal("expected lanes"));
+        };
+        *o = *x as f32;
+    }
+    Ok(out)
 }
 
 fn list_index(len: usize, i: i64, from_end: bool) -> R<usize> {

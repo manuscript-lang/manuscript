@@ -634,6 +634,18 @@ impl Checker {
     fn import_symbols(&mut self, module: &ModRef) {
         for item in &module.imports {
             let path = item.path.as_ref();
+            if path == "@std/lanes.ms" && !stdlib::is_source_module(module) {
+                // `Lanes` is the standard library's SIMD building block; programs use `@std/vec.ms`.
+                self.p.diagnostics.push(Diagnostic {
+                    file: module.file.as_str().into(),
+                    pos: item.name_pos,
+                    phase: Phase::Resolution,
+                    message: "@std/lanes.ms is internal to the standard library; import the vector kernels (dot, fast_sum, Matrix) from \"@std/vec.ms\" instead".into(),
+                    end: None,
+                    fix: None,
+                });
+                continue;
+            }
             let found: Option<SymRef> = if path.starts_with("@std/") {
                 let pn = n(path);
                 if stdlib::standard_source_module(pn).is_some() {

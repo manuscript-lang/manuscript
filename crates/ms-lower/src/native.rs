@@ -161,6 +161,31 @@ impl<'a> FnLower<'a> {
                     .expect("float op");
                 return Ok(Val { v, own: false });
             }
+            // `@std/vec.ms` kernels compute on `Lanes` through these natives; each is one instruction.
+            if let Some((op, ret)) = match symbol {
+                "msrt_lanes_splat" => Some((ms_mir::ir::Op::LanesSplat, MTy::LANES)),
+                "msrt_lanes_load" => Some((ms_mir::ir::Op::LanesLoad, MTy::LANES)),
+                "msrt_lanes_load_unchecked" => Some((ms_mir::ir::Op::LanesLoadU, MTy::LANES)),
+                "msrt_lanes_add" => Some((ms_mir::ir::Op::LanesAdd, MTy::LANES)),
+                "msrt_lanes_mul" => Some((ms_mir::ir::Op::LanesMul, MTy::LANES)),
+                "msrt_lanes_fma" => Some((ms_mir::ir::Op::LanesFma, MTy::LANES)),
+                "msrt_lanes_max" => Some((ms_mir::ir::Op::LanesMax, MTy::LANES)),
+                "msrt_lanes_sum" => Some((ms_mir::ir::Op::LanesSum, MTy::FLOAT32)),
+                "msrt_lanes_hmax" => Some((ms_mir::ir::Op::LanesHMax, MTy::FLOAT32)),
+                _ => None,
+            } {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let xs: Vec<_> = args.iter().map(|a| self.borrow(a.val)).collect();
+                self.at(e.pos);
+                let v = self
+                    .b
+                    .emit(op, &xs, ms_mir::ir::Imm::None, Some(ret))
+                    .expect("lanes op");
+                return Ok(Val { v, own: false });
+            }
             // The `@std/math` bit operations declare their natives as externs; on `Int` each is one instruction.
             if let Some(name) = symbol.strip_prefix("msrt_bits_").filter(|n| {
                 matches!(

@@ -53,6 +53,9 @@ pub enum TyKind {
     Int32,
     /// `Float32`: an IEEE 754 binary32, held rounded in a binary64 register until stored.
     Float32,
+    /// Eight `Float32` lanes operated on together (SIMD). Only `@std/vec.ms` creates
+    /// these; they live in vector registers and are never stored in lists or records.
+    Lanes,
     /// `String`: an owned two-word UTF-8 value.
     Str,
     /// `Bytes`: an owned byte string.
@@ -109,6 +112,8 @@ impl Ty {
     pub const INT32: Ty = Ty(9);
     /// `Float32`.
     pub const FLOAT32: Ty = Ty(10);
+    /// Eight `Float32` lanes.
+    pub const LANES: Ty = Ty(11);
 
     const SCOPE_SHIFT: u32 = 20;
 
@@ -155,6 +160,7 @@ impl TyTable {
             TyKind::Int16,
             TyKind::Int32,
             TyKind::Float32,
+            TyKind::Lanes,
         ] {
             t.intern(k);
         }
@@ -230,7 +236,7 @@ impl TyTable {
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
-            TyKind::Unit | TyKind::Bool | TyKind::Ptr => false,
+            TyKind::Unit | TyKind::Bool | TyKind::Ptr | TyKind::Lanes => false,
             k if Self::scalar_kind(k) => false,
             TyKind::Opt(inner) => self.is_rc(*inner),
             _ => true,

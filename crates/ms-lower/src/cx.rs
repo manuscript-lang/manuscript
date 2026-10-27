@@ -393,6 +393,9 @@ impl Cx {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
+        if t.is_std("Lanes") {
+            return Ok(MTy::LANES);
+        }
         if t.is_std("Shared") {
             let payload = self.lower_ty(m, &t.args[0])?;
             return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));

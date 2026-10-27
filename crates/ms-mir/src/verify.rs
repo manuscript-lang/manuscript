@@ -531,6 +531,43 @@ impl Verifier<'_> {
                     "inarrow.opt takes an int and yields an optional int",
                 )
             }
+            Op::LanesSplat => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::FLOAT32 && res == Some(Ty::LANES),
+                    "lanes.splat takes a float32 and yields lanes",
+                )
+            }
+            Op::LanesLoad | Op::LanesLoadU => {
+                arity(2)?;
+                want(
+                    m.list_elem(t(0)) == Some(Ty::FLOAT32)
+                        && t(1) == Ty::INT
+                        && res == Some(Ty::LANES),
+                    "lanes.load takes a list<float32> and an index and yields lanes",
+                )
+            }
+            Op::LanesAdd | Op::LanesMul | Op::LanesMax => {
+                arity(2)?;
+                want(
+                    t(0) == Ty::LANES && t(1) == Ty::LANES && res == Some(Ty::LANES),
+                    "operands and result must be lanes",
+                )
+            }
+            Op::LanesFma => {
+                arity(3)?;
+                want(
+                    (0..3).all(|i| t(i) == Ty::LANES) && res == Some(Ty::LANES),
+                    "operands and result must be lanes",
+                )
+            }
+            Op::LanesSum | Op::LanesHMax => {
+                arity(1)?;
+                want(
+                    t(0) == Ty::LANES && res == Some(Ty::FLOAT32),
+                    "a lanes reduction takes lanes and yields a float32",
+                )
+            }
             Op::F32Round => {
                 arity(1)?;
                 want(

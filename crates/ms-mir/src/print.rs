@@ -35,6 +35,7 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Int16 => out.push_str("int16"),
         TyKind::Int32 => out.push_str("int32"),
         TyKind::Float32 => out.push_str("float32"),
+        TyKind::Lanes => out.push_str("lanes"),
         TyKind::Str => out.push_str("str"),
         TyKind::Bytes => out.push_str("bytes"),
         TyKind::Ptr => out.push_str("ptr"),

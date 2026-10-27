@@ -12,6 +12,7 @@
 //! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
 //! | `Float` | `f64` |
 //! | `Float32` | `f64` in registers, 4 bytes in memory |
+//! | `lanes` (eight `Float32`) | two `f32x4` vectors; one `f32x8` when LLVM compiles the module |
 //! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
 //! | `List[T]`, `Bytes` | `ptr, len, cap` |
 //! | `Map`, `Set` | seven `i64` words (`MapVal`) |
@@ -47,6 +48,10 @@ pub enum Leaf {
     N32,
     /// `Float32`: an `f64` register, four bytes in memory.
     F32,
+    /// Four `Float32` lanes in one 128-bit vector.
+    V4,
+    /// Eight `Float32` lanes in one 256-bit vector (LLVM builds only).
+    V8,
 }
 
 impl Leaf {
@@ -56,6 +61,8 @@ impl Leaf {
             Leaf::I8 | Leaf::N8 => 1,
             Leaf::N16 => 2,
             Leaf::N32 | Leaf::F32 => 4,
+            Leaf::V4 => 16,
+            Leaf::V8 => 32,
             _ => 8,
         }
     }
@@ -125,6 +132,9 @@ pub struct Layouts<'m> {
     cache: RefCell<HashMap<Ty, Rc<Shape>>>,
     alt_cache: RefCell<HashMap<AltId, Rc<AltFields>>>,
     boxing: RefCell<Boxing>,
+    /// `lanes` are one 256-bit leaf instead of two 128-bit ones: set when LLVM, not Cranelift,
+    /// generates the machine code, because Cranelift only selects 128-bit vector instructions.
+    pub wide_lanes: bool,
 }
 
 /// Per case, per field: the field's type and its leaf indices into the alternative's leaf list.
@@ -138,6 +148,7 @@ impl<'m> Layouts<'m> {
             cache: RefCell::new(HashMap::new()),
             alt_cache: RefCell::new(HashMap::new()),
             boxing: RefCell::new(Boxing::default()),
+            wide_lanes: false,
         }
     }
 
@@ -259,6 +270,8 @@ impl<'m> Layouts<'m> {
             TyKind::Int32 => plain(vec![N32]),
             TyKind::Float => plain(vec![F64]),
             TyKind::Float32 => plain(vec![F32]),
+            TyKind::Lanes if self.wide_lanes => plain(vec![V8]),
+            TyKind::Lanes => plain(vec![V4, V4]),
             TyKind::Str => plain(vec![I64, I64]),
             TyKind::Bytes | TyKind::List(_) => plain(vec![I64, I64, I64]),
             TyKind::Obj(n, _) if n == "Map" || n == "Set" => {
