@@ -181,6 +181,10 @@ pub fn read(
         .collect();
     let mut placed: Vec<Option<(u64, u64)>> = vec![None; funcs.len()];
     let mut section_of: Vec<Option<SectionIndex>> = vec![None; funcs.len()];
+    // Functions whose symbol carries no size (Mach-O, COFF): their extent is a guess to correct.
+    let mut sized_by_gap: Vec<bool> = vec![false; funcs.len()];
+    // End of each subprogram's range by its start, from the DWARF.
+    let mut subprogram_ends: HashMap<u64, u64> = HashMap::new();
     let mut anchor: Option<(SectionIndex, u64)> = None;
     // Mach-O symbols carry no size: a function runs to the next symbol of its section.
     let mut starts: HashMap<SectionIndex, Vec<u64>> = HashMap::new();
@@ -208,6 +212,7 @@ pub fn read(
         let (Some(&i), Some(sec)) = (by_symbol.get(name), s.section_index()) else {
             continue;
         };
+        sized_by_gap[i] = s.size() == 0;
         let size = if s.size() > 0 {
             s.size()
         } else {
@@ -269,7 +274,17 @@ pub fn read(
                 stack.pop();
             }
             match entry.tag() {
-                gimli::DW_TAG_subprogram => stack.push((depth, 0)),
+                gimli::DW_TAG_subprogram => {
+                    let mut it = dwarf
+                        .die_ranges(&unit, entry)
+                        .map_err(|e| err("ranges", e))?;
+                    while let Some(r) = it.next().map_err(|e| err("range", e))? {
+                        if r.begin < r.end {
+                            subprogram_ends.insert(r.begin, r.end);
+                        }
+                    }
+                    stack.push((depth, 0));
+                }
                 gimli::DW_TAG_inlined_subroutine => {
                     let parent = stack.last().map_or(0, |s| s.1);
                     let origin = entry.attr_value(gimli::DW_AT_abstract_origin);
@@ -329,6 +344,16 @@ pub fn read(
                 let file = full_path(header, row.file_index()).map_or(u32::MAX, |p| file_index(&p));
                 rows.push((row.address(), line, file));
             }
+        }
+    }
+    // Without symbol sizes a function ran to the next symbol, which also covers any private
+    // function between them; the DWARF says where it really ends.
+    for (i, p) in placed.iter_mut().enumerate() {
+        if let Some((at, size)) = p
+            && sized_by_gap[i]
+            && let Some(&end) = subprogram_ends.get(at)
+        {
+            *size = (*size).min(end - *at);
         }
     }
     // Functions are addressed from the anchor, which only works inside its own code section.

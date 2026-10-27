@@ -34,25 +34,38 @@ jobs:
           os: ${{ matrix.os }}
           arch: ${{ matrix.arch }}
       - run: cargo xtask runtime && cargo build --locked -p ms-cli
-      - name: teardown fixture
+      - name: yaml debug build
         continue-on-error: true
         run: |
           ms=target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
-          MS_DIAG_FRAMES=1 $ms test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms 2>&1 | tail -30
-      - name: yaml fixture
+          $ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms --build-type Debug > yaml-debug.txt 2>&1 || true
+          grep -E "FAIL|tests," yaml-debug.txt || true
+      - name: yaml release failing tests
+        if: runner.os == 'macOS'
         continue-on-error: true
         run: |
-          ms=target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
-          $ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms 2>&1 | tail -30
-      - name: workers fixture
+          target/debug/ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms --list | sed -n 1,40p
+          target/debug/ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > y1.txt 2>&1 || true
+          cat y1.txt | tail -8
+          sleep 5
+          ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head
+          for f in ~/Library/Logs/DiagnosticReports/*.ips; do echo "== $f"; head -c 6000 "$f"; done 2>/dev/null | head -150
+      - name: workers per test
         if: runner.os == 'Windows'
         continue-on-error: true
         run: |
           ms=target/debug/ms.exe
-          $ms test tests/conformance/fixtures/e2e/stdlib/workers.ms --timeout 25 2>&1 | tail -40
+          $ms test tests/conformance/fixtures/e2e/stdlib/workers.ms --list > wl.txt 2>&1
+          wc -l wl.txt
+          while IFS= read -r name; do
+            case "$name" in *::*) ;; *) continue;; esac
+            timeout 90 $ms test tests/conformance/fixtures/e2e/stdlib/workers.ms --test "$name" --timeout 20s > w.txt 2>&1
+            echo "[$?] $name :: $(grep -E 'PASS|FAIL|timed' w.txt | tr '\n' ' ' | cut -c1-200)"
+          done < wl.txt
       - name: http deadline fixture
         if: runner.os == 'Windows'
         continue-on-error: true
         run: |
           ms=target/debug/ms.exe
-          timeout 40 $ms run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms 2>&1 | tail -20
+          timeout 40 $ms run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms > h.txt 2>&1
+          echo "exit $?"; cat h.txt | head -20
