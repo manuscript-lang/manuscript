@@ -165,6 +165,8 @@ pub struct Cx {
     pub fixtures: HashMap<Name, ms_check::TestFixture>,
     /// Bindings that borrow a place another binding owns, and how.
     pub borrows: Rc<HashMap<usize, BorrowKind>>,
+    /// Resource bindings closed implicitly when their scope ends.
+    pub implicit_closes: Rc<std::collections::HashSet<usize>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
@@ -217,6 +219,7 @@ impl Cx {
             methods: program.methods.clone(),
             fixtures: program.test_fixtures.clone(),
             borrows: program.borrows.clone(),
+            implicit_closes: program.implicit_closes.clone(),
             lenders: program.lenders.clone(),
             getters: program.getter_borrows.clone(),
         }

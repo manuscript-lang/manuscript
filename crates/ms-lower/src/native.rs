@@ -2454,18 +2454,22 @@ impl<'a> FnLower<'a> {
         copy_result: bool,
         result_ty: MTy,
     ) -> Result<(Value, Option<Val>), Error> {
-        let runtime_only = !matches!(
-            name,
-            "append"
-                | "set"
-                | "replace"
-                | "prepend"
-                | "insert"
-                | "remove"
-                | "pop"
-                | "reverse"
-                | "sort"
-        );
+        // Swapping scalars is two loads and two stores; other elements move through the runtime without a copy.
+        let scalar_swap = name == "swap"
+            && matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(e) if self.b.m.types.is_scalar(*e));
+        let runtime_only = !scalar_swap
+            && !matches!(
+                name,
+                "append"
+                    | "set"
+                    | "replace"
+                    | "prepend"
+                    | "insert"
+                    | "remove"
+                    | "pop"
+                    | "reverse"
+                    | "sort"
+            );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
         // The runtime shifts the tail in place; rebuilding the list from slices copies every element.
         let in_place = matches!(name, "insert" | "remove");
@@ -2514,6 +2518,23 @@ impl<'a> FnLower<'a> {
                 self.check_index(2, i, r, n, false);
                 let v = self.element_value(&args[1]);
                 Ok((self.b.list_set(old, i, v), None))
+            }
+            "swap" => {
+                let n = self.b.list_len(old);
+                let zero = self.b.iconst(0);
+                let mut at = [old; 2];
+                let mut got = [old; 2];
+                for (k, a) in args.iter().enumerate().take(2) {
+                    let i = self.borrow(a.val);
+                    let neg = self.b.icmp(Cc::Lt, i, zero);
+                    let shifted = self.b.binop(Op::IAdd, i, n);
+                    let r = self.b.select(neg, shifted, i);
+                    self.check_index(3, i, r, n, false);
+                    at[k] = r;
+                    got[k] = self.b.list_get(old, r);
+                }
+                let first = self.b.list_set(old, at[0], got[1]);
+                Ok((self.b.list_set(first, at[1], got[0]), None))
             }
             "replace" => {
                 // The element moves out through a slot and the new value moves in; nothing is copied.

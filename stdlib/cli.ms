@@ -165,7 +165,7 @@ impl Matches:
     # Returns the text, or none for an optional argument or flag that was not supplied.
     def string_or_none(name: String) -> Optional[String]:
         if let items = self.values.get(name):
-            if not items.is_empty(): return some(items[0].clone())
+            if not items.is_empty(): return items[0].clone()
         return none
 
     # Returns an Int value, or none when absent.
@@ -257,12 +257,12 @@ impl Command:
             node = next.get().clone()
             names.append(word.clone())
 
-        return some(render_help(node, names, inherited))
+        return render_help(node, names, inherited)
 
     # Returns the child named `word`, or none.
     def child(word: String) -> Optional[Command]:
         for candidate in self.children:
-            if candidate.name == word: return some(candidate.clone())
+            if candidate.name == word: return candidate.clone()
         return none
 
 # Builds a leaf command whose handler receives the options record `T`.
@@ -484,10 +484,8 @@ def check_schema(
 # Finds a flag by long name or one-letter alias.
 def find_flag(flags: List[Flag], key: String, long: Bool) -> Optional[Flag]:
     for flag in flags:
-        if long and flag.name == key: return some(flag.clone())
-        if not long and not flag.short.is_empty() and flag.short == key: return some(
-            flag.clone()
-        )
+        if long and flag.name == key: return flag.clone()
+        if not long and not flag.short.is_empty() and flag.short == key: return flag.clone()
 
     return none
 

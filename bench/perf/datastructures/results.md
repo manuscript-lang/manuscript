@@ -2,6 +2,16 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27
+
+Revision: this branch on top of `90e401c46`; same machine class, one `run.sh 5` before and after.
+
+| Operation | Manuscript before | Manuscript after | Rust |
+| --- | ---: | ---: | ---: |
+| PriorityQueue enqueue and dequeue | 210 | 103 | 93 |
+
+The 2026-10-26 heap moved entries with `List.swap`, which for every element type was a call into the runtime (about 55 instructions per swap, 63% of the benchmark). Swapping scalar elements is now two inline loads and two stores, and the heap sifts down to the bottom along the earlier child before sifting back up (callgrind: 317M to 111M instructions for 100k enqueue and dequeue). `fs.stat` did not regress against `c1b81215` on this host.
+
 ## 2026-10-26
 
 Revision: this branch on top of `2e1227ae`; five rounds of `run.sh`, ranges across the last runs.

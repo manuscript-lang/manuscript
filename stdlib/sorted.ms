@@ -94,7 +94,7 @@ impl SortedMap[K, V]:
             at < self.key_chunks[c].length()
             and order(self.key_chunks[c].get(at), key) == 0
         ):
-            return some(self.value_chunks[c].get(at).clone())
+            return self.value_chunks[c].get(at).clone()
 
         return none
 
@@ -181,10 +181,8 @@ impl SortedMap[K, V]:
         if self.size == 0:
             return none
 
-        return some(
-            SortedEntry(
-                self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
         )
 
     # Returns the entry with the largest key, or none when empty.
@@ -194,10 +192,8 @@ impl SortedMap[K, V]:
 
         let c = self.key_chunks.length() - 1
         let at = self.key_chunks[c].length() - 1
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Removes and returns the entry with the smallest key, or none when empty.
@@ -227,10 +223,8 @@ impl SortedMap[K, V]:
         if at >= self.key_chunks[c].length():
             return none
 
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Returns the entry with the largest key that is at most `key`, or none.
@@ -244,11 +238,8 @@ impl SortedMap[K, V]:
             at < self.key_chunks[c].length()
             and order(self.key_chunks[c].get(at), key) == 0
         ):
-            return some(
-                SortedEntry(
-                    self.key_chunks[c].get(at).clone(),
-                    self.value_chunks[c].get(at).clone()
-                )
+            return SortedEntry(
+                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
             )
 
         if at == 0:
@@ -259,10 +250,8 @@ impl SortedMap[K, V]:
             at = self.key_chunks[c].length()
 
         at -= 1
-        return some(
-            SortedEntry(
-                self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-            )
+        return SortedEntry(
+            self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
         )
 
     # Returns a new list of the entries with `low` <= key < `high`, in ascending order.
@@ -362,42 +351,42 @@ impl SortedSet[T]:
     # Returns the smallest member, or none when empty.
     def first() -> Optional[T]:
         if let entry = self.members.first():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the largest member, or none when empty.
     def last() -> Optional[T]:
         if let entry = self.members.last():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Removes and returns the smallest member, or none when empty.
     var def pop_first() -> Optional[T]:
         if let entry = self.members.pop_first():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Removes and returns the largest member, or none when empty.
     var def pop_last() -> Optional[T]:
         if let entry = self.members.pop_last():
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the smallest member that is at least `value`, or none.
     def ceiling(value: T) -> Optional[T]:
         if let entry = self.members.ceiling(value):
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 
     # Returns the largest member that is at most `value`, or none.
     def floor(value: T) -> Optional[T]:
         if let entry = self.members.floor(value):
-            return some(entry.key.clone())
+            return entry.key.clone()
 
         return none
 

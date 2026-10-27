@@ -644,6 +644,49 @@ fn reports_reset_streams() {
 }
 
 #[test]
+fn rejects_bodies_that_contradict_content_length() {
+    let sized = |length: &str, body: &[u8]| Reply::Respond {
+        status: 200,
+        headers: vec![("content-length".into(), length.into())],
+        body: body.to_vec(),
+    };
+    let (address, _, _) = serve(move |req, _| match req.path() {
+        "/exact" => sized("5", b"hello"),
+        "/short" => sized("10", b"hi"),
+        "/long" => sized("2", b"hello world"),
+        "/empty" => sized("3", b""),
+        "/bad" => sized("1x", b"a"),
+        "/nobody" => Reply::Respond {
+            status: 204,
+            headers: vec![("content-length".into(), "7".into())],
+            body: Vec::new(),
+        },
+        _ => ok(b"x".to_vec()),
+    });
+    let (_net, c) = client(ClientOptions::default());
+    let read = |path: &str| match c.send(request("GET", &address, path)) {
+        Ok(body) => body.read_all().map(|b| b.len()).map_err(|_| ()),
+        Err(_) => Err(()),
+    };
+    assert_eq!(read("/exact"), Ok(5));
+    assert_eq!(read("/short"), Err(()));
+    assert_eq!(read("/long"), Err(()));
+    assert_eq!(read("/empty"), Err(()));
+    assert_eq!(read("/bad"), Err(()));
+    assert_eq!(read("/nobody"), Ok(0));
+
+    // HEAD describes a body it does not send.
+    let (address, _, _) = serve(|_, _| Reply::Respond {
+        status: 200,
+        headers: vec![("content-length".into(), "5".into())],
+        body: Vec::new(),
+    });
+    let (_net, c) = client(ClientOptions::default());
+    let head = c.send(request("HEAD", &address, "/")).unwrap();
+    assert_eq!(head.read_all().unwrap().len(), 0);
+}
+
+#[test]
 fn honors_deadlines() {
     let (address, _, _) = serve(|req, _| match req.path() {
         "/stall" => Reply::Partial {

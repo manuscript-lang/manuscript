@@ -6,16 +6,17 @@ mod faults;
 mod matches;
 mod patterns;
 mod recursion;
+mod redundant;
 mod tasks;
 
 use ms_check::{ModuleData, Program};
-use ms_syntax::Pos;
+use ms_syntax::{DiagnosticFix, Pos};
 use std::sync::Arc;
 
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finding {
-    /// Stable rule code, `MSL001`..`MSL112`.
+    /// Stable rule code, `MSL001`..`MSL113`.
     pub code: &'static str,
     /// Human-readable message.
     pub message: String,
@@ -23,6 +24,8 @@ pub struct Finding {
     pub file: Arc<str>,
     /// Where the finding applies.
     pub pos: Pos,
+    /// A machine-applicable edit that resolves the finding, applied by `ms lint --fix`.
+    pub fix: Option<DiagnosticFix>,
 }
 
 fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos: Pos) -> Finding {
@@ -31,6 +34,7 @@ fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos:
         message: message.into(),
         file: file.clone(),
         pos,
+        fix: None,
     }
 }
 
@@ -87,6 +91,7 @@ pub fn lint_program(program: &Program) -> Vec<Finding> {
         patterns::lint(module, &mut findings);
         matches::lint(module, &mut findings);
         tasks::lint(module, &mut findings);
+        redundant::lint(module, &mut findings);
     }
     findings.sort_by(|a, b| {
         (a.file.as_ref(), a.pos.offset, a.code).cmp(&(b.file.as_ref(), b.pos.offset, b.code))

@@ -49,7 +49,7 @@ impl Deque[T]:
     var def push_back(value: T) -> Unit:
         if self.size == self.slots.length():
             self.grow()
-        self.slots.set(self.slot_of(self.size), some(value))
+        self.slots.set(self.slot_of(self.size), value)
         self.size += 1
 
     # Adds a value before the first one.
@@ -59,7 +59,7 @@ impl Deque[T]:
         if self.start == 0:
             self.start = self.slots.length()
         self.start -= 1
-        self.slots.set(self.start, some(value))
+        self.slots.set(self.start, value)
         self.size += 1
 
     # Removes and returns the first value, or `none` when empty.

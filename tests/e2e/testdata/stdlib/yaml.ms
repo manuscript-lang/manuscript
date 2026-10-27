@@ -353,6 +353,16 @@ test "YAML documents BOM CRLF empty input and version directive":
         2
     )
 
+test "YAML document markers end a root plain scalar":
+    parse(text: "x\n...\n") | try expect_ok | try expect_equal(
+        YamlValue.StringValue("x")
+    )
+    parse(text: "x\ny\n...\n") | try expect_ok | try expect_equal(
+        YamlValue.StringValue("x y")
+    )
+    parse(text: "null\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
+    try expect_true(parse(text: "x\n---\ny\n").is_error())
+
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
     for text in [
         "a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2", "a:\n  b: 1\n c: 2",

@@ -290,7 +290,7 @@ export def create(
 ) -> Result[Logger, LogError]:
     var index: Optional[Int] = none
     if let chosen = level:
-        index = some(level_index(chosen))
+        index = level_index(chosen)
 
     let state = new_state(index, timestamp, max_bytes)
     if state.is_error(): return error(core_error(state.err()))

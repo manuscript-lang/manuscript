@@ -161,12 +161,12 @@ def next_frame(
                         5 + size, available
                     ).get("".to_bytes())
                     if let text = body.decode_utf8():
-                        return ok(some(Frame(kind: kind, body: text)))
+                        return ok(Frame(kind: kind, body: text))
 
                     return error(ChannelError.Broken("a frame is not UTF-8"))
 
         if msstd_process_ipc_wait_reader(link):
-            return ok(some(Frame(kind: RETRY, body: "")))
+            return ok(Frame(kind: RETRY, body: ""))
 
         let chunk = msstd_process_ipc_read(link, 65536)
         if chunk.is_empty():
@@ -234,14 +234,14 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 continue
 
             if frame.kind == MESSAGE:
-                return ok(some(try decode[Out](frame.body)))
+                return ok(try decode[Out](frame.body))
 
             if frame.kind == CLOSE:
                 finish(self.inbox, none)
                 return ok(none)
 
             if frame.kind == RESULT:
-                finish(self.inbox, some(frame.body.clone()))
+                finish(self.inbox, frame.body.clone())
                 return ok(none)
 
             return error(ChannelError.Broken("a frame has an unknown kind"))
@@ -296,7 +296,7 @@ def wait_result[T](
                 let frame = next.get(Frame(kind: -1, body: ""))
 
                 if frame.kind == RESULT:
-                    finish(inbox, some(frame.body.clone()))
+                    finish(inbox, frame.body.clone())
                 elif frame.kind == CLOSE:
                     finish(inbox, none)
             case error(e):

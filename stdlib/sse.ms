@@ -130,7 +130,7 @@ impl SseDecoder for Decoder:
 
             if step.is_error():
                 let failure = step.err().clone()
-                self.failure = some(failure.clone())
+                self.failure = failure.clone()
                 return error(failure)
 
         return ok(events)
@@ -142,7 +142,7 @@ impl SseDecoder for Decoder:
         self.closed = True
 
         if self.line_bytes > 0 or self.open_block:
-            self.failure = some(SseError.Truncated)
+            self.failure = SseError.Truncated
             return error(SseError.Truncated)
 
         return ok(())
@@ -215,7 +215,7 @@ def apply(var decoder: Decoder, line: String) -> Unit:
 def identify(var decoder: Decoder, value: String) -> Unit:
     if value.to_bytes().contains(f"\u{0}".to_bytes()): return ()
 
-    decoder.last_id = some(value)
+    decoder.last_id = value
 
 # Only ASCII digits form a retry time; overflow and signs are ignored.
 def reconnect(var decoder: Decoder, value: String) -> Unit:
@@ -293,7 +293,7 @@ export def next_event(var reader: SseReader) -> Result[Optional[SseEvent], SseEr
         if reader.next < reader.ready.length():
             let event = reader.ready.get(reader.next)
             reader.next += 1
-            return ok(some(event.clone()))
+            return ok(event.clone())
 
         if reader.finished: return ok(none)
 

@@ -230,6 +230,15 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
         return Ok(Framing::None);
     }
     if has_token(&head.fields, "Transfer-Encoding", "chunked") {
+        // Another coding would hand the caller still-encoded bytes as the body.
+        let coded = field(&head.fields, "Transfer-Encoding").any(|v| {
+            v.split(|&c| c == b',').map(trim).any(|t| {
+                !t.eq_ignore_ascii_case(b"chunked") && !t.eq_ignore_ascii_case(b"identity")
+            })
+        });
+        if coded {
+            return Err("unsupported Transfer-Encoding");
+        }
         return Ok(Framing::Chunked);
     }
     if field(&head.fields, "Transfer-Encoding").next().is_some() {
@@ -540,7 +549,17 @@ pub fn status_text(code: u16) -> &'static str {
 /// Appends the status line, `HTTP/1.1 200 OK\r\n`.
 pub fn status_line(out: &mut Vec<u8>, status: u16) {
     let text = status_text(status);
-    if text.is_empty() {
+    if (100..1000).contains(&status) && !text.is_empty() {
+        out.extend_from_slice(b"HTTP/1.1 ");
+        out.extend_from_slice(&[
+            b'0' + (status / 100) as u8,
+            b'0' + (status / 10 % 10) as u8,
+            b'0' + (status % 10) as u8,
+            b' ',
+        ]);
+        out.extend_from_slice(text.as_bytes());
+        out.extend_from_slice(b"\r\n");
+    } else if text.is_empty() {
         let _ = write!(Vec_(out), "HTTP/1.1 {status} status code {status}\r\n");
     } else {
         let _ = write!(Vec_(out), "HTTP/1.1 {status} {text}\r\n");
@@ -563,6 +582,22 @@ pub fn header_line(out: &mut Vec<u8>, name: &str, value: &[u8]) {
     out.extend_from_slice(b": ");
     out.extend_from_slice(value);
     out.extend_from_slice(b"\r\n");
+}
+
+/// Appends `name: <n>\r\n`.
+pub fn header_number(out: &mut Vec<u8>, name: &str, n: usize) {
+    let mut digits = [0u8; 20];
+    let mut at = digits.len();
+    let mut rest = n;
+    loop {
+        at -= 1;
+        digits[at] = b'0' + (rest % 10) as u8;
+        rest /= 10;
+        if rest == 0 {
+            break;
+        }
+    }
+    header_line(out, name, &digits[at..]);
 }
 
 /// Appends one chunk.
@@ -773,6 +808,11 @@ mod tests {
         assert_eq!(response_framing(&h, "Head"), Ok(Framing::Length(3)));
         let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::Chunked));
+        let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n");
+        assert_eq!(
+            response_framing(&h, "GET"),
+            Err("unsupported Transfer-Encoding")
+        );
         let h = parse("HTTP/1.1 204 No Content\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::None));
         let h = parse("HTTP/1.1 200 OK\r\n\r\n");

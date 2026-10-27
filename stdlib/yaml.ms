@@ -93,7 +93,7 @@ type Flow:
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `YamlLimits` (even an empty one) to lift or change them.
 def default_limits() -> YamlLimits:
-    return YamlLimits(max_depth: some(10000), max_values: some(1000000))
+    return YamlLimits(max_depth: 10000, max_values: 1000000)
 
 def within(value: Int, limit: Optional[Int]) -> Bool:
     if let maximum = limit:
@@ -668,6 +668,15 @@ def skip(var context: Context) -> Unit:
         and uncomment((context.lines.get(context.index))).trim() == ""
     ): context.index = (context.index + 1)
 
+# A document start or end marker at column zero ends a plain scalar that would otherwise continue.
+def document_marker(text: String) -> Bool:
+    return (
+        text == "---"
+        or text.starts_with("--- ")
+        or text == "..."
+        or text.starts_with("... ")
+    )
+
 def sequence(text: String) -> Bool:
     return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
 
@@ -917,7 +926,7 @@ def block_value(
                     continue
 
                 let next = uncomment(line.clone())
-                if next.trim() == "" or indent(next) <= base: break
+                if next.trim() == "" or indent(next) <= base or document_marker(next): break
 
                 context.index = probe
 
