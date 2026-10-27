@@ -270,7 +270,8 @@ def digit_text(text: String) -> Bool:
     return True
 
 def numeric(text: String) -> Bool:
-    if not "+-.0123456789".contains(text.get(0, default: "x")): return False
+    let first = text.scalar_at(0, default: 0)
+    if not (first == 43 or first == 45 or first == 46 or (first >= 48 and first <= 57)): return False
 
     var clean = text.clone()
     if clean.starts_with("+") or clean.starts_with("-"): clean = clean.slice(
@@ -568,14 +569,20 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
 
 # A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed by a space or the end.
 def plain_may_start(text: String) -> Bool:
-    if text == "": return True
+    let first = text.scalar_at(0, default: 0)
+    if first == 0: return True
+    if (
+        first == 93
+        or first == 125
+        or first == 44
+        or first == 37
+        or first == 64
+        or first == 96
+    ): return False
 
-    let first = text.get(0)
-    if "]},%@`".contains(first): return False
-    if first == "-" or first == "?": return not (
-        text.length() == 1
-        or " \t".contains(text.get(1))
-    )
+    if first == 45 or first == 63:
+        let second = text.scalar_at(1, default: 0)
+        return not (second == 0 or second == 32 or second == 9)
 
     return True
 
@@ -683,7 +690,7 @@ def uncomment(text: String) -> String:
 
 def indent(text: String) -> Int:
     var result = 0
-    while text.get(result, default: "") == " ": result += 1
+    while text.scalar_at(result, default: 0) == 32: result += 1
     return result
 
 def indentation(context: Context, text: String) -> Result[Int, YamlError]:
@@ -703,6 +710,9 @@ def skip(var context: Context) -> Unit:
 
 # A document start or end marker at column zero ends a plain scalar that would otherwise continue.
 def document_marker(text: String) -> Bool:
+    let first = text.scalar_at(0, default: 0)
+    if first != 45 and first != 46: return False
+
     return (
         text == "---"
         or text.starts_with("--- ")
@@ -711,6 +721,8 @@ def document_marker(text: String) -> Bool:
     )
 
 def sequence(text: String) -> Bool:
+    if text.scalar_at(0, default: 0) != 45: return False
+
     return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
 
 # A flow collection or quoted scalar can continue across physical lines.
@@ -747,13 +759,28 @@ def complete(text: String) -> Bool:
 
     return quote == "" and depth <= 0
 
+# Whether a value starting with this scalar is a flow collection, quote, anchor, alias or tag
+# (or, with `blank`, whitespace) rather than a plain scalar.
+def structured_lead(code: Int, blank: Bool = False) -> Bool:
+    if blank and (code == 32 or code == 9 or code == 10): return True
+
+    return (
+        code == 91
+        or code == 39
+        or code == 34
+        or code == 123
+        or code == 42
+        or code == 38
+        or code == 33
+    )
+
 def inline_value(var context: Context, text: String, depth: Int) -> Result[
     YamlValue, YamlError
 ]:
     # A plain scalar needs no character scan: only its trimmed text and a count.
     if (
         text != ""
-        and not " \t\n['\"{*&!".contains(text.get(0))
+        and not structured_lead(text.scalar_at(0, default: 0), blank: True)
         and not text.contains(": ")
         and plain_may_start(text.trim())
     ):
@@ -933,8 +960,9 @@ def block_value(
 ) -> Result[YamlValue, YamlError]:
     var remainder = text.trim_start().clone()
     var anchor = ""
+    var lead = remainder.scalar_at(0, default: 0)
 
-    if remainder.starts_with("&"):
+    if lead == 38:
         var flow = Flow(
             chars: remainder.split(""), pos: 1, line: context.index,
             context: context.clone(), delimited: False
@@ -943,14 +971,15 @@ def block_value(
         remainder = remainder.slice(
             flow.pos, remainder.scalar_length()
         ).get("").trim_start()
+        lead = remainder.scalar_at(0, default: 0)
 
     var result = YamlValue.Null
 
-    if remainder.starts_with("|") or remainder.starts_with(">"):
+    if lead == 124 or lead == 62:
         try count(var context, depth)
         result = try block_string(var context, remainder.trim_end(), base)
     elif remainder != "":
-        if not "['\"{*&!".contains(remainder.get(0)):
+        if not structured_lead(lead):
             remainder = remainder.trim_end().clone()
 
             var joined = StringBuilder()
@@ -1173,7 +1202,8 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
             if colon < 0: break
 
             var name = content.slice(0, colon).get("").trim()
-            let quoted_key = name.starts_with("\"") or name.starts_with("'")
+            let key_start = name.scalar_at(0, default: 0)
+            let quoted_key = key_start == 34 or key_start == 39
 
             if quoted_key:
                 var flow = Flow(
@@ -1186,11 +1216,11 @@ def block(var context: Context, base: Int, depth: Int) -> Result[YamlValue, Yaml
                 )
             elif (
                 name == ""
-                or name.starts_with("[")
-                or name.starts_with("{")
-                or name.starts_with("!")
-                or name.starts_with("&")
-                or name.starts_with("*")
+                or key_start == 91
+                or key_start == 123
+                or key_start == 33
+                or key_start == 38
+                or key_start == 42
             ):
                 return error(
                     YamlError.UnsupportedFeature(
@@ -1346,6 +1376,9 @@ export def parse(
         invalid(context, "unexpected indentation or additional document")
     )
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
+
+    # Without aliases, parsing already counted every container and leaf at its depth.
+    if context.values > 0 and context.anchors.length() == 0: return ok(result)
 
     context.values = 0
     try validate(var context, result, 1)
