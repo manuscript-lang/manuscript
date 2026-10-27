@@ -75,7 +75,7 @@ jobs:
           lo=0; hi=$total
           while [ $((hi-lo)) -gt 1 ]; do
             mid=$(( (lo+hi)/2 ))
-            if crashes $mid; then echo "mid $mid: pass"; lo=$mid; else echo "mid $mid: crash"; hi=$mid; fi
+            if crashes $mid; then echo "mid $mid: crash"; hi=$mid; else echo "mid $mid: pass"; lo=$mid; fi
           done
           echo "first crashing limit: $hi"
           crashes $hi
