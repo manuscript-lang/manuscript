@@ -73,6 +73,13 @@ jobs:
           target/debug/ms.exe build .github/diag/pl.ms -o pl.exe
           timeout 25 ./pl.exe > h.txt 2>&1
           echo "pl exit $?"; cat h.txt
+          for f in c0 c1; do
+            target/debug/ms.exe build .github/diag/$f.ms -o $f.exe
+            timeout 20 ./$f.exe > $f.txt 2>&1
+            echo "$f exit $?"; cat $f.txt
+          done
+          timeout 40 target/debug/ms.exe run tests/conformance/fixtures/e2e/stdlib/http-close-drains.ms > d.txt 2>&1
+          echo "drains exit $?"; cat d.txt
           target/debug/ms.exe build .github/diag/pg.ms -o pg.exe
           timeout 40 ./pg.exe > g.txt 2>&1
           echo "pg exit $?"; cat g.txt
