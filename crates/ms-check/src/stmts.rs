@@ -33,7 +33,16 @@ fn literal_key(path: &Expr) -> Option<String> {
             op: UnaryOp::Neg,
             operand,
         } => match &operand.kind {
-            ExprKind::Number(n) => Some(format!("-{}", ms_syntax::number::canonical(n.as_str()))),
+            ExprKind::Number(n) => {
+                let value = ms_syntax::number::canonical(n.as_str());
+                // Zero has no sign: `-0` and `-0x0` repeat `0`.
+                let zero = value.bytes().all(|b| b == b'0');
+                Some(if zero {
+                    "0".into()
+                } else {
+                    format!("-{value}")
+                })
+            }
             _ => None,
         },
         _ => None,
@@ -753,7 +762,9 @@ impl Checker {
             } else {
                 if let ExprKind::Member { left, .. } = &arm.path.kind {
                     let qualified = self.type_expression(left);
-                    if qualified.as_ref().is_none_or(|q| !same_qualifier(q, &t)) {
+                    if qualified.as_ref().is_none_or(|q| {
+                        !same_qualifier(q, &t, matches!(left.kind, ExprKind::Apply { .. }))
+                    }) {
                         self.type_error(
                             arm.pos,
                             format!(
@@ -1553,11 +1564,9 @@ pub(crate) fn case_names(t: &Ty) -> Vec<String> {
 /// A case qualifier naming the matched alternative. A bare generic name
 /// (Choice.Found) stands for every instantiation of Choice, while an explicit
 /// one (Choice[Int].Found) must be the matched type.
-fn same_qualifier(qualifier: &Ty, matched: &Ty) -> bool {
-    for arg in &qualifier.args {
-        if arg.kind != Kind::Variable {
-            return same(qualifier, matched);
-        }
+fn same_qualifier(qualifier: &Ty, matched: &Ty, explicit: bool) -> bool {
+    if explicit {
+        return same(qualifier, matched);
     }
     qualifier.id == matched.id
 }
