@@ -333,8 +333,9 @@ impl Walker<'_> {
         }
     }
 
-    /// Reports an owned resource that no `with` closes and nothing takes: a binding that is
-    /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
+    /// Closes at scope end an owned resource nothing takes (a binding never moved: returned,
+    /// passed on, stored, captured), or reports one with no close operation; it is
+    /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
         for (uid, name, pos, closable) in resources {
