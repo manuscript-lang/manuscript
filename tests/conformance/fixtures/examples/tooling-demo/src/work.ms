@@ -1,8 +1,6 @@
-from "@std/collections.ms" import range
-
 def compute() -> Int:
     var result = 0
-    for index in range(0, 3000000):
+    for index in 0..3000000:
         result += index % 7
     return result
 

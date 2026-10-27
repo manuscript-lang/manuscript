@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/time.ms" import (
     timestamp,
@@ -83,7 +82,7 @@ test "calendar rejects unknown zones and impossible dates":
 test "sub-millisecond sleeps are not rounded up to a millisecond":
     let monotonic = clock()
     let start = monotonic.now()
-    for round in range(0, 500):
+    for round in 0..500:
         sleep(microseconds(50))
 
     # Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.

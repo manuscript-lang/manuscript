@@ -44,17 +44,16 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     std::fs::create_dir_all(&dir).unwrap();
     // Nesting depth 64 prints `...`; a long list formats in linear time.
     let source = "from \"@std/io.ms\" import stdout\n\
-        from \"@std/collections.ms\" import range\n\
         type L:\n\
         \x20   case Nil\n\
         \x20   case Cons(head: Int, tail: L)\n\
         export def main() -> Int:\n\
         \x20   var l: L = Nil\n\
-        \x20   for i in range(0, 100000):\n\
+        \x20   for i in 0..100000:\n\
         \x20       l = Cons(i, l)\n\
         \x20   let text = f\"{l}\"\n\
         \x20   var xs: List[Int] = []\n\
-        \x20   for i in range(0, 300000):\n\
+        \x20   for i in 0..300000:\n\
         \x20       xs.append(i)\n\
         \x20   let list_text = f\"{xs}\"\n\
         \x20   stdout().write(f\"{text.length()} {list_text.length()}\\n\").get()\n\

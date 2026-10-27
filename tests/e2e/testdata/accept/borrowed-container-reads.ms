@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 # `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
 # `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
@@ -20,7 +19,7 @@ type Node:
 
 def order(id: String, n: Int) -> Order:
     var items = List[Item]()
-    for i in range(0, n):
+    for i in 0..n:
         items.append(Item(sku: f"{id}-{i}", qty: i + 1))
     return Order(id: id, items: items, status: "placed")
 

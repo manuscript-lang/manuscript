@@ -1,6 +1,5 @@
 from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "@std/queue.ms" import PriorityQueue, Queue
-from "@std/collections.ms" import range
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)
@@ -23,7 +22,7 @@ test "priority queue orders values and honors capacity":
 
 test "priority queue sorts many values and copies are independent":
     var queue = PriorityQueue[Int]()
-    for index in range(0, 200):
+    for index in 0..200:
         queue.enqueue((index * 37) % 101)
 
     var copy = queue.clone()

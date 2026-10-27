@@ -1,7 +1,6 @@
 from "@std/test.ms" import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
-from "@std/collections.ms" import range
 from "@std/yaml.ms" import parse, stringify, YamlValue, YamlError, YamlLimits
 
 def entries(value: YamlValue) -> Result[Map[String, YamlValue], Error]:
@@ -662,7 +661,7 @@ test "YAML long plain scalars and large mappings parse in linear time":
     scalar["a"] | try expect_equal(YamlValue.StringValue(long))
 
     var keys = ""
-    for index in range(0, 30000):
+    for index in 0..30000:
         keys = keys.concat(f"k{index}: 1\n")
     (try entries((parse(text: keys) | try expect_ok))).length() | try expect_equal(
         30000
@@ -755,7 +754,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
     var source = f"{repeated(text: "- ", count: depth)}x\n"
     var root = (parse(text: source, limits: some(YamlLimits())) | try expect_ok)
 
-    for level in range(1, depth):
+    for level in 1..depth:
         let inner = (try items(root))
         inner.length() | try expect_equal(1)
         root = inner.first().get()
@@ -770,7 +769,7 @@ test "YAML stringify escapes C1 control characters so output reparses":
 
 test "YAML parse without limits stops alias bombs and deep nesting":
     var bomb = "l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"
-    for i in range(0, 9):
+    for i in 0..9:
         bomb = bomb + f"l{i+1}: &l{i+1} [" + f"*l{i}, ".repeat(9).get() + f"*l{i}]\n"
 
     let bombed = parse(bomb)

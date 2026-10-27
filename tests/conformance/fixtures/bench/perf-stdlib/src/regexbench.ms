@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench, words
 from "@std/string.ms" import compile, Regex
 
@@ -20,7 +19,7 @@ def run(re: Regex) -> Unit:
         10000,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 10000):
+            for i in 0..10000:
                 if re.matches("xx word123 yy"): n += 1
             return n
     )

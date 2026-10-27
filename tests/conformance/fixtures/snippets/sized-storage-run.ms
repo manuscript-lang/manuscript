@@ -2,7 +2,6 @@
 # conform: phase=run
 # conform: origin=sized numeric types stage 3
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 type Cell:
     a: Int8
@@ -24,13 +23,13 @@ def kind(t: Tok) -> Int:
 
 export def main() -> Int:
     var l: List[Int32] = []
-    for i in range(0, 1000):
+    for i in 0..1000:
         l.append((1000 - i).to_int32().get(0))
 
     let sorted = l.sorted(lambda a, b: a.compare(b))
     let _ = stdout().write(f"{sorted[0]} {sorted[999]} {l.length()}\n")
     var m = Map[Int16, Int8]()
-    for i in range(0, 300):
+    for i in 0..300:
         m.add(i.to_int16().get(0), (i % 100).to_int8().get(0))
 
     var tot = 0
@@ -39,7 +38,7 @@ export def main() -> Int:
 
     let _ = stdout().write(f"{m.length()} {tot} {m.get(299)}\n")
     var st = Set[Int8]()
-    for i in range(0, 50):
+    for i in 0..50:
         st.add((i % 7).to_int8().get(0))
 
     let _ = stdout().write(f"{st.length()} {st.contains(3)} {st.contains(9)}\n")
@@ -48,7 +47,7 @@ export def main() -> Int:
     let cl: Callable[[Int], Int] = lambda x: (x.to_int8().get(0) + k).to_int64()
     let _ = stdout().write(f"{cl(10)} {f * 2.0 + 0.5}\n")
     var cells: List[Cell] = []
-    for i in range(0, 5):
+    for i in 0..5:
         cells.append(Cell(a: -1, b: 100000, c: 0.5, d: True, e: -7))
 
     let _ = stdout().write(

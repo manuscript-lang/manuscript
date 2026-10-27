@@ -1,7 +1,6 @@
 # conform: tags=strings,lists,maps,records,control-flow,stdlib-testing,testing,tier-core
 # conform: phase=test
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 type Box:
     name: String
@@ -16,7 +15,7 @@ impl Box:
 def churn(n: Int) -> Int:
     var total = 0
 
-    for i in range(0, n):
+    for i in 0..n:
         let junk = f"junk-{i}-junk-{i}-junk-{i}"
         total += junk.length()
 
@@ -64,7 +63,7 @@ test "a value used only inside one branch is freed on the other path":
     let data = [10, 20, 30]
     var sum = 0
 
-    for i in range(0, 4):
+    for i in 0..4:
         if i % 2 == 0:
             sum += data[0]
         else:

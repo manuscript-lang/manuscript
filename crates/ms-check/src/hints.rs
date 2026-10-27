@@ -418,6 +418,11 @@ impl Checker {
             );
         }
         match name.as_str() {
+            "range" => {
+                return format!(
+                    "{message}; there is no range function: write start..end for the integers from start up to but excluding end, or range_by from \"@std/collections.ms\" for a stepped list"
+                );
+            }
             "nil" | "null" | "None" | "undefined" => {
                 return format!(
                     "{message}; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)"

@@ -12,16 +12,16 @@
         "message": "expected Int, found String (in the initializer of 'bad')",
         "position": {
           "file": "seed-0087.ms",
-          "line": 33,
+          "line": 32,
           "column": 20,
-          "offset": 872
+          "offset": 825
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0087.ms:33:20: type: expected Int, found String (in the initializer of 'bad')\n    |\n 33 |     let bad: Int = \"text\"\n    |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0087.ms:32:20: type: expected Int, found String (in the initializer of 'bad')\n    |\n 32 |     let bad: Int = \"text\"\n    |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "l1 = [-23, 3] len 2\nb2 = true\ns3 = [deltbrace{s}gammaalpha]\nl4 = [-23, 3, -23, 3] len 4\nback\\slash\ns5 = [DELTBRACE{S}GAMMAALPHALINE\nBREAK-18:x]\nl6 = [-20, 6] len 2\ns7 = [ereh\tbat]\nf8 = 3.275003342920986\nl9 = [-40, 12] len 2\ns10 = [line\nbreak]\ncollatz(1433) = 26\n0 35 true sum 35\ns11 = [deltbrace{s}gammaalpha]\ni12 = -47\nb13 = false\nb14 = false\nacc15 = 0\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0282.ms:93 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0282.ms:92 in main\n"
   }
 }

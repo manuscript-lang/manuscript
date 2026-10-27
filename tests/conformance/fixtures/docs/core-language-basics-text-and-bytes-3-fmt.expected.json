@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def text[T](value: T) -> String:\n    return value.to_string()\n\ntest \"string conversion\":\n    let count = 3\n    let convert: Callable[[], String] = count.to_string\n    let direct = count.to_string()\n    let bound = convert()\n    let embedded = f\"{count}\"\n"
+    "fmt": "def text[T](value: T) -> String:\n    return value.to_string()\n\ntest \"string conversion\":\n    let count = 3\n    let convert: Callable[[], String] = count.to_string\n    let _direct = count.to_string()\n    let _bound = convert()\n    let _embedded = f\"{count}\"\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/process.ms\" import arguments\nfrom \"@std/fs.ms\" import filesystem, FileSystemError\nfrom \"@std/io.ms\" import stdout\n\ndef run() -> Result[Unit, Error]:\n    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)\n    let text = (\n        try filesystem()\n        .read_file(path, max_bytes: 1048576) |\n        .decode_utf8()\n        .ok_or(FileSystemError.InvalidData) | try\n    )\n    try stdout().write(text)\n    return stdout().flush()\n\nexport def main() -> Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
+    "fmt": "from \"@std/process.ms\" import arguments\nfrom \"@std/fs.ms\" import filesystem, FileSystemError\nfrom \"@std/io.ms\" import stdout\n\ndef run() -> Result[Unit, Error]:\n    let path = try arguments().first().ok_or(FileSystemError.InvalidInput)\n    let text = try filesystem().read_file(\n        path, max_bytes: 1048576\n    ) | .decode_utf8().ok_or(FileSystemError.InvalidData) | try\n    try stdout().write(text)\n    return stdout().flush()\n\nexport def main() -> Int:\n    if run().is_error():\n        return 1\n\n    return 0\n"
   }
 }

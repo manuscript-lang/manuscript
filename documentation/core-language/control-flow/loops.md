@@ -20,7 +20,7 @@ def sum(values: List[Int]) -> Int:
 
 ## Counting loops
 
-`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the call `range(start, end)` from `@std/collections.ms`, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
+`start..end` includes `start`, excludes `end`, and counts up by one; it needs no import. It is the standard `range` call from `@std/collections.ms`, which is not importable by name, so it binds looser than `+` and `-` (`0..n + 1` is `0..(n + 1)`), is not chainable, and takes `Int` bounds. A `for` over `start..end` or a direct `range` call is a counter loop that allocates no list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -34,7 +34,7 @@ test "sum indexes":
         return panic(f"Expected 10, got {total}")
 ```
 
-`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `range(0, count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
+`end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
 
 Use `while` with a counter for other steps or computed exits:
 
@@ -71,7 +71,7 @@ test "sum even indexes":
     try expect_equal(total, 6)
 ```
 
-`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [range declarations](../../standard-library/reference/collections.md#range).
+`try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections.md#range_by).
 
 ## Iterable types and binding
 

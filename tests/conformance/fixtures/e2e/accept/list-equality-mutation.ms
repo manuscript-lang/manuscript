@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
 from "@std/test.ms" import fail
-from "@std/collections.ms" import range
 
 type Element:
     id: Int
@@ -50,7 +49,7 @@ def check_equality(side: String, mutation: String) -> Result[Unit, Error]:
             return
 
         if mutation == "grow_write":
-            for index in range(0, 100):
+            for index in 0..100:
                 target.append(Element(7, noop))
             target.set(1, Element(77, next_action))
             return

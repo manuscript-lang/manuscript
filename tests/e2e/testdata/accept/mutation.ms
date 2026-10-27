@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
-from "@std/collections.ms" import range
 
 interface Counter:
     var def increment() -> Unit
@@ -102,7 +101,7 @@ test "callbacks over a snapshot leave the source writable":
 
 test "list growth and saved clone methods preserve current contents":
     var values: List[Int] = []
-    for index in range(0, 2048):
+    for index in 0..2048:
         values.append(index)
 
     let clone = values.clone

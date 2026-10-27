@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 def ident[T](x: T) -> T:
     return x
@@ -21,7 +20,7 @@ def depth() -> Int:
 
 test "static specializations are reused across calls":
     var acc = 0
-    for i in range(0, 100):
+    for i in 0..100:
         acc += ident(i)
     try expect_equal(acc, 4950)
     try expect_equal(ident("a"), "a")

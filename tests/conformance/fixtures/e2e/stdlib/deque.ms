@@ -2,7 +2,6 @@
 # conform: phase=test
 from "@std/test.ms" import expect_equal, expect_true
 from "@std/deque.ms" import Deque
-from "@std/collections.ms" import range
 
 test "both ends push and pop":
     var d = Deque[Int]()
@@ -34,7 +33,7 @@ test "wraps around and grows past the first buffer":
     var d = Deque[Int]()
     var expected: List[Int] = []
 
-    for i in range(0, 100):
+    for i in 0..100:
         d.push_back(i)
         d.push_front(-i)
         expected.append(i)
