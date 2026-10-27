@@ -7,7 +7,6 @@
 # fault in the child ends only the child, and the parent sees its exit status.
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/channels.ms" import Channel, ChannelError, Transport
-from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/io.ms" import ReadStream, WriteStream
 from "@std/json.ms" import parse, stringify
@@ -377,7 +376,7 @@ impl Closeable for Process[T, In, Out]:
         stop_child(self.link, self.inbox, self.native)
 
         with var all = lock(self.registry):
-            for index in range(0, all.value.length()):
+            for index in 0..all.value.length():
                 if all.value[index].id == self.id:
                     all.value.remove(index)
                     break
@@ -441,7 +440,7 @@ impl ProcessGroup[T, In, Out]:
         let count = self.processes.get().length()
         var values = List[T]()
 
-        for index in range(0, count):
+        for index in 0..count:
             let open = self.processes.get().get(index)
             values.append(try wait_result[T](open.native, open.link, open.inbox))
 
@@ -451,7 +450,7 @@ impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var def close() -> Unit:
         with var all = lock(self.processes):
-            for index in range(0, all.value.length()):
+            for index in 0..all.value.length():
                 stop_child(
                     all.value[index].link, all.value[index].inbox,
                     all.value[index].native

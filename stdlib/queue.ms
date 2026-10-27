@@ -1,5 +1,4 @@
 from "@std/core.ms" import panic
-from "@std/collections.ms" import range
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
@@ -26,7 +25,7 @@ impl Queue[T]:
 
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
-            for index in range(self.head, count):
+            for index in self.head..count:
                 live.append(self.items.replace(index, none))
             self.items = live
             self.head = 0

@@ -1,6 +1,5 @@
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/string.ms" import from_scalars, StringBuilder
-from "@std/collections.ms" import range
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:
@@ -39,13 +38,13 @@ export def base64_decode(
     var out = BytesBuilder()
     let quads = length / 4
 
-    for quad in range(0, quads):
+    for quad in 0..quads:
         var pad = 0
         if quad + 1 == quads: pad = padding
 
         var value = 0
 
-        for offset in range(0, 4):
+        for offset in 0..4:
             let byte = bytes[quad * 4 + offset]
             var digit = 0
 
@@ -139,7 +138,7 @@ export def hex_decode(
 
     var out = BytesBuilder()
 
-    for pair in range(0, length / 2):
+    for pair in 0..(length / 2):
         let high = hex_digit(digits[pair * 2].to_int())
         let low = hex_digit(digits[pair * 2 + 1].to_int())
         if high < 0 or low < 0: return error(EncodingError.InvalidData)
@@ -231,7 +230,7 @@ export def utf16_decode(
 
     var units = List[Int]()
 
-    for pair in range(0, bytes.length() / 2):
+    for pair in 0..(bytes.length() / 2):
         let low = bytes[pair * 2].to_int()
         let high = bytes[pair * 2 + 1].to_int()
 

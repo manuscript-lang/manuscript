@@ -7,8 +7,6 @@ from "@std/http.ms" import HttpError
 from "@std/http.ms" import HttpExchange
 from "@std/http.ms" import HttpHeaders
 from "@std/http.ms" import HttpMethod
-from "@std/http.ms" import HttpRequest
-from "@std/http.ms" import HttpResponse
 from "@std/http.ms" import HttpServer
 from "@std/http.ms" import HttpServerOptions
 from "@std/io.ms" import IoError

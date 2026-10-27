@@ -1,17 +1,11 @@
 from "@std/bytes.ms" import Bytes, join
-from "@std/net.ms" import Connection
-from "@std/net.ms" import DatagramSocket
-from "@std/net.ms" import DnsRecord
 from "@std/time.ms" import Duration
 from "@std/io.ms" import IoError
 from "@std/json.ms" import stringify
-from "@std/net.ms" import Listener
-from "@std/net.ms" import NetworkError
 from "@std/io.ms" import ReadStream
 from "@std/net.ms" import TlsOptions
 from "@std/net.ms" import WebSocket
 from "@std/net.ms" import WebSocketError
-from "@std/net.ms" import WebSocketOptions
 
 extern def msrt_http_headers_append(
     headers: HttpHeaders,
