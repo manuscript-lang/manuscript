@@ -8,7 +8,10 @@ use crate::{Doc, Limits, Node, Writer};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
-use ms_rt::tree::{TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut, ValueRef};
+use ms_rt::tree::{
+    ListRef, MapRef, SinkObj, TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut,
+    ValueRef, WalkRef,
+};
 
 abi_handle!(Doc);
 abi_handle!(Writer);
@@ -209,12 +212,22 @@ native! {
     /// Writes the tree of the alternative described by `desc` that `root` holds, read through
     /// `view` (see `ms_rt::tree`), as the next value.
     fn msrt_json_w_tree(
-        w: ObjMut<Writer>,
+        w: SinkObj<Writer>,
         desc: ValueDesc,
         view: TreeView,
         root: ValueRef,
     ) -> () {
-        ms_rt::tree::walk(desc, view, root, w.0);
+        w.walk(desc, view, root);
+    }
+
+    /// The view thunk's call for an array: opens it and queues its elements.
+    fn msrt_json_tree_array(walk: WalkRef<Writer>, list: ListRef) -> () {
+        walk.0.array(list.0);
+    }
+
+    /// The view thunk's call for an object: opens it and queues its members.
+    fn msrt_json_tree_object(walk: WalkRef<Writer>, map: MapRef) -> () {
+        walk.0.object(map.0);
     }
 
     fn msrt_json_w_finish(w: ObjMut<Writer>) -> Result<String, Fail> {
@@ -253,18 +266,6 @@ native! {
 }
 
 impl TreeSink for Writer {
-    fn null(&mut self) {
-        Writer::null(self);
-    }
-    fn boolean(&mut self, v: bool) {
-        Writer::boolean(self, v);
-    }
-    fn number(&mut self, text: &str) {
-        Writer::number(self, text);
-    }
-    fn string(&mut self, text: &str) {
-        Writer::string(self, text);
-    }
     fn item(&mut self) {
         Writer::item(self);
     }

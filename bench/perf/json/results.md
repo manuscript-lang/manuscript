@@ -128,3 +128,11 @@ linux/amd64, four shared cores (noisy: wall ratios swing ±15% between runs, so 
 canada's numbers are 17-19 bytes (`-65.613616999999977`), which missed both the 16-byte copy and the byte tail of the decimal check. `push_short` now copies up to 32 bytes with two overlapping 16-byte moves, and the fraction check tests whole words plus one word overlapping the end (`all_digits`). canada tree stringify went from about 0.98x to about 1.27x; `Writer::number` callgrind instructions fell 105M → 76M.
 
 serde_json's own callgrind cost for one `to_vec` of the tree (`valgrind --toggle-collect='*enc*'`, six calls): citm 53.7M, canada 96.8M, twitter 24.5M. Manuscript's citm walker is about 8% more instructions per stringify than serde_json's, matching the 0.91x wall ratio; the cost is spread over the walker (~50 instructions a node), `Writer::key` (~95 a key) and `close`. Inlining `Writer` methods into the walker did not reduce it.
+
+## 2026-10-27: one dispatch per node in tree stringify
+
+Platform benchmarks workflow, three rounds per platform (`.github/workflows/bench-platforms.yml`, before this change: linux-amd64 median ms/serde_json: small 0.87x, twitter 1.22x, canada 1.37x, citm_catalog 0.75x, records 0.91x). callgrind `--branch-sim=yes` on the citm tree walk showed why citm trailed while instruction counts matched serde_json's (51M against 54M for six calls): Manuscript took 560k branch mispredicts to serde_json's 374k, 342k of them indirect jumps. Each node went through two jump tables, the compiler's view thunk (on the case) and the runtime loop (on the kind the thunk returned).
+
+The view thunk now calls the writer natives itself (`msrt_json_w_null/bool/number/string`, `msrt_json_tree_array/object` for containers), and the runtime loop only advances through the open containers. Indirect mispredicts fell 342k → 206k and the total to 421k; the remaining one is the thunk's switch on the case, which depends on the data.
+
+Local runs (four shared cores, medians of four rounds, ms / serde_json): citm_catalog 0.95x (was 0.91x), small 0.99x (0.96x), records 0.94x (0.92x), twitter 1.20x (1.14x).
