@@ -20,7 +20,7 @@ export def main() -> Int:
                 log("connected")
                 let _sent = conn.write("GET /x HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
                 log("sent")
-                if let chunk = conn.read(timeout: nanoseconds(5000000000)):
+                if let _chunk = conn.read(timeout: nanoseconds(5000000000)):
                     log("read")
                 conn.close()
             server.close()
