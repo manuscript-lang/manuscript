@@ -2,6 +2,17 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27 (PriorityQueue sift-down, second pass)
+
+Revision: this branch on top of `b2a6f03f`; callgrind on 100k enqueue and dequeue, `run.sh 7` twice.
+
+| Measure | Before | After | Rust |
+| --- | ---: | ---: | ---: |
+| Instructions, 100k enqueue and dequeue | 87.8M | 81.5M | 44.9M |
+| ns/op (`run.sh 7`, two runs) | 93 to 98 | 90 to 96 | 77 to 79 |
+
+`sift_down` loops while `0 <= at < size / 2` and tests `right < size` explicitly, so the left index is proven in range by the loop guard and the right by its own test; the separate last-level step is gone and the child choice is a branch instead of a select. Tried and dropped: one list of `{value, order}` entries (190M instructions, since swapping record elements goes through the runtime and a field cannot move out of an entry, so `dequeue` would also clone); clamping the loop to the shorter of `heap` and `orders` (86.4M, no real change). Without the `orders` swap the loop would be 71.6M, so the second list costs about 16M. What remains is a compiler matter: the range analysis does not tie `orders`' length to `heap`'s, and `peek` clones because it returns an owned `Optional[T]`.
+
 ## 2026-10-27 (Bytes append and SortedMap re-measure)
 
 Revision: this branch on top of `main` after #1692 (`buildmove`); `run.sh 7` twice, plus callgrind and `getrusage` on the standalone 4M-byte append and 300k-key SortedMap programs.
