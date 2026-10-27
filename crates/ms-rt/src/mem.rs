@@ -138,7 +138,15 @@ unsafe extern "C" fn memcpy_avx2(dst: *mut u8, src: *const u8, n: usize) -> *mut
     // SAFETY: every block lies within the first `n` bytes of both ranges.
     unsafe {
         if n <= 64 {
-            copy_small(dst, src, n);
+            if n > 32 {
+                // Two overlapping 32-byte moves cover 33..=64 bytes.
+                let a = _mm256_loadu_si256(src as *const __m256i);
+                let b = _mm256_loadu_si256(src.add(n - 32) as *const __m256i);
+                _mm256_storeu_si256(dst as *mut __m256i, a);
+                _mm256_storeu_si256(dst.add(n - 32) as *mut __m256i, b);
+            } else {
+                copy_small(dst, src, n);
+            }
             return dst;
         }
         if n >= REP_MOVSB_MIN {
