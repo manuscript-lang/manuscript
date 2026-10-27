@@ -144,9 +144,13 @@ fn read_bindings() -> Result<Bindings, String> {
 
 // -------------------------------------------------------------------- queries
 
-/// The bundled source modules that extend native standard types (List operations, Bytes codecs); their
+/// The bundled source modules that extend native standard types (List operations, Bytes codecs, scalar ordering); their
 /// methods apply to every program.
-const EXTENSION_MODULES: [&str; 2] = ["@std/collections.ms+source", "@std/bytes.ms+source"];
+const EXTENSION_MODULES: [&str; 3] = [
+    "@std/collections.ms+source",
+    "@std/bytes.ms+source",
+    "@std/ordering.ms",
+];
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
