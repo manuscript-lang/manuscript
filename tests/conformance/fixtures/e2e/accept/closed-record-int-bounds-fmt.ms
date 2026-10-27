@@ -89,20 +89,20 @@ test "closed cell updates preserve each operation":
     sum() | try expect_equal(1000)
 
 test "closed cells retain prefix overflow":
-    (try expect_fault(lambda: let ignored = prefix())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = prefix())) | try expect_contains(
         "Int overflow"
     )
 
 test "peer cells and scalar carries are not initial invariants":
-    (try expect_fault(lambda: let ignored = peer())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = peer())) | try expect_contains(
         "Int overflow"
     )
-    (try expect_fault(lambda: let ignored = scalar_peer())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = scalar_peer())) | try expect_contains(
         "Int overflow"
     )
 
 test "field resets keep ordinary overflow checks":
-    (try expect_fault(lambda: let ignored = reset())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = reset())) | try expect_contains(
         "Int overflow"
     )
 

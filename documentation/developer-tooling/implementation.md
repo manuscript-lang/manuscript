@@ -226,7 +226,6 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | --- | --- |
 | MSL001 | Trailing whitespace |
 | MSL002 | Missing final newline |
-| MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
 | MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |

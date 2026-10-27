@@ -12,4 +12,4 @@ def call(view: Read) -> Unit:
         return value
     let task = lambda () -> Int:
         return callback()
-    let result = run(task)
+    let _result = run(task)

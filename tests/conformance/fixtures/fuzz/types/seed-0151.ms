@@ -6,13 +6,13 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let b1 = (True and True)
     say(f"b1 = {b1}")
 
-    let bad = say
+    let _bad = say
     let b2 = (((2.0e13 - 744.899) > (181.330 + 763.881)) and "".is_empty())
     say(f"b2 = {b2}")
     return 0

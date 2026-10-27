@@ -29,6 +29,7 @@ pub mod stmts;
 pub mod suggestions;
 pub mod syntax;
 pub mod types;
+mod unused;
 
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
@@ -74,6 +75,9 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.getter_borrows = Rc::new(own.getters);
         program.lenders = Rc::new(own.lenders);
         program.diagnostics.extend(own.diagnostics);
+    }
+    if program.diagnostics.is_empty() {
+        program.diagnostics.extend(unused::check(&program));
     }
     program
 }

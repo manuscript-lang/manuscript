@@ -8,12 +8,12 @@ let (
 
 def main() -> Unit:
     var (
-        a = 10
-        b = lambda (x: Int) -> Int:
+        _a = 10
+        _b = lambda (x: Int) -> Int:
             return x + 1
     )
     let (
-        c = 11
-        d = "Hi"
+        _c = 11
+        _d = "Hi"
     )
-    a += 1
+    _a += 1

@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let b1 = (False and True)
@@ -18,5 +18,5 @@ export def main() -> Int:
     let i3 = ((i2 + (1 - 187487)) - i2)
     say(f"i3 = {i3}")
 
-    let bad = say
+    let _bad = say
     return 0

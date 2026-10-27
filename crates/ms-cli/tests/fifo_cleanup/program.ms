@@ -4,7 +4,7 @@ from "@std/tasks.ms" import TaskGroup
 from "@std/io.ms" import stdout
 
 def read_pipe(path: String) -> Int:
-    let data = filesystem().read_file(path)
+    let _data = filesystem().read_file(path)
     return 1
 
 def cancel_read(path: String) -> Int:

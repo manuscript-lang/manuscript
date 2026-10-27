@@ -22,15 +22,16 @@ fn diagnostics(body: &str) -> Vec<String> {
 
 #[test]
 fn generic_arguments_ignore_callable_parameter_names() {
-    let got = diagnostics("    let selected = choose(first, second)\n    let answer = selected(3)");
+    let got =
+        diagnostics("    let selected = choose(first, second)\n    let _answer = selected(3)");
     assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
 fn inferred_collections_and_constructors_ignore_callable_parameter_names() {
     for body in [
-        "    let callbacks = [first, second]\n    let answer = callbacks[1](3)",
-        "    let callbacks = Pair(first, second)\n    let answer = callbacks.right(3)",
+        "    let callbacks = [first, second]\n    let _answer = callbacks[1](3)",
+        "    let callbacks = Pair(first, second)\n    let _answer = callbacks.right(3)",
     ] {
         let got = diagnostics(body);
         assert!(got.is_empty(), "{body}: {got:?}");
@@ -40,7 +41,7 @@ fn inferred_collections_and_constructors_ignore_callable_parameter_names() {
 #[test]
 fn callable_replacement_ignores_parameter_names() {
     let got = diagnostics(
-        "    var callback = first\n    callback = second\n    let answer = callback(3)",
+        "    var callback = first\n    callback = second\n    let _answer = callback(3)",
     );
     assert!(got.is_empty(), "{got:?}");
 }
@@ -48,7 +49,7 @@ fn callable_replacement_ignores_parameter_names() {
 #[test]
 fn callback_results_ignore_callable_parameter_names() {
     let got = diagnostics(
-        "    let factory = lambda (flag: Bool):\n        if flag:\n            return first\n        return second\n    let answer = factory(False)(3)",
+        "    let factory = lambda (flag: Bool):\n        if flag:\n            return first\n        return second\n    let _answer = factory(False)(3)",
     );
     assert!(got.is_empty(), "{got:?}");
 }
@@ -71,8 +72,8 @@ fn callable_parameter_and_result_types_remain_invariant() {
 
 #[test]
 fn declared_call_labels_remain_checked() {
-    assert!(diagnostics("    let answer = first(amount: 3)").is_empty());
-    let got = diagnostics("    let answer = first(value: 3)");
+    assert!(diagnostics("    let _answer = first(amount: 3)").is_empty());
+    let got = diagnostics("    let _answer = first(value: 3)");
     assert!(
         got.iter().any(|d| d.contains("unknown argument value")),
         "{got:?}"
