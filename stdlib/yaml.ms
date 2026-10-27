@@ -755,6 +755,7 @@ def inline_value(var context: Context, text: String, depth: Int) -> Result[
         text != ""
         and not " \t\n['\"{*&!".contains(text.get(0))
         and not text.contains(": ")
+        and plain_may_start(text.trim())
     ):
         try count(var context, depth)
         return ok(plain(text.trim().clone()))
