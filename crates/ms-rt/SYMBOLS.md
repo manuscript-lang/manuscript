@@ -561,7 +561,6 @@ msrt_http_error_message(status: u8, has_failed: u8, failed: *const StrVal, out: 
 msrt_http_headers_new() -> *mut Obj
 msrt_http_headers_append( h: *const Obj, name: *const StrVal, value: *const VecVal, ) -> u8
 msrt_http_headers_values( h: *const Obj, name: *const StrVal, out: *mut VecVal, ) -> u8
-msrt_http_headers_text( h: *const Obj, name: *const StrVal, out: *mut VecVal, ) -> u8
 msrt_http_headers_names(h: *const Obj, out: *mut VecVal)
 msrt_http_headers_remove(h: *const Obj, name: *const StrVal) -> u8
 msrt_http_headers_clone(h: *const Obj) -> *mut Obj

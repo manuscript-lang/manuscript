@@ -16,7 +16,7 @@ from "@std/net.ms" import network
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
 def stream_events(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let sent = headers()
-    try sent.append("Content-Type", "text/event-stream".to_bytes())
+    try sent.append("Content-Type", "text/event-stream")
     try exchange.send_headers(200, sent)
     exchange.write("event: greet\r\ndata: h").get()
     exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()

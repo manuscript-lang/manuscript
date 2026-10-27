@@ -83,7 +83,6 @@
     "http/headers_clone": "msrt_http_headers_clone",
     "http/headers_names": "msrt_http_headers_names",
     "http/headers_remove": "msrt_http_headers_remove",
-    "http/headers_text": "msrt_http_headers_text",
     "http/headers_values": "msrt_http_headers_values",
     "io/read_line": "msstd_io_read_line",
     "json/parse": "msrt_json_parse",

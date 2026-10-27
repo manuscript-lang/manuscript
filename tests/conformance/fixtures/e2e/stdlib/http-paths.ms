@@ -62,8 +62,8 @@ def check_route(url: String, expected: String) -> Result[Unit, Error]:
             response
             .metadata()
             .headers
-            .text("SET-cookie") | try expect_ok
-        ) != some(["a=1", "b=2"])
+            .values("SET-cookie")
+        ) != ["a=1", "b=2"]
     ): return error(TextError("#257 repeated cookies regressed"))
 
     return ok(())

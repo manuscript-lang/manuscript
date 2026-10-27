@@ -8,9 +8,6 @@ from "@std/bytes.ms" import BytesBuilder
 type Greeting:
     name: String
 
-def no_types(cause: HttpError) -> Optional[List[String]]:
-    return none
-
 def route(request: HttpRequest) -> HttpResponse:
     if request.path == "/missing":
         return HttpResponse(status: 404, headers: headers(), body: "nope".to_bytes())
@@ -39,10 +36,7 @@ def route(request: HttpRequest) -> HttpResponse:
             status: 200, headers: headers(), body: "0123456789".to_bytes()
         )
 
-    let kind = request.headers.text("Content-Type").get_or_else(no_types)
-    var label = ""
-    if let values = kind:
-        label = values[0].clone()
+    let label = request.headers.values("Content-Type").first().get("")
     return HttpResponse(
         status: 200,
         headers: headers(),
@@ -52,7 +46,7 @@ def route(request: HttpRequest) -> HttpResponse:
     )
 
 def try_append(fields: HttpHeaders, name: String, value: String) -> Unit:
-    let _ignored = fields.append(name, value.to_bytes())
+    let _ignored = fields.append(name, value)
 
 test "fetch returns a buffered text response":
     with let server = try network().serve("127.0.0.1:0", buffered(route)):
