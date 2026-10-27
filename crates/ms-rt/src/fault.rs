@@ -523,12 +523,31 @@ pub fn find_func(t: &Tables, pc: usize) -> Option<&'static FuncEntry> {
 
 /// Source line of a return address inside `func`, with the inlining scope of that line.
 pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
+    find_line_from(t, func, pc, false)
+}
+
+/// [`find_line`], and with `skip_unpositioned` the nearest earlier range of the function that
+/// has a line. The call that raises a fault sits in generated code with no position of its own
+/// and belongs to the statement before it.
+fn find_line_from(
+    t: &Tables,
+    func: &FuncEntry,
+    pc: usize,
+    skip_unpositioned: bool,
+) -> (u32, u32, u32) {
     if !t.lines.is_null() && t.line_count > 0 {
         // SAFETY: sorted `line_count` read-only entries.
         let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
         // `pc` is a return address; the call instruction lies in the range ending just before it.
         let probe = pc.wrapping_sub(1);
-        let idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
+        let mut idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
+        while skip_unpositioned
+            && idx > 1
+            && lines[idx - 1].line == 0
+            && lines[idx - 2].pc >= func.addr
+        {
+            idx -= 1;
+        }
         if idx > 0 {
             let e = &lines[idx - 1];
             if e.pc >= func.addr {
@@ -815,12 +834,14 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
+    let mut innermost = true;
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
-            let (mut line, mut file, mut scope) = find_line(t, func, ret);
+            let (mut line, mut file, mut scope) =
+                find_line_from(t, func, ret, std::mem::take(&mut innermost));
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
                 return true;
