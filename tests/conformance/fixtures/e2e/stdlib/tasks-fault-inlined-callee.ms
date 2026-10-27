@@ -14,5 +14,5 @@ def boom() -> Int:
 export def main() -> Int:
     with let group = TaskGroup[Int]():
         group.spawn(lambda ch: boom())
-        group.results()
+        let _ = group.results()
     return 0
