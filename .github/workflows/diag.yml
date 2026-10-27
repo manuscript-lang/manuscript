@@ -1,0 +1,58 @@
+name: diag
+on:
+  pull_request:
+    paths: ['.github/workflows/diag.yml']
+jobs:
+  diag:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: windows-2025, os: windows, arch: amd64}
+          - {runner: macos-15, os: macos, arch: arm64}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Select Windows host
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          rustup set default-host x86_64-pc-windows-msvc
+          $l = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$l" >> $env:GITHUB_ENV
+          "CC=clang" >> $env:GITHUB_ENV
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - run: cargo xtask runtime && cargo build --locked -p ms-cli
+      - name: teardown fixture
+        continue-on-error: true
+        run: |
+          ms=target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
+          MS_DIAG_FRAMES=1 $ms test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms 2>&1 | tail -30
+      - name: yaml fixture
+        continue-on-error: true
+        run: |
+          ms=target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
+          $ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms 2>&1 | tail -30
+      - name: workers fixture
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        run: |
+          ms=target/debug/ms.exe
+          $ms test tests/conformance/fixtures/e2e/stdlib/workers.ms --timeout 25 2>&1 | tail -40
+      - name: http deadline fixture
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        run: |
+          ms=target/debug/ms.exe
+          timeout 40 $ms run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms 2>&1 | tail -20

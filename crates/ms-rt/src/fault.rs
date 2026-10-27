@@ -820,6 +820,15 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
+            if std::env::var_os("MS_DIAG_FRAMES").is_some() {
+                out.extend_from_slice(
+                    format!(
+                        "\n  [diag ret={ret:#x} func={:#x} size={} funcs={}]",
+                        func.addr, func.size, t.func_count
+                    )
+                    .as_bytes(),
+                );
+            }
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
