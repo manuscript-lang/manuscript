@@ -142,7 +142,7 @@ The standard library adds collections written in Manuscript. Each follows value 
 
 | Type | Use it for |
 | --- | --- |
-| `Queue[T]` (`@std/queue.ms`, owned) | First-in, first-out work, optionally bounded; `PriorityQueue[T]` orders by a compare function with FIFO ties |
+| `Queue[T]` (`@std/queue.ms`, owned) | First-in, first-out work, optionally bounded; `PriorityQueue[T]` orders by `Comparable` order, or by a `compare:` function, with FIFO ties |
 | `Deque[T]` | A queue with O(1) amortized push and pop at both ends and O(1) indexed reads, such as sliding windows |
 | `BitSet` | Dense sets of small non-negative integers (0 through 1073741823), one bit each |
 | `SortedMap[K, V]`, `SortedSet[T]` | Ascending key order with first, last, floor, ceiling, and range lookups; keys must be `Comparable` |

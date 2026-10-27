@@ -1,5 +1,5 @@
 from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "@std/queue.ms" import PriorityQueue, Queue, ordered_priority_queue
+from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/collections.ms" import range
 
 def compare(left: Int, right: Int) -> Int: left - right
@@ -41,11 +41,17 @@ test "priority queue sorts many values and copies are independent":
 
     try expect_equal(copy.length(), 199)
 
-test "ordered priority queue uses natural order and honors capacity":
-    var queue = ordered_priority_queue[String](2)
+test "ordered priority queue defaults to natural order and honors capacity":
+    var queue = PriorityQueue[String](capacity: 2)
     try expect_true(queue.enqueue("b"))
     try expect_true(queue.enqueue("a"))
     try expect_false(queue.enqueue("c"))
     try expect_equal(queue.dequeue(), some("a"))
     try expect_equal(queue.dequeue(), some("b"))
     try expect_equal(queue.dequeue(), none)
+
+test "priority queue accepts a comparator over the natural order":
+    var queue = PriorityQueue[Int](compare: lambda a, b: b - a)
+    queue.enqueue(1)
+    queue.enqueue(3)
+    try expect_equal(queue.dequeue(), some(3))

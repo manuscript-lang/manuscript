@@ -65,10 +65,10 @@ impl Queue[T]:
 
 # Negative compare results put left before right; equal priorities remain FIFO.
 # A priority queue is an owned value: a copy is an independent queue.
-export type PriorityQueue[T: Clonable]:
-    # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
+export type PriorityQueue[T: Comparable & Clonable]:
+    # Constructor comparator: negative puts left first; ties dequeue in enqueue order. Omitted, values dequeue in their `Comparable` order, smallest first.
     # Comparisons must stay consistent.
-    compare: Callable[[T, T], Int]
+    compare: Callable[[T, T], Int] = lambda a, b: a.compare(b)
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Binary heap of waiting values. Internal state: use the operations, not this field.
@@ -165,10 +165,3 @@ impl PriorityQueue[T]:
     # Reports whether the queue has no values to peek or dequeue.
     def is_empty() -> Bool:
         return self.heap.length() == 0
-
-# Creates a PriorityQueue that dequeues the smallest value first, using the value type's `Comparable` order.
-# Example: `ordered_priority_queue[Int]()` dequeues 1 before 2; pass `capacity` to bound it.
-export def ordered_priority_queue[T: Comparable & Clonable](
-    capacity: Optional[Int] = none
-) -> PriorityQueue[T]:
-    return PriorityQueue[T](compare: lambda a, b: a.compare(b), capacity: capacity)
