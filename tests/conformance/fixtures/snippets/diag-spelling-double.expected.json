@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-spelling-double.ms:5:12: resolution: unknown type double; did you mean 'Float'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-spelling-double.ms:5:12: resolution: unknown type double; did you mean 'Float'?\n   |\n 5 |     let a: double = 1.0\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-17.ms:5:16: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-17.ms:5:16: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n   |\n 5 |     return \"a\" + 1\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

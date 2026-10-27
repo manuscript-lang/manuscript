@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-7.ms:7:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-generics-7.ms:9:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-7.ms:7:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | let known = count[Int]([])\n   |             ^\n<DIR>/core-language-types-generics-7.ms:9:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | let unknown = count([])\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

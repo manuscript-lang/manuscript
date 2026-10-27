@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testprojectcheckdiscoveryandreporting-6.ms:4:29: type: expected Int, found String (in the return value)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testprojectcheckdiscoveryandreporting-6.ms:4:29: type: expected Int, found String (in the return value)\n   |\n 4 | def broken() -> Int: return \"bad\"\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

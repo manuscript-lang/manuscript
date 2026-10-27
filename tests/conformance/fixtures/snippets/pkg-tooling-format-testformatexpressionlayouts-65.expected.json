@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-65.ms:4:19: resolution: unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-65.ms:4:19: resolution: unknown type Choice; declare it with 'type Choice:' / 'interface Choice:', declare it as a type parameter, or import it\n   |\n 4 | def choose(value: Choice) -> Int:\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

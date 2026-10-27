@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-7.ms:7:12: type: A is a constant, not a function; remove the parentheses and write A\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-7.ms:7:12: type: A is a constant, not a function; remove the parentheses and write A\n   |\n 7 |     return A()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-16.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-16.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n    |\n 11 |         run(second)\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

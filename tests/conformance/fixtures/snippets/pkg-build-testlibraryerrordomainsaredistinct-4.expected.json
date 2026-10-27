@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-4.ms:6:29: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-4.ms:6:29: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 6 | def wrong() -> Result[Unit, JsonError]:\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

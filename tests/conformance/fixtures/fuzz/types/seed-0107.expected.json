@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0107.ms:18:19: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0107.ms:18:19: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Optional[Int])\n    |\n 18 |     let bad = 1.5 + 2\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
