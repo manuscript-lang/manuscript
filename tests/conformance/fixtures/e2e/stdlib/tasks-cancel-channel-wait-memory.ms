@@ -21,7 +21,7 @@ def waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) -> Unit:
     var started = ready
     started.send(()).get()
     var end = ch
-    end.receive()
+    end.receive().get()
 
 def cancel_one(ch: Channel[Int, Int]) -> Result[Unit, Error]:
     with var group = TaskGroup[Unit]():
