@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-teststringbasicsrejectinvalidcontracts-1.ms:6:20: type: unknown argument value; parameters of compare: other\n<DIR>/pkg-compiler-teststringbasicsrejectinvalidcontracts-1.ms:6:12: type: missing argument other: String in call to compare; add 'other: <String>'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-teststringbasicsrejectinvalidcontracts-1.ms:6:20: type: unknown argument value; parameters of compare: other\n   |\n 6 |     return compare(value: \"b\")\n   |                    ^\n<DIR>/pkg-compiler-teststringbasicsrejectinvalidcontracts-1.ms:6:12: type: missing argument other: String in call to compare; add 'other: <String>'\n   |\n 6 |     return compare(value: \"b\")\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

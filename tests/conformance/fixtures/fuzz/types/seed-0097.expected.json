@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0097.ms:15:17: type: logical operands require Bool, found Int and Int; compare explicitly, e.g. x != 0\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0097.ms:15:17: type: logical operands require Bool, found Int and Int; compare explicitly, e.g. x != 0\n    |\n 15 |     let bad = 1 and 2\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

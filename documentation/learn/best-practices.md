@@ -23,7 +23,7 @@ Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you p
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/json.ms" import parse, JsonError
 
 type Config:

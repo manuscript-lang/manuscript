@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionsupportshadowingandcaselookup-3.ms:7:21: resolution: ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRange\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionsupportshadowingandcaselookup-3.ms:7:21: resolution: ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRange\n   |\n 7 | def get() -> Other: OutOfRange\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

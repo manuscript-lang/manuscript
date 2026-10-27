@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def same(a: String, b: String) -> Bool:
     return a == b

@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/collection-prelude.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/collections.ms" import range
 
 type Shape:

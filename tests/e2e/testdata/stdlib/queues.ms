@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "@std/queue.ms" import PriorityQueue, Queue, ordered_priority_queue
 from "@std/collections.ms" import range
 

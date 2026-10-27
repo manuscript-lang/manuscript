@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-4.ms:4:1: type: constant A depends on itself; break the cycle or compute the value in a function\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-4.ms:4:1: type: constant A depends on itself; break the cycle or compute the value in a function\n   |\n 4 | let A = A + 1\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

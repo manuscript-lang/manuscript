@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:7:44: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:8:18: resolution: unknown binding cause; declare it with 'let cause = ...' before use, define 'def cause(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:7:44: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n   |\n 7 | ) -> Result[Optional[Map[String, String]], ApplicationError]:\n   |                                            ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-52.ms:8:18: resolution: unknown binding cause; declare it with 'let cause = ...' before use, define 'def cause(...) -> T:', or import it from a module\n   |\n 8 |     return error(cause)\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

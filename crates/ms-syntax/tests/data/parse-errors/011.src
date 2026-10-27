@@ -1,4 +1,4 @@
-import {expect_not_equal, fail} from "@std/testing.ms"
+import {expect_not_equal, fail} from "@std/test.ms"
 import range from "@std/collections.ms"
 import {parse, stringify, YamlValue} from "@std/yaml.ms"
 import {Rng, next, text, mutate} from "./support/generator.ms"

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def parsed(text: String) -> Int:
     match text.parse_int():

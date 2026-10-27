@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-4.ms:4:10: resolution: duplicate or intrinsic type parameter Hashable; choose a different type parameter name\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticfixes-4.ms:4:10: resolution: duplicate or intrinsic type parameter Hashable; choose a different type parameter name\n   |\n 4 | type Box[Hashable]:\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

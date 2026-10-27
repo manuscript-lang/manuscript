@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:22: type: cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:28: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:22: type: cannot infer type argument T for twice; write twice[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | def first() -> Unit: twice(f())\n   |                      ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-5.ms:6:28: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n   |\n 6 | def first() -> Unit: twice(f())\n   |                            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

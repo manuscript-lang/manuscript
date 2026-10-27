@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:14: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:40: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:14: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def f(value: Bytes = \"\".to_bytes()) -> Bytes: ...\n   |              ^\n<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:40: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def f(value: Bytes = \"\".to_bytes()) -> Bytes: ...\n   |                                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

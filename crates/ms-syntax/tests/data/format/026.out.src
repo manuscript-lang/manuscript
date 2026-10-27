@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import range
 
 def ident[T](x: T) -> T:

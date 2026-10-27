@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
 from "@std/collections.ms" import range

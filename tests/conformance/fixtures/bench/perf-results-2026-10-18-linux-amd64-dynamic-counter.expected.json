@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/perf-results-2026-10-18-linux-amd64-dynamic-counter.ms:18:39: type: expected String, found Bytes (in argument 'data' of write)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/perf-results-2026-10-18-linux-amd64-dynamic-counter.ms:18:39: type: expected String, found Bytes (in argument 'data' of write)\n    |\n 18 |     let ignored = stdout().write(line.to_bytes())\n    |                                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

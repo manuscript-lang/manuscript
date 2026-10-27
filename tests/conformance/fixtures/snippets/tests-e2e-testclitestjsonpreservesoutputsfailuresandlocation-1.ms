@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/cli_json_test.go:70 TestCLITestJSONPreservesOutputsFailuresAndLocations
 from "@std/io.ms" import stdout, stderr
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")

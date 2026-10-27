@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/queue.ms" import Queue
 
 test "omitted capacity creates an unbounded queue":

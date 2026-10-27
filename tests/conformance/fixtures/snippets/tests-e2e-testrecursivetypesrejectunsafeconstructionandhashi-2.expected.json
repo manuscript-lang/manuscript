@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testrecursivetypesrejectunsafeconstructionandhashi-2.ms:10:17: resolution: unknown or ambiguous member hash on Node; available: next\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testrecursivetypesrejectunsafeconstructionandhashi-2.ms:10:17: resolution: unknown or ambiguous member hash on Node; available: next\n    |\n 10 |     return node.hash()\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

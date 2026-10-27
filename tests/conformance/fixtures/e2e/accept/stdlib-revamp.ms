@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interfaces,maps,match,modules,optional,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/io.ms" import ReadStream, IoError, read_line
 from "@std/bytes.ms" import Bytes
 from "@std/queue.ms" import PriorityQueue

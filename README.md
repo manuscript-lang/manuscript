@@ -2,76 +2,97 @@
 
 **The language for the agentic era.**
 
-A statically typed, natively compiled language designed for agents to write and humans to understand.
+Manuscript helps agents write correct, fast programs that are easy to review.
 
-[Get started](documentation/learn/getting-started.md) · [Read the book](https://manuscript-lang.github.io/manuscript/) · [Releases](https://github.com/manuscript-lang/manuscript/releases)
+Agents get a small, regular language, actionable compiler feedback and executable tests. You get native executables, readable source and compiler-backed evidence for reviewing changes.
 
-*Manuscript is in alpha. Syntax and APIs can change; these docs follow `main`, and releases may lag behind.*
+[Try Manuscript](documentation/learn/getting-started.md) · [Rust performance](#native-speed-measured-against-rust) · [How we're building it](#built-with-agents-improved-through-evidence)
 
-## Why Manuscript
+*Alpha: syntax and APIs can change. These examples follow current source; releases may lag. The first native build downloads pinned tools. [Setup and platform requirements](documentation/learn/getting-started.md).*
 
-### Familiar syntax. Native programs.
+## Give agents a path to correct code
 
-`def`, indentation and f-strings, with static types and native executables. [Take the tour](documentation/learn/tour.md).
+Manuscript moves correctness rules out of the prompt and into the language. A small, regular core makes types, errors and resource lifetimes explicit. The compiler catches concrete mistakes: incompatible values, missing `match` cases and discarded error results.
 
-### Feedback you can act on
+When something fails, the agent gets a cause and a suggested repair, with `--json` output for tools. `ms search_symbol` finds actual project and standard-library APIs; `ms check --fix` applies available mechanical fixes. The next attempt can start from evidence.
 
-Diagnostics name the cause and remedy. `ms check --fix` applies mechanical repairs; `ms search_symbol` finds project and standard-library APIs. [Tooling](documentation/developer-tooling/implementation.md#commands-for-agents).
+## Catch the mistake. Check the repair.
 
-### Ownership you can follow
-
-`var` marks mutation, `.clone()` marks copies, and `with` scopes resources. Ordinary data needs no tracing garbage collector. [Ownership rules](documentation/core-language/types/references.md).
-
-### Concurrency without `async`
-
-Run tasks, worker threads or child processes in a `with` block. Communicate over typed channels. [Choose a boundary](documentation/core-language/concurrency/_index.md).
-
-### Everyday tools included
-
-The compiler, formatter, linter, test runner and growing standard library ship in one `ms` binary. Files, HTTP, JSON and command-line parsing are included.
-
-## A small example
-
-JSON decodes into a record; missing fields take their defaults. Save as `config.ms` and run `ms test config.ms`:
+An agent writes a helper that saves a report and returns `"saved"`. But it forgets to handle a failed write. This function fragment is rejected:
 
 ```manuscript
-from "@std/json.ms" import parse
-from "@std/testing.ms" import expect_equal
-
-type Config:
-    host: String = "127.0.0.1"
-    port: Int = 8080
-
-test "read configuration with defaults":
-    let config = try parse[Config]("{\"port\":9000}")
-    try expect_equal(config.host, "127.0.0.1")
-    try expect_equal(config.port, 9000)
-    try expect_equal(parse[Config]("{\"port\":true}").is_error(), True)
+def save_report(path: String, report: String) -> Result[String, Error]:
+    filesystem().write_file(path, report)
+    return ok("saved")
 ```
 
-## Try it
+The diagnostic explains why and suggests a repair (excerpt):
 
-[Install `ms` and add it to your PATH](documentation/learn/getting-started.md), then:
+> this statement discards `Result[Unit, FileSystemError]`, so a failure would be lost; write 'try ...' to propagate it, …
+
+The repair is one word: `try` forwards the write error to the caller. Save this complete version as `report.ms`:
+
+```manuscript
+from "@std/fs.ms" import filesystem
+from "@std/test.ms" import expect_true
+
+def save_report(path: String, report: String) -> Result[String, Error]:
+    try filesystem().write_file(path, report)
+    return ok("saved")
+
+test "a directory is not a report file":
+    try expect_true(save_report(".", "report").is_error())
+```
+
+```sh
+ms test report.ms
+```
+
+```text
+RUN report.ms::a directory is not a report file
+PASS report.ms::a directory is not a report file
+1 tests, 0 failed
+```
+
+The compiler rejects the lost result; the test checks the repaired error path. For a whole project, `ms verify` combines checking, formatting, linting and executable tests. Compiling alone does not establish that a program does what you intended.
+
+## Native speed, measured against Rust
+
+**As fast as Rust on the measured tree and map-counting workloads.** The published run also shows where Rust is ahead:
+
+| Workload | Manuscript | Rust |
+| --- | ---: | ---: |
+| Binary trees | 26.1 ms | 30.0 ms |
+| Map counting | 14.4 ms | 23.8 ms |
+| Collatz | 242.7 ms | 178.6 ms |
+
+Recorded on four-core Linux at `c1b81215` (October 25): Manuscript LLVM Release versus Rust at `opt-level=3`. The harness requires matching checksums across implementations. The [full seven-kernel results](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) include source, run commands and a separate overflow-checked Rust configuration.
+
+## Keep changes easy to review
+
+Read the error path in the example above: `try` makes the early return visible. For larger changes, [`ms review`](documentation/developer-tooling/implementation.md#review-report) compares checked before-and-after source and reports changes to contracts, error flow and resource scopes, giving reviewers concrete places to look.
+
+## Built with agents. Improved through evidence.
+
+We use coding agents to build Manuscript itself, with shared [repository skills](skills/README.md) and [recorded lessons](.experts/README.md). The compiler is written in Rust; standard-library declarations and many implementations are written in Manuscript.
+
+Alongside native performance, we measure how agents write programs. The [agent benchmark](bench/agent/README.md) uses fresh workspaces and hidden tests, recording failures, build attempts, tokens and cost.
+
+A passing solution and a clean first attempt are different outcomes. We publish [both, including failed attempts and reruns](bench/agent/results/summary-2026-10-22.md), and use the friction to improve the language, APIs, diagnostics and guidance. These coding evaluations are separate from execution-speed benchmarks.
+
+Changes face [unit tests, source-conformance fixtures and native examples](documentation/contributing/development.md). [Explore the architecture](documentation/contributing/architecture.md).
+
+## Try it on one real task
+
+Give your agent a small CLI you actually need. Have it look up APIs, write tests and work through the compiler's feedback.
+
+[Get the compiler](documentation/learn/getting-started.md), then start:
 
 ```sh
 ms init my-app
 cd my-app
-ms run ms.toml -- first second
-ms test ms.toml
-ms build ms.toml -o hello
+ms verify ms.toml
+ms build ms.toml -o my-app
 ```
 
-The run prints `Arguments: 2`. The first native build downloads pinned tools into a cache. See the setup guide for platform requirements, including Windows, or [build from source](documentation/contributing/rust-toolchain.md#build-and-run).
-
-## See the measurements
-
-Results vary by workload and machine. The benchmarks include revisions, reproduction commands and the cases that still need work:
-
-- [Native performance](bench/perf/README.md): kernels, JSON, HTTP, memory and worker scaling.
-- [Agents writing code](bench/agent/README.md): hidden-test results, first-build success and source size.
-
-## Go deeper
-
-[Task recipes](documentation/learn/common-tasks.md) · [Language reference](documentation/core-language/_index.md) · [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
-
-[Project vision](VISION.md) · [Contributing](AGENTS.md) · [Development checks](documentation/contributing/development.md)
+[Language tour](documentation/learn/tour.md) · [Task recipes](documentation/learn/common-tasks.md) · [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/) · [Project vision](VISION.md)

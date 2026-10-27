@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def apply(value: Int, action: Callable[[Int], Int]) -> Int:
     return action(value)

@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms:4:42: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms:4:42: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import range, List\n   |                                          ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

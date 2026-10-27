@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:7:20: resolution: unknown binding CommandError; add: from \"@std/process.ms\" import CommandError\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:6:9: type: Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:7:20: resolution: unknown binding CommandError; add: from \"@std/process.ms\" import CommandError\n   |\n 7 |             value: CommandError.Failed(message: \"command diagnostic\")\n   |                    ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-68.ms:6:9: type: Error is an interface and cannot be constructed; a type with 'impl Error for <Type>:' passes wherever Error is expected, so pass the value directly\n   |\n 6 |         Error(\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

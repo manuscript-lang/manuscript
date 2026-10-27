@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interpolation,lists,match,modules,mutation,parser,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/html.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/html.ms" import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError
 
 def children(node: HtmlNode) -> List[HtmlNode]:

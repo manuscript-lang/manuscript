@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/json.ms" import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode
 from "@std/time.ms" import timestamp, nanoseconds, clock, Timestamp, Duration, Instant

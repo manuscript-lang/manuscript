@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-3.ms:7:30: type: expected Shape, found T (in the return value); use a concrete value implementing Shape\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintdoesnotrecommendinvalidimplemen-3.ms:7:30: type: expected Shape, found T (in the return value); use a concrete value implementing Shape\n   |\n 7 | def f[T](value: T) -> Shape: value\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

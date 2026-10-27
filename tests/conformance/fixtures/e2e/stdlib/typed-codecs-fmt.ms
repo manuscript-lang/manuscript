@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,lists,match,modules,optional,parser,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/typed-codecs.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/crypto.ms" import HashAlgorithm, sha256, sha384, sha512, CryptoError
 from "@std/archive.ms" import CompressionFormat, compress, decompress, CompressionError
 from "@std/archive.ms" import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError

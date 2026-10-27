@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-26.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-26.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n   |\n 5 |     println(\"hi\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

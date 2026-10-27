@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def scaled(base: Int, factor: Int = 2, label: String = "x") -> String: f"{label}{base * factor}"
 

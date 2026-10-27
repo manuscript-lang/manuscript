@@ -1,7 +1,7 @@
 # conform: tags=faults,formatter,modules,optional,parser,stdlib-bigint,stdlib-bytes,stdlib-numbers,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/precondition-boundaries.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/math.ms" import from_int

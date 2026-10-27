@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 from "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 

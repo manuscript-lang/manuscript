@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/map-index-assign-immutable.ms:6:5: type: cannot change `scores`: `scores` is declared with let, which is immutable including its contents; declare it `var scores` to change it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/map-index-assign-immutable.ms:6:5: type: cannot change `scores`: `scores` is declared with let, which is immutable including its contents; declare it `var scores` to change it\n   |\n 6 |     scores[\"b\"] = 2\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

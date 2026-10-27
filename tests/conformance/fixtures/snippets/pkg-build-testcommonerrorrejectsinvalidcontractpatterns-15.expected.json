@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-15.ms:13:14: type: concrete type pattern requires explicit type arguments; write e.g. Box[Int]\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-15.ms:13:14: type: concrete type pattern requires explicit type arguments; write e.g. Box[Int]\n    |\n 13 |         case Box(value):\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

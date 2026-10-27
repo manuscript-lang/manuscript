@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-reduce.ms:5:17: resolution: unknown or ambiguous member reduce on List[Int]; did you mean 'fold'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-reduce.ms:5:17: resolution: unknown or ambiguous member reduce on List[Int]; did you mean 'fold'?\n   |\n 5 |     let a = [1].reduce(0, lambda (a: Int, b: Int) -> Int: a + b)\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
