@@ -360,12 +360,26 @@ impl<'a> FnLower<'a> {
         // A changed parameter is moved into a slot the callee takes from and puts back into.
         let mut slots_out: Vec<(usize, Value, MTy, bool)> = Vec::new();
         let mut vals: Vec<Value> = Vec::new();
+        // The only changed parameter is a field or list element of an owned variable: the callee
+        // takes it out of its place and puts it back, instead of working on a copy.
+        let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
             if !vars.contains(&i) {
                 vals.push(self.borrow(a));
                 continue;
             }
             let ty = self.ty_of(a.v);
+            if vars.len() == 1
+                && !a.own
+                && let Some(place) = args.places.get(i).cloned().flatten()
+                && !matches!(place.kind, ExprKind::Name(_))
+                && self.is_place(&place)
+                && self.place_is_owned(&place)
+            {
+                vals.push(a.v);
+                in_place = Some((i, place, ty));
+                continue;
+            }
             let moved = !a.own
                 && args
                     .places
@@ -397,7 +411,21 @@ impl<'a> FnLower<'a> {
             vals.push(slot);
         }
         self.at(e.pos);
-        let v = self.b.call(fid, &vals);
+        let v = if let Some((i, place, ty)) = in_place {
+            let mut result = None;
+            self.place_update(&place, &mut |s, old| {
+                let slot =
+                    s.b.emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(ty), Some(MTy::PTR))
+                        .expect("slot");
+                s.move_into(slot, old);
+                vals[i] = slot;
+                result = Some(s.b.call(fid, &vals));
+                Ok(s.move_out(slot, ty))
+            })?;
+            result.expect("call emitted")
+        } else {
+            self.b.call(fid, &vals)
+        };
         for (p, slot, ty, moved) in slots_out {
             let new = self.move_out(slot, ty);
             let target = args.places.get(p).cloned().flatten();
