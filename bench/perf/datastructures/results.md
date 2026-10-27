@@ -2,6 +2,42 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27 (PriorityQueue sift-down, second pass)
+
+Revision: this branch on top of `b2a6f03f`; callgrind on 100k enqueue and dequeue, `run.sh 7` twice.
+
+| Measure | Before | After | Rust |
+| --- | ---: | ---: | ---: |
+| Instructions, 100k enqueue and dequeue | 87.8M | 81.5M | 44.9M |
+| ns/op (`run.sh 7`, two runs) | 93 to 98 | 90 to 96 | 77 to 79 |
+
+`sift_down` loops while `0 <= at < size / 2` and tests `right < size` explicitly, so the left index is proven in range by the loop guard and the right by its own test; the separate last-level step is gone and the child choice is a branch instead of a select. Tried and dropped: one list of `{value, order}` entries (190M instructions, since swapping record elements goes through the runtime and a field cannot move out of an entry, so `dequeue` would also clone); clamping the loop to the shorter of `heap` and `orders` (86.4M, no real change). Without the `orders` swap the loop would be 71.6M, so the second list costs about 16M. What remains is a compiler matter: the range analysis does not tie `orders`' length to `heap`'s, and `peek` clones because it returns an owned `Optional[T]`.
+
+## 2026-10-27 (Bytes append and SortedMap re-measure)
+
+Revision: this branch on top of `main` after #1692 (`buildmove`); `run.sh 7` twice, plus callgrind and `getrusage` on the standalone 4M-byte append and 300k-key SortedMap programs.
+
+| Operation | Manuscript | Rust | Ratio |
+| --- | ---: | ---: | ---: |
+| Bytes append (ns/byte, two runs) | 0.9 to 1.0 | 0.9 | 1.00 to 1.12 (was 1.39 to 1.55) |
+| Bytes append, page faults (4M bytes) | 1053 | 1087 | 0.97 (was 2033 vs 1086) |
+| SortedMap add and contains (ns/op, `run.sh`) | 191 to 199 | 207 to 217 | 0.92 |
+| SortedMap add and contains, 300k keys, process min of 15 | 127 ms | 121 ms | 1.05 |
+| SortedMap instructions, 300k keys | 328M | 252M | 1.30 |
+
+Bytes: the earlier gap was the copy `build()` made of the whole buffer, which doubled page faults; `buildmove` moves the buffer for a builder that is not built again, so faults are at Rust's level. The append loop itself is still 13 against 8 instructions per byte (the sealed-flag test and the length write-back each iteration); wall time is within noise of Rust. SortedMap: wall time is at parity, with more instructions than `BTreeMap` that the cache misses hide.
+
+## 2026-10-27 (PriorityQueue sift-down guards)
+
+Revision: this branch on top of `9f41921f`; callgrind on 100k enqueue and dequeue, plus `run.sh 7` twice on the same host.
+
+| Measure | Before | After | Rust |
+| --- | ---: | ---: | ---: |
+| Instructions, 100k enqueue and dequeue | 110.7M | 87.4M | 44.9M |
+| ns/op (`run.sh 7`, two runs) | 112 | 97 to 100 | 81 to 97 |
+
+`sift_down` now loops while `0 <= at < (size - 1) / 2`, so the range analysis proves the child indices non-negative and in range and drops their normalization and bounds checks (75 to 52 instructions per level); the one-child last level is handled after the loop. Without the explicit `at >= 0` guard the analysis lost the lower bound of `at` and kept the checks. What remains: the `orders` list is a separate list whose length the analysis does not tie to `heap`, and the comparator's checked subtraction.
+
 ## 2026-10-27 (SortedMap)
 
 Revision: this branch on top of `d370bb89`; best of 10 runs of the `sorted_map_add_contains` row, same machine class.

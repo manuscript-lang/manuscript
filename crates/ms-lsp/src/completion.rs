@@ -477,6 +477,7 @@ impl Completer<'_> {
                     "export",
                     "extern",
                     "test",
+                    "bench",
                 ];
             }
             for word in words {
@@ -600,6 +601,7 @@ fn keyword_template(word: &str) -> Option<&'static str> {
         "for" => "for ${1:item} in ${2:items}:\n    $0",
         "with" => "with let ${1:resource} = ${2:initializer}:\n    $0",
         "test" => "test \"${1:name}\":\n    ${0:return ()}",
+        "bench" => "bench \"${1:name}\":\n    ${0:return ()}",
         _ => return None,
     })
 }

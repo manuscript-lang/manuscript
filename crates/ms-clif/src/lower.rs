@@ -179,7 +179,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         match l {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().iconst(types::I64, 0)
+            }
             Leaf::F64 => self.b.ins().f64const(0.0),
             Leaf::F32 => self.b.ins().f32const(0.0),
             Leaf::V4 | Leaf::V8 => {
@@ -319,6 +321,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
+            Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.ins().uextend(types::I64, v),
             _ => v,
         }
     }
@@ -326,7 +329,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Writes a leaf's register value to memory, narrowing a packed number.
     fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().ireduce(mem_type(l), v)
+            }
             _ => v,
         };
         self.b.ins().store(flags(), v, ptr, off);
@@ -1725,18 +1730,17 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::NarrowChk => {
                 let x = self.a(inst, 0)[0];
-                let bits = self
+                let (lo, hi) = self
                     .g
                     .lay
                     .m
                     .types
-                    .int_bits(f.ty(inst.args[0]))
-                    .unwrap_or(64);
+                    .int_range(f.ty(inst.args[0]))
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 if checks {
-                    let half = 1i64 << (bits - 1);
                     let (lo_k, hi_k) = (
-                        self.b.ins().iconst(types::I64, -half),
-                        self.b.ins().iconst(types::I64, half - 1),
+                        self.b.ins().iconst(types::I64, lo as i64),
+                        self.b.ins().iconst(types::I64, hi as i64),
                     );
                     let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
                     let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
@@ -1757,13 +1761,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
                 let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let bits = inner
-                    .and_then(|i| self.g.lay.m.types.int_bits(i))
-                    .unwrap_or(64);
-                let half = 1i128 << (bits - 1);
+                let (lo, hi) = inner
+                    .and_then(|i| self.g.lay.m.types.int_range(i))
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, (-half) as i64),
-                    self.b.ins().iconst(types::I64, (half - 1) as i64),
+                    self.b.ins().iconst(types::I64, lo as i64),
+                    self.b.ins().iconst(types::I64, hi as i64),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
@@ -3327,6 +3330,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int8
             | TyKind::Int16
             | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Lanes

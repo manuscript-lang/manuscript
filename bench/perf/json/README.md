@@ -1,6 +1,6 @@
 # JSON benchmark
 
-`@std/json` `parse` and `stringify` against Node's `JSON.parse` and `JSON.stringify` (V8) on the standard documents `twitter.json`, `canada.json` and `citm_catalog.json` plus a small RPC message. `parse` builds a `JsonValue` tree and `stringify` writes one, which is the same work `JSON.parse` and `JSON.stringify` do on a JavaScript value.
+`@std/json` `parse` and `stringify` against Node's `JSON.parse` and `JSON.stringify` (V8) on the standard documents `twitter.json`, `canada.json` and `citm_catalog.json` plus a small RPC message, and a typed `records` case for stringify of a list of records. `parse` builds a `JsonValue` tree and `stringify` writes one, which is the same work `JSON.parse` and `JSON.stringify` do on a JavaScript value.
 
 ```sh
 cargo xtask runtime && cargo build --release --locked -p ms-cli

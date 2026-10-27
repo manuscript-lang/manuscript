@@ -1,20 +1,22 @@
 #!/bin/sh
 # usage: run.sh [repeats]; compares StringBuilder.append against Rust's String::push_str for pieces of 4 B to 8 KiB,
-# min of N runs per size, in microseconds to build about 1 MB.
+# (microseconds to build about 1 MB) and List[Int].append against Vec::push for 10K to 1M items, min of N runs.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
 MS=${MS:-$ROOT/ms}; RUSTC=${RUSTC:-rustc}; N=${1:-5}
+EXE=
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) EXE=.exe ;; esac
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT HUP INT TERM
 cp -r "$HERE/ms" "$W/"
-(cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o bench >&2)
-"$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rust" "$HERE/rust/main.rs"
+(cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o "bench$EXE" >&2)
+"$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rust$EXE" "$HERE/rust/main.rs"
 : > "$W/raw.txt"
 i=0
 while [ "$i" -lt "$N" ]; do
   for v in ms rust; do
-    if [ "$v" = ms ]; then "$W/ms/bench"; else "$W/rust"; fi | awk -v v="$v" -F'\t' '{print $1 "\t" v "\t" $2}' >> "$W/raw.txt"
+    if [ "$v" = ms ]; then "$W/ms/bench$EXE"; else "$W/rust$EXE"; fi | awk -v v="$v" -F'\t' '{print $1 "\t" v "\t" $2}' >> "$W/raw.txt"
   done
   i=$((i + 1))
 done

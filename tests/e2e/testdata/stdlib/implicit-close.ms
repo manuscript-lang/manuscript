@@ -76,3 +76,15 @@ test "closing by hand does not stop the scope's own close":
         let dir = temporary.path()
         try expect_equal(closes_by_hand_too(dir.clone()), 20)
         try expect_true(closed(dir, 20))
+
+def reassigns(dir: String) -> Int:
+    var r = Resource(dir.clone(), 30)
+    r = Resource(dir, 31)
+    return r.id
+
+test "reassigning a resource closes the value it replaces":
+    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
+        let dir = temporary.path()
+        try expect_equal(reassigns(dir.clone()), 31)
+        try expect_true(closed(dir, 30))
+        try expect_true(closed(dir, 31))

@@ -10,6 +10,7 @@
 //! | `Bool` | `i8` |
 //! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
 //! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
+//! | `UInt8`, `UInt16`, `UInt32` | `i64` in registers (zero-extended), 1, 2, 4 bytes in memory |
 //! | `Float` | `f64` |
 //! | `Float32` | `f64` in registers, 4 bytes in memory |
 //! | `lanes` (eight `Float32`) | two `f32x4` vectors; one `f32x8` when LLVM compiles the module |
@@ -46,6 +47,12 @@ pub enum Leaf {
     N16,
     /// `Int32`: an `i64` register, four bytes in memory.
     N32,
+    /// `UInt8`: an `i64` register holding the zero-extended value, one byte in memory.
+    U8,
+    /// `UInt16`: an `i64` register holding the zero-extended value, two bytes in memory.
+    U16,
+    /// `UInt32`: an `i64` register holding the zero-extended value, four bytes in memory.
+    U32,
     /// `Float32`: an `f64` register, four bytes in memory.
     F32,
     /// Four `Float32` lanes in one 128-bit vector.
@@ -58,9 +65,9 @@ impl Leaf {
     /// Size and alignment in bytes.
     pub fn size(self) -> u32 {
         match self {
-            Leaf::I8 | Leaf::N8 => 1,
-            Leaf::N16 => 2,
-            Leaf::N32 | Leaf::F32 => 4,
+            Leaf::I8 | Leaf::N8 | Leaf::U8 => 1,
+            Leaf::N16 | Leaf::U16 => 2,
+            Leaf::N32 | Leaf::U32 | Leaf::F32 => 4,
             Leaf::V4 => 16,
             Leaf::V8 => 32,
             _ => 8,
@@ -268,6 +275,9 @@ impl<'m> Layouts<'m> {
             TyKind::Int8 => plain(vec![N8]),
             TyKind::Int16 => plain(vec![N16]),
             TyKind::Int32 => plain(vec![N32]),
+            TyKind::UInt8 => plain(vec![U8]),
+            TyKind::UInt16 => plain(vec![U16]),
+            TyKind::UInt32 => plain(vec![U32]),
             TyKind::Float => plain(vec![F64]),
             TyKind::Float32 => plain(vec![F32]),
             TyKind::Lanes if self.wide_lanes => plain(vec![V8]),
@@ -310,7 +320,7 @@ impl<'m> Layouts<'m> {
             .map(|c| c.fields.iter().flat_map(|f| self.leaves(f.1)).collect())
             .collect();
         // Payload slots are shared per leaf kind, widest first so each stays aligned.
-        const KINDS: [Leaf; 7] = [I64, F64, F32, N32, N16, N8, I8];
+        const KINDS: [Leaf; 10] = [I64, F64, F32, N32, U32, N16, U16, N8, U8, I8];
         let count = |l: Leaf| {
             cases
                 .iter()
@@ -319,7 +329,7 @@ impl<'m> Layouts<'m> {
                 .unwrap_or(0)
         };
         let mut block = vec![I64];
-        let mut first = [0usize; 7];
+        let mut first = [0usize; 10];
         for (k, l) in KINDS.iter().enumerate() {
             first[k] = block.len();
             block.extend(std::iter::repeat_n(*l, count(*l)));

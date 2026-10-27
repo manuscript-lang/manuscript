@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/../../.."
 MS=${MS:-target/release/ms}
-NAMES=${NAMES:-"small twitter canada citm_catalog"}
+NAMES=${NAMES:-"small twitter canada citm_catalog records"}
 sh bench/perf/json/fetch.sh
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

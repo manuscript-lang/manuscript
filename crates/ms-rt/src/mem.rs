@@ -84,6 +84,60 @@ unsafe fn copy_forward(dst: *mut u8, src: *const u8, n: usize) {
     }
 }
 
+/// Largest forward copy done with vector blocks; `rep movsb` pays a startup cost that only a
+/// longer copy amortises (glibc switches at about the same size).
+#[cfg(target_arch = "x86_64")]
+const REP_MOVSB_MIN: usize = 2048;
+
+/// Copies `64 < n` bytes forward in 64-byte blocks. The last 64 bytes are loaded up front and
+/// stored at the end, so the tail needs no byte loop. Safe when `dst <= src` overlaps, because
+/// every block loads before it stores and the stores never reach the tail's source.
+///
+/// # Safety
+/// Both ranges must be valid for `n > 64` bytes, and `dst` must not lie inside `(src, src + n)`.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn copy_blocks(dst: *mut u8, src: *const u8, n: usize) {
+    use core::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_storeu_si128};
+    // SAFETY: every block lies within the first `n` bytes of both ranges.
+    unsafe {
+        let load = |at: usize| _mm_loadu_si128(src.add(at) as *const __m128i);
+        let store = |at: usize, v: __m128i| _mm_storeu_si128(dst.add(at) as *mut __m128i, v);
+        let tail = [load(n - 64), load(n - 48), load(n - 32), load(n - 16)];
+        let mut at = 0;
+        while at + 64 < n {
+            let (a, b, c, d) = (load(at), load(at + 16), load(at + 32), load(at + 48));
+            store(at, a);
+            store(at + 16, b);
+            store(at + 32, c);
+            store(at + 48, d);
+            at += 64;
+        }
+        store(n - 64, tail[0]);
+        store(n - 48, tail[1]);
+        store(n - 32, tail[2]);
+        store(n - 16, tail[3]);
+    }
+}
+
+/// Copies forward: vector blocks for a medium size, `rep movsb` beyond.
+///
+/// # Safety
+/// As [`copy_blocks`], for any `n > 64`.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+#[inline(always)]
+unsafe fn copy_forward_any(dst: *mut u8, src: *const u8, n: usize) {
+    // SAFETY: forwarded contract.
+    unsafe {
+        if n < REP_MOVSB_MIN {
+            copy_blocks(dst, src, n);
+        } else {
+            copy_forward(dst, src, n);
+        }
+    }
+}
+
 /// Copies backward in blocks whose loads all precede their stores.
 ///
 /// # Safety
@@ -119,7 +173,7 @@ pub unsafe extern "C" fn memcpy(dst: *mut c_void, src: *const c_void, n: usize) 
         if n <= 64 {
             copy_small(dst.cast(), src.cast(), n);
         } else {
-            copy_forward(dst.cast(), src.cast(), n);
+            copy_forward_any(dst.cast(), src.cast(), n);
         }
     }
     dst
@@ -144,7 +198,7 @@ pub unsafe extern "C" fn memmove(dst: *mut c_void, src: *const c_void, n: usize)
             copy_small(d, s, n);
         } else if (d as usize).wrapping_sub(s as usize) >= n {
             // `dst` is below `src` or past its end: copying forward never overwrites unread bytes.
-            copy_forward(d, s, n);
+            copy_forward_any(d, s, n);
         } else {
             copy_backward(d, s, n);
         }
@@ -272,6 +326,30 @@ mod tests {
         (0..n)
             .map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed))
             .collect()
+    }
+
+    #[test]
+    fn block_copy_matches_slice_copy_and_forward_overlap() {
+        for n in (65..=300).chain([1023, 2047, 2048, 4097]) {
+            let src = pattern(n + 16, 3);
+            let mut dst = vec![0xAAu8; n + 16];
+            // SAFETY: both buffers hold `n + 16` bytes.
+            unsafe { copy_blocks(dst.as_mut_ptr().add(5), src.as_ptr().add(2), n) };
+            assert_eq!(dst[5..5 + n], src[2..2 + n], "n={n}");
+            assert!(dst[..5].iter().all(|b| *b == 0xAA), "head touched n={n}");
+            assert!(
+                dst[5 + n..].iter().all(|b| *b == 0xAA),
+                "tail touched n={n}"
+            );
+            for gap in [1usize, 7, 16, 63, 64, 65] {
+                let mut buf = pattern(n + gap, 9);
+                let want = buf[gap..gap + n].to_vec();
+                let p = buf.as_mut_ptr();
+                // SAFETY: dst < src within one buffer of `n + gap` bytes, a forward overlap.
+                unsafe { copy_blocks(p, p.add(gap), n) };
+                assert_eq!(buf[..n], want[..], "overlap n={n} gap={gap}");
+            }
+        }
     }
 
     #[test]

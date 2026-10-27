@@ -58,3 +58,41 @@ linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x `Value` (`bench/pe
 `Writer::finish` validated the whole output as UTF-8 again (12% of twitter stringify instructions) though only whole `&str`s and ASCII are appended; it now hands the buffer over unchecked. Strings under 24 bytes took a byte-at-a-time table walk; the vector scan with its word tail is cheaper at every length measured (twitter 70.96M → 57.59M instructions, citm 132.6M → 126.3M).
 
 Typed stringify of a tree is still 0.62-0.89x serde_json on this machine, so the gap in #1680 is narrowed, not closed: what remains is spread over the generated walker (`json_encode`, ~15% on citm), key and separator bookkeeping and per-value runtime calls.
+
+## 2026-10-27: short names, strings and numbers in one write
+
+linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x. Three runs of `sh bench/perf/json/run.sh`; ranges are the three MB/s values per row. `records` is new: 10,000 typed rows (`id`, `name`, `tags`, `score`, `ok`) written without a `JsonValue`, against serde_json's derived `Serialize` over `Vec<Row>` and Node's `JSON.stringify` of the same objects.
+
+| document | serde_json MB/s | Manuscript before | Manuscript after | after / serde_json |
+|---|---:|---:|---:|---:|
+| small | 565-624 | 384-393 | 519-549 | 0.86-0.92x |
+| twitter | 1453-1585 | 683-693 | 1037-1153 | 0.70-0.79x |
+| canada | 651-678 | 598-608 | 640-671 | 0.96-1.03x |
+| citm_catalog | 2483-2545 | 1508-1514 | 1736-1781 | 0.69-0.70x |
+| records | 738-793 | not measured | 626-666 | 0.80-0.87x |
+
+"Before" is the table above (main at 9f41921f, same machine class, so compare within a row only). Callgrind instructions for the stringify walker on citm (`ms build` then `valgrind --tool=callgrind --toggle-collect='*json_encode*' jb quick citm_catalog:stringify`, one warm-up and five runs): 77.4M → 61.1M.
+
+What changed, all in `Writer` and `ms_rt::scan`:
+
+- A name or string of at most 16 bytes with nothing to escape is checked with two overlapping word tests and written, quotes and colon included, after one capacity check (`push_member_name`, `push_member_quoted`, `push_string_short`). Names were about 190 instructions each in the walker; most of that was bookkeeping around three capacity checks and a byte loop.
+- Number text of 1-16 digits with no sign, point or leading zero skips the number grammar (`json_plain_digits`); every other number still goes through `scan_number`.
+- The short checks load through raw pointers inside `ms-rt`, which allows `unsafe`; `ms-std-json` still has none.
+
+Remaining profile on `records`: float formatting (~16%, about 300 instructions per float against serde's ~150), the call chain from generated code into `Writer` (wrapper plus method per node), and buffer growth copies. Typed `records` and tree stringify are still below serde_json except on canada, so #1680 stays open.
+
+## 2026-10-27: floats with a short fraction
+
+linux/amd64, four shared cores, Node v22.22.0, serde_json 1.x; three runs of `sh bench/perf/json/run.sh` on main with this change (it includes other changes merged since the section above, so only the last column is the comparison to read).
+
+| document | serde_json MB/s | Manuscript MB/s | Manuscript / serde_json |
+|---|---:|---:|---:|
+| small | 569-601 | 548-577 | 0.91-1.01x |
+| twitter | 1425-1495 | 1575-1640 | 1.05-1.15x |
+| canada | 622-656 | 688-767 | 1.09-1.23x |
+| citm_catalog | 2454-2639 | 1783-1832 | 0.68-0.73x |
+| records | 770-811 | 720-756 | 0.93-0.94x |
+
+A float that is a decimal of one to four fraction digits (`1234.5`, `0.25`, `99.99`) is scaled to an integer, checked by dividing back, and written two digits at a time with the point placed by position; the check yields the same digits as the shortest-round-trip formatter because the quotient of an exact integer by an exact power of ten is the correctly rounded double. `Writer::float` on `i + 0.5` went from about 218 to 135 instructions. The test `plain_decimals_print_as_rust_displays_them` compares 800,000 values in 1e-3..1e11 against Rust's `{}` byte for byte.
+
+citm_catalog is the remaining gap: its time is in the generated `JsonValue` walker and the per-node calls into `Writer`, not in escaping or numbers.

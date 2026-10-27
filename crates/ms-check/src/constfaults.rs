@@ -6,10 +6,9 @@ use crate::types::*;
 use ms_syntax::ast::*;
 
 /// The value of an integer expression built from literals and `+ - * / %`, or none when an
-/// operand is not constant, a division is by zero, or an intermediate leaves `bits` bits.
-fn fold(e: &Expr, bits: u32) -> Option<i128> {
-    let half = 1i128 << (bits - 1);
-    let fits = |v: i128| (-half..half).contains(&v).then_some(v);
+/// operand is not constant, a division is by zero, or an intermediate leaves `range`.
+fn fold(e: &Expr, range: (i128, i128)) -> Option<i128> {
+    let fits = |v: i128| (range.0..=range.1).contains(&v).then_some(v);
     match &e.kind {
         ExprKind::Number(t) if !t.as_str().contains(['.', 'e', 'E']) && !t.ends_with('d') => {
             ms_syntax::number::canonical(t.as_str())
@@ -17,7 +16,7 @@ fn fold(e: &Expr, bits: u32) -> Option<i128> {
                 .ok()
         }
         ExprKind::Unary { op, operand } => {
-            let v = fold(operand, bits)?;
+            let v = fold(operand, range)?;
             match op {
                 UnaryOp::Neg => fits(-v),
                 UnaryOp::Plus => Some(v),
@@ -25,7 +24,7 @@ fn fold(e: &Expr, bits: u32) -> Option<i128> {
             }
         }
         ExprKind::Binary { op, left, right } => {
-            let (a, b) = (fold(left, bits)?, fold(right, bits)?);
+            let (a, b) = (fold(left, range)?, fold(right, range)?);
             fits(apply(*op, a, b)?)
         }
         _ => None,
@@ -53,21 +52,20 @@ impl Checker {
         right: &Expr,
         ty: &Ty,
     ) {
-        let Some(bits) = int_bits(ty) else {
+        let Some(range) = int_range(ty) else {
             return;
         };
-        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(right, bits) == Some(0) {
+        if matches!(op, BinaryOp::Div | BinaryOp::Rem) && fold(right, range) == Some(0) {
             self.type_error(
                 e.pos,
                 "division by zero always faults; guard the divisor or use a nonzero constant",
             );
             return;
         }
-        let (Some(a), Some(b)) = (fold(left, bits), fold(right, bits)) else {
+        let (Some(a), Some(b)) = (fold(left, range), fold(right, range)) else {
             return;
         };
-        let half = 1i128 << (bits - 1);
-        if apply(op, a, b).is_some_and(|v| !(-half..half).contains(&v)) {
+        if apply(op, a, b).is_some_and(|v| !(range.0..=range.1).contains(&v)) {
             self.type_error(
                 e.pos,
                 format!(
@@ -83,7 +81,7 @@ impl Checker {
         let ExprKind::List(items) = &left.kind else {
             return;
         };
-        let Some(i) = fold(index, DEFAULT_INT_BITS) else {
+        let Some(i) = fold(index, int_range(&int()).unwrap_or_default()) else {
             return;
         };
         let len = items.len() as i128;

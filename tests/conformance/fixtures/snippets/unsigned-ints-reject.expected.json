@@ -1,0 +1,104 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "literal 256 is out of range for UInt8; use a value between 0 and 255",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 5,
+          "column": 20,
+          "offset": 163
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "literal -1 is out of range for UInt8; use a value between 0 and 255",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 6,
+          "column": 21,
+          "offset": 187
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "unary - is not defined for UInt8; subtract from zero with a wider signed type, e.g. 0 - x.to_int()",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 8,
+          "column": 13,
+          "offset": 222
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found UInt8 (in the initializer of 'e')",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 9,
+          "column": 18,
+          "offset": 242
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected UInt8, found Int (in the initializer of 'f')",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 10,
+          "column": 20,
+          "offset": 263
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected UInt16, found UInt8 (in the initializer of 'g')",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 11,
+          "column": 21,
+          "offset": 285
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "literal 300 is out of range for UInt8; use a value between 0 and 255",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 12,
+          "column": 17,
+          "offset": 303
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "3 - 5 overflows UInt8 and always faults; use a smaller value or a wider type such as BigInt",
+        "position": {
+          "file": "unsigned-ints-reject.ms",
+          "line": 13,
+          "column": 22,
+          "offset": 328
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/unsigned-ints-reject.ms:5:20: type: literal 256 is out of range for UInt8; use a value between 0 and 255\n   |\n 5 |     let a: UInt8 = 256\n   |                    ^\n<DIR>/unsigned-ints-reject.ms:6:21: type: literal -1 is out of range for UInt8; use a value between 0 and 255\n   |\n 6 |     let b: UInt8 = -1\n   |                     ^\n<DIR>/unsigned-ints-reject.ms:8:13: type: unary - is not defined for UInt8; subtract from zero with a wider signed type, e.g. 0 - x.to_int()\n   |\n 8 |     let d = -c\n   |             ^\n<DIR>/unsigned-ints-reject.ms:9:18: type: expected Int, found UInt8 (in the initializer of 'e')\n   |\n 9 |     let e: Int = c\n   |                  ^\n<DIR>/unsigned-ints-reject.ms:10:20: type: expected UInt8, found Int (in the initializer of 'f')\n    |\n 10 |     let f: UInt8 = e\n    |                    ^\n<DIR>/unsigned-ints-reject.ms:11:21: type: expected UInt16, found UInt8 (in the initializer of 'g')\n    |\n 11 |     let g: UInt16 = c\n    |                     ^\n<DIR>/unsigned-ints-reject.ms:12:17: type: literal 300 is out of range for UInt8; use a value between 0 and 255\n    |\n 12 |     let h = c + 300\n    |                 ^\n<DIR>/unsigned-ints-reject.ms:13:22: type: 3 - 5 overflows UInt8 and always faults; use a smaller value or a wider type such as BigInt\n    |\n 13 |     let i: UInt8 = 3 - 5\n    |                      ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -53,6 +53,12 @@ pub enum TyKind {
     Int32,
     /// `Float32`: an IEEE 754 binary32, held rounded in a binary64 register until stored.
     Float32,
+    /// `UInt8`: an unsigned integer in 8 bits, held zero-extended in a 64-bit register.
+    UInt8,
+    /// `UInt16`: an unsigned integer in 16 bits, held zero-extended in a 64-bit register.
+    UInt16,
+    /// `UInt32`: an unsigned integer in 32 bits, held zero-extended in a 64-bit register.
+    UInt32,
     /// Eight `Float32` lanes operated on together (SIMD). Only `@std/vec.ms` creates
     /// these; they live in vector registers and are never stored in lists or records.
     Lanes,
@@ -112,8 +118,14 @@ impl Ty {
     pub const INT32: Ty = Ty(9);
     /// `Float32`.
     pub const FLOAT32: Ty = Ty(10);
+    /// `UInt8`.
+    pub const UINT8: Ty = Ty(11);
+    /// `UInt16`.
+    pub const UINT16: Ty = Ty(12);
+    /// `UInt32`.
+    pub const UINT32: Ty = Ty(13);
     /// Eight `Float32` lanes.
-    pub const LANES: Ty = Ty(11);
+    pub const LANES: Ty = Ty(14);
 
     const SCOPE_SHIFT: u32 = 20;
 
@@ -160,6 +172,9 @@ impl TyTable {
             TyKind::Int16,
             TyKind::Int32,
             TyKind::Float32,
+            TyKind::UInt8,
+            TyKind::UInt16,
+            TyKind::UInt32,
             TyKind::Lanes,
         ] {
             t.intern(k);
@@ -250,6 +265,9 @@ impl TyTable {
                 | TyKind::Int8
                 | TyKind::Int16
                 | TyKind::Int32
+                | TyKind::UInt8
+                | TyKind::UInt16
+                | TyKind::UInt32
                 | TyKind::Float
                 | TyKind::Float32
         )
@@ -276,9 +294,29 @@ impl TyTable {
             TyKind::Int => Some(64),
             TyKind::Int8 => Some(8),
             TyKind::Int16 => Some(16),
-            TyKind::Int32 => Some(32),
+            TyKind::Int32 | TyKind::UInt32 => Some(32),
+            TyKind::UInt8 => Some(8),
+            TyKind::UInt16 => Some(16),
             _ => None,
         }
+    }
+
+    /// The inclusive range of values an integer type holds; `Int` has the full `i64` range.
+    pub fn int_range(&self, ty: Ty) -> Option<(i128, i128)> {
+        let bits = self.int_bits(ty)?;
+        Some(if self.is_unsigned(ty) {
+            (0, (1i128 << bits) - 1)
+        } else {
+            (-(1i128 << (bits - 1)), (1i128 << (bits - 1)) - 1)
+        })
+    }
+
+    /// Whether `ty` is an unsigned integer.
+    pub fn is_unsigned(&self, ty: Ty) -> bool {
+        matches!(
+            self.kind(ty),
+            TyKind::UInt8 | TyKind::UInt16 | TyKind::UInt32
+        )
     }
 
     /// Whether `ty` is a single-word heap reference (never null).

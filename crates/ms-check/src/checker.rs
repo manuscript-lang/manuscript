@@ -1343,8 +1343,10 @@ impl Checker {
         let is_test = matches!(d.decl.decl().kind, DeclKind::Test(_)) && d.index.is_none();
         if is_test {
             self.test_function = self.function;
+            // A bench body is timed repeatedly, so the file fixture and its hooks apply to tests only.
+            let bench = matches!(&d.decl.decl().kind, DeclKind::Test(t) if t.bench);
             let fixture = self.p.test_fixtures.get(&self.current_file()).cloned();
-            if let Some(fixture) = fixture {
+            if let Some(fixture) = fixture.filter(|_| !bench) {
                 let b = self.bind(n("fixture"), &fixture.ty, false, d.pos());
                 self.m()
                     .facts_mut()
