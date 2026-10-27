@@ -37,3 +37,6 @@ export def bench_yaml() -> Unit:
 
             return 0
     )
+
+    if let v = parse(yaml):
+        bench("yaml.stringify", 2000, lambda () -> Int: return yaml_length(v))
