@@ -238,18 +238,23 @@ fn dg(text: &str) {
     }
 }
 
+#[cfg(not(windows))]
+fn probe(_: &str, _: &socket2::Socket) {}
+
+#[cfg(windows)]
 fn probe(label: &str, sock: &socket2::Socket) {
+    use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket};
     if std::env::var_os("MS_DIAG_PROBE").is_none() {
         return;
     }
-    let Ok(clone) = sock.try_clone() else {
-        dg(&format!("probe {label}: clone failed"));
-        return;
-    };
+    let raw = sock.as_raw_socket();
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
-        let r = clone.accept();
-        let _ = tx.send(r.is_ok());
+        // SAFETY: diagnostic: borrows the live listener's handle, never closed here.
+        let s = unsafe { socket2::Socket::from_raw_socket(raw) };
+        let r = s.accept().is_ok();
+        let _ = s.into_raw_socket();
+        let _ = tx.send(r);
     });
     match rx.recv_timeout(Duration::from_millis(300)) {
         Ok(_) => dg(&format!("probe {label}: nonblocking")),
