@@ -1,7 +1,7 @@
+from "@std/bench.ms" import keep, measure
 from "@std/bytes.ms" import Bytes
 from "@std/collections.ms" import range
 from "@std/io.ms" import IoError, ReadStream, lines, read_line
-from "./harness.ms" import bench
 
 type MemoryStream:
     data: Bytes
@@ -29,35 +29,34 @@ def source_text() -> String:
         parts.append(f"line number {i} with some padding text\n")
     return parts.join("")
 
-export def bench_io() -> Unit:
+bench "io.read_line_loop":
     let bytes = source_text().to_bytes()
 
-    bench(
-        "io.read_line_loop",
-        10,
-        lambda () -> Int:
-            let input: ReadStream = MemoryStream(bytes.clone(), 0)
-            var count = 0
+    def work() -> Result[Unit, Error]:
+        let input: ReadStream = MemoryStream(bytes.clone(), 0)
+        var count = 0
 
-            while True:
-                let next = read_line(input, none)
-                if next.is_error():
-                    return -1
-                if next.get().is_none():
-                    break
+        while True:
+            let next = read_line(input, none)
+            if next.is_error():
+                return keep(-1)
+            if next.get().is_none():
+                break
 
-                count += 1
+            count += 1
 
-            return count
-    )
+        return keep(count)
 
-    bench(
-        "io.lines",
-        10,
-        lambda () -> Int:
-            var reader = lines(MemoryStream(bytes.clone(), 0))
-            var count = 0
-            for line in reader:
-                count += 1
-            return count
-    )
+    try measure(10, work)
+
+bench "io.lines":
+    let bytes = source_text().to_bytes()
+
+    def work() -> Result[Unit, Error]:
+        var reader = lines(MemoryStream(bytes.clone(), 0))
+        var count = 0
+        for line in reader:
+            count += 1
+        return keep(count)
+
+    try measure(10, work)

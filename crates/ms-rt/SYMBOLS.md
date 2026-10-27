@@ -117,6 +117,13 @@ msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8
 msrt_float_to_float32(v: f64, out: *mut f32) -> u8
 msrt_float_compare(a: f64, b: f64) -> i64
 msrt_int_compare(a: i64, b: i64) -> i64
+msrt_uint_compare(a: i64, b: i64) -> i64
+msrt_uint_add(a: i64, b: i64) -> i64
+msrt_uint_sub(a: i64, b: i64) -> i64
+msrt_uint_mul(a: i64, b: i64) -> i64
+msrt_uint_div(a: i64, b: i64) -> i64
+msrt_uint_rem(a: i64, b: i64) -> i64
+msrt_uint_to_float(v: i64) -> f64
 msrt_heap_stats(out: *mut i64)
 msrt_alloc(size: usize) -> *mut u8
 msrt_alloc_zeroed(size: usize) -> *mut u8
@@ -199,10 +206,12 @@ msrt_string_parse_float(s: *const StrVal, out: *mut f64) -> u8
 msrt_string_normalize( s: *const StrVal, form: *const StrVal, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_string_normalize_kind( s: *const StrVal, kind: i64, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msrt_int_to_string(v: i64, out: *mut StrVal)
+msrt_uint_to_string(v: i64, out: *mut StrVal)
 msrt_float_to_string(v: f64, out: *mut StrVal)
 msrt_float32_to_string(v: f64, out: *mut StrVal)
 msrt_bool_to_string(v: u8, out: *mut StrVal)
 msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
+msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal)
 msrt_string_quote(s: *const StrVal, out: *mut StrVal)
 msrt_task_spawn( entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize, ) -> u64
 msrt_worker_arg_new(p: *const u8, len: usize) -> *mut u8
@@ -373,6 +382,7 @@ msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const 
 msstd_decimal_literal(text: *const StrVal, out: *mut Dec)
 msstd_decimal_parse(text: *const StrVal, out: *mut Dec) -> u8
 msstd_decimal_from_int(n: i64, out: *mut Dec)
+msstd_decimal_from_uint(n: i64, out: *mut Dec)
 msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
 msstd_decimal_negate(a: *const Dec, out: *mut Dec)
 msstd_decimal_compare(a: *const Dec, b: *const Dec) -> i64
@@ -482,6 +492,7 @@ msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent:
 msrt_json_w_item(w: *mut WriterObj)
 msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
 msrt_json_w_key_quoted(w: *mut WriterObj, quoted_name: *const StrVal)
+msrt_json_w_tree(w: *mut WriterObj, desc: *const TypeDesc, view: TreeViewFn, root: *const u8)
 msrt_json_w_undo(w: *mut WriterObj)
 msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)

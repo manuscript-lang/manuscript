@@ -1,5 +1,6 @@
+from "@std/bench.ms" import keep, measure
 from "@std/collections.ms" import range
-from "./harness.ms" import bench, words
+from "./src/harness.ms" import words
 from "@std/string.ms" import StringBuilder
 from "@std/html.ms" import parse, escape, unescape
 
@@ -11,21 +12,17 @@ def html_doc(count: Int) -> String:
     sb.append("</div>")
     return sb.build()
 
-export def bench_html() -> Unit:
+bench "html.parse":
     let html = html_doc(2000)
 
-    bench(
-        "html.parse",
-        2000,
-        lambda () -> Int:
-            if parse(html).is_ok():
-                return 1
+    def work() -> Result[Unit, Error]:
+        if parse(html).is_ok():
+            return keep(1)
 
-            return 0
-    )
+        return keep(0)
 
+    try measure(2000, work)
+
+bench "html.escape_unescape":
     let text = words(2000).join(" <&> ")
-    bench(
-        "html.escape_unescape", 2000,
-        lambda () -> Int: return text | escape | unescape | .length()
-    )
+    try measure(2000, lambda: keep(text | escape | unescape | .length()))

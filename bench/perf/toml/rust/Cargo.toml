@@ -1,0 +1,12 @@
+[package]
+name = "toml-bench"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+toml = "0.9"
+
+[profile.release]
+opt-level = 3
+
+[workspace]

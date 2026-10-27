@@ -174,13 +174,20 @@ impl<'a> FnLower<'a> {
     fn number(&mut self, e: &Expr, text: &str, negate: bool) -> Result<Val, Error> {
         let t = self.ety(e);
         match t.id.as_str() {
-            "Int" | "Int8" | "Int16" | "Int32" | "Int64" => {
+            "Int" | "Int8" | "Int16" | "Int32" | "Int64" | "UInt8" | "UInt16" | "UInt32" => {
                 let n: i128 = parse_int(text)
                     .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
                 let n = if negate { -n } else { n };
                 let n = i64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?;
                 let ty = self.mty(&t)?;
                 let v = self.b.iconst_ty(n, ty);
+                Ok(Val { v, own: false })
+            }
+            "UInt64" => {
+                let n: i128 = parse_int(text)
+                    .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
+                let n = u64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?;
+                let v = self.b.iconst_ty(n as i64, MTy::UINT64);
                 Ok(Val { v, own: false })
             }
             "Float" | "Float32" | "Float64" => {
@@ -404,7 +411,7 @@ impl<'a> FnLower<'a> {
                 let zero = self.b.iconst(0);
                 self.at(e.pos);
                 let got =
-                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::INT)?;
+                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::UINT8)?;
                 if l.own {
                     self.drop_value(l.v);
                 }
@@ -523,6 +530,16 @@ impl<'a> FnLower<'a> {
     }
 
     fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+        if t == MTy::UINT64 {
+            let sym = match op {
+                BinaryOp::Add => "msrt_uint_add",
+                BinaryOp::Sub => "msrt_uint_sub",
+                BinaryOp::Mul => "msrt_uint_mul",
+                BinaryOp::Div => "msrt_uint_div",
+                _ => "msrt_uint_rem",
+            };
+            return self.call_runtime(sym, &[l.v, r.v], t);
+        }
         if self.b.m.types.is_int(t) {
             let o = match op {
                 BinaryOp::Add => Op::IAddChk,

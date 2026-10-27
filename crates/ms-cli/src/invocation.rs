@@ -16,6 +16,7 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--timeout",
     "--filter",
     "--test",
+    "--bench",
     "--match",
     "--exclude",
     "--repeat",
@@ -23,6 +24,9 @@ pub const VALUE_OPTIONS: &[&str] = &[
     "--runs",
     "--seed",
     "--fuzz",
+    "--time",
+    "--samples",
+    "--iterations",
     "--format",
     "--view",
     "--entity",
@@ -40,6 +44,7 @@ pub const JSON_COMMANDS: &[&str] = &[
     "check",
     "lint",
     "test",
+    "bench",
     "run",
     "build",
     "profile",
@@ -189,7 +194,7 @@ fn parse_options(
             }
             "--list" | "--fail-fast" => inv.test_options.push(flag.to_string()),
             "--test" | "--match" | "--exclude" | "--repeat" | "--shuffle" | "--runs" | "--seed"
-            | "--fuzz" => {
+            | "--fuzz" | "--time" | "--samples" | "--iterations" | "--bench" => {
                 let Some(value) = required_value(args, &mut i, value, inline) else {
                     return Err(usage_error(
                         io,
@@ -216,6 +221,25 @@ fn parse_options(
                 if flag == "--seed" && value.parse::<i64>().is_err() {
                     return Err(usage_error(io, "invalid --seed; use an integer seed"));
                 }
+                if flag == "--time"
+                    && !crate::duration::parse(value).is_some_and(|n| n >= 1_000_000)
+                {
+                    return Err(usage_error(
+                        io,
+                        format!(
+                            "invalid --time {}; use a duration of at least 1ms such as 200ms or 1s",
+                            quote(value)
+                        ),
+                    ));
+                }
+                if (flag == "--samples" || flag == "--iterations")
+                    && !value.parse::<i64>().is_ok_and(|n| n > 0)
+                {
+                    return Err(usage_error(
+                        io,
+                        format!("invalid {flag}; use a positive integer"),
+                    ));
+                }
                 if flag == "--fuzz" && !crate::duration::parse(value).is_some_and(|n| n > 0) {
                     return Err(usage_error(
                         io,
@@ -225,6 +249,8 @@ fn parse_options(
                         ),
                     ));
                 }
+                // `--bench` names a bench the way `--test` names a test.
+                let flag = if flag == "--bench" { "--test" } else { flag };
                 inv.test_options.push(format!("{flag}={value}"));
             }
             "--timeout" | "--filter" => {
@@ -402,7 +428,7 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
     let command = inv.command.clone();
     let help_hint = format!("run 'ms help {command}' for its options");
     if !inv.is_one_of(&[
-        "check", "lint", "inspect", "diagram", "emit", "build", "run", "profile", "test",
+        "check", "lint", "inspect", "diagram", "emit", "build", "run", "profile", "test", "bench",
     ]) {
         crate::unknown_command(io, &command);
         return Err(2);
@@ -482,16 +508,42 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
         ));
     }
     if (!inv.test_timeout.is_empty() || !inv.test_filter.is_empty() || !inv.test_options.is_empty())
-        && command != "test"
+        && !inv.is_one_of(&["test", "bench"])
     {
         return Err(usage_error(
             io,
             format!(
-                "test selection options are valid only for ms test, not ms {command}; run 'ms help {command}' for the options this command accepts"
+                "test selection options are valid only for ms test and ms bench, not ms {command}; run 'ms help {command}' for the options this command accepts"
             ),
         ));
     }
-    if command == "test" {
+    let only = |names: &[&str]| {
+        inv.test_options
+            .iter()
+            .find(|o| names.iter().any(|n| o.split('=').next() == Some(*n)))
+            .map(|o| o.split('=').next().unwrap_or_default().to_string())
+    };
+    if command == "test"
+        && let Some(flag) = only(&["--time", "--samples", "--iterations"])
+    {
+        return Err(usage_error(
+            io,
+            format!(
+                "{flag} is valid only for ms bench; run 'ms help test' for the options this command accepts"
+            ),
+        ));
+    }
+    if command == "bench"
+        && let Some(flag) = only(&["--runs", "--seed", "--fuzz", "--shuffle"])
+    {
+        return Err(usage_error(
+            io,
+            format!(
+                "{flag} is valid only for ms test; run 'ms help bench' for the options this command accepts"
+            ),
+        ));
+    }
+    if inv.is_one_of(&["test", "bench"]) {
         let mut test_args = inv.test_options.clone();
         if !inv.test_timeout.is_empty() {
             test_args.push(format!("--timeout={}", inv.test_timeout));
@@ -543,17 +595,17 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             return Err(2);
         }
     };
-    if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test"]) {
+    if !inv.link.is_empty() && !inv.is_one_of(&["build", "run", "test", "bench"]) {
         return Err(usage_error(
             io,
-            format!("--link requires build, run, or test, not {command}; remove the flag"),
+            format!("--link requires build, run, test, or bench, not {command}; remove the flag"),
         ));
     }
-    if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "profile"]) {
+    if inv.build_type_set && !inv.is_one_of(&["build", "run", "test", "bench", "profile"]) {
         return Err(usage_error(
             io,
             format!(
-                "--build-type requires build, run, test, or profile, not {command}; remove the flag"
+                "--build-type requires build, run, test, bench, or profile, not {command}; remove the flag"
             ),
         ));
     }

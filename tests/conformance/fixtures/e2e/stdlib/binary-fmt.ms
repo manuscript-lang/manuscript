@@ -63,27 +63,12 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    let range_error: Result[Int, BinaryError] = error(BinaryError.OutOfRange)
-    try expect_equal(Bytes([0]).uint8(-1), range_error)
-    try expect_equal(Bytes([0]).uint8(1), range_error)
-    try expect_equal(Bytes([0, 0, 0]).uint32_le(0), range_error)
-    try expect_equal(Bytes([0, 0, 0, 0]).uint32_le(1), range_error)
-    try expect_equal(Bytes([]).uint8(0), range_error)
-    try expect_equal(Bytes([0, 0, 0, 0]).uint32_le(9223372036854775807), range_error)
+    let range_error8: Result[UInt8, BinaryError] = error(BinaryError.OutOfRange)
+    let range_error32: Result[UInt32, BinaryError] = error(BinaryError.OutOfRange)
+    try expect_equal(Bytes([0]).uint8(-1), range_error8)
+    try expect_equal(Bytes([0]).uint8(1), range_error8)
+    try expect_equal(Bytes([0, 0, 0]).uint32_le(0), range_error32)
+    try expect_equal(Bytes([0, 0, 0, 0]).uint32_le(1), range_error32)
+    try expect_equal(Bytes([]).uint8(0), range_error8)
+    try expect_equal(Bytes([0, 0, 0, 0]).uint32_le(9223372036854775807), range_error32)
 
-test "unsigned appends fault outside their range":
-    let message = try expect_fault(
-        lambda:
-            var out = BytesBuilder()
-            out.append_uint16_le(65536)
-    )
-
-    message | try expect_contains("append_uint16_le")
-
-    let negative = try expect_fault(
-        lambda:
-            var out = BytesBuilder()
-            out.append_uint32_be(-1)
-    )
-
-    negative | try expect_contains("append_uint32_be")

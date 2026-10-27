@@ -222,8 +222,14 @@ impl<'m> FuncBuilder<'m> {
         let t = self.m.types.opt(to);
         self.val(Op::INarrowOpt, &[a], Imm::None, t)
     }
-    /// `icmp.cc`.
+    /// `icmp.cc`. `UInt64` operands hold a bit pattern, so an ordered comparison flips the
+    /// sign bit of both sides first; that maps unsigned order onto signed order.
     pub fn icmp(&mut self, cc: Cc, a: Value, b: Value) -> Value {
+        if self.ty(a) == Ty::UINT64 && !matches!(cc, Cc::Eq | Cc::Ne) {
+            let bias = self.iconst_ty(i64::MIN, Ty::UINT64);
+            let (a, b) = (self.binop(Op::Xor, a, bias), self.binop(Op::Xor, b, bias));
+            return self.val(Op::ICmp, &[a, b], Imm::Cc(cc), Ty::BOOL);
+        }
         self.val(Op::ICmp, &[a, b], Imm::Cc(cc), Ty::BOOL)
     }
     /// `fcmp.cc`.

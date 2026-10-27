@@ -505,6 +505,39 @@ impl ListInt32Sum for List[Int32]:
             total += x
         return total
 
+interface ListUInt8Sum:
+    def sum() -> UInt8
+
+impl ListUInt8Sum for List[UInt8]:
+    # Adds the elements left to right with `+`, so UInt8 overflow faults; an empty list sums to 0.
+    def sum() -> UInt8:
+        var total: UInt8 = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListUInt16Sum:
+    def sum() -> UInt16
+
+impl ListUInt16Sum for List[UInt16]:
+    # Adds the elements left to right with `+`, so UInt16 overflow faults; an empty list sums to 0.
+    def sum() -> UInt16:
+        var total: UInt16 = 0
+        for x in self:
+            total += x
+        return total
+
+interface ListUInt32Sum:
+    def sum() -> UInt32
+
+impl ListUInt32Sum for List[UInt32]:
+    # Adds the elements left to right with `+`, so UInt32 overflow faults; an empty list sums to 0.
+    def sum() -> UInt32:
+        var total: UInt32 = 0
+        for x in self:
+            total += x
+        return total
+
 interface ListFloat32Sum:
     def sum() -> Float32
 

@@ -80,7 +80,13 @@ pub struct Options {
 
 /// Lowers the tests of the entry module under a runner entry; returns the module and test names.
 pub fn lower_tests(program: &Program, options: &Options) -> Result<(Module, Vec<String>), Error> {
-    func::lower_tests(program, options)
+    func::lower_tests(program, options, false)
+}
+
+/// Lowers the `bench` blocks of the entry module under a runner entry, like [`lower_tests`]; each
+/// block runs under the `@std/bench.ms` driver.
+pub fn lower_benches(program: &Program, options: &Options) -> Result<(Module, Vec<String>), Error> {
+    func::lower_tests(program, options, true)
 }
 
 /// The marker a failed test writes to stderr ahead of its message.

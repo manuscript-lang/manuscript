@@ -215,13 +215,17 @@ impl ImplDecl {
     }
 }
 
-/// `test "name":` block; it implicitly returns `Unit`.
+/// `test "name":` or `bench "name":` block; it implicitly returns `Unit`.
 #[derive(Debug, Clone)]
 pub struct TestDecl {
-    /// Test name (plain text, no interpolation).
+    /// Test or benchmark name (plain text, no interpolation).
     pub name: Box<str>,
     /// Body statements.
     pub body: Vec<Stmt>,
+    /// Whether the block is a `bench`: `ms bench` runs its body repeatedly and times it; `ms test` skips it.
+    pub bench: bool,
+    /// Operations one iteration of a `bench ... per N:` block performs; 1 otherwise. `ms bench` reports time per operation.
+    pub per: i64,
 }
 
 /// A method in an `impl` or an operation signature in an `interface`.

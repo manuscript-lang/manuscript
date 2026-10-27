@@ -1,0 +1,82 @@
+name: Platform benchmarks
+
+# Manual runs only: builds the release `ms` natively on each platform, runs the runtime allocator and
+# memory tests, and prints the bench/perf/strappend table (StringBuilder and List growth against Rust)
+# so that a runtime change can be checked on Linux, macOS and Windows before and after merging.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  strappend:
+    name: strappend ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-amd64, os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { name: darwin-arm64, os: darwin, arch: arm64, runner: macos-15 }
+          - { name: darwin-amd64, os: darwin, arch: amd64, runner: macos-15-intel }
+          - { name: windows-amd64, os: windows, arch: amd64, runner: windows-2025 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: amd64
+      - name: Select native Windows Rust host and MSVC linker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $rustTarget = 'x86_64-pc-windows-msvc'
+          rustup set default-host $rustTarget
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          if (!(Test-Path $msvcLinker)) { throw "MSVC linker missing: $msvcLinker" }
+          $linkerKey = 'CARGO_TARGET_' + $rustTarget.ToUpper().Replace('-', '_') + '_LINKER'
+          "$linkerKey=$msvcLinker" >> $env:GITHUB_ENV
+      - name: Use clang as the C compiler on Windows
+        if: runner.os == 'Windows'
+        run: echo 'CC=clang' >> "$GITHUB_ENV"
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - name: Record the CPU
+        run: |
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep -E 'Model name|Flags' | cut -c1-200 ;;
+            macOS) sysctl -n machdep.cpu.brand_string ;;
+            Windows) powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name" ;;
+          esac
+      - name: Build the native runtime
+        run: cargo xtask runtime
+      - name: Runtime allocator and memory tests
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
+          fi
+          cargo test --locked -p ms-rt
+      - name: Build the release ms
+        run: cargo build --release --locked -p ms-cli
+      - name: Run bench/perf/strappend
+        run: |
+          ms=target/release/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          # Git's `link.exe` shadows MSVC's on the Windows runner, so rustc gets the linker explicitly.
+          export RUSTC_LINKER="${CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER:-}"
+          MS="$PWD/$ms" sh bench/perf/strappend/run.sh 5 | tee strappend-${{ matrix.name }}.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: strappend-${{ matrix.name }}
+          path: strappend-${{ matrix.name }}.txt

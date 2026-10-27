@@ -330,7 +330,10 @@ fn unicode_valid(s: &[u8]) -> bool {
 const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
-use ms_rt::scan::{json_special as find_special, push_short, skip_spaces};
+use ms_rt::scan::{
+    json_plain_digits, json_simple_number, json_special as find_special, push_member_name,
+    push_member_quoted, push_short, push_string_short, skip_spaces,
+};
 
 enum Frame {
     /// An array whose items so far are `vals[start..]`.
@@ -1206,6 +1209,18 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_name(&mut self.buf, top.count > 0, key.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
+        }
         self.buf.reserve(key.len() + 8);
         self.separate();
         self.quoted(key);
@@ -1220,6 +1235,18 @@ impl Writer {
     pub fn key_quoted(&mut self, quoted_name: &str) {
         if self.err.is_some() {
             return;
+        }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_quoted(&mut self.buf, top.count > 0, quoted_name.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
         }
         self.separate();
         push_short(&mut self.buf, quoted_name.as_bytes());
@@ -1335,7 +1362,11 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
-        if !number_text_valid(text) {
+        let b = text.as_bytes();
+        if !(b.len() <= 16 && json_plain_digits(b))
+            && !json_simple_number(b)
+            && !number_text_valid(text)
+        {
             return self.fail();
         }
         self.raw(text);
@@ -1358,6 +1389,10 @@ impl Writer {
 
     fn quoted(&mut self, s: &str) {
         let b = s.as_bytes();
+        // Most names and short values: no escape, one capacity check.
+        if push_string_short(&mut self.buf, b) {
+            return;
+        }
         self.buf.reserve(b.len() + 2);
         self.buf.push(b'"');
         let mut at = 0;
@@ -1473,9 +1508,20 @@ fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
             len -= zeros;
         }
     }
-    for slot in buf[..len].iter_mut().rev() {
-        *slot = b'0' + (n % 10) as u8;
-        n /= 10;
+    // Two digits per step, as in `Writer::int`.
+    let mut at = len;
+    while n >= 100 {
+        let pair = (n % 100) as usize * 2;
+        n /= 100;
+        at -= 2;
+        buf[at] = PAIRS[pair];
+        buf[at + 1] = PAIRS[pair + 1];
+    }
+    if at == 2 {
+        buf[0] = PAIRS[n as usize * 2];
+        buf[1] = PAIRS[n as usize * 2 + 1];
+    } else {
+        buf[0] = b'0' + n as u8;
     }
     Some((len, 14 - scale))
 }
@@ -1502,29 +1548,85 @@ fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
     Some((n, exp))
 }
 
+const POW10_INT: [u64; 5] = [1, 10, 100, 1000, 10000];
+
+/// Writes the decimal digits of `n` (none for zero) so that they end just before `end`, two at a
+/// time, and returns where they start.
+#[inline(always)]
+fn put_digits(buf: &mut [u8; 24], mut end: usize, mut n: u64) -> usize {
+    while n >= 100 {
+        let pair = (n % 100) as usize * 2;
+        n /= 100;
+        end -= 2;
+        buf[end] = PAIRS[pair];
+        buf[end + 1] = PAIRS[pair + 1];
+    }
+    if n >= 10 {
+        end -= 2;
+        buf[end] = PAIRS[n as usize * 2];
+        buf[end + 1] = PAIRS[n as usize * 2 + 1];
+    } else if n > 0 {
+        end -= 1;
+        buf[end] = b'0' + n as u8;
+    }
+    end
+}
+
+/// Writes `v` when it is a decimal with one to four fraction digits and at most 15 digits in all
+/// (`12345.5`, `0.25`, `99.99`), by scaling to an integer and checking that it divides back to
+/// `abs`: the quotient of an exact integer by an exact power of ten is the correctly rounded
+/// double of that decimal, so a match is the digits the shortest-round-trip formatter finds, and
+/// the first scale that matches is the fewest fraction digits. Anything else returns false and
+/// writes nothing.
+fn short_fraction(out: &mut Vec<u8>, v: f64, abs: f64) -> bool {
+    if !(1e-3..1e11).contains(&abs) {
+        return false;
+    }
+    for (k, pow) in [(1usize, 10.0), (2, 100.0), (3, 1000.0), (4, 10000.0)] {
+        // Below 1e15 either way, so the signed conversions (cheaper than unsigned ones) are exact.
+        let n = (abs * pow + 0.5) as i64;
+        if n as f64 / pow != abs {
+            continue;
+        }
+        let n = n as u64;
+        let scale = POW10_INT[k];
+        // `n` has no trailing zero here: one fewer fraction digit would have matched first.
+        // The buffer starts as zeros, so a short fraction keeps its leading zeros.
+        let mut text = [b'0'; 24];
+        let mut at = 24 - k;
+        put_digits(&mut text, 24, n % scale);
+        at -= 1;
+        text[at] = b'.';
+        let start = put_digits(&mut text, at, n / scale);
+        at = if start == at { at - 1 } else { start };
+        if v.is_sign_negative() {
+            out.push(b'-');
+        }
+        push_short(out, &text[at..]);
+        return true;
+    }
+    false
+}
+
 /// Appends [`float_text`] to `out`; `None` (and nothing appended) for NaN and infinities.
 fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
     if !v.is_finite() {
         return None;
     }
     let abs = v.abs();
-    if abs < 1e15 && (abs as u64) as f64 == abs {
+    if abs < 1e15 && (abs as i64) as f64 == abs {
         // A whole number prints as its digits, with no point or exponent.
         if v.is_sign_negative() {
             out.push(b'-');
         }
-        let mut digits = [0u8; 16];
-        let mut at = digits.len();
-        let mut n = abs as u64;
-        loop {
-            at -= 1;
-            digits[at] = b'0' + (n % 10) as u8;
-            n /= 10;
-            if n == 0 {
-                break;
-            }
-        }
+        let mut digits = [b'0'; 24];
+        let start = put_digits(&mut digits, 24, abs as u64);
+        // Zero has no digits from `put_digits`; its one `0` is already in the buffer.
+        let at = start.min(23);
         push_short(out, &digits[at..]);
+        return Some(());
+    }
+    if short_fraction(out, v, abs) {
         return Some(());
     }
     let mut buf = [0u8; 24];

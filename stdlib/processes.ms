@@ -117,8 +117,8 @@ export type Inbox:
 def frame(kind: Int, body: String) -> Bytes:
     let data = body.to_bytes()
     var out = BytesBuilder()
-    out.append_uint32_le(data.length())
-    out.append(kind)
+    out.append_uint32_le(data.length().to_uint32().get(0))
+    out.append(kind.to_uint8().get(0))
     out.append_bytes(data)
     return out.build()
 
@@ -150,12 +150,12 @@ def next_frame(
             let available = state.value.pending.length()
 
             if available >= 5:
-                let size = state.value.pending.uint32_le(0).get(0)
+                let size = state.value.pending.uint32_le(0).get(0).to_int()
                 if size > FRAME_LIMIT:
                     return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 
                 if available >= 5 + size:
-                    let kind = state.value.pending.get(4)
+                    let kind = state.value.pending.get(4).to_int()
                     let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
                     state.value.pending = state.value.pending.slice(
                         5 + size, available
