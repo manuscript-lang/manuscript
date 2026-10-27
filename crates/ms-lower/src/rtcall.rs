@@ -179,6 +179,15 @@ const STATUS_CASES: [(i64, &str); 16] = [
 /// `STATUS_NONE`: end of stream or an absent optional.
 const STATUS_NONE: i64 = 16;
 
+/// What a handle a runtime call writes becomes in a `Result` payload.
+#[derive(Clone, Copy)]
+pub(crate) enum Wrap {
+    /// An interface value over the handle, with the interface type.
+    Iface(ms_mir::ir::VtableId, MTy),
+    /// A record whose only field is the handle.
+    Record(ms_mir::types::RecId),
+}
+
 impl FnLower<'_> {
     /// The list type of a call result: the result itself, or the `ok` payload of a `Result`.
     fn result_list(&self, result: MTy) -> Option<MTy> {
@@ -820,9 +829,22 @@ impl FnLower<'_> {
             (TyKind::Alt(_), TyKind::Iface(i)) => Some(*i),
             _ => None,
         };
-        let slot_ty = match wrap {
-            Some(_) => crate::natiface::handle_ty(self.b.m),
-            None => eof.unwrap_or(payload),
+        // `Result[Wrapper, E]` where `Wrapper` is a record around one runtime handle (a std type
+        // such as `FileHandle { native: NativeFile }`): the runtime writes the handle and the
+        // record is built around it.
+        let record = match (self.b.m.types.kind(result), self.b.m.types.kind(payload)) {
+            (TyKind::Alt(_), TyKind::Rec(r)) => {
+                let fields = &self.b.m.records[r.index()].fields;
+                let one_handle = fields.len() == 1
+                    && matches!(self.b.m.types.kind(fields[0].1), TyKind::Obj(..));
+                one_handle.then_some((*r, fields[0].1))
+            }
+            _ => None,
+        };
+        let slot_ty = match (wrap, record) {
+            (Some(_), _) => crate::natiface::handle_ty(self.b.m),
+            (None, Some((_, handle))) => handle,
+            (None, None) => eof.unwrap_or(payload),
         };
         let slot = self
             .b
@@ -845,13 +867,14 @@ impl FnLower<'_> {
             };
             return self.status_optional_result(sym, code, take, result);
         }
-        let wrap = match wrap {
-            Some(i) => {
+        let wrap = match (wrap, record) {
+            (Some(i), _) => {
                 let hir = self.hir.clone();
                 let vt = self.cx.handle_vtable_of(self.b.m, &hir, sym, i)?;
-                Some((vt, payload))
+                Some(Wrap::Iface(vt, payload))
             }
-            None => None,
+            (None, Some((rec, _))) => Some(Wrap::Record(rec)),
+            (None, None) => None,
         };
         let Some(code) = code else {
             // A presence flag.
@@ -1033,7 +1056,7 @@ impl FnLower<'_> {
         sym: &str,
         code: Value,
         out: Option<(Value, MTy)>,
-        wrap: Option<(ms_mir::ir::VtableId, MTy)>,
+        wrap: Option<Wrap>,
         result: MTy,
     ) -> Result<Val, Error> {
         let TyKind::Alt(a) = self.b.m.types.kind(result).clone() else {
@@ -1054,10 +1077,11 @@ impl FnLower<'_> {
                     None => s.b.unit(),
                 };
                 let payload = match wrap {
-                    Some((vt, it)) => {
+                    Some(Wrap::Iface(vt, it)) => {
                         s.b.emit(Op::IfaceNew, &[payload], Imm::Vtable(vt), Some(it))
                             .expect("iface")
                     }
+                    Some(Wrap::Record(rec)) => s.b.rec_new(rec, &[payload]),
                     None => payload,
                 };
                 Ok(Some(s.b.alt_new(a, ok as u32, &[payload])))

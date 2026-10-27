@@ -18,7 +18,7 @@ test "flows compose stream transforms":
 
     with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
         let path = f"{temporary.path()}/pipeline.bin"
-        let output = (fs.open(path: path, flags: "w", mode: 420) | try expect_ok)
+        var output = (fs.open(path: path, flags: "w", mode: 420) | try expect_ok)
         let source = from_bytes("hello world".to_bytes(), 4)
         let copied = source | map(upper) | take(8) | try copy(output.writer())
         output.close()
@@ -32,7 +32,7 @@ test "concat tee and writer helpers":
 
     with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
         let log_path = f"{temporary.path()}/tee.bin"
-        let log = (fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok)
+        var log = (fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok)
         let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
         let seen = tee(joined, log.writer())
         if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
@@ -43,7 +43,7 @@ test "concat tee and writer helpers":
         )
 
         let sink_path = f"{temporary.path()}/writer.bin"
-        let sink = (fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok)
+        var sink = (fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok)
         var writer = map_writer(sink.writer(), upper)
         try writer.write("quiet")
         try writer.write_bytes("!".to_bytes())
