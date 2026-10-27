@@ -107,3 +107,45 @@ fn fix_wraps_expressions_to_convert_types() {
     assert!(fixed.contains("say(text: f\"{n + 1}\")"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn lint_json_carries_the_fix_that_fix_applies() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-lint-json-fix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "def present(value: Int) -> Optional[Int]:\n    return some(value)\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+
+    let (status, text) = ms(&["lint", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("\"code\": \"MSL113\""), "{text}");
+    assert!(text.contains("\"fix\""), "{text}");
+    assert!(text.contains("\"replacement\": \"value\""), "{text}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
+
+    let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("return value\n"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn directory_symlink_named_like_source_is_skipped() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-dir-link-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("real")).unwrap();
+    std::os::unix::fs::symlink("real", dir.join("linked.ms")).unwrap();
+
+    for args in [
+        &["fmt", ".", "--check", "--json"][..],
+        &["check", ".", "--json"],
+        &["lint", ".", "--json"],
+    ] {
+        let (status, text) = ms(args, &dir);
+        assert_eq!(status, Some(0), "{args:?}: {text}");
+        assert!(!text.contains("is a directory"), "{args:?}: {text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
