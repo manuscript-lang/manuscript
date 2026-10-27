@@ -504,6 +504,15 @@ impl Network {
 
     /// Binds a listening TCP socket.
     pub fn listen_tcp(&self, address: &str) -> Result<Socket, NetErr> {
+        let r = self.listen_tcp_inner(address);
+        if let Ok(s) = &r {
+            probe("wrapper after inner 1", s);
+            probe("wrapper after inner 2", s);
+        }
+        r
+    }
+
+    fn listen_tcp_inner(&self, address: &str) -> Result<Socket, NetErr> {
         let (host, port) =
             split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
         let port = parse_port(port).ok_or_else(|| NetErr::failed("invalid port"))?;

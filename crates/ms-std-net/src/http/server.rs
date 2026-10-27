@@ -722,7 +722,8 @@ impl Server {
         } else {
             owner.listen_tcp(address)?
         };
-        probe("serve: before local_addr", &listener);
+        probe("serve: first after wrapper", &listener);
+        probe("serve: second after wrapper", &listener);
         let local_sa = listener.local_addr();
         probe("serve: after local_addr", &listener);
         let local = local_sa
