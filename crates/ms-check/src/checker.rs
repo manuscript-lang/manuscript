@@ -123,6 +123,9 @@ pub struct Program {
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
     /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
+    /// identity. Filled together with `borrows`.
+    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
     /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,

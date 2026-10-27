@@ -378,6 +378,27 @@ impl<'a> FnLower<'a> {
                 continue;
             }
             let ty = self.ty_of(a.v);
+            // A variable that lives in memory (a closure shares it) is passed by its own slot:
+            // the callee changes it in place, so nothing is copied in or written back.
+            if !a.own
+                && let Some(slot) = args
+                    .places
+                    .get(i)
+                    .cloned()
+                    .flatten()
+                    .filter(|p| matches!(p.kind, ExprKind::Name(_)))
+                    .and_then(|p| match self.hir.resolution(&p) {
+                        ms_check::hir::Resolution::Local(b)
+                            if !self.aliases.contains_key(&b.uid) =>
+                        {
+                            self.locals.get(&b.uid).and_then(|l| l.slot)
+                        }
+                        _ => None,
+                    })
+            {
+                vals.push(slot);
+                continue;
+            }
             if vars.len() == 1
                 && !a.own
                 && let Some(place) = args.places.get(i).cloned().flatten()
