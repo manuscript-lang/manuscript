@@ -34,3 +34,21 @@ What changed: `build()` on a builder that is not used again moves its bytes inst
 | 1M items | 0.33x | 0.39x | 0.19x | 0.08x |
 
 Windows and macOS are ahead of Rust because their system allocators are slower than glibc's at growing a buffer. On the Linux runner and macOS arm64, 64 B to 1 KiB pieces are 1.3-1.8x behind while the local machine above is within 1.1x. Rust's time for those sizes drops by a third on the runner and ours does not, so what remains looks like per-append call cost (the runtime call and string decode against an inlined `push_str`), not growth.
+
+### After inlining the in-place append
+
+Same workflow, after a non-inline string that fits the buffer is appended with a capacity check, one `memcpy` and a length bump in the caller (no runtime call), and the runtime's own append ends in a tail call to `memcpy`.
+
+| piece / items | linux-amd64 | darwin-arm64 | darwin-amd64 | windows-amd64 |
+|---|---|---|---|---|
+| 4 B | 0.76x | 0.99x | 0.82x | 0.76x |
+| 16 B | 0.69x | 1.00x | 0.62x | 0.31x |
+| 64 B | 1.00x | 1.17x | 0.32x | 0.27x |
+| 256 B | 1.38x | 1.00x | 0.12x | 0.09x |
+| 1 KiB | 1.19x | 1.00x | 0.08x | 0.08x |
+| 8 KiB | 0.06x | 0.93x | 0.07x | 0.08x |
+| 10K items | 0.30x | 0.89x | 0.21x | 0.60x |
+| 100K items | 0.32x | 0.55x | 0.11x | 0.23x |
+| 1M items | 0.30x | 0.28x | 0.11x | 0.17x |
+
+The Linux runner (AMD EPYC 7763) is still behind at 256 B (1.38x) and 1 KiB (1.19x), and macOS arm64 at 64 B (1.17x); everything else is at or ahead of Rust.
