@@ -123,30 +123,30 @@ impl SseDecoder for Decoder:
 
         let total = chunk.length()
         var start = 0
-        var index = 0
+        var lf = chunk.index_of_byte(10, 0).get(total)
+        var cr = chunk.index_of_byte(13, 0).get(total)
 
-        while index < total:
-            let byte = chunk.get(index)
+        while start < total:
+            var end = lf
+            if cr < end: end = cr
+            if end == total: break
 
-            if byte != 10 and byte != 13:
-                index += 1
-                continue
+            let byte = chunk.get(end)
 
-            if byte == 10 and self.carriage and index == start:
+            if byte == 10 and self.carriage and end == start:
                 self.carriage = False
-                index += 1
-                start = index
-                continue
+            else:
+                let step = complete(var self, chunk, start, end, var events)
+                self.carriage = byte == 13
 
-            let step = complete(var self, chunk.slice(start, index).get(), var events)
-            self.carriage = byte == 13
-            index += 1
-            start = index
+                if step.is_error():
+                    let failure = step.err().clone()
+                    self.failure = failure.clone()
+                    return error(failure)
 
-            if step.is_error():
-                let failure = step.err().clone()
-                self.failure = failure.clone()
-                return error(failure)
+            start = end + 1
+            if lf < start: lf = chunk.index_of_byte(10, start).get(total)
+            if cr < start: cr = chunk.index_of_byte(13, start).get(total)
 
         if start < total:
             self.carriage = False
@@ -185,46 +185,41 @@ def hold(var decoder: Decoder, segment: Bytes) -> Result[Unit, SseError]:
     decoder.line.append_bytes(segment)
     return ok(())
 
-# Finishes the line ending at a terminator, joining it with any bytes held from earlier chunks.
-def complete(var decoder: Decoder, segment: Bytes, var events: List[SseEvent]) -> Result[
-    Unit, SseError
-]:
+# Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
+def complete(
+    var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
+) -> Result[Unit, SseError]:
     if decoder.line_bytes == 0:
-        if exceeds(segment.length(), decoder.limits.max_line_bytes): return error(
+        if exceeds(end - start, decoder.limits.max_line_bytes): return error(
             SseError.LimitExceeded
         )
 
-        return end_line(var decoder, segment, var events)
+        return end_line(var decoder, chunk, start, end, var events)
 
-    try hold(var decoder, segment)
+    try hold(var decoder, chunk.slice(start, end).get())
 
     let joined = decoder.line.build()
     decoder.line = BytesBuilder()
     decoder.line_bytes = 0
-    return end_line(var decoder, joined, var events)
+    return end_line(var decoder, joined, 0, joined.length(), var events)
 
-def end_line(var decoder: Decoder, line_bytes: Bytes, var events: List[SseEvent]) -> Result[
-    Unit, SseError
-]:
+def end_line(
+    var decoder: Decoder, bytes: Bytes, start: Int, end: Int, var events: List[SseEvent]
+) -> Result[Unit, SseError]:
+    var from = start
+
     if not decoder.started:
         decoder.started = True
-        if line_bytes.starts_with(f"\u{feff}".to_bytes()): return end_line(
-            var decoder, line_bytes.slice(3, line_bytes.length()).get(), var events
-        )
+        if bytes.slice(start, end).get().starts_with(f"\u{feff}".to_bytes()): from += 3
 
-    return end_text_line(var decoder, line_bytes, var events)
-
-def end_text_line(var decoder: Decoder, bytes: Bytes, var events: List[SseEvent]) -> Result[
-    Unit, SseError
-]:
-    if bytes.is_empty():
+    if from == end:
         dispatch(var decoder, var events)
         return ok(())
 
-    let line = try bytes.decode_utf8().ok_or(SseError.InvalidData)
+    let line = try bytes.decode_utf8_range(from, end).ok_or(SseError.InvalidData)
     if line.starts_with(":"): return ok(())
 
-    decoder.event_bytes += bytes.length()
+    decoder.event_bytes += end - from
     if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
         SseError.LimitExceeded
     )
