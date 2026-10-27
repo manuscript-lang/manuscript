@@ -70,15 +70,14 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for v in v5 v6; do
+          for v in v6; do
             target/debug/ms.exe build .github/diag/v/$v.ms -o $v.exe
             for i in 1 2 3 4 5 6; do
+              if [ $i -gt 3 ]; then export MS_DIAG_NB=1; fi
               MS_DIAG_POLL=1 timeout 8 ./$v.exe > $v.$i.txt 2>&1
               code=$?
               echo "== $v run $i exit $code lines $(wc -l < $v.$i.txt)"
-              if [ $i = 1 ] || [ $code != 0 ]; then
-                if [ ! -e $v.shown.$code ]; then touch $v.shown.$code; echo "---- trace $v run $i"; head -c 4000 $v.$i.txt; fi
-              fi
+              if [ $i = 1 ] || [ $i = 4 ]; then echo "---- trace $v run $i"; head -c 4000 $v.$i.txt; fi
             done
           done
           true

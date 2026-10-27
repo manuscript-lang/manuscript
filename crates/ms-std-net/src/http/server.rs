@@ -920,7 +920,13 @@ impl Server {
     fn accept_all(&self, reactor: &Reactor) {
         loop {
             let accepted = match self.listener.borrow().as_ref() {
-                Some(listener) => listener.accept(),
+                Some(listener) => {
+                    dg("accept begin");
+                    if std::env::var_os("MS_DIAG_NB").is_some() {
+                        dg(&format!("re-set nonblocking: {:?}", listener.set_nonblocking(true)));
+                    }
+                    listener.accept()
+                }
                 None => break,
             };
             dg(&format!("accept returned ok={}", accepted.is_ok()));
