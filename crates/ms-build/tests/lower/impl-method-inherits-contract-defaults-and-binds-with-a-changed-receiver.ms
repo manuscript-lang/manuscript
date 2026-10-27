@@ -35,7 +35,7 @@ impl Runner for Capture:
 
 export def main() -> Int:
     var capture = Capture(0)
-    let bound = capture.run
-    let r = capture.run("x", [], "".to_bytes())
-    let o = CsvOptions()
+    let _bound = capture.run
+    let _r = capture.run("x", [], "".to_bytes())
+    let _o = CsvOptions()
     return 0

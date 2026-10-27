@@ -5,4 +5,4 @@ def sum(value: Int) -> Int:
     return value + 1
 
 test "fault":
-    let impossible = sum(value: 9223372036854775807)
+    let _impossible = sum(value: 9223372036854775807)

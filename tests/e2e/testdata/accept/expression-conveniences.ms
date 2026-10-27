@@ -36,7 +36,7 @@ def early(value: Optional[Int]) -> Int:
     return number + 1
 
 def all_return(value: Optional[Int]) -> Int:
-    let unreachable = match value:
+    let _unreachable = match value:
         case some(number): return number
         case none: return 9
 
@@ -218,7 +218,7 @@ def returned_loop(value: Optional[Int]) -> Int:
         if index > 1: return 23
 
         match value:
-            case some(number):
+            case some(_number):
                 index = index + 1
                 continue
             case none: break
@@ -257,7 +257,7 @@ def condition_exit(value: Optional[Int]) -> Int:
     while True:
         while (
             match value:
-                case some(number): True
+                case some(_number): True
                 case none: break
         ):
             return 1

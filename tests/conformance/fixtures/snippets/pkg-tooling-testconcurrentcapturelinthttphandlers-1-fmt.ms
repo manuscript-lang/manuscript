@@ -6,4 +6,4 @@ from "@std/http.ms" import HttpResponse, HttpServerOptions
 from "@std/core.ms" import panic
 
 def run() -> Unit:
-    let values = [0]
+    let _values = [0]

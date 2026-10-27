@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 def fib(n: Int) -> Int:
     var a = 0
@@ -22,7 +22,7 @@ def fib(n: Int) -> Int:
     return a
 
 export def main() -> Int:
-    let i1 = ((-6) / ((227939817206 * (-35)) * (1 * (-38))))
+    let _i1 = ((-6) / ((227939817206 * (-35)) * (1 * (-38))))
     let s2 = ("naïve" + "alpha").reverse().reverse()
     say(f"s2 = [{s2}]")
 

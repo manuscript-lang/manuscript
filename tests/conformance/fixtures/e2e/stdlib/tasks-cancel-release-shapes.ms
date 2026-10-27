@@ -80,7 +80,7 @@ def t_match() -> Int:
 def t_chan(ch: Channel[Unit, Unit]) -> Int:
     var c = ch
     let held = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
-    let got = c.receive()
+    let _got = c.receive()
     return held.length()
 
 def t_nested(depth: Int) -> Int:

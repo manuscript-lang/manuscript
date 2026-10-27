@@ -6,13 +6,13 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let i1 = (((-28) + (-307624)) / (-15))
     say(f"i1 = {i1}")
 
-    let bad = say
+    let _bad = say
     let f2 = (((152.477 * 745.315) + (0.5 * 135.037)) - 191.102)
     say(f"f2 = {f2}")
 

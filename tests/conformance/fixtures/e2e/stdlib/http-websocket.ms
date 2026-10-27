@@ -70,7 +70,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             )
         )
         (
-            response.metadata().headers.values("X-Test") | try expect_equal(some(["manuscript"]))
+            response.metadata().headers.values("X-Test") | try expect_equal(["manuscript"])
         )
 
         let client_options = HttpClientOptions(

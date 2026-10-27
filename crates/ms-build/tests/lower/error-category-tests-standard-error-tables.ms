@@ -6,5 +6,5 @@ from "@std/io.ms" import IoError
 
 export def main() -> Int:
     let cause: Error = IoError.Closed
-    let c = category(cause)
+    let _c = category(cause)
     return 0

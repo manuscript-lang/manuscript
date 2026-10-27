@@ -4,6 +4,6 @@
 def from_callback[T](factory: Callable[[], T]) -> T: factory()
 
 def first() -> Unit:
-    let callback: Callable[[Int], Int] = from_callback(
+    let _callback: Callable[[Int], Int] = from_callback(
         lambda: lambda (value: Int = 4): value
     )

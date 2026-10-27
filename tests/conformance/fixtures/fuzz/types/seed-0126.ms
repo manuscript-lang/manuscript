@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     if ((424271 - (-18)) != 39):
@@ -14,7 +14,7 @@ export def main() -> Int:
     else:
         say("quote\"d".upper())
 
-    let bad = say
+    let _bad = say
     let b1 = (True and ((39 * (-12)) != ((-19) - (-35))))
     say(f"b1 = {b1}")
 
