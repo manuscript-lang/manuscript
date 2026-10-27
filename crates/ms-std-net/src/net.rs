@@ -522,7 +522,10 @@ impl Network {
         };
         let mut addr = SocketAddr::new(ip, port);
         let sock = match Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP)) {
-            Ok(sock) => sock,
+            ms_rt::dbgf!("[probe] P1 enter");
+        let r = sock.accept();
+        ms_rt::dbgf!("[probe] P1 exit {:?}", r.err().map(|e| e.kind()));
+        Ok(sock) => sock,
             // A host without IPv6 serves the empty host on IPv4 alone.
             Err(_) if host.is_empty() => {
                 addr = SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), port);

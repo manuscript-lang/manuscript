@@ -748,6 +748,11 @@ impl Server {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
         }
+        if let Some(l) = server.listener.borrow().as_ref() {
+            ms_rt::dbgf!("[probe] P2 enter");
+            let r = l.accept();
+            ms_rt::dbgf!("[probe] P2 exit {:?}", r.err().map(|e| e.kind()));
+        }
         SERVERS.with(|s| s.borrow_mut().insert(id, Rc::downgrade(&server)));
         let as_resource: Rc<dyn Resource> = server.clone();
         if !owner.own_server(&as_resource) {
@@ -904,8 +909,6 @@ impl Server {
         loop {
             let accepted = match self.listener.borrow().as_ref() {
                 Some(listener) => {
-                    #[cfg(windows)]
-                    ms_rt::dbgf!("[srv] renb {}", listener.set_nonblocking(true).is_ok());
                     ms_rt::dbgf!("[srv] accept enter");
                     let r = listener.accept();
                     ms_rt::dbgf!("[srv] accept exit ok={}", r.is_ok());
