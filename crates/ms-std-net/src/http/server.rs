@@ -537,6 +537,7 @@ impl Reactor {
             for &(token, flags) in &events {
                 dg(&format!("event {token} {flags:?}"));
                 self.handle_event(token, flags);
+                dg("event handled");
             }
             loop {
                 let retry: Vec<Rc<Conn>> = self.retry.borrow_mut().drain(..).collect();
@@ -549,7 +550,9 @@ impl Reactor {
                     }
                 }
             }
+            dg("run_handlers");
             self.run_handlers();
+            dg("run_handlers done");
             if raw < 64 {
                 break;
             }
@@ -920,6 +923,7 @@ impl Server {
                 Some(listener) => listener.accept(),
                 None => break,
             };
+            dg(&format!("accept returned ok={}", accepted.is_ok()));
             match accepted {
                 Ok((sock, _peer)) => {
                     dg("accepted");
