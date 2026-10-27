@@ -2,9 +2,9 @@
 
 **The language for the agentic era.**
 
-Manuscript is a native programming language designed to help agents write correct programs.
+Manuscript helps agents write correct, fast programs that are easy to review.
 
-A small, regular language gives agents a clear target. The compiler rejects invalid code, actionable diagnostics guide the repair, and executable tests check the behavior. Readable source keeps you close to what they build.
+Agents get a small, regular language, actionable compiler feedback and executable tests. You get native executables, readable source and compiler-backed evidence for reviewing changes.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Rust performance](#native-speed-measured-against-rust) · [How we're building it](#built-with-agents-improved-through-evidence)
 
@@ -67,6 +67,10 @@ The compiler rejects the lost result; the test checks the repaired error path. F
 | Collatz | 242.7 ms | 178.6 ms |
 
 Recorded on four-core Linux at `c1b81215` (October 25): Manuscript LLVM Release versus Rust at `opt-level=3`. The harness requires matching checksums across implementations. The [full seven-kernel results](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) include source, run commands and a separate overflow-checked Rust configuration.
+
+## Keep changes easy to review
+
+Read the error path in the example above: `try` makes the early return visible. For larger changes, [`ms review`](documentation/developer-tooling/implementation.md#review-report) compares checked before-and-after source and reports changes to contracts, error flow and resource scopes, giving reviewers concrete places to look.
 
 ## Built with agents. Improved through evidence.
 
