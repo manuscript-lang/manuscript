@@ -169,6 +169,8 @@ pub struct Cx {
     pub implicit_closes: Rc<std::collections::HashSet<usize>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Parameters each callable consumes, by module file and node.
+    pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
 }
@@ -221,6 +223,7 @@ impl Cx {
             borrows: program.borrows.clone(),
             implicit_closes: program.implicit_closes.clone(),
             lenders: program.lenders.clone(),
+            consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
         }
     }

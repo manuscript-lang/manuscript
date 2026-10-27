@@ -350,9 +350,13 @@ impl<'a> FnLower<'a> {
         // argument instead of a copy.
         let lent = self.cx.lenders.contains(&(c.module.file, c.id()))
             && c.func.func().is_some_and(|f| !f.body.is_empty());
+        let owned_mask = if lent { None } else { self.cx.owned_mask(c) };
         let fid = if lent {
             let scope = self.evidence();
             self.cx.function_lent(self.b.m, c, subst, scope)?
+        } else if owned_mask.is_some() {
+            let scope = self.evidence();
+            self.cx.function_owned(self.b.m, c, subst, scope)?
         } else {
             self.instance(c, subst)?
         };
@@ -365,7 +369,12 @@ impl<'a> FnLower<'a> {
         let mut in_place: Option<(usize, Expr, MTy)> = None;
         for (i, a) in args.slots.into_iter().flatten().enumerate() {
             if !vars.contains(&i) {
-                vals.push(self.borrow(a));
+                // A consumed parameter takes the value itself: a copy only when `a` is a borrow.
+                if owned_mask.as_ref().is_some_and(|mask| mask[i]) {
+                    vals.push(self.owned(a));
+                } else {
+                    vals.push(self.borrow(a));
+                }
                 continue;
             }
             let ty = self.ty_of(a.v);

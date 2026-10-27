@@ -178,6 +178,9 @@ pub struct Ownership {
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
     /// `ref` functions that can hand back a borrow on every path, by module file and node.
     pub lenders: HashSet<Key>,
+    /// For each callable with a `Consume` parameter, which parameters (declaration order, receiver
+    /// excluded) the body moves, stores or returns.
+    pub consumes: HashMap<Key, Vec<bool>>,
 }
 
 impl Ownership {
@@ -385,6 +388,7 @@ impl Hir<'_> {
         let mut closes = HashSet::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
+        let mut consumes = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
             for f in out.facts.bindings.values() {
                 let kind = if f.exclusive {
@@ -400,6 +404,16 @@ impl Hir<'_> {
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
+            if out.facts.parameters.contains(&ParamMode::Consume) {
+                consumes.insert(
+                    (c.module.file, c.id()),
+                    out.facts
+                        .parameters
+                        .iter()
+                        .map(|m| *m == ParamMode::Consume)
+                        .collect(),
+                );
+            }
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);
             }
@@ -413,6 +427,7 @@ impl Hir<'_> {
             closes,
             getters,
             lenders,
+            consumes,
         }
     }
 }
