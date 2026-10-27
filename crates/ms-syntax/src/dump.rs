@@ -944,7 +944,7 @@ impl D {
                 };
                 self.decl_fields(
                     d.pos,
-                    "test",
+                    if t.bench { "bench" } else { "test" },
                     &t.name,
                     e,
                     false,

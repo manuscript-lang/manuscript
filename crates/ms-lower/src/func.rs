@@ -249,7 +249,7 @@ impl Cx {
         let result = ct::sub(&self.callable_result(c)?, subst);
         let ret = self.lower_ty(m, &result)?;
         let name = if let ms_syntax::ast::DeclKind::Test(t) = &c.func.decl.decl().kind {
-            format!("test {}", t.name)
+            format!("{} {}", if t.bench { "bench" } else { "test" }, t.name)
         } else if c.name.as_str().is_empty() {
             "test".to_string()
         } else if let ms_syntax::ast::DeclKind::Impl(i) = &c.func.decl.decl().kind {
@@ -303,6 +303,7 @@ pub(crate) fn lower_program(program: &Program, options: &Options) -> Result<Modu
 pub(crate) fn lower_tests(
     program: &Program,
     _options: &Options,
+    bench: bool,
 ) -> Result<(Module, Vec<String>), Error> {
     let mut cx = Cx::new(program);
     let mut m = Module::new("main");
@@ -313,7 +314,7 @@ pub(crate) fn lower_tests(
             continue;
         }
         for c in cx.module(file)?.callables() {
-            if c.kind == CallableKind::Test {
+            if c.kind == CallableKind::Test && is_bench(&c) == bench {
                 tests.push((file, cx.callables[&(file, c.id())].clone()));
             }
         }
@@ -326,9 +327,27 @@ pub(crate) fn lower_tests(
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
+    if bench {
+        // Each bench runs under the standard driver, which repeats and times its body.
+        let driver = cx
+            .callables
+            .values()
+            .find(|c| {
+                c.module.file.as_str() == "@std/bench.ms" && c.name.as_str() == "run_bench_block"
+            })
+            .cloned()
+            .ok_or_else(|| Error::new("the bench driver @std/bench.ms is not loaded"))?;
+        let driver = cx.function_for(&mut m, &driver, &Subst::new())?;
+        ids = crate::runner::bench_entries(&mut m, &ids, driver);
+    }
     drain(&mut cx, &mut m)?;
     m.entry = Some(crate::runner::build_runner(&mut m, &ids)?);
     Ok((m, names))
+}
+
+/// Whether a test callable is a `bench` block.
+fn is_bench(c: &Callable) -> bool {
+    matches!(&c.func.decl.decl().kind, ms_syntax::ast::DeclKind::Test(t) if t.bench)
 }
 
 /// Lowers queued jobs until none remain. The text of an interface value tests every table of

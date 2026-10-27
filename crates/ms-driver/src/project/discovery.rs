@@ -12,7 +12,10 @@ fn skipped_name(name: &str) -> bool {
 }
 
 fn is_test_name(name: &str) -> bool {
-    name == "test.ms" || name.ends_with("_test.ms")
+    name == "test.ms"
+        || name.ends_with("_test.ms")
+        || name == "bench.ms"
+        || name.ends_with("_bench.ms")
 }
 
 /// `filepath.WalkDir` semantics: lexical order, symlinks are not followed
@@ -59,7 +62,7 @@ fn walk_entry(
     Ok(())
 }
 
-/// Find project `test.ms` and `*_test.ms` files. With `include_source`, also
+/// Find project `test.ms`, `*_test.ms`, `bench.ms` and `*_bench.ms` files. With `include_source`, also
 /// every `.ms` file below the configured source directory. Hidden, `vendor`
 /// and `node_modules` directories are skipped and directory symlinks are not
 /// followed. Traversal errors are returned so callers cannot report a partial

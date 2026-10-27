@@ -21,6 +21,16 @@ pub trait Lower {
     ) -> Result<(Module, Vec<String>), String> {
         Err("this lowering does not build tests".to_string())
     }
+
+    /// A bench executable and its bench names, in index order. It runs like a test executable;
+    /// each bench reports its statistics on standard output; see `ms_cli::engine::benching`.
+    fn lower_benches(
+        &self,
+        _program: &Program,
+        _entry: &str,
+    ) -> Result<(Module, Vec<String>), String> {
+        Err("this lowering does not build benches".to_string())
+    }
 }
 
 /// HIR to MIR lowering by `ms-lower`.
@@ -39,6 +49,17 @@ impl Lower for Native {
             entry: entry.to_string(),
         };
         ms_lower::lower_tests(program, &options).map_err(|e| e.to_string())
+    }
+
+    fn lower_benches(
+        &self,
+        program: &Program,
+        entry: &str,
+    ) -> Result<(Module, Vec<String>), String> {
+        let options = ms_lower::Options {
+            entry: entry.to_string(),
+        };
+        ms_lower::lower_benches(program, &options).map_err(|e| e.to_string())
     }
 }
 

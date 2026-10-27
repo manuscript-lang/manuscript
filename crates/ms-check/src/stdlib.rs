@@ -573,6 +573,15 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             visit(&extension, &mut state, &mut ordered, &mut diagnostics);
         }
     }
+    // A `bench` block runs under the driver in `@std/bench.ms`, which its module need not import.
+    let benching = modules.iter().any(|m| {
+        m.decls
+            .iter()
+            .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
+    });
+    if benching && let Some(driver) = standard_source_module(n("@std/bench.ms")) {
+        visit(&driver, &mut state, &mut ordered, &mut diagnostics);
+    }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);
     }
