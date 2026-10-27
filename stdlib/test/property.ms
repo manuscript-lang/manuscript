@@ -298,8 +298,9 @@ def run_case[T](
     if source.invalid:
         return Outcome(source, none)
 
-    # The property runs in a forked child so a fault becomes a failing case that shrinks like an error.
-    # The child faults with `property_failed` when the property returns an error; that message is then read in full by rerunning.
+    # The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
+    # It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
+    # on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     let faulted = expect_fault(lambda: run_property(property, value))
     if faulted.is_error():
         return Outcome(source, none)
@@ -308,7 +309,9 @@ def run_case[T](
     if message != property_failed:
         return Outcome(source, some(f"fault: {message}"))
 
-    let outcome = property(value)
+    let replayed = Source(source.choices.take(source.pos), 0, 0, False, False)
+    let {value: again} = gen.make(replayed)
+    let outcome = property(again)
     return Outcome(source, some(outcome.err().message()))
 
 let property_failed = "property returned an error"
@@ -399,7 +402,7 @@ def shrink[T](
 
 # Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
 # Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
-# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs in a forked child.
+# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
 export def check[T](
     name: String,
     gen: Gen[T],
