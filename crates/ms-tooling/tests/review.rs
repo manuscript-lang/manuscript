@@ -163,6 +163,59 @@ fn effect_gain_ranks_through_callers() {
 }
 
 #[test]
+fn review_reach_counts_distinct_callers_across_cycles() {
+    let mut entry = fact("r.ms", "fn", "entry", 1);
+    let mut left = fact("r.ms", "fn", "left", 3);
+    let mut right = fact("r.ms", "fn", "right", 5);
+    let mut target = fact("r.ms", "fn", "target", 7);
+    let unrelated = fact("r.ms", "fn", "unrelated", 9);
+    entry.calls = vec![left.key.clone(), right.key.clone()];
+    left.calls = vec![target.key.clone(), target.key.clone()];
+    right.calls = vec![target.key.clone()];
+    target.calls = vec![left.key.clone(), target.key.clone()];
+    target.exported = true;
+    let base = facts_of(vec![entry, left, right, target, unrelated]);
+    let mut head = base.clone();
+    head.entities
+        .get_mut(&fact_key("r.ms", "fn", "target"))
+        .unwrap()
+        .ty = "fn() String".into();
+    head.entities
+        .get_mut(&fact_key("r.ms", "fn", "left"))
+        .unwrap()
+        .withs = 1;
+
+    // The right branch has one caller, but a body-only edit gets no reach bonus.
+    let findings = compare_facts(&base, &head, &input(&[6]));
+    let scores: Vec<_> = findings
+        .iter()
+        .map(|f| {
+            (
+                f.entity.as_str(),
+                f.tier.as_str(),
+                f.reach,
+                f.score,
+                f.terms.iter().map(String::as_str).collect::<Vec<_>>(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        scores,
+        vec![
+            (
+                "target",
+                "CONTRACT",
+                3,
+                15,
+                vec!["contract +8", "reach(3) +4", "exported +3"],
+            ),
+            ("left", "RESOURCE", 3, 8, vec!["resource +4", "reach(3) +4"]),
+            ("right", "INTERNAL", 0, 0, vec![]),
+        ]
+    );
+}
+
+#[test]
 fn body_edit_is_internal_only() {
     let base = program(false);
     let report = diff_report(&base, &base, &input(&[8]), ReviewOptions::default());
