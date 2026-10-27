@@ -604,8 +604,20 @@ fn canonicalize_now(path: &[u8]) -> Res<Vec<u8>> {
 // Temporary directories
 // ---------------------------------------------------------------------------
 
+/// `p` resolved against the working directory when relative (unchanged if that is unavailable).
+pub fn absolute(p: &[u8]) -> Vec<u8> {
+    if path::is_abs(p) {
+        return p.to_vec();
+    }
+    match sys::getcwd() {
+        Ok(cwd) => path::join(&cwd, p),
+        Err(_) => p.to_vec(),
+    }
+}
+
+/// The temporary directory as an absolute path, even when `$TMPDIR` is relative.
 pub fn temporary_root() -> Vec<u8> {
-    sys::temp_dir()
+    absolute(&sys::temp_dir())
 }
 
 pub fn valid_prefix(prefix: &[u8]) -> bool {

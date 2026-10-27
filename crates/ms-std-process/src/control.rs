@@ -594,6 +594,20 @@ mod tests {
                 .status,
             STATUS_INVALID_DATA
         );
+        set_environment(b"MS_LOAD_C", None).unwrap();
+        ms_std_fs::ops::write_file(path.as_bytes(), b"MS_LOAD_C=1\nexport  =bad\n", true).unwrap();
+        assert_eq!(
+            load_environment(path.as_bytes(), i64::MAX)
+                .unwrap_err()
+                .status,
+            STATUS_INVALID_DATA
+        );
+        assert!(
+            !environment()
+                .unwrap()
+                .iter()
+                .any(|(k, _)| k == b"MS_LOAD_C")
+        );
         let _ = ms_std_fs::ops::remove(path.as_bytes(), false);
     }
 

@@ -66,6 +66,8 @@ pub struct Stream {
     /// The open mode forbids reading or writing, which is `InvalidInput` on every host.
     pub(crate) no_read: bool,
     pub(crate) no_write: bool,
+    /// Opened for append: the host ignores a positioned write's offset, so it is `InvalidInput`.
+    pub(crate) append: bool,
     /// An `@std/fs` file handle: flushing synchronizes the file.
     pub(crate) file: bool,
     /// The path for error messages; standard streams borrow a constant.
@@ -99,6 +101,7 @@ impl Stream {
             adopted: ms_rt::glue::pipe::is_adopted(fd),
             no_read: false,
             no_write: false,
+            append: false,
             file: false,
             name,
             pending: Vec::new(),
@@ -188,6 +191,7 @@ impl Stream {
         let mut s = Stream::new(fd, true, name);
         s.no_read = sys::write_only(flags);
         s.no_write = sys::read_only(flags);
+        s.append = flags & sys::O_APPEND != 0;
         s.file = true;
         s
     }
