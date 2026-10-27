@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/io.ms" import stderr
 from "@std/process.ms" import commands
 from "@std/io.ms" import stdout

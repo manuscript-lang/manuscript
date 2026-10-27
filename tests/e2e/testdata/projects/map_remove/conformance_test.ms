@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "./key.ms" import Key
 from "./by_id.ms" import id_map, id_direct, id_bound, id_generic, id_empty
 from "./by_label.ms" import label_map, label_direct, label_bound, label_generic

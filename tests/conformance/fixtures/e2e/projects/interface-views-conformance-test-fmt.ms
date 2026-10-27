@@ -4,7 +4,7 @@
 from "./domain.ms" import invoke
 from "./left.ms" import left
 from "./right.ms" import right
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "each module keeps its own view implementation":
     let first = left()

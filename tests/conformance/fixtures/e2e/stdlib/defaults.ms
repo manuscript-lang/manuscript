@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,match,modules,mutation,optional,records,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-process,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/defaults.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
 from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
 from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio

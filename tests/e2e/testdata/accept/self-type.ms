@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true, expect_false, expect_equal
+from "@std/test.ms" import expect_true, expect_false, expect_equal
 
 type CustomerKey:
     id: Int

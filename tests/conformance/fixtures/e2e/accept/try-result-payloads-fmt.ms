@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/try-result-payloads.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
 from "@std/core.ms" import Closeable
 from "@std/fs.ms" import filesystem

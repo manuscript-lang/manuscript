@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,modules,mutation,numbers,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-standard-calls-match-dynamic-calls.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 from "@std/math.ms" import (
     atan2,
     ceil,

@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/test_directory_test.go:27 TestTestsRunInProjectDirectory
 from "@std/fs.ms" import filesystem
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):

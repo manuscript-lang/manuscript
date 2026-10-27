@@ -1,7 +1,7 @@
 # conform: tags=aliasing,alternatives,control-flow,generics,interfaces,interpolation,lists,match,modules,records,stdlib-encoding,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/library-errors.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/json.ms" import parse, JsonError, JsonLimits
 from "@std/encoding.ms" import EncodingError, hex_decode
 

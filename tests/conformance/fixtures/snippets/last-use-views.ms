@@ -1,6 +1,6 @@
 # conform: tags=strings,lists,maps,records,control-flow,stdlib-testing,testing,tier-core
 # conform: phase=test
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import range
 
 type Box:

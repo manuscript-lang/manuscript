@@ -150,7 +150,7 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 ```manuscript
 from "@std/decimal.ms" import Decimal
 from "@std/math.ms" import NumberError
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def amount_text() -> Result[String, NumberError]:
     let subtotal = 19.99d * 3d

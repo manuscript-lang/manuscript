@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ntype Items:\n    count: Int\n\ntype Outcome:\n    case Value(value: Int)\n\ndef compute(value: Int) -> Int:\n    return value\n\ndef ordinary() -> Outcome:\n    return Outcome.Value(compute(3))\n\ntest \"non-prelude spellings are ordinary names\":\n    try expect_equal(Items(2).count, 2)\n\n    let forward = compute\n    try expect_equal(forward(4), 4)\n\n    match ordinary():\n        case Value(value):\n            try expect_equal(value, 3)\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal\n\ntype Items:\n    count: Int\n\ntype Outcome:\n    case Value(value: Int)\n\ndef compute(value: Int) -> Int:\n    return value\n\ndef ordinary() -> Outcome:\n    return Outcome.Value(compute(3))\n\ntest \"non-prelude spellings are ordinary names\":\n    try expect_equal(Items(2).count, 2)\n\n    let forward = compute\n    try expect_equal(forward(4), 4)\n\n    match ordinary():\n        case Value(value):\n            try expect_equal(value, 3)\n"
   }
 }

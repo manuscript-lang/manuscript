@@ -55,7 +55,7 @@ To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var
 ```manuscript
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Counter:
     values: List[Int]
