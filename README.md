@@ -6,8 +6,6 @@ Manuscript starts from one premise: agents will write most of the code, and peop
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
-*Alpha. Syntax and APIs can change. Every example here was run with `ms` built from this tree. [Setup](documentation/learn/getting-started.md).*
-
 ## Each round trip costs context, so the compiler names the repair
 
 An agent that gets "syntax error" guesses. One that gets the fix types it. Every Manuscript diagnostic reads `cause; fix`, and a habit from another language is answered with the Manuscript spelling:
@@ -107,6 +105,8 @@ Native release builds for Linux, macOS and Windows, amd64 and arm64. The conform
 ## The language is built the way it will be used
 
 We build Manuscript with coding agents, and we measure them. The [agent benchmark](bench/agent/README.md) gives the same challenges to an agent in Manuscript, TypeScript, Go and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges. First-build success (1 of 10) and source size (1.3× TypeScript) are published too, because every friction point there becomes a diagnostic, an API or a rule above.
+
+*Alpha. Syntax and APIs can change. Every example here was run with `ms` built from this tree. [Setup](documentation/learn/getting-started.md).*
 
 ## Try it
 
