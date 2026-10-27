@@ -1565,6 +1565,15 @@ def hex4(code: Int) -> String:
     return digits
 
 def quote_text(text: String) -> String:
+    var clean = True
+
+    for code in text.scalar_values():
+        if code < 32 or code == 34 or code == 92 or (code >= 127 and code <= 159):
+            clean = False
+            break
+
+    if clean: return "\"".concat(text).concat("\"")
+
     var result = StringBuilder()
     result.append("\"")
 
@@ -1588,23 +1597,42 @@ def quote_text(text: String) -> String:
 
 def format_key(key: String) -> String:
     var plain = key != ""
-    for c in key.chars():
-        if not "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
-            c
+    var first = True
+
+    for code in key.scalar_values():
+        let word = (
+            (code >= 97 and code <= 122)
+            or (code >= 65 and code <= 90)
+            or code == 95
+        )
+        let digit = code >= 48 and code <= 57
+        if not (word or digit or code == 45): plain = False
+        if first and (digit or code == 45): plain = False
+        first = False
+        if not plain: break
+
+    if plain and key.length() <= 5:
+        if ["null", "true", "false", "yes", "no", "on", "off", "y", "n"].contains(
+            key.lower()
         ): plain = False
-    if plain and "0123456789-".contains(key.chars().first().get()): plain = False
-    if (
-        plain
-        and [
-            "null", "true", "false", "yes", "no", "on", "off", "y", "n"
-        ].contains(key.lower())
-    ): plain = False
     if plain: return key
 
     return quote_text(key)
 
 # A number keeps its original token, so it must resolve back to a number.
 def valid_number(text: String) -> Bool:
+    # Plain decimal integers resolve to themselves; anything else goes through the parser.
+    var integer = text != ""
+    var at = 0
+
+    for code in text.scalar_values():
+        if not (code >= 48 and code <= 57 or (at == 0 and (code == 45 or code == 43))):
+            integer = False
+            break
+
+        at += 1
+
+    if integer and at > 1 or (integer and text.scalar_at(0) >= 48): return True
     if let parsed = parse(text): return parsed == YamlValue.NumberValue(text)
 
     return False
@@ -1639,28 +1667,31 @@ def emit_block(var out: StringBuilder, value: YamlValue, indent: String) -> Resu
     match value:
         case ArrayValue(values):
             for item in values:
-                if is_block(item.clone()):
-                    out.append(indent.concat("-\n"))
+                out.append(indent)
+
+                if is_block(item):
+                    out.append("-\n")
                     try emit_block(var out, item, indent.concat("  "))
                 else:
                     let text = try scalar_text(item.clone())
-                    out.append(indent.concat("- ").concat(text).concat("\n"))
+                    out.append("- ")
+                    out.append(text)
+                    out.append("\n")
 
             return ok(())
         case ObjectValue(values):
             for entry in values.entries():
-                let key = format_key(entry.key.clone())
+                out.append(indent)
+                out.append(format_key(entry.key.clone()))
 
-                if is_block(entry.value.clone()):
-                    out.append(indent.concat(key).concat(":\n"))
-                    try emit_block(var out, entry.value.clone(), indent.concat("  "))
+                if is_block(entry.value):
+                    out.append(":\n")
+                    try emit_block(var out, entry.value, indent.concat("  "))
                 else:
                     let text = try scalar_text(entry.value.clone())
-                    out.append(
-                        indent.concat(key).concat(": ").concat(
-                            text
-                        ).concat("\n")
-                    )
+                    out.append(": ")
+                    out.append(text)
+                    out.append("\n")
 
             return ok(())
         case _: return ok(())
