@@ -914,14 +914,36 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
             native.push(d.clone());
         }
     }
-    // The source half names the native half's types by importing its own file; the native half
-    // does not import itself.
+    // The source half sees the native half's exports as if it imported its own file; the file
+    // does not spell that import out.
+    let mut own_imports: Vec<Import> = Vec::new();
+    for d in native.iter().filter(|d| d.export) {
+        let name = match &d.kind {
+            DeclKind::Fn(f) => f.name,
+            DeclKind::Const(c) => c.name,
+            DeclKind::Record(r) => r.name,
+            DeclKind::Alternative(a) => a.name,
+            DeclKind::Interface(i) => i.name,
+            DeclKind::Impl(_) | DeclKind::Test(_) => continue,
+        };
+        if STANDARD_PRELUDE_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+        ids += 1;
+        own_imports.push(Import {
+            id: NodeId(ids - 1),
+            pos: d.pos,
+            name_pos: d.pos,
+            name,
+            path: parsed.file.as_ref().into(),
+        });
+    }
     let half = |file: Arc<str>, decls: Vec<Decl>, own: bool| Module {
         imports: parsed
             .imports
             .iter()
-            .filter(|i| own || *i.path != *parsed.file)
             .cloned()
+            .chain(own.then(|| own_imports.clone()).into_iter().flatten())
             .collect(),
         file,
         source: parsed.source.clone(),

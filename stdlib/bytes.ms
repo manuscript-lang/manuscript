@@ -1,7 +1,3 @@
-from "@std/bytes.ms" import Bytes, BytesBuilder, BinaryError
-from "@std/collections.ms" import range
-from "@std/core.ms" import panic
-
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export type Bytes: ...
 
@@ -120,7 +116,7 @@ extern def msrt_bits_shift_right(value: Int, count: Int) -> Int
 
 # Appends the low `width` bytes of `value` in the requested byte order.
 def put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) -> Unit:
-    for i in range(0, width):
+    for i in 0..width:
         var place = width - 1 - i
         if little:
             place = i
