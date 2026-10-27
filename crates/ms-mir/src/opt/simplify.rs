@@ -25,6 +25,24 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+/// Runs only the trivial block-parameter elimination, which keeps every instruction in place.
+/// An unoptimized build needs it so `copyelim` sees through loop-carried values.
+pub fn run_phis(m: &mut Module) -> bool {
+    let mut changed = false;
+    for i in 0..m.funcs.len() {
+        let mut f = m.funcs[i].clone();
+        let mut any = false;
+        while phis(m, &mut f) {
+            any = true;
+        }
+        if any {
+            changed = true;
+            m.funcs[i] = f;
+        }
+    }
+    changed
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum K {
     I(i64),
