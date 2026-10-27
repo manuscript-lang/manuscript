@@ -750,7 +750,7 @@
 {"id":749,"jsonrpc":"2.0","result":null}
 #large
 {"id":751,"jsonrpc":"2.0","result":null}
-{"id":752,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"from \"@std/bytes.ms\" import values\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes], List[Int]] — @std/bytes.ms","documentation":{"kind":"markdown","value":"Returns a fresh mutable list of byte values in the range 0 through 255, like data.values()."},"filterText":"values","insertTextFormat":1,"kind":3,"label":"values","sortText":"04_values","textEdit":{"newText":"values","range":{"end":{"character":14,"line":54},"start":{"character":8,"line":54}}}}]}
+{"id":752,"jsonrpc":"2.0","result":[{"additionalTextEdits":[{"newText":"from \"@std/bytes.ms\" import values\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes], List[UInt8]] — @std/bytes.ms","documentation":{"kind":"markdown","value":"Returns a fresh mutable list of bytes, like data.values()."},"filterText":"values","insertTextFormat":1,"kind":3,"label":"values","sortText":"04_values","textEdit":{"newText":"values","range":{"end":{"character":14,"line":54},"start":{"character":8,"line":54}}}}]}
 {"id":753,"jsonrpc":"2.0","result":null}
 #large
 {"id":755,"jsonrpc":"2.0","result":null}

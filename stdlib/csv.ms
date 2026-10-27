@@ -36,7 +36,8 @@ export def parse(
     let bytes = text.to_bytes()
     let total = bytes.length()
     var reader = Reader(
-        bytes: bytes, total: total, delimiter: options.delimiter.scalar_values() [0],
+        bytes: bytes, total: total,
+        delimiter: options.delimiter.scalar_values() [0].to_uint8().get(0),
         delimiter_text: options.delimiter.clone(), at: 0, quote: -1, delimiter_at: -1,
         line_at: -1
     )
@@ -90,7 +91,7 @@ def check_options(options: CsvOptions) -> Result[Unit, CsvError]:
 type Reader:
     bytes: Bytes
     total: Int
-    delimiter: Int
+    delimiter: UInt8
     delimiter_text: String
     at: Int
     quote: Int

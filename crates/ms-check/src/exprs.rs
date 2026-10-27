@@ -102,7 +102,13 @@ fn literal_tree_fractional(e: &Expr) -> Option<bool> {
 /// The sized number type a literal operand takes from the other operand, if any. Only a literal
 /// (or arithmetic over literals) of the same kind adopts it, so a mismatch keeps the ordinary
 /// operand-type diagnostic.
-fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+pub(crate) fn literal_hint<'a>(literal: &Expr, other: &'a Ty) -> Option<&'a Ty> {
+    if let ExprKind::List(items) = &literal.kind {
+        // A list of plain literals takes the element type of a `List` of a sized number.
+        let element = (other.is_std("List") && other.args.len() == 1).then(|| &other.args[0])?;
+        let all = !items.is_empty() && items.iter().all(|i| literal_hint(i, element).is_some());
+        return all.then_some(other);
+    }
     let fractional = literal_tree_fractional(literal)?;
     let sized_int = int_bits(other).is_some() && other.id != "Int";
     let sized_float = float_bits(other).is_some() && other.id != "Float";

@@ -880,7 +880,7 @@ pub fn constructor_signature(t: &Ty) -> Ty {
     if t.is_std("Bytes") {
         params = vec![Param {
             name: n("values"),
-            ty: standard("List", vec![int()]),
+            ty: standard("List", vec![primitive("UInt8")]),
         }];
     }
     if t.is_std("Set") && t.args.len() == 1 {

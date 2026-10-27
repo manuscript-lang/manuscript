@@ -27,11 +27,11 @@ test "domain equality and hashing select interfaces":
     try expect_equal(a.hash(), b.hash())
 
     var values = Map[Key, String]()
-    values.add(a, "a")
-    values.add(b, "b")
+    values.add(a.clone(), "a")
+    values.add(b.clone(), "b")
     try expect_equal(values.length(), 1)
     try expect_equal(values.get(a), some("b"))
-    try expect_false(not ([a].contains(b)))
+    try expect_false(not ([a.clone()].contains(b)))
 
     let view: Equal = a
     try expect_false(not (view.equals(b)))
@@ -69,7 +69,7 @@ impl ReadStream for EchoReader:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
-        return ok(some(Bytes([requested])))
+        return ok(some(Bytes([requested.to_uint8().get(0)])))
 
     def close() -> Unit: ()
 

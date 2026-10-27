@@ -783,6 +783,12 @@ impl FnLower<'_> {
                 return Ok(Val { v, own: true });
             }
             let out = self.call_runtime(sym, &vals, ret)?;
+            // The runtime returns a sized integer as a word already in range.
+            let sized = ret == MTy::INT && result != MTy::INT && self.b.m.types.is_int(result);
+            if sized {
+                let v = self.b.conv(out, result);
+                return Ok(Val { v, own: false });
+            }
             let owned = self.needs_drop(ret);
             return Ok(Val { v: out, own: owned });
         }

@@ -280,10 +280,10 @@ pub(crate) fn build_format(
         }
         TyKind::Bytes => {
             let acc = start(&mut b, "Bytes(");
-            let list_ty = b.m.types.list(MTy::INT);
+            let list_ty = b.m.types.list(MTy::UINT8);
             let ext = runtime_fn(b.m, "msrt_bytes_values", &[t], list_ty);
             let values = b.call_rt(ext, &[x]);
-            append_items(cx, &mut b, acc, values, MTy::INT, repr, depth);
+            append_items(cx, &mut b, acc, values, MTy::UINT8, repr, depth);
             b.emit(Op::Drop, &[values], Imm::None, None);
             append_lit(&mut b, acc, ")");
             let r = finish(&mut b, acc);
