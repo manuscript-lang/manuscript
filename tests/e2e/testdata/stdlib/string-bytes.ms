@@ -142,6 +142,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 
 test "builder appends literals of every short length across growth":
     var sb = StringBuilder()
+
     for i in range(0, 40):
         sb.append("a")
         sb.append("bc")
@@ -153,6 +154,7 @@ test "builder appends literals of every short length across growth":
         sb.append("EFGHIJKLMNOPQRS")
         sb.append("0123456789abcdef")
         sb.append("é€")
+
     let one = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
     var want = StringBuilder()
     for i in range(0, 40):
