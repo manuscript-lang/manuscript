@@ -1231,6 +1231,20 @@ impl Writer {
         self.check();
     }
 
+    /// [`Writer::key`] for a walk that never calls [`Writer::undo`] and writes the member's value
+    /// next, which checks the limit: the undo record and the limit check are skipped.
+    pub fn key_walked(&mut self, key: &str) {
+        if self.err.is_none()
+            && self.width == 0
+            && let Some(top) = self.levels.last_mut()
+            && push_member_name(&mut self.buf, top.count > 0, key.as_bytes())
+        {
+            top.count += 1;
+            return;
+        }
+        self.key(key);
+    }
+
     /// Starts a member whose name is already escaped: `quoted_name` is the name with its quotes.
     pub fn key_quoted(&mut self, quoted_name: &str) {
         if self.err.is_some() {

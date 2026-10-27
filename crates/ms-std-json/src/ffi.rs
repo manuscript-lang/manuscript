@@ -269,7 +269,7 @@ impl TreeSink for Writer {
         Writer::item(self);
     }
     fn key(&mut self, name: &str) {
-        Writer::key(self, name);
+        Writer::key_walked(self, name);
     }
     fn begin_array(&mut self) {
         Writer::begin_array(self);

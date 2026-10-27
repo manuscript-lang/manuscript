@@ -11,12 +11,23 @@ fn word(chunk: &[u8]) -> u64 {
     ])
 }
 
-/// Appends `s` to `buf`; up to 16 bytes with room to spare are two overlapping word copies
-/// rather than a `memcpy` call, which dominates writing many short names and numbers.
+/// Appends `s` to `buf`; up to 32 bytes with room to spare are two overlapping loads and
+/// stores rather than a `memcpy` call, which dominates writing many short names and numbers.
 #[inline(always)]
 pub fn push_short(buf: &mut crate::stdalloc::vec::Vec<u8>, s: &[u8]) {
     let n = s.len();
-    if n <= 16 && buf.capacity() - buf.len() >= n {
+    if n > 16 && n <= 32 && buf.capacity() - buf.len() >= n {
+        // SAFETY: as below, with two overlapping 16-byte accesses inside the `n` bytes.
+        unsafe {
+            let src = s.as_ptr();
+            let dst = buf.as_mut_ptr().add(buf.len());
+            let head = src.cast::<u128>().read_unaligned();
+            let tail = src.add(n - 16).cast::<u128>().read_unaligned();
+            dst.cast::<u128>().write_unaligned(head);
+            dst.add(n - 16).cast::<u128>().write_unaligned(tail);
+            buf.set_len(buf.len() + n);
+        }
+    } else if n <= 16 && buf.capacity() - buf.len() >= n {
         // SAFETY: `n` bytes of spare capacity are writable, `s` has `n` readable bytes, and a
         // `&mut Vec` cannot alias `s`; the length grows only over the bytes just written.
         unsafe {
@@ -142,7 +153,29 @@ pub fn json_simple_number(b: &[u8]) -> bool {
         return false;
     }
     let frac = &b[int + 1..];
-    !frac.is_empty() && first_nondigit(frac) == frac.len()
+    !frac.is_empty() && all_digits(frac)
+}
+
+/// Whether every byte of `b` is an ASCII digit. From eight bytes up, whole words and a final
+/// word overlapping the last one, so a 15-digit fraction costs two tests rather than a tail loop.
+#[inline]
+fn all_digits(b: &[u8]) -> bool {
+    let nondigit = |x: u64| {
+        let t = x ^ (ONES * 0x30);
+        ((x | t) & HIGHS) | ((t & !HIGHS).wrapping_add(ONES * 0x76) & HIGHS)
+    };
+    let n = b.len();
+    if n < 8 {
+        return first_nondigit(b) == n;
+    }
+    let mut i = 0;
+    while i + 8 < n {
+        if nondigit(word(&b[i..i + 8])) != 0 {
+            return false;
+        }
+        i += 8;
+    }
+    nondigit(word(&b[n - 8..])) == 0
 }
 
 /// Appends `"s"` when `s` is at most 16 bytes with nothing to escape, and returns whether it
@@ -456,6 +489,22 @@ mod json_short_tests {
 
     fn alloc_vec(len: usize) -> crate::stdalloc::vec::Vec<u8> {
         crate::stdalloc::vec![b'a'; len]
+    }
+
+    #[test]
+    fn all_digits_matches_a_byte_loop_at_every_length_and_position() {
+        for n in 0..=40usize {
+            let mut b = vec![b'7'; n];
+            assert!(all_digits(&b), "{n}");
+            for at in 0..n {
+                for bad in [b'.', b'/', b':', b'a', 0x80u8, 0] {
+                    let keep = b[at];
+                    b[at] = bad;
+                    assert!(!all_digits(&b), "{n} {at} {bad}");
+                    b[at] = keep;
+                }
+            }
+        }
     }
 
     #[test]
