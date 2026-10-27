@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-match-missing-arm.ms:8:5: type: non-exhaustive match; missing cases: B, or add a final 'case _:' arm; add the arms 'case B(x):'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-match-missing-arm.ms:8:5: type: non-exhaustive match; missing cases: B, or add a final 'case _:' arm; add the arms 'case B(x):'\n   |\n 8 |     match s:\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

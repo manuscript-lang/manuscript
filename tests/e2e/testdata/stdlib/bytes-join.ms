@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/bytes.ms" import Bytes, join
 
 test "join concatenates parts in order":

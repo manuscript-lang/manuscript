@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/math.ms" import parse_int, parse_float, NumberError
 
 test "numbers radix and signed boundaries":

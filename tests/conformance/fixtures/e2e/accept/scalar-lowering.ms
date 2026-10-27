@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal
 from "@std/core.ms" import Closeable
 
 type Counter:

@@ -1,6 +1,6 @@
 # conform: tags=alternatives,maps,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
 # conform: phase=test
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/json.ms" import parse, stringify, JsonError
 from "@std/net.ms" import IpAddress, Cidr, parse_ip, parse_cidr
 

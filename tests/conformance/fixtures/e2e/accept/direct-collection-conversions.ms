@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,mutation,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 def append_generic[T](var values: List[Optional[T]], value: T) -> Unit:
     values.append(value)

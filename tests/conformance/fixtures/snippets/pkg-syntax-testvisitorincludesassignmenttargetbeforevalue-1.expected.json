@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:5: resolution: unknown binding owner; declare it with 'let owner = ...' before use, define 'def owner(...) -> T:', or import it from a module\n<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:13: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:21: resolution: unknown binding replacement; declare it with 'let replacement = ...' before use, define 'def replacement(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:5: resolution: unknown binding owner; declare it with 'let owner = ...' before use, define 'def owner(...) -> T:', or import it from a module\n   |\n 5 |     owner().value = replacement()\n   |     ^\n<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:13: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n   |\n 5 |     owner().value = replacement()\n   |             ^\n<DIR>/pkg-syntax-testvisitorincludesassignmenttargetbeforevalue-1.ms:5:21: resolution: unknown binding replacement; declare it with 'let replacement = ...' before use, define 'def replacement(...) -> T:', or import it from a module\n   |\n 5 |     owner().value = replacement()\n   |                     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 from "./first.ms" import (
     first_mapped,
     first_bound_map,

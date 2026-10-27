@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/test.ms" import expect_equal, expect_error, expect_false
 from "@std/fs.ms" import filesystem, FileSystemError
 from "@std/io.ms" import files, IoError
 from "@std/process.ms" import control

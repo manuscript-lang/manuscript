@@ -1,7 +1,7 @@
 # conform: tags=decimal,formatter,modules,optional,parser,stdlib-decimal,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/decimal-math.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/decimal.ms" import Decimal
 from "@std/math.ms" import (
     ceil,

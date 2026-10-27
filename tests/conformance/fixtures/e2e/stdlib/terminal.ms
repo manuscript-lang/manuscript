@@ -1,7 +1,7 @@
 # conform: tags=control-flow,modules,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/terminal.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/io.ms" import terminal, TerminalError
 
 test "redirected streams report no terminal and refuse raw mode":

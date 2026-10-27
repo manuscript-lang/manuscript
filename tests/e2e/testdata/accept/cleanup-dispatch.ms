@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/test.ms" import expect_equal, expect_fault
 from "@std/core.ms" import panic
 from "@std/core.ms" import Closeable
 

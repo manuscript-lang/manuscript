@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/html.ms" import escape, unescape
 
 test "HTML unescape has an explicit text counterpart":

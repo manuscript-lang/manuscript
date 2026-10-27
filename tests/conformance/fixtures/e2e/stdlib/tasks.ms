@@ -4,7 +4,7 @@ from "@std/collections.ms" import range
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import nanoseconds, sleep
 
 def pause(milliseconds: Int) -> Unit:

@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,generics,interfaces,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/interface-view-callables.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 interface Read[T]:
     def read() -> T

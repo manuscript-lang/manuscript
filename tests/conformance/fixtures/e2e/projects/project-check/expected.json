@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/ms.toml:4:9: resolution: file not found: src/main.ms; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/ms.toml:4:9: resolution: file not found: src/main.ms; check the path, pass a .ms file or a project ms.toml, and run from the directory that contains it\n   |\n 4 | entry = \"src/main.ms\"\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

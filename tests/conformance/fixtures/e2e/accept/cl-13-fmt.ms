@@ -1,7 +1,7 @@
 # conform: tags=formatter,interpolation,modules,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-13.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def echo(value: String) -> String:
     return value

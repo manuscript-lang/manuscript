@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,parser,stdlib-bytes,stdlib-collections,stdlib-json,stdlib-jsonstream,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/jsonstream.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/jsonstream.ms" import decoder
 from "@std/json.ms" import stringify, JsonValue, JsonLimits, JsonError
 from "@std/bytes.ms" import Bytes

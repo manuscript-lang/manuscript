@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,lists,maps,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/data-1.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def positives(values: List[Int]) -> List[Int]:
     var result: List[Int] = []

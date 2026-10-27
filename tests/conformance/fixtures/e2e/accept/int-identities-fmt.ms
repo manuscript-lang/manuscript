@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,lists,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/int-identities.ms
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 
 def touch(var log: List[Int], value: Int) -> Int:
     log.append(value)

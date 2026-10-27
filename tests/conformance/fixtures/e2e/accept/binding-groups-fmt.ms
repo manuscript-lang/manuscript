@@ -1,7 +1,7 @@
 # conform: tags=closures,destructuring,formatter,interpolation,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/binding-groups.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 let (
     LOW = 1

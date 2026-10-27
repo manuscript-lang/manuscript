@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreludenamescannotberedeclared-2.ms:4:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreludenamescannotberedeclared-2.ms:4:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 4 | type Map[K, V]:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

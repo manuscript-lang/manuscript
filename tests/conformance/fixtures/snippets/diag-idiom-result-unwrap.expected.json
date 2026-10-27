@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-result-unwrap.ms:7:17: resolution: unknown or ambiguous member unwrap on Result[Int, Error]; read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-result-unwrap.ms:7:17: resolution: unknown or ambiguous member unwrap on Result[Int, Error]; read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`\n   |\n 7 |     let x = f().unwrap()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

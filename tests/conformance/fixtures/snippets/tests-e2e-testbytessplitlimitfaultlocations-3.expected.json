@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                 ^\n<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

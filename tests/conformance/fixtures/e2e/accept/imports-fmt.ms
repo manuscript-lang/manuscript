@@ -1,7 +1,7 @@
 # conform: tags=formatter,lists,maps,modules,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/imports.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "grouped imports":
     let values: List[Int] = [1, 2]

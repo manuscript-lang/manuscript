@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,lists,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/list-go-range.ms
-from "@std/testing.ms" import expect_false
+from "@std/test.ms" import expect_false
 
 def replace[T](var values: List[T], value: T) -> Unit:
     values.set(1, value)

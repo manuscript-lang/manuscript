@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testtextpartsacrossstrictandpartialparsing-2.ms:6:5: type: bare return requires Unit; this function returns String, so write 'return <value>'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testtextpartsacrossstrictandpartialparsing-2.ms:6:5: type: bare return requires Unit; this function returns String, so write 'return <value>'\n   |\n 6 |     return\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

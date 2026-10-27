@@ -1,7 +1,7 @@
 # conform: tags=aliasing,faults,formatter,modules,parser,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
-from "@std/testing.ms" import expect_equal, expect_error, expect_false
+from "@std/test.ms" import expect_equal, expect_error, expect_false
 from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily
 
 test "IP parsing CIDR normalization and containment":

@@ -3,7 +3,7 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import nanoseconds, sleep
 
 def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:

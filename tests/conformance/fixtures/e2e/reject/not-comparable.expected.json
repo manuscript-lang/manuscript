@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/not-comparable.ms:10:20: type: Point does not satisfy Comparable; add 'impl Comparable for Point:' or pass a type that already implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/not-comparable.ms:10:20: type: Point does not satisfy Comparable; add 'impl Comparable for Point:' or pass a type that already implements it\n    |\n 10 |     let furthest = max(Point(x: 1), Point(x: 2))\n    |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

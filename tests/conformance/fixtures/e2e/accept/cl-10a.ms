@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,generics,interfaces,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-10a.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 interface ReadValue[T]:
     def get() -> ref T

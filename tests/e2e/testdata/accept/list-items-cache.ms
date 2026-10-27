@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def grow(var values: List[Int]) -> Unit:
     values.append(values.length())

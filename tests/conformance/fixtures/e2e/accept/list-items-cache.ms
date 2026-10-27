@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,lists,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/list-items-cache.ms
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault
 
 def grow(var values: List[Int]) -> Unit:
     values.append(values.length())

@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,lists,maps,modules,mutation,optional,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/collections.ms" import (
     ListBuilder,
     MapBuilder,

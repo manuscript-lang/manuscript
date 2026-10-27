@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def parse(n: Int) -> Result[Int, TextError]:
     if n < 0:

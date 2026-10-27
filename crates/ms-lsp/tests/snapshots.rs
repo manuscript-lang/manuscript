@@ -174,7 +174,7 @@ fn completion_in_unfinished_code() {
         ("import-path", "from \"@std/i"),
         (
             "import-from",
-            "from \"@std/testing.ms\" import (\n    expect_equal,\n    ",
+            "from \"@std/test.ms\" import (\n    expect_equal,\n    ",
         ),
         ("import-local", "from \"./"),
         ("keyword", "def main() -> Int:\n    ret"),

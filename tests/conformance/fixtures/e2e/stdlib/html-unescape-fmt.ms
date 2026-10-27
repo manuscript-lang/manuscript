@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,generics,interpolation,modules,parser,records,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/html-unescape.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/html.ms" import escape, unescape
 
 test "HTML unescape has an explicit text counterpart":
