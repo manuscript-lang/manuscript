@@ -1861,11 +1861,16 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
             v.len += 1;
             return;
         }
-        // A short word with room to spare is a byte loop, not a `memcpy` call.
-        if n <= 16 && v.cap - v.len >= n {
+        // Text that fits is copied in place: a short word as overlapping word moves, longer
+        // text with a single `memcpy`. Only a full buffer reaches the growth path.
+        if v.cap - v.len >= n {
             let src = string::bytes(s).as_ptr();
             let dst = v.ptr.add(v.len);
-            copy_short(src, dst, n);
+            if n <= 16 {
+                copy_short(src, dst, n);
+            } else {
+                core::ptr::copy_nonoverlapping(src, dst, n);
+            }
             v.len += n;
             return;
         }
