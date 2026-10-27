@@ -1,14 +1,18 @@
-"""Reads `name<TAB>ops<TAB>ns_per_op` lines on stdin and prints the median/min/max ns per op per case."""
-import statistics
+"""Reads the `ms bench --json` document on stdin and prints the median, min, and max ns per operation of each case."""
+import json
 import sys
 
-prefix = sys.argv[1] if len(sys.argv) > 1 else ""
-rows = {}
-for line in sys.stdin:
-    name, _ops, ns = line.rstrip("\n").split("\t")
-    if name.startswith(prefix):
-        rows.setdefault(name, []).append(int(ns))
-width = max((len(n) for n in rows), default=4)
-print(f"{'case':<{width}}  {'median ns/op':>12}  {'min':>8}  {'max':>8}")
-for name, vals in rows.items():
-    print(f"{name:<{width}}  {int(statistics.median(vals)):>12}  {min(vals):>8}  {max(vals):>8}")
+document = json.load(sys.stdin)
+if document.get("diagnostics"):
+    sys.exit("\n".join(d["message"] for d in document["diagnostics"]))
+rows = []
+for case in document["benches"]:
+    name = case["name"].split("::", 1)[-1]
+    if case["status"] != "passed":
+        sys.exit(f"{name}: {case['status']}: {case.get('failure', '')}")
+    stats = case["stats"]
+    rows.append((name, stats["median_ns"], stats["min_ns"], stats["max_ns"]))
+width = max((len(r[0]) for r in rows), default=4)
+print(f"{'case':<{width}}  {'median ns/op':>12}  {'min':>10}  {'max':>10}")
+for name, median, low, high in rows:
+    print(f"{name:<{width}}  {median:>12.2f}  {low:>10.2f}  {high:>10.2f}")

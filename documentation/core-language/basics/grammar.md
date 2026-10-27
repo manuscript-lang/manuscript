@@ -143,8 +143,8 @@ FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, I
 TestDeclaration = "test", PlainStringLiteral, Suite ;
 (* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return ()` succeeds; try or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
-BenchDeclaration = "bench", PlainStringLiteral, Suite ;
-(* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration, with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
+BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
+(* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
 Parameter     = Name, ":", Type ;
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
