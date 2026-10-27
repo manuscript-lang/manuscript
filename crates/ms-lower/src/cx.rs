@@ -167,6 +167,8 @@ pub struct Cx {
     pub borrows: Rc<HashMap<usize, BorrowKind>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
+    /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
+    pub borrowed_captures: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId, usize)>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
 }
@@ -218,6 +220,7 @@ impl Cx {
             fixtures: program.test_fixtures.clone(),
             borrows: program.borrows.clone(),
             lenders: program.lenders.clone(),
+            borrowed_captures: program.borrowed_captures.clone(),
             getters: program.getter_borrows.clone(),
         }
     }

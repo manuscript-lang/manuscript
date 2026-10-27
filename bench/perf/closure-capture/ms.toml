@@ -1,0 +1,4 @@
+[project]
+name = "closure-capture"
+source = "./src"
+entry = "./src/main.ms"
