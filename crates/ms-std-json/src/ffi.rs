@@ -8,7 +8,7 @@ use crate::{Doc, Limits, Node, Writer};
 use alloc::string::String;
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
-use ms_rt::tree::{TreeBuilder, TreeCtor, ValueDesc, ValueOut};
+use ms_rt::tree::{TreeBuilder, TreeCtor, TreeSink, TreeView, ValueDesc, ValueOut, ValueRef};
 
 abi_handle!(Doc);
 abi_handle!(Writer);
@@ -206,6 +206,17 @@ native! {
         w.0.string(text);
     }
 
+    /// Writes the tree of the alternative described by `desc` that `root` holds, read through
+    /// `view` (see `ms_rt::tree`), as the next value.
+    fn msrt_json_w_tree(
+        w: ObjMut<Writer>,
+        desc: ValueDesc,
+        view: TreeView,
+        root: ValueRef,
+    ) -> () {
+        ms_rt::tree::walk(desc, view, root, w.0);
+    }
+
     fn msrt_json_w_finish(w: ObjMut<Writer>) -> Result<String, Fail> {
         w.0.finish()
     }
@@ -238,6 +249,39 @@ native! {
             }
             _ => -1,
         }
+    }
+}
+
+impl TreeSink for Writer {
+    fn null(&mut self) {
+        Writer::null(self);
+    }
+    fn boolean(&mut self, v: bool) {
+        Writer::boolean(self, v);
+    }
+    fn number(&mut self, text: &str) {
+        Writer::number(self, text);
+    }
+    fn string(&mut self, text: &str) {
+        Writer::string(self, text);
+    }
+    fn item(&mut self) {
+        Writer::item(self);
+    }
+    fn key(&mut self, name: &str) {
+        Writer::key(self, name);
+    }
+    fn begin_array(&mut self) {
+        Writer::begin_array(self);
+    }
+    fn end_array(&mut self) {
+        Writer::end_array(self);
+    }
+    fn begin_object(&mut self) {
+        Writer::begin_object(self);
+    }
+    fn end_object(&mut self) {
+        Writer::end_object(self);
     }
 }
 
