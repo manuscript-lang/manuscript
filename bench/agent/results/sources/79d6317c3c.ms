@@ -366,9 +366,9 @@ def quote_block(lines: List[String], i: Int) -> Step:
         j += 1
 
     let parsed = parse_blocks(inner)
-    let html = "<blockquote>\n".concat(render_blocks(parsed.blocks.clone())).concat(
-        "</blockquote>\n"
-    )
+    let html = "<blockquote>\n".concat(
+        render_blocks(parsed.blocks.clone())
+    ).concat("</blockquote>\n")
     return Step(block: Html(text: html), next: j)
 
 def indented_code(lines: List[String], i: Int) -> Step:
@@ -550,9 +550,9 @@ def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
 
     var body = ""
     for blocks in items:
-        body = body.concat("<li>").concat(item_html(blocks, not loose)).concat(
-            "</li>\n"
-        )
+        body = body.concat(
+            "<li>"
+        ).concat(item_html(blocks, not loose)).concat("</li>\n")
 
     var open = "<ul>\n"
     var close = "</ul>\n"
@@ -677,9 +677,9 @@ def table_at(lines: List[String], i: Int) -> Optional[Step]:
     var html = "<table>\n<thead>\n<tr>\n"
 
     for c in range(0, heads.length()):
-        html = html.concat("<th").concat(align_attr(align_of(aligns.get(c)))).concat(
-            ">"
-        )
+        html = html.concat(
+            "<th"
+        ).concat(align_attr(align_of(aligns.get(c)))).concat(">")
         html = html.concat(inline(heads.get(c))).concat("</th>\n")
 
     html = html.concat("</tr>\n</thead>\n")
@@ -694,12 +694,9 @@ def table_at(lines: List[String], i: Int) -> Optional[Step]:
                 var cell = ""
                 if c < row.length():
                     cell = row.get(c)
-                html = (
-                    html
-                    .concat("<td")
-                    .concat(align_attr(align_of(aligns.get(c))))
-                    .concat(">")
-                )
+                html = html.concat(
+                    "<td"
+                ).concat(align_attr(align_of(aligns.get(c)))).concat(">")
                 html = html.concat(inline(cell)).concat("</td>\n")
 
             html = html.concat("</tr>\n")
@@ -1154,33 +1151,27 @@ def render_node(node: Node) -> String:
             return "<code>".concat(esc(value)).concat("</code>")
         case Emph(strong, children):
             if strong:
-                return "<strong>".concat(render_nodes(children.clone())).concat(
-                    "</strong>"
-                )
+                return "<strong>".concat(
+                    render_nodes(children.clone())
+                ).concat("</strong>")
 
             return "<em>".concat(render_nodes(children.clone())).concat("</em>")
         case Link(image, dest, title, children):
             if image:
                 let alt = esc(plain(children.clone()))
-                return (
-                    "<img src=\""
-                    .concat(esc(dest))
-                    .concat("\" alt=\"")
-                    .concat(alt)
-                    .concat("\"")
-                    .concat(title_attr(title))
-                    .concat(" />")
-                )
+                return "<img src=\"".concat(
+                    esc(dest)
+                ).concat(
+                    "\" alt=\""
+                ).concat(alt).concat("\"").concat(title_attr(title)).concat(" />")
 
-            return (
-                "<a href=\""
-                .concat(esc(dest))
-                .concat("\"")
-                .concat(title_attr(title))
-                .concat(">")
-                .concat(render_nodes(children.clone()))
-                .concat("</a>")
-            )
+            return "<a href=\"".concat(
+                esc(dest)
+            ).concat(
+                "\""
+            ).concat(
+                title_attr(title)
+            ).concat(">").concat(render_nodes(children.clone())).concat("</a>")
         case _:
             return esc(plain_one(node))
 

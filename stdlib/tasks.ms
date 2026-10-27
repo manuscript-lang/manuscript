@@ -60,7 +60,7 @@ export type TaskError:
     # The task faulted in a group that contains faults. Carries the fault report.
     case Faulted(
         # The fault report from the task: its message and stack.
-        message: String
+        report: String
     )
 
 impl Error for TaskError:
@@ -70,7 +70,7 @@ impl Error for TaskError:
             case TimedOut: return "task: timed out"
             case Cancelled: return "task: cancelled"
             case Closed: return "task: closed"
-            case Faulted(message): return "task: fault: " + message
+            case Faulted(report): return "task: fault: " + report
 
 # Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
 # A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
@@ -294,20 +294,12 @@ export type Entry[T, In, Out]:
     channel: Channel[In, Out]
 
 # Drops the entry of the collected task `handle`, so the group holds nothing for it.
-def forget[T, In, Out](registry: Shared[List[Entry[T, In, Out]]], handle: Int) -> Unit:
-    with var entries = lock(registry):
-        for index in range(0, entries.value.length()):
-            if entries.value[index].handle == handle:
-                entries.value.remove(index)
-                break
-
-# Drops the entries of the first `count` tasks, which `results` collected, in one pass.
-def forget_first[T, In, Out](
-    registry: Shared[List[Entry[T, In, Out]]],
-    count: Int
+def forget[T, In, Out](
+    registry: Shared[Map[Int, Entry[T, In, Out]]],
+    handle: Int
 ) -> Unit:
     with var entries = lock(registry):
-        entries.value = entries.value.drop(count)
+        entries.value.remove(handle)
 
 # Waits for the task `handle` of `scope` and takes its result from `values`. The task is collected
 # even when it has no result, so the runtime and the group let go of it.
@@ -324,8 +316,8 @@ export type Task[T, In = Unit, Out = Unit]:
     scope: Int
     # Internal state: the runtime handle of the task.
     handle: Int
-    # Internal state: the group's list of uncollected tasks.
-    registry: Shared[List[Entry[T, In, Out]]]
+    # Internal state: the group's uncollected tasks by handle, in start order.
+    registry: Shared[Map[Int, Entry[T, In, Out]]]
     # Internal state: empty until the task returns, then its one result.
     values: Shared[List[T]]
     # The group's end of the task's channel: sends `In` to the task and receives the `Out` it sends.
@@ -357,7 +349,7 @@ export type TaskGroup[T, In = Unit, Out = Unit]:
     # Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
     scope: Int = new_scope(contain_faults)
     # Internal state: the uncollected tasks in start order, changed through the shared handle so the group works as a `with` binding.
-    tasks: Shared[List[Entry[T, In, Out]]] = share([])
+    tasks: Shared[Map[Int, Entry[T, In, Out]]] = share(Map[Int, Entry[T, In, Out]]())
     # Internal state: weak tracking of handed-out channels, including collected tasks.
     channels: TaskChannels = msrt_channel_group_new()
 
@@ -394,7 +386,7 @@ impl TaskGroup[T, In, Out]:
 
         # The group keeps a second handle on its end, so closing the group closes it.
         with var started = lock(self.tasks):
-            started.value.append(Entry(handle, values, group_end(down, up, lifetime)))
+            started.value[handle] = Entry(handle, values, group_end(down, up, lifetime))
         return Task(
             self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
         )
@@ -406,18 +398,13 @@ impl TaskGroup[T, In, Out]:
             return error(TaskError.Closed)
 
         var values = List[T]()
-        let count = self.tasks.get().length()
-        var taken = 0
 
-        while taken < count:
-            let next = self.tasks.get().get(taken)
-            let value = collect(self.scope, next.handle, next.values)
-            taken += 1
-            if value.is_error():
-                forget_first(self.tasks, taken)
-            values.append(try value)
+        for handle in self.tasks.get().keys():
+            if let next = self.tasks.get().get(handle):
+                let value = collect(self.scope, handle, next.values)
+                forget(self.tasks, handle)
+                values.append(try value)
 
-        forget_first(self.tasks, count)
         return ok(values)
 
     # Waits for every started task to end. Returns `TimedOut` or `Cancelled` if any task ended without a result.
@@ -430,5 +417,6 @@ impl Closeable for TaskGroup[T, In, Out]:
         msrt_scope_close(self.scope)
         msrt_channel_group_close(self.channels)
         with var started = lock(self.tasks):
-            for index in range(0, started.value.length()):
-                started.value[index].channel.close()
+            for handle in started.value.keys():
+                if var entry = started.value.get(handle):
+                    entry.channel.close()

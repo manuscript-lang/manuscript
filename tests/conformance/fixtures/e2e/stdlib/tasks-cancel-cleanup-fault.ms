@@ -3,7 +3,7 @@
 from "@std/core.ms" import Closeable
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 type Bad:
     tag: Int
@@ -11,16 +11,19 @@ type Bad:
 impl Closeable for Bad:
     var def close() -> Unit:
         stdout().write("cleanup faulting\n").get()
+
         let xs = List[Int]()
         stdout().write(f"{xs[3]}\n").get()
 
 def work() -> Int:
     with let b = Bad(1):
-        sleep(duration(5000000000))
+        sleep(nanoseconds(5000000000))
         return 1
 
 export def main() -> Int:
-    with let group = TaskGroup[Int](timeout: some(duration(50000000))):
+    with let group = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
         group.spawn(lambda ch: work())
-        group.wait()
+
+        let _ = group.wait()
+
     return 0

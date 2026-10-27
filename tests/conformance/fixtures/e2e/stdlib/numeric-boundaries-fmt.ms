@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/stdlib/numeric-boundaries.ms
 from "@std/testing.ms" import expect_equal, expect_false
 from "@std/decimal.ms" import Decimal
-from "@std/time.ms" import duration
+from "@std/time.ms" import nanoseconds
 from "@std/math.ms" import BigInt, BigIntError, from_int
 
 test "integer division retains signed boundary and remainder rules":
@@ -20,62 +20,62 @@ test "integer division retains signed boundary and remainder rules":
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
 
 test "duration arithmetic retains full signed nanosecond range":
-    let minimum = duration(-9223372036854775808)
-    let maximum = duration(9223372036854775807)
+    let minimum = nanoseconds(-9223372036854775808)
+    let maximum = nanoseconds(9223372036854775807)
     try expect_false(
         (
             minimum.divide(1) != minimum
-            or maximum.divide(-1) != duration((-9223372036854775807))
+            or maximum.divide(-1) != nanoseconds((-9223372036854775807))
         )
     )
-    try expect_equal(minimum.divide(-9223372036854775808), duration(1))
+    try expect_equal(minimum.divide(-9223372036854775808), nanoseconds(1))
     try expect_false(
         (
-            minimum.multiply(0) != duration(0)
-            or duration(0).multiply(-9223372036854775808) != duration(0)
+            minimum.multiply(0) != nanoseconds(0)
+            or nanoseconds(0).multiply(-9223372036854775808) != nanoseconds(0)
         )
     )
     try expect_false(
         (
             minimum.multiply(1) != minimum
-            or maximum.multiply(-1) != duration((-9223372036854775807))
+            or maximum.multiply(-1) != nanoseconds((-9223372036854775807))
         )
     )
     try expect_equal(
-        duration(-1).multiply(9223372036854775807), duration((-9223372036854775807))
+        nanoseconds(-1).multiply(9223372036854775807), nanoseconds((-9223372036854775807))
     )
     try expect_false(
         (
-            minimum.add(maximum) != duration(-1)
-            or maximum.subtract(maximum) != duration(0)
+            minimum.add(maximum) != nanoseconds(-1)
+            or maximum.subtract(maximum) != nanoseconds(0)
         )
     )
 
 test "duration safe addition subtraction negation and unit edges":
-    let minimum = duration(-9223372036854775808)
-    let maximum = duration(9223372036854775807)
+    let minimum = nanoseconds(-9223372036854775808)
+    let maximum = nanoseconds(9223372036854775807)
     try expect_false(
         (
-            minimum.add(duration(0)) != minimum
-            or maximum.subtract(duration(0)) != maximum
+            minimum.add(nanoseconds(0)) != minimum
+            or maximum.subtract(nanoseconds(0)) != maximum
         )
     )
     try expect_false(
         (
-            minimum + maximum != duration(-1)
-            or minimum - duration(-1) != duration((-9223372036854775807))
+            minimum + maximum != nanoseconds(-1)
+            or minimum - nanoseconds(-1) != nanoseconds((-9223372036854775807))
         )
     )
     try expect_false(
         (
-            duration(-9223372036854775807).negate() != maximum
-            or duration((-9223372036854775807)).abs() != maximum
+            nanoseconds(-9223372036854775807).negate() != maximum
+            or nanoseconds((-9223372036854775807)).abs() != maximum
         )
     )
     try expect_false(
         (
-            duration(0).negate() != duration(0)
-            or duration(0).abs() != duration(0)
+            nanoseconds(0).negate() != nanoseconds(0)
+            or nanoseconds(0).abs() != nanoseconds(0)
         )
     )
     try expect_equal((9223372036854).milliseconds.to_nanoseconds(), 9223372036854000000)

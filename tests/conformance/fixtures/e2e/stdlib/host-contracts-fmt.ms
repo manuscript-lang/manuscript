@@ -5,7 +5,7 @@ from "@std/testing.ms" import expect_equal, expect_error, expect_false
 from "@std/fs.ms" import filesystem, FileSystemError
 from "@std/io.ms" import files, IoError
 from "@std/process.ms" import control
-from "@std/time.ms" import duration
+from "@std/time.ms" import nanoseconds
 from "@std/archive.ms" import compress, decompress, CompressionError
 from "@std/archive.ms" import pack, unpack, ArchiveEntry, ArchiveError
 from "@std/string.ms" import StringError
@@ -14,7 +14,7 @@ from "@std/bytes.ms" import Bytes
 test "raw monotonic nanoseconds share the typed process uptime origin":
     let process = control()
     let before = try process.uptime()
-    let reading = duration(process.monotonic_time())
+    let reading = nanoseconds(process.monotonic_time())
     let after = try process.uptime()
     try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 

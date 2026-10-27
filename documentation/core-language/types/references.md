@@ -49,7 +49,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) inside the `with` block of an earlier `lock` of it in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -99,6 +99,6 @@ A factory can return an open resource for its caller's `with`. A resource return
 | Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
 | Returns a resource registered in a local `with` block | A reference to the resource after that block has closed it. |
 
-Using a closed resource raises its runtime closed-state error. The compiler does not catch every missing `with`, and ownership transfer does not replace explicit resource cleanup.
+Using a closed resource raises its runtime closed-state error. A `let` or `var` that holds a resource must be closed: bind it with `with`, call `close()` on it, or move it on (return it, pass it to a consuming parameter, or store it). Otherwise the checker rejects the binding as never closed. A resource made by another resource, such as a child of a `ProcessGroup`, is closed by its owner. Use after close is still a runtime error, and ownership transfer does not replace explicit resource cleanup.
 
 See [Closeable](../cleanup/closeable.md), [using with](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

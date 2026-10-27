@@ -27,7 +27,7 @@ impl Queue[T]:
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
             for index in range(self.head, count):
-                live.append(self.items.get(index).clone())
+                live.append(self.items.replace(index, none))
             self.items = live
             self.head = 0
 
@@ -39,8 +39,7 @@ impl Queue[T]:
         if self.head >= self.items.length():
             return none
 
-        let value = self.items.get(self.head).clone()
-        self.items.set(self.head, none)
+        let value = self.items.replace(self.head, none)
         self.head += 1
 
         if self.head == self.items.length():
@@ -72,9 +71,9 @@ export type PriorityQueue[T: Clonable]:
     compare: Callable[[T, T], Int]
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
-    # Binary heap of values. Internal state: use the operations, not this field.
+    # Binary heap of waiting values. Internal state: use the operations, not this field.
     heap: List[T] = []
-    # Enqueue sequence number of each heap value, which breaks ties between equal priorities. Internal state.
+    # Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.
     orders: List[Int] = []
     # Next enqueue sequence number. Internal state.
     next_order: Int = 0
@@ -85,15 +84,40 @@ impl PriorityQueue[T]:
         let order = self.compare(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
-    # Reports whether a value waiting to be placed, with its enqueue order, dequeues before the entry at `b`.
-    def before_entry(value: T, order: Int, b: Int) -> Bool:
-        let result = self.compare(value, self.heap.get(b))
-        return result < 0 or (result == 0 and order < self.orders.get(b))
+    # Exchanges the heap entries at `a` and `b`.
+    var def swap_entries(a: Int, b: Int) -> Unit:
+        self.heap.swap(a, b)
+        self.orders.swap(a, b)
 
-    # Copies the entry at `from` over the entry at `to`, which the caller is about to overwrite.
-    var def shift(from: Int, to: Int) -> Unit:
-        self.heap.set(to, self.heap.get(from).clone())
-        self.orders.set(to, self.orders.get(from))
+    # Moves the entry at `at` up while it dequeues before its parent.
+    var def sift_up(start: Int) -> Unit:
+        var at = start
+
+        while at > 0:
+            let parent = (at - 1) / 2
+            if not self.before(at, parent):
+                break
+
+            self.swap_entries(at, parent)
+            at = parent
+
+    # Moves the entry at `start` down while a child dequeues before it.
+    var def sift_down(start: Int) -> Unit:
+        let size = self.heap.length()
+        var at = start
+
+        while True:
+            var child = at * 2 + 1
+            if child >= size:
+                break
+
+            if child + 1 < size and self.before(child + 1, child):
+                child += 1
+            if not self.before(child, at):
+                break
+
+            self.swap_entries(child, at)
+            at = child
 
     # Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var def enqueue(value: T) -> Bool:
@@ -105,23 +129,10 @@ impl PriorityQueue[T]:
             if self.heap.length() >= limit:
                 return False
 
-        let order = self.next_order
+        self.heap.append(value)
+        self.orders.append(self.next_order)
         self.next_order += 1
-        self.heap.append(value.clone())
-        self.orders.append(order)
-
-        var at = self.heap.length() - 1
-
-        while at > 0:
-            let parent = (at - 1) / 2
-            if not self.before_entry(value, order, parent):
-                break
-
-            self.shift(parent, at)
-            at = parent
-
-        self.heap.set(at, value)
-        self.orders.set(at, order)
+        self.sift_up(self.heap.length() - 1)
         return True
 
     # Removes and returns the next value by priority, or `none` when empty.
@@ -130,40 +141,12 @@ impl PriorityQueue[T]:
         if count == 0:
             return none
 
-        let top = self.heap.get(0).clone()
-        let last = self.heap.pop()
-        let last_order = self.orders.pop()
-        if count == 1:
-            return some(top)
+        self.swap_entries(0, count - 1)
+        self.orders.pop()
 
-        let entry = last.get()
-        let entry_order = last_order.get()
-        let size = count - 1
-        var at = 0
-
-        # Move the hole to the bottom along the earlier child, then lift the displaced entry back up:
-        # one comparison per level on the way down instead of two.
-        while True:
-            var child = at * 2 + 1
-            if child >= size:
-                break
-
-            if child + 1 < size and self.before(child + 1, child):
-                child += 1
-            self.shift(child, at)
-            at = child
-
-        while at > 0:
-            let parent = (at - 1) / 2
-            if not self.before_entry(entry, entry_order, parent):
-                break
-
-            self.shift(parent, at)
-            at = parent
-
-        self.heap.set(at, entry.clone())
-        self.orders.set(at, entry_order)
-        return some(top)
+        let top = self.heap.pop()
+        self.sift_down(0)
+        return top
 
     # Returns the next value by priority without removing it, or none when empty.
     def peek() -> Optional[T]:
@@ -179,3 +162,10 @@ impl PriorityQueue[T]:
     # Reports whether the queue has no values to peek or dequeue.
     def is_empty() -> Bool:
         return self.heap.length() == 0
+
+# Creates a PriorityQueue that dequeues the smallest value first, using the value type's `Comparable` order.
+# Example: `ordered_priority_queue[Int]()` dequeues 1 before 2; pass `capacity` to bound it.
+export def ordered_priority_queue[T: Comparable & Clonable](
+    capacity: Optional[Int] = none
+) -> PriorityQueue[T]:
+    return PriorityQueue[T](compare: lambda a, b: a.compare(b), capacity: capacity)

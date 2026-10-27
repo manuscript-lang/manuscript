@@ -32,7 +32,7 @@ let exact: Callable[[Int], Int] = identity
 let wrong: Callable[[Int], String] = identity
 ```
 
-Only call boundaries wrap a plain `T` for an `Optional[T]` parameter ([optional arguments](optionals.md#passing-optional-arguments)), including constructor fields and alternative payloads. Everywhere else Optional must match exactly.
+An expected `Optional[T]` accepts a plain `T`, wrapped as `some(value: ...)`, in arguments, constructor fields, alternative payloads, annotated bindings, assignments, returns, defaults, and collection elements ([optional values](optionals.md#passing-optional-arguments)). It wraps one layer and never changes a numeric type.
 
 There are no implicit numeric conversions, optional unwrapping, result wrapping, structural record conversions, unions, or nullable references. An integer literal is `Int` even where `Float` is expected; use the [explicit conversion API](../basics/numbers-and-booleans.md#numeric-conversion).
 

@@ -1,0 +1,33 @@
+module "field_list_walk"
+entry @main
+record Stack { items: list<int> }
+fn @total(%s: Stack) -> int {
+b0:
+  %zero: int = iconst 0
+  %one: int = iconst 1
+  br head(%zero, %zero)
+head(%i: int, %t: int):
+  %l: list<int> = rec.get Stack.items %s
+  %n: int = list.len %l
+  %c: bool = icmp.lt %i, %n
+  br_if %c, body(), done()
+body:
+  %m: list<int> = rec.get Stack.items %s
+  %x: int = list.get %m, %i
+  %t1: int = iadd.chk %t, %x
+  %i1: int = iadd %i, %one
+  br head(%i1, %t1)
+done:
+  ret %t
+}
+fn @main() -> int {
+b0:
+  %a: int = iconst 4
+  %b: int = iconst 5
+  %c: int = iconst 6
+  %l: list<int> = list.lit %a, %b, %c
+  %s: Stack = rec.new Stack %l
+  %r: int = call @total (%s)
+  drop %s
+  ret %r
+}

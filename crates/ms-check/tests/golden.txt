@@ -574,7 +574,11 @@ def explicit() -> Unit:
     fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
     fs.create_directory("", True)
     fs.remove("", False)
-from "@std/faults.ms" import panic
+type	4	5	90	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	5	5	123	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	6	5	154	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	7	5	219	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	8	5	253	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefrom "@std/faults.ms" import panic
 type Override:
     received: Bool
 impl FileSystem for Override:
@@ -833,13 +837,13 @@ def forward[T](item: T) -> T: item
 export def main() -> Int:
     return panic(message: "profile failure")
 resolution	1	30	29	unknown standard module @std/faults.ms
-resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import duration, sleep
+resolution	3	12	72	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/time.ms" import nanoseconds, sleep
 from "@std/io.ms" import stdout
 export def main() -> Int:
     stdout().write(data: "ready\n")
-    sleep(duration(nanoseconds: 60000000000))
+    sleep(nanoseconds(60000000000))
     return 0
-import stdout from "@std/io.ms"
+type	4	5	108	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -1878,7 +1882,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 53 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 55 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2331,7 +2335,7 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 53 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 55 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
     return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
     def get() -> T
@@ -2996,7 +3000,8 @@ impl Error for Cause:
             sum += found
         i += 1
     return sum
-resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a moduledef probe() -> Int:
+resolution	5	24	103	unknown binding affine; declare it with 'let affine = ...' before use, define 'def affine(...) -> T:', or import it from a module
+type	5	16	95	binding found shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def probe() -> Int:
     var sum = 0
     var i = 0
     while i < 1000:
@@ -3999,7 +4004,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def helper() -> Int: 1
+type	10	21	139	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def helper() -> Int: 1
 
 let (
     A = 1
@@ -4018,7 +4023,7 @@ def main() -> Unit:
         d = "Hi"
     )
     a += x + b(c)
-def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
+type	12	21	141	binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'def apply(transform: Callable[[Int], Int], value: Int) -> Int: transform(value)
 def example() -> Int:
     return apply(
         transform: lambda (value: Int) -> Int:
@@ -5446,7 +5451,7 @@ def use[T](value: Result[Int, Failure[T]]) -> Int:
     match value:
         case error(NotFound): return 1
         case ok(value): return value
-interface Describe:
+type	9	14	242	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
     def describe() -> String
 type State:
     case Ready
@@ -5544,7 +5549,7 @@ def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...
 resolution	2	5	26	unknown binding operation; declare it with 'let operation = ...' before use, define 'def operation(...) -> T:', or import it from a moduledef operation() -> Result[Unit, Error]: ok(())
 def caller() -> Unit:
     operation()
-def caller() -> Unit:
+type	3	5	73	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef caller() -> Unit:
     let callback = lambda () -> Unit:
         if True:
             operation()
@@ -5868,10 +5873,10 @@ test "third=after":
 export def helper() -> Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, duration
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a modulefrom "@std/time.ms" import sleep, nanoseconds
 
 test "timeout":
-    sleep(duration(nanoseconds: 1000000000))
+    sleep(nanoseconds(1000000000))
 
 test "after":
     return ()
@@ -5926,7 +5931,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	692	this statement discards Result[Unit, Error], so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purposedef f() -> Int:
+type	28	5	692	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef f() -> Int:
     return 1
 let X = f()
 type	3	9	37	a constant takes literals, operators, collections, and other constants; compute this value in a functiondef f() -> Int:
@@ -6058,8 +6063,7 @@ export def main() -> Int:
     return 0
 test "continues after decimal overflow":
     let finite = 1d / 3d
-resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/decimal.ms"
-resolution	2	23	63	Decimal literal requires the canonical Decimal import; add: import Decimal from "@std/decimal.ms"interface Shape:
+resolution	2	18	58	Decimal literal requires the canonical Decimal import; add: from "@std/decimal.ms" import Decimalinterface Shape:
     def area() -> Int
 
 type Rect:
@@ -6189,18 +6193,20 @@ def probe(input: ReadStream) -> Bool:
 export def main() -> Int:
     if probe(stdin()): return 1
     return 0
-def crash() -> Int:
+type	3	14	87	division by zero always faults; guard the divisor or use a nonzero constantdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     return values.add(crash(), 1).length()
-resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	5	35	130	unknown or ambiguous member length on Unit; this type has no fields or operationsdef crash() -> Int:
     return 1 / 0
 export def main() -> Int:
     let values = Map[Int, Int]()
     let add = values.add
     return add(value: crash(), key: 1).length()
-resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
+type	2	14	33	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	6	40	160	unknown or ambiguous member length on Unit; this type has no fields or operationsdef pick(values: List[Int], index: Int) -> Int:
     return values.get(index)
 export def main() -> Int:
     return pick([1, 2, 3], 3)
@@ -6232,6 +6238,7 @@ export def main() -> Int:
     return value.or_else(crash)
 resolution	1	30	29	unknown standard module @std/errors.ms
 resolution	2	18	56	unknown type TextError; add: from "@std/core.ms" import TextError
+type	3	14	88	division by zero always faults; guard the divisor or use a nonzero constant
 resolution	5	28	145	unknown type TextError; add: from "@std/core.ms" import TextError
 resolution	5	47	164	unknown binding TextError; add: from "@std/core.ms" import TextErrordef crash(key: String, value: Int) -> Bool:
     return 1 / value == 0
@@ -6275,11 +6282,11 @@ export def main() -> Int:
     return value
 export def main() -> Int:
     return divide()
-export def main() -> Int:
+type	1	27	26	division by zero always faults; guard the divisor or use a nonzero constantexport def main() -> Int:
     let crash = lambda () -> Int:
         return 1 / 0
     return crash()
-def extract[T](value: Optional[T]) -> T:
+type	3	18	77	division by zero always faults; guard the divisor or use a nonzero constantdef extract[T](value: Optional[T]) -> T:
     return value.get()
 export def main() -> Int:
     return extract[Int](none)
@@ -6528,7 +6535,8 @@ resolution	5	20	160	unknown binding Shape; did you mean 'shapes'?def fail() -> 
 export def main() -> Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(fail() * 0))
-resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
+type	2	14	32	division by zero always faults; guard the divisor or use a nonzero constant
+resolution	4	19	80	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
 resolution	5	12	108	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduleexport def main() -> Int:
     let shapes = [Shape.Circle(2)]
     var sum = 9223372036854775807
@@ -6642,8 +6650,8 @@ export def main() -> Int:
 
 type	25	33	572	cannot move `file` out: it only borrows its value (a borrow); use `file.clone()` to get an owned copy
 type	27	10	638	cannot change `copy.label`: `copy` is declared with let, which is immutable including its contents; declare it `var copy` to change ittest %q:
-    let minimum = duration(-9223372036854775808)
-    let maximum = duration(9223372036854775807)
+    let minimum = nanoseconds(-9223372036854775808)
+    let maximum = nanoseconds(9223372036854775807)
     let divide = minimum.divide
 parse	1	6	5	expected text in double quotes, found '%'test "continues after numeric faults":
     let valid = 1
@@ -6909,7 +6917,7 @@ test "receiver fault comes first":
     let impossible = (1 / 0).minutes
 test "continues with valid units":
     let valid = (1).seconds
-import stdout from "@std/io.ms"
+type	6	25	204	division by zero always faults; guard the divisor or use a nonzero constantimport stdout from "@std/io.ms"
 
 export fn main() Int:
     match stdout().write(data: %q):

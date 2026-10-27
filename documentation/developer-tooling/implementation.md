@@ -13,6 +13,7 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms fmt source.ms --drop-labels
+ms check source.ms --fix
 ms verify ms.toml --json
 ms lsp
 ms search_symbol read file lines
@@ -25,6 +26,7 @@ ms profile ms.toml --out-dir capture --top 10 -- arg1
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
+- `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
 
 ## Rebuild on save
 
@@ -227,11 +229,12 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL101 | Unread local or match payload binding (a read inside `total = total + 2` does not count; use `_` to ignore a payload) |
 | MSL102 | Unused import |
 | MSL103 | Unreachable statement |
-| MSL104 | Discarded `Result`: handle with `if let`, propagate with `try`, or bind `let _ignored = operation()`. See [Result handling](../core-language/errors/results.md) |
 | MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 | MSL110 | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
+| MSL111 | `while True` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
+| MSL112 | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 

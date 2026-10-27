@@ -68,7 +68,7 @@ test "Bytes values direct bound and free calls return independent lists":
     var free = values(data)
     direct.set(0, 99)
     bound.append(12)
-    free.reverse_in_place()
+    free.reverse()
     try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
 
     let empty: List[Int] = []

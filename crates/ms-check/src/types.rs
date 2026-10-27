@@ -374,6 +374,8 @@ pub struct Binding {
     pub ty: Ty,
     /// Declared with `var`.
     pub mutable: bool,
+    /// Where the name is declared.
+    pub decl: ms_syntax::Pos,
     /// Function (closure) nesting number that owns it.
     pub function: usize,
 }

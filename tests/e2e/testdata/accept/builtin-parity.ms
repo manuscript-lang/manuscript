@@ -113,7 +113,7 @@ test "list methods mutate explicit clones and remain typed":
     original.slice(start: 1, end: 3).get() | try expect_equal([1, 2])
 
     var chain_4 = original.clone()
-    chain_4.reverse_in_place()
+    chain_4.reverse()
     chain_4 | try expect_equal([1, 2, 1, 3])
     original.sorted(compare: compare) | try expect_equal([1, 1, 2, 3])
     [-1, 0, 2, 3].filter(predicate: positive) | try expect_equal([2, 3])
@@ -160,7 +160,7 @@ test "list methods mutate explicit clones and remain typed":
     convert(transform: stringify) | try expect_equal(["3", "1", "2", "1"])
 
     var reversing = original.clone()
-    let reverse = reversing.reverse_in_place
+    let reverse = reversing.reverse
     reverse()
     reversing | try expect_equal([1, 2, 1, 3])
 

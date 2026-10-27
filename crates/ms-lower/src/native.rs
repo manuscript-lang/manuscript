@@ -2455,11 +2455,12 @@ impl<'a> FnLower<'a> {
             name,
             "append"
                 | "set"
+                | "replace"
                 | "prepend"
                 | "insert"
                 | "remove"
                 | "pop"
-                | "reverse_in_place"
+                | "reverse"
                 | "sort"
         );
         let is_list = matches!(self.b.m.types.kind(self.ty_of(old)), TyKind::List(_));
@@ -2510,6 +2511,31 @@ impl<'a> FnLower<'a> {
                 self.check_index(2, i, r, n, false);
                 let v = self.element_value(&args[1]);
                 Ok((self.b.list_set(old, i, v), None))
+            }
+            "replace" => {
+                // The element moves out through a slot and the new value moves in; nothing is copied.
+                let idx = self.borrow(args[0].val);
+                let v = self.element_value(&args[1]);
+                let list = self.put_slot(old);
+                let incoming = self.put_slot(v);
+                let outgoing = self
+                    .b
+                    .emit(Op::Slot, &[], ms_mir::ir::Imm::Ty(elem), Some(MTy::PTR))
+                    .expect("slot");
+                self.call_runtime(
+                    "msrt_list_replace",
+                    &[list, d, idx, incoming, outgoing],
+                    MTy::UNIT,
+                )?;
+                let new = self.take_slot(list, lt);
+                let old_element = self.take_slot(outgoing, elem);
+                Ok((
+                    new,
+                    Some(Val {
+                        v: old_element,
+                        own: true,
+                    }),
+                ))
             }
             "prepend" | "insert" | "remove" => {
                 let n = self.b.list_len(old);
@@ -2602,7 +2628,7 @@ impl<'a> FnLower<'a> {
                 self.release_source(fvar, true);
                 Ok((r.v, None))
             }
-            "reverse_in_place" => {
+            "reverse" => {
                 let var = self.fresh_var(lt);
                 self.b.def_var(var, old);
                 let r = self.list_reversed(var, elem)?;

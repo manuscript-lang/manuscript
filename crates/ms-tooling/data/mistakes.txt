@@ -13,7 +13,7 @@ diag: no built-in print
 wrong: stdout().write("hi\n")
 right: stdout().write("hi\n").get()
 setup: from "@std/io.ms" import stdout
-diag: -
+diag: this statement discards
 
 wrong: "n={n}"
 right: f"n={n}"

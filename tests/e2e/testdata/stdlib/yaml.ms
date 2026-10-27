@@ -27,7 +27,7 @@ type ScalarCase:
 
 def scalar(text: String, expected: String) -> Result[Unit, Error]:
     let root = parse(text: text) | try expect_ok | try entries
-    if root.get("a").get() != YamlValue.StringValue(expected): return error(
+    if root["a"] != YamlValue.StringValue(expected): return error(
         TextError(f"scalar folding: {text}")
     )
 
@@ -140,8 +140,8 @@ test "YAML plain paragraphs retain boundaries and nested collections":
                 )
             )
         )
-        root.get("a").get() | try expect_equal(YamlValue.StringValue("x\n\ny z"))
-        root.get("b").get() | try expect_equal(YamlValue.NumberValue("1"))
+        root["a"] | try expect_equal(YamlValue.StringValue("x\n\ny z"))
+        root["b"] | try expect_equal(YamlValue.NumberValue("1"))
 
     let root = parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n") | try expect_ok | try entries
     try expect_false(
@@ -189,13 +189,13 @@ test "YAML blank line folding retains byte node and malformed input contracts":
         )
     )
 
-    for text in [
+    for malformed in [
         "a: 'x\n\n  y", "a: \"x\n\n  y", "a: \"x\\\n\n  y\\q\"", "a: x\n\n  b: y",
         "a: x\n\n  - y", "a: x\n\n \ty", "a: x\n # comment\n  y", "a: >--\n\n  x",
         "a: >\n  x\n \t\n  y", "a: >2\n  x\n y"
     ]:
-        let cause = match parse(text: text):
-            case ok(_): return fail(f"malformed multiline scalar accepted: {text}")
+        let cause = match parse(text: malformed):
+            case ok(_): return fail(f"malformed multiline scalar accepted: {malformed}")
             case error(cause): cause
 
         match cause:
@@ -215,14 +215,12 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 test "YAML block mappings sequences exact scalars and core schema":
     let text = "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
     let root = parse(text: text) | try expect_ok | try entries
-    root.get("name").get() | try expect_equal(YamlValue.StringValue("é🙂"))
-    root.get("large").get() | try expect_equal(
-        YamlValue.NumberValue("9007199254740993")
-    )
-    root.get("boolean").get() | try expect_equal(YamlValue.BoolValue(True))
-    root.get("legacy").get() | try expect_equal(YamlValue.StringValue("yes"))
-    root.get("date").get() | try expect_equal(YamlValue.StringValue("2024-02-29"))
-    root.get("empty").get() | try expect_equal(YamlValue.Null)
+    root["name"] | try expect_equal(YamlValue.StringValue("é🙂"))
+    root["large"] | try expect_equal(YamlValue.NumberValue("9007199254740993"))
+    root["boolean"] | try expect_equal(YamlValue.BoolValue(True))
+    root["legacy"] | try expect_equal(YamlValue.StringValue("yes"))
+    root["date"] | try expect_equal(YamlValue.StringValue("2024-02-29"))
+    root["empty"] | try expect_equal(YamlValue.Null)
     try expect_false(
         (
             (try items(root.get("values").get())) != [
@@ -282,16 +280,10 @@ test "YAML flow collections quotes escapes comments and multiline values":
         )
     )
     try expect_false(
-        (
-            root.get("url").get() != YamlValue.StringValue(
-                "https://example.org/#fragment"
-            )
-        )
+        (root["url"] != YamlValue.StringValue("https://example.org/#fragment"))
     )
     (try items(root.get("multiline").get())).length() | try expect_equal(3)
-    root.get("text").get() | try expect_equal(
-        YamlValue.StringValue("a long continued sentence")
-    )
+    root["text"] | try expect_equal(YamlValue.StringValue("a long continued sentence"))
     parse(text: "'literal\\n'") | try expect_ok | try expect_equal(
         YamlValue.StringValue("literal\\n")
     )
@@ -307,29 +299,29 @@ test "YAML literal folded and chomped block scalars preserve content":
         )
     )
     (
-        root.get("literal").get() | try expect_equal(
+        root["literal"] | try expect_equal(
             YamlValue.StringValue("first # text\nsecond\n")
         )
     )
-    root.get("folded").get() | try expect_equal(YamlValue.StringValue("hello world"))
-    root.get("keep").get() | try expect_equal(YamlValue.StringValue("line\n\n"))
-    root.get("explicit").get() | try expect_equal(YamlValue.StringValue("indented"))
-    root.get("tabs").get() | try expect_equal(YamlValue.StringValue("\tcontent"))
+    root["folded"] | try expect_equal(YamlValue.StringValue("hello world"))
+    root["keep"] | try expect_equal(YamlValue.StringValue("line\n\n"))
+    root["explicit"] | try expect_equal(YamlValue.StringValue("indented"))
+    root["tabs"] | try expect_equal(YamlValue.StringValue("\tcontent"))
 
 test "YAML anchors aliases merge keys and override precedence":
     let text = "defaults: &defaults\n  retries: 3\n  enabled: true\ncopy: *defaults\nconfig:\n  <<: *defaults\n  retries: 5\nscalar: &answer 42\nalias: *answer\nflow: &flow [1, 2]\nflow_alias: *flow\n"
     let root = parse(text: text) | try expect_ok | try entries
-    root.get("defaults").get() | try expect_equal(root.get("copy").get())
+    root["defaults"] | try expect_equal(root["copy"])
 
     let config = (try entries(root.get("config").get()))
     try expect_false(
         (
-            config.get("retries").get() != YamlValue.NumberValue("5")
-            or config.get("enabled").get() != YamlValue.BoolValue(True)
+            config["retries"] != YamlValue.NumberValue("5")
+            or config["enabled"] != YamlValue.BoolValue(True)
         )
     )
-    root.get("alias").get() | try expect_equal(YamlValue.NumberValue("42"))
-    root.get("flow_alias").get() | try expect_equal((root.get("flow").get()))
+    root["alias"] | try expect_equal(YamlValue.NumberValue("42"))
+    root["flow_alias"] | try expect_equal((root["flow"]))
 
     let merged = (
         try entries(
@@ -343,8 +335,8 @@ test "YAML anchors aliases merge keys and override precedence":
     let c = (try entries(merged.get("c").get()))
     try expect_false(
         (
-            c.get("x").get() != YamlValue.NumberValue("1")
-            or c.get("y").get() != YamlValue.NumberValue("4")
+            c["x"] != YamlValue.NumberValue("1")
+            or c["y"] != YamlValue.NumberValue("4")
         )
     )
 
@@ -354,7 +346,7 @@ test "YAML documents BOM CRLF empty input and version directive":
             text: f"\u{feff}%YAML 1.2\r\n---\r\na: 1\r\n...\r\n# done\r\n"
         ) | try expect_ok
     )
-    (try entries(root)).get("a").get() | try expect_equal(YamlValue.NumberValue("1"))
+    (try entries(root)) ["a"] | try expect_equal(YamlValue.NumberValue("1"))
     parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null)
     parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
     (try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
@@ -521,13 +513,9 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
         )
     )
     try expect_false(
-        (
-            folded.get("run").get() != YamlValue.StringValue(
-                "util/check.sh --flag value"
-            )
-        )
+        (folded["run"] != YamlValue.StringValue("util/check.sh --flag value"))
     )
-    folded.get("next").get() | try expect_equal(YamlValue.NumberValue("1"))
+    folded["next"] | try expect_equal(YamlValue.NumberValue("1"))
 
     let list = parse(text: "- foo\n  bar\n-\n  baz\n  qux\n") | try expect_ok | try items
     list | try expect_equal(
@@ -535,7 +523,7 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
     )
 
     let anchored = parse(text: "a:\n  &x\n  k: 1\nb: *x\n") | try expect_ok | try entries
-    anchored.get("a").get() | try expect_equal(anchored.get("b").get())
+    anchored["a"] | try expect_equal(anchored["b"])
     try expect_false(
         (
             (try entries(anchored.get("b").get())).get(
@@ -546,14 +534,14 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
 
 test "YAML quoted merge key is an ordinary string key":
     let block = parse(text: "\"<<\": 1\nplain: 3\n") | try expect_ok | try entries
-    block.get("<<").get() | try expect_equal(YamlValue.NumberValue("1"))
+    block["<<"] | try expect_equal(YamlValue.NumberValue("1"))
     block.length() | try expect_equal(2)
 
     let single = parse(text: "'<<': 2\n") | try expect_ok | try entries
-    single.get("<<").get() | try expect_equal(YamlValue.NumberValue("2"))
+    single["<<"] | try expect_equal(YamlValue.NumberValue("2"))
 
     let flow = parse(text: "{\"<<\": 1, a: 2}\n") | try expect_ok | try entries
-    flow.get("<<").get() | try expect_equal(YamlValue.NumberValue("1"))
+    flow["<<"] | try expect_equal(YamlValue.NumberValue("1"))
 
     let merged = (
         try entries(
@@ -629,9 +617,9 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
     list.length() | try expect_equal(3)
 
     let first = (try entries(list.first().get()))
-    first.get("b").get() | try expect_equal(YamlValue.NumberValue("2"))
+    first["b"] | try expect_equal(YamlValue.NumberValue("2"))
     (try items(list.get(1).clone())).length() | try expect_equal(2)
-    (try entries(list.last().get())).get("d").get() | try expect_equal(
+    (try entries(list.last().get())) ["d"] | try expect_equal(
         YamlValue.NumberValue("4")
     )
 
@@ -647,7 +635,7 @@ def repeated(text: String, count: Int) -> String:
 test "YAML long plain scalars and large mappings parse in linear time":
     let long = repeated(text: "x", count: 300000)
     let scalar = parse(text: f"a: {long}") | try expect_ok | try entries
-    scalar.get("a").get() | try expect_equal(YamlValue.StringValue(long))
+    scalar["a"] | try expect_equal(YamlValue.StringValue(long))
 
     var keys = ""
     for index in range(0, 30000):
@@ -664,12 +652,12 @@ test "YAML flow mapping keys without a colon map to null":
     let root = parse(text: "a: {x, y: 1, z}\nb: {\"q\", r: [1]}") | try expect_ok | try entries
     let first = (try entries(root.get("a").get()))
     first.length() | try expect_equal(3)
-    first.get("x").get() | try expect_equal(YamlValue.Null)
-    first.get("y").get() | try expect_equal(YamlValue.NumberValue("1"))
-    first.get("z").get() | try expect_equal(YamlValue.Null)
+    first["x"] | try expect_equal(YamlValue.Null)
+    first["y"] | try expect_equal(YamlValue.NumberValue("1"))
+    first["z"] | try expect_equal(YamlValue.Null)
 
     let second = (try entries(root.get("b").get()))
-    second.get("q").get() | try expect_equal(YamlValue.Null)
+    second["q"] | try expect_equal(YamlValue.Null)
 
     match parse(text: "{x, x}"):
         case ok(_): return fail("duplicate null keys")
@@ -684,16 +672,16 @@ test "YAML flow mapping keys without a colon map to null":
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
     let long = repeated(text: "x", count: 300000)
     let double = parse(text: f"a: \"{long}\"") | try expect_ok | try entries
-    double.get("a").get() | try expect_equal(YamlValue.StringValue(long.clone()))
+    double["a"] | try expect_equal(YamlValue.StringValue(long.clone()))
 
     let single = parse(text: f"a: '{long}'") | try expect_ok | try entries
-    single.get("a").get() | try expect_equal(YamlValue.StringValue(long.clone()))
+    single["a"] | try expect_equal(YamlValue.StringValue(long.clone()))
 
     let lines = repeated(text: "word\n  ", count: 20000)
     let plain = parse(text: f"a: {lines}end") | try expect_ok | try entries
     try expect_false(
         (
-            plain.get("a").get() != YamlValue.StringValue(
+            plain["a"] != YamlValue.StringValue(
                 repeated(text: "word ", count: 20000).concat("end")
             )
         )
@@ -703,7 +691,7 @@ test "YAML long quoted block and multi-line scalars decode and stringify in line
     let literal = parse(text: f"a: |\n{body}") | try expect_ok | try entries
     try expect_false(
         (
-            literal.get("a").get() != YamlValue.StringValue(
+            literal["a"] != YamlValue.StringValue(
                 repeated(text: "line\n", count: 20000)
             )
         )

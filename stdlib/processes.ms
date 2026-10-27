@@ -76,13 +76,23 @@ export type ProcessError:
         # Why the frames could not be read, for example an oversized or non-UTF-8 frame.
         reason: String
     )
+    # The process could not start; `cause` is the host's reason.
+    case NotStarted(
+        # Why the host refused to start the child, from the command runner.
+        cause: CommandError
+    )
 
 impl Error for ProcessError:
-    # Returns the fixed diagnostic `process: exited with status <code>` or `process: broken: <reason>`.
+    # Returns `process: exited with status <code>`, `process: broken: <reason>` or `process: not started: <cause>`.
     def message() -> String:
         match self:
             case Exited(code): return "process: exited with status " + code.to_string()
             case Broken(reason): return "process: broken: " + reason
+            case NotStarted(cause): return "process: not started: " + cause.message()
+
+# Wraps a start failure as the group's error.
+def not_started(cause: CommandError) -> ProcessError:
+    return ProcessError.NotStarted(cause)
 
 # A value inside a frame body, so values with no JSON form of their own, such as `Unit`, cross too.
 type Envelope[T]:
@@ -147,13 +157,9 @@ def next_frame(
                 if available >= 5 + size:
                     let kind = state.value.pending.get(4)
                     let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
-                    state.value.pending = (
-                        state
-                        .value
-                        .pending
-                        .slice(5 + size, available)
-                        .get("".to_bytes())
-                    )
+                    state.value.pending = state.value.pending.slice(
+                        5 + size, available
+                    ).get("".to_bytes())
                     if let text = body.decode_utf8():
                         return ok(some(Frame(kind: kind, body: text)))
 
@@ -399,9 +405,11 @@ impl ProcessGroup[T, In, Out]:
         stdin: Stdio = Stdio.Inherit,
         stdout: Stdio = Stdio.Inherit,
         stderr: Stdio = Stdio.Inherit
-    ) -> Result[Process[T, In, Out], CommandError]:
+    ) -> Result[Process[T, In, Out], ProcessError]:
         let runner: Callable[[], Unit] = lambda: serve(entry)
-        let native = try msstd_process_fork(runner, stdin, stdout, stderr)
+        let native = try msstd_process_fork(runner, stdin, stdout, stderr).map_error(
+            not_started
+        )
         let link = msstd_process_forked_link(native)
         let inbox: Shared[Inbox] = share(Inbox())
         var id = 0

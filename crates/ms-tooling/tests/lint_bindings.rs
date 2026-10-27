@@ -21,13 +21,7 @@ fn codes(source: &str) -> Vec<String> {
 
 #[test]
 fn if_var_borrow_that_is_only_written_is_not_unread() {
-    let source = "export def main() -> Int:
-    var m = Map[String, Int]()
-    m.add(\"a\", 1)
-    if var n = m.get(\"a\"):
-        n += 1
-    return m.get(\"a\").get(0)
-";
+    let source = include_str!("lint_bindings/if-var-borrow-that-is-only-written-is-not-unread.ms");
     assert!(!codes(source).contains(&"MSL101".to_string()));
 }
 
@@ -54,5 +48,29 @@ fn optional_get_without_default_is_reported() {
         found.iter().filter(|c| *c == "MSL110").count(),
         1,
         "{found:?}"
+    );
+}
+
+fn recursive(source: &str) -> usize {
+    codes(source).iter().filter(|c| *c == "MSL112").count()
+}
+
+#[test]
+fn recursion_without_a_base_case_is_reported() {
+    assert_eq!(
+        recursive(include_str!(
+            "lint_bindings/recursion-without-a-base-case-is-reported.ms"
+        )),
+        2
+    );
+}
+
+#[test]
+fn recursion_with_a_base_case_is_clean() {
+    assert_eq!(
+        recursive(include_str!(
+            "lint_bindings/recursion-with-a-base-case-is-clean.ms"
+        )),
+        0
     );
 }

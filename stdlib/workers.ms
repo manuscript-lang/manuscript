@@ -130,30 +130,37 @@ export def worker_channel[Send, Receive]() -> Channel[Send, Receive]:
         transport: WorkerTransport[Send, Receive](end: msrt_worker_end())
     )
 
-# One end of a worker's pipe for raw `Bytes`: each send is copied once into the other side's memory,
-# with no JSON encoding. It shares the pipe, and so the order and the 16-message room, with the
-# channel on the same end; read each message with the kind that was sent.
-export type WorkerBytes:
-    # Internal state: the pipe end.
+# One end of a worker's pipe carrying raw `Bytes`: each send is copied once into the other side's
+# memory, with no JSON encoding. It shares the pipe end with the JSON transport on the same side.
+type WorkerBytesTransport:
+    # The pipe end this transport sends and receives on.
     end: Int
 
-impl WorkerBytes:
-    # Sends `data` to the other side, waiting while 16 messages are unread.
-    def send(data: Bytes) -> Result[Unit, ChannelError]:
-        if msrt_pipe_send_bytes(self.end, data) != 0:
+impl Transport[Bytes, Bytes] for WorkerBytesTransport:
+    var def send(value: Bytes) -> Result[Unit, ChannelError]:
+        if msrt_pipe_send_bytes(self.end, value) != 0:
             return error(ChannelError.Closed)
 
         return ok(())
 
-    # Returns the next message, or none once the other side ended and everything was read.
-    def receive() -> Result[Optional[Bytes], ChannelError]:
+    var def receive() -> Result[Optional[Bytes], ChannelError]:
         match msrt_pipe_receive_bytes(self.end):
             case ok(data): return ok(some(data))
             case error(why): return stopped(why)
 
-# Returns the worker's end of the pipe for raw bytes. Call it on a worker's thread.
-export def worker_bytes() -> WorkerBytes:
-    return WorkerBytes(end: msrt_worker_end())
+    var def close() -> Unit:
+        msrt_pipe_close(self.end)
+
+# A `Channel[Bytes, Bytes]` over the pipe end `end`, sending each message as raw bytes.
+def bytes_channel(end: Int) -> Channel[Bytes, Bytes]:
+    return Channel[Bytes, Bytes](transport: WorkerBytesTransport(end: end))
+
+# Returns the worker's end of its pipe as a `Channel[Bytes, Bytes]`, for large payloads that
+# should not be encoded as JSON. It shares the pipe, and so the order and the 16-message room,
+# with the channel from `worker_channel`: read each message with the kind that was sent, and
+# closing either closes the shared end. Call it on a worker's thread.
+export def worker_bytes() -> Channel[Bytes, Bytes]:
+    return bytes_channel(msrt_worker_end())
 
 # A started worker, with the group's end of its channel.
 export type Worker[In, Out]:
@@ -170,7 +177,7 @@ impl Worker[In, Out]:
     # Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
-    var def join() -> Result[Unit, WorkerError]:
+    var def wait() -> Result[Unit, WorkerError]:
         with var held = lock(self.ended):
             if held.value.length() > 0:
                 return held.value[0].clone()
@@ -183,9 +190,10 @@ impl Worker[In, Out]:
             held.value.append(outcome.clone())
             return outcome
 
-    # Returns the group's end of the pipe for raw `Bytes`, to move large payloads without JSON.
-    def bytes() -> WorkerBytes:
-        return WorkerBytes(end: self.end)
+    # Returns the group's end of the pipe as a `Channel[Bytes, Bytes]`, to move large payloads
+    # without JSON. It shares the pipe with `channel`, as `worker_bytes` describes.
+    def bytes() -> Channel[Bytes, Bytes]:
+        return bytes_channel(self.end)
 
     # Asks the worker to stop: its next wait or check for cancellation unwinds it.
     def cancel() -> Unit:
@@ -202,7 +210,7 @@ def outcome_of(report: String) -> Result[Unit, WorkerError]:
 
 # A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
 # Open a group with `with`: leaving the block cancels workers that are still running and waits for them.
-# Manuscript faults caught by the worker runtime are reported through `join` as `Faulted`.
+# Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
 # Worker threads are not a process-crash isolation boundary.
 export type WorkerGroup[In = Unit, Out = Unit]:
     # Internal state: the workers in start order, changed through the shared handle so the group works as a `with` binding.
@@ -238,4 +246,5 @@ impl Closeable for WorkerGroup[In, Out]:
         with var started = lock(self.workers):
             for index in range(0, started.value.length()):
                 started.value[index].cancel()
-                started.value[index].join()
+
+                let _ = started.value[index].wait()

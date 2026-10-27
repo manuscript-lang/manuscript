@@ -1578,6 +1578,7 @@ impl<'a> Parser<'a> {
             let value = Expr {
                 id,
                 pos: op.pos,
+                end: right.end,
                 kind: ExprKind::Binary {
                     op: bop,
                     left: Box::new(copy.clone()),
@@ -1607,6 +1608,7 @@ impl<'a> Parser<'a> {
         let value = Expr {
             id,
             pos: op.pos,
+            end: right.end,
             kind: ExprKind::Binary {
                 op: bop,
                 left: Box::new(left),
@@ -1641,6 +1643,7 @@ impl<'a> Parser<'a> {
         Expr {
             id,
             pos: e.pos,
+            end: e.end,
             kind,
         }
     }
@@ -1670,6 +1673,15 @@ impl<'a> Parser<'a> {
                 id,
                 pos: t.pos,
                 kind: PatternKind::Name(self.sym(t)),
+            });
+        }
+        // `_` binds a value nothing reads, such as a `Result` ignored on purpose.
+        if self.take(Tok::Underscore) {
+            let id = self.id();
+            return Ok(Pattern {
+                id,
+                pos: t.pos,
+                kind: PatternKind::Name(Symbol::intern("_")),
             });
         }
         if self.take(Tok::LBracket) {
@@ -1738,7 +1750,12 @@ impl<'a> Parser<'a> {
 
     fn mk(&mut self, pos: Pos, kind: ExprKind) -> Expr {
         let id = self.id();
-        Expr { id, pos, kind }
+        let end = if self.at > 0 {
+            self.previous().end
+        } else {
+            pos
+        };
+        Expr { id, pos, end, kind }
     }
 
     fn expression(&mut self, min: u8) -> PResult<Expr> {

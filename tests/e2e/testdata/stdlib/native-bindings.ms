@@ -1,14 +1,14 @@
 from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import TextError
-from "@std/process.ms" import control, ProcessError
+from "@std/process.ms" import control, ControlError
 from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher, join
 from "@std/time.ms" import milliseconds, sleep
 from "@std/tasks.ms" import TaskGroup
 from "@std/shared.ms" import Shared, share
 
 def expect_process_error[T](
-    outcome: Result[T, ProcessError],
-    expected: ProcessError
+    outcome: Result[T, ControlError],
+    expected: ControlError
 ) -> Result[Unit, Error]:
     match outcome:
         case ok(_): return error(TextError("process misuse succeeded"))
@@ -46,10 +46,10 @@ test "process usage records report this process":
 test "set_identity and set_groups validate input and apply or refuse":
     let process = control()
     try expect_process_error(
-        process.set_identity(kind: "nope", id: 0), ProcessError.InvalidInput
+        process.set_identity(kind: "nope", id: 0), ControlError.InvalidInput
     )
     try expect_process_error(
-        process.set_groups(groups: [-1]), ProcessError.InvalidInput
+        process.set_groups(groups: [-1]), ControlError.InvalidInput
     )
 
     let info = try process.info()
@@ -57,10 +57,10 @@ test "set_identity and set_groups validate input and apply or refuse":
     if info.uid < 0:
         # Windows has no ids.
         try expect_process_error(
-            process.set_identity(kind: "uid", id: 0), ProcessError.Unsupported
+            process.set_identity(kind: "uid", id: 0), ControlError.Unsupported
         )
         try expect_process_error(
-            process.set_groups(groups: [0]), ProcessError.Unsupported
+            process.set_groups(groups: [0]), ControlError.Unsupported
         )
     else:
         # Setting the identity it already has changes nothing and needs no privilege.
@@ -75,7 +75,7 @@ test "set_identity and set_groups validate input and apply or refuse":
             try process.set_groups(groups: groups)
         else:
             try expect_process_error(
-                process.set_groups(groups: groups), ProcessError.PermissionDenied
+                process.set_groups(groups: groups), ControlError.PermissionDenied
             )
 
 test "replace rejects invalid programs before leaving this process":
@@ -88,11 +88,11 @@ test "replace rejects invalid programs before leaving this process":
 
     if info.uid < 0:
         # Windows has no exec.
-        try expect_process_error(empty, ProcessError.Unsupported)
-        try expect_process_error(missing, ProcessError.Unsupported)
+        try expect_process_error(empty, ControlError.Unsupported)
+        try expect_process_error(missing, ControlError.Unsupported)
     else:
-        try expect_process_error(empty, ProcessError.InvalidInput)
-        try expect_process_error(missing, ProcessError.NotFound)
+        try expect_process_error(empty, ControlError.InvalidInput)
+        try expect_process_error(missing, ControlError.NotFound)
 
 test "stat_filesystem describes the filesystem under a path":
     let fs = filesystem()

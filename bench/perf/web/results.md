@@ -61,6 +61,19 @@ Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io
 
 The pool of 32 stacks overflows on each reactor batch (up to 64 requests spawn before any runs), so every request paid `mmap`, `mprotect` and two `munmap` calls. With 512 the cost left is about 7% on the shortest handlers (`/health` median 107k against 114k).
 
+## 2026-10-26, large-block reuse and inline file calls
+
+`sh bench/perf/web/run.sh 3` before and after this change, shared 4-CPU Linux VM (±10% between runs). Zeroed large buffers (`vec![0; n]`) bypassed the runtime's block cache and faulted in fresh pages on every file read, blocking-pool jobs mapped a new block for every large result, and a single-task program still sent each file call through the pool.
+
+| Measurement | before | after |
+| --- | ---: | ---: |
+| `/io` req/s | 863–944 | 1,232–1,265 |
+| `/health` req/s during `/io` | 46.4k | 75.5k |
+| Resident memory after load | 70.9 MB | 54.5 MB |
+| `/health` req/s | 122.5k–123.7k | 108.5k–109.7k |
+
+`/health` is within the run-to-run noise of this host; Go measured 105k–106k in the first run.
+
 ## 2026-10-26, fetch client
 
 `sh bench/perf/web/fetch.sh 2`: Manuscript's `fetch` (one `Fetcher`, N tasks) and Go's `net/http` client against one Go file server on CPUs 0-1, clients on CPUs 2-3, shared 4-CPU Linux VM (+/-10% between runs). The Manuscript runtime uses one thread, Go's client two cores.
@@ -122,3 +135,23 @@ Worker threads needed the large-block reuse in `ms-rt/alloc.rs`: before it, one 
 | 8 MiB, 8 | 425, 363 | 237, 202 | 590, 479 |
 
 With the body received in place, two worker threads put the 8 MiB case 35-39% above Go's client on the same two CPUs. For tiny bodies the extra thread costs 7-15%, so keep one thread there.
+
+## 2026-10-27, fetch framings and worker cost
+
+`sh bench/perf/web/fetch.sh 3` on main at `946c4f4` plus this change, shared 4-CPU Linux VM (server on CPUs 0 and 1, client on 2 and 3), Go 1.24.7. Compare only within this run (±10%).
+
+| Case (1 connection unless noted) | Manuscript req/s | Go req/s |
+| --- | ---: | ---: |
+| 8 MiB, Content-Length | 218 | 252 |
+| 8 MiB, chunked | 110 | 167 |
+| 8 MiB text, gzip | 90 | 578 |
+| tiny, 8 connections | 46.1k | 47.3k |
+| tiny, 8 connections, 2 worker threads | 45.2k | |
+| tiny, 8 connections, client pinned to 1 CPU | 48.5k | 38.4k |
+| tiny, 8 connections, 2 worker threads, client pinned to 1 CPU | 46.2k | |
+| 8 MiB, 8 connections | 245 | 379 |
+| 8 MiB, 8 connections, 2 worker threads | 570 | |
+
+Chunked bodies (#1538): the decoder now receives a chunk's data straight into the result, as fixed-length bodies already did, and decodes framing straight into it. Client CPU for chunked 8 MiB reads fell from 0.45 s to 0.32 s of user time per 400 requests (`time`, client on CPUs 2 and 3). Throughput did not move because the Go server and the kernel copies bound it (sys time is 2.0 s of the 4 s run). gzip is bound by inflate, 6.9 ms of user time per 8 MiB (miniz_oxide); the extra copies are not what costs there, so a faster inflate backend is the remaining lever.
+
+Worker threads on tiny bodies (#1539): with free cores, two threads match or beat one (45k to 63k req/s across runs, within noise of the single-thread number) at about 20% more CPU per request. Pinned to one CPU, two threads are 8 to 10% slower (46.6k against 51.8k in a separate three-round check), the 7 to 15% the issue saw: the cost is two threads time-sharing a core, not per-request work. `strace -c` shows the same system calls per request on one thread and on two, and each isolate has its own lock-free arena, so no shared structure showed up as the fixed cost. Crossover: use worker threads when there are at least as many free cores as threads; tiny bodies gain nothing from them, 8 MiB bodies gain 2.3x with two threads.

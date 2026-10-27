@@ -15,6 +15,21 @@
           "line": 8,
           "column": 30,
           "offset": 261
+        },
+        "fix": {
+          "position": {
+            "file": "pkg-checker-testinterfaceandreceiverhints-8.ms",
+            "line": 8,
+            "column": 30,
+            "offset": 261
+          },
+          "end": {
+            "file": "pkg-checker-testinterfaceandreceiverhints-8.ms",
+            "line": 8,
+            "column": 34,
+            "offset": 265
+          },
+          "replacement": "self"
         }
       }
     ],

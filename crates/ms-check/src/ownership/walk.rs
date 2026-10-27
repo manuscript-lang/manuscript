@@ -147,8 +147,11 @@ pub fn analyze(cx: &Context) -> Outcome {
         getters: HashMap::new(),
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
+        resources: Vec::new(),
+        closed: HashSet::new(),
     };
     w.run();
+    w.unclosed_resources();
     let declared = Summary::declared(&cx.c.func);
     let result = w.result_origin(&declared);
     // A `ref` result is a borrow on every path: a path that hands back an owned value would
@@ -232,9 +235,18 @@ struct Walker<'a> {
     let_pos: HashMap<usize, Pos>,
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
+    /// Owned `let` and `var` resources: binding, name and declaration position.
+    resources: Vec<(usize, Name, Pos)>,
+    /// Bindings that had `close()` called on them.
+    closed: HashSet<usize>,
 }
 
 /// A fix that inserts `text` at `pos`.
+/// `.clone()` after the written expression `e`; none for a synthetic one.
+fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
+    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{COPY}()")))
+}
+
 fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
     DiagnosticFix {
         pos,
@@ -299,6 +311,47 @@ impl Walker<'_> {
         match c.body() {
             Body::Block(body) => self.block(body),
             Body::Expr(e) => self.returned(e),
+        }
+    }
+
+    /// The value is made from another resource, which owns and closes it: `group.spawn(..)`, or a
+    /// reader that wraps a source it was given.
+    fn derived_from_resource(&self, e: &Expr) -> bool {
+        match &e.kind {
+            ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
+            ExprKind::Call { callee, args, .. } => {
+                let receiver = match &callee.kind {
+                    ExprKind::Member { left, .. } => self.class_of(left) == Class::Resource,
+                    _ => false,
+                };
+                receiver
+                    || args
+                        .iter()
+                        .any(|a| self.class_of(&a.value) == Class::Resource)
+            }
+            _ => false,
+        }
+    }
+
+    /// Reports an owned resource that no `with` closes and nothing takes: a binding that is
+    /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
+    fn unclosed_resources(&mut self) {
+        let resources = std::mem::take(&mut self.resources);
+        for (uid, name, pos) in resources {
+            let handled = self.closed.contains(&uid)
+                || self
+                    .facts
+                    .uses
+                    .values()
+                    .any(|u| u.binding == uid && u.access == Access::Move);
+            if !handled {
+                self.error(
+                    pos,
+                    format!(
+                        "`{name}` is a resource that is never closed: open it with `with let {name} = ...`, call `{name}.close()`, or return it so the caller owns it"
+                    ),
+                );
+            }
         }
     }
 
@@ -729,6 +782,14 @@ impl Walker<'_> {
             end: None,
             fix: None,
         });
+    }
+
+    /// Reports like `error_fix`, when a fix could be built.
+    fn error_fix_opt(&mut self, pos: Pos, message: impl Into<String>, fix: Option<DiagnosticFix>) {
+        match fix {
+            Some(fix) => self.error_fix(pos, message, fix),
+            None => self.error(pos, message),
+        }
     }
 
     /// Reports like `error`, with a machine-applicable fix.
@@ -1221,6 +1282,9 @@ impl Walker<'_> {
             None,
             false,
         );
+        if class == Class::Resource && !self.derived_from_resource(value) {
+            self.resources.push((b.uid, b.name, pattern.pos));
+        }
     }
 
     /// `var x = f(place)` where `f` hands back a part of its argument: a mutable borrow when that
@@ -1904,9 +1968,10 @@ impl Walker<'_> {
         let name = b.name;
         let var_param = parameter.is_some() && perm == Perm::Mutable;
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{COPY}()` instead"),
+                copy_after(e),
             );
             self.record(e.id, b, Access::Move);
             return;
@@ -1925,9 +1990,10 @@ impl Walker<'_> {
             self.record(e.id, b, Access::Move);
             return;
         } else if var_param || (receiver && perm == Perm::Mutable) {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
+                copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
@@ -2023,6 +2089,12 @@ impl Walker<'_> {
             (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
             _ => None,
         };
+        if let (ExprKind::Member { name, .. }, Some(r)) = (&callee.kind, receiver_expr)
+            && name.as_str() == "close"
+            && let Resolution::Local(b) = cx.m.resolution(r)
+        {
+            self.closed.insert(b.uid);
+        }
         // Argument markers: `var` exactly where the callee changes the argument.
         let param_names: Vec<Name> =
             cx.m.info(e)
@@ -2103,7 +2175,7 @@ impl Walker<'_> {
                         "`{name}` borrows its result from `{from}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"
                     )
                 };
-                self.error(e.pos, msg);
+                self.error_fix_opt(e.pos, msg, copy_after(e));
             }
         }
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor
@@ -2119,9 +2191,10 @@ impl Walker<'_> {
                 return;
             }
             let recv = receiver_expr.map(|r| self.expr_text(r)).unwrap_or_default();
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("`{name}` borrows its result from `{recv}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"),
+                copy_after(e),
             );
         }
     }
@@ -2393,18 +2466,20 @@ impl Walker<'_> {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure outlives the statement but captures `{name}`, which only borrows its value; capture `{name}.{COPY}()` instead"),
+                copy_after(e),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)
                 .map(|n| format!(" at {}", self.at(n)))
                 .unwrap_or_default();
-            self.error(
+            self.error_fix_opt(
                 e.pos,
                 format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; capture `{name}.{COPY}()` to keep the original"),
+                copy_after(e),
             );
         }
         self.check_change(e.pos, resolved, "move", name.as_str(), Some(b.uid));

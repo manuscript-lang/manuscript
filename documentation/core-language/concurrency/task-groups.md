@@ -32,27 +32,27 @@ test "a group collects its results in start order":
 - A task cancelled before it first ran never starts.
 - Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. The faulted task's frames release the values they own. A faulted task that is never collected is dropped when the group closes, with no report.
-- A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
+- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
+- A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `worker.wait()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(entry, timeout: some(duration(...)))` limits one task. `TaskGroup[T](timeout: some(duration(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
+A task has no time limit unless you give one. `spawn(entry, timeout: some(nanoseconds(...)))` limits one task. `TaskGroup[T](timeout: some(nanoseconds(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/testing.ms" import expect_equal, expect_error
-from "@std/time.ms" import duration, sleep
+from "@std/time.ms" import nanoseconds, sleep
 
 def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
-    sleep(duration(60000000000))
+    sleep(nanoseconds(60000000000))
     return 1
 
 test "a task that passes its timeout is cancelled":
     with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: some(duration(10000000)))
+        let task = group.spawn(wait_a_minute, timeout: some(nanoseconds(10000000)))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 

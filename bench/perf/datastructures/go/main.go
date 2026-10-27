@@ -11,12 +11,17 @@ import (
 
 type rec struct{ key, id int }
 
-type ih []int
+// A queue entry with its enqueue number, so equal priorities dequeue in enqueue order like PriorityQueue.
+type entry struct{ key, order int }
 
-func (h ih) Len() int           { return len(h) }
-func (h ih) Less(i, j int) bool { return h[i] < h[j] }
-func (h ih) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-func (h *ih) Push(x any)        { *h = append(*h, x.(int)) }
+type ih []entry
+
+func (h ih) Len() int { return len(h) }
+func (h ih) Less(i, j int) bool {
+	return h[i].key < h[j].key || (h[i].key == h[j].key && h[i].order < h[j].order)
+}
+func (h ih) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *ih) Push(x any)   { *h = append(*h, x.(entry)) }
 func (h *ih) Pop() any {
 	o := *h
 	n := len(o)
@@ -165,11 +170,11 @@ func main() {
 	x = 1
 	for i := 0; i < p; i++ {
 		x = nextRand(x)
-		heap.Push(h, x)
+		heap.Push(h, entry{x, i})
 	}
 	sum = 0
 	for i := 0; i < p; i++ {
-		sum += heap.Pop(h).(int)
+		sum += heap.Pop(h).(entry).key
 	}
 	report("pq_int_enqueue_dequeue", p*2, t)
 	total += sum

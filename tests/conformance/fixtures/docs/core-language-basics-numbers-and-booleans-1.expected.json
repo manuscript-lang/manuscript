@@ -9,19 +9,34 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"",
+        "message": "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal",
         "position": {
           "file": "core-language-basics-numbers-and-booleans-1.ms",
           "line": 6,
           "column": 13,
           "offset": 183
+        },
+        "fix": {
+          "position": {
+            "file": "core-language-basics-numbers-and-booleans-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "core-language-basics-numbers-and-booleans-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-1.ms:6:13: resolution: Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-1.ms:6:13: resolution: Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

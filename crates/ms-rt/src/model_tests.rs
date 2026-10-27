@@ -396,7 +396,7 @@ fn string_list_matches_vec_model(seed: u64) {
                 }
                 10 => {
                     string::release(&e);
-                    msrt_list_reverse_in_place(&mut v, d);
+                    msrt_list_reverse(&mut v, d);
                     model.reverse();
                 }
                 11 => {

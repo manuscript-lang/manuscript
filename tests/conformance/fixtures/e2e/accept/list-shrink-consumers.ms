@@ -382,7 +382,7 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
             values.remove(index: 0)
 
     (seen == [1, 2, 3] and values == [9, 3] and clone == [1, 2, 3]) | try expect_true
-    values.reverse_in_place()
+    values.reverse()
     values.append(4)
     values | try expect_equal([3, 9, 4])
 

@@ -1,7 +1,7 @@
 from "@std/testing.ms" import expect_equal
 from "@std/collections.ms" import range
 
-# `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m.get(k).get()` and
+# `let x = m.get(k)`, `if let x = m.get(k)`, `xs.first()`, `xs.last()`, `m[k]` and
 # `m.get_or(k, d)` read the entry in place (a borrow the checker already enforces) instead of
 # copying it out of the container. Every shape must still read the same values, and the
 # container must be changeable again after the borrow's last use.
@@ -42,7 +42,7 @@ def by_chain(orders: Map[String, Order], id: String) -> Int:
     if orders.get(id).is_none():
         return 0
 
-    let o = orders.get(id).get()
+    let o = orders[id]
     return o.items.length() + o.status.length()
 
 def returned(orders: Map[String, Order], id: String) -> Optional[Order]:
@@ -85,7 +85,7 @@ test "a lent entry of a local var map ends at its last use":
     m.remove("a")
     try expect_equal(m.get("a").is_none(), True)
 
-    let o = m.get("b").get()
+    let o = m["b"]
     try expect_equal(o.items.last().get().qty, 3)
     m.add("d", order("d", 4))
     try expect_equal(m.length(), 3)

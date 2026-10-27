@@ -196,6 +196,8 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
+    /// `(function, place)` of each `lock` guard whose `with` block is being checked.
+    pub(crate) held_locks: Vec<(usize, String)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,
@@ -238,6 +240,7 @@ impl Checker {
             function: 0,
             serial: 0,
             loops: 0,
+            held_locks: Vec::new(),
             test_function: 0,
             rejected_names: HashSet::new(),
             unknown_type: false,
@@ -303,12 +306,10 @@ impl Checker {
     /// Reports a diagnostic in an explicit file.
     pub(crate) fn error_in(&mut self, file: Name, pos: Pos, phase: Phase, message: String) {
         if phase == Phase::Resolution
-            && let Some((_, rest)) = message.split_once("; add: import ")
+            && message.starts_with("Decimal literal requires")
+            && self.import_reported("Decimal", pos)
         {
-            let name = rest.split(" from ").next().unwrap_or("");
-            if self.import_reported(name, pos) {
-                return;
-            }
+            return;
         }
         if let Some(m) = &self.module {
             for span in &m.recovered {
@@ -406,8 +407,8 @@ impl Checker {
         }
     }
 
-    /// `Self` is limited to whole parameter types, the only position an interface value can
-    /// turn back into the implementing type.
+    /// `Self` is limited to whole parameter and result types, the positions where a call can
+    /// substitute the implementing type.
     pub(crate) fn check_self_use(&mut self, op: &Ty, pos: Pos) {
         fn mentions(t: &Ty) -> bool {
             t.id.as_str().ends_with("/Self")
@@ -419,11 +420,14 @@ impl Checker {
             .params
             .iter()
             .any(|p| !p.ty.id.as_str().ends_with("/Self") && mentions(&p.ty))
-            || op.result.as_ref().is_some_and(mentions);
+            || op
+                .result
+                .as_ref()
+                .is_some_and(|r| !r.id.as_str().ends_with("/Self") && mentions(r));
         if misplaced {
             self.type_error(
                 pos,
-                "Self can only be a whole parameter type of an interface operation; write 'other: Self', not 'List[Self]' or a result type",
+                "Self can only be a whole parameter or result type of an interface operation; write 'other: Self', not 'List[Self]'",
             );
         }
     }
@@ -949,7 +953,7 @@ impl Checker {
             match &d.decl().kind {
                 DeclKind::Fn(f) if f.external => {
                     if let Some(s) = self.own_symbol(d) {
-                        self.check_extern_signature(f, &s.ty(), d.pos());
+                        self.check_extern_signature(d.name().as_str(), f, &s.ty(), d.pos());
                     }
                 }
                 DeclKind::Fn(_) | DeclKind::Const(_) => {
@@ -998,7 +1002,9 @@ impl Checker {
         pos: Pos,
         report: bool,
     ) -> BindingRef {
+        // `_` names a value nothing reads, so several may share a scope.
         if report
+            && name.as_str() != "_"
             && (self.scope.bindings.borrow().contains_key(&name)
                 || self.scope.types.borrow().contains_key(&name))
         {
@@ -1006,6 +1012,22 @@ impl Checker {
                 pos,
                 format!(
                     "duplicate local binding {name}; this scope already has that name, so choose another name or assign to the existing 'var'"
+                ),
+            );
+        }
+        if report
+            && !name.as_str().starts_with('_')
+            && name != "self"
+            && self
+                .scope
+                .parent
+                .as_ref()
+                .is_some_and(|outer| outer.binding(name).is_some())
+        {
+            self.type_error(
+                pos,
+                format!(
+                    "binding {name} shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'"
                 ),
             );
         }
@@ -1017,6 +1039,7 @@ impl Checker {
             uid: BINDING_SERIAL.fetch_add(1, Ordering::Relaxed) + 1,
             ty: t,
             mutable,
+            decl: pos,
             function: self.function,
         });
         self.scope.bindings.borrow_mut().insert(name, b.clone());
@@ -1156,10 +1179,16 @@ impl Checker {
 
     /// An `extern fn` crosses the native ABI: scalars and borrowed strings in, a scalar,
     /// `Unit`, or an owned string out (`ms-rt/ABI.md`, section 1).
-    fn check_extern_signature(&mut self, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
+    fn check_extern_signature(&mut self, name: &str, f: &ms_syntax::ast::Func, t: &Ty, pos: Pos) {
         // Bundled modules cross any type the runtime defines a convention for; lowering rejects the rest.
         if self.module.as_ref().is_some_and(stdlib::is_source_module) {
             return;
+        }
+        if name.starts_with("msrt_") || name.starts_with("msstd_") {
+            self.type_error(
+                pos,
+                format!("extern def {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
+            );
         }
         if !f.type_params.is_empty() {
             self.type_error(

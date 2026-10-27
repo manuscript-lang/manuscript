@@ -259,6 +259,11 @@ fn pure_runtime_attrs(name: &str) -> Option<&'static str> {
     }
 }
 
+/// Returned scalar leaves above which a function is marked `noimplicitfloat`. The SLP vectorizer
+/// skips such functions; it spends tens of milliseconds on the thousands of `insertvalue` and
+/// `phi` lines that build a large flattened result (`FileSystem.stat`) and finds nothing to pack.
+const WIDE_RETURN_LEAVES: usize = 16;
+
 fn ret_ty(rets: &[ir::AbiParam]) -> String {
     match rets {
         [] => "void".into(),
@@ -1036,9 +1041,14 @@ impl LlvmModule {
         // Allocas must sit in the entry block, right after its label.
         let (first, rest) = text.split_once('\n').expect("entry label");
         let header = format!(
-            "{} @\"{name}\"({}) #0 !dbg !{sp} {{\n",
+            "{} @\"{name}\"({}) #{} !dbg !{sp} {{\n",
             ret_ty(&f.signature.returns),
-            params.join(", ")
+            params.join(", "),
+            if f.signature.returns.len() > WIDE_RETURN_LEAVES {
+                2
+            } else {
+                0
+            }
         );
         let mut body = String::new();
         body.push_str(first);
@@ -1172,6 +1182,7 @@ impl LlvmModule {
         }
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
+        s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
         // Debug metadata: line tables only (no variables, types or inline frames).
         let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
@@ -1405,6 +1416,37 @@ mod tests {
         m.defs
             .extend(glue_module(&[vec![1], vec![0, 2], vec![3], vec![4], vec![]]).defs);
         m.finish(triple, &HashSet::new(), false)
+    }
+
+    fn returning(leaves: usize) -> Function {
+        let mut sig = Signature::new(CallConv::SystemV);
+        sig.returns = vec![AbiParam::new(types::I64); leaves];
+        let mut f = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let mut cx = FunctionBuilderContext::new();
+        let mut b = FunctionBuilder::new(&mut f, &mut cx);
+        let entry = b.create_block();
+        b.switch_to_block(entry);
+        let zero = b.ins().iconst(types::I64, 0);
+        b.ins().return_(&vec![zero; leaves]);
+        b.seal_all_blocks();
+        b.finalize(cranelift_codegen::isa::TargetFrontendConfig {
+            default_call_conv: CallConv::SystemV,
+            pointer_width: target_lexicon::PointerWidth::U64,
+            page_size_align_log2: 12,
+        });
+        f
+    }
+
+    #[test]
+    fn a_wide_result_skips_the_slp_vectorizer() {
+        let text_for = |leaves| {
+            let mut m = LlvmModule::new(vec![Some("wide.ms".into())], ".".into());
+            let f = returning(leaves);
+            m.add_function("wide", "wide", (0, 1), &f, &TestSymbols, true);
+            m.finish("x86_64-unknown-linux-gnu", &HashSet::new(), false)
+        };
+        assert!(text_for(WIDE_RETURN_LEAVES + 1).contains("@\"wide\"() #2"));
+        assert!(text_for(WIDE_RETURN_LEAVES).contains("@\"wide\"() #0"));
     }
 
     #[test]
