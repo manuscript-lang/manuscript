@@ -101,6 +101,50 @@ pub fn json_plain_digits(b: &[u8]) -> bool {
     }
 }
 
+/// The index of the first byte of `b` that is not an ASCII digit (`b.len()` when all are).
+#[inline]
+fn first_nondigit(b: &[u8]) -> usize {
+    let nondigit = |x: u64| {
+        let t = x ^ (ONES * 0x30);
+        ((x | t) & HIGHS) | ((t & !HIGHS).wrapping_add(ONES * 0x76) & HIGHS)
+    };
+    let mut i = 0;
+    while let Some(chunk) = b.get(i..i + 8) {
+        let m = nondigit(word(chunk));
+        if m != 0 {
+            return i + (m.trailing_zeros() / 8) as usize;
+        }
+        i += 8;
+    }
+    while let Some(&c) = b.get(i) {
+        if !c.is_ascii_digit() {
+            return i;
+        }
+        i += 1;
+    }
+    i
+}
+
+/// Whether `b` is a JSON number without an exponent: `-?(0|[1-9][0-9]*)(\.[0-9]+)?`. A short
+/// check ahead of the full number grammar for the integers and decimals most documents hold;
+/// `false` means "not known to be valid", not "invalid".
+#[inline]
+pub fn json_simple_number(b: &[u8]) -> bool {
+    let b = b.strip_prefix(b"-").unwrap_or(b);
+    let int = first_nondigit(b);
+    if int == 0 || (int > 1 && b[0] == b'0') {
+        return false;
+    }
+    if int == b.len() {
+        return true;
+    }
+    if b[int] != b'.' {
+        return false;
+    }
+    let frac = &b[int + 1..];
+    !frac.is_empty() && first_nondigit(frac) == frac.len()
+}
+
 /// Appends `"s"` when `s` is at most 16 bytes with nothing to escape, and returns whether it
 /// did; otherwise `buf` is left as it was.
 #[inline(always)]
@@ -412,6 +456,86 @@ mod json_short_tests {
 
     fn alloc_vec(len: usize) -> crate::stdalloc::vec::Vec<u8> {
         crate::stdalloc::vec![b'a'; len]
+    }
+
+    #[test]
+    fn simple_numbers_agree_with_the_grammar() {
+        // The grammar, written out byte by byte as the oracle.
+        let oracle = |s: &[u8]| {
+            let mut i = usize::from(s.first() == Some(&b'-'));
+            let start = i;
+            while s.get(i).is_some_and(u8::is_ascii_digit) {
+                i += 1;
+            }
+            let int = i - start;
+            if int == 0 || (int > 1 && s[start] == b'0') {
+                return false;
+            }
+            if i == s.len() {
+                return true;
+            }
+            if s[i] != b'.' {
+                return false;
+            }
+            i += 1;
+            let f = i;
+            while s.get(i).is_some_and(u8::is_ascii_digit) {
+                i += 1;
+            }
+            i > f && i == s.len()
+        };
+        let alphabet = *b"0019.-e+ \xb1a";
+        let mut x: u64 = 0x9e37_79b9_7f4a_7c15;
+        for _ in 0..300_000 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let len = (x % 26) as usize;
+            let mut y = x;
+            let s: crate::stdalloc::vec::Vec<u8> = (0..len)
+                .map(|_| {
+                    y = y
+                        .wrapping_mul(6364136223846793005)
+                        .wrapping_add(1442695040888963407);
+                    alphabet[(y >> 33) as usize % alphabet.len()]
+                })
+                .collect();
+            assert_eq!(json_simple_number(&s), oracle(&s), "{s:?}");
+        }
+        // Structured numbers, then one byte changed, so both outcomes are well covered.
+        for _ in 0..200_000 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            let mut s: crate::stdalloc::vec::Vec<u8> = crate::stdalloc::vec::Vec::new();
+            if x & 1 == 1 {
+                s.push(b'-');
+            }
+            for k in 0..=(x >> 1) % 20 {
+                s.push(b'0' + ((x >> (8 + k)) % 10) as u8);
+            }
+            if (x >> 40) & 3 != 0 {
+                s.push(b'.');
+                for k in 0..(x >> 42) % 21 {
+                    s.push(b'0' + ((x >> (3 + k)) % 10) as u8);
+                }
+            }
+            assert_eq!(json_simple_number(&s), oracle(&s), "{s:?}");
+            let at = (x >> 20) as usize % s.len();
+            s[at] = alphabet[(x >> 52) as usize % alphabet.len()];
+            assert_eq!(json_simple_number(&s), oracle(&s), "{s:?}");
+        }
+        for ok in [
+            "0",
+            "-0",
+            "7",
+            "-65.613616999999977",
+            "10.5",
+            "0.25",
+            "123456789012345678901234567890",
+        ] {
+            assert!(json_simple_number(ok.as_bytes()), "{ok}");
+        }
     }
 
     #[test]
