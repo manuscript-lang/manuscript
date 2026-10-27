@@ -84,7 +84,7 @@ pub fn rename(
             }
             has_declaration |= entry.declaration;
             let path = checked.module_path(entry.file.as_str());
-            let file_uri = uri::file_uri(&path);
+            let file_uri = open_uri(&docs, &path);
             if !content.contains_key(&file_uri) {
                 let mut file = Document::new(file_uri.clone(), String::new());
                 if let Some(m) = program.modules.iter().find(|m| m.file == entry.file) {
@@ -126,6 +126,25 @@ pub fn rename(
     let (modified, changes) = rename_changes(&docs, &content, by_uri, name, cancel)?;
     validate_rename(&targets, &docs, &modified, cancel)?;
     Ok(obj([("documentChanges", Json::Arr(changes))]))
+}
+
+/// The URI an editor opened `path` under, so one file keeps one snapshot and
+/// version however its URI is spelled (symlink, percent-encoding); the
+/// canonical URI when it is not open.
+fn open_uri(docs: &Documents, path: &str) -> String {
+    let canonical = uri::file_uri(path);
+    if docs.contains_key(&canonical) {
+        return canonical;
+    }
+    let resolve = |p: &str| ms_driver::project::pathops::eval_symlinks(p).unwrap_or(p.to_string());
+    let wanted = resolve(path);
+    let mut matches: Vec<&String> = docs
+        .values()
+        .filter(|open| !uri::is_standard_library(&open.uri) && resolve(&open.path()) == wanted)
+        .map(|open| &open.uri)
+        .collect();
+    matches.sort();
+    matches.first().map_or(canonical, |u| (*u).clone())
 }
 
 fn is_identifier(name: &str) -> bool {
