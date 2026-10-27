@@ -51,8 +51,9 @@ jobs:
         run: |
           set +e
           mkdir -p ydir && cd ydir
-          MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > out.txt 2>&1
-          grep -E "^fn |SEGV|diag" out.txt | cut -c1-220 | head -200
+          MS_DIAG_COPY_EXE=$PWD/ytest MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > out.txt 2>&1
+          grep -E "SEGV|diag" out.txt | cut -c1-220 | head -20
+          lldb -b -o run -o "bt 15" -o "register read pc lr" -o "image lookup -a \$pc" -o "image lookup -a \$lr" -o "disassemble -p -c 10" -- ./ytest 5 2>&1 | tail -60
           true
       - name: mac repros under lldb
         if: runner.os == 'macOS'

@@ -277,6 +277,9 @@ pub(super) fn test<L: Lower>(
     ) {
         return Ok(failed_early(io, &mut document, "build", &message));
     }
+    if let Some(copy) = std::env::var_os("MS_DIAG_COPY_EXE") {
+        let _ = std::fs::copy(&executable, copy);
+    }
     let working = if compiled.project_root.is_empty() {
         pathops::dir(&request.filename)
     } else {
