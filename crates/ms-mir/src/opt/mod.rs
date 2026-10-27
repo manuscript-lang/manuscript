@@ -53,6 +53,7 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
         // A copy whose source dies right after it is a move; keeping the copies makes rebuilding a
         // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
         simplify::run_phis(m);
+        strfuse::run_append(m);
         copyelim::run(m);
         // Owned values otherwise live to scope end, and register allocation grows with the number
         // that are live at once, so only a long function pays for the earlier drops.
