@@ -81,7 +81,7 @@ jobs:
         run: |
           ms=target/release/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          for round in 1 2 3; do
+          for _ in 1 2 3; do
             MS="$PWD/$ms" sh bench/perf/json/run.sh
           done | tee json-${{ matrix.name }}.txt
       - uses: actions/upload-artifact@v7
