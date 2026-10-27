@@ -33,7 +33,7 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 - Conversions between existing values use the [methods below](#numeric-conversion). A literal can take a sized type from context, as described below.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
-- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). A literal never changes kind: `let x: Float32 = 1` is rejected.
+- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`let x: Float32 = 0.1 + 0.2`, `let y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `let x: Float32 = 1` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
