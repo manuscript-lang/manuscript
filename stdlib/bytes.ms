@@ -213,12 +213,12 @@ impl BytesCodecs for Bytes:
     # Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float32_le(at: Int) -> Result[Float32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, True)
-        return ok(msrt_float32_from_bits(raw).to_float32())
+        return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float32_be(at: Int) -> Result[Float32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, False)
-        return ok(msrt_float32_from_bits(raw).to_float32())
+        return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
     # Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def float64_le(at: Int) -> Result[Float, BinaryError]:

@@ -1089,10 +1089,13 @@ impl<'a> FnLower<'a> {
         let native = m.native.as_str();
         let recv_ty = self.ty_of(recv.v);
         let numeric_recv = self.b.m.types.is_int(recv_ty) || self.b.m.types.is_float(recv_ty);
-        if matches!(
+        // `Float.to_float32()` is a runtime call: it returns none when the value overflows.
+        let float_to_float32 = native == "to_float32" && self.b.m.types.is_float(recv_ty);
+        if (matches!(
             native,
             "to_int8" | "to_int16" | "to_int32" | "to_int64" | "to_float32" | "to_float64"
-        ) || (numeric_recv && matches!(native, "to_int" | "to_float"))
+        ) || (numeric_recv && matches!(native, "to_int" | "to_float")))
+            && !float_to_float32
         {
             return self.numeric_conversion(result, recv);
         }
