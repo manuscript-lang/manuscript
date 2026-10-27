@@ -17,6 +17,8 @@ The fix says what to write, such as `did you mean 'count'?`, `add: import panic 
 
 A diagnostic names the violated rule and the declaration or call site involved. Runtime closed-resource errors carry operation and source locations separately.
 
+## JSON diagnostics
+
 `ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets.
 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
@@ -37,6 +39,6 @@ Several inputs share one document; see [analysis selection](../implementation.md
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
 
-`ms explain <code>` prints a code's family and usual repair (`--json` for structured output).
+`ms guide <code>` prints a code's family and usual repair (`--json` for structured output).
 
 Rules are defined by [type checking](../../contributing/compiler/frontend/type-checker.md) and [scope and capture checking](../../contributing/compiler/frontend/scope-checker.md).

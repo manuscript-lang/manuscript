@@ -66,7 +66,7 @@ export def main() -> Int:
     let r2 = early(var e, False)
     let rows = [[1, 2], [3]]
     let row = first_of(rows)
-    stdout().write(
+    let _ = stdout().write(
         f"{b.items} {seen} {n} {c.items} {copy} {o.inner.items} {e.items} {r1} {r2} {row}\n"
     )
     return 0

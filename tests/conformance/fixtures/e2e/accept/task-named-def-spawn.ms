@@ -13,5 +13,5 @@ export def main() -> Int:
         g.spawn(entry)
         g.spawn(entry)
         let total = g.results().get(List[Int]())
-        stdout().write("tasks " + total.length().to_string() + " first " + total[0].to_string() + "\n")
+        let _ = stdout().write("tasks " + total.length().to_string() + " first " + total[0].to_string() + "\n")
     return 0

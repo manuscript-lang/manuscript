@@ -21,39 +21,42 @@ export def main() -> Int:
     entries.add("key-2", [2])
     if var item = entries.get(key(var count)):
         item.append(9)
-    stdout().write(f"{count} {entries}\n")
+
+    let _ = stdout().write(f"{count} {entries}\n")
     count = 2
 
     if var item = entries.get(key(var count)):
         item.append(99)
     else:
-        stdout().write(f"missing {count}\n")
+        let _ = stdout().write(f"missing {count}\n")
 
     count = 0
     early(var entries, var count)
-    stdout().write(f"early {count} {entries}\n")
+
+    let _ = stdout().write(f"early {count} {entries}\n")
     count = 0
     for value in [4, 5, 6]:
         if var item = entries.get(key(var count)):
             item.append(value)
-    stdout().write(f"loop {count} {entries}\n")
 
+    let _ = stdout().write(f"loop {count} {entries}\n")
     var rows = [[[1]], [[2]]]
     count = 0
     if var item = rows[next(var count)].first():
         item.append(9)
-    stdout().write(f"{count} {rows}\n")
+
+    let _ = stdout().write(f"{count} {rows}\n")
     count = 0
     if var item = rows[next(var count)].last():
         item.append(10)
-    stdout().write(f"{count} {rows}\n")
 
+    let _ = stdout().write(f"{count} {rows}\n")
     var empty: List[List[List[Int]]] = [[], [[2]]]
     count = 0
 
     if var item = empty[next(var count)].first():
         item.append(99)
     else:
-        stdout().write(f"empty {count} {empty}\n")
+        let _ = stdout().write(f"empty {count} {empty}\n")
 
     return 0

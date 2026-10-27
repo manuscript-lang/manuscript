@@ -1,4 +1,4 @@
-//! Embeds `stdlib/*.ms` and `bindings.json` unchanged.
+//! Embeds `stdlib/*.ms`, `stdlib/*/*.ms` and `bindings.json` unchanged.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -10,12 +10,26 @@ fn main() {
         .canonicalize()
         .expect("stdlib");
     println!("cargo:rerun-if-changed={}", dir.display());
-    let mut names: Vec<String> = std::fs::read_dir(&dir)
+    let mut names: Vec<String> = Vec::new();
+    for entry in std::fs::read_dir(&dir)
         .expect("read stdlib")
         .filter_map(|e| e.ok())
-        .map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.ends_with(".ms"))
-        .collect();
+    {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".ms") {
+            names.push(name);
+        } else if entry.path().is_dir() {
+            for inner in std::fs::read_dir(entry.path())
+                .expect("read stdlib dir")
+                .filter_map(|e| e.ok())
+            {
+                let inner = inner.file_name().to_string_lossy().into_owned();
+                if inner.ends_with(".ms") {
+                    names.push(format!("{name}/{inner}"));
+                }
+            }
+        }
+    }
     names.sort();
     let mut out = String::from(
         "/// Bundled standard declarations in file-name order.\npub const SOURCES: &[(&str, &str)] = &[\n",

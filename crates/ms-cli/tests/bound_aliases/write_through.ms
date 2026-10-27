@@ -40,8 +40,8 @@ export def main() -> Int:
     let append = first.append
     append(9)
     append(10)
-    stdout().write(f"{calls} {rows}\n")
 
+    let _ = stdout().write(f"{calls} {rows}\n")
     var lists = Lists(left: [1], right: [2])
     var left = lists.left
     var right = lists.right
@@ -49,22 +49,22 @@ export def main() -> Int:
     let add_right = right.append
     add_right(4)
     add_left(3)
-    stdout().write(f"{lists}\n")
 
+    let _ = stdout().write(f"{lists}\n")
     var counts = [Counter(count: 5)]
     var count = counts[0]
     let bump = count.bump
     bump()
     bump(3)
-    stdout().write(f"{counts}\n")
 
+    let _ = stdout().write(f"{counts}\n")
     var pair = Counters(left: Counter(count: 1), right: Counter(count: 2))
     var first_count = pair.left
     var second_count = pair.right
     let around = first_count.around
     around(lambda: second_count.count += 10)
-    stdout().write(f"{pair}\n")
 
+    let _ = stdout().write(f"{pair}\n")
     var entries = Map[String, List[Int]]()
     entries.add("key-1", [7])
     calls = 0
@@ -74,16 +74,14 @@ export def main() -> Int:
         add(8)
         add(9)
 
-    stdout().write(f"{calls} {entries}\n")
-
+    let _ = stdout().write(f"{calls} {entries}\n")
     var texts = [["first", "second"]]
     var text = texts[0]
     let pop = text.pop
     let popped = pop()
-    stdout().write(f"{popped} {texts}\n")
-
+    let _ = stdout().write(f"{popped} {texts}\n")
     var final_count = counts[0]
     let label = final_count.label
     let labeled = label()
-    stdout().write(f"{labeled} {counts}\n")
+    let _ = stdout().write(f"{labeled} {counts}\n")
     return 0

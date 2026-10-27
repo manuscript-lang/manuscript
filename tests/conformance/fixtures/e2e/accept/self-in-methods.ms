@@ -26,5 +26,5 @@ impl Box[T]:
 export def main() -> Int:
     let p = Point(x: 1, y: 2).with_x(5)
     let b = Box[Int](items: [1]).added(2)
-    stdout().write(p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(b).length().to_string() + "\n")
+    let _ = stdout().write(p.x.to_string() + " " + b.items.length().to_string() + " " + b.pair(b).length().to_string() + "\n")
     return 0

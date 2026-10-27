@@ -273,7 +273,7 @@ fn rename_actions_and_formatting() {
     let messy = ws.uri("messy.ms");
     s.open(
         &messy,
-        "from \"@std/testing.ms\" import expect_equal   \nfrom \"@std/io.ms\" import stdout\nfrom \"@std/json.ms\" import unused\ndef main() -> Int:\n    return 0",
+        include_str!("snapshots/rename-actions-and-formatting.ms"),
         1,
     );
     let all = obj([
