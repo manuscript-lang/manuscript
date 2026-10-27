@@ -19,14 +19,14 @@ from "@std/bytes.ms" import Bytes
 
 def repeated_headers() -> Result[HttpHeaders, Error]:
     let fields = headers()
-    let first = (fields.append("x-dup", "first") | try expect_ok)
-    let second = (fields.append("X-Dup", "second") | try expect_ok)
-    let cookie = (
+    let _first = (fields.append("x-dup", "first") | try expect_ok)
+    let _second = (fields.append("X-Dup", "second") | try expect_ok)
+    let _cookie = (
         fields.append(
             "Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT"
         ) | try expect_ok
     )
-    let other = (fields.append("set-cookie", "b=2") | try expect_ok)
+    let _other = (fields.append("set-cookie", "b=2") | try expect_ok)
     return ok(fields)
 
 def header_failure(message: String) -> HttpResponse:
@@ -130,26 +130,26 @@ test "streaming proxy uses the same byte-valued header type":
 
 test "lookup returns membership and clone separates it":
     let fields = (try repeated_headers())
-    let appended = (fields.append("x-dup", "third") | try expect_ok)
+    let _appended = (fields.append("x-dup", "third") | try expect_ok)
     let values = fields.values("X-DUP")
     values.length() | try expect_equal(3)
 
     let copy = fields.clone()
-    let copy_appended = (copy.append("x-dup", "copy") | try expect_ok)
+    let _copy_appended = (copy.append("x-dup", "copy") | try expect_ok)
     fields.values("x-dup").length() | try expect_equal(3)
     (not fields.contains("missing")) | try expect_true
 
-    let k = (fields.append("K", "ASCII") | try expect_ok)
+    let _k = (fields.append("K", "ASCII") | try expect_ok)
     (not fields.contains("K")) | try expect_true
 
-    let removed = fields.remove("X-DUP")
-    let new_field = (fields.append("X-Dup", "new") | try expect_ok)
+    let _removed = fields.remove("X-DUP")
+    let _new_field = (fields.append("X-Dup", "new") | try expect_ok)
     (fields.values("x-dup").length() != 1) | try expect_false
 
 test "string lookup leaves out values that are not UTF-8":
     let fields = headers()
-    let valid = (fields.append("Raw", "first") | try expect_ok)
-    let invalid = (fields.append_bytes("raw", Bytes(values: [255])) | try expect_ok)
+    let _valid = (fields.append("Raw", "first") | try expect_ok)
+    let _invalid = (fields.append_bytes("raw", Bytes(values: [255])) | try expect_ok)
 
     fields.values("RAW") | try expect_equal(["first"])
     fields.values_bytes("RAW").get().length() | try expect_equal(2)

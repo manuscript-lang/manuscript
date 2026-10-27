@@ -1,6 +1,6 @@
 from "@std/http.ms" import headers, HttpHeaders, HttpError
 
-# Fixture helpers that build headers from text maps.
+# Explicit fixture migration from the old text maps; no runtime coercion.
 export def text_headers(fields: Map[String, String]) -> Result[HttpHeaders, HttpError]:
     let result = headers()
     for name in fields.keys():
