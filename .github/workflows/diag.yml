@@ -37,16 +37,22 @@ jobs:
       - name: teardown fixture
         continue-on-error: true
         run: |
-          ms=target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
-          $ms test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms 2>&1 | tail -8 || true
+          set +e
+          ms=$PWD/target/debug/ms; [ "$RUNNER_OS" = Windows ] && ms=$ms.exe
+          mkdir -p tdir && cd tdir
+          MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 $ms test ../tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms > out.txt 2>&1
+          grep -E "^fn |diag|  at " out.txt | cut -c1-200 | head -60
+          echo ---- defines
+          grep -n "^define" ms-keep.ll | cut -c1-160 | head -60
+          true
       - name: yaml release failing tests
         if: runner.os == 'macOS'
         continue-on-error: true
         run: |
           set +e
-          for t in "quoted folding trims physical whitespace and preserves escapes" "folded and literal blocks respect paragraphs indentation and chomping"; do
-            MS_DIAG_FRAMES=1 target/debug/ms test tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML $t" 2>&1 | tail -12
-          done
+          mkdir -p ydir && cd ydir
+          MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > out.txt 2>&1
+          grep -E "^fn |SEGV|diag" out.txt | cut -c1-220 | head -200
           true
       - name: workers remaining tests
         if: runner.os == 'Windows'
