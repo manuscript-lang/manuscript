@@ -481,6 +481,7 @@ msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent:
 msrt_json_w_item(w: *mut WriterObj)
 msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
 msrt_json_w_key_quoted(w: *mut WriterObj, quoted_name: *const StrVal)
+msrt_json_w_tree(w: *mut WriterObj, desc: *const TypeDesc, view: TreeViewFn, root: *const u8)
 msrt_json_w_undo(w: *mut WriterObj)
 msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)
