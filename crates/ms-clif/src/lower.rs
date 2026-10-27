@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -2398,11 +2398,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
-                let slot = self.spill(&v, &leaves);
                 let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                let r = self.fref(thunk);
-                let fa = self.b.ins().func_addr(types::I64, r);
-                self.rt_call("msrt_cleanup_push", &[fa, slot])
+                if !self.g.m.funcs[c.index()].unwind_only {
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    self.rt_call("msrt_cleanup_push", &[fa, slot])
+                } else {
+                    // A closer that only acts while a guarded task unwinds: with no guard open the
+                    // registration is skipped, and its handle 0 makes the discard a no-op.
+                    let hdr = self.task_hdr();
+                    let guarded =
+                        self.b
+                            .ins()
+                            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
+                    let none = self.iconst(0);
+                    let push = self.b.create_block();
+                    let join = self.b.create_block();
+                    self.b.append_block_param(join, types::I64);
+                    self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
+                    self.b.switch_to_block(push);
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
+                    self.b.ins().jump(join, &[h.into()]);
+                    self.b.switch_to_block(join);
+                    self.b.block_params(join).to_vec()
+                }
             }
             Op::CleanupRun => {
                 let h = self.a(inst, 0)[0];
@@ -2898,6 +2921,14 @@ impl<'a, 'm> Lower<'a, 'm> {
                 return r;
             }
             return self.string_eq_inline(f, inst);
+        }
+        if self.g.m.externs[e.index()].name == "msrt_cleanup_discard" {
+            // Handle 0 is a registration skipped for lack of a guard.
+            let h = self.a(inst, 0)[0];
+            self.if_then(h, |s| {
+                s.call_extern_plain(f, inst);
+            });
+            return vec![];
         }
         self.call_extern_plain(f, inst)
     }

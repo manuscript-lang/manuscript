@@ -823,6 +823,9 @@ pub struct Func {
     /// Indexes of pointer parameters that no other parameter or memory the function reaches
     /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
     pub noalias: Vec<u32>,
+    /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
+    /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
+    pub unwind_only: bool,
 }
 
 impl Func {
@@ -841,6 +844,7 @@ impl Func {
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
             noalias: Vec::new(),
+            unwind_only: false,
         };
         for p in params {
             let v = f.new_value(p.ty);

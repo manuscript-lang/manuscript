@@ -244,6 +244,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
         Ty::UNIT,
     );
     b.func_mut().linkage = Linkage::Internal;
+    b.func_mut().unwind_only = true;
     let v = b.params()[0];
     let on = b.call_rt(gate, &[]);
     b.emit(Op::DropIf, &[on, v], Imm::None, None);
