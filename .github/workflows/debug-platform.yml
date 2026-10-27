@@ -1,0 +1,55 @@
+name: Debug platform
+on:
+  push:
+    branches: ['debug/**']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows, arch: amd64, runner: windows-2025 }
+          - { os: darwin, arch: arm64, runner: macos-15 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: amd64
+      - name: Select native Windows Rust host and MSVC linker
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $rustTarget = 'x86_64-pc-windows-msvc'
+          rustup set default-host $rustTarget
+          $msvcLinker = Join-Path $env:VCToolsInstallDir ('bin/Host{0}/{1}/link.exe' -f $env:VSCMD_ARG_HOST_ARCH, $env:VSCMD_ARG_TGT_ARCH)
+          $linkerKey = 'CARGO_TARGET_' + $rustTarget.ToUpper().Replace('-', '_') + '_LINKER'
+          "$linkerKey=$msvcLinker" >> $env:GITHUB_ENV
+      - name: Windows CC
+        if: runner.os == 'Windows'
+        run: echo 'CC=clang' >> "$GITHUB_ENV"
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - name: Build
+        run: |
+          cargo xtask runtime
+          cargo build --locked -p ms-cli
+      - name: Probe
+        continue-on-error: true
+        run: |
+          ms=target/debug/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          for bt in Debug Release; do
+            echo "::group::teardown $bt"
+            "$ms" test tests/e2e/testdata/stdlib/../../../conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type $bt 2>&1 | tail -30 || true
+            echo "::endgroup::"
+          done
