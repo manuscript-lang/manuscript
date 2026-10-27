@@ -435,7 +435,7 @@ impl Network {
 
     /// Connects to the first reachable permitted address of `address`.
     pub fn dial_tcp(&self, address: &str, deadline: Deadline) -> Result<Socket, NetErr> {
-        eprintln!("[net] dial_tcp {address}");
+        ms_rt::dbgf!("[net] dial_tcp {address}");
         let (host, port) =
             split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
         if !host_ok(&self.policy, host) {
@@ -680,17 +680,17 @@ fn finish_connect(sock: &Socket, deadline: Deadline) -> Result<(), ConnectError>
 
 /// Starts a nonblocking connect and waits for it within `deadline`.
 pub fn connect_nonblocking(addr: SocketAddr, deadline: Deadline) -> Result<Socket, ConnectError> {
-    eprintln!("[net] cn enter {addr}");
+    ms_rt::dbgf!("[net] cn enter {addr}");
     let sock = Socket::new(Domain::for_address(addr), Type::STREAM, Some(Protocol::TCP))
         .map_err(ConnectError::Io)?;
-    eprintln!("[net] cn socket made");
+    ms_rt::dbgf!("[net] cn socket made");
     sock.set_nonblocking(true).map_err(ConnectError::Io)?;
     let _ = sock.set_tcp_nodelay(true);
-    eprintln!("[net] cn opts set");
+    ms_rt::dbgf!("[net] cn opts set");
     let sock = OwnedSock::new(sock);
-    eprintln!("[net] connecting {addr}");
+    ms_rt::dbgf!("[net] connecting {addr}");
     let r = sock.connect(&addr.into());
-    eprintln!("[net] connect returned {:?}", r);
+    ms_rt::dbgf!("[net] connect returned {:?}", r);
     match r {
         Ok(()) => Ok(unwrap_sock(sock)),
         Err(e) if in_progress(&e) => {

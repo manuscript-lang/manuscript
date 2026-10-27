@@ -428,7 +428,7 @@ mod imp {
     /// Ends the registration of `sock`, leaving the socket open.
     fn release(s: &mut State, sock: usize) {
         if s.views.contains_key(&sock) {
-            eprintln!("[poll] release {sock}");
+            crate::dbgf!("[poll] release {sock}");
         }
         if let Some(mut view) = s.views.remove(&sock) {
             let _ = s.poll.registry().deregister(&mut view);
@@ -445,9 +445,9 @@ mod imp {
 
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
-        eprintln!("[poll] watch? {sock} events={events}");
+        crate::dbgf!("[poll] watch? {sock} events={events}");
         if s.pipes.contains_key(&(sock & !3)) || s.objects.contains_key(&sock) {
-            eprintln!("[poll] watch {sock} treated as pipe/object");
+            crate::dbgf!("[poll] watch {sock} treated as pipe/object");
             return Watch::Armed;
         }
         release(s, sock);
@@ -457,12 +457,12 @@ mod imp {
         let mut view = TcpStream::from_std(stream);
         match s.poll.registry().register(&mut view, Token(sock), interest) {
             Ok(()) => {
-                eprintln!("[poll] watch {sock} events={events} armed");
+                crate::dbgf!("[poll] watch {sock} events={events} armed");
                 s.views.insert(sock, view);
                 Watch::Armed
             }
             Err(e) => {
-                eprintln!("[poll] watch {sock} events={events} ERR {e}");
+                crate::dbgf!("[poll] watch {sock} events={events} ERR {e}");
                 let _ = view.into_raw_socket();
                 Watch::Always
             }
@@ -612,9 +612,9 @@ mod imp {
             }
             _ => None,
         };
-        eprintln!("[poll] wait enter t={timeout_ns}");
+        crate::dbgf!("[poll] wait enter t={timeout_ns}");
         let polled = s.poll.poll(&mut s.events, timeout);
-        eprintln!("[poll] wait exit n={}", s.events.iter().count());
+        crate::dbgf!("[poll] wait exit n={}", s.events.iter().count());
         if let Some(handle) = armed {
             // SAFETY: as above. A wake for another reason must not leave a stale signal behind.
             unsafe { crate::sys::precise_timer_cancel(handle as *mut _) };
@@ -649,7 +649,7 @@ mod imp {
             }
         }
         for (sock, bits) in ready {
-            eprintln!("[poll] ready {sock} bits={bits}");
+            crate::dbgf!("[poll] ready {sock} bits={bits}");
             // One-shot: the task registers again when it waits again.
             release(s, sock);
             out[count] = Ready { fd: sock, bits };

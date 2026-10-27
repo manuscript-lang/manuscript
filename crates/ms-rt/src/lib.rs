@@ -70,3 +70,14 @@ mod model_tests;
 
 #[cfg(test)]
 mod testutil;
+
+/// TEMPORARY debug trace to a file.
+#[macro_export]
+macro_rules! dbgf {
+    ($($a:tt)*) => {{
+        use std::io::Write as _;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("dbg.log") {
+            let _ = writeln!(f, $($a)*);
+        }
+    }};
+}
