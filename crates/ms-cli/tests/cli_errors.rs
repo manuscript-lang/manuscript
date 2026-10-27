@@ -42,3 +42,21 @@ fn help_spelling_as_an_option_value_is_validated_as_a_value() {
         assert!(!err.is_empty(), "{args:?} must report its invalid value");
     }
 }
+
+#[test]
+fn init_next_command_for_hyphen_directory_is_a_file_operand() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-init-hyphen-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_ms"))
+        .args(["init", "./-demo"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        text.contains("Next: ms run ./-demo/ms.toml -- first second"),
+        "{text}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -18,14 +18,18 @@ fn distribution_packages_the_binary_it_just_built() {
         ("target/release/ms", b"stale compiler"),
         (
             "mock-bin/cargo",
-            // Model Cargo's output selection: --target-dir takes priority over the environment.
+            // Model Cargo's output selection: --target-dir takes priority over the environment,
+            // and an explicit target (flag or CARGO_BUILD_TARGET) adds a triple directory.
             br#"#!/bin/sh
 if [ "$1" = xtask ]; then exit 0; fi
 out=${CARGO_TARGET_DIR:-target}
+triple=${CARGO_BUILD_TARGET:-}
 while [ "$#" -gt 0 ]; do
     if [ "$1" = --target-dir ]; then shift; out=$1; fi
+    if [ "$1" = --target ]; then shift; triple=$1; fi
     shift
 done
+if [ -n "$triple" ]; then out="$out/$triple"; fi
 mkdir -p "$out/release"
 printf 'fresh compiler' > "$out/release/ms"
 "#,
@@ -50,6 +54,7 @@ printf 'fresh compiler' > "$out/release/ms"
         .args(["linux", "amd64"])
         .env("PATH", path)
         .env("CARGO_TARGET_DIR", root.join("custom cargo target"))
+        .env("CARGO_BUILD_TARGET", "x86_64-unknown-linux-gnu")
         .output()
         .unwrap();
     assert!(

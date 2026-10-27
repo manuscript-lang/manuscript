@@ -169,6 +169,20 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
                 code: finding.code.to_string(),
                 message: finding.message,
                 position: selection.position(&checked.source_root, &at),
+                fix: finding.fix.as_ref().map(|fix| {
+                    let place = |pos: ms_driver::Pos| {
+                        selection.position(
+                            &checked.source_root,
+                            &Position {
+                                file: finding.file.to_string(),
+                                line: pos.line as usize,
+                                column: pos.column as usize,
+                                offset: pos.offset as usize,
+                            },
+                        )
+                    };
+                    super::fix_json(&place, fix)
+                }),
                 ..CommandDiagnostic::default()
             });
         }
