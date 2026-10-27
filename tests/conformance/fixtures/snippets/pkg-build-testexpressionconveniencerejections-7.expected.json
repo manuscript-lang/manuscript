@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-7.ms:4:31: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-7.ms:4:31: type: operator operands require the same independently known type, found String + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n   |\n 4 | def f() -> String: return \"a\" + 1\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

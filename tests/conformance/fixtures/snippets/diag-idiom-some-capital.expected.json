@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-some-capital.ms:5:13: resolution: unknown binding Some; write the lowercase some(value) for a present Optional\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-some-capital.ms:5:13: resolution: unknown binding Some; write the lowercase some(value) for a present Optional\n   |\n 5 |     let a = Some(1)\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-first-unwrap-or.ms:5:25: resolution: unknown or ambiguous member unwrap_or on Optional[Int]; read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:` to test and unwrap; x.get() with no default faults on none\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-first-unwrap-or.ms:5:25: resolution: unknown or ambiguous member unwrap_or on Optional[Int]; read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:` to test and unwrap; x.get() with no default faults on none\n   |\n 5 |     let a = [1].first().unwrap_or(0)\n   |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

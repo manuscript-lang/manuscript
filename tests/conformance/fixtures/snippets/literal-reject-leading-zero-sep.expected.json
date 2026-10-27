@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-leading-zero-sep.ms:5:14: parse: leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-leading-zero-sep.ms:5:14: parse: leading zeros are not allowed in numeric literals; write the number without them, e.g. 42 instead of 042\n   |\n 5 |     let x = 0_1\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

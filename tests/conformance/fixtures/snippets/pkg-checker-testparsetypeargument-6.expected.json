@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-6.ms:4:37: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n<DIR>/pkg-checker-testparsetypeargument-6.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-6.ms:4:37: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def f[T](text: String) -> Result[T, JsonError]:\n   |                                     ^\n<DIR>/pkg-checker-testparsetypeargument-6.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n   |\n 5 |     return parse[T](text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

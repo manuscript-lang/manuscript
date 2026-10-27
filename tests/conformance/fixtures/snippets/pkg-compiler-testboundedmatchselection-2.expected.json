@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:38: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | def unknown(s: Shape) -> Int: return area(s)\n   |                ^\n<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:38: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n   |\n 4 | def unknown(s: Shape) -> Int: return area(s)\n   |                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -73,7 +73,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:7:13: resolution: unknown binding expect_equal; add: from \"@std/testing.ms\" import expect_equal\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:10:9: resolution: unknown binding fail; add: from \"@std/testing.ms\" import fail\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:5:5: resolution: unknown binding println; there is no built-in print: import stdout from \"@std/io.ms\" and call stdout().write(\"text\\n\")\n   |\n 5 |     println(\"READY\")\n   |     ^\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:7:13: resolution: unknown binding expect_equal; add: from \"@std/testing.ms\" import expect_equal\n   |\n 7 |         try expect_equal(1, 1)\n   |             ^\n<DIR>/tests-e2e-testclitestfixtureinterruptcleansup-1.ms:10:9: resolution: unknown binding fail; add: from \"@std/testing.ms\" import fail\n    |\n 10 |     try fail(\"must not run\")\n    |         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

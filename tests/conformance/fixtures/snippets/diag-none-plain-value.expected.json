@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-none-plain-value.ms:5:18: type: expected Int, found none (in the initializer of 'x'); none is absent, so it fits only an Optional position: declare the target Optional[Int] or give a value\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-none-plain-value.ms:5:18: type: expected Int, found none (in the initializer of 'x'); none is absent, so it fits only an Optional position: declare the target Optional[Int] or give a value\n   |\n 5 |     var x: Int = none\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:4:29: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:5:25: resolution: unknown binding EncodingError; add: from \"@std/encoding.ms\" import EncodingError\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:4:29: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def wrong() -> Result[Unit, JsonError]:\n   |                             ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-2.ms:5:25: resolution: unknown binding EncodingError; add: from \"@std/encoding.ms\" import EncodingError\n   |\n 5 |     return error(cause: EncodingError.InvalidData)\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
