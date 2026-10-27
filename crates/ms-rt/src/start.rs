@@ -239,6 +239,19 @@ mod os {
             if lo != 0 && addr < lo + 4096 && addr + OVERFLOW_REACH >= lo {
                 fault::fatal(b"stack overflow: recursion too deep or stack frames too large");
             }
+            #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+            if std::env::var_os("MS_DIAG_FRAMES").is_some() {
+                let mctx = (_ctx.add(48) as *const usize).read_unaligned();
+                let reg = |i: usize| ((mctx + 16 + i * 8) as *const usize).read_unaligned();
+                let (fp, lr, sp, pc) = (reg(29), reg(30), reg(31), reg(32));
+                let mut out = std::vec::Vec::new();
+                fault::diag_describe(&mut out, &[pc.wrapping_add(1), lr], fp);
+                let text = std::format!(
+                    "SEGV addr={addr:#x} pc={pc:#x} lr={lr:#x} sp={sp:#x} fp={fp:#x} lo={lo:#x}{}\n",
+                    std::string::String::from_utf8_lossy(&out)
+                );
+                sys::write(2, text.as_ptr().cast(), text.len());
+            }
             // Not ours: restore the default action and return so the access faults again.
             let dfl = sys::sigaction_t::new(0, 0);
             sys::sigaction(sig, &dfl, core::ptr::null_mut());
