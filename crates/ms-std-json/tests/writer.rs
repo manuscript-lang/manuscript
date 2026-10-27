@@ -280,3 +280,31 @@ fn number_text_is_validated_whatever_its_length() {
         assert!(matches!(w.finish(), Err(Fail::InvalidData)), "{bad:?}");
     }
 }
+
+#[test]
+fn plain_decimals_print_as_rust_displays_them() {
+    // Between 1e-3 and 1e11 a JSON float and Rust's `{}` are the same text.
+    let mut x: u64 = 0x2545_f491_4f6c_dd1d;
+    let mut next = || {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        x
+    };
+    for i in 0..400_000u64 {
+        let k = (next() % 7) as i32;
+        let v = match i % 3 {
+            0 => (next() % 1_000_000_000) as f64 / 10f64.powi(k),
+            1 => (next() % 1_000_000_000_000_000) as f64 / 10f64.powi(k + 3),
+            _ => f64::from_bits(0x3f50_0000_0000_0000 + next() % 0x0200_0000_0000_0000),
+        };
+        for v in [v, -v] {
+            if v == 0.0 || !(1e-3..1e11).contains(&v.abs()) {
+                continue;
+            }
+            let mut w = Writer::new(None, None);
+            w.float(v);
+            assert_eq!(w.finish().unwrap(), format!("{v}"), "{v:e}");
+        }
+    }
+}
