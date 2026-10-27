@@ -268,24 +268,20 @@ ms run config.ms -- '{"name":"Sam"}'
 
 ## Make an HTTP GET request
 
-Save as `get.ms`. Status is `response.metadata().status`; bytes are `response.body`. This requires a 200 UTF-8 response.
+Save as `get.ms`. `fetch` buffers the body, `check_status()` rejects statuses outside 200–299, and `text()` decodes UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["$HTTP_URL"],"http":{"status":200,"body":"hello from HTTP\n"},"stdout":"hello from HTTP\n","cases":[{"args":["$HTTP_URL"],"http":{"status":404,"body":"missing"},"exit_code":1},{"args":["invalid URL"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
 from "@std/process.ms" import arguments
-from "@std/http.ms" import HttpError, HttpMethod, headers
-from "@std/net.ms" import network
+from "@std/fetch.ms" import fetch, FetchOptions
+from "@std/http.ms" import HttpError
 from "@std/io.ms" import stdout
 
 def run() -> Result[Unit, Error]:
     let url = try arguments().first().ok_or(HttpError.InvalidInput)
-    let response = try network().request(
-        HttpMethod.Get, url, headers(), "",
-        max_response_bytes: 1048576
-    )
-    if response.metadata().status != 200:
-        return error(HttpError.InvalidData)
-    let text = try response.body.decode_utf8().ok_or(HttpError.InvalidData)
+    let response = try fetch(url, FetchOptions(max_response_bytes: 1048576))
+    try response.check_status()
+    let text = try response.text()
     try stdout().write(text)
     return stdout().flush()
 
@@ -303,6 +299,8 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ms run get.ms -- http://127.0.0.1:8000/notes.txt
 ```
 
-The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures and non-200 statuses exit 1; the body is capped at one megabyte.
+The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures, non-success statuses and invalid UTF-8 exit 1; the body is capped at one mebibyte (1,048,576 bytes). Other `FetchOptions` fields keep their defaults, including the 30-second deadline.
+
+For a JSON response, `try response.json[Config]()` decodes into a type such as the `Config` above. Call `check_status()` first when an error status should fail the operation: `fetch` itself returns error statuses as ordinary responses. For repeated requests, open a pooled `Fetcher` with `with let client = try fetcher():`; see the [fetch API](../standard-library/reference/fetch.md).
 
 Next: [testing](testing.md) and [counting loops](../core-language/control-flow/loops.md#counting-loops).
