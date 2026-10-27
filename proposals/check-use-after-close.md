@@ -9,7 +9,7 @@
 
 ## Status
 
-Proposal, 2026-10-27, checked against `origin/main` at `5f28e5d0`. #1526 (unclosed resources) deliberately left this out: only the straight-line case is catchable without typestate, and about 13 stdlib tests exercise the runtime closed-state error on purpose.
+Parked 2026-10-27 (see `close-is-last-use.md`); the runtime Closed error stays. Proposal, checked against `origin/main` at `5f28e5d0`. #1526 (unclosed resources) deliberately left this out: only the straight-line case is catchable without typestate, and about 13 stdlib tests exercise the runtime closed-state error on purpose.
 
 ## Problem
 
