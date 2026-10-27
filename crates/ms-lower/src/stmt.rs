@@ -389,6 +389,10 @@ impl<'a> FnLower<'a> {
                 let l = self.local(&b)?;
                 let new = self.owned(x);
                 let old = self.local_take(&l);
+                // A registered resource closes the value it replaces; the scope closes the new one.
+                if let Some(closer) = self.closers.get(&b.uid).cloned() {
+                    self.close_replaced(&closer, old, l.ty);
+                }
                 self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {
                     self.drop_value(old);
