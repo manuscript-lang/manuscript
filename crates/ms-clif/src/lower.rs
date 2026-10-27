@@ -180,7 +180,8 @@ impl<'a, 'm> Lower<'a, 'm> {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
-            Leaf::F64 | Leaf::F32 => self.b.ins().f64const(0.0),
+            Leaf::F64 => self.b.ins().f64const(0.0),
+            Leaf::F32 => self.b.ins().f32const(0.0),
         }
     }
 
@@ -206,9 +207,36 @@ impl<'a, 'm> Lower<'a, 'm> {
         r
     }
 
+    /// `v` as the float type `to`: runtime and native signatures carry `Float32` as `f64`, and
+    /// the binary32 value converts exactly both ways.
+    fn float_as(&mut self, v: Value, to: ir::Type) -> Value {
+        let from = self.b.func.dfg.value_type(v);
+        if from == to || !from.is_float() || !to.is_float() {
+            v
+        } else if to == types::F64 {
+            self.b.ins().fpromote(types::F64, v)
+        } else {
+            self.b.ins().fdemote(types::F32, v)
+        }
+    }
+
     fn call_id(&mut self, id: FuncId, args: &[Value]) -> Vs {
         let r = self.fref(id);
-        let i = self.b.ins().call(r, args);
+        let sig = self.b.func.dfg.ext_funcs[r].signature;
+        let want: Vec<ir::Type> = self.b.func.dfg.signatures[sig]
+            .params
+            .iter()
+            .map(|p| p.value_type)
+            .collect();
+        let args: Vec<Value> = args
+            .iter()
+            .enumerate()
+            .map(|(k, a)| match want.get(k) {
+                Some(t) => self.float_as(*a, *t),
+                None => *a,
+            })
+            .collect();
+        let i = self.b.ins().call(r, &args);
         self.b.inst_results(i).to_vec()
     }
 
@@ -261,7 +289,6 @@ impl<'a, 'm> Lower<'a, 'm> {
         let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
-            Leaf::F32 => self.b.ins().fpromote(types::F64, v),
             _ => v,
         }
     }
@@ -270,7 +297,6 @@ impl<'a, 'm> Lower<'a, 'm> {
     fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
-            Leaf::F32 => self.b.ins().fdemote(types::F32, v),
             _ => v,
         };
         self.b.ins().store(flags(), v, ptr, off);
@@ -1589,6 +1615,9 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 vec![self.iconst(v)]
             }
+            Op::FConst if res_ty == Some(Ty::FLOAT32) => {
+                vec![self.b.ins().f32const(inst.imm.float() as f32)]
+            }
             Op::FConst => vec![self.b.ins().f64const(inst.imm.float())],
             Op::BConst => {
                 let Imm::Bool(v) = inst.imm else {
@@ -1688,13 +1717,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::Conv => {
                 let x = self.a(inst, 0)[0];
-                let round = res_ty == Some(Ty::FLOAT32) && f.ty(inst.args[0]) != Ty::FLOAT32;
-                if round {
-                    let narrow = self.b.ins().fdemote(types::F32, x);
-                    vec![self.b.ins().fpromote(types::F64, narrow)]
+                let to = if res_ty == Some(Ty::FLOAT32) {
+                    types::F32
                 } else {
-                    vec![x]
-                }
+                    types::F64
+                };
+                vec![self.float_as(x, to)]
             }
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
@@ -1714,8 +1742,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::F32Round => vec![{
                 let x = self.a(inst, 0)[0];
-                let narrow = self.b.ins().fdemote(types::F32, x);
-                self.b.ins().fpromote(types::F64, narrow)
+                self.float_as(x, types::F32)
             }],
             Op::IAddChk | Op::ISubChk | Op::IMulChk => {
                 let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
@@ -1860,14 +1887,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::I2F => vec![{
                 let x = self.a(inst, 0)[0];
                 if res_ty == Some(Ty::FLOAT32) {
-                    let narrow = self.b.ins().fcvt_from_sint(types::F32, x);
-                    self.b.ins().fpromote(types::F64, narrow)
+                    self.b.ins().fcvt_from_sint(types::F32, x)
                 } else {
                     self.b.ins().fcvt_from_sint(types::F64, x)
                 }
             }],
             Op::F2IOpt => {
                 let v = self.a(inst, 0)[0];
+                let v = self.float_as(v, types::F64);
                 let lo = self.b.ins().f64const(-9223372036854775808.0);
                 let hi = self.b.ins().f64const(9223372036854775808.0);
                 let ge = self.b.ins().fcmp(FloatCC::GreaterThanOrEqual, v, lo);
@@ -2402,6 +2429,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                 }
             }
         };
+        let out = match res_ty {
+            Some(t) => {
+                let leaves = self.g.lay.leaves(t);
+                if leaves.len() == out.len() {
+                    out.into_iter()
+                        .zip(leaves)
+                        .map(|(v, l)| self.float_as(v, leaf_type(l)))
+                        .collect()
+                } else {
+                    out
+                }
+            }
+            None => out,
+        };
         self.set(inst, out);
     }
 
@@ -2885,6 +2926,15 @@ impl<'a, 'm> Lower<'a, 'm> {
                     params.push(Leaf::I64);
                     Vec::new()
                 };
+                // Native code takes and returns a `Float32` as `f64`.
+                let wide = |ls: &mut Vec<Leaf>| {
+                    for l in ls.iter_mut().filter(|l| **l == Leaf::F32) {
+                        *l = Leaf::F64;
+                    }
+                };
+                wide(&mut params);
+                let mut rets = rets;
+                wide(&mut rets);
                 let sig = self.g.sig(&params, &rets);
                 let id = self
                     .g
