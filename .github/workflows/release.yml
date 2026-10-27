@@ -39,6 +39,30 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     uses: ./.github/workflows/rust-dist.yml
 
+  # Plain list loops must keep vectorizing: the release's own `ms` runs the benchmark and the
+  # table is kept with the run, to compare against the committed result page.
+  listloops:
+    name: List loop benchmark
+    needs: rust
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: manuscript-rust-linux-amd64
+          path: dist
+      - name: Run bench/perf/listloops
+        run: |
+          set -eu
+          tar -xzf dist/manuscript-rust-linux-amd64.tar.gz -C dist
+          MS="$PWD/dist/manuscript-rust-linux-amd64/ms" sh bench/perf/listloops/run.sh 5 | tee listloops.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: listloops-${{ github.ref_name }}
+          path: listloops.txt
+
   publish:
     needs: rust
     if: startsWith(github.ref, 'refs/tags/v')

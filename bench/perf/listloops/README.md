@@ -34,3 +34,8 @@ Run `sh bench/perf/listloops/run.sh 7` (best of N). Compare only runs from the s
 - `intadd` stays scalar: the overflow check is an early exit whose condition LLVM cannot predicate ("Early exit loop with store but no supported condition load").
 - `dot32` stays scalar in every language: a strict-order reduction cannot be reassociated without fast-math.
 - Loop versioning for bounds checks (one range check before the loop, an unchecked copy behind it) was prototyped and measured: no kernel changed by more than noise, because LLVM already vectorizes loops whose only other exits are `i < len` bounds checks.
+
+## Regression guards
+
+- `crates/ms-cli/tests/vectorized_loops.rs` builds an `fma` and a `scale` loop with the LLVM backend and asserts `opt -pass-remarks=loop-vectorize` reports both vectorized. It runs wherever the bundled LLVM tools are available, on every platform CI covers.
+- The release workflow runs this suite on the tagged Linux build and keeps the table as the `listloops-<tag>` artifact; compare it with the newest dated section above.
