@@ -65,12 +65,14 @@ jobs:
             echo "[$?] $name :: $(grep -E 'PASS|FAIL|timed' w.txt | tr '\n' ' ' | cut -c1-300)"
           done
           true
-      - name: http deadline fixture
+      - name: http variants
         if: runner.os == 'Windows'
         continue-on-error: true
         run: |
           set +e
-          ms=target/debug/ms.exe
-          timeout 40 $ms run tests/conformance/fixtures/e2e/stdlib/http-request-deadline.ms > h.txt 2>&1
-          echo "exit $?"; head -20 h.txt
+          for v in plain shortsleep cancel; do
+            echo "== $v"
+            timeout 25 target/debug/ms.exe run .github/diag/$v.ms > h.txt 2>&1
+            echo "exit $?"; head -20 h.txt
+          done
           true
