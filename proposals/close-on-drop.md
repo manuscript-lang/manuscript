@@ -25,10 +25,9 @@ Proposal, 2026-10-27, against `dcdaee5d`. Direction (Chinmay): "can we follow dr
 - Moved bindings keep today's rule: the new owner closes them. Conditional moves stay out of scope, so no drop flags.
 - Explicit `.close()` or `with` on the binding suppresses the implicit close (no double close).
 - Lowering: treat the binding as a `with` whose body is the rest of the block, reusing `CleanupPush`, `closer_for` and `close_call`, so faults and cancellation behave as `with` does.
-- `close()` may return `Result[Unit, E]` as well as `Unit` (Chinmay: errors are handled in close itself and passed up).
-- The implicit close at scope exit acts as `try x.close()`: on a normal exit or a `return`, `Err(e)` becomes the function's error, so the function's error type must accept `E`. Otherwise the checker rejects the binding and says to close it explicitly and handle the result.
-- If another error or fault is already propagating, that one stays primary and the close error is dropped as secondary, matching `cleanup-faults.md`.
-- Cancellation and faults run close shielded as today; a close error there is secondary.
+- `close()` stays `var def close() -> Unit` and returns no error (Chinmay: close handles all its errors itself). The implementation must handle every fallible step inside the body (retry, fall back, or ignore deliberately); an unhandled `try` in `close` is already rejected because it returns `Unit`.
+- Callers needing a result use an explicit fallible method (`flush`, `commit`) before the scope ends.
+- Cancellation and faults run close shielded as today; a fault in close keeps the rules in `cleanup-faults.md`.
 - `with` stays valid in stages 1-2 and is removed in stage 3; until then it only narrows the close to a sub-block.
 - The "never closed" diagnostic is removed; a binding that is moved on some path still needs an explicit close per existing rules.
 
@@ -59,7 +58,7 @@ Before/after:
 - Full drop glue with drop flags for conditional moves: covers more, but needs flow analysis the checker lacks; defer until the narrow rule proves out.
 - Close in Rust `Drop` of native handles: cannot call user `close()`; rejected.
 
-- Swallow close errors, or a split `drop`/`close` pair (rejected): hides failures such as a lost flush and adds a second concept.
+- Propagating `Result` from close, or a split `drop`/`close` pair (rejected): changes the `Closeable` signature and every impl, and adds a second concept.
 
 ## Staging and verification
 
