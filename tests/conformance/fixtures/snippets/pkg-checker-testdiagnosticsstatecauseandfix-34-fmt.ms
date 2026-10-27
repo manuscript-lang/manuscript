@@ -2,5 +2,5 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/hints_test.go:53 TestDiagnosticsStateCauseAndFix
 def f() -> Int:
-    let s = Set[String]()
+    let _s = Set[String]()
     return 0

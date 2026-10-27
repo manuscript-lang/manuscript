@@ -6,4 +6,4 @@ def difference(values: List[Int]) -> Int:
     return first - second
 
 test "fault":
-    let impossible = difference(values: [1])
+    let _impossible = difference(values: [1])

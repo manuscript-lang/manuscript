@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 def gcd(a: Int, b: Int) -> Int:
     if b == 0:
@@ -24,7 +24,7 @@ export def main() -> Int:
     say(f"f1 = {f1}")
     say(f"gcd(2218, 1953) = {gcd(2218, 1953)}")
 
-    let bad = say
+    let _bad = say
     let i2 = (-19)
     say(f"i2 = {i2}")
     return 0

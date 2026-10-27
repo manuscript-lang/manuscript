@@ -4,5 +4,5 @@
 from "@std/queue.ms" import Queue
 
 def main() -> Unit:
-    var bounded = Queue[Int](capacity: 4)
-    var unbounded = Queue[Int]()
+    var _bounded = Queue[Int](capacity: 4)
+    var _unbounded = Queue[Int]()

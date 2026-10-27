@@ -27,7 +27,7 @@ def probe() -> Result[Unit, Error]:
 test "typed callback helper":
     match probe():
         case ok(_):
-            let completed = ()
+            let _completed = ()
         case error(_):
             return fail(message: "Unexpected case")
 

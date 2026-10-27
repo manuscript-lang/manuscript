@@ -11,12 +11,12 @@ let (
 def main() -> Unit:
     let x = 1
     var (
-        a = 10
+        _a = 10
         b = lambda (y: Int) -> Int:
             return y + 1
     )
     let (
         c = 11
-        d = "Hi"
+        _d = "Hi"
     )
-    a += x + b(c)
+    _a += x + b(c)

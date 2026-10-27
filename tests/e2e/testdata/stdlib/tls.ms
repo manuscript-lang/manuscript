@@ -12,10 +12,10 @@ from "@std/net.ms" import Listener, Connection
 from "./support/certificates.ms" import certificate, private_key
 
 def hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = try exchange.send_headers(
+    let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let written = (try http_result(exchange.write("secure")))
+    let _written = (try http_result(exchange.write("secure")))
     return ok(())
 
 test "TLS certificate parsing verification hostname and expiration":
@@ -32,7 +32,7 @@ test "TLS certificate parsing verification hostname and expiration":
     )
 
     let now = (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
-    let verified = (
+    let _verified = (
         verify_certificates(
             chain_pem: certificate(), roots_pem: certificate(),
             server_name: "stdlib.test", now: now
@@ -105,10 +105,10 @@ test "HTTPS trusts only the explicitly supplied local test root":
                 )
 
 def report_protocol(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = try exchange.send_headers(
+    let _started = try exchange.send_headers(
         status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
-    let written = (try http_result(exchange.write(exchange.protocol())))
+    let _written = (try http_result(exchange.write(exchange.protocol())))
     return ok(())
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
@@ -216,7 +216,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         )
         try expect_false(refused.is_ok())
 
-        let served = try group.results()
+        let _served = try group.results()
 
     listener.get().close()
     with let plain = try net.listen("127.0.0.1:0"):

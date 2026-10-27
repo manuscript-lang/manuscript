@@ -8,5 +8,5 @@ def scale(value: Int, by: Int = 2) -> Int: value * by
 export def main() -> Int:
     let f = scale
     let g = lambda (value: Int = 4): value
-    let r = stdout().write(f"{f(3)} {f(3, 3)} {g()}\n")
+    let _r = stdout().write(f"{f(3)} {f(3, 3)} {g()}\n")
     return 0

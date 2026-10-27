@@ -5,14 +5,14 @@ def choose(value: Int) -> Int:
     return value
 
 def collect(fallback: Int = choose(1)) -> String:
-    let callbacks = [
+    let _callbacks = [
         lambda (value: Int = choose(2)) -> Int:
             if value > 0:
                 return choose(3)
             else:
                 return choose(4)
     ]
-    let text = f"{choose(5)}"
+    let _text = f"{choose(5)}"
 
     match fallback:
         case _:

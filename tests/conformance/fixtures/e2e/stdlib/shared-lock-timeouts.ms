@@ -29,7 +29,7 @@ export def main() -> Int:
             g.spawn(lambda ch: holder(box, nap))
             sleep(nanoseconds(100000))
 
-            let first = g.spawn(
+            let _first = g.spawn(
                 lambda ch: waiter(box),
                 timeout: some(
                     nanoseconds(nap - 100000 + (

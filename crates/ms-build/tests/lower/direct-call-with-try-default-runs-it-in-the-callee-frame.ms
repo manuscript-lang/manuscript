@@ -9,5 +9,5 @@ def fail() -> Result[Int, TextError]: return error(TextError("no"))
 def get(value: Int = try fail()) -> Result[Int, TextError]: return ok(value)
 
 export def main() -> Int:
-    let r = stdout().write(f"{get(2).is_ok()} {get().is_ok()}\n")
+    let _r = stdout().write(f"{get(2).is_ok()} {get().is_ok()}\n")
     return 0

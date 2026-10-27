@@ -6,7 +6,7 @@
 from "@std/io.ms" import stdout
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 export def main() -> Int:
     let i1 = (
@@ -19,6 +19,6 @@ export def main() -> Int:
     say(f"f2 = {f2}")
     say(f"{i1} {(-i1)} {(i1 < (-i1))} sum {i1 + (-i1)}")
 
-    let b3 = ((True or (False and True)) and (not "beta".contains("hello world")))
+    let _b3 = ((True or (False and True)) and (not "beta".contains("hello world")))
     say(f"{i1} {840178} {(i1 < 840178)} sum {i1 + 840178}")
     return 0

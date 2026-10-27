@@ -5,4 +5,4 @@ type Callback:
     value: Callable[[Int], Int]
 
 def example() -> Unit:
-    let callback = Callback(lambda value: value + 1)
+    let _callback = Callback(lambda value: value + 1)
