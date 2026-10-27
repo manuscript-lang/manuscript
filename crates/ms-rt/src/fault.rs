@@ -793,19 +793,6 @@ fn describe_started(out: &mut Vec<u8>, captured: &[usize]) {
     }
 }
 
-/// Diagnostic: the source frames for `pcs` followed by those found from `fp`.
-pub fn diag_describe(out: &mut Vec<u8>, pcs: &[usize], fp: usize) {
-    describe_with(out, |t, visit| {
-        for &pc in pcs {
-            if !visit(pc) {
-                return;
-            }
-        }
-        // SAFETY: diagnostic walk of the faulting thread's frame-pointer chain.
-        unsafe { walk_fault_frames(fp, fault_vec as *const () as usize, t, visit) }
-    });
-}
-
 /// Appends `file:line in name` lines for the source frames found from `fp`.
 fn describe_frames(out: &mut Vec<u8>, fp: usize) {
     // SAFETY: `fp` comes from `frame_pointer()` of the faulting thread.
@@ -831,20 +818,8 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
-                if std::env::var_os("MS_DIAG_FRAMES").is_some() {
-                    out.extend_from_slice(format!("\n  [diag unresolved ret={ret:#x}]").as_bytes());
-                }
                 return true;
             };
-            if std::env::var_os("MS_DIAG_FRAMES").is_some() {
-                out.extend_from_slice(
-                    format!(
-                        "\n  [diag ret={ret:#x} func={:#x} size={} funcs={}]",
-                        func.addr, func.size, t.func_count
-                    )
-                    .as_bytes(),
-                );
-            }
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {

@@ -114,6 +114,17 @@ fn shared_listeners() -> std::sync::MutexGuard<'static, Vec<SharedListener>> {
     SHARED_LISTENERS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// A duplicate of `socket` that accepts without blocking. Windows gives a duplicated socket the
+/// default blocking mode, so it is set again.
+fn duplicate_listener(socket: &socket2::Socket) -> Result<socket2::Socket, NetErr> {
+    let copy = socket
+        .try_clone()
+        .map_err(|e| NetErr::failed(e.to_string()))?;
+    copy.set_nonblocking(true)
+        .map_err(|e| NetErr::failed(e.to_string()))?;
+    Ok(copy)
+}
+
 /// A duplicate of the shared listener for `address`, bound by `bind` when no server holds it.
 fn shared_listener(
     address: &str,
@@ -121,17 +132,12 @@ fn shared_listener(
 ) -> Result<socket2::Socket, NetErr> {
     let mut all = shared_listeners();
     if let Some(entry) = all.iter_mut().find(|e| e.address == address) {
-        let copy = entry
-            .socket
-            .try_clone()
-            .map_err(|e| NetErr::failed(e.to_string()))?;
+        let copy = duplicate_listener(&entry.socket)?;
         entry.users += 1;
         return Ok(copy);
     }
     let socket = bind()?;
-    let copy = socket
-        .try_clone()
-        .map_err(|e| NetErr::failed(e.to_string()))?;
+    let copy = duplicate_listener(&socket)?;
     all.push(SharedListener {
         address: address.to_string(),
         socket,
@@ -230,16 +236,6 @@ impl ConnSt {
             self.pos = 0;
         }
     }
-}
-
-fn dg(text: &str) {
-    if std::env::var_os("MS_DIAG_POLL").is_some() {
-        eprintln!("[srv] {text}");
-    }
-}
-
-fn probe(label: &str, sock: &socket2::Socket) {
-    crate::net::probe(label, sock);
 }
 
 // -------------------------------------------------------------------- reactor
@@ -463,12 +459,9 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     // SAFETY: `arg` is the `Box<Rc<Reactor>>` leaked by `spawn_task` for this task.
     let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
     reactor.task.set(rt::current_task());
-    dg("reactor start");
     let mut drain = DrainShield::default();
     loop {
-        dg("service begin");
         reactor.service();
-        dg("service end");
         // No servers left: end; the next server starts a new reactor task.
         if reactor.targets.borrow().is_empty() {
             reactor.task.set(0);
@@ -476,7 +469,6 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             return;
         }
         drain.set(reactor.drains());
-        dg("drains set");
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
             at.saturating_duration_since(Instant::now()).as_nanos() as i64
         });
@@ -535,13 +527,9 @@ impl Reactor {
     fn service(&self) {
         let mut events = Vec::new();
         loop {
-            dg("poll begin");
             let raw = self.poller.poll(&mut events, 64);
-            dg(&format!("poll got {raw} events {}", events.len()));
             for &(token, flags) in &events {
-                dg(&format!("event {token} {flags:?}"));
                 self.handle_event(token, flags);
-                dg("event handled");
             }
             loop {
                 let retry: Vec<Rc<Conn>> = self.retry.borrow_mut().drain(..).collect();
@@ -554,9 +542,7 @@ impl Reactor {
                     }
                 }
             }
-            dg("run_handlers");
             self.run_handlers();
-            dg("run_handlers done");
             if raw < 64 {
                 break;
             }
@@ -722,18 +708,12 @@ impl Server {
         } else {
             owner.listen_tcp(address)?
         };
-        probe("serve: first after wrapper", &listener);
-        probe("serve: second after wrapper", &listener);
-        let local_sa = listener.local_addr();
-        probe("serve: after local_addr", &listener);
-        let local = local_sa
+        let local = listener
+            .local_addr()
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
-        probe("start of serve", &listener);
         let reactor = Reactor::get();
-        probe("after Reactor::get", &listener);
         reactor.spawn_task();
-        probe("after spawn_task", &listener);
         let id = NEXT_ID.with(|n| {
             let id = n.get();
             n.set(id + 1);
@@ -766,17 +746,11 @@ impl Server {
             .targets
             .borrow_mut()
             .insert(token, Target::Listener(Rc::downgrade(&server)));
-        if let Some(l) = server.listener.borrow().as_ref() {
-            probe("before add", l);
-        }
         let watched = server
             .listener
             .borrow()
             .as_ref()
             .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
-        if let Some(l) = server.listener.borrow().as_ref() {
-            probe("after add", l);
-        }
         if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
@@ -936,38 +910,19 @@ impl Server {
     fn accept_all(&self, reactor: &Reactor) {
         loop {
             let accepted = match self.listener.borrow().as_ref() {
-                Some(listener) => {
-                    dg("accept begin");
-                    if std::env::var_os("MS_DIAG_NB").is_some() {
-                        dg(&format!("re-set nonblocking: {:?}", listener.set_nonblocking(true)));
-                    }
-                    listener.accept()
-                }
+                Some(listener) => listener.accept(),
                 None => break,
             };
-            dg(&format!("accept returned ok={}", accepted.is_ok()));
             match accepted {
                 Ok((sock, _peer)) => {
-                    dg("accepted");
-                    if let Some(l) = self.listener.borrow().as_ref() {
-                        probe("after accept", l);
-                    }
                     if self.st.borrow().closing {
                         continue;
                     }
                     if sock.set_nonblocking(true).is_err() {
                         continue;
                     }
-                    dg("nonblocking set");
-                    if let Some(l) = self.listener.borrow().as_ref() {
-                        probe("after accepted nonblocking", l);
-                    }
                     let _ = sock.set_tcp_nodelay(true);
-                    dg("nodelay set");
                     self.add_conn(sock, reactor);
-                    if let Some(l) = self.listener.borrow().as_ref() {
-                        probe("after add_conn", l);
-                    }
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
@@ -1009,7 +964,6 @@ impl Server {
 
     fn add_conn(&self, sock: socket2::Socket, reactor: &Reactor) {
         let token = reactor.token();
-        dg("add_conn begin");
         let (io, tls_pending, phase) = match &self.tls {
             None => (
                 Some(Rc::new(Plain::new(sock)) as Rc<dyn Io>),
@@ -1058,12 +1012,9 @@ impl Server {
             if self.tls.is_none() {
                 st.idle_deadline = st.deadline.is_some();
             }
-            dg("add_conn registering");
             if !reactor.add(st.fd(), token, Ev::IN) {
-                dg("add failed");
                 return;
             }
-            dg("add_conn registered");
             st.registered = true;
             reactor.note_deadline(st.deadline);
         }
@@ -1072,7 +1023,6 @@ impl Server {
             .borrow_mut()
             .insert(token, Target::Conn(Rc::downgrade(&conn)));
         self.st.borrow_mut().conns.insert(token, conn.clone());
-        dg("add_conn done");
         if self.tls.is_some() {
             self.drive_handshake(&conn, reactor);
         }

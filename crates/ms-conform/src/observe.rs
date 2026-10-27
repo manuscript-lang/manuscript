@@ -169,10 +169,24 @@ fn run_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     o
 }
 
+/// Keys added to the JSON output after the corpus was recorded. They are additive, so the
+/// frozen expectations compare without them.
+fn drop_additive_keys(value: &mut Json) {
+    match value {
+        Json::Obj(fields) => {
+            fields.retain(|(k, _)| k != "subcode");
+            fields.iter_mut().for_each(|(_, v)| drop_additive_keys(v));
+        }
+        Json::Arr(items) => items.iter_mut().for_each(drop_additive_keys),
+        _ => {}
+    }
+}
+
 fn parse_json_output(out: &Output, work: &Path) -> Json {
     match crate::json::parse(out.stdout_text()) {
         Ok(mut j) => {
             j.map_strings(&|s| normalize_text(s, work));
+            drop_additive_keys(&mut j);
             j
         }
         Err(e) => {

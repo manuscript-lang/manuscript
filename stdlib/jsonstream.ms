@@ -54,10 +54,10 @@ type Decoder:
     finished: Bool
     failure: Optional[JsonError]
 
-def is_space(byte: Int) -> Bool:
+def is_space(byte: UInt8) -> Bool:
     return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
 
-def starts_value(byte: Int) -> Bool:
+def starts_value(byte: UInt8) -> Bool:
     # Object, array, string, minus sign, digits, and the first letters of the literals.
     return (
         byte == 123
@@ -94,7 +94,7 @@ def complete(var state: Decoder) -> Result[JsonValue, JsonError]:
     return error(JsonError.InvalidData)
 
 # Consumes one byte and reports whether it finished a value.
-def scan(var state: Decoder, byte: Int) -> Result[Bool, JsonError]:
+def scan(var state: Decoder, byte: UInt8) -> Result[Bool, JsonError]:
     if state.mode == 0:
         if is_space(byte): return ok(False)
         if not starts_value(byte): return error(JsonError.InvalidData)
@@ -144,7 +144,7 @@ def scan(var state: Decoder, byte: Int) -> Result[Bool, JsonError]:
     return ok(False)
 
 # Consumes one byte and returns the value it completes, if any.
-def step(var state: Decoder, byte: Int) -> Result[Optional[JsonValue], JsonError]:
+def step(var state: Decoder, byte: UInt8) -> Result[Optional[JsonValue], JsonError]:
     let done = try scan(var state, byte)
     if not done: return ok(none)
 

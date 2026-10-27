@@ -1,5 +1,4 @@
 from "@std/core.ms" import panic
-from "@std/collections.ms" import range
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
@@ -26,7 +25,7 @@ impl Queue[T]:
 
         if self.head > 0 and self.head * 2 >= count:
             var live: List[Optional[T]] = []
-            for index in range(self.head, count):
+            for index in self.head..count:
                 live.append(self.items.replace(index, none))
             self.items = live
             self.head = 0
@@ -63,12 +62,13 @@ impl Queue[T]:
     def is_empty() -> Bool:
         return self.head >= self.items.length()
 
-# Negative compare results put left before right; equal priorities remain FIFO.
+# Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
+def order[T: Comparable](left: T, right: T) -> Int:
+    return left.compare(right)
+
+# Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
 # A priority queue is an owned value: a copy is an independent queue.
-export type PriorityQueue[T: Clonable]:
-    # Constructor comparator: negative puts left first; ties dequeue in enqueue order.
-    # Comparisons must stay consistent.
-    compare: Callable[[T, T], Int]
+export type PriorityQueue[T: Comparable & Clonable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Binary heap of waiting values. Internal state: use the operations, not this field.
@@ -81,7 +81,7 @@ export type PriorityQueue[T: Clonable]:
 impl PriorityQueue[T]:
     # Reports whether the entry at `a` dequeues before the entry at `b`.
     def before(a: Int, b: Int) -> Bool:
-        let order = self.compare(self.heap.get(a), self.heap.get(b))
+        let order = order(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
     # Exchanges the heap entries at `a` and `b`.
@@ -103,19 +103,22 @@ impl PriorityQueue[T]:
 
     # Moves the entry at `start` down the path of earlier children to the bottom, then back up to where it belongs:
     # one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
+    # The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
     var def sift_down(start: Int) -> Unit:
         let size = self.heap.length()
+        let parents = size / 2
         var at = start
 
-        while True:
-            var child = at * 2 + 1
-            if child >= size:
-                break
+        while at >= 0 and at < parents:
+            let left = at * 2 + 1
+            let right = left + 1
 
-            if child + 1 < size and self.before(child + 1, child):
-                child += 1
-            self.swap_entries(child, at)
-            at = child
+            if right < size and self.before(right, left):
+                self.swap_entries(right, at)
+                at = right
+            else:
+                self.swap_entries(left, at)
+                at = left
 
         self.sift_up(at, start)
 
@@ -162,10 +165,3 @@ impl PriorityQueue[T]:
     # Reports whether the queue has no values to peek or dequeue.
     def is_empty() -> Bool:
         return self.heap.length() == 0
-
-# Creates a PriorityQueue that dequeues the smallest value first, using the value type's `Comparable` order.
-# Example: `ordered_priority_queue[Int]()` dequeues 1 before 2; pass `capacity` to bound it.
-export def ordered_priority_queue[T: Comparable & Clonable](
-    capacity: Optional[Int] = none
-) -> PriorityQueue[T]:
-    return PriorityQueue[T](compare: lambda a, b: a.compare(b), capacity: capacity)

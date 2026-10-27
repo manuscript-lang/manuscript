@@ -43,6 +43,10 @@
     },
     {
       "name": "keyword.control.manuscript",
+      "match": "^bench(?=\\s+f?\")"
+    },
+    {
+      "name": "keyword.control.manuscript",
       "match": "\\b(def|lambda|type|interface|impl|import|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {

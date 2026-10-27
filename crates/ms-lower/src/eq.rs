@@ -317,10 +317,10 @@ impl Cx {
         out: &mut Vec<u32>,
     ) -> bool {
         let size = match m.types.kind(t) {
-            TyKind::Int => 8,
-            TyKind::Int32 => 4,
-            TyKind::Int16 => 2,
-            TyKind::Int8 | TyKind::Bool => 1,
+            TyKind::Int | TyKind::UInt64 => 8,
+            TyKind::Int32 | TyKind::UInt32 => 4,
+            TyKind::Int16 | TyKind::UInt16 => 2,
+            TyKind::Int8 | TyKind::UInt8 | TyKind::Bool => 1,
             TyKind::Rec(r) => {
                 let fields: Vec<MTy> = m.records[r.index()].fields.iter().map(|f| f.1).collect();
                 let Some(concrete) = self.source_tys.get(&t).cloned() else {

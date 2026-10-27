@@ -664,7 +664,6 @@ unsafe fn wake(t: *mut Task, result: u32) {
             (*t).wait_token = 0;
         }
         (*t).deadline = NO_DEADLINE;
-        crate::poller::tdiag(&format!("[task] wake task={} result={result}\n", (*t).handle));
         (*t).wait_result = result;
         (*t).state = State::Ready;
         s.ready.push_back((*t).handle);
@@ -868,7 +867,6 @@ unsafe fn reactor_wait() {
                 abandon_wait();
                 fault::fault(CROSS_ISOLATE_DEADLOCK);
             }
-            crate::poller::tdiag(&format!("[task] reactor_wait timeout_ns={timeout_ns} fd_waiting={} ready={}\n", s.fd_waiting, s.ready.len()));
             poll_ready(timeout_ns);
             if parked && crate::isolate::leave_idle() {
                 abandon_wait();
@@ -1037,7 +1035,6 @@ pub unsafe extern "C-unwind" fn msrt_task_spawn(
         (*t).fatal = flags & SPAWN_FATAL != 0;
         (*t).sp = sp;
         sched().ready.push_back((*t).handle);
-        crate::poller::tdiag(&format!("[task] spawn task={}\n", (*t).handle));
         (*t).handle
     }
 }
@@ -1123,7 +1120,6 @@ pub unsafe extern "C-unwind" fn msrt_task_wait_fd(fd: i32, events: u32, timeout_
     // SAFETY: single threaded scheduler.
     unsafe {
         let cur = ensure_init();
-        crate::poller::tdiag(&format!("[task] wait_fd task={} fd={fd:#x} events={events} timeout_ns={timeout_ns}\n", (*cur).handle));
         if cancel_flag().load(Ordering::Relaxed) != 0 {
             return WAIT_CANCELLED;
         }

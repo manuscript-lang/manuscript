@@ -140,20 +140,26 @@ let RIGHT_BRACKET = 93
 let LEFT_BRACE = 123
 let RIGHT_BRACE = 125
 
+# The byte at `pos` as an Int, or -1 past either end of the document.
+def byte_at(data: Bytes, pos: Int) -> Int:
+    if pos < 0 or pos >= data.length(): return -1
+
+    return data.get(pos).to_int()
+
 # The cursor as its own value, which stays valid while the reader moves.
 def cursor(reader: Reader) -> Int:
     return reader.pos
 
 # The byte at the cursor, or -1 at the end of the document.
 def peek(reader: Reader) -> Int:
-    return reader.data.get(reader.pos, default: -1)
+    return byte_at(reader.data, reader.pos)
 
 def ahead(reader: Reader, offset: Int) -> Int:
-    return reader.data.get(reader.pos + offset, default: -1)
+    return byte_at(reader.data, reader.pos + offset)
 
 # Consumes one byte and returns it, or returns -1 without moving at the end.
 def advance(var reader: Reader) -> Int:
-    let b = reader.data.get(reader.pos, default: -1)
+    let b = byte_at(reader.data, reader.pos)
     if b >= 0: reader.pos += 1
     return b
 
@@ -164,7 +170,7 @@ def locate(data: Bytes, pos: Int) -> List[Int]:
     var index = 0
 
     while index < pos:
-        let b = data.get(index)
+        let b = data.get(index).to_int()
 
         if b == NEWLINE:
             line += 1
@@ -193,14 +199,14 @@ def space(var reader: Reader, multiline: Bool) -> Unit:
     var pos = cursor(reader)
 
     while True:
-        var b = reader.data.get(pos, default: -1)
+        var b = byte_at(reader.data, pos)
 
         if b == SPACE or b == TAB or (multiline and b == NEWLINE):
             pos += 1
         elif multiline and b == HASH:
             while b >= 0 and b != NEWLINE:
                 pos += 1
-                b = reader.data.get(pos, default: -1)
+                b = byte_at(reader.data, pos)
         else:
             break
 
@@ -253,7 +259,7 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
     # A single-line string without escapes is one slice of the document.
     if not multiline:
         var end = cursor(reader)
-        var b = reader.data.get(end, default: -1)
+        var b = byte_at(reader.data, end)
 
         while (
             b != quote
@@ -262,7 +268,7 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
             and (b != BACKSLASH or quote == SINGLE_QUOTE)
         ):
             end += 1
-            b = reader.data.get(end, default: -1)
+            b = byte_at(reader.data, end)
 
         if b == quote:
             let text = slice_text(reader, reader.pos, end)
@@ -387,7 +393,7 @@ def key_path(var reader: Reader) -> Result[List[String], TomlError]:
         else:
             let start = cursor(reader)
             var end = start
-            while bare_key_byte(reader.data.get(end, default: -1)): end += 1
+            while bare_key_byte(byte_at(reader.data, end)): end += 1
             if end == start: return error(invalid(reader, "expected key"))
 
             key = slice_text(reader, start, end)
@@ -491,15 +497,15 @@ def simple_key(var reader: Reader) -> Optional[String]:
 
     let start = cursor(reader)
     var end = start
-    while bare_key_byte(reader.data.get(end, default: -1)): end += 1
+    while bare_key_byte(byte_at(reader.data, end)): end += 1
     if end == start: return none
 
     var after = end
-    var b = reader.data.get(after, default: -1)
+    var b = byte_at(reader.data, after)
 
     while b == SPACE or b == TAB:
         after += 1
-        b = reader.data.get(after, default: -1)
+        b = byte_at(reader.data, after)
 
     if b != EQUALS: return none
 
@@ -819,7 +825,7 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
 
     let start = cursor(reader)
     var end = start
-    while not token_end(reader.data.get(end, default: -1)): end += 1
+    while not token_end(byte_at(reader.data, end)): end += 1
 
     # Short plain decimal integers, the common scalar, skip the general classifier.
     var sign = 0
@@ -830,13 +836,13 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     if (
         width >= 1
         and width <= 18
-        and (reader.data.get(start + sign) != 48 or width == 1)
+        and (reader.data.get(start + sign).to_int() != 48 or width == 1)
     ):
         var number = 0
         var index = start + sign
 
         while index < end:
-            let digit = reader.data.get(index) - 48
+            let digit = reader.data.get(index).to_int() - 48
 
             if digit < 0 or digit > 9:
                 number = -1
@@ -857,10 +863,10 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     if (
         date_valid(text)
         and peek(reader) == SPACE
-        and reader.data.get(scalar_offset(reader, 3), default: -1) == 58
+        and byte_at(reader.data, scalar_offset(reader, 3)) == 58
     ):
         end += 1
-        while not token_end(reader.data.get(end, default: -1)): end += 1
+        while not token_end(byte_at(reader.data, end)): end += 1
         text = slice_text(reader, start, end)
         reader.pos = end
 

@@ -440,16 +440,9 @@ mod imp {
     /// Nothing kept here: registrations are one-shot.
     pub fn forget(_: i32) {}
 
-    fn diag(text: &str) {
-        if std::env::var_os("MS_DIAG_POLL").is_some() {
-            crate::sys::write_all(crate::sys::STDERR, text.as_bytes());
-        }
-    }
-
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
         if s.pipes.contains_key(&(sock & !3)) || s.objects.contains_key(&sock) {
-            diag(&format!("[poll] watch sock={sock:#x} is a pipe/object\n"));
             return Watch::Armed;
         }
         release(s, sock);
@@ -459,12 +452,10 @@ mod imp {
         let mut view = TcpStream::from_std(stream);
         match s.poll.registry().register(&mut view, Token(sock), interest) {
             Ok(()) => {
-                diag(&format!("[poll] watch sock={sock:#x} events={events} armed\n"));
                 s.views.insert(sock, view);
                 Watch::Armed
             }
-            Err(e) => {
-                diag(&format!("[poll] watch sock={sock:#x} events={events} register failed: {e}\n"));
+            Err(_) => {
                 let _ = view.into_raw_socket();
                 Watch::Always
             }
@@ -602,7 +593,6 @@ mod imp {
 
     pub unsafe fn wait(_: i32, timeout_ns: i64, out: &mut [Ready; 64]) -> Option<usize> {
         let s = state();
-        tdiag(&format!("[poll] wait enter timeout_ns={timeout_ns}\n"));
         // The completion port waits in whole milliseconds, rounded up, and on the system tick
         // unless the process raised its resolution. A high-resolution timer wakes the wait at
         // the deadline; the poll timeout is only a bound.
@@ -622,14 +612,6 @@ mod imp {
         }
         if polled.is_err() {
             fault::fault(b"I/O poller failed");
-        }
-        if std::env::var_os("MS_DIAG_POLL").is_some() {
-            let toks: Vec<String> = s
-                .events
-                .iter()
-                .map(|ev| format!("{:#x}:{:#x}", ev.token().0, bits(ev)))
-                .collect();
-            diag(&format!("[poll] wait timeout_ns={timeout_ns} events={toks:?}\n"));
         }
         let mut count = 0;
         let mut ready: Vec<(usize, u32)> = Vec::new();
@@ -680,12 +662,6 @@ mod imp {
             let _ = signals.waker.wake();
         }
         Some(count)
-    }
-}
-
-pub(crate) fn tdiag(text: &str) {
-    if std::env::var_os("MS_DIAG_POLL").is_some() {
-        crate::sys::write_all(crate::sys::STDERR, text.as_bytes());
     }
 }
 

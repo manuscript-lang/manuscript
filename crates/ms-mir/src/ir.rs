@@ -209,7 +209,12 @@ impl Cc {
         })
     }
 
-    /// Evaluates the condition on two integers.
+    /// Evaluates the condition on two integers read as unsigned.
+    pub fn eval_uint(self, a: i64, b: i64) -> bool {
+        self.eval_int((a as u64 ^ (1 << 63)) as i64, (b as u64 ^ (1 << 63)) as i64)
+    }
+
+    /// Evaluates the condition on two signed integers.
     pub fn eval_int(self, a: i64, b: i64) -> bool {
         match self {
             Cc::Eq => a == b,
@@ -263,7 +268,7 @@ pub enum Op {
     // Constants.
     IConst, FConst, BConst, UnitConst, StrLit,
     // Integer arithmetic: wrapping, overflow-checked, and unchecked division.
-    IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
+    IAdd, ISub, IMul, INeg, IAddOverflow, IMulOverflow, IntOverflowIf, IAddChk, ISubChk, IMulChk, UAddChk, USubChk, UMulChk, INegChk, SDivChk, SRemChk, SDiv, SRem,
     // Sized integers: fault unless the value fits its type. `Float32`: round to binary32.
     NarrowChk, F32Round,
     // Conversions: `Conv` retypes a number to another type of its kind (rounding to binary32 for `Float32`); `INarrowOpt` yields some(value) when an int fits the smaller type.
@@ -271,7 +276,7 @@ pub enum Op {
     // Bit operations and booleans (`And`/`Or`/`Xor` accept Int or Bool).
     And, Or, Xor, Shl, Sshr, Not,
     // Comparisons.
-    ICmp, FCmp,
+    ICmp, UICmp, FCmp,
     // Float arithmetic and conversions.
     FAdd, FSub, FMul, FDiv, FNeg, FSqrt, FAbs, FFloor, FCeil, FTrunc, I2F, F2IOpt, B2I, Select,
     // Records and alternatives.
@@ -390,10 +395,10 @@ impl Op {
     #[rustfmt::skip]
     pub const ALL: &'static [Op] = &[
         Op::IConst, Op::FConst, Op::BConst, Op::UnitConst, Op::StrLit,
-        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::INegChk,
+        Op::IAdd, Op::ISub, Op::IMul, Op::INeg, Op::IAddOverflow, Op::IMulOverflow, Op::IntOverflowIf, Op::IAddChk, Op::ISubChk, Op::IMulChk, Op::UAddChk, Op::USubChk, Op::UMulChk, Op::INegChk,
         Op::SDivChk, Op::SRemChk, Op::SDiv, Op::SRem, Op::NarrowChk, Op::F32Round, Op::Conv, Op::INarrowOpt,
         Op::And, Op::Or, Op::Xor, Op::Shl, Op::Sshr, Op::Not,
-        Op::ICmp, Op::FCmp,
+        Op::ICmp, Op::UICmp, Op::FCmp,
         Op::FAdd, Op::FSub, Op::FMul, Op::FDiv, Op::FNeg, Op::FSqrt, Op::FAbs, Op::FFloor, Op::FCeil, Op::FTrunc, Op::I2F, Op::F2IOpt, Op::B2I, Op::Select,
         Op::RecNew, Op::RecGet, Op::RecSet, Op::RecFill, Op::AltNew, Op::AltTag, Op::AltGet, Op::AltUnbox, Op::AltTake, Op::AltRelease,
         Op::ListNew, Op::ListLit, Op::ListLen, Op::ListGet, Op::ListGetNn, Op::ListGetU,
@@ -432,6 +437,9 @@ impl Op {
             Op::IAddChk => ("iadd.chk", K::None, true, effects!(faults)),
             Op::ISubChk => ("isub.chk", K::None, true, effects!(faults)),
             Op::IMulChk => ("imul.chk", K::None, true, effects!(faults)),
+            Op::UAddChk => ("uadd.chk", K::None, true, effects!(faults)),
+            Op::USubChk => ("usub.chk", K::None, true, effects!(faults)),
+            Op::UMulChk => ("umul.chk", K::None, true, effects!(faults)),
             Op::INegChk => ("ineg.chk", K::None, true, effects!(faults)),
             Op::SDivChk => ("sdiv.chk", K::None, true, effects!(faults)),
             Op::SRemChk => ("srem.chk", K::None, true, effects!(faults)),
@@ -444,6 +452,7 @@ impl Op {
             Op::Sshr => ("sshr", K::None, true, effects!()),
             Op::Not => ("not", K::None, true, effects!()),
             Op::ICmp => ("icmp", K::Cc, true, effects!()),
+            Op::UICmp => ("uicmp", K::Cc, true, effects!()),
             Op::FCmp => ("fcmp", K::Cc, true, effects!()),
             Op::FAdd => ("fadd", K::None, true, effects!()),
             Op::FSub => ("fsub", K::None, true, effects!()),
@@ -829,6 +838,10 @@ pub struct Func {
     /// Indexes of pointer parameters that no other parameter or memory the function reaches
     /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
     pub noalias: Vec<u32>,
+    /// A closure function whose environment points into its maker's frame (a borrowed capture
+    /// or a shared variable): the closure may be called, copied and dropped, but never stored
+    /// or returned, and the verifier rejects code that does.
+    pub scoped: bool,
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
@@ -850,6 +863,7 @@ impl Func {
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
             noalias: Vec::new(),
+            scoped: false,
             unwind_only: false,
         };
         for p in params {
@@ -1227,6 +1241,10 @@ impl Module {
             | TyKind::Int8
             | TyKind::Int16
             | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr => false,

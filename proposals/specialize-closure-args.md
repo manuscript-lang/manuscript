@@ -51,7 +51,7 @@ Before/after for `best` called with `lambda (p: P) -> Int: p.w * m`: the call be
 | Component | Change | Test |
 | --- | --- | --- |
 | `crates/ms-mir/src/opt/inline.rs` | `specialize_closure_args` step before `inline_calls`; alias-aware `inline_closures_in` and cleanup | `crates/ms-mir/tests/opt_inline.rs`: clone created and indirect call gone, loop-carried closure, captured value, two different lambdas, shared lambda reuses clone, owned capture left alone, recursion left alone, interpreter result equal before/after |
-| `bench/perf/stdlib/src/lists.ms` | none for this change (no `max_by` on main yet); `bench/perf/` page gets a dated section with the scratch comparison | `make stdlib-bench` rerun |
+| `bench/perf/stdlib/lists_bench.ms` | none for this change (no `max_by` on main yet); `bench/perf/` page gets a dated section with the scratch comparison | `make stdlib-bench` rerun |
 | `ms-lower`, `ms-clif`, `ms-rt`, stdlib, formatter, LSP, docs | unchanged | `make conform`, e2e |
 
 ## Alternatives

@@ -1296,7 +1296,7 @@ impl Checker {
         } else if map {
             info.ty = Some(rt.args[1].clone());
         } else if bytes {
-            info.ty = Some(int());
+            info.ty = Some(primitive("UInt8"));
         } else {
             let hint = if rt.id == "String" {
                 "indexing a String by scalar position is not supported; use s.get(index) or for c in s.chars()"

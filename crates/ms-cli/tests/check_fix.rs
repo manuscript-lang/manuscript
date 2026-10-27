@@ -81,6 +81,9 @@ fn guide_explains_codes_and_names_the_family_and_repair() {
     let (status, text) = ms(&["guide", "MS3060"], &dir);
     assert_eq!(status, Some(0), "{text}");
     assert!(text.contains("MS3060: Mutation"), "{text}");
+    let (status, text) = ms(&["guide", "MS3000.1"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    assert!(text.contains("MS3000.1: Unused local binding"), "{text}");
     let (status, text) = ms(&["guide", "MS9999"], &dir);
     assert_eq!(status, Some(1), "{text}");
 }
@@ -147,5 +150,22 @@ fn directory_symlink_named_like_source_is_skipped() {
         assert_eq!(status, Some(0), "{args:?}: {text}");
         assert!(!text.contains("is a directory"), "{args:?}: {text}");
     }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn json_diagnostics_carry_the_sub_code_of_their_cause() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-subcode-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("a.ms"),
+        "export def main() -> Int:\n    let unused = 1\n    return 0\n",
+    )
+    .unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("\"code\": \"MS3000\""), "{text}");
+    assert!(text.contains("\"subcode\": \"MS3000.1\""), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }

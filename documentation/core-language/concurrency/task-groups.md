@@ -60,7 +60,7 @@ test "a task that passes its timeout is cancelled":
 
 ## What a task may use
 
-A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task and the caller can no longer use it. A task cannot change a captured `var`. Return a result instead, and combine results in the caller. Use `.clone()` to keep a copy.
+A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task when this is its last use, and is copied into the task when the caller uses it again. A function value or a resource cannot be copied, so those must be the last use. A task cannot change a captured `var`. Return a result instead, and combine results in the caller.
 
 Values reach a task by being captured or sent on its channel, and come back as messages or as its result. Tasks do not share mutable state.
 

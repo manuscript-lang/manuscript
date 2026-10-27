@@ -134,6 +134,13 @@ fn marked_tutorial_examples_compile_and_pass() {
             }
             continue;
         }
+        if example.spec.contains("\"mode\":\"bench\"") {
+            let (ok, _, err) = ms(&["bench", path, "--time", "5ms", "--samples", "2"], "");
+            if !ok {
+                failures.push(format!("{name}: ms bench failed\n{err}"));
+            }
+            continue;
+        }
         let (ok, _, err) = ms(&["check", path], "");
         if !ok {
             failures.push(format!("{name}: ms check failed\n{err}"));

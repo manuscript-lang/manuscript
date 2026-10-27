@@ -2183,6 +2183,26 @@ pub unsafe extern "C-unwind" fn msrt_int_to_string(v: i64, out: *mut StrVal) {
     unsafe { (msrt_int_to_string_val(v)).write_to(out) }
 }
 
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_uint_to_string(v: i64, out: *mut StrVal) {
+    let mut tmp = [0u8; 20];
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_bytes(crate::num::format_u64(v as u64, &mut tmp)).write_to(out) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) {
+    if !(2..=36).contains(&radix) {
+        fault::fault_fmt(format_args!(
+            "to_string_radix: radix must be between 2 and 36, found {radix}"
+        ));
+    }
+    let mut b = Vec::new();
+    crate::num::format_radix_u64(v as u64, radix as u32, &mut b);
+    // SAFETY: caller passes a writable `out`.
+    unsafe { from_buf(b).write_to(out) }
+}
+
 unsafe fn msrt_int_to_string_val(v: i64) -> StrVal {
     let mut tmp = [0u8; 20];
     from_bytes(crate::num::format_i64(v, &mut tmp))

@@ -40,9 +40,9 @@ pub const STANDARD_PRELUDE_NAMES: [&str; 14] = [
 ];
 
 /// The built-in types every module sees without an import.
-pub const PRIMITIVE_NAMES: [&str; 12] = [
-    "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "Float32", "Float64", "String",
-    "Unit", "Never",
+pub const PRIMITIVE_NAMES: [&str; 16] = [
+    "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
+    "UInt64", "Float32", "Float64", "String", "Unit", "Never",
 ];
 
 /// The result of checking one bundled source module.
@@ -144,9 +144,13 @@ fn read_bindings() -> Result<Bindings, String> {
 
 // -------------------------------------------------------------------- queries
 
-/// The bundled source modules that extend native standard types (List operations, Bytes codecs); their
+/// The bundled source modules that extend native standard types (List operations, Bytes codecs, scalar ordering); their
 /// methods apply to every program.
-const EXTENSION_MODULES: [&str; 2] = ["@std/collections.ms+source", "@std/bytes.ms+source"];
+const EXTENSION_MODULES: [&str; 3] = [
+    "@std/collections.ms+source",
+    "@std/bytes.ms+source",
+    "@std/ordering.ms",
+];
 
 /// Loads the standard declarations on first use.
 pub fn ensure_standard() {
@@ -573,6 +577,15 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             visit(&extension, &mut state, &mut ordered, &mut diagnostics);
         }
     }
+    // A `bench` block runs under the driver in `@std/bench.ms`, which its module need not import.
+    let benching = modules.iter().any(|m| {
+        m.decls
+            .iter()
+            .any(|d| matches!(&d.decl().kind, DeclKind::Test(t) if t.bench))
+    });
+    if benching && let Some(driver) = standard_source_module(n("@std/bench.ms")) {
+        visit(&driver, &mut state, &mut ordered, &mut diagnostics);
+    }
     for m in &modules {
         visit(m, &mut state, &mut ordered, &mut diagnostics);
     }
@@ -905,14 +918,36 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
             native.push(d.clone());
         }
     }
-    // The source half names the native half's types by importing its own file; the native half
-    // does not import itself.
+    // The source half sees the native half's exports as if it imported its own file; the file
+    // does not spell that import out.
+    let mut own_imports: Vec<Import> = Vec::new();
+    for d in native.iter().filter(|d| d.export) {
+        let name = match &d.kind {
+            DeclKind::Fn(f) => f.name,
+            DeclKind::Const(c) => c.name,
+            DeclKind::Record(r) => r.name,
+            DeclKind::Alternative(a) => a.name,
+            DeclKind::Interface(i) => i.name,
+            DeclKind::Impl(_) | DeclKind::Test(_) => continue,
+        };
+        if STANDARD_PRELUDE_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+        ids += 1;
+        own_imports.push(Import {
+            id: NodeId(ids - 1),
+            pos: d.pos,
+            name_pos: d.pos,
+            name,
+            path: parsed.file.as_ref().into(),
+        });
+    }
     let half = |file: Arc<str>, decls: Vec<Decl>, own: bool| Module {
         imports: parsed
             .imports
             .iter()
-            .filter(|i| own || *i.path != *parsed.file)
             .cloned()
+            .chain(own.then(|| own_imports.clone()).into_iter().flatten())
             .collect(),
         file,
         source: parsed.source.clone(),

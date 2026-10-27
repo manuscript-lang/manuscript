@@ -2,10 +2,10 @@
 //! references and highlights.
 
 use crate::analysis::{Analysis, Document};
-use crate::index::{DeclFiles, OccInfo, Occurrence, expr_text};
+use crate::index::{DeclFiles, OccInfo, Occurrence, callables, expr_text};
 use crate::json::{Json, obj};
 use crate::text::{self, Position, Range};
-use ms_check::syntax::{DeclRef, FuncRef, ModRef};
+use ms_check::syntax::ModRef;
 use ms_check::types::{Name, SymRef};
 use ms_syntax::Pos;
 use ms_syntax::ast::*;
@@ -276,15 +276,6 @@ pub fn declaration(analysis: &Analysis, info: &OccInfo) -> Option<(Name, Pos)> {
         }
     }
     None
-}
-
-fn callables(d: &DeclRef) -> Vec<FuncRef> {
-    let mut out = vec![FuncRef::of_decl(d.clone())];
-    out.extend((0..d.methods().len()).map(|index| FuncRef {
-        decl: d.clone(),
-        index: Some(index),
-    }));
-    out
 }
 
 /// The `#` comment block directly above a declaration. The source remains the

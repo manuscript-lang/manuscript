@@ -75,6 +75,7 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         program.implicit_closes = Rc::new(own.closes);
         program.getter_borrows = Rc::new(own.getters);
         program.lenders = Rc::new(own.lenders);
+        program.borrowed_captures = Rc::new(own.borrowed_captures);
         program.consumes = Rc::new(own.consumes);
         program.diagnostics.extend(own.diagnostics);
     }

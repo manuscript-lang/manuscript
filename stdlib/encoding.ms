@@ -1,6 +1,5 @@
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/string.ms" import from_scalars, StringBuilder
-from "@std/collections.ms" import range
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:
@@ -39,20 +38,20 @@ export def base64_decode(
     var out = BytesBuilder()
     let quads = length / 4
 
-    for quad in range(0, quads):
+    for quad in 0..quads:
         var pad = 0
         if quad + 1 == quads: pad = padding
 
         var value = 0
 
-        for offset in range(0, 4):
+        for offset in 0..4:
             let byte = bytes[quad * 4 + offset]
             var digit = 0
 
             if offset >= 4 - pad:
                 if byte != 61: return error(EncodingError.InvalidData)
             else:
-                digit = base64_digit(byte, url_safe)
+                digit = base64_digit(byte.to_int(), url_safe)
                 if digit < 0: return error(EncodingError.InvalidData)
 
             value = value * 64 + digit
@@ -60,9 +59,9 @@ export def base64_decode(
         if pad == 1 and value % 256 != 0: return error(EncodingError.InvalidData)
         if pad == 2 and value % 65536 != 0: return error(EncodingError.InvalidData)
 
-        out.append(value / 65536 % 256)
-        if pad < 2: out.append(value / 256 % 256)
-        if pad < 1: out.append(value % 256)
+        out.append(byte_of(value / 65536 % 256))
+        if pad < 2: out.append(byte_of(value / 256 % 256))
+        if pad < 1: out.append(byte_of(value % 256))
 
     return ok(out.build())
 
@@ -107,10 +106,10 @@ export def base64_encode(data: Bytes, url_safe: Bool = False) -> String:
         let remaining = length - index
         var second = 0
         var third = 0
-        if remaining > 1: second = bytes[index + 1]
-        if remaining > 2: third = bytes[index + 2]
+        if remaining > 1: second = bytes[index + 1].to_int()
+        if remaining > 2: third = bytes[index + 2].to_int()
 
-        let value = bytes[index] * 65536 + second * 256 + third
+        let value = bytes[index].to_int() * 65536 + second * 256 + third
         out.append(table[value / 262144 % 64])
         out.append(table[value / 4096 % 64])
 
@@ -139,12 +138,12 @@ export def hex_decode(
 
     var out = BytesBuilder()
 
-    for pair in range(0, length / 2):
-        let high = hex_digit(digits[pair * 2])
-        let low = hex_digit(digits[pair * 2 + 1])
+    for pair in 0..(length / 2):
+        let high = hex_digit(digits[pair * 2].to_int())
+        let low = hex_digit(digits[pair * 2 + 1].to_int())
         if high < 0 or low < 0: return error(EncodingError.InvalidData)
 
-        out.append(high * 16 + low)
+        out.append(byte_of(high * 16 + low))
 
     return ok(out.build())
 
@@ -162,8 +161,9 @@ export def hex_encode(data: Bytes) -> String:
     let digits = "0123456789abcdef".chars()
 
     for byte in data.values():
-        out.append(digits[byte / 16])
-        out.append(digits[byte % 16])
+        let n = byte.to_int()
+        out.append(digits[n / 16])
+        out.append(digits[n % 16])
 
     return out.build()
 
@@ -192,11 +192,11 @@ export def utf16_encode(text: String, little_endian: Bool = True) -> Bytes:
 
 def append_unit(var out: BytesBuilder, code: Int, little_endian: Bool) -> Unit:
     if little_endian:
-        out.append(code % 256)
-        out.append(code / 256)
+        out.append(byte_of(code % 256))
+        out.append(byte_of(code / 256))
     else:
-        out.append(code / 256)
-        out.append(code % 256)
+        out.append(byte_of(code / 256))
+        out.append(byte_of(code % 256))
 
 # UTF-8 byte length of one scalar.
 def utf8_length(scalar: Int) -> Int:
@@ -205,6 +205,10 @@ def utf8_length(scalar: Int) -> Int:
     if scalar < 65536: return 3
 
     return 4
+
+# A byte from a count already known to be 0 through 255.
+def byte_of(n: Int) -> UInt8:
+    return n.to_uint8().get(0)
 
 def text_of(scalars: List[Int]) -> String:
     if let text = from_scalars(scalars): return text
@@ -226,9 +230,12 @@ export def utf16_decode(
 
     var units = List[Int]()
 
-    for pair in range(0, bytes.length() / 2):
-        if little_endian: units.append(bytes[pair * 2] + bytes[pair * 2 + 1] * 256)
-        else: units.append(bytes[pair * 2] * 256 + bytes[pair * 2 + 1])
+    for pair in 0..(bytes.length() / 2):
+        let low = bytes[pair * 2].to_int()
+        let high = bytes[pair * 2 + 1].to_int()
+
+        if little_endian: units.append(low + high * 256)
+        else: units.append(low * 256 + high)
 
     var scalars = List[Int]()
     var size = 0
@@ -266,13 +273,13 @@ def narrow(text: String, maximum: Int) -> Result[Bytes, EncodingError]:
     for scalar in text.scalar_values():
         if scalar > maximum: return error(EncodingError.InvalidData)
 
-        out.append(scalar)
+        out.append(byte_of(scalar))
 
     return ok(out.build())
 
 # Decodes ISO-8859-1 bytes, mapping every byte to the scalar of the same value.
 export def latin1_decode(data: Bytes) -> String:
-    return text_of(data.values())
+    return text_of(data.values().map(lambda b: b.to_int()))
 
 # Encodes text as 7-bit ASCII. A scalar above U+007F returns InvalidData.
 export def ascii_encode(text: String) -> Result[Bytes, EncodingError]:
@@ -283,4 +290,4 @@ export def ascii_decode(data: Bytes) -> Result[String, EncodingError]:
     let bytes = data.values()
     for byte in bytes:
         if byte > 127: return error(EncodingError.InvalidData)
-    return ok(text_of(bytes))
+    return ok(text_of(bytes.map(lambda b: b.to_int())))

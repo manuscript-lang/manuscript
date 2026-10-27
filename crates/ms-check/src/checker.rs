@@ -123,6 +123,9 @@ pub struct Program {
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
     /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
+    /// identity. Filled together with `borrows`.
+    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
     /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
     /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
     pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
@@ -1328,8 +1331,10 @@ impl Checker {
         let is_test = matches!(d.decl.decl().kind, DeclKind::Test(_)) && d.index.is_none();
         if is_test {
             self.test_function = self.function;
+            // A bench body is timed repeatedly, so the file fixture and its hooks apply to tests only.
+            let bench = matches!(&d.decl.decl().kind, DeclKind::Test(t) if t.bench);
             let fixture = self.p.test_fixtures.get(&self.current_file()).cloned();
-            if let Some(fixture) = fixture {
+            if let Some(fixture) = fixture.filter(|_| !bench) {
                 let b = self.bind(n("fixture"), &fixture.ty, false, d.pos());
                 self.m()
                     .facts_mut()

@@ -1,5 +1,4 @@
 from "@std/channels.ms" import Channel, ChannelError, Transport
-from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable, panic
 from "@std/shared.ms" import Shared, share
 from "@std/sync.ms" import lock
@@ -133,7 +132,7 @@ impl Lane[T]:
     var def pop() -> Optional[T]:
         if self.front.is_empty():
             let count = self.back.length()
-            for index in range(0, count):
+            for index in 0..count:
                 if let value = self.back.pop():
                     self.front.append(value)
 
@@ -172,7 +171,7 @@ impl Closeable for WaitTicket[T]:
     # A normal wake already cleared the entry. Cancellation must remove it here instead.
     var def close() -> Unit:
         with var lane = lock(self.lane):
-            for index in range(0, lane.value.waiting.length()):
+            for index in 0..lane.value.waiting.length():
                 if lane.value.waiting[index] == self.token:
                     lane.value.waiting.remove(index)
                     break

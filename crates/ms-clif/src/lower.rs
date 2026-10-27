@@ -179,7 +179,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         match l {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().iconst(types::I64, 0)
+            }
             Leaf::F64 => self.b.ins().f64const(0.0),
             Leaf::F32 => self.b.ins().f32const(0.0),
         }
@@ -289,6 +291,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
+            Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.ins().uextend(types::I64, v),
             _ => v,
         }
     }
@@ -296,7 +299,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Writes a leaf's register value to memory, narrowing a packed number.
     fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().ireduce(mem_type(l), v)
+            }
             _ => v,
         };
         self.b.ins().store(flags(), v, ptr, off);
@@ -1695,18 +1700,17 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::NarrowChk => {
                 let x = self.a(inst, 0)[0];
-                let bits = self
+                let (lo, hi) = self
                     .g
                     .lay
                     .m
                     .types
-                    .int_bits(f.ty(inst.args[0]))
-                    .unwrap_or(64);
+                    .int_range(f.ty(inst.args[0]))
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 if checks {
-                    let half = 1i64 << (bits - 1);
                     let (lo_k, hi_k) = (
-                        self.b.ins().iconst(types::I64, -half),
-                        self.b.ins().iconst(types::I64, half - 1),
+                        self.b.ins().iconst(types::I64, lo as i64),
+                        self.b.ins().iconst(types::I64, hi as i64),
                     );
                     let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
                     let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
@@ -1727,13 +1731,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
                 let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let bits = inner
-                    .and_then(|i| self.g.lay.m.types.int_bits(i))
-                    .unwrap_or(64);
-                let half = 1i128 << (bits - 1);
+                let from = f.ty(inst.args[0]);
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    self.g.lay.m.types.narrow_range(from, i)
+                });
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, (-half) as i64),
-                    self.b.ins().iconst(types::I64, (half - 1) as i64),
+                    self.b.ins().iconst(types::I64, lo),
+                    self.b.ins().iconst(types::I64, hi),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
@@ -1759,6 +1763,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                         _ => self.mul_overflow(x, y),
                     };
                     self.fault_if(of, "msrt_fault_int_overflow", vec![]);
+                    vec![v]
+                }
+            }
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                if !checks {
+                    vec![match inst.op {
+                        Op::UAddChk => self.b.ins().iadd(x, y),
+                        Op::USubChk => self.b.ins().isub(x, y),
+                        _ => self.mul(x, y),
+                    }]
+                } else {
+                    let (v, of) = match inst.op {
+                        Op::UAddChk => self.b.ins().uadd_overflow(x, y),
+                        Op::USubChk => self.b.ins().usub_overflow(x, y),
+                        _ => self.b.ins().umul_overflow(x, y),
+                    };
+                    self.fault_if(of, "msrt_fault_int_range", vec![]);
                     vec![v]
                 }
             }
@@ -1830,6 +1852,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
             }],
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let cc = match cc {
+                    Cc::Eq => IntCC::Equal,
+                    Cc::Ne => IntCC::NotEqual,
+                    Cc::Lt => IntCC::UnsignedLessThan,
+                    Cc::Le => IntCC::UnsignedLessThanOrEqual,
+                    Cc::Gt => IntCC::UnsignedGreaterThan,
+                    Cc::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                };
+                vec![self.b.ins().icmp(cc, x, y)]
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     unreachable!()
@@ -3137,9 +3174,10 @@ impl<'a, 'm> Lower<'a, 'm> {
         Vec::new()
     }
 
-    /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length
-    /// bump; everything else (longer text, a full buffer) calls the runtime. This is the same
-    /// test the runtime makes first, so the common character-at-a-time append needs no call.
+    /// `StringBuilder.append` of a string with room to spare is a capacity check, a copy and a
+    /// length bump: a one-byte string is a store, anything longer one `memcpy`. An inline string
+    /// (whose length sits in different bits) and a full buffer call the runtime, which makes the
+    /// same tests first.
     fn strbuilder_append(&mut self, id: FuncId, builder: Value, text: Value) -> Vs {
         let len = self
             .b
@@ -3149,14 +3187,16 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
-        let size = self
+        let tagged = self
             .b
             .ins()
             .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
-        let size = self.b.ins().band_imm_s(size, STR_LEN_MASK as i64);
-        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
-        let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
-        let fast = self.b.ins().band(single, room);
+        let size = self.b.ins().band_imm_s(tagged, STR_LEN_MASK as i64);
+        let tag = self.b.ins().ushr_imm_u(tagged, 62);
+        let flat = self.b.ins().icmp_imm_s(IntCC::NotEqual, tag, 1);
+        let next = self.b.ins().iadd(len, size);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let fast = self.b.ins().band(flat, room);
         let store = self.b.create_block();
         let slow = self.b.create_block();
         self.b.set_cold_block(slow);
@@ -3167,14 +3207,25 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), text, STR_PTR_OFFSET as i32);
-        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         let data = self
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
         let at = self.b.ins().iadd(data, len);
+        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
+        let one = self.b.create_block();
+        let many = self.b.create_block();
+        let done = self.b.create_block();
+        self.b.ins().brif(single, one, &[], many, &[]);
+        self.b.switch_to_block(one);
+        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         self.b.ins().store(flags(), byte, at, 0);
-        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(many);
+        self.b
+            .call_memcpy(self.g.module.target_config(), at, bytes, size);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(done);
         self.b
             .ins()
             .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
@@ -3236,6 +3287,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int8
             | TyKind::Int16
             | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr

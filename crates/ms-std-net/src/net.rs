@@ -504,15 +504,6 @@ impl Network {
 
     /// Binds a listening TCP socket.
     pub fn listen_tcp(&self, address: &str) -> Result<Socket, NetErr> {
-        let r = self.listen_tcp_inner(address);
-        if let Ok(s) = &r {
-            probe("wrapper after inner 1", s);
-            probe("wrapper after inner 2", s);
-        }
-        r
-    }
-
-    fn listen_tcp_inner(&self, address: &str) -> Result<Socket, NetErr> {
         let (host, port) =
             split_host_port(address).ok_or_else(|| NetErr::failed("missing port in address"))?;
         let port = parse_port(port).ok_or_else(|| NetErr::failed("invalid port"))?;
@@ -548,11 +539,6 @@ impl Network {
         sock.listen(4096).map_err(|e| self.io_failure(&e))?;
         sock.set_nonblocking(true)
             .map_err(|e| self.io_failure(&e))?;
-        probe("end of listen_tcp a", &sock);
-        probe("end of listen_tcp b", &sock);
-        probe("end of listen_tcp c", &sock);
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        probe("end of listen_tcp after sleep", &sock);
         Ok(sock)
     }
 
@@ -841,28 +827,3 @@ mod tests {
         assert!(n.restrict(&[], &[], false).is_err());
     }
 }
-
-#[cfg(not(windows))]
-pub(crate) fn probe(_: &str, _: &socket2::Socket) {}
-
-#[cfg(windows)]
-pub(crate) fn probe(label: &str, sock: &socket2::Socket) {
-    use std::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket};
-    if std::env::var_os("MS_DIAG_PROBE").is_none() {
-        return;
-    }
-    let raw = sock.as_raw_socket();
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        // SAFETY: diagnostic: borrows the live listener's handle, never closed here.
-        let s = unsafe { socket2::Socket::from_raw_socket(raw) };
-        let r = s.accept().is_ok();
-        let _ = s.into_raw_socket();
-        let _ = tx.send(r);
-    });
-    match rx.recv_timeout(std::time::Duration::from_millis(300)) {
-        Ok(_) => eprintln!("[srv] probe {label}: nonblocking"),
-        Err(_) => eprintln!("[srv] probe {label}: BLOCKING"),
-    }
-}
-

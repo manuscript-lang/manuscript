@@ -1,11 +1,13 @@
 //! Natives for `@std/net.ms`, `Network.web_socket` and `HttpExchange.upgrade`.
 
-use super::tls::TlsOptionsWire;
+use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, SocketH, opt, report};
 use crate::error::WsErr;
 use crate::http::headers::Headers;
 use crate::ws::dial::{self, Dial};
-use ms_rt::ffi::{Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, abi_record, native};
+use ms_rt::ffi::{
+    Bytes, ErrOut, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, native,
+};
 use ms_rt_abi::STATUS_NONE;
 
 abi_record! {
@@ -13,7 +15,13 @@ abi_record! {
     pub struct WebSocketOptionsWire {
         pub max_message_bytes: OptInt,
         pub timeout: OptInt,
-        pub tls: TlsOptionsWire,
+        // `tls` inline, then `compression` right behind it (see `tls_options`).
+        pub tls_server_name: Str,
+        pub tls_roots_pem: Str,
+        pub tls_certificate_pem: Str,
+        pub tls_private_key_pem: Str,
+        pub tls_alpn: StringList,
+        pub tls_require_client_certificate: u8,
         pub compression: u8,
     }
 }
@@ -79,7 +87,14 @@ native! {
         err: ErrOut,
     ) -> Result<(), StatusCode> {
         let protocols: Vec<String> = subprotocols.into_iter().map(str::to_string).collect();
-        let tls = opts.tls.to_options();
+        let tls = tls_options(
+            &opts.tls_server_name,
+            &opts.tls_roots_pem,
+            &opts.tls_certificate_pem,
+            &opts.tls_private_key_pem,
+            &opts.tls_alpn,
+            opts.tls_require_client_certificate,
+        );
         let result = match handshake_headers(&headers.borrow()) {
             None => Err(WsErr::InvalidInput),
             Some(fields) => dial::connect(
@@ -165,5 +180,24 @@ native! {
             None => return Err(StatusCode(STATUS_NONE)),
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::mem::offset_of;
+
+    /// The compiler packs a record's leaves with no padding after a nested record: after two
+    /// `Optional[Int]` (16 bytes each), four strings, the ALPN list (24 bytes) and one byte for
+    /// `require_client_certificate`, `compression` is the next byte.
+    #[test]
+    fn compression_follows_the_inline_tls_options_byte() {
+        assert_eq!(offset_of!(WebSocketOptionsWire, tls_server_name), 32);
+        assert_eq!(
+            offset_of!(WebSocketOptionsWire, tls_require_client_certificate),
+            120
+        );
+        assert_eq!(offset_of!(WebSocketOptionsWire, compression), 121);
     }
 }

@@ -14,8 +14,9 @@ impl Equal for Key:
 impl Hashable for Key:
     def hash() -> Int: self.id
 
-def compare(left: Key, right: Key) -> Int:
-    return left.id - right.id
+impl Comparable for Key:
+    def compare(other: Key) -> Int:
+        return self.id - other.id
 
 test "domain equality and hashing select interfaces":
     let a = Key(1, "first")
@@ -34,7 +35,7 @@ test "domain equality and hashing select interfaces":
     try expect_false(not (view.equals(b)))
 
 test "stable priority queue and optional capacity":
-    var queue = PriorityQueue(compare)
+    var queue = PriorityQueue[Key]()
     queue.enqueue(Key(2, "later"))
     queue.enqueue(Key(1, "first"))
     queue.enqueue(Key(1, "second"))
@@ -49,7 +50,7 @@ test "stable priority queue and optional capacity":
     else:
         return fail("missing item")
 
-    var bounded = PriorityQueue(compare, 1)
+    var bounded = PriorityQueue[Key](1)
     try expect_false(not (bounded.enqueue(Key(1, "only"))))
     try expect_false(bounded.enqueue(Key(0, "full")))
 
@@ -66,7 +67,7 @@ impl ReadStream for EchoReader:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
-        return ok(some(Bytes([requested])))
+        return ok(some(Bytes([requested.to_uint8().get(0)])))
 
     def close() -> Unit: ()
 

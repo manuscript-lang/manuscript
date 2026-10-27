@@ -13,8 +13,6 @@ test "index_of_byte handles out-of-range arguments":
     try expect_equal(data.index_of_byte(1, -3), some(0))
     try expect_equal(data.index_of_byte(1, 5), none)
     try expect_equal(data.index_of_byte(2, 2), none)
-    try expect_equal(data.index_of_byte(256, 0), none)
-    try expect_equal(data.index_of_byte(-1, 0), none)
     try expect_equal(Bytes([]).index_of_byte(0, 0), none)
 
 test "decode_utf8_range decodes a byte range":
