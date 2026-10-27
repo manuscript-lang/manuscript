@@ -445,7 +445,9 @@ mod imp {
 
     pub unsafe fn watch(_: i32, fd: i32, events: u32) -> Watch {
         let (s, sock) = (state(), fd as usize);
+        eprintln!("[poll] watch? {sock} events={events}");
         if s.pipes.contains_key(&(sock & !3)) || s.objects.contains_key(&sock) {
+            eprintln!("[poll] watch {sock} treated as pipe/object");
             return Watch::Armed;
         }
         release(s, sock);

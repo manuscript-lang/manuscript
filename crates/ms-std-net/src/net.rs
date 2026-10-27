@@ -684,7 +684,10 @@ pub fn connect_nonblocking(addr: SocketAddr, deadline: Deadline) -> Result<Socke
     sock.set_nonblocking(true).map_err(ConnectError::Io)?;
     let _ = sock.set_tcp_nodelay(true);
     let sock = OwnedSock::new(sock);
-    match sock.connect(&addr.into()) {
+    eprintln!("[net] connecting {addr}");
+    let r = sock.connect(&addr.into());
+    eprintln!("[net] connect returned {:?}", r);
+    match r {
         Ok(()) => Ok(unwrap_sock(sock)),
         Err(e) if in_progress(&e) => {
             // A cancellation skips the drop of `sock`; release it from the cleanup.
