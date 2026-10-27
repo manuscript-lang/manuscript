@@ -1493,9 +1493,10 @@ impl FnLower<'_> {
         Ok(id)
     }
 
-    /// The thunk the runtime calls to read a `JsonValue`: `view(value, payload)` returns the node
-    /// kind of the case `value` holds and writes the case's payload (`Bool` byte, `String`, list
-    /// or map; nothing for `Null`) at `payload`, bitwise.
+    /// The thunk the runtime calls to write a `JsonValue`: `view(value, w, walk)` hands the case
+    /// `value` holds to the writer natives (scalars, with the writer object `w`) or to the walk
+    /// (a list or a map, whose members the runtime visits next). The one dispatch on the case
+    /// is the thunk's; the runtime loop has none.
     fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
         let key = format!("json-tree-view:{}", ct::type_key(t));
         if let Some(f) = self.cx.helpers.get(&key) {
@@ -1505,23 +1506,51 @@ impl FnLower<'_> {
             return Err(Error::new("JsonValue is an alternative"));
         };
         let cases = ct::cases(t);
-        let kinds = [
-            "Null",
-            "BoolValue",
-            "NumberValue",
-            "StringValue",
-            "ArrayValue",
-            "ObjectValue",
-        ];
+        // Per case: the native, whether it takes the writer or the walk, and its extern.
+        let mut calls = Vec::new();
+        for c in &cases {
+            let (sym, on_walk, payload_ty) = match c.name.as_str() {
+                "Null" => ("msrt_json_w_null", false, None),
+                "BoolValue" => ("msrt_json_w_bool", false, Some(MTy::BOOL)),
+                "NumberValue" => ("msrt_json_w_number", false, Some(MTy::STR)),
+                "StringValue" => ("msrt_json_w_string", false, Some(MTy::STR)),
+                "ArrayValue" => (
+                    "msrt_json_tree_array",
+                    true,
+                    Some(self.jmty(&c.fields[0].ty)?),
+                ),
+                "ObjectValue" => (
+                    "msrt_json_tree_object",
+                    true,
+                    Some(self.jmty(&c.fields[0].ty)?),
+                ),
+                other => {
+                    return Err(Error::new(format!(
+                        "json: unexpected JsonValue case {other}"
+                    )));
+                }
+            };
+            let mut params = vec![borrowed(MTy::PTR)];
+            params.extend(payload_ty.map(borrowed));
+            let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+                name: sym.to_string(),
+                params,
+                ret: MTy::UNIT,
+                noreturn: false,
+                pure_: false,
+                fresh: crate::rtcall::fresh_result(sym),
+            });
+            calls.push((ext, on_walk, payload_ty.is_some()));
+        }
         let mut tb = FuncBuilder::new(
             self.b.m,
             "json_tree_view",
-            vec![borrowed(MTy::PTR), borrowed(MTy::PTR)],
-            MTy::INT,
+            vec![borrowed(MTy::PTR), borrowed(MTy::PTR), borrowed(MTy::PTR)],
+            MTy::UNIT,
         );
         tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
         let args = tb.params();
-        let (value, out) = (args[0], args[1]);
+        let (value, w, walk) = (args[0], args[1], args[2]);
         let v = tb
             .emit(Op::Load, &[value], Imm::Ty(mt), Some(mt))
             .expect("load");
@@ -1537,19 +1566,15 @@ impl FnLower<'_> {
         tb.seal_block(other);
         tb.switch_to(other);
         tb.unreachable();
-        for (i, c) in cases.iter().enumerate() {
+        for (i, (ext, on_walk, has_payload)) in calls.iter().enumerate() {
             tb.seal_block(blocks[i]);
             tb.switch_to(blocks[i]);
-            let kind = kinds
-                .iter()
-                .position(|k| *k == c.name.as_str())
-                .ok_or_else(|| Error::new("json: unexpected JsonValue case"))?;
-            if !c.fields.is_empty() {
-                let payload = tb.alt_get(a, i as u32, 0, v);
-                tb.emit(Op::Store, &[out, payload], Imm::None, None);
+            let mut call_args = vec![if *on_walk { walk } else { w }];
+            if *has_payload {
+                call_args.push(tb.alt_get(a, i as u32, 0, v));
             }
-            let k = tb.iconst(kind as i64);
-            tb.ret(Some(k));
+            tb.call_rt(*ext, &call_args);
+            tb.ret(None);
         }
         let thunk = tb.into_func();
         let id = self.b.m.add_func(thunk);
