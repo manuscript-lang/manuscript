@@ -53,7 +53,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member to_int8 on Float32; available: abs, compare, is_finite, is_nan, sign, to_float, to_float64, truncate_to_int",
+        "message": "unknown or ambiguous member to_int8 on Float32; available: abs, clamp, compare, is_finite, is_nan, max, min, sign, to_float, to_float64, truncate_to_int",
         "position": {
           "file": "sized-conversions-reject.ms",
           "line": 10,
@@ -65,7 +65,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/sized-conversions-reject.ms:6:20: type: expected Int32, found Int8 (in the initializer of 'b')\n   |\n 6 |     let b: Int32 = a\n   |                    ^\n<DIR>/sized-conversions-reject.ms:7:21: type: expected Int8, found Optional[Int8] (in the initializer of 'c'); Optional[Int8] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 7 |     let c: Int8 = b.to_int8()\n   |                     ^\n<DIR>/sized-conversions-reject.ms:8:33: type: expected Int16, found Optional[Int8] (in the initializer of 'd'); Optional[Int8] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 8 |     let d: Int16 = a.to_int16().to_int8()\n   |                                 ^\n<DIR>/sized-conversions-reject.ms:9:24: type: expected Float32, found Float (in the initializer of 'e')\n   |\n 9 |     let e: Float32 = a.to_float()\n   |                        ^\n<DIR>/sized-conversions-reject.ms:10:28: resolution: unknown or ambiguous member to_int8 on Float32; available: abs, compare, is_finite, is_nan, sign, to_float, to_float64, truncate_to_int\n    |\n 10 |     let f = a.to_float32().to_int8()\n    |                            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/sized-conversions-reject.ms:6:20: type: expected Int32, found Int8 (in the initializer of 'b')\n   |\n 6 |     let b: Int32 = a\n   |                    ^\n<DIR>/sized-conversions-reject.ms:7:21: type: expected Int8, found Optional[Int8] (in the initializer of 'c'); Optional[Int8] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 7 |     let c: Int8 = b.to_int8()\n   |                     ^\n<DIR>/sized-conversions-reject.ms:8:33: type: expected Int16, found Optional[Int8] (in the initializer of 'd'); Optional[Int8] may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match\n   |\n 8 |     let d: Int16 = a.to_int16().to_int8()\n   |                                 ^\n<DIR>/sized-conversions-reject.ms:9:24: type: expected Float32, found Float (in the initializer of 'e')\n   |\n 9 |     let e: Float32 = a.to_float()\n   |                        ^\n<DIR>/sized-conversions-reject.ms:10:28: resolution: unknown or ambiguous member to_int8 on Float32; available: abs, clamp, compare, is_finite, is_nan, max, min, sign, to_float, to_float64, truncate_to_int\n    |\n 10 |     let f = a.to_float32().to_int8()\n    |                            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

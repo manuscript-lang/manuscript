@@ -1,5 +1,3 @@
-from "@std/collections.ms" import range
-
 # Orders two keys: negative when `left` sorts first, zero when equal, positive when `right` sorts first.
 def order[T: Comparable](left: T, right: T) -> Int:
     return left.compare(right)
@@ -300,9 +298,9 @@ impl SortedMap[K, V]:
     def entries() -> List[SortedEntry[K, V]]:
         var out: List[SortedEntry[K, V]] = []
 
-        for c in range(0, self.key_chunks.length()):
+        for c in 0..self.key_chunks.length():
             let keys = self.key_chunks[c]
-            for at in range(0, keys.length()):
+            for at in 0..keys.length():
                 out.append(
                     SortedEntry(
                         keys.get(at).clone(), self.value_chunks[c].get(at).clone()

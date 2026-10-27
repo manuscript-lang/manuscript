@@ -1,6 +1,5 @@
 from "@std/string.ms" import StringBuilder
 from "@std/bytes.ms" import Bytes
-from "@std/collections.ms" import range
 
 # Errors returned for malformed CSV input or configured size limits.
 export type CsvError:

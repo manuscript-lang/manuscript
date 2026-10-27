@@ -16,7 +16,6 @@
 # ```
 from "@std/bytes.ms" import Bytes
 from "@std/channels.ms" import Channel, ChannelError, Transport
-from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/json.ms" import parse, stringify
 from "@std/shared.ms" import Shared, share
@@ -243,7 +242,7 @@ impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var def close() -> Unit:
         with var started = lock(self.workers):
-            for index in range(0, started.value.length()):
+            for index in 0..started.value.length():
                 started.value[index].cancel()
 
                 let _ = started.value[index].wait()
