@@ -120,48 +120,102 @@ unsafe fn copy_blocks(dst: *mut u8, src: *const u8, n: usize) {
     }
 }
 
-/// [`copy_blocks`] with 32-byte registers: half the loads and stores per block.
+/// One copy implementation: the C `memcpy` signature.
+#[cfg(target_arch = "x86_64")]
+type CopyFn = unsafe extern "C" fn(*mut u8, *const u8, usize) -> *mut u8;
+
+/// The `memcpy` body for CPUs with AVX2: 32-byte registers halve the loads and stores of a
+/// medium copy. Chosen once by [`memcpy_probe`] and reached through [`COPY_IMPL`], so a copy
+/// pays one indirect jump and no frame.
 ///
 /// # Safety
-/// As [`copy_blocks`], and the CPU must support AVX2.
+/// As the C `memcpy`, and the CPU must support AVX2.
 #[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
 #[target_feature(enable = "avx2")]
-unsafe fn copy_blocks_avx2(dst: *mut u8, src: *const u8, n: usize) {
+unsafe extern "C" fn memcpy_avx2(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     use core::arch::x86_64::{__m256i, _mm256_loadu_si256, _mm256_storeu_si256};
     // SAFETY: every block lies within the first `n` bytes of both ranges.
     unsafe {
+        if n <= 64 {
+            copy_small(dst, src, n);
+            return dst;
+        }
+        if n >= REP_MOVSB_MIN {
+            copy_forward(dst, src, n);
+            return dst;
+        }
         let load = |at: usize| _mm256_loadu_si256(src.add(at) as *const __m256i);
         let store = |at: usize, v: __m256i| _mm256_storeu_si256(dst.add(at) as *mut __m256i, v);
-        let tail = [load(n - 64), load(n - 32)];
+        if n <= 128 {
+            let (a, b, c, d) = (load(0), load(32), load(n - 64), load(n - 32));
+            store(0, a);
+            store(32, b);
+            store(n - 64, c);
+            store(n - 32, d);
+            return dst;
+        }
+        let tail = [load(n - 128), load(n - 96), load(n - 64), load(n - 32)];
         let mut at = 0;
-        while at + 64 < n {
-            let (a, b) = (load(at), load(at + 32));
+        while at + 128 < n {
+            let (a, b, c, d) = (load(at), load(at + 32), load(at + 64), load(at + 96));
             store(at, a);
             store(at + 32, b);
-            at += 64;
+            store(at + 64, c);
+            store(at + 96, d);
+            at += 128;
         }
-        store(n - 64, tail[0]);
-        store(n - 32, tail[1]);
+        store(n - 128, tail[0]);
+        store(n - 96, tail[1]);
+        store(n - 64, tail[2]);
+        store(n - 32, tail[3]);
     }
+    dst
 }
 
-/// Whether this CPU runs AVX2 (and the OS saves its registers), probed once.
+/// The `memcpy` body for any x86_64 CPU.
+///
+/// # Safety
+/// As the C `memcpy`.
 #[cfg(target_arch = "x86_64")]
-#[inline(always)]
-fn has_avx2() -> bool {
-    use core::sync::atomic::{AtomicU8, Ordering};
-    static STATE: AtomicU8 = AtomicU8::new(0);
-    let state = STATE.load(Ordering::Relaxed);
-    if state != 0 {
-        return state == 2;
+#[cfg_attr(test, allow(dead_code))]
+unsafe extern "C" fn memcpy_sse(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    // SAFETY: the caller gives valid, disjoint ranges.
+    unsafe {
+        if n <= 64 {
+            copy_small(dst, src, n);
+        } else {
+            copy_forward_any(dst, src, n);
+        }
     }
-    let yes = probe_avx2();
-    STATE.store(if yes { 2 } else { 1 }, Ordering::Relaxed);
-    yes
+    dst
+}
+
+/// The implementation `memcpy` jumps to; starts at [`memcpy_probe`].
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+static COPY_IMPL: core::sync::atomic::AtomicPtr<()> =
+    core::sync::atomic::AtomicPtr::new(memcpy_probe as CopyFn as *mut ());
+
+/// First `memcpy` call: picks the implementation for this CPU, then runs it.
+///
+/// # Safety
+/// As the C `memcpy`.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+unsafe extern "C" fn memcpy_probe(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    let pick: CopyFn = if probe_avx2() {
+        memcpy_avx2
+    } else {
+        memcpy_sse
+    };
+    COPY_IMPL.store(pick as *mut (), core::sync::atomic::Ordering::Relaxed);
+    // SAFETY: forwarded contract.
+    unsafe { pick(dst, src, n) }
 }
 
 #[cfg(target_arch = "x86_64")]
-#[cold]
+#[cfg_attr(test, allow(dead_code))]
 fn probe_avx2() -> bool {
     use core::arch::x86_64::{__cpuid, __cpuid_count, _xgetbv};
     // SAFETY: cpuid exists on every x86_64 CPU; xgetbv is read only after OSXSAVE is reported.
@@ -190,11 +244,7 @@ unsafe fn copy_forward_any(dst: *mut u8, src: *const u8, n: usize) {
     // SAFETY: forwarded contract.
     unsafe {
         if n < REP_MOVSB_MIN {
-            if has_avx2() {
-                copy_blocks_avx2(dst, src, n);
-            } else {
-                copy_blocks(dst, src, n);
-            }
+            copy_blocks(dst, src, n);
         } else {
             copy_forward(dst, src, n);
         }
@@ -233,13 +283,10 @@ unsafe fn copy_backward(dst: *mut u8, src: *const u8, mut n: usize) {
 pub unsafe extern "C" fn memcpy(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
     // SAFETY: the C contract gives valid, disjoint ranges.
     unsafe {
-        if n <= 64 {
-            copy_small(dst.cast(), src.cast(), n);
-        } else {
-            copy_forward_any(dst.cast(), src.cast(), n);
-        }
+        let copy: CopyFn =
+            core::mem::transmute(COPY_IMPL.load(core::sync::atomic::Ordering::Relaxed));
+        copy(dst.cast(), src.cast(), n).cast()
     }
-    dst
 }
 
 /// The C `memmove`.
@@ -395,9 +442,28 @@ mod tests {
     fn block_copy_matches_slice_copy_and_forward_overlap() {
         // SAFETY: `check_blocks` passes in-bounds ranges.
         check_blocks(|d, s, n| unsafe { copy_blocks(d, s, n) });
-        if has_avx2() {
-            // SAFETY: the CPU reports AVX2.
-            check_blocks(|d, s, n| unsafe { copy_blocks_avx2(d, s, n) });
+    }
+
+    #[test]
+    fn each_memcpy_body_copies_every_size_exactly() {
+        let mut bodies: Vec<CopyFn> = vec![memcpy_sse];
+        if probe_avx2() {
+            bodies.push(memcpy_avx2);
+        }
+        for copy in bodies {
+            for n in (0..=300).chain([1023, 1024, 2047, 2048, 2049, 4097]) {
+                let src = pattern(n + 16, 5);
+                let mut dst = vec![0xAAu8; n + 16];
+                // SAFETY: both buffers hold `n + 16` bytes and are disjoint.
+                let ret = unsafe { copy(dst.as_mut_ptr().add(3), src.as_ptr().add(1), n) };
+                assert_eq!(ret, unsafe { dst.as_mut_ptr().add(3) }, "return n={n}");
+                assert_eq!(dst[3..3 + n], src[1..1 + n], "n={n}");
+                assert!(dst[..3].iter().all(|b| *b == 0xAA), "head touched n={n}");
+                assert!(
+                    dst[3 + n..].iter().all(|b| *b == 0xAA),
+                    "tail touched n={n}"
+                );
+            }
         }
     }
 

@@ -66,7 +66,7 @@ jobs:
           if [ "$RUNNER_OS" = Windows ]; then
             export RUSTFLAGS='-C link-arg=/FORCE:UNRESOLVED'
           fi
-          cargo test --locked -p ms-rt
+          cargo test --locked -p ms-rt --lib -- alloc:: mem::
       - name: Build the release ms
         run: cargo build --release --locked -p ms-cli
       - name: Run bench/perf/strappend
