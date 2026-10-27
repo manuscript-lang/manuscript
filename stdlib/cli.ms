@@ -696,10 +696,12 @@ def render_help(node: Command, path: List[String], inherited: List[Flag]) -> Str
         var width = 0
         for child in node.children: width = max_int(width, child.name.length())
         for child in node.children: out += (
-            "  "
-            + child.name.pad_end(width, " ")
-            + "  "
-            + child.about
+            (
+                "  "
+                + child.name.pad_end(width, " ")
+                + "  "
+                + child.about
+            ).trim_end()
             + "\n"
         )
 
@@ -709,10 +711,12 @@ def render_help(node: Command, path: List[String], inherited: List[Flag]) -> Str
         var width = 0
         for arg in node.args: width = max_int(width, arg.name.length())
         for arg in node.args: out += (
-            "  "
-            + arg.name.pad_end(width, " ")
-            + "  "
-            + arg.help
+            (
+                "  "
+                + arg.name.pad_end(width, " ")
+                + "  "
+                + arg.help
+            ).trim_end()
             + "\n"
         )
 
