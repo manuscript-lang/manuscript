@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding true; booleans are capitalized: True and False",
+        "position": {
+          "file": "diag-spelling-lowercase-true.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 150
+        },
+        "fix": {
+          "position": {
+            "file": "diag-spelling-lowercase-true.ms",
+            "line": 5,
+            "column": 13,
+            "offset": 150
+          },
+          "end": {
+            "file": "diag-spelling-lowercase-true.ms",
+            "line": 5,
+            "column": 17,
+            "offset": 154
+          },
+          "replacement": "True"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-spelling-lowercase-true.ms:5:13: resolution: unknown binding true; booleans are capitalized: True and False\n   |\n 5 |     let a = true\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

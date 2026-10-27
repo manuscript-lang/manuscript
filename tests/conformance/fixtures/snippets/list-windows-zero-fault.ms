@@ -4,5 +4,5 @@
 from "@std/io.ms" import stdout
 
 export def main() -> Int:
-    stdout().write(f"{[1, 2, 3].windows(0).length()}\n")
+    let _ = stdout().write(f"{[1, 2, 3].windows(0).length()}\n")
     return 0

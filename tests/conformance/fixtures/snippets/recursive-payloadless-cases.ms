@@ -1,7 +1,7 @@
 # conform: tags=alternatives,match,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=perf: payloadless cases of recursive alternatives share one block
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Tree:
     case Leaf

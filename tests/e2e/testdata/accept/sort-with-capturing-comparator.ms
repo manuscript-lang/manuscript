@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 # A comparator that captures a variable is called from the generated sort thunk instead of
 # being inlined into it (its `closure.cap` reads need the closure's own layout). Capturing
@@ -18,8 +18,8 @@ test "a lambda that captures a map orders by the looked-up counts":
 
     let words = ["fox", "the", "dog"].sorted(
         compare: lambda (a: String, b: String) -> Int: return (
-            freq.get(b).get()
-            - freq.get(a).get()
+            freq[b]
+            - freq[a]
         )
     )
     try expect_equal(words, ["the", "dog", "fox"])

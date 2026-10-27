@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"./data.ms\" import Box\nfrom \"@std/testing.ms\" import expect_true, fail\n\ntest \"imported constructor retains default module and generic scope\":\n    let box = Box(value: \"text\")\n    if box.copied != \"text\" or box.items.get(0) != \"text\":\n        return fail(\"imported generic defaults\")\n"
+    "fmt": "from \"./data.ms\" import Box\nfrom \"@std/test.ms\" import expect_true, fail\n\ntest \"imported constructor retains default module and generic scope\":\n    let box = Box(value: \"text\")\n    if box.copied != \"text\" or box.items.get(0) != \"text\":\n        return fail(\"imported generic defaults\")\n"
   }
 }

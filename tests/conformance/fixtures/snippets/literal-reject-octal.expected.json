@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-octal.ms:5:13: parse: invalid number 0o7; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-octal.ms:5:13: parse: invalid number 0o7; octal literals do not exist, so write the value in decimal, hexadecimal (0x) or binary (0b)\n   |\n 5 |     let x = 0o7\n   |             ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

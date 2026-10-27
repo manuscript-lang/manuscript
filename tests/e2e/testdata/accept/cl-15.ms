@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_not_equal
+from "@std/test.ms" import expect_equal, expect_not_equal
 from "@std/decimal.ms" import Decimal
 
 type Callback:

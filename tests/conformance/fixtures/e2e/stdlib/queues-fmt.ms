@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,modules,optional,parser,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/collections.ms" import range
 

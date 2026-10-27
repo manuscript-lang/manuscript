@@ -1,7 +1,8 @@
 # conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-from "@std/test/property.ms" import check, ints, bools, lists, strings, optionals, pairs, filtered, floats, element_of, mapped, one_of, constant
-from "@std/testing.ms" import expect_equal, expect_true, expect_contains, expect_error
+from "@std/test/property.ms" import check, ints, bools, lists, strings, optionals, pairs, floats, element_of, one_of, constant
+from "@std/core.ms" import panic
+from "@std/test.ms" import expect_equal, expect_true, expect_contains, expect_error
 
 test "a true property passes":
     try check(
@@ -64,12 +65,22 @@ test "optionals shrink toward the failing payload":
 
 test "filtered generators only produce kept values":
     try check(
-        "even", filtered(ints(0, 1000), lambda n: n % 2 == 0),
+        "even", ints(0, 1000).filter(lambda n: n % 2 == 0),
         lambda n: expect_equal(n % 2, 0)
     )
 
+test "zip and flat_map compose generators":
+    let sums = ints(0, 9).zip(ints(0, 9), lambda a, b: a + b)
+    try check("sum bound", sums, lambda n: expect_true(n >= 0 and n <= 18))
+
+    let sized = ints(1, 3).flat_map(lambda n: lists(ints(0, 9), n, n))
+    try check(
+        "length follows the drawn size", sized,
+        lambda xs: expect_true(xs.length() >= 1 and xs.length() <= 3)
+    )
+
 test "mapped, one_of, element_of, constant, floats and bools compose":
-    let doubled = mapped(ints(0, 10), lambda n: n * 2)
+    let doubled = ints(0, 10).map(lambda n: n * 2)
     try check("doubled is even", doubled, lambda n: expect_equal(n % 2, 0))
     try check(
         "choice", one_of([constant(1), constant(2)]),
@@ -98,3 +109,17 @@ test "the same seed reproduces the same failure":
     )
     try expect_equal(first.message(), second.message())
     try expect_contains(first.message(), "counterexample: [0, 0, 0]")
+
+test "a fault inside a property shrinks like an error":
+    let cause = try expect_error(
+        check(
+            "no big values", ints(0, 1000), lambda n: faults_at(n, 100), seed: 4
+        )
+    )
+    try expect_contains(cause.message(), "counterexample: 100\n")
+    try expect_contains(cause.message(), "fault:")
+
+def faults_at(n: Int, limit: Int) -> Result[Unit, Error]:
+    if n >= limit:
+        panic("too big")
+    return ok(())

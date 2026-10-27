@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/html.ms" import parse
 from "@std/crypto.ms" import sha256, sha512
 from "@std/random.ms" import entropy, secure_int, uuid_v4, shuffle, choice, float
@@ -18,7 +18,7 @@ test "stdlib natives bound to a name behave like the call":
     try expect_true(page("<p>x</p>").is_ok())
 
     let pairs = map_from_entries[Int, Int]
-    try expect_equal(pairs([MapEntry(1, 2)]).get(1).get(0), 2)
+    try expect_equal(pairs([MapEntry(1, 2)]).get_or(1, 0), 2)
 
     let biggest = max[Int]
     try expect_equal(biggest(1, 3), 3)

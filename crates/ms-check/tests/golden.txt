@@ -574,7 +574,11 @@ def explicit() -> Unit:
     fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
     fs.create_directory("", True)
     fs.remove("", False)
-from "@std/faults.ms" import panic
+type	4	5	90	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	5	5	123	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	6	5	154	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	7	5	219	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose
+type	8	5	253	this statement discards Result[Unit, FileSystemError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposefrom "@std/faults.ms" import panic
 type Override:
     received: Bool
 impl FileSystem for Override:
@@ -839,7 +843,7 @@ export def main() -> Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-import stdout from "@std/io.ms"
+type	4	5	108	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -1763,7 +1767,7 @@ impl Equal for Key:
     def equals(other: Equal) -> Bool: return True
 def keys() -> Map[Key, Int]: return Map[Key, Int]()
 type	4	9	50	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) -> Bool
-type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/testing.ms" import TestHooks
+type	5	37	128	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itfrom "@std/test.ms" import TestHooks
 type State:
     value: Int
 impl TestHooks for State:
@@ -1773,7 +1777,7 @@ test "reads fixture":
     let value: Int = fixture.value
 resolution	2	23	48	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module
 resolution	5	22	125	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     def before_each() -> Unit:
@@ -1785,7 +1789,7 @@ test "closure captures fixture":
     let value: Int = read()
 resolution	4	23	115	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	93	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	93	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	133	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module
 resolution	7	34	215	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
     def before_each(value: Int) -> Unit:
@@ -1796,7 +1800,7 @@ test "test":
     return
 resolution	4	23	104	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	82	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	4	1	82	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	5	12	122	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduleimpl TestHooks for State:
 def make_fixture(value: Int) -> State:
     return State(value)
@@ -1818,15 +1822,15 @@ def make_fixture() -> TestHooks:
     return State(1)
 test "test":
     return
-resolution	2	23	48	unknown type TestHooks; add: from "@std/testing.ms" import TestHooks
+resolution	2	23	48	unknown type TestHooks; add: from "@std/test.ms" import TestHooks
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	70	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduledef make_fixture() -> State:
     return State(1)
 test "test":
     return
 resolution	1	23	22	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	1	1	0	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	1	1	0	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	2	12	40	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduleimpl TestHooks for State:
 def make_fixture() -> State:
     return State(fixture.value)
@@ -1834,7 +1838,7 @@ test "test":
     return
 resolution	2	23	48	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
 resolution	1	20	19	unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	2	1	26	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it
 resolution	3	12	66	unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a moduletest "test":
     let value = fixture.value
 resolution	2	17	29	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileinterface TestHooks:
@@ -1848,7 +1852,7 @@ def make_fixture() -> State:
     return State(1)
 test "test":
     return
-type	8	1	146	make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
+type	8	1	146	make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for itlet alias = b
     resolution	1	13	12	unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a modulelet read = lambda () -> String: b.freeze()
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet read = lambda (value: String = b.freeze()) -> String: value
     type	1	12	11	a constant takes literals, operators, collections, and other constants; compute this value in a functionlet frozen = b.freeze()
@@ -1878,7 +1882,7 @@ def callback() -> Unit:
     return values.map(transform: transform)
 def search[T](values: List[T], value: T) -> Bool:
     return values.contains(value: value)
-resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 53 members in totaldef wrong(data: Bytes) -> List[Bytes]:
+resolution	2	19	68	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 55 members in totaldef wrong(data: Bytes) -> List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	17	16	unknown type Bytes; add: from "@std/bytes.ms" import Bytes
 resolution	1	32	31	unknown type Bytes; add: from "@std/bytes.ms" import Bytesfn first() Unit:
@@ -2112,7 +2116,7 @@ resolution	3	43	116	unknown type TextError; add: from "@std/core.ms" import Text
 resolution	3	61	134	unknown binding TextError; add: from "@std/core.ms" import TextError
 resolution	10	34	520	unknown binding panic; add: from "@std/core.ms" import panicdef first() -> Unit:
     let result: Result[Int, TextError] = fail("empty")resolution	2	29	49	unknown type TextError; add: from "@std/core.ms" import TextError
-resolution	2	42	62	unknown binding fail; add: from "@std/testing.ms" import faildef first() -> Unit:
+resolution	2	42	62	unknown binding fail; add: from "@std/test.ms" import faildef first() -> Unit:
     let callback: Callable[[], Optional[Int]] = lambda: absent()resolution	2	57	77	unknown binding absent; declare it with 'let absent = ...' before use, define 'def absent(...) -> T:', or import it from a moduledef failed[T]() -> Result[T, Failure]: error(Failure("empty"))
 def first() -> Result[Int, Error]: failed()resolution	1	30	29	unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it
 resolution	1	46	45	unknown binding Failure; did you mean 'failed'?
@@ -2134,7 +2138,7 @@ def first() -> Unit:
     callback()resolution	3	42	101	unknown binding from_callback; declare it with 'let from_callback = ...' before use, define 'def from_callback(...) -> T:', or import it from a module
 type	5	5	183	missing argument _0: Int in call to callback; add '_0: <Int>'def first() -> Unit:
     let value: Callable[[String], Result[Int, TextError]] = failresolution	2	47	67	unknown type TextError; add: from "@std/core.ms" import TextError
-resolution	2	61	81	unknown binding fail; add: from "@std/testing.ms" import faildef cause(value: Int) -> String: "cause"
+resolution	2	61	81	unknown binding fail; add: from "@std/test.ms" import faildef cause(value: Int) -> String: "cause"
 def wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or_else(cause)type	2	74	114	callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a lambda that supplies the rest
 type	2	63	103	String does not satisfy Error; pass a type that already implements it
 type	2	74	114	expected Callable[[], String], found Callable[[Int], String] (in argument 'create' of value.ok_or_else)
@@ -2331,7 +2335,7 @@ def probe() -> Int:
     return sum + values.length()
 def wrong() -> Int:
     let values = [lambda () -> Int: 1]
-    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 53 members in totaldef wrong() -> List[Int]:
+    return values.distinct().length()resolution	3	19	77	unknown or ambiguous member distinct on List[Callable[[], Int]]; available starting with 'd': distinct, drop; 55 members in totaldef wrong() -> List[Int]:
     let copy = [1].METHOD
     return copy(length: 1)resolution	2	20	45	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
     def get() -> T
@@ -4029,14 +4033,14 @@ def example() -> Int:
     )
 def work() -> Unit:
     try expect_false(try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [["line\n\nbreak"], [""]])
-resolution	2	9	28	unknown binding expect_false; add: from "@std/testing.ms" import expect_falsedef work() -> Unit:
+resolution	2	9	28	unknown binding expect_false; add: from "@std/test.ms" import expect_falsedef work() -> Unit:
     try expect_false(
         try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
             ["line\n\nbreak"],
             [""]
         ]
     )
-resolution	2	9	28	unknown binding expect_false; add: from "@std/testing.ms" import expect_falsedef work() -> Unit:
+resolution	2	9	28	unknown binding expect_false; add: from "@std/test.ms" import expect_falsedef work() -> Unit:
     send_message(condition: account_is_active and payment_is_allowed and remaining_balance > 0)
 resolution	2	5	24	unknown binding send_message; declare it with 'let send_message = ...' before use, define 'def send_message(...) -> T:', or import it from a moduledef work() -> Unit:
     send_message(
@@ -4984,7 +4988,7 @@ fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found
     entries.ad|
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn use(entries: Map[String, Int]) Unit:
     entries.add(key: "a", value: |
-parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/testing.ms"
+parse	3	1	75	unterminated delimiter '(' opened at line 2:16; add the matching ')' before the end of the fileimport TestHooks from "@std/test.ms"
 type State:
     count: Int
 fn make_fixture() State:
@@ -5545,7 +5549,7 @@ def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...
 resolution	2	5	26	unknown binding operation; declare it with 'let operation = ...' before use, define 'def operation(...) -> T:', or import it from a moduledef operation() -> Result[Unit, Error]: ok(())
 def caller() -> Unit:
     operation()
-def caller() -> Unit:
+type	3	5	73	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef caller() -> Unit:
     let callback = lambda () -> Unit:
         if True:
             operation()
@@ -5855,7 +5859,7 @@ resolution	3	34	97	unknown binding Bytes; add: from "@std/bytes.ms" import Bytes
 export def main() -> Int:
     return depth(0)
 from "@std/io.ms" import stdout, stderr
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 
 test "first=pass":
     let _out = stdout().write(data: "PASS fake test\nuser stdout\n")
@@ -5927,7 +5931,7 @@ test "selected=a=b":
 
 test "unselected":
     write_line("unselected")
-type	28	5	692	this statement discards Result[Unit, Error], so a failed check or call would not fail the test; write 'try ...' to propagate it, 'let name = ...' to inspect it, or 'let ignored = ...' to drop it on purposedef f() -> Int:
+type	28	5	692	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposedef f() -> Int:
     return 1
 let X = f()
 type	3	9	37	a constant takes literals, operators, collections, and other constants; compute this value in a functiondef f() -> Int:
@@ -6073,14 +6077,14 @@ impl Shape for Rect:
 test "method fault frame":
     let rect = Rect(w: 9223372036854775807, h: 2)
     rect.area()
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "arithmetic":
     2 + 3 | try expect_equal(expected: 5)
 test "fault":
     let missing: Optional[Int] = none
     let impossible = missing.get()
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 test "failed assertion":
     2 + 3 | try expect_equal(expected: 6)
 def sum(value: Int) -> Int:
@@ -6102,7 +6106,7 @@ test "fault":
     return missing
 resolution	2	12	31	unknown binding missing; declare it with 'let missing = ...' before use, define 'def missing(...) -> T:', or import it from a modulefn wrong():
   return
-parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4from "@std/testing.ms" import expect_true, fail
+parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4from "@std/test.ms" import expect_true, fail
 
 interface Read:
     def get() -> Int
@@ -6116,7 +6120,7 @@ test "encoded nominal identity":
     let view = Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-type	12	16	249	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfrom "@std/io.ms" import stdout
+type	12	16	246	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfrom "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 from "@std/time.ms" import Instant
 
@@ -6363,7 +6367,7 @@ type	7	9	80	duplicate implementation operation m; define each operation once per
     x: Int
 impl B:
     def m() -> Int: ...
-type	4	9	35	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/testing.ms" import expect_equal
+type	4	9	35	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/test.ms" import expect_equal
 from "@std/faults.ms" import panic
 
 def positive(value: Int) -> Int:
@@ -6378,9 +6382,9 @@ def discard(value: Int) -> Unit:
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
     discard(value: 1) | try expect_equal(expected: ())
-resolution	2	30	72	unknown standard module @std/faults.ms
-resolution	8	9	169	unknown binding panic; add: from "@std/core.ms" import panic
-type	4	1	79	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/testing.ms" import expect_contains, expect_fault
+resolution	2	30	69	unknown standard module @std/faults.ms
+resolution	8	9	166	unknown binding panic; add: from "@std/core.ms" import panic
+type	4	1	76	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)from "@std/test.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
 
 def failed_initializer() -> Never:
@@ -6408,15 +6412,15 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-resolution	2	30	89	unknown standard module @std/faults.ms
-resolution	5	27	157	unknown binding panic; add: from "@std/core.ms" import panic
-type	4	1	96	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
-resolution	8	12	244	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/testing.ms" import expect_contains, expect_fault
+resolution	2	30	86	unknown standard module @std/faults.ms
+resolution	5	27	154	unknown binding panic; add: from "@std/core.ms" import panic
+type	4	1	93	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
+resolution	8	12	241	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/test.ms" import expect_contains, expect_fault
 from "@std/faults.ms" import panic
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(lambda: panic("boom")), "boom")
-resolution	2	30	89	unknown standard module @std/faults.ms
-resolution	4	50	192	unknown binding panic; add: from "@std/core.ms" import panicinterface Read:
+resolution	2	30	86	unknown standard module @std/faults.ms
+resolution	4	50	189	unknown binding panic; add: from "@std/core.ms" import panicinterface Read:
     def read() -> Int
 type Reader:
     operation: Callable[[], Int]
@@ -6429,13 +6433,13 @@ export def main() -> Int:
 type	9	16	202	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfn prepare() fn() Int:
     let invalid = 1 / 0
     return fn() Int: 1
-export fn main()parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'from "@std/testing.ms" import fail
+export fn main()parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'from "@std/test.ms" import fail
 export def other() -> Int: return 4
 test "unimported":
     if other() != 4: return fail("bad other")
 test "nested":
     return ()
-from "@std/testing.ms" import fail
+from "@std/test.ms" import fail
 export def other() -> Int: return 4
 test "unimported":
     return fail("changed unimported test")
@@ -6804,7 +6808,7 @@ resolution	28	26	827	unknown or ambiguous member freeze on ListBuilder[Int]; ava
 resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
 resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queue
 type	44	56	1301	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
@@ -6813,7 +6817,7 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         case error(_):
             return fail("fixture not found")
-from "@std/testing.ms" import TestHooks, expect_equal, fail, skip
+from "@std/test.ms" import TestHooks, expect_equal, fail, skip
 from "@std/io.ms" import stdout
 from "@std/faults.ms" import panic
 def println(message: String) -> Unit:
@@ -6838,7 +6842,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-resolution	3	30	127	unknown standard module @std/faults.msfrom "@std/testing.ms" import TestHooks, expect_equal
+resolution	3	30	124	unknown standard module @std/faults.msfrom "@std/test.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 def println(message: String) -> Unit:
     let written = stdout().write(f"{message}\n").get()
@@ -6853,7 +6857,7 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
-type	13	17	333	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyfrom "@std/testing.ms" import TestHooks, expect_equal, expect_ok
+type	13	17	330	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyfrom "@std/test.ms" import TestHooks, expect_equal, expect_ok
 from "@std/http.ms" import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers
 from "@std/net.ms" import network
 type ApiFixture:
@@ -6871,7 +6875,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: f"http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	472	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
+type	9	80	469	expected Callable[[HttpExchange], Result[Unit, HttpError]], found Callable[[HttpRequest], HttpResponse] (in argument 'handler' of serve)export def helper() -> Unit:
     return
 test "interruptible":
     println("READY")
@@ -6880,8 +6884,8 @@ test "second request uses same server":
 test "later":
     try fail("must not run")
 resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")
-resolution	4	13	71	unknown binding expect_equal; add: from "@std/testing.ms" import expect_equal
-resolution	6	9	112	unknown binding fail; add: from "@std/testing.ms" import failfrom "@std/testing.ms" import TestHooks, expect_equal
+resolution	4	13	71	unknown binding expect_equal; add: from "@std/test.ms" import expect_equal
+resolution	6	9	112	unknown binding fail; add: from "@std/test.ms" import failfrom "@std/test.ms" import TestHooks, expect_equal
 from "@std/io.ms" import stdout
 type UnusedFixture:
     value: Int
@@ -6896,7 +6900,7 @@ impl TestHooks for UnusedFixture:
         let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
-from "@std/testing.ms" import expect_equal, skip
+from "@std/test.ms" import expect_equal, skip
 test "passing":
     try expect_equal(2 + 2, 4)
 test "skipped":

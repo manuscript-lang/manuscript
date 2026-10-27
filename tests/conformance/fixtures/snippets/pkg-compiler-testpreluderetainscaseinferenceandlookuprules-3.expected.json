@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-3.ms:5:18: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-3.ms:5:18: type: String does not satisfy Error; use a type that implements it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-3.ms:5:18: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 5 |     let result = error(cause: \"failed\")\n   |                  ^\n<DIR>/pkg-compiler-testpreluderetainscaseinferenceandlookuprules-3.ms:5:18: type: String does not satisfy Error; use a type that implements it\n   |\n 5 |     let result = error(cause: \"failed\")\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

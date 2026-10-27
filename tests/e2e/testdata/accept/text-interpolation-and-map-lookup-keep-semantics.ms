@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_true, fail
+from "@std/test.ms" import expect_true, fail
 
 type Point:
     x: Int

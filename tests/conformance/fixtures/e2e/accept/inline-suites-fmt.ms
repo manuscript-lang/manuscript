@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/inline-suites.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def double(value: Int) -> Int: value * 2
 

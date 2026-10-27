@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "this type has no source constructor: Int is built in; write a literal or call a standard function that returns it; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()",
+        "position": {
+          "file": "diag-idiom-int-constructor.ms",
+          "line": 5,
+          "column": 13,
+          "offset": 150
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-idiom-int-constructor.ms:5:13: type: this type has no source constructor: Int is built in; write a literal or call a standard function that returns it; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()\n   |\n 5 |     let a = Int(\"1\")\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

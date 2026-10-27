@@ -1,7 +1,7 @@
 # conform: tags=closures,faults,lists,modules,optional,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/map-set-and-sort-callbacks-keep-semantics.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def byLength(left: String, right: String) -> Int: left.length() - right.length()
 

@@ -51,26 +51,36 @@
         },
         {
           "index": 8,
-          "name": "property.ms::mapped, one_of, element_of, constant, floats and bools compose",
+          "name": "property.ms::zip and flat_map compose generators",
           "status": "passed"
         },
         {
           "index": 9,
+          "name": "property.ms::mapped, one_of, element_of, constant, floats and bools compose",
+          "status": "passed"
+        },
+        {
+          "index": 10,
           "name": "property.ms::the same seed reproduces the same failure",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "property.ms::a fault inside a property shrinks like an error",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 10,
-        "selected": 10,
-        "passed": 10,
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN property.ms::a true property passes\nPASS property.ms::a true property passes\nRUN property.ms::a failing list property shrinks to the smallest list\nPASS property.ms::a failing list property shrinks to the smallest list\nRUN property.ms::a failing integer property shrinks toward the boundary\nPASS property.ms::a failing integer property shrinks toward the boundary\nRUN property.ms::negative values shrink toward zero\nPASS property.ms::negative values shrink toward zero\nRUN property.ms::strings shrink to the offending character\nPASS property.ms::strings shrink to the offending character\nRUN property.ms::pairs shrink both components\nPASS property.ms::pairs shrink both components\nRUN property.ms::optionals shrink toward the failing payload\nPASS property.ms::optionals shrink toward the failing payload\nRUN property.ms::filtered generators only produce kept values\nPASS property.ms::filtered generators only produce kept values\nRUN property.ms::mapped, one_of, element_of, constant, floats and bools compose\nPASS property.ms::mapped, one_of, element_of, constant, floats and bools compose\nRUN property.ms::the same seed reproduces the same failure\nPASS property.ms::the same seed reproduces the same failure\n10 tests, 0 failed\n",
+      "stdout": "RUN property.ms::a true property passes\nPASS property.ms::a true property passes\nRUN property.ms::a failing list property shrinks to the smallest list\nPASS property.ms::a failing list property shrinks to the smallest list\nRUN property.ms::a failing integer property shrinks toward the boundary\nPASS property.ms::a failing integer property shrinks toward the boundary\nRUN property.ms::negative values shrink toward zero\nPASS property.ms::negative values shrink toward zero\nRUN property.ms::strings shrink to the offending character\nPASS property.ms::strings shrink to the offending character\nRUN property.ms::pairs shrink both components\nPASS property.ms::pairs shrink both components\nRUN property.ms::optionals shrink toward the failing payload\nPASS property.ms::optionals shrink toward the failing payload\nRUN property.ms::filtered generators only produce kept values\nPASS property.ms::filtered generators only produce kept values\nRUN property.ms::zip and flat_map compose generators\nPASS property.ms::zip and flat_map compose generators\nRUN property.ms::mapped, one_of, element_of, constant, floats and bools compose\nPASS property.ms::mapped, one_of, element_of, constant, floats and bools compose\nRUN property.ms::the same seed reproduces the same failure\nPASS property.ms::the same seed reproduces the same failure\nRUN property.ms::a fault inside a property shrinks like an error\nPASS property.ms::a fault inside a property shrinks like an error\n12 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -2,7 +2,7 @@
 # conform: phase=test
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/test.ms" import expect_equal, expect_fault
 
 type Config:
     name: String
@@ -88,6 +88,8 @@ def drop_while_locked() -> Unit:
     let guard = lock(shared)
     if guard.value.length() != 1:
         return
+
+    let _held = [guard]
 
 test "a box dropped while its payload is locked does not free the payload twice":
     drop_while_locked()

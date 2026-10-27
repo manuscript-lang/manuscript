@@ -1,6 +1,6 @@
 from "@std/core.ms" import Iterator
 from "@std/io.ms" import stdout
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 # A point in the plane.
 type Point:
@@ -54,9 +54,9 @@ export def main() -> Int:
     let p = Point(x: 1, y: 2)
     let values = [1, 2, 3]
     for v in values:
-        say(f"{v}")
+        let _ = say(f"{v}")
     for tick in Counter(n: 2):
-        say(f"{tick}")
+        let _ = say(f"{tick}")
 
     let result = add(1, 2)
     return result

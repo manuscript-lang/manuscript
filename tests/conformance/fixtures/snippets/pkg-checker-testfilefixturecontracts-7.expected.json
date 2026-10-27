@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type TestHooks; add: from \"@std/testing.ms\" import TestHooks",
+        "message": "unknown type TestHooks; add: from \"@std/test.ms\" import TestHooks",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-7.ms",
           "line": 6,
@@ -29,7 +29,7 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/testing.ms\" import TestHooks\n"
+          "replacement": "from \"@std/test.ms\" import TestHooks\n"
         }
       },
       {
@@ -46,7 +46,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it",
+        "message": "make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
         "position": {
           "file": "pkg-checker-testfilefixturecontracts-7.ms",
           "line": 6,
@@ -69,7 +69,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-7.ms:6:23: resolution: unknown type TestHooks; add: from \"@std/testing.ms\" import TestHooks\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:6:1: type: make_fixture must return a concrete type implementing @std/testing.ms TestHooks; return your fixture type and add impl TestHooks for it\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:7:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testfilefixturecontracts-7.ms:6:23: resolution: unknown type TestHooks; add: from \"@std/test.ms\" import TestHooks\n   |\n 6 | def make_fixture() -> TestHooks:\n   |                       ^\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:4:20: resolution: unknown type State; declare it with 'type State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 4 | impl TestHooks for State:\n   |                    ^\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:6:1: type: make_fixture must return a concrete type implementing @std/test.ms TestHooks; return your fixture type and add impl TestHooks for it\n   |\n 6 | def make_fixture() -> TestHooks:\n   | ^\n<DIR>/pkg-checker-testfilefixturecontracts-7.ms:7:12: resolution: unknown binding State; declare it with 'let State = ...' before use, define 'def State(...) -> T:', or import it from a module\n   |\n 7 |     return State(1)\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

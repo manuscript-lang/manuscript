@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,faults,lists,match,modules,mutation,optional,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/statement-match.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Shape:
     case Circle(r: Int)

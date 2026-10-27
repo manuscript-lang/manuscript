@@ -1,7 +1,7 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/process.ms" import control
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 
 def send_one(ch: Channel[Int, Unit]) -> Result[Unit, ChannelError]:
@@ -43,7 +43,7 @@ def close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) -> Unit:
         let task = group.spawn(send_one)
         let sent = task.result()
         var end = ch
-        end.send(task.channel.clone())
+        let _ = end.send(task.channel.clone())
         sleep(nanoseconds(1000000000))
 
 test "collected buffered channels close with their group":

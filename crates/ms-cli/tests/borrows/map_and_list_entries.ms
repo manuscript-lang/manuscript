@@ -35,5 +35,8 @@ export def main() -> Int:
     var xs = [[1, 2], [3]]
     if var last = xs.last():
         last.append(4)
-    stdout().write(f"{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n")
+
+    let _ = stdout().write(
+        f"{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
+    )
     return 0

@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:5: resolution: unknown binding box; declare it with 'let box = ...' before use, define 'def box(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:5: resolution: unknown binding box; declare it with 'let box = ...' before use, define 'def box(...) -> T:', or import it from a module\n   |\n 8 |     box.count -= total\n   |     ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-35.ms:8:9: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n   |\n 8 |     box.count -= total\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

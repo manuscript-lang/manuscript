@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,modules,mutation,numbers,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/inlined-list-callbacks-keep-semantics.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 type Point:
     x: Int

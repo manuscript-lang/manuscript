@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-21.ms:8:16: type: operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-21.ms:8:16: type: operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'\n   |\n 8 |     return p() + 1\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

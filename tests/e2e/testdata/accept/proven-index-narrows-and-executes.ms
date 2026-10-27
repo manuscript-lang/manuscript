@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def read(values: List[Int], index: Int) -> Int:
     if index < 0 or index >= values.length():

@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-7.ms:11:18: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n<DIR>/pkg-build-testimplementationdeclarationparameters-7.ms:11:9: type: implementation operation signature does not match contract; get must be declared as fn get() -> Int\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-7.ms:11:18: resolution: unknown type T; declare it with 'type T:' / 'interface T:', declare it as a type parameter, or import it\n    |\n 11 |     def get() -> T:\n    |                  ^\n<DIR>/pkg-build-testimplementationdeclarationparameters-7.ms:11:9: type: implementation operation signature does not match contract; get must be declared as fn get() -> Int\n    |\n 11 |     def get() -> T:\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

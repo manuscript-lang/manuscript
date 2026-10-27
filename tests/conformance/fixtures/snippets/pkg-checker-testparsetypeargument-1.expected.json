@@ -88,7 +88,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:31: resolution: unknown type JsonValue; add: from \"@std/json.ms\" import JsonValue\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:42: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:31: resolution: unknown type JsonValue; add: from \"@std/json.ms\" import JsonValue\n   |\n 4 | def f(text: String) -> Result[JsonValue, JsonError]:\n   |                               ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:42: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def f(text: String) -> Result[JsonValue, JsonError]:\n   |                                          ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n   |\n 5 |     return parse(text)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

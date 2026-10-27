@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 
 type Counter:
     calls: Int
@@ -203,7 +203,7 @@ test "Map find returns fresh entry shells with copied payloads":
     counter.calls | try expect_equal(2)
     original.key = "other"
     original.value = Counter(9)
-    (not (source.contains("b")) or source.get("b").get().calls != 2) | try expect_false
+    (not (source.contains("b")) or source["b"].calls != 2) | try expect_false
     try expect_equal(source.find(lambda k, v: True).get().key, "b")
     try expect_true((source.find(lambda k, v: False).is_none()))
 

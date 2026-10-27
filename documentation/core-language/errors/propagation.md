@@ -32,7 +32,7 @@ def ready_label() -> Result[String, TextError]:
 
 Standalone `try call()` requires a `Unit` success. Otherwise bind it (`let name = try call()`) or `return try call()`.
 
-Omitting `try` discards the Result and triggers lint `MSL104`. To ignore it deliberately, use an [`_ignored` binding](results.md#discarding-a-result).
+Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`let _ =`](results.md#discarding-a-result).
 
 ## Try in a pipe flow
 

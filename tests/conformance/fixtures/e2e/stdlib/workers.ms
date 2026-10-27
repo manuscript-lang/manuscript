@@ -8,7 +8,7 @@ from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpSer
 from "@std/io.ms" import stdin
 from "@std/net.ms" import network
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_error, expect_ok, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import Worker, WorkerError, WorkerGroup, worker_bytes, worker_channel
 
@@ -42,7 +42,7 @@ def count_words() -> Unit:
             return
 
         if let job = got.get(none):
-            ch.send(Done(id: job.id, count: job.words.length()))
+            let _ = ch.send(Done(id: job.id, count: job.words.length()))
         else:
             return
 
@@ -57,7 +57,7 @@ def reads_stdin() -> Unit:
 def naps() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(nanoseconds(5000000))
-    ch.send(1)
+    let _ = ch.send(1)
 
 def wait_forever() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -65,14 +65,14 @@ def wait_forever() -> Unit:
 
 def announce_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
     let got = ch.receive()
 
 # Runs without parking for long enough that the cancel always lands while it is computing.
 def spin_then_wait() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
     var n = 0
     for i in range(0, 300000000):
@@ -95,12 +95,12 @@ def sum_until_closed() -> Unit:
         if let n = got.get(none):
             total += n
         else:
-            ch.send(total)
+            let _ = ch.send(total)
             return
 
 def ask(group: WorkerGroup[Int, Int], value: Int) -> Result[Int, WorkerError]:
     var worker = try group.spawn(squares)
-    worker.channel.send(value)
+    let _ = worker.channel.send(value)
 
     var answer = -1
     if let got = worker.channel.receive().get(none):
@@ -216,7 +216,7 @@ test "standard input stays with the main thread":
 def delayed_send() -> Unit:
     var ch = worker_channel[Int, Int]()
     sleep(nanoseconds(150000000))
-    ch.send(1)
+    let _ = ch.send(1)
 
 def quick() -> Unit:
     var ch = worker_channel[Int, Int]()
@@ -234,7 +234,7 @@ test "cancelling a joined worker's handle leaves a later worker alone":
 
 def sends_one() -> Unit:
     var ch = worker_channel[Int, Int]()
-    ch.send(1)
+    let _ = ch.send(1)
 
 test "a finished worker's channel ends with none instead of an error":
     with let group = WorkerGroup[Int, Int]():
@@ -248,7 +248,7 @@ def runs_faulting_task() -> Unit:
 
     with let tasks = TaskGroup[Int]():
         let t = tasks.spawn(lambda c: panic("task inside worker faults"))
-        t.result()
+        let _ = t.result()
 
 test "a fault in a task a worker started is the worker's fault":
     with let group = WorkerGroup[Int, Int]():
@@ -281,7 +281,7 @@ test "cancelling a worker that is joining another ends it as cancelled":
 def touches_network() -> Unit:
     var ch = worker_channel[Int, Int]()
     let net = network()
-    ch.send(1)
+    let _ = ch.send(1)
 
 test "a worker that uses the network ends cleanly":
     with let group = WorkerGroup[Int, Int]():
@@ -297,7 +297,7 @@ def fetches_page() -> Unit:
         for round in range(0, 3):
             if let response = fetch(f"http://{address}/page"):
                 total += response.body.length()
-        ch.send(total)
+        let _ = ch.send(total)
 
 def page(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), "x".repeat(65536).get("").to_bytes())
@@ -358,7 +358,7 @@ def serves_shared() -> Unit:
             address: address, handler: buffered(page), options: options
         ):
             with let server = acquired:
-                ch.send(server.address())
+                let _ = ch.send(server.address())
 
                 let _stopped = ch.receive()
                 server.close()

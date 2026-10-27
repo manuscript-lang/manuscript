@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/fetch.ms" import FetchBody, FetchOptions, FetcherOptions, fetch, fetcher, json_body
 from "@std/http.ms" import HttpError, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, headers, buffered
 from "@std/net.ms" import network

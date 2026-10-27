@@ -8,7 +8,9 @@ fn test_program_receives_options_after_the_separator_unchanged() {
     std::fs::create_dir_all(&root).unwrap();
     std::fs::write(
         root.join("test.ms"),
-        "from \"@std/process.ms\" import arguments\nfrom \"@std/testing.ms\" import expect_equal\n\ntest \"arguments\":\n    try expect_equal(arguments(), [\"--list\", \"--repeat=2\", \"--timeout=0\", \"--\", \"--help\"])\n",
+        include_str!(
+            "test_arguments/test-program-receives-options-after-the-separator-unchanged.ms"
+        ),
     )
     .unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_ms"))

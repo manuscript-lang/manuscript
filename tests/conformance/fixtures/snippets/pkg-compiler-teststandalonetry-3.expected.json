@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-teststandalonetry-3.ms:4:39: type: Int does not satisfy Error; use a type that implements it\n<DIR>/pkg-compiler-teststandalonetry-3.ms:7:5: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-teststandalonetry-3.ms:4:39: type: Int does not satisfy Error; use a type that implements it\n   |\n 4 | def operation() -> Result[Unit, Int]: ok(())\n   |                                       ^\n<DIR>/pkg-compiler-teststandalonetry-3.ms:7:5: type: try requires the same error type or an Error boundary implemented by the specific error; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or implement Error for it\n   |\n 7 |     try operation()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

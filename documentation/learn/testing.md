@@ -5,13 +5,13 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. Assertions in `@std/testing.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name":` block runs under `ms test` and passes when it finishes normally. Assertions in `@std/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def add(a: Int, b: Int) -> Int:
     return a + b
@@ -52,7 +52,7 @@ ms test ms.toml --json
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/json.ms" import parse, JsonError
-from "@std/testing.ms" import expect_equal, expect_ok, expect_error, expect_some
+from "@std/test.ms" import expect_equal, expect_ok, expect_error, expect_some
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -85,7 +85,7 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
 from "@std/test/property.ms" import check, ints, lists
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))
@@ -100,10 +100,10 @@ expected true, got false
 ```
 
 - Generators: `ints(low, high)`, `bools()`, `floats(low, high)`, `strings(alphabet, max_length)`, `lists(gen, min_length, max_length)`, `optionals(gen)`, `pairs(a, b)`, `element_of(values)`, `one_of(gens)`, and `constant(value)`.
-- Combine them with `mapped`, `zipped`, `flat_mapped`, and `filtered`. A `filtered` generator that cannot find a kept value discards the case; too many discards fail the test.
+- Combine them with the `Gen` methods `map`, `zip`, `flat_map`, and `filter`, as on lists: `ints(1, 9).map(lambda n: n * 2)`. A `filter` that cannot find a kept value discards the case; too many discards fail the test.
 - Shrinking is automatic for every generator, including your own compositions: generators draw from a recorded stream of integers and shrinking edits and replays it. Integers shrink toward 0, lists toward fewer elements, `optionals` toward `none`, `bools` toward `False`.
 - A generator value moves into the generator that uses it, so build a fresh `ints(...)` for each use rather than reusing one binding.
-- A `panic` inside a property ends the test process before it can shrink; return errors with `expect_*` and `try`, and use `expect_fault` for faults you expect.
+- A `panic` inside a property counts as a failing case and shrinks like a returned error; each case runs in a forked child.
 
 `ms test` controls property runs from the command line:
 
@@ -134,11 +134,11 @@ This runs the application entry point, not its test blocks. Put the workload you
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T` implements `TestHooks` from `@std/testing.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T` implements `TestHooks` from `@std/test.ms`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/testing.ms" import TestHooks, expect_equal
+from "@std/test.ms" import TestHooks, expect_equal
 
 type Counter:
     count: Int

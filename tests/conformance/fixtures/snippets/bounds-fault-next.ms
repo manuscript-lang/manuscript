@@ -11,5 +11,5 @@ def next_sum(a: List[Int]) -> Int:
     return t
 
 export def main() -> Int:
-    stdout().write(f"{next_sum([1, 2, 3])}\n")
+    let _ = stdout().write(f"{next_sum([1, 2, 3])}\n")
     return 0

@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/http.ms" import from_io, headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
 from "@std/io.ms" import IoError, read_all
 from "@std/net.ms" import network
@@ -21,8 +21,8 @@ def say(label: String) -> Callable[[HttpExchange, RouteParams], Result[Unit, Htt
     return lambda exchange, params: reply(exchange, text(200, label.clone()))
 
 def show(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let id = params.get("id").get("-")
-    let rest = params.get("rest").get("-")
+    let id = params.get_or("id", "-")
+    let rest = params.get_or("rest", "-")
     return reply(exchange, text(200, f"{id}|{rest}"))
 
 def body_of(response: HttpResponse) -> String:
@@ -34,11 +34,11 @@ def allow_of(response: HttpResponse) -> String:
 
 def router() -> Router:
     var r = Router()
-    r.route(HttpMethod.Get, "/", say("root")).get()
-    r.route(HttpMethod.Get, "/users", say("list")).get()
-    r.route(HttpMethod.Post, "/users", say("create")).get()
-    r.route(HttpMethod.Get, "/users/:id", show).get()
-    r.route(HttpMethod.Get, "/files/*rest", show).get()
+    r.get("/", say("root")).get()
+    r.get("/users", say("list")).get()
+    r.post("/users", say("create")).get()
+    r.get("/users/:id", show).get()
+    r.get("/files/*rest", show).get()
     return r
 
 test "literal, parameter and wildcard routes":
@@ -76,8 +76,8 @@ test "HEAD is answered from the GET route without a body":
 
 test "the first matching route wins":
     var r = Router()
-    r.route(HttpMethod.Get, "/a/:x", say("param")).get()
-    r.route(HttpMethod.Get, "/a/b", say("literal")).get()
+    r.get("/a/:x", say("param")).get()
+    r.get("/a/b", say("literal")).get()
     try expect_equal(body_of(try r.call(get("/a/b"))), "param")
 
 def head_reply(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
@@ -85,9 +85,9 @@ def head_reply(exchange: HttpExchange, params: RouteParams) -> Result[Unit, Http
 
 test "explicit HEAD routes take precedence over GET fallback":
     var r = Router()
-    try r.route(HttpMethod.Get, "/a/:id", say("get"))
-    try r.route(HttpMethod.Head, "/a/:id", head_reply)
-    try r.route(HttpMethod.Head, "/a/fixed", say("later"))
+    try r.get("/a/:id", say("get"))
+    try r.head("/a/:id", head_reply)
+    try r.head("/a/fixed", say("later"))
 
     let response = try r.call(request(HttpMethod.Head, "/a/fixed"))
     try expect_equal(response.status, 202)
@@ -96,14 +96,14 @@ test "explicit HEAD routes take precedence over GET fallback":
 
 test "invalid and duplicate patterns are rejected":
     var r = Router()
-    try expect_true(r.route(HttpMethod.Get, "users", say("x")).is_error())
-    try expect_true(r.route(HttpMethod.Get, "/a/:", say("x")).is_error())
-    try expect_true(r.route(HttpMethod.Get, "/a/*r/b", say("x")).is_error())
-    try expect_true(r.route(HttpMethod.Get, "/a/:x/:x", say("x")).is_error())
-    try expect_true(r.route(HttpMethod.Get, "/a//b", say("x")).is_error())
-    r.route(HttpMethod.Get, "/a/:x", say("x")).get()
-    try expect_true(r.route(HttpMethod.Get, "/a/:y", say("y")).is_error())
-    r.route(HttpMethod.Post, "/a/:y", say("y")).get()
+    try expect_true(r.get("users", say("x")).is_error())
+    try expect_true(r.get("/a/:", say("x")).is_error())
+    try expect_true(r.get("/a/*r/b", say("x")).is_error())
+    try expect_true(r.get("/a/:x/:x", say("x")).is_error())
+    try expect_true(r.get("/a//b", say("x")).is_error())
+    r.get("/a/:x", say("x")).get()
+    try expect_true(r.get("/a/:y", say("y")).is_error())
+    r.post("/a/:y", say("y")).get()
 
 def tag(label: String) -> Callable[
     [HttpExchange, Callable[[HttpExchange], Result[Unit, HttpError]]],
@@ -128,7 +128,7 @@ test "middleware wraps routes outermost first":
     var r = Router()
     r.use(tag("a"))
     r.use(tag("b"))
-    r.route(HttpMethod.Get, "/t", trail).get()
+    r.get("/t", trail).get()
     try expect_equal(body_of(try r.call(get("/t"))), "a>b")
 
 test "middleware also wraps the 404 answer":
@@ -145,7 +145,7 @@ def refuse(
 test "middleware may answer without calling the rest":
     var r = Router()
     r.use(refuse)
-    r.route(HttpMethod.Get, "/t", say("never")).get()
+    r.get("/t", say("never")).get()
 
     let response = try r.call(get("/t"))
     try expect_equal(response.status, 401)
@@ -155,12 +155,12 @@ def fail(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]
 
 test "a handler error comes back from call":
     var r = Router()
-    r.route(HttpMethod.Get, "/f", fail).get()
+    r.get("/f", fail).get()
     try expect_true((r.call(get("/f"))).is_error())
 
 test "a handler that sends nothing answers 204":
     var r = Router()
-    r.route(HttpMethod.Get, "/n", lambda exchange, params: ok(())).get()
+    r.get("/n", lambda exchange, params: ok(())).get()
     try expect_equal((try r.call(get("/n"))).status, 204)
 
 def whole_response(
@@ -182,8 +182,8 @@ def whole_response(
 
 test "a whole in-process response rejects subsequent writes":
     var r = Router()
-    try r.route(HttpMethod.Get, "/done", whole_response)
-    try r.route(HttpMethod.Get, "/empty", whole_response)
+    try r.get("/done", whole_response)
+    try r.get("/empty", whole_response)
     try expect_equal(body_of(try r.call(get("/done"))), "done")
     try expect_equal(body_of(try r.call(get("/empty"))), "")
 
@@ -197,7 +197,7 @@ def small_reads(exchange: HttpExchange, params: RouteParams) -> Result[Unit, Htt
 
 test "in-process reads retain the unread body after a bounded chunk":
     var r = Router()
-    try r.route(HttpMethod.Post, "/", small_reads)
+    try r.post("/", small_reads)
 
     let response = try r.call(
         HttpRequest(
@@ -208,7 +208,7 @@ test "in-process reads retain the unread body after a bounded chunk":
     try expect_equal(body_of(response), "a|bc|true")
 
 def read_sizes(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError]:
-    let limit = none if params.get("mode").get("") == "default" else some(100000)
+    let limit = none if params.get_or("mode", "") == "default" else some(100000)
 
     let first = try exchange.read(limit).map_error(from_io)
     let second = try exchange.read(limit).map_error(from_io)
@@ -219,7 +219,7 @@ def read_sizes(exchange: HttpExchange, params: RouteParams) -> Result[Unit, Http
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
     var r = Router()
-    try r.route(HttpMethod.Post, "/:mode", read_sizes)
+    try r.post("/:mode", read_sizes)
 
     for mode in ["default", "explicit"]:
         let response = try r.call(
@@ -237,7 +237,7 @@ def read_empty(exchange: HttpExchange, params: RouteParams) -> Result[Unit, Http
 
 test "in-process reads report EOF immediately for an empty body":
     var r = Router()
-    try r.route(HttpMethod.Get, "/", read_empty)
+    try r.get("/", read_empty)
     try expect_equal(body_of(try r.call(get("/"))), "true|true")
 
 def invalid_reads(
@@ -255,7 +255,7 @@ def invalid_reads(
 
 test "in-process reads reject nonpositive sizes without consuming input":
     var r = Router()
-    try r.route(HttpMethod.Post, "/", invalid_reads)
+    try r.post("/", invalid_reads)
 
     let response = try r.call(
         HttpRequest(
@@ -286,12 +286,12 @@ test "the router serves over a socket":
 test "mount places a router under a prefix with its own middleware":
     var api = Router()
     api.use(tag("api"))
-    api.route(HttpMethod.Get, "/", trail).get()
-    api.route(HttpMethod.Get, "/items/:id", show).get()
+    api.get("/", trail).get()
+    api.get("/items/:id", show).get()
 
     var r = Router()
     r.use(tag("top"))
-    r.route(HttpMethod.Get, "/health", trail).get()
+    r.get("/health", trail).get()
     r.mount("/api/v1", api).get()
     try expect_equal(body_of(try r.call(get("/api/v1"))), "top>api")
     try expect_equal(body_of(try r.call(get("/api/v1/items/5"))), "5|-")
@@ -300,7 +300,7 @@ test "mount places a router under a prefix with its own middleware":
 
 test "mount rejects a trailing slash and a clashing route":
     var api = Router()
-    api.route(HttpMethod.Get, "/x", say("x")).get()
+    api.get("/x", say("x")).get()
 
     var r = Router()
     try expect_true(r.mount("/api/", api).is_error())
@@ -321,8 +321,8 @@ def moved(exchange: HttpExchange, params: RouteParams) -> Result[Unit, HttpError
 
 test "json and redirect build responses":
     var r = Router()
-    r.route(HttpMethod.Get, "/j", answer).get()
-    r.route(HttpMethod.Get, "/m", moved).get()
+    r.get("/j", answer).get()
+    r.get("/m", moved).get()
 
     let sent = try r.call(get("/j"))
     try expect_equal(sent.status, 201)
@@ -343,7 +343,7 @@ def id_of(response: HttpResponse) -> String:
 test "request_id keeps a usable id and makes one otherwise":
     var r = Router()
     r.use(request_id())
-    r.route(HttpMethod.Get, "/i", echo_id).get()
+    r.get("/i", echo_id).get()
 
     let fresh = try r.call(get("/i"))
     try expect_equal(id_of(fresh).length(), 36)
@@ -388,7 +388,7 @@ test "access_log writes one record per request":
     let logger = (create(Sink(lines: lines), timestamp: some(False))).get()
     var r = Router()
     r.use(access_log(logger))
-    r.route(HttpMethod.Get, "/a", say("hello")).get()
+    r.get("/a", say("hello")).get()
     try expect_equal((try r.call(get("/a"))).status, 200)
     try expect_equal((try r.call(get("/nope"))).status, 404)
 
@@ -398,3 +398,15 @@ test "access_log writes one record per request":
     try expect_true(text_out.contains("\"bytes\":5"))
     try expect_true(text_out.contains("\"status\":404"))
     try expect_equal(text_out.lines().length(), 2)
+
+test "verb helpers register their method":
+    var r = Router()
+    try r.put("/v", say("put"))
+    try r.patch("/v", say("patch"))
+    try r.delete("/v", say("delete"))
+    try r.options("/o", say("options"))
+    try expect_equal(body_of(try r.call(request(HttpMethod.Put, "/v"))), "put")
+    try expect_equal(body_of(try r.call(request(HttpMethod.Patch, "/v"))), "patch")
+    try expect_equal(body_of(try r.call(request(HttpMethod.Delete, "/v"))), "delete")
+    try expect_equal(body_of(try r.call(request(HttpMethod.Options, "/o"))), "options")
+    try expect_equal((try r.call(request(HttpMethod.Post, "/v"))).status, 405)

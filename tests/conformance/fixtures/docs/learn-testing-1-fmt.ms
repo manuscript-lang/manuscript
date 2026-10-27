@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/testing.md:13
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def add(a: Int, b: Int) -> Int:
     return a + b

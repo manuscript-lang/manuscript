@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
 from "@std/core.ms" import Closeable
 from "@std/fs.ms" import filesystem
 
@@ -310,5 +310,5 @@ test "match composes with inferred callbacks and map literals":
             case some(number): number
             case none: 0
     }
-    lookup.get("value").get() | try expect_equal(3)
+    lookup["value"] | try expect_equal(3)
     (inline_match(none) != 0 or inline_match(some(5)) != 5) | try expect_false

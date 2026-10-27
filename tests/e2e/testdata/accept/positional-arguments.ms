@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 def subtract(amount: Int, deduction: Int) -> Int: amount - deduction
 
@@ -132,7 +132,7 @@ test "methods native APIs function values and contextual labels":
 
     let add = memo.add
     add(value: 8, 2)
-    try expect_false(memo.get(1).get() != 7 or memo.get(2).get() != 8)
+    try expect_false(memo[1] != 7 or memo[2] != 8)
     try expect_equal("abcd".slice(1, 3).get(), "bc")
 
 test "written order before omitted defaults and body":

@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/testing.ms"
+import {expect_equal} from "@std/test.ms"
 
 test "receiver before index":
     var values = [.7]

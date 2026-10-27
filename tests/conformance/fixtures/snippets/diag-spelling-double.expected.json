@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type double; did you mean 'Float'?",
+        "position": {
+          "file": "diag-spelling-double.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 149
+        },
+        "fix": {
+          "position": {
+            "file": "diag-spelling-double.ms",
+            "line": 5,
+            "column": 12,
+            "offset": 149
+          },
+          "end": {
+            "file": "diag-spelling-double.ms",
+            "line": 5,
+            "column": 18,
+            "offset": 155
+          },
+          "replacement": "Float"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-spelling-double.ms:5:12: resolution: unknown type double; did you mean 'Float'?\n   |\n 5 |     let a: double = 1.0\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-bytes,stdlib-http,stdlib-io,stdlib-log,stdlib-net,stdlib-router,stdlib-shared,stdlib-sse,stdlib-sync,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/router.ms
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/http.ms" import headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
 from "@std/io.ms" import read_all
 from "@std/net.ms" import network

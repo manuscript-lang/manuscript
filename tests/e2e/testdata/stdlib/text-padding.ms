@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_contains, expect_fault
+from "@std/test.ms" import expect_equal, expect_contains, expect_fault
 
 test "padding returns a plain String":
     try expect_equal("7".pad_start(3, "0"), "007")

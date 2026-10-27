@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,maps,modules,optional,parser,records,sets,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/naming-migration.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/collections.ms" import MapBuilder, SetBuilder, ListBuilder
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/string.ms" import StringBuilder

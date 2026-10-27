@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, expect_false, expect_true
+from "@std/test.ms" import expect_equal, expect_false, expect_true
 
 type Counter:
     count: Int
@@ -44,10 +44,10 @@ def reverse_set[T: Hashable, A](
 test "Map transformations and directional queries are callable":
     let source: Map[String, Int] = {"b": 2, "a": 1}
     let mapped = source.map(lambda k, v: v.to_string())
-    mapped.get("b").get() | try expect_equal("2")
+    mapped["b"] | try expect_equal("2")
 
     let keyed = source.map_keys(lambda k, v: v)
-    keyed.get(2).get() | try expect_equal(2)
+    keyed[2] | try expect_equal(2)
     try expect_equal(source.find_last(lambda k, v: True).get().key, "a")
     try expect_equal(source.fold_right("", lambda acc, k, v: acc + k), "ab")
 
@@ -77,9 +77,9 @@ test "Map value transformation copies ordered snapshots and keeps independent va
     seen | try expect_equal(["b2", "a1", "c3"])
     try expect_equal(mapped.keys().map(lambda k: k.id), [2, 1, 3])
 
-    var edited = mapped.get(first).get().clone()
+    var edited = mapped[first].clone()
     edited.count = 7
-    (mapped.get(first).get().count != 2 or source.get(first).get().count != 2) | try expect_false
+    (mapped[first].count != 2 or source[first].count != 2) | try expect_false
     mapped.remove(first.clone())
     mapped.add(Key(5, "other"), Counter(5))
     (not (source.contains(first)) or source.contains(Key(5, "different"))) | try expect_false
@@ -107,9 +107,9 @@ test "Map key transformation retains first equal keys and last values":
     first_key.label = "first copy"
     try expect_false((created.get(0).label != "2" or created.get(2).label != "4"))
 
-    var looked_up = mapped.get(Key(0, "lookup")).get().clone()
+    var looked_up = mapped[Key(0, "lookup")].clone()
     looked_up.count = 9
-    source.get(4).get().count | try expect_equal(3)
+    source[4].count | try expect_equal(3)
     mapped.clear()
     mapped.add(Key(7, "fresh"), Counter(10))
     source.length() | try expect_equal(4)
@@ -127,16 +127,16 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
     )
 
     (seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]) | try expect_false
-    mapped.get("3").get().count | try expect_equal(3)
+    mapped["3"].count | try expect_equal(3)
 
     let values: Map[String, Int] = {"a": 0}
     let map = values.clone().map[Optional[Int]]
-    try expect_true((map(lambda k, v: none).get("a").get().is_none()))
+    try expect_true((map(lambda k, v: none) ["a"].is_none()))
 
     let nested = values.map(
         lambda k, v: Result[Int, TextError].error(TextError("nested"))
     )
-    nested.get("a").get().err().message() | try expect_equal("nested")
+    nested["a"].err().message() | try expect_equal("nested")
 
 test "empty transformations skip callbacks and allocate independent storage":
     var empty_calls: List[Int] = []
@@ -204,7 +204,7 @@ test "Map reverse fold and last match retain ordered snapshots":
 
     var edited = found.value.clone()
     edited.count = 8
-    source.get("a").get().count | try expect_equal(1)
+    source["a"].count | try expect_equal(1)
     found.key = "changed"
     source.contains("changed") | try expect_false
 

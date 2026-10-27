@@ -8,7 +8,7 @@ resourceDir = '.hugo-resources'
 disableKinds = ['taxonomy', 'term', 'RSS']
 
 [params]
-  description = 'Manuscript is a ground-up attempt to build the ideal language for the agentic era: shaped by agent behavior, with token efficiency, readability, and program analysis designed together.'
+  description = 'A statically typed, natively compiled language designed for agents to write and humans to understand, with ownership, scoped concurrency, and actionable compiler feedback.'
   BookSection = '/'
   BookToC = true
   BookSearch = true

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'",
+        "position": {
+          "file": "diag-shadows-enclosing-parameter.ms",
+          "line": 6,
+          "column": 13,
+          "offset": 167
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-shadows-enclosing-parameter.ms:6:13: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |         let x = 2\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

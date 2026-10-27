@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-5.ms:5:8: resolution: unknown binding a; declare it with 'let a = ...' before use, define 'def a(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-5.ms:7:10: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'def foo(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-5.ms:5:8: resolution: unknown binding a; declare it with 'let a = ...' before use, define 'def a(...) -> T:', or import it from a module\n   |\n 5 |     if a:\n   |        ^\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-5.ms:7:10: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'def foo(...) -> T:', or import it from a module\n   |\n 7 |     elif foo(a):\n   |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

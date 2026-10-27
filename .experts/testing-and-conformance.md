@@ -40,7 +40,7 @@ Decision: the user asked to replace panic assertions with the standard testing A
 Verified: runners that accepted `0 tests, 0 failed` and bypassed CLI argument handling hid breakage. Runner flags must not become test host arguments.
 
 Apply when: adding source conformance cases, assertion helpers, or changing test entrypoints.
-Evidence: [testing declarations](../stdlib/testing.ms), [core parity project](../tests/e2e/testdata/projects/core_parity/conformance_test.ms).
+Evidence: [testing declarations](../stdlib/test.ms), [core parity project](../tests/e2e/testdata/projects/core_parity/conformance_test.ms).
 Verify: `make conform`; source tests use `try`, pipeline calls do not discard Result errors, and invalid or incomplete reports fail.
 
 ### Fixtures follow current idiom, except where they test the old form

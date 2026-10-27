@@ -1,5 +1,5 @@
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import (
+from "@std/test.ms" import (
     assert_equal,
     expect_close,
     expect_contains,

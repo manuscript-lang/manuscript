@@ -1,4 +1,4 @@
-import {expect_ok} from "@std/testing.ms"
+import {expect_ok} from "@std/test.ms"
 import http_result from "./support/http.ms"
 import TextError from "@std/core.ms"
 import {headers, HttpMethod} from "@std/http.ms"

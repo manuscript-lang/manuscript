@@ -1,7 +1,7 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,lists,maps,match,modules,optional,parser,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, expect_ok, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, expect_ok, fail
 from "@std/core.ms" import Closeable
 from "@std/json.ms" import JsonError
 from "@std/fs.ms" import filesystem
@@ -28,7 +28,7 @@ impl Closeable for Resource:
     var def close() -> Unit:
         let fs = filesystem()
         let inner_closed = fs.read_file(f"{self.dir}/2").is_ok()
-        fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
+        let _ = fs.write_file(f"{self.dir}/{self.id}", f"{inner_closed}", True)
 
 def leave(dir: String) -> Int:
     with let outer = Resource(dir, 1):

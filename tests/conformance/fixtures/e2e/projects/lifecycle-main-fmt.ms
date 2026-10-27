@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_equal, fail
+from "@std/test.ms" import expect_equal, fail
 from "@std/io.ms" import stderr
 from "@std/io.ms" import stdout
 from "@std/io.ms" import WriteStream
@@ -14,21 +14,21 @@ type Resource:
 
 impl Closeable for Resource:
     def close() -> Unit:
-        self.output.write(data: f"close {self.label}\n")
+        let _ = self.output.write(data: f"close {self.label}\n")
 
 type Pair:
     first: Int
     second: Int
 
 def report(output: WriteStream, label: String, value: Int) -> Int:
-    output.write(data: f"{label}\n")
+    let _ = output.write(data: f"{label}\n")
     return value
 
 def combine(first: Int, second: Int) -> Int:
     return first + second
 
 def select(output: WriteStream) -> Callable[[Int, Int], Int]:
-    output.write(data: "callable\n")
+    let _ = output.write(data: "callable\n")
     return combine
 
 def early(output: WriteStream) -> Int:
@@ -45,7 +45,7 @@ def propagate(output: WriteStream) -> Result[Int, TextError]:
         return ok(number)
 
 def iterable(output: WriteStream) -> List[Int]:
-    output.write(data: "iterable\n")
+    let _ = output.write(data: "iterable\n")
     return [1, 2]
 
 def exercise() -> Result[Int, Error]:
@@ -62,8 +62,8 @@ def exercise() -> Result[Int, Error]:
     (pair.first + pair.second) | try expect_equal(3)
     with let resource = Resource(label: "normal", output: stdout()):
         let completed = ()
-    stdout().write(data: "after normal\n")
 
+    let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
@@ -82,7 +82,8 @@ def exercise() -> Result[Int, Error]:
             let completed = ()
 
     early(output: stdout()) | try expect_equal(5)
-    stdout().write(data: "finished\n")
+
+    let _ = stdout().write(data: "finished\n")
     return ok(0)
 
 export def main() -> Int:

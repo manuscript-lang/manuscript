@@ -1,7 +1,7 @@
 # conform: tags=alternatives,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:137
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Todo:
     title: String

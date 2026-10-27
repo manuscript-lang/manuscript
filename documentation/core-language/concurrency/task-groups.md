@@ -10,7 +10,7 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `w
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square(n: Int) -> Int:
     return n * n
@@ -32,8 +32,8 @@ test "a group collects its results in start order":
 - A task cancelled before it first ran never starts.
 - Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. The faulted task's frames release the values they own. A faulted task that is never collected is dropped when the group closes, with no report.
-- A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `join()`. This does not isolate native crashes from the rest of the process.
+- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
+- A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `worker.wait()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
 
@@ -43,7 +43,7 @@ A task has no time limit unless you give one. `spawn(entry, timeout: some(nanose
 ```manuscript
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/time.ms" import nanoseconds, sleep
 
 def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
@@ -72,7 +72,7 @@ Values reach a task by being captured or sent on its channel, and come back as m
 ```manuscript
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     var c = ch

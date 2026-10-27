@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
+        "position": {
+          "file": "diag-init-mismatch-site.ms",
+          "line": 5,
+          "column": 21,
+          "offset": 158
+        },
+        "fix": {
+          "position": {
+            "file": "diag-init-mismatch-site.ms",
+            "line": 5,
+            "column": 21,
+            "offset": 158
+          },
+          "end": {
+            "file": "diag-init-mismatch-site.ms",
+            "line": 5,
+            "column": 22,
+            "offset": 159
+          },
+          "replacement": "f\"{1}\""
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-init-mismatch-site.ms:5:21: type: expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 5 |     let x: String = 1\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
