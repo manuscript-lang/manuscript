@@ -2,15 +2,15 @@
 
 **The language for the agentic era.**
 
-Python's surface. Rust's ownership without the lifetimes. Go's concurrency without the goroutine leaks. One static binary, no garbage collector, no `async`, and a compiler that tells the agent what to type next.
+Manuscript starts from one premise: agents will write most of the code, and people have to understand, check and run it. An agent has a limited context, cannot hold a whole program in its head, and learns from the compiler one round trip at a time. Every design choice below exists because of that.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
 *Alpha. Syntax and APIs can change. Every example here was run with `ms` built from this tree. [Setup](documentation/learn/getting-started.md).*
 
-## The compiler talks to the agent, not past it
+## Each round trip costs context, so the compiler names the repair
 
-Other compilers report errors. Manuscript's names the fix. Write a habit from another language and the message spells the Manuscript one:
+An agent that gets "syntax error" guesses. One that gets the fix types it. Every Manuscript diagnostic reads `cause; fix`, and a habit from another language is answered with the Manuscript spelling:
 
 ```manuscript
 def count(xs: List[Int]) -> Int:
@@ -21,11 +21,11 @@ def count(xs: List[Int]) -> Int:
 count.ms:2:12: resolution: unknown binding len; there is no len() function: call the length member, e.g. xs.length()
 ```
 
-When the repair is mechanical, the diagnostic carries the exact edit and `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data, with kind, values, position and trace, not as stderr to scrape. `ms guide` is the whole language in 4 KB. `ms search_symbol` finds any API in bounded output. `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
+When the repair is mechanical the diagnostic carries the exact edit and `ms check --fix` applies it, so the round trip is zero. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` is the whole language in 4 KB, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
-## Ownership you never annotate
+## Memory is decided by the compiler, so the agent cannot get it wrong
 
-Rust asks for lifetimes. Go and Python hand you a collector. Manuscript does neither: one owner per value, moved at its last use, dropped deterministically, and borrows inferred from how you bind. `let x = a.b` borrows. `var x = a.b` borrows exclusively. The single marker is `ref`, written once on a function that lends, never at a call site:
+Lifetimes are a whole-program fact, and an agent working from a window of a file cannot track them. A collector hides the cost and makes a binary carry a runtime. Manuscript takes the third path: one owner per value, moved at its last use, dropped deterministically, with borrows inferred from how a value is bound. `let x = a.b` borrows. `var x = a.b` borrows exclusively. The only marker is `ref`, written once on a function that lends part of its argument and never at a call site:
 
 ```manuscript
 type Box:
@@ -41,11 +41,11 @@ def grow(var b: Box) -> Int:
     return b.items.length()
 ```
 
-`var` marks mutation. `.clone()` marks a copy. `Shared[T]` is the one explicit way to share, and its lock is a `with` block the compiler can see. [References](documentation/core-language/types/references.md)
+Every place the agent mutates (`var`) or copies (`.clone()`) is visible in the source, so a reviewer sees what a generated change does to data without reading the callee. `Shared[T]` is the one explicit way to share, and its lock is a `with` block the compiler can see. [References](documentation/core-language/types/references.md)
 
-## Mistakes that do not reach production
+## Mistakes an agent makes often are compile errors, not runtime surprises
 
-These are compile errors in Manuscript. In most languages they are a code review, a linter, or a 3 a.m. page:
+A dropped error, a forgotten case and an unclosed handle are the mistakes a model makes when it is confident. Finding them in production costs a debugging session; finding them at `ms check` costs one message. So these are errors:
 
 - A `Result` silently dropped.
 - A `match` missing a case.
@@ -55,9 +55,9 @@ These are compile errors in Manuscript. In most languages they are a code review
 
 Everything the checker cannot prove, the runtime catches as a fault with a source trace: overflow, bounds, deadlock, a cleanup that did not run. [Faults](documentation/core-language/errors/faults.md)
 
-## Concurrency with no `async` and no leaks
+## One function model, because `async` doubles the surface an agent has to learn
 
-Any function can wait. Nothing is colored. Work lives inside a `with` block that owns it and cancels whatever is still running when the block ends:
+Function coloring means two of every API and a leaf change that rewrites every caller. In Manuscript any function can wait, so a change stays where it was made. Concurrent work lives inside a `with` block that owns it and cancels whatever is still running when the block ends, which means a generated program cannot leak a task the agent forgot to join:
 
 | Group | Runs on | Shares |
 | --- | --- | --- |
@@ -65,9 +65,11 @@ Any function can wait. Nothing is colored. Work lives inside a `with` block that
 | `WorkerGroup` | OS threads, separate memory | JSON messages only |
 | `ProcessGroup` | child processes | JSON messages, standard streams |
 
-A worker's entry is a named top-level function with no arguments. There is nothing to capture, so there is no data race to find. Eight CPU jobs scale 3.95× on four workers in the [recorded run](bench/perf/workers/README.md). Mutual waiting is a deadlock fault, not a hang. [Concurrency](documentation/core-language/concurrency/_index.md)
+A worker's entry is a named top-level function with no arguments. There is nothing to capture, so there is no data race for the agent to introduce. Eight CPU jobs scale 3.95× on four workers in the [recorded run](bench/perf/workers/README.md). Mutual waiting is a deadlock fault, not a hang. [Concurrency](documentation/core-language/concurrency/_index.md)
 
-## Fuzzing is a flag, not a framework
+## Generated inputs, because an agent's tests share its blind spots
+
+A model writes tests that encode the same assumptions as its code. Property tests draw inputs the agent did not think of, and shrink a failure to the smallest case that still fails:
 
 ```manuscript
 from "@std/test/property.ms" import check, ints, lists
@@ -77,19 +79,19 @@ test "reversing twice restores a list":
     try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))
 ```
 
-A failing property shrinks to a small counterexample and prints the seed to replay it. `ms test --fuzz 30s` turns the same test into a fuzzer, each case in a forked child so a crash is still reported. [Testing](documentation/learn/testing.md)
+A failure prints a counterexample and the seed to replay it. `ms test --fuzz 30s` turns the same test into a fuzzer, each case in a forked child so a crash is still reported. [Testing](documentation/learn/testing.md)
 
-## A standard library the agent can read
+## The standard library is Manuscript, so there is one language to learn
 
-About 14,000 lines of Manuscript across more than 40 modules, Rust only for small primitives. HTTP server and client with routing and server-sent events, TCP, processes, files, streams, JSON, TOML, YAML, CSV, crypto, archives, decimals, semver, time, logging, CLI parsing. It is written in the language the agent writes, so what the agent reads is what it would write. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
+An agent that reads a library implemented in another language learns nothing it can reuse. Manuscript's library is about 14,000 lines of Manuscript across more than 40 modules, with Rust only for small primitives: HTTP server and client with routing and server-sent events, TCP, processes, files, streams, JSON, TOML, YAML, CSV, crypto, archives, decimals, semver, time, logging, CLI parsing. What the agent reads is what it would write, and what it would write can become part of the library. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 
-## Review evidence that is not another LLM
+## Review evidence has to come from somewhere other than the generator
 
-`ms review --diff` compares the checked program before and after a change and ranks changed contracts, error flow and `with` scopes by where to look first. `ms diagram` draws call and flow graphs. Same input, same bytes, every time. [Review report](documentation/developer-tooling/implementation.md#review-report)
+If a model wrote the change, asking a model to summarize it is not a check. `ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and `with` scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. Same input, same bytes, every time. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
-## Faster than Go. Trading blows with Rust.
+## Ordinary code has to be fast, because agents write ordinary code
 
-Cranelift for debug builds, LLVM for release. On the October 25 run (`c1b81215`, linux/amd64), Manuscript beat hand-written Go on all seven kernels. Against Rust at `opt-level=3`, 26 comparable cases span **0.38× to 3.99× Rust's time**:
+An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM. On the October 25 run (`c1b81215`, linux/amd64), Manuscript beat hand-written Go on all seven kernels. Against Rust at `opt-level=3`, 26 comparable cases span **0.38× to 3.99× Rust's time**:
 
 | Case | Manuscript | Rust | ms / Rust |
 | --- | ---: | ---: | ---: |
@@ -103,9 +105,9 @@ Manuscript checks overflow and bounds on every operation; the linked pages add a
 
 Native release builds for Linux, macOS and Windows, amd64 and arm64. The conformance corpus runs on all three in CI.
 
-## Built by agents. Scored by agents.
+## The language is built the way it will be used
 
-We build Manuscript with coding agents. The [agent benchmark](bench/agent/README.md) gives the same challenges to an agent in Manuscript, TypeScript, Go and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges. First-build success (1 of 10) and source size (1.3× TypeScript) are published too, because those are the numbers we are chasing.
+We build Manuscript with coding agents, and we measure them. The [agent benchmark](bench/agent/README.md) gives the same challenges to an agent in Manuscript, TypeScript, Go and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges. First-build success (1 of 10) and source size (1.3× TypeScript) are published too, because every friction point there becomes a diagnostic, an API or a rule above.
 
 ## Try it
 
