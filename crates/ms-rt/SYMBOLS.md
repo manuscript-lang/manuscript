@@ -110,6 +110,7 @@ msrt_float_to_exponential(v: f64, digits: i64, out: *mut StrVal)
 msrt_float_to_fixed(v: f64, digits: i64, out: *mut StrVal)
 msrt_float_from_bits(bits: i64) -> f64
 msrt_float_to_bits(value: f64) -> i64
+msrt_cpu_level() -> i64
 msrt_float32_from_bits(bits: i64) -> f64
 msrt_float32_to_bits(value: f64) -> i64
 msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8

@@ -57,3 +57,46 @@ fn element_wise_list_loops_are_vectorized() {
         );
     }
 }
+
+/// A fault inside the AVX2 copy of a vectorized function reports the same exit code and source
+/// frames as the baseline copy.
+#[test]
+fn per_cpu_copies_report_the_same_fault_frames() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-cpu-copies-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("fault.ms"),
+        include_str!("vectorized_loops/fault.ms"),
+    )
+    .unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .args(["build", "fault.ms", "-o", "fault"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let run = |level: &str| {
+        let out = Command::new(dir.join("fault"))
+            .env("MS_CPU_LEVEL", level)
+            .output()
+            .unwrap();
+        (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        )
+    };
+    let (native, baseline) = (run("native"), run("baseline"));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_ne!(native.0, Some(0), "{}", native.1);
+    assert_eq!(native, baseline);
+    assert!(native.1.contains("fault.ms:3 in scale"), "{}", native.1);
+    assert!(native.1.contains("fault.ms:8 in main"), "{}", native.1);
+}

@@ -55,6 +55,51 @@ struct Def {
     header: String,
     /// The entry label, the stack slots, then the rest of the body.
     body: String,
+    /// The x86-64-v3 copy of a function with a loop over list elements: its header and body.
+    avx2: Option<(String, String)>,
+}
+
+/// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
+pub(crate) const AVX2_SUFFIX: &str = ".avx2";
+/// Symbol suffix of a dispatched function's baseline copy.
+pub(crate) const BASE_SUFFIX: &str = ".base";
+/// `msrt_cpu_level` at or above this runs the x86-64-v3 copies.
+const AVX2_LEVEL: u32 = 3;
+
+/// The dispatcher `define` header and body for a function whose definition `header` names
+/// `name`: it calls the AVX2 copy when the CPU supports it, else the baseline copy.
+fn dispatcher(name: &str, header: &str) -> (String, String) {
+    // `RET @"name"(PARAMS) #N !dbg !K {`: the dispatcher keeps the signature, drops the debug
+    // subprogram (each belongs to one function), and passes its parameters through.
+    let (ret, rest) = header
+        .split_once(" @\"")
+        .expect("header names the function");
+    let params = rest
+        .split_once('(')
+        .and_then(|(_, p)| p.rsplit_once(')'))
+        .map_or("", |(p, _)| p);
+    let args = params
+        .split(", ")
+        .filter(|p| !p.is_empty())
+        .map(|p| p.replace(" noalias", ""))
+        .collect::<Vec<_>>()
+        .join(", ");
+    // The return attribute (`zeroext i8`) belongs to the definition, not to the call or `ret`.
+    let (head_ret, ret) = (ret, ret.trim_start_matches("zeroext "));
+    let call = |target: &str, r: &str| {
+        if ret == "void" {
+            format!("  tail call void @\"{name}{target}\"({args})\n  ret void\n")
+        } else {
+            format!("  %{r} = tail call {ret} @\"{name}{target}\"({args})\n  ret {ret} %{r}\n")
+        }
+    };
+    let head = format!("{head_ret} @\"{name}\"({params}) #0 {{\n");
+    let body = format!(
+        "entry:\n  %l = call i64 @msrt_cpu_level()\n  %v3 = icmp sge i64 %l, {AVX2_LEVEL}\n  br i1 %v3, label %fast, label %base\nfast:\n{}base:\n{}}}\n\n",
+        call(AVX2_SUFFIX, "fast.r"),
+        call(BASE_SUFFIX, "base.r")
+    );
+    (head, body)
 }
 
 /// Line-table metadata under construction.
@@ -66,10 +111,11 @@ struct DebugInfo {
     cwd: String,
     /// Location node per `(file, line, scope)`.
     locs: HashMap<(usize, u32, u32, u32), usize>,
-    /// Subprogram per inlined-callee scope.
-    scope_sp: HashMap<u32, usize>,
-    /// `inlinedAt` location per inlined-callee scope.
-    scope_at: HashMap<u32, usize>,
+    /// Subprogram per (inlined-callee scope, function subprogram): a function translated twice
+    /// (its AVX2 copy) needs its own chain.
+    scope_sp: HashMap<(u32, usize), usize>,
+    /// `inlinedAt` location per (inlined-callee scope, function subprogram).
+    scope_at: HashMap<(u32, usize), usize>,
     /// File-switching scope per `(subprogram, file)`.
     lexical: HashMap<(usize, u32), usize>,
 }
@@ -86,7 +132,7 @@ impl DebugInfo {
 
     /// Subprogram for inlined scope `idx`, creating it and its enclosing chain.
     fn scope_sp(&mut self, syms: &dyn Symbols, idx: u32, fn_sp: usize) -> usize {
-        if let Some(&n) = self.scope_sp.get(&idx) {
+        if let Some(&n) = self.scope_sp.get(&(idx, fn_sp)) {
             return n;
         }
         let (name, file, ..) = syms.scope(idx).unwrap_or_default();
@@ -95,14 +141,13 @@ impl DebugInfo {
             "distinct !DISubprogram(name: \"{}\", scope: !{fnode}, file: !{fnode}, line: 1, type: !4, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)",
             name.replace(['"', '\\'], "'")
         ));
-        self.scope_sp.insert(idx, n);
-        let _ = fn_sp;
+        self.scope_sp.insert((idx, fn_sp), n);
         n
     }
 
     /// `inlinedAt` location for scope `idx` (the call site in its parent).
     fn scope_at(&mut self, syms: &dyn Symbols, idx: u32, fn_sp: usize) -> usize {
-        if let Some(&n) = self.scope_at.get(&idx) {
+        if let Some(&n) = self.scope_at.get(&(idx, fn_sp)) {
             return n;
         }
         let (_, _, parent, call_line) = syms.scope(idx).unwrap_or_default();
@@ -119,7 +164,7 @@ impl DebugInfo {
             None => format!("!DILocation(line: {call_line}, scope: !{scope})"),
         };
         let n = self.push(text);
-        self.scope_at.insert(idx, n);
+        self.scope_at.insert((idx, fn_sp), n);
         n
     }
 
@@ -368,9 +413,26 @@ struct Tr<'a> {
     /// `inttoptr base` plus a `getelementptr`, so LLVM's loop analyses see one pointer and an
     /// affine offset instead of an opaque integer-to-pointer cast of the whole sum.
     indexed: HashMap<Value, (Value, Value)>,
+    /// Layout position of each block, and of the block being translated.
+    order: HashMap<Block, usize>,
+    at: usize,
+    /// Per block position: it addresses list elements, and it calls something other than a fault
+    /// or a pure runtime helper (a loop that calls out cannot be vectorized).
+    elements: Vec<bool>,
+    calls: Vec<bool>,
+    /// `(from, to)` layout positions of the branches that go back to an earlier or the same block.
+    back_edges: Vec<(usize, usize)>,
 }
 
 impl<'a> Tr<'a> {
+    /// Whether some loop addresses list elements and calls nothing: the loops LLVM may vectorize.
+    /// A loop is the layout range from a branch target to the branch back to it.
+    fn has_element_loop(&self) -> bool {
+        self.back_edges.iter().any(|&(from, to)| {
+            self.elements[to..=from].iter().any(|&e| e) && !self.calls[to..=from].iter().any(|&c| c)
+        })
+    }
+
     fn t(&mut self) -> String {
         self.tmp += 1;
         format!("%t{}", self.tmp)
@@ -453,6 +515,7 @@ impl<'a> Tr<'a> {
         let p = if let Some((base, scaled)) = self.indexed.get(&v).copied() {
             let (b, s) = (self.op(base), self.op(scaled));
             let bp = self.def(format!("inttoptr i64 {b} to ptr"));
+            self.elements[self.at] = true;
             self.def(format!("getelementptr i8, ptr {bp}, i64 {s}"))
         } else {
             let o = self.op(v);
@@ -473,6 +536,9 @@ impl<'a> Tr<'a> {
     fn target(&mut self, bc: ir::BlockCall) -> String {
         let pool = &self.f.dfg.value_lists;
         let blk = bc.block(pool);
+        if let Some(&to) = self.order.get(&blk).filter(|&&to| to <= self.at) {
+            self.back_edges.push((self.at, to));
+        }
         let args: Vec<String> = bc
             .args(pool)
             .map(|a| self.op(a.as_value().expect("value block arg")))
@@ -673,6 +739,9 @@ impl<'a> Tr<'a> {
             }
             InstructionData::Call { args, func_ref, .. } => {
                 let name = self.callee(func_ref);
+                if !fault_function(&name) && pure_runtime_attrs(&name).is_none() {
+                    self.calls[self.at] = true;
+                }
                 if fault_function(&name) {
                     // Keeps fault sites distinct, so LLVM neither merges them (which drops the
                     // line of a fault in a trace) nor hoists them.
@@ -689,6 +758,7 @@ impl<'a> Tr<'a> {
             }
             InstructionData::CallIndirect { args, sig_ref, .. } => {
                 let vals: Vec<Value> = args.as_slice(&self.f.dfg.value_lists).to_vec();
+                self.calls[self.at] = true;
                 let callee = self.op(vals[0]);
                 let p = self.def(format!("inttoptr i64 {callee} to ptr"));
                 self.call(inst, sig_ref, &p, &vals[1..], &[]);
@@ -974,6 +1044,37 @@ impl LlvmModule {
         syms: &dyn Symbols,
         public: bool,
     ) {
+        // A function with a loop over list elements is also compiled for x86-64-v3 (AVX2, FMA),
+        // where LLVM vectorizes twice as wide; on x86-64 its symbol becomes a dispatcher that
+        // picks a copy by the running CPU (see `finish`).
+        let (header, body, vector) = self.translate(name, name, display, fn_loc, f, syms);
+        let avx2 = vector.then(|| {
+            let clone = format!("{name}{AVX2_SUFFIX}");
+            let (h, b, _) = self.translate(&clone, name, display, fn_loc, f, syms);
+            (h, b)
+        });
+        self.defined.push(name.to_string());
+        self.defs.push(Def {
+            name: name.to_string(),
+            public,
+            header,
+            body,
+            avx2,
+        });
+    }
+
+    /// The `define` header (after the linkage) and body of `f` under `name`, and whether it
+    /// has a loop over list elements; `source` is the symbol the function was declared as,
+    /// which keys its exclusive parameters.
+    fn translate(
+        &mut self,
+        name: &str,
+        source: &str,
+        display: &str,
+        fn_loc: (u32, u32),
+        f: &Function,
+        syms: &dyn Symbols,
+    ) -> (String, String, bool) {
         let blocks: Vec<Block> = f.layout.blocks().collect();
         let entry = blocks[0];
         // Debug info: a subprogram per function and one location node per (file, line, scope).
@@ -1002,6 +1103,11 @@ impl LlvmModule {
             sites: self.sites,
             bases: HashMap::new(),
             indexed: HashMap::new(),
+            order: blocks.iter().enumerate().map(|(i, b)| (*b, i)).collect(),
+            at: 0,
+            elements: vec![false; blocks.len()],
+            calls: vec![false; blocks.len()],
+            back_edges: Vec::new(),
         };
         // Entry parameters are the function parameters; other block parameters are phis.
         let mut params = Vec::new();
@@ -1009,7 +1115,7 @@ impl LlvmModule {
         // addresses them through the parameter itself so the `noalias` fact reaches each access.
         let mut casts = String::new();
         let all = tr.exclusive;
-        let exclusive = all.get(name).map(Vec::as_slice).unwrap_or(&[]);
+        let exclusive = all.get(source).map(Vec::as_slice).unwrap_or(&[]);
         for (i, p) in f.dfg.block_params(entry).iter().enumerate() {
             let t = f.dfg.value_type(*p);
             tr.ops.insert(*p, format!("%a{i}"));
@@ -1028,7 +1134,8 @@ impl LlvmModule {
         }
         // Translate each block's instructions; phis are added once every incoming edge is known.
         let mut bodies: Vec<(Block, String)> = Vec::with_capacity(blocks.len());
-        for b in &blocks {
+        for (at, b) in blocks.iter().enumerate() {
+            tr.at = at;
             tr.out.clear();
             tr.cur = tr.label(*b);
             for inst in f.layout.block_insts(*b) {
@@ -1098,13 +1205,7 @@ impl LlvmModule {
         body.push_str(&allocas);
         body.push_str(rest);
         body.push_str("}\n\n");
-        self.defined.push(name.to_string());
-        self.defs.push(Def {
-            name: name.to_string(),
-            public,
-            header,
-            body,
-        });
+        (header, body, tr.has_element_loop())
     }
 
     /// Glue functions at the top of a chain of glue calls three or more levels deep. They stay
@@ -1175,18 +1276,36 @@ impl LlvmModule {
             );
         }
         let deep = self.deep_glue();
+        let dispatch = triple.starts_with("x86_64");
+        let mut uses_level = false;
         for d in &self.defs {
-            let header = if deep.contains(&d.name) {
-                d.header.replacen(" #0 ", " #1 ", 1)
-            } else {
-                d.header.clone()
-            };
             let vis = if d.public {
                 ""
             } else if !anchored || pinned.contains(&d.name) {
                 "hidden "
             } else {
                 "internal "
+            };
+            if let (true, Some((header, body))) = (dispatch, &d.avx2) {
+                uses_level = true;
+                let (dh, db) = dispatcher(&d.name, &d.header);
+                let _ = write!(s, "define {vis}{dh}{db}");
+                let base = d.header.replacen(
+                    &format!("@\"{}\"(", d.name),
+                    &format!("@\"{}{BASE_SUFFIX}\"(", d.name),
+                    1,
+                );
+                let _ = write!(s, "define internal {base}{}", d.body);
+                let fast = header
+                    .replacen(" #0 ", " #3 ", 1)
+                    .replacen(" #2 ", " #3 ", 1);
+                let _ = write!(s, "define internal {fast}{body}");
+                continue;
+            }
+            let header = if deep.contains(&d.name) {
+                d.header.replacen(" #0 ", " #1 ", 1)
+            } else {
+                d.header.clone()
             };
             let _ = write!(s, "define {vis}{header}{}", d.body);
         }
@@ -1231,6 +1350,10 @@ impl LlvmModule {
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
         s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
+        s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
+        if uses_level {
+            s.push_str("declare i64 @msrt_cpu_level() nounwind willreturn memory(none)\n");
+        }
         // Debug metadata: line tables only (no variables, types or inline frames).
         let esc = |t: &str| t.replace('\\', "\\5C").replace('"', "\\22");
         let first_file = self.di.files.iter().position(Option::is_some).unwrap_or(0);
@@ -1288,6 +1411,7 @@ mod tests {
                 name,
                 public: false,
                 body,
+                avx2: None,
             });
         }
         module
@@ -1523,6 +1647,33 @@ mod tests {
         assert!(text.contains("= inttoptr i64 %a0 to ptr"), "{text}");
         assert!(text.contains("getelementptr i8, ptr %t"), "{text}");
         assert!(!text.contains("inttoptr i64 %t"), "{text}");
+    }
+
+    #[test]
+    fn a_dispatcher_passes_its_parameters_to_the_copy_for_the_cpu() {
+        let (head, body) = dispatcher(
+            "k",
+            "zeroext i8 @\"k\"(i64 %a0, ptr noalias %x1, i8 zeroext %a2) #0 !dbg !5 {\n",
+        );
+        assert_eq!(
+            head,
+            "zeroext i8 @\"k\"(i64 %a0, ptr noalias %x1, i8 zeroext %a2) #0 {\n"
+        );
+        assert!(body.contains("call i64 @msrt_cpu_level()"), "{body}");
+        let args = "(i64 %a0, ptr %x1, i8 zeroext %a2)";
+        assert!(
+            body.contains(&format!("tail call i8 @\"k.avx2\"{args}")),
+            "{body}"
+        );
+        assert!(
+            body.contains(&format!("tail call i8 @\"k.base\"{args}")),
+            "{body}"
+        );
+        let (_, void) = dispatcher("u", "void @\"u\"() #0 !dbg !6 {\n");
+        assert!(
+            void.contains("tail call void @\"u.avx2\"()\n  ret void"),
+            "{void}"
+        );
     }
 
     #[test]

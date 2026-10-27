@@ -1032,13 +1032,17 @@ fn define_with(
             exported,
         );
         // Glue is listed too: a cleanup thunk can hold an inlined callee that a trace must name.
-        g.llvm_funcs.push(LlvmFn {
-            id,
-            symbol: sym.clone(),
-            name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
-            file: source.map_or(u32::MAX, |f| f.loc.file),
-            line: source.map_or(0, |f| f.loc.line),
-        });
+        // A function with a vectorizable loop may also have per-CPU copies (`llvm_ir`); each is
+        // listed under the same name, and the tables keep the entries whose symbols exist.
+        for suffix in ["", crate::llvm_ir::AVX2_SUFFIX, crate::llvm_ir::BASE_SUFFIX] {
+            g.llvm_funcs.push(LlvmFn {
+                id,
+                symbol: format!("{sym}{suffix}"),
+                name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
+                file: source.map_or(u32::MAX, |f| f.loc.file),
+                line: source.map_or(0, |f| f.loc.line),
+            });
+        }
         g.llvm = Some(llvm);
         g.module.clear_context(ctx);
         return Ok(());
