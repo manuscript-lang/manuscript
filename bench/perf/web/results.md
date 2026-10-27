@@ -166,8 +166,8 @@ Worker threads on tiny bodies (#1539): with free cores, two threads match or bea
 | `/user/42` req/s | 107k–108k | 115k–116k |
 | `/top?n=10` req/s | 53k–54k | 53k–56k |
 | `/health` p99 | 2.2 ms | 1.9–2.7 ms |
-| Resident memory after load | 57 MB | 4 MB |
+| Resident memory after `/health` load (separate run) | 10 MB | 4 MB |
 | Resident memory, 10,000 idle connections | 62 MB | 104 MB |
 | `/health` req/s beside 10,000 idle connections | 105k | 111k |
 
-Throughput and tail latency are at parity with hyper; the gap is resident memory after load. The suite's Manuscript server also failed to compile on main (a discarded `Result` in the worker handshake) until this change.
+Throughput and tail latency are at parity with hyper. `run.sh` prints resident memory after the `/io` rows, which hyper does not serve, so the printed 57 MB against 4 MB is not a comparison: the `/io` payloads and pool threads account for the difference (10 MB after `/health` load alone). The suite's Manuscript server also failed to compile on main (a discarded `Result` in the worker handshake) until this change.
