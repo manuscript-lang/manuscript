@@ -8,6 +8,10 @@ use ms_lsp::json::{self, Json, obj};
 use ms_rt as _;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Distinguishes workspaces made in one process, as tests run on parallel threads.
+static NEXT_WORKSPACE: AtomicUsize = AtomicUsize::new(0);
 
 /// A copy of the fixture tree in a fresh temporary directory.
 pub struct Workspace {
@@ -16,7 +20,9 @@ pub struct Workspace {
 
 impl Workspace {
     pub fn new(name: &str) -> Workspace {
-        let root = std::env::temp_dir().join(format!("ms-lsp-{name}-{}", std::process::id()));
+        let serial = NEXT_WORKSPACE.fetch_add(1, Ordering::Relaxed);
+        let root =
+            std::env::temp_dir().join(format!("ms-lsp-{name}-{}-{serial}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         copy(
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures"),
@@ -235,6 +241,27 @@ pub fn canonical(value: &Json) -> String {
 /// directory masked. Messages over 4 KiB are standard-library listings (global
 /// completion); they change whenever the standard library does, so only their
 /// presence is recorded.
+/// Replaces the `-{pid}-{serial}/` that ends a workspace directory name with `-PID/`.
+fn mask_workspace_ids(text: &str) -> String {
+    let marker = format!("-{}-", std::process::id());
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(&marker) {
+        let after = &rest[at + marker.len()..];
+        let digits = after.bytes().take_while(u8::is_ascii_digit).count();
+        out.push_str(&rest[..at]);
+        if digits > 0 && after[digits..].starts_with('/') {
+            out.push_str("-PID");
+            rest = &after[digits..];
+        } else {
+            out.push_str(&marker);
+            rest = after;
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
 fn snapshot_line(message: &Json) -> String {
     // Snapshots hold the URI spelling: forward slashes and a leading slash before a drive letter.
     let mut temp = std::env::temp_dir()
@@ -245,10 +272,7 @@ fn snapshot_line(message: &Json) -> String {
     if !temp.starts_with('/') {
         temp.insert(0, '/');
     }
-    let pid = format!("-{}/", std::process::id());
-    let mut text = canonical(message)
-        .replace(&pid, "-PID/")
-        .replace(&temp, "$TMP");
+    let mut text = mask_workspace_ids(&canonical(message)).replace(&temp, "$TMP");
     // Messages spell the directory as a path (`D:/...`), URIs with the leading slash.
     if cfg!(windows) {
         text = text.replace(&temp[1..], "$TMP");
