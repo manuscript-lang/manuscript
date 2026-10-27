@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, 2026-10-27, checked against `origin/main` at `d7a0d5ce`-era sources (after #1731). Direction quoted: "list should get close as it's owning, fields should too ideally, how is it handled in rust and cpp". A skeptical review of the earlier draft found the temporary rule unshippable and the evidence thin; this draft applies its required changes. Nothing implemented.
+Proposal, 2026-10-27, checked against `origin/main` at `c69a68ed` (after #1731). Direction quoted: "list should get close as it's owning, fields should too ideally, how is it handled in rust and cpp". A skeptical review of the earlier draft found the temporary rule unshippable and the evidence thin; this draft applies its required changes. Nothing implemented.
 
 ## Problem
 
