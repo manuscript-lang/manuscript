@@ -74,7 +74,7 @@ The reference solutions of the small agent challenges (CSV grouping, a calculato
 | c36-bank-ledger | 97 | 109 | 63 | 0.89x | 1.54x |
 | c44-unified-diff | 3 | 65 | 15 | 0.05x | 0.20x |
 
-This run was faster than Go on 8 of 10 and within 3% on the ciphers; CSV grouping took longer. Six cases matched or beat Rust. The four slower cases were string-heavy; see the result page for that revision's analysis.
+This run was faster than Go on 8 of 10; CSV grouping and ciphers took longer. Six cases were within 1% of or faster than Rust. The four slower cases were string-heavy; see the result page for that revision's analysis.
 
 ### JSON against Node (V8)
 
