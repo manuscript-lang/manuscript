@@ -230,6 +230,15 @@ pub fn response_framing(head: &ResponseHead, method: &str) -> Result<Framing, &'
         return Ok(Framing::None);
     }
     if has_token(&head.fields, "Transfer-Encoding", "chunked") {
+        // Another coding would hand the caller still-encoded bytes as the body.
+        let coded = field(&head.fields, "Transfer-Encoding").any(|v| {
+            v.split(|&c| c == b',').map(trim).any(|t| {
+                !t.eq_ignore_ascii_case(b"chunked") && !t.eq_ignore_ascii_case(b"identity")
+            })
+        });
+        if coded {
+            return Err("unsupported Transfer-Encoding");
+        }
         return Ok(Framing::Chunked);
     }
     if field(&head.fields, "Transfer-Encoding").next().is_some() {
@@ -773,6 +782,11 @@ mod tests {
         assert_eq!(response_framing(&h, "Head"), Ok(Framing::Length(3)));
         let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::Chunked));
+        let h = parse("HTTP/1.1 200 OK\r\nTransfer-Encoding: gzip, chunked\r\n\r\n");
+        assert_eq!(
+            response_framing(&h, "GET"),
+            Err("unsupported Transfer-Encoding")
+        );
         let h = parse("HTTP/1.1 204 No Content\r\n\r\n");
         assert_eq!(response_framing(&h, "GET"), Ok(Framing::None));
         let h = parse("HTTP/1.1 200 OK\r\n\r\n");
