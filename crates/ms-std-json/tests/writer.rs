@@ -154,3 +154,38 @@ fn floats_match_the_shortest_round_trip_text() {
         assert_eq!(digits(&got), digits(&format!("{v:e}")), "{v:e} -> {got}");
     }
 }
+
+#[test]
+fn integers_cover_every_digit_count() {
+    let values = [
+        0,
+        5,
+        9,
+        10,
+        11,
+        99,
+        100,
+        101,
+        999,
+        1000,
+        12345,
+        99_999,
+        100_000,
+        -1,
+        -10,
+        -100,
+        -123_456,
+        i64::MAX,
+        i64::MIN,
+        1_000_000_007,
+    ];
+    let mut w = Writer::new(None, None);
+    w.begin_array();
+    for v in values {
+        w.item();
+        w.int(v);
+    }
+    w.end_array();
+    let want: Vec<String> = values.iter().map(i64::to_string).collect();
+    assert_eq!(w.finish().unwrap(), format!("[{}]", want.join(",")));
+}

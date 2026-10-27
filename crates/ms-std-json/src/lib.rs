@@ -1092,6 +1092,18 @@ struct Level {
     undo_count: u32,
 }
 
+/// "00" to "99": two digits per step when writing integers.
+static PAIRS: [u8; 200] = {
+    let mut t = [0u8; 200];
+    let mut i = 0;
+    while i < 100 {
+        t[i * 2] = b'0' + (i / 10) as u8;
+        t[i * 2 + 1] = b'0' + (i % 10) as u8;
+        i += 1;
+    }
+    t
+};
+
 /// Strings under this many bytes are scanned a byte at a time.
 const SHORT_STRING: usize = 24;
 
@@ -1143,7 +1155,7 @@ impl Writer {
         }
         .min(INDENT_CEILING);
         Writer {
-            buf: Vec::new(),
+            buf: Vec::with_capacity(256.min(max)),
             max,
             width,
             err,
@@ -1284,19 +1296,26 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        if v < 0 {
+            self.buf.push(b'-');
+        }
         let mut digits = [0u8; 20];
         let mut at = digits.len();
         let mut n = v.unsigned_abs();
-        loop {
-            at -= 1;
-            digits[at] = b'0' + (n % 10) as u8;
-            n /= 10;
-            if n == 0 {
-                break;
-            }
+        while n >= 100 {
+            let pair = (n % 100) as usize * 2;
+            n /= 100;
+            at -= 2;
+            digits[at] = PAIRS[pair];
+            digits[at + 1] = PAIRS[pair + 1];
         }
-        if v < 0 {
-            self.buf.push(b'-');
+        if n >= 10 {
+            at -= 2;
+            digits[at] = PAIRS[n as usize * 2];
+            digits[at + 1] = PAIRS[n as usize * 2 + 1];
+        } else {
+            at -= 1;
+            digits[at] = b'0' + n as u8;
         }
         push_short(&mut self.buf, &digits[at..]);
         self.check();
@@ -1537,7 +1556,7 @@ fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
         out.push(digits[0]);
         if n > 1 {
             out.push(b'.');
-            out.extend_from_slice(&digits[1..]);
+            push_short(out, &digits[1..]);
         }
         out.push(b'e');
         out.push(if exp < 0 { b'-' } else { b'+' });
@@ -1556,16 +1575,16 @@ fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
     }
     let point = exp + 1; // digits before the decimal point
     if point <= 0 {
-        out.extend_from_slice(b"0.");
+        push_short(out, b"0.");
         out.resize(out.len() + (-point) as usize, b'0');
-        out.extend_from_slice(digits);
+        push_short(out, digits);
     } else if n as i32 <= point {
-        out.extend_from_slice(digits);
+        push_short(out, digits);
         out.resize(out.len() + (point - n as i32) as usize, b'0');
     } else {
-        out.extend_from_slice(&digits[..point as usize]);
+        push_short(out, &digits[..point as usize]);
         out.push(b'.');
-        out.extend_from_slice(&digits[point as usize..]);
+        push_short(out, &digits[point as usize..]);
     }
     Some(())
 }
