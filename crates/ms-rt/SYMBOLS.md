@@ -368,6 +368,7 @@ msrt_crypto_aes_ctr(key: *const VecVal, iv: *const VecVal, data: *const VecVal, 
 msrt_crypto_aes_cbc_encrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msrt_crypto_aes_cbc_decrypt(key: *const VecVal, iv: *const VecVal, data: *const VecVal, out: *mut VecVal) -> u8
 msstd_decimal_literal(text: *const StrVal, out: *mut Dec)
+msstd_decimal_parse(text: *const StrVal, out: *mut Dec) -> u8
 msstd_decimal_from_int(n: i64, out: *mut Dec)
 msstd_decimal_divide(a: *const Dec, b: *const Dec, out: *mut Dec)
 msstd_decimal_negate(a: *const Dec, out: *mut Dec)
@@ -477,6 +478,7 @@ msrt_json_key(d: *const DocObj, id: u32, i: i64, out: *mut StrVal)
 msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, ) -> *mut WriterObj
 msrt_json_w_item(w: *mut WriterObj)
 msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
+msrt_json_w_key_quoted(w: *mut WriterObj, quoted_name: *const StrVal)
 msrt_json_w_undo(w: *mut WriterObj)
 msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)

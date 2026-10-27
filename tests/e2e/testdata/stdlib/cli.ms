@@ -157,6 +157,21 @@ test "help is generated for groups, leaves and the help word":
     let flag = (run(["serve", "--help"]) | try expect_ok)
     flag.path[0] | try expect_contains("Run the server")
 
+test "float flags reject NaN and infinities":
+    let ratio = Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
+    for text in ["NaN", "Infinity", "-Infinity"]:
+        (ratio.parse(["--ratio", text.clone()]) | try expect_error).message() | try expect_equal(
+            f"cli: flag ratio: {text} is not a number"
+        )
+
+    let _ = try expect_ok(ratio.parse(["--ratio", "1e5"]))
+    let bad_default = Command(
+        name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")]
+    )
+    (bad_default.parse([]) | try expect_error).message() | try expect_contains(
+        "default NaN does not fit"
+    )
+
 test "schema mistakes are reported before parsing":
     let duplicate = Command(
         name: "x",

@@ -150,6 +150,10 @@ native! {
         w.0.key(key);
     }
 
+    fn msrt_json_w_key_quoted(w: ObjMut<Writer>, quoted_name: &str) -> () {
+        w.0.key_quoted(quoted_name);
+    }
+
     fn msrt_json_w_undo(w: ObjMut<Writer>) -> () {
         w.0.undo();
     }

@@ -201,8 +201,10 @@ export def parse[T = JsonValue](
 #             case Deleted(id): return tagged("deleted", id)
 #
 # def tagged(kind: String, id: Int) -> JsonValue:
-#     let fields = Map[String, JsonValue]().add("type", JsonValue.StringValue(kind))
-#     return JsonValue.ObjectValue(fields.add("id", JsonValue.NumberValue(f"{id}")))
+#     var fields = Map[String, JsonValue]()
+#     fields.add("type", JsonValue.StringValue(kind))
+#     fields.add("id", JsonValue.NumberValue(f"{id}"))
+#     return JsonValue.ObjectValue(fields)
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.

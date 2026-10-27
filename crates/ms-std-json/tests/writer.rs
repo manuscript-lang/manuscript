@@ -85,3 +85,32 @@ fn nesting_past_the_ceiling_fails() {
     }
     assert!(matches!(w.finish(), Err(Fail::InvalidData)));
 }
+
+#[test]
+fn escapes_agree_for_short_and_long_strings() {
+    let unit = "a\"b\\c\u{8}\u{c}\n\r\t\u{1f}é";
+    let want = "a\\\"b\\\\c\\b\\f\\n\\r\\t\\u001fé";
+    for reps in [1, 2, 8] {
+        let mut w = Writer::new(None, None);
+        w.string(&unit.repeat(reps));
+        assert_eq!(w.finish().unwrap(), format!("\"{}\"", want.repeat(reps)));
+    }
+}
+
+#[test]
+fn quoted_keys_and_whole_floats() {
+    let mut w = Writer::new(None, Some(1));
+    w.begin_object();
+    w.key_quoted("\"k\\n\"");
+    w.begin_array();
+    for v in [3.0, -0.0, -7.0, 1e14, 1e15, 1.5, 0.0] {
+        w.item();
+        w.float(v);
+    }
+    w.end_array();
+    w.end_object();
+    assert_eq!(
+        w.finish().unwrap(),
+        "{\n \"k\\n\": [\n  3,\n  -0,\n  -7,\n  100000000000000,\n  1000000000000000,\n  1.5,\n  0\n ]\n}"
+    );
+}

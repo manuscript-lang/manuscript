@@ -179,7 +179,7 @@ impl FnLower<'_> {
     }
 
     /// The function the cleanup stack calls with the registered value.
-    fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
+    pub(crate) fn close_thunk(&mut self, kind: &CloseKind, ty: MTy, in_slot: bool) -> FuncId {
         let key = match kind {
             CloseKind::Iface(i, k) => format!("close:iface{}:{k}:{in_slot}", i.0),
             CloseKind::Func { fid, writes_back } => {
