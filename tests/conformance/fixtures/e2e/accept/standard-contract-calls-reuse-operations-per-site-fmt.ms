@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interfaces,interpolation,modules,mutation,parser,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 from "@std/io.ms" import stdout
 from "@std/time.ms" import clock
 

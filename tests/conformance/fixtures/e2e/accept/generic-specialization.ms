@@ -1,7 +1,7 @@
 # conform: tags=control-flow,generics,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/collections.ms" import range
 
 def ident[T](x: T) -> T:

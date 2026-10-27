@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/math.ms" import from_int

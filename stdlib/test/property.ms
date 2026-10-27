@@ -4,7 +4,7 @@ from "@std/io.ms" import stderr
 from "@std/math.ms" import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int
 from "@std/process.ms" import control
 from "@std/random.ms" import entropy, secure_int
-from "@std/testing.ms" import expect_fault, fail
+from "@std/test.ms" import expect_fault, fail
 from "@std/time.ms" import clock, milliseconds
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
@@ -298,8 +298,9 @@ def run_case[T](
     if source.invalid:
         return Outcome(source, none)
 
-    # The property runs in a forked child so a fault becomes a failing case that shrinks like an error.
-    # The child faults with `property_failed` when the property returns an error; that message is then read in full by rerunning.
+    # The property runs under `expect_fault` so a fault becomes a failing case that shrinks like an error.
+    # It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
+    # on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     let faulted = expect_fault(lambda: run_property(property, value))
     if faulted.is_error():
         return Outcome(source, none)
@@ -308,7 +309,9 @@ def run_case[T](
     if message != property_failed:
         return Outcome(source, some(f"fault: {message}"))
 
-    let outcome = property(value)
+    let replayed = Source(source.choices.take(source.pos), 0, 0, False, False)
+    let {value: again} = gen.make(replayed)
+    let outcome = property(again)
     return Outcome(source, some(outcome.err().message()))
 
 let property_failed = "property returned an error"
@@ -399,7 +402,7 @@ def shrink[T](
 
 # Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
 # Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
-# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs in a forked child.
+# A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
 export def check[T](
     name: String,
     gen: Gen[T],

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def scaled(base: Int, factor: Int = 2, label: String = "x") -> String: f"{label}{base * factor}"
 

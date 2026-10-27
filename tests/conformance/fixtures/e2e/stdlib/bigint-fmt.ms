@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,modules,optional,parser,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/bigint.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/math.ms" import parse, from_int, BigInt, BigIntError
 
 test "big integers exceed machine range without losing precision":

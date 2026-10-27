@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 from "@std/core.ms" import TextError
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def halve(n: Int) -> Optional[Int]:
     if n % 2 != 0:

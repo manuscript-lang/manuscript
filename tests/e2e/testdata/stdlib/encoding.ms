@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 from "@std/encoding.ms" import (
     base64_encode,
     base64_decode,

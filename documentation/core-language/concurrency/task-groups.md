@@ -10,7 +10,7 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `w
 <!-- manuscript-example: test -->
 ```manuscript
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square(n: Int) -> Int:
     return n * n
@@ -43,7 +43,7 @@ A task has no time limit unless you give one. `spawn(entry, timeout: some(nanose
 ```manuscript
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_error
+from "@std/test.ms" import expect_equal, expect_error
 from "@std/time.ms" import nanoseconds, sleep
 
 def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
@@ -72,7 +72,7 @@ Values reach a task by being captured or sent on its channel, and come back as m
 ```manuscript
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 
 def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     var c = ch

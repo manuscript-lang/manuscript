@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/testing.ms"
+import {expect_equal} from "@std/test.ms"
 import ListBuilder from "@std/collections.ms"
 import MapBuilder from "@std/collections.ms"
 import SetBuilder from "@std/collections.ms"

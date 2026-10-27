@@ -1,7 +1,7 @@
 # conform: tags=formatter,interpolation,match,modules,parser,stdlib-path,stdlib-testing,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/path.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/fs.ms" import posix, win32, PathError, dirname, basename_without
 
 test "POSIX paths normalize resolve parse and match without host access":

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interpolation,maps,match,modules,mutation,optional,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 def lookup(m: Map[String, Int], key: String) -> Int:
     match m.get(key: key):

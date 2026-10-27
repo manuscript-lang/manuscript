@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_contains, expect_equal, expect_fault, expect_true
+from "@std/test.ms" import expect_contains, expect_equal, expect_fault, expect_true
 from "@std/string.ms" import StringBuilder
 
 def add(a: Int, b: Int) -> Int: return a + b

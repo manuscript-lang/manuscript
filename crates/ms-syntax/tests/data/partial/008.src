@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/testing.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 import {ReadStream, WriteStream, IoError, read_all, read_line, copy} from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 import MemoryStream from "./support/streams.ms"

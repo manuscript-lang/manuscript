@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 from "@std/process.ms" import arguments, control
 from "@std/io.ms" import stdin, stdout, stderr
 from "@std/time.ms" import clock, wall_clock

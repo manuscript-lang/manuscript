@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-bits,stdlib-math,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/bits.ms
-from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/test.ms" import expect_equal, expect_fault
 from "@std/math.ms" import (
     bit_and,
     bit_or,

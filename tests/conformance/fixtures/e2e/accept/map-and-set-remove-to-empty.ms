@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interpolation,maps,modules,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/map-and-set-remove-to-empty.ms
-from "@std/testing.ms" import expect_equal, fail
+from "@std/test.ms" import expect_equal, fail
 
 test "maps and sets keep distinct keys after removal to empty":
     var m = Map[String, Int]()

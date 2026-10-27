@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/testing-fixture.ms
-from "@std/testing.ms" import TestHooks, expect_equal
+from "@std/test.ms" import TestHooks, expect_equal
 
 type Counter:
     value: Int

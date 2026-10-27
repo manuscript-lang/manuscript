@@ -2,7 +2,7 @@
 # conform: phase=test
 from "@std/test/property.ms" import check, ints, bools, lists, strings, optionals, pairs, floats, element_of, one_of, constant
 from "@std/core.ms" import panic
-from "@std/testing.ms" import expect_equal, expect_true, expect_contains, expect_error
+from "@std/test.ms" import expect_equal, expect_true, expect_contains, expect_error
 
 test "a true property passes":
     try check(

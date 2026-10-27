@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def first_copy[T: Clonable](xs: List[T]) -> Optional[T]:
     return some(xs[0].clone())
