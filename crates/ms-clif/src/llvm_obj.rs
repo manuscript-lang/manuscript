@@ -96,6 +96,9 @@ pub fn compile(ir: &str, level: &str) -> Result<LlvmObject, Error> {
         input = linked;
     }
     let mut opt = tool("opt");
+    if !crate::vectorize() {
+        opt.args(["-vectorize-loops=false", "-vectorize-slp=false"]);
+    }
     opt.arg(format!("-passes={pipeline}"))
         .arg(&input)
         .arg("-o")
