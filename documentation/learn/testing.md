@@ -163,3 +163,39 @@ test "starts fresh":
 - One instance per file, created only when the file has selected tests and shared across repetitions.
 - Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
+
+## Run tests only on some platforms
+
+There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
+
+To skip a single test, call `skip` in its body:
+
+```manuscript
+from "@std/test.ms" import skip
+from "@std/process.ms" import os_type
+
+test "unix permission bits":
+    if os_type() == "Windows_NT":
+        skip("Unix only")
+    # Unix-only assertions follow.
+```
+
+To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
+
+```manuscript
+from "@std/test.ms" import TestHooks, skip
+from "@std/process.ms" import os_type
+
+type WindowsOnly:
+    ok: Bool
+
+def make_fixture() -> WindowsOnly:
+    return WindowsOnly(os_type() == "Windows_NT")
+
+impl TestHooks for WindowsOnly:
+    var def before_all() -> Unit:
+        if not self.ok:
+            skip("Windows only")
+```
+
+Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.
