@@ -290,6 +290,25 @@ pub fn commit(_p: *mut u8, _len: usize) -> bool {
     true
 }
 
+/// Gives the pages of `len` bytes at `p` (inside a [`map_anon`] mapping) back to the system.
+/// They read as zero when next touched, and need no [`commit`] again on Unix.
+///
+/// # Safety
+/// The range lies inside a live mapping and holds nothing in use.
+pub unsafe fn release(p: *mut u8, len: usize) {
+    unsafe extern "C" {
+        fn madvise(addr: *mut c_void, len: size_t, advice: c_int) -> c_int;
+    }
+    #[cfg(target_os = "macos")]
+    const MADV_DONTNEED: c_int = 5; // MADV_FREE: macOS leaves MADV_DONTNEED a no-op
+    #[cfg(not(target_os = "macos"))]
+    const MADV_DONTNEED: c_int = 4;
+    if !cfg!(miri) {
+        // SAFETY: forwarded; the caller guarantees the range.
+        unsafe { madvise(p.cast(), len, MADV_DONTNEED) };
+    }
+}
+
 /// Makes `len` bytes at `p` inaccessible (a stack guard).
 ///
 /// # Safety

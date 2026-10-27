@@ -1,5 +1,3 @@
-from "@std/collections.ms" import range
-
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
 # Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
@@ -33,7 +31,7 @@ impl Deque[T]:
             self.slots = tail.concat(head)
             self.start = 0
 
-        for slot in range(capacity, next):
+        for slot in capacity..next:
             self.slots.append(none)
 
     # Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
@@ -49,7 +47,7 @@ impl Deque[T]:
     var def push_back(value: T) -> Unit:
         if self.size == self.slots.length():
             self.grow()
-        self.slots.set(self.slot_of(self.size), some(value))
+        self.slots.set(self.slot_of(self.size), value)
         self.size += 1
 
     # Adds a value before the first one.
@@ -59,7 +57,7 @@ impl Deque[T]:
         if self.start == 0:
             self.start = self.slots.length()
         self.start -= 1
-        self.slots.set(self.start, some(value))
+        self.slots.set(self.start, value)
         self.size += 1
 
     # Removes and returns the first value, or `none` when empty.
@@ -117,7 +115,7 @@ impl Deque[T]:
     # Returns a new list of the values from front to back.
     def to_list() -> List[T]:
         var out: List[T] = []
-        for index in range(0, self.size):
+        for index in 0..self.size:
             if let value = self.slots.get(self.slot_of(index)):
                 out.append(value.clone())
         return out

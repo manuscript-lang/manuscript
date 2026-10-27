@@ -148,6 +148,8 @@ pub struct CallableOwnership {
     /// Assignments that store over a binding: the old value is dropped unless
     /// an earlier `Access::Move` of it cleared the binding's drop flag.
     pub drops_old: HashSet<NodeId>,
+    /// Resource bindings that nothing takes: lowering closes them when their scope ends.
+    pub implicit_closes: HashSet<usize>,
     /// Parameter modes in declaration order.
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
@@ -169,11 +171,19 @@ pub struct Ownership {
     /// Bindings that borrow a place another binding owns, by identity. A binding of a
     /// temporary owns its value and is absent.
     pub borrows: HashMap<usize, BorrowKind>,
+    /// Resource bindings closed implicitly when their scope ends.
+    pub closes: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
     /// `ref` functions that can hand back a borrow on every path, by module file and node.
     pub lenders: HashSet<Key>,
+    /// Captures a non-escaping lambda only reads in place, by module file, lambda node and
+    /// binding identity: the closure may point at the variable instead of copying it.
+    pub borrowed_captures: HashSet<(Name, NodeId, usize)>,
+    /// For each callable with a `Consume` parameter or receiver, which parameters (declaration
+    /// order, the receiver first for a method) the body moves, stores or returns.
+    pub consumes: HashMap<Key, Vec<bool>>,
 }
 
 impl Ownership {
@@ -378,9 +388,19 @@ impl Hir<'_> {
         let mut facts = HashMap::new();
         let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut borrows = HashMap::new();
+        let mut closes = HashSet::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
+        let mut borrowed_captures = HashSet::new();
+        let mut consumes = HashMap::new();
         for (c, out) in callables.iter().zip(outcomes) {
+            for (node, lambda) in &out.facts.lambdas {
+                for (uid, mode) in &lambda.captures {
+                    if !lambda.escaping && *mode == CaptureMode::Borrow {
+                        borrowed_captures.insert((c.module.file, *node, *uid));
+                    }
+                }
+            }
             for f in out.facts.bindings.values() {
                 let kind = if f.exclusive {
                     BorrowKind::Exclusive
@@ -391,8 +411,19 @@ impl Hir<'_> {
                 };
                 borrows.insert(f.binding.uid, kind);
             }
+            closes.extend(out.facts.implicit_closes.iter().copied());
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
+            }
+            let modes: Vec<bool> = out
+                .facts
+                .receiver
+                .iter()
+                .chain(&out.facts.parameters)
+                .map(|m| *m == ParamMode::Consume)
+                .collect();
+            if modes.contains(&true) {
+                consumes.insert((c.module.file, c.id()), modes);
             }
             for (node, fields) in out.getters {
                 getters.insert((c.module.file, node), fields);
@@ -404,8 +435,11 @@ impl Hir<'_> {
             facts,
             diagnostics,
             borrows,
+            closes,
             getters,
             lenders,
+            borrowed_captures,
+            consumes,
         }
     }
 }

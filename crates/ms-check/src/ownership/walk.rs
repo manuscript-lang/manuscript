@@ -236,7 +236,7 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos)>,
+    resources: Vec<(usize, Name, Pos, bool)>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -333,18 +333,25 @@ impl Walker<'_> {
         }
     }
 
-    /// Reports an owned resource that no `with` closes and nothing takes: a binding that is
-    /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
+    /// Closes at scope end an owned resource nothing takes (a binding never moved: returned,
+    /// passed on, stored, captured), or reports one with no close operation; it is
+    /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos) in resources {
-            let handled = self.closed.contains(&uid)
-                || self
-                    .facts
-                    .uses
-                    .values()
-                    .any(|u| u.binding == uid && u.access == Access::Move);
-            if !handled {
+        for (uid, name, pos, closable) in resources {
+            let moved = self
+                .facts
+                .uses
+                .values()
+                .any(|u| u.binding == uid && u.access == Access::Move);
+            if moved {
+                continue;
+            }
+            if closable {
+                // Never handed on: the scope closes it, after any early `.close()` of its own
+                // (close is idempotent).
+                self.facts.implicit_closes.insert(uid);
+            } else if !self.closed.contains(&uid) {
                 self.error(
                     pos,
                     format!(
@@ -1283,7 +1290,8 @@ impl Walker<'_> {
             false,
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
-            self.resources.push((b.uid, b.name, pattern.pos));
+            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
     }
 
@@ -1968,11 +1976,18 @@ impl Walker<'_> {
         let name = b.name;
         let var_param = parameter.is_some() && perm == Perm::Mutable;
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
-            self.error_fix_opt(
-                e.pos,
-                format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{COPY}()` instead"),
-                copy_after(e),
-            );
+            if b.ty.kind == Kind::Function {
+                self.error(
+                    e.pos,
+                    format!("this closure would move the function `{name}` out of the variable it captured, but a closure can run more than once; functions cannot be copied, so call `{name}` here or take it as a parameter of the closure"),
+                );
+            } else {
+                self.error_fix_opt(
+                    e.pos,
+                    format!("this closure would move `{name}` out of the variable it captured, but a closure can run more than once; return `{name}.{COPY}()` instead"),
+                    copy_after(e),
+                );
+            }
             self.record(e.id, b, Access::Move);
             return;
         }
@@ -2146,7 +2161,7 @@ impl Walker<'_> {
         for (i, a) in args.iter().enumerate() {
             let mode = modes.arguments.get(i).copied().unwrap_or(ParamMode::Borrow);
             let mut held = self.held(&a.value, mode);
-            held.extend(self.argument(a, mode, &modes));
+            held.extend(self.argument(a, mode, &modes, i));
             operands.push((Operand::Argument(&a.value), held));
         }
         // An operand that already failed its own check is not reported twice.
@@ -2255,15 +2270,37 @@ impl Walker<'_> {
     }
 
     /// Evaluates an argument; returns what a closure argument holds.
-    fn argument(&mut self, a: &Argument, mode: ParamMode, modes: &CallModes) -> Vec<(Place, bool)> {
+    fn argument(
+        &mut self,
+        a: &Argument,
+        mode: ParamMode,
+        modes: &CallModes,
+        index: usize,
+    ) -> Vec<(Place, bool)> {
+        // A native keeps this argument or hands it back in its result.
+        let retained = modes.retained.get(index).copied().unwrap_or(false);
         match mode {
             ParamMode::Borrow => {
                 if let ExprKind::Lambda(l) = &a.value.kind {
                     // Callbacks the callee runs and drops do not escape.
-                    let escaping = !modes.callbacks_borrowed || self.escaped.contains(&a.value.id);
+                    let escaping =
+                        !modes.callbacks_borrowed || retained || self.escaped.contains(&a.value.id);
                     return self.lambda(&a.value, l, escaping);
                 }
                 self.expr(&a.value, Demand::Read);
+                if retained
+                    && self.cx.m.ty(&a.value).kind == Kind::Function
+                    && let Resolution::Local(b) = self.cx.m.resolution(&a.value)
+                {
+                    // A function held by name is copied, so it stays usable here, but what the
+                    // callee keeps must outlive this statement: its lambda and parameter escape.
+                    if self.meta[&b.uid].parameter.is_some() {
+                        self.consumed.insert(b.uid);
+                    }
+                    if let Some(l) = self.meta[&b.uid].lambda {
+                        self.escaped.insert(l);
+                    }
+                }
             }
             ParamMode::Consume => self.expr(&a.value, Demand::Consume),
             ParamMode::Mutate => {
@@ -2422,7 +2459,15 @@ impl Walker<'_> {
                         format!("this closure changes captured `{0}`, so it cannot be returned, stored or passed to a consuming parameter; keep the closure local, or have it return a new value instead of changing `{0}`", b.name),
                     );
                 }
-                if class == Class::Copy {
+                // A value the closure cannot take over, because it only borrows it or uses it
+                // again later, is copied into the closure, as a snapshot.
+                let shared = matches!(
+                    self.meta.get(&b.uid).map(|m| m.perm),
+                    Some(Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
+                ) || !self.is_last(e.id, b);
+                if class == Class::Copy
+                    || class == Class::Move && b.ty.kind != Kind::Function && shared
+                {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));
                 } else {

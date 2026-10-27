@@ -8,16 +8,14 @@
 #
 # ```manuscript
 # def double_all() -> Unit:
-#     let ch = worker_channel[Int, Int]()
+#     var ch = worker_channel[Int, Int]()
 #     while True:
-#         if let n = ch.receive().unwrap():
-#             ch.send(n * 2)
-#         else:
-#             return
+#         let received = ch.receive().get(none)
+#         if received.is_none(): return
+#         let _ = ch.send(received.get() * 2)
 # ```
 from "@std/bytes.ms" import Bytes
 from "@std/channels.ms" import Channel, ChannelError, Transport
-from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/json.ms" import parse, stringify
 from "@std/shared.ms" import Shared, share
@@ -94,7 +92,7 @@ impl WorkerTransport[In, Out]:
     # Decodes a message, or says it could not be.
     def decode(text: String) -> Result[Optional[Out], ChannelError]:
         match parse[Out](text):
-            case ok(value): return ok(some(value))
+            case ok(value): return ok(value)
             case error(why): return error(
                 ChannelError.Broken(
                     "a message could not be decoded: " + why.message()
@@ -145,7 +143,7 @@ impl Transport[Bytes, Bytes] for WorkerBytesTransport:
 
     var def receive() -> Result[Optional[Bytes], ChannelError]:
         match msrt_pipe_receive_bytes(self.end):
-            case ok(data): return ok(some(data))
+            case ok(data): return ok(data)
             case error(why): return stopped(why)
 
     var def close() -> Unit:
@@ -244,7 +242,7 @@ impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var def close() -> Unit:
         with var started = lock(self.workers):
-            for index in range(0, started.value.length()):
+            for index in 0..started.value.length():
                 started.value[index].cancel()
 
                 let _ = started.value[index].wait()

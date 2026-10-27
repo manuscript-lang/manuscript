@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix",
+        "message": "unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8",
         "position": {
           "file": "pkg-tooling-format-testformatpipedotstep-1.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatpipedotstep-1.ms:5:18: resolution: unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, compare, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix\n   |\n 5 |     let a = n | .size() | try .m() | .k\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatpipedotstep-1.ms:5:18: resolution: unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, min, sign, to_decimal, to_float, to_float32, to_float64, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8\n   |\n 5 |     let a = n | .size() | try .m() | .k\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

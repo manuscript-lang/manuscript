@@ -206,10 +206,18 @@ pub fn editor_actions(
             continue;
         }
         let start = at;
-        let mut block: Vec<&str> = Vec::new();
+        let mut block: Vec<String> = Vec::new();
         while at < lines.len() && is_import(lines[at]) {
-            block.push(lines[at]);
+            // A parenthesized import continues until the line with its `)`.
+            let mut declaration = lines[at].to_string();
+            let mut open = lines[at].contains('(') && !lines[at].contains(')');
             at += 1;
+            while open && at < lines.len() {
+                open = !lines[at].contains(')');
+                declaration.push_str(lines[at]);
+                at += 1;
+            }
+            block.push(declaration);
         }
         let before = block.concat();
         block.sort();
@@ -246,7 +254,7 @@ pub fn editor_actions(
 
 /// A grouped import expands into bindings sharing one declaration position.
 /// Remove the selected name and its following comma without touching comments or
-/// other bindings. A remaining trailing comma is valid Manuscript syntax.
+/// other bindings; the last name of an unparenthesized list also loses the comma before it.
 fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Json>, Range) {
     let none = (Vec::new(), Range::default());
     let file: Arc<str> = module.file.as_str().into();
@@ -292,20 +300,50 @@ fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Jso
         end: text::position(&d.text, offset + selected.name.as_str().len()),
     };
     let mut edits = vec![edit(r, "")];
-    for (at, token) in tokens.iter().enumerate() {
-        if token.pos.offset as usize == offset
-            && tokens.get(at + 1).is_some_and(|t| t.kind == Tok::Comma)
-        {
-            let comma = tokens[at + 1].pos.offset as usize;
-            edits.push(edit(
+    let Some(at) = tokens.iter().position(|t| t.pos.offset as usize == offset) else {
+        return (edits, r);
+    };
+    if let Some(next) = tokens.get(at + 1).filter(|t| t.kind == Tok::Comma) {
+        let comma = next.pos.offset as usize;
+        let spaces = d.text[comma + 1..]
+            .bytes()
+            .take_while(|b| matches!(b, b' ' | b'\t'))
+            .count();
+        edits.push(edit(
+            Range {
+                start: text::position(&d.text, comma),
+                end: text::position(&d.text, comma + 1 + spaces),
+            },
+            "",
+        ));
+    } else if let Some(previous) = at
+        .checked_sub(1)
+        .map(|before| tokens[before])
+        .filter(|t| t.kind == Tok::Comma)
+    {
+        // The last name of a list: drop the separator before it, since a
+        // trailing comma is only valid inside parentheses.
+        let comma = previous.pos.offset as usize;
+        let gap = &d.text[comma + 1..offset];
+        let spaces = if gap.chars().all(|c| c == ' ' || c == '\t') {
+            gap.len()
+        } else {
+            0
+        };
+        let removal = Range {
+            start: text::position(&d.text, offset - spaces),
+            end: r.end,
+        };
+        edits = vec![
+            edit(
                 Range {
                     start: text::position(&d.text, comma),
                     end: text::position(&d.text, comma + 1),
                 },
                 "",
-            ));
-            break;
-        }
+            ),
+            edit(removal, ""),
+        ];
     }
     (edits, r)
 }

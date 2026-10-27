@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "18446744073709551615 9223372036854775808 1\ntrue true true true false true\n9223372036854775807 5 true 9223372036854775807\n1 -1 8000000000000000 64\n18446744073709552000 9223372036854775808 Optional.none Optional.some(1) Optional.none Optional.some(1)\n[0, 5, 9223372036854775808, 18446744073709551615] [18446744073709551615, 9223372036854775808, 5, 0]\n18446744073709551615 7 Optional.some(5) Optional.none\n5738308706962252\n",
+    "stderr": ""
+  }
+}

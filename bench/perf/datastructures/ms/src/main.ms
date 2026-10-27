@@ -146,7 +146,7 @@ def bench_bytes(n: Int) -> Int:
     let t = clock().now()
     var bb = BytesBuilder()
     for i in range(0, n):
-        bb.append(i % 256)
+        bb.append((i % 256).to_uint8().get(0))
 
     let b = bb.build()
     report("bytes_append", n, t)
@@ -154,7 +154,7 @@ def bench_bytes(n: Int) -> Int:
 
 def bench_pq(n: Int) -> Int:
     let t = clock().now()
-    var q = PriorityQueue[Int](compare: lambda (a: Int, b: Int) -> Int: a - b)
+    var q = PriorityQueue[Int]()
     var x = 1
 
     for i in range(0, n):

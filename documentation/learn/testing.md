@@ -5,7 +5,7 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. Assertions in `@std/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
@@ -122,6 +122,38 @@ All assertions return `Result`, so use `try`:
 - `fail(message)` fails explicitly; `skip(reason)` skips while running cleanup.
 - Write each independently reported case as its own `test` block.
 
+## Benchmark your code
+
+A `bench "name":` block works like a `test` block, but `ms bench` times it instead of checking it. The body is one iteration; `ms bench` repeats it until a sample takes about 100ms (that calibration is also the warmup), takes ten samples, and reports the time per iteration. `ms test` skips bench blocks. Save this complete file as `bench.ms`:
+
+<!-- manuscript-example: {"mode":"bench"} -->
+```manuscript
+from "@std/test.ms" import expect_equal
+
+def sum_to(n: Int) -> Int:
+    var total = 0
+    for i in 0..n:
+        total += i
+    return total
+
+bench "sum to one hundred":
+    try expect_equal(sum_to(100), 4950)
+```
+
+```sh
+ms bench bench.ms
+ms bench bench.ms --time 500ms --samples 20
+ms bench ms.toml --filter "sum" --json
+```
+
+- A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
+- `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
+- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/bench.ms` consumes a computed `Int` so the work stays observable.
+- To keep setup out of the timing, build the data first and time only the work: `try measure(1000, lambda: keep(data.sorted().length()))` from `@std/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
+- Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
+- `--json` adds `stats` to each entry of `benches`: `iterations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per iteration.
+- Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `try` so the compiler cannot discard the work; benchmark the default `Release` build.
+
 ## Profile application work
 
 Use `ms profile` on a runnable project with an exported `main`:
@@ -163,3 +195,39 @@ test "starts fresh":
 - One instance per file, created only when the file has selected tests and shared across repetitions.
 - Optional hooks (use `self`, no arguments, return `Unit`): `before_all`, `before_each`, `after_each`, `after_all`.
 - Build in `make_fixture`, reset in `before_each`, release in `after_all`.
+
+## Run tests only on some platforms
+
+There is no platform attribute on `test` blocks. Skip at run time instead, comparing `os_type()` from `@std/process.ms` (`Linux`, `Darwin`, or `Windows_NT`). The file must still compile on every platform.
+
+To skip a single test, call `skip` in its body:
+
+```manuscript
+from "@std/test.ms" import skip
+from "@std/process.ms" import os_type
+
+test "unix permission bits":
+    if os_type() == "Windows_NT":
+        skip("Unix only")
+    # Unix-only assertions follow.
+```
+
+To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
+
+```manuscript
+from "@std/test.ms" import TestHooks, skip
+from "@std/process.ms" import os_type
+
+type WindowsOnly:
+    ok: Bool
+
+def make_fixture() -> WindowsOnly:
+    return WindowsOnly(os_type() == "Windows_NT")
+
+impl TestHooks for WindowsOnly:
+    var def before_all() -> Unit:
+        if not self.ok:
+            skip("Windows only")
+```
+
+Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.

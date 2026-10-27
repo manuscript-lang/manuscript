@@ -515,9 +515,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn late_posts_from_a_retired_isolate_do_not_wake_its_replacement() {
-        let _g = crate::testutil::lock();
+    /// Spawns a worker that leaves a pending token, then a replacement that parks; returns the
+    /// retired token, the replacement's token and the replacement's park result.
+    fn retire_then_replace() -> (u64, u64, u64) {
         RETIRED_TOKEN.store(0, Ordering::SeqCst);
         REPLACEMENT_TOKEN.store(0, Ordering::SeqCst);
         REPLACEMENT_PARK.store(u64::MAX, Ordering::SeqCst);
@@ -539,13 +539,27 @@ mod tests {
             msrt_token_post_remote(RETIRED_TOKEN.load(Ordering::SeqCst), 42);
             assert_eq!(msrt_worker_join(new, core::ptr::null_mut()), 0);
         }
-        let old = RETIRED_TOKEN.load(Ordering::SeqCst);
-        let new = REPLACEMENT_TOKEN.load(Ordering::SeqCst);
+        let result = (
+            RETIRED_TOKEN.load(Ordering::SeqCst),
+            REPLACEMENT_TOKEN.load(Ordering::SeqCst),
+            REPLACEMENT_PARK.load(Ordering::SeqCst),
+        );
         crate::task::teardown();
-        assert_eq!(old >> isolate::ID_SHIFT, new >> isolate::ID_SHIFT);
+        result
+    }
+
+    #[test]
+    fn late_posts_from_a_retired_isolate_do_not_wake_its_replacement() {
+        let _g = crate::testutil::lock();
+        // Tests that do not take the lock spawn isolates too, so the freed slot can go to one of
+        // them; retry until the replacement lands in the retired worker's slot.
+        let reused = (0..100)
+            .map(|_| retire_then_replace())
+            .find(|&(old, new, _)| old >> isolate::ID_SHIFT == new >> isolate::ID_SHIFT);
+        let (old, new, park) = reused.expect("the replacement never reused the retired slot");
         assert_ne!(old, new, "a reused isolate slot revived an old token");
         assert_eq!(
-            REPLACEMENT_PARK.load(Ordering::SeqCst),
+            park,
             u64::from(crate::task::WAIT_TIMEOUT) << 32,
             "a stale post delivered its value to the replacement"
         );

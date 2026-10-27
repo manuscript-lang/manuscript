@@ -356,3 +356,24 @@ fn the_standard_library_passes_its_own_gate() {
     assert_eq!(check_descriptions(&report, &policy), Vec::<String>::new());
     assert!(standard_library_markdown().starts_with("# Manuscript implemented standard library"));
 }
+
+#[test]
+fn generated_pages_link_to_tracked_sources() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let files = site_files();
+    let mut pages = 0;
+    for (path, bytes) in &files {
+        let text = String::from_utf8_lossy(bytes);
+        let Some(source) = text
+            .lines()
+            .find_map(|l| l.strip_prefix("edit_source = \""))
+            .and_then(|l| l.strip_suffix('"'))
+        else {
+            continue;
+        };
+        pages += 1;
+        assert!(root.join(source).is_file(), "{path} edits missing {source}");
+    }
+    assert!(pages > 0, "no generated page names its source");
+    assert!(!standard_library_markdown().contains("ms doc"));
+}

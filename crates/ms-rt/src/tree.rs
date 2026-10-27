@@ -7,13 +7,13 @@
 //! into a list or map and builds the container's own value.
 use crate::alloc;
 use crate::desc::{msrt_desc_string, slot_drop};
-use crate::ffi::{AbiType, FromAbi};
+use crate::ffi::{AbiHandle, AbiType, FromAbi, ObjCell, ObjMut};
 use crate::map;
 use crate::string::from_bytes;
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use ms_rt_abi::{StrVal, TypeDesc, VecVal};
-use ms_rt_hot::Layout;
+use ms_rt_hot::{LIVE, Layout};
 use std::vec::Vec;
 
 pub const NULL: i64 = 0;
@@ -25,6 +25,228 @@ pub const OBJECT: i64 = 5;
 
 /// The compiler's constructor thunk, see the module docs.
 pub type Ctor = unsafe extern "C-unwind" fn(kind: i64, payload: *mut u8, out: *mut u8) -> i64;
+
+/// The compiler's view thunk, the reverse of [`Ctor`]: `view(value, sink, walk)` writes `value`'s
+/// case itself. A scalar goes to the sink's own natives (`sink` is the object they take); a list
+/// or a `String`-keyed map goes to [`Walk::array`] or [`Walk::object`] on `walk`.
+pub type View = unsafe extern "C-unwind" fn(value: *const u8, sink: *mut u8, walk: *mut u8);
+
+/// The view thunk, as a native argument.
+pub struct TreeView(View);
+
+impl AbiType for TreeView {
+    type Raw = View;
+}
+// SAFETY: the compiler passes a thunk with the [`View`] signature.
+unsafe impl FromAbi<'_> for TreeView {
+    unsafe fn from_raw(raw: View) -> TreeView {
+        TreeView(raw)
+    }
+}
+
+/// A value of the alternative in memory, as a native argument.
+pub struct ValueRef<'a>(*const u8, PhantomData<&'a u8>);
+
+impl AbiType for ValueRef<'_> {
+    type Raw = *const u8;
+}
+// SAFETY: the caller passes the address of one live value of the alternative.
+unsafe impl<'a> FromAbi<'a> for ValueRef<'a> {
+    unsafe fn from_raw(raw: *const u8) -> ValueRef<'a> {
+        ValueRef(raw, PhantomData)
+    }
+}
+
+/// Receives the container events of a tree walk, in document order: an `item` before each array
+/// element, a `key` before each member value. Scalars reach the sink through the view thunk.
+pub trait TreeSink {
+    fn item(&mut self);
+    fn key(&mut self, name: &str);
+    fn begin_array(&mut self);
+    fn end_array(&mut self);
+    fn begin_object(&mut self);
+    fn end_object(&mut self);
+}
+
+/// An open container of a walk.
+enum Open {
+    Array { at: *const u8, left: usize },
+    Object { slots: *const u8, left: usize },
+}
+
+/// One tree walk: the open containers and the layout of the alternative. The walk is iterative,
+/// so nesting depth costs heap and not stack.
+pub struct Walk<S: TreeSink> {
+    sink: *mut S,
+    size: usize,
+    l: Layout,
+    open: Vec<Open>,
+}
+
+impl<S: TreeSink> Walk<S> {
+    fn run(
+        sink: &mut S,
+        sink_obj: *mut u8,
+        desc: ValueDesc<'_>,
+        view: TreeView,
+        root: ValueRef<'_>,
+    ) {
+        let desc = desc.0;
+        let mut walk = Walk {
+            sink,
+            size: desc.size as usize,
+            l: map::string_map_layout(desc),
+            open: Vec::new(),
+        };
+        let view = view.0;
+        let mut value = root.0;
+        loop {
+            // SAFETY: `value` is a live value of the alternative.
+            unsafe { view(value, sink_obj, (&raw mut walk).cast()) };
+            // The next value to visit: the following element of the innermost open container,
+            // closing the ones that are done.
+            loop {
+                // SAFETY: `sink` outlives the walk; the thunk's natives that reach it have returned.
+                let sink = unsafe { &mut *walk.sink };
+                let Some(top) = walk.open.last_mut() else {
+                    return;
+                };
+                match top {
+                    Open::Array { at, left } => {
+                        if *left == 0 {
+                            sink.end_array();
+                            walk.open.pop();
+                            continue;
+                        }
+                        sink.item();
+                        value = *at;
+                        // SAFETY: `left` elements of `size` bytes remain in the list.
+                        *at = unsafe { at.add(walk.size) };
+                        *left -= 1;
+                        break;
+                    }
+                    Open::Object { slots, left } => {
+                        let mut found = None;
+                        while *left > 0 {
+                            let slot = *slots;
+                            // SAFETY: `left` slots of `stride` bytes remain in the map's storage.
+                            unsafe {
+                                *slots = slot.add(walk.l.stride);
+                                *left -= 1;
+                                if *slot.cast::<u64>() & LIVE != 0 {
+                                    found = Some(slot);
+                                    break;
+                                }
+                            }
+                        }
+                        let Some(slot) = found else {
+                            sink.end_object();
+                            walk.open.pop();
+                            continue;
+                        };
+                        // SAFETY: a live slot holds a `String` key and a value at the layout's offsets.
+                        unsafe {
+                            let key = &*slot.add(walk.l.koff).cast::<StrVal>();
+                            sink.key(core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                                key.data(),
+                                key.len(),
+                            )));
+                            value = slot.add(walk.l.voff);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Opens the array `v`; its elements are visited next.
+    pub fn array(&mut self, v: &VecVal) {
+        // SAFETY: `sink` outlives the walk and is only used on this thread.
+        unsafe { (*self.sink).begin_array() };
+        self.open.push(Open::Array {
+            at: v.ptr,
+            left: v.len,
+        });
+    }
+
+    /// Opens the object `m`; its members are visited next.
+    pub fn object(&mut self, m: &ms_rt_abi::MapVal) {
+        // SAFETY: as for [`Walk::array`].
+        unsafe { (*self.sink).begin_object() };
+        self.open.push(Open::Object {
+            slots: m.slots,
+            left: m.used,
+        });
+    }
+}
+
+/// The runtime object a walk feeds, as a native argument: the object the view thunk's scalar
+/// natives take, whose value is the [`TreeSink`].
+pub struct SinkObj<'a, T: AbiHandle + TreeSink>(*mut ObjCell<T>, PhantomData<&'a mut T>);
+
+impl<T: AbiHandle + TreeSink> SinkObj<'_, T> {
+    /// Walks `root`, a value of the alternative described by `desc` read through `view`, writing
+    /// it to the sink.
+    pub fn walk(self, desc: ValueDesc<'_>, view: TreeView, root: ValueRef<'_>) {
+        // SAFETY: the object is live and unaliased for the call; the thunk and root come from
+        // the compiler for one alternative.
+        let ObjMut(sink) = unsafe { ObjMut::<T>::from_raw(self.0) };
+        Walk::run(sink, self.0.cast(), desc, view, root);
+    }
+}
+
+impl<T: AbiHandle + TreeSink> AbiType for SinkObj<'_, T> {
+    type Raw = *mut ObjCell<T>;
+}
+// SAFETY: an object argument is a live runtime object that outlives the call and is not aliased.
+unsafe impl<'a, T: AbiHandle + TreeSink> FromAbi<'a> for SinkObj<'a, T> {
+    unsafe fn from_raw(raw: *mut ObjCell<T>) -> SinkObj<'a, T> {
+        SinkObj(raw, PhantomData)
+    }
+}
+
+/// A walk, as a native argument for the thunk's container natives.
+pub struct WalkRef<'a, S: TreeSink>(pub &'a mut Walk<S>);
+
+impl<S: TreeSink> AbiType for WalkRef<'_, S> {
+    type Raw = *mut Walk<S>;
+}
+// SAFETY: the view thunk passes the walk pointer it was given.
+unsafe impl<'a, S: TreeSink> FromAbi<'a> for WalkRef<'a, S> {
+    unsafe fn from_raw(raw: *mut Walk<S>) -> WalkRef<'a, S> {
+        // SAFETY: caller contract.
+        WalkRef(unsafe { &mut *raw })
+    }
+}
+
+/// A list in memory, as a native argument.
+pub struct ListRef<'a>(pub &'a VecVal);
+
+impl AbiType for ListRef<'_> {
+    type Raw = *const VecVal;
+}
+// SAFETY: the compiler passes the address of a live list.
+unsafe impl<'a> FromAbi<'a> for ListRef<'a> {
+    unsafe fn from_raw(raw: *const VecVal) -> ListRef<'a> {
+        // SAFETY: caller contract.
+        ListRef(unsafe { &*raw })
+    }
+}
+
+/// A map in memory, as a native argument.
+pub struct MapRef<'a>(pub &'a ms_rt_abi::MapVal);
+
+impl AbiType for MapRef<'_> {
+    type Raw = *const ms_rt_abi::MapVal;
+}
+// SAFETY: the compiler passes the address of a live map.
+unsafe impl<'a> FromAbi<'a> for MapRef<'a> {
+    unsafe fn from_raw(raw: *const ms_rt_abi::MapVal) -> MapRef<'a> {
+        // SAFETY: caller contract.
+        MapRef(unsafe { &*raw })
+    }
+}
 
 /// The descriptor of the alternative, as a native argument.
 pub struct ValueDesc<'a>(&'a TypeDesc);

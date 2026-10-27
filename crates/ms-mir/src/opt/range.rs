@@ -491,8 +491,20 @@ pub fn run(m: &mut Module) -> bool {
     changed
 }
 
+/// `UInt64` values are tracked as the unsigned range they provably lie in when it stays within
+/// `0..=i64::MAX`; any interval that dips below zero stands for "every `u64`" (see [`unsigned`]).
 fn tracked(ty: Ty) -> bool {
-    ty == Ty::INT || ty == Ty::BOOL
+    ty == Ty::INT || ty == Ty::BOOL || ty == Ty::UINT64
+}
+
+/// Reads an interval for a value of type `ty`: a `UInt64` interval with a negative bound is the
+/// bit pattern of a value above `i64::MAX` and carries no information.
+fn unsigned(ty: Ty, itv: Itv) -> Itv {
+    if ty == Ty::UINT64 && itv.lo < 0 {
+        Itv::TOP
+    } else {
+        itv
+    }
 }
 
 fn type_top(ty: Ty) -> Itv {
@@ -633,9 +645,10 @@ impl<'a> Fa<'a> {
     }
 
     fn get(&self, v: Value, env: &Env) -> Option<Itv> {
-        let b = self.base[v.index()]?;
+        let ty = self.f.ty(v);
+        let b = unsigned(ty, self.base[v.index()]?);
         Some(match env.itv.get(&v) {
-            Some(r) => b.meet(*r).unwrap_or(b),
+            Some(r) => b.meet(unsigned(ty, *r)).unwrap_or(b),
             None => b,
         })
     }
@@ -765,6 +778,11 @@ impl<'a> Fa<'a> {
                 let cc = if truth { cc } else { cc.negated() };
                 self.refine_cmp(cc, inst.args[0], inst.args[1], env);
             }
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else { return };
+                let cc = if truth { cc } else { cc.negated() };
+                self.refine_ucmp(cc, inst.args[0], inst.args[1], env);
+            }
             Op::Not => self.refine_cond(inst.args[0], !truth, env),
             Op::And if truth => {
                 self.refine_cond(inst.args[0], true, env);
@@ -776,6 +794,22 @@ impl<'a> Fa<'a> {
             }
             _ => {}
         }
+    }
+
+    /// Unsigned `a cc b`: the smaller side is bounded by the larger side's known upper bound.
+    /// The larger side gains no usable lower bound, as its upper end may pass `i64::MAX`.
+    fn refine_ucmp(&self, cc: Cc, a: Value, b: Value, env: &mut Env) {
+        let (Some(ia), Some(ib)) = (self.get(a, env), self.get(b, env)) else {
+            return;
+        };
+        let bound = |itv: Itv| (itv.lo >= 0).then_some(itv.hi as i128);
+        match cc {
+            Cc::Lt => bound(ib).map(|h| env.narrow(a, 0, h - 1)),
+            Cc::Le => bound(ib).map(|h| env.narrow(a, 0, h)),
+            Cc::Gt => bound(ia).map(|h| env.narrow(b, 0, h - 1)),
+            Cc::Ge => bound(ia).map(|h| env.narrow(b, 0, h)),
+            Cc::Eq | Cc::Ne => None,
+        };
     }
 
     fn refine_cmp(&self, cc: Cc, a: Value, b: Value, env: &mut Env) {
@@ -966,6 +1000,19 @@ impl<'a> Fa<'a> {
                 } else {
                     Itv::exact(lo, hi)
                 }
+            }
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (arg(0)?, arg(1)?);
+                if x.lo < 0 || y.lo < 0 {
+                    return Some(Itv::TOP);
+                }
+                let (lo, hi) = match inst.op {
+                    Op::UAddChk => (x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128),
+                    // A faulting subtraction leaves a difference between zero and `x`.
+                    Op::USubChk => ((x.lo as i128 - y.hi as i128).max(0), x.hi as i128),
+                    _ => corners(|a, b| a * b, x, y),
+                };
+                Itv::exact(lo, hi)
             }
             Op::SDiv | Op::SDivChk => {
                 let (x, y) = (arg(0)?, arg(1)?);
@@ -1404,6 +1451,28 @@ impl<'a> Fa<'a> {
                                 Op::ISubChk => Op::ISub,
                                 _ => Op::IMul,
                             };
+                            out.push(Edit::Op(bi, ii, op));
+                        }
+                    }
+                    Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                        let (Some(x), Some(y)) = (get(0), get(1)) else {
+                            continue;
+                        };
+                        if x.lo < 0 || y.lo < 0 {
+                            continue;
+                        }
+                        let (safe, op) = match inst.op {
+                            Op::UAddChk => (
+                                fits(x.lo as i128 + y.lo as i128, x.hi as i128 + y.hi as i128),
+                                Op::IAdd,
+                            ),
+                            Op::USubChk => (x.lo >= y.hi, Op::ISub),
+                            _ => {
+                                let (lo, hi) = corners(|a, b| a * b, x, y);
+                                (fits(lo, hi), Op::IMul)
+                            }
+                        };
+                        if safe {
                             out.push(Edit::Op(bi, ii, op));
                         }
                     }

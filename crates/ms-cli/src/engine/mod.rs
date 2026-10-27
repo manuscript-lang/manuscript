@@ -101,6 +101,12 @@ impl<L: Lower> Engine<L> {
         testing::test(self, request, io)
     }
 
+    /// `ms bench`: `request.arguments` are the `ms test` selection options plus `--time=`,
+    /// `--samples=` and `--iterations=`.
+    pub fn bench(&self, request: &TestRequest, io: &mut Io) -> BackendResult {
+        testing::bench(self, request, io)
+    }
+
     pub fn emit(&self, request: &OutputRequest, io: &mut Io) -> BackendResult {
         let compiled = match compile(self, &request.filename, false) {
             Ok(compiled) => compiled,
@@ -216,13 +222,16 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         message: issue.message.clone(),
         position: position(issue.pos),
         end: issue.end.map(position),
-        fix: issue.fix.as_ref().map(|fix| {
-            Json::object()
-                .with("position", position(fix.pos).to_json())
-                .with("end", position(fix.end).to_json())
-                .with("replacement", Json::str(&fix.replacement))
-        }),
+        fix: issue.fix.as_ref().map(|fix| fix_json(&position, fix)),
     }
+}
+
+/// The JSON `fix` object of an edit, placed with `position`.
+pub(crate) fn fix_json(position: &dyn Fn(Pos) -> Position, fix: &ms_driver::DiagnosticFix) -> Json {
+    Json::object()
+        .with("position", position(fix.pos).to_json())
+        .with("end", position(fix.end).to_json())
+        .with("replacement", Json::str(&fix.replacement))
 }
 
 /// A checked and lowered program.
@@ -234,6 +243,17 @@ pub(crate) struct Compiled {
     pub project_root: String,
 }
 
+/// What `compile` builds.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Target {
+    /// An executable program.
+    Program,
+    /// A test executable.
+    Tests,
+    /// A bench executable.
+    Benches,
+}
+
 /// Load, check and lower `filename` for an executable (`tests == false`) or a
 /// test executable.
 pub(crate) fn compile<L: Lower>(
@@ -241,6 +261,24 @@ pub(crate) fn compile<L: Lower>(
     filename: &str,
     tests: bool,
 ) -> Result<Compiled, Failure> {
+    compile_target(
+        backend,
+        filename,
+        if tests {
+            Target::Tests
+        } else {
+            Target::Program
+        },
+    )
+}
+
+/// Load, check and lower `filename` for `target`.
+pub(crate) fn compile_target<L: Lower>(
+    backend: &Engine<L>,
+    filename: &str,
+    target: Target,
+) -> Result<Compiled, Failure> {
+    let tests = target != Target::Program;
     let graph = load_file(filename, LoadOptions { tests });
     let library = graph.library;
     let project = !graph.project_root.is_empty();
@@ -265,7 +303,9 @@ pub(crate) fn compile<L: Lower>(
     let Some(program) = &checked.program else {
         return Err(failure(checked.diagnostics, &checked.source_root));
     };
-    let lowered = if tests {
+    let lowered = if target == Target::Benches {
+        backend.lowering.lower_benches(program, &entry)
+    } else if tests {
         backend.lowering.lower_tests(program, &entry)
     } else {
         backend

@@ -20,7 +20,7 @@ pub fn parse(text: &str) -> Option<Vec<(String, String)>> {
         text = text.strip_prefix("export ").unwrap_or(text);
         let at = text.find('=').filter(|&at| at >= 1)?;
         let key = text[..at].trim();
-        if key.contains([' ', '\t', '\r', '\n', '\0']) {
+        if key.is_empty() || key.contains([' ', '\t', '\r', '\n', '\0']) {
             return None;
         }
         for (i, c) in key.char_indices() {
@@ -94,6 +94,8 @@ mod tests {
     fn rejects_malformed_input() {
         for bad in [
             "=x",
+            "export  =bad",
+            "A=1\nexport  =bad",
             "A B=1",
             "1A=2",
             "A='open",

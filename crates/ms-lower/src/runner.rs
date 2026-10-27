@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::text::runtime_fn;
 use ms_mir::builder::FuncBuilder;
-use ms_mir::ir::{Cc, FuncId, Imm, Linkage, Module, Op};
+use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Module, Op, Param};
 use ms_mir::types::{Ty as MTy, TyKind};
 
 /// Marks a failure message on stderr, ahead of the message.
@@ -11,6 +11,56 @@ pub const FAILURE_MARKER: &str = "\u{1}FAIL\u{1}";
 
 /// Marks a skip: the fault message of `skip(reason)`, which the report turns into a skipped test.
 pub const SKIP_MARKER: &str = "\u{1}SKIP\u{1}";
+
+/// One entry per bench that calls `driver(closure over the bench, operations per iteration)`. The
+/// driver takes the body as a `Callable[[], Result[Unit, Error]]` and returns that `Result`, so the
+/// entries run as tests do.
+pub(crate) fn bench_entries(
+    m: &mut Module,
+    benches: &[FuncId],
+    per: &[i64],
+    driver: FuncId,
+) -> Vec<FuncId> {
+    let mut entries = Vec::new();
+    for (&bench, &per) in benches.iter().zip(per) {
+        let proto = m.funcs[bench.index()].clone();
+        // A closure body takes its environment first and forwards to the bench.
+        let mut thunk = FuncBuilder::new(
+            m,
+            &proto.name,
+            vec![Param {
+                ty: MTy::PTR,
+                mode: Mode::Borrow,
+            }],
+            proto.ret,
+        );
+        thunk.func_mut().kind = FuncKind::Closure {
+            captures: Vec::new(),
+        };
+        let r = thunk.call(bench, &[]);
+        thunk.ret(Some(r));
+        let thunk = thunk.into_func();
+        let thunk = m.add_func(thunk);
+        let fty = m.types.func(Vec::new(), proto.ret);
+        let borrowed = m.funcs[driver.index()]
+            .params
+            .first()
+            .is_some_and(|p| p.mode == Mode::Borrow);
+        let mut b = FuncBuilder::new(m, &proto.name, Vec::new(), proto.ret);
+        let closure = b
+            .emit(Op::ClosureNew, &[], Imm::Func(thunk), Some(fty))
+            .expect("closure");
+        let operations = b.iconst(per);
+        let r = b.call(driver, &[closure, operations]);
+        if borrowed {
+            b.emit(Op::Drop, &[closure], Imm::None, None);
+        }
+        b.ret(Some(r));
+        let f = b.into_func();
+        entries.push(m.add_func(f));
+    }
+    entries
+}
 
 /// Builds `main`: argument `i` selects test `i`, which must return `Result[Unit, Error]`.
 /// A failed test writes `FAILURE_MARKER` and its message to stderr and exits with 1.

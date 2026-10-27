@@ -1,17 +1,11 @@
 from "@std/bytes.ms" import Bytes, join
-from "@std/net.ms" import Connection
-from "@std/net.ms" import DatagramSocket
-from "@std/net.ms" import DnsRecord
 from "@std/time.ms" import Duration
 from "@std/io.ms" import IoError
 from "@std/json.ms" import stringify
-from "@std/net.ms" import Listener
-from "@std/net.ms" import NetworkError
 from "@std/io.ms" import ReadStream
 from "@std/net.ms" import TlsOptions
 from "@std/net.ms" import WebSocket
 from "@std/net.ms" import WebSocketError
-from "@std/net.ms" import WebSocketOptions
 
 extern def msrt_http_headers_append(
     headers: HttpHeaders,
@@ -23,11 +17,6 @@ extern def msrt_http_headers_values(
     value: HttpHeaders,
     name: String
 ) -> Optional[List[Bytes]]
-
-extern def msrt_http_headers_text(
-    value: HttpHeaders,
-    name: String
-) -> Result[Optional[List[String]], HttpError]
 
 extern def msrt_http_headers_names(value: HttpHeaders) -> List[String]
 
@@ -57,24 +46,38 @@ export type HttpError:
         message: String
     )
 
-# Mutable HTTP fields with ASCII case-insensitive names and separate byte values.
+# Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
 # Names keep first-insertion order and spelling; values keep append order.
 # Lookup shares list membership. Use clone() to separate mutable membership.
 export extern type HttpHeaders
 
 impl HttpHeaders:
-    # Appends raw bytes under a valid HTTP name; invalid names return InvalidInput.
-    # Transport operations additionally validate UTF-8, framing and field values.
-    def append(name: String, value: Bytes) -> Result[Unit, HttpError]:
+    # Appends a String value under a valid HTTP name; invalid names return InvalidInput.
+    # Transport operations additionally validate framing and field values.
+    def append(name: String, value: String) -> Result[Unit, HttpError]:
+        return msrt_http_headers_append(self, name, value.to_bytes())
+
+    # Appends raw bytes, for the rare field whose value is not UTF-8 text.
+    def append_bytes(name: String, value: Bytes) -> Result[Unit, HttpError]:
         return msrt_http_headers_append(self, name, value)
 
-    # Returns an owned copy of the membership, or none for an absent name.
-    def values(name: String) -> Optional[List[Bytes]]:
+    # Returns every value as an owned list, empty for an absent name.
+    # A received value that is not valid UTF-8 is left out; read it with values_bytes.
+    def values(name: String) -> List[String]:
+        var out: List[String] = []
+        let raw = msrt_http_headers_values(self, name)
+        if let found = raw:
+            for item in found:
+                if let text = item.decode_utf8(): out.append(text)
+        return out
+
+    # Returns the raw bytes of every value as an owned list, or none for an absent name.
+    def values_bytes(name: String) -> Optional[List[Bytes]]:
         return msrt_http_headers_values(self, name)
 
-    # Decodes every value; invalid UTF-8 returns InvalidData without partial success.
-    def text(name: String) -> Result[Optional[List[String]], HttpError]:
-        return msrt_http_headers_text(self, name)
+    # Reports whether the name has any value, whatever its encoding.
+    def contains(name: String) -> Bool:
+        return msrt_http_headers_values(self, name).is_some()
 
     # Returns first-inserted spellings in insertion order.
     def names() -> List[String]:
@@ -404,7 +407,7 @@ export def json[T](status: Int, value: T) -> Result[HttpResponse, HttpError]:
     if body.is_error(): return error(HttpError.Failed(body.err().message()))
 
     let sent = headers()
-    try sent.append("Content-Type", "application/json".to_bytes())
+    try sent.append("Content-Type", "application/json")
     return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
 
 # Builds a redirect to `location` with an empty body.
@@ -414,7 +417,7 @@ export def redirect(
     status: Int = 303
 ) -> Result[HttpResponse, HttpError]:
     let sent = headers()
-    try sent.append("Location", location.to_bytes())
+    try sent.append("Location", location)
     return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
 # Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.

@@ -120,6 +120,10 @@ pub struct CallModes {
     /// A source or native callee that runs its function arguments immediately
     /// and does not keep them.
     pub callbacks_borrowed: bool,
+    /// Each written argument a native keeps or hands back in its result even though it takes the
+    /// parameter as a borrow (`o.get(default)`, `xs.fold(initial, ..)`, a stored element): a
+    /// function written there escapes.
+    pub retained: Vec<bool>,
     /// The source callee returns a part of these read-only arguments.
     pub origin: ResultOrigin,
     /// The callee is a `ref` function whose summary names no slot yet (a recursive call before
@@ -142,6 +146,7 @@ pub fn call_modes(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        retained: Vec::new(),
         origin: ResultOrigin::default(),
         pending: false,
     };
@@ -184,6 +189,7 @@ pub fn call_modes(
                             })
                             .collect(),
                         callbacks_borrowed: runs_now,
+                        retained: Vec::new(),
                         ..borrow_all(None)
                     }
                 }
@@ -224,6 +230,7 @@ fn from_summary(
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: true,
+        retained: Vec::new(),
         origin: summary.result,
         pending,
     }
@@ -276,6 +283,7 @@ fn method_modes(
                     accessor: false,
                     returns_receiver: false,
                     callbacks_borrowed: false,
+                    retained: Vec::new(),
                     origin: contract_origin(&declared, func),
                     pending: false,
                 }
@@ -298,6 +306,7 @@ fn native_unknown(count: usize) -> CallModes {
         accessor: false,
         returns_receiver: false,
         callbacks_borrowed: false,
+        retained: Vec::new(),
         origin: ResultOrigin::default(),
         pending: false,
     }
@@ -322,11 +331,26 @@ fn native_method_modes(
     let mutator = collection_mutation(method);
     let callbacks_borrowed = runs_callbacks(receiver);
     let params = &method.ty.params;
+    let result = method.ty.result_ty();
+    let mut retained = vec![false; count];
     let arguments = (0..count)
         .map(|i| {
             let Some(p) = label(i).and_then(|l| params.iter().find(|p| p.name == l)) else {
                 return ParamMode::Borrow;
             };
+            // An element a mutator stores, or a value of the receiver's or result's type.
+            // An optional parameter (`default: Optional[T]`) holds a `T`.
+            let held = match p.ty.args.first() {
+                Some(inner) if p.ty.is_std("Optional") => inner,
+                _ => &p.ty,
+            };
+            let stored = p.ty.kind == Kind::Variable
+                || same(&p.ty, receiver)
+                || receiver.args.iter().any(|a| same(a, &p.ty));
+            let value = held.kind == Kind::Variable
+                || same(held, &result)
+                || receiver.args.iter().any(|a| same(a, held));
+            retained[i] = (mutator && stored) || value;
             if p.ty.kind == Kind::Function {
                 return if callbacks_borrowed {
                     ParamMode::Borrow
@@ -334,10 +358,6 @@ fn native_method_modes(
                     ParamMode::Consume
                 };
             }
-            // A mutator stores the elements it is given.
-            let stored = p.ty.kind == Kind::Variable
-                || same(&p.ty, receiver)
-                || receiver.args.iter().any(|a| same(a, &p.ty));
             if (mutator && stored) || method.native.as_str() == "shared/put" {
                 ParamMode::Consume
             } else {
@@ -345,7 +365,6 @@ fn native_method_modes(
             }
         })
         .collect();
-    let result = method.ty.result_ty();
     // A native lends exactly when its standard-library declaration says so (`ref`), unless the
     // call gives a fallback (`o.get(default)`): the result is then an owned copy of either.
     let accessor = method
@@ -372,6 +391,7 @@ fn native_method_modes(
         accessor,
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
+        retained,
         origin: ResultOrigin::default(),
         pending: false,
     }

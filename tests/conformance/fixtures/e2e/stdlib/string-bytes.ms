@@ -39,7 +39,7 @@ test "strings honor omitted none zero and explicit output limits":
 test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
     try expect_equal(data.get(-1), 1)
-    try expect_equal(data.get(4, default: -1), -1)
+    try expect_equal(data.get(4, default: 7), 7)
     try expect_equal(data.index_of(Bytes([1])), some(1))
     try expect_equal(data.last_index_of(Bytes([1])), some(3))
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
@@ -56,11 +56,11 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal("é".to_bytes().decode_utf8(), some("é"))
 
 test "Bytes values direct bound and free calls return independent lists":
-    var input = [0, 1, 255]
+    var input: List[UInt8] = [0, 1, 255]
     let data = Bytes(input.clone())
     input.set(0, 42)
 
-    let extract: Callable[[], List[Int]] = data.values
+    let extract: Callable[[], List[UInt8]] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
     var direct = data.values()
@@ -71,7 +71,7 @@ test "Bytes values direct bound and free calls return independent lists":
     free.reverse()
     try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
 
-    let empty: List[Int] = []
+    let empty: List[UInt8] = []
     try expect_false(
         Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
     )
@@ -142,3 +142,39 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 
     let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
+
+test "builder appends literals of every short length across growth":
+    var sb = StringBuilder()
+
+    for i in range(0, 40):
+        sb.append("a")
+        sb.append("bc")
+        sb.append("def")
+        sb.append("ghij")
+        sb.append("klmno")
+        sb.append("pqrstuv")
+        sb.append("wxyzABCD")
+        sb.append("EFGHIJKLMNOPQRS")
+        sb.append("0123456789abcdef")
+        sb.append("é€")
+
+    let one = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
+    var want = StringBuilder()
+    for i in range(0, 40):
+        want.append(one)
+    try expect_equal(sb.build(), want.build())
+
+test "builder appends variable text of every length across growth":
+    let unit = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
+    var sb = StringBuilder()
+    var want = 0
+
+    for round in range(0, 3):
+        for n in range(0, 70):
+            let piece = try unit.slice(0, n)
+            sb.append(piece)
+            want += n
+
+    let built = sb.build()
+    try expect_equal(built.byte_length(), want)
+    try expect_equal((try built.slice(0, 10)), "0010120123")

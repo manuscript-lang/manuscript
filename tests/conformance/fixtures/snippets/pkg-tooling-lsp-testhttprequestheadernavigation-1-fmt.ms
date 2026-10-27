@@ -5,4 +5,4 @@ from "@std/http.ms" import HttpRequest
 from "@std/bytes.ms" import Bytes
 
 def content_type(request: HttpRequest) -> Optional[List[Bytes]]:
-    return request.headers.values("content-type")
+    return request.headers.values_bytes("content-type")

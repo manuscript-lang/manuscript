@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/core.ms" import panic
 from "@std/math.ms" import bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zeros
 
@@ -73,7 +72,7 @@ impl BitSet:
 
         while True:
             if bits != 0:
-                return some(word * 64 + trailing_zeros(bits))
+                return word * 64 + trailing_zeros(bits)
 
             word += 1
             if word >= self.words.length():
@@ -87,7 +86,7 @@ impl BitSet:
     def values() -> List[Int]:
         var out: List[Int] = []
 
-        for word in range(0, self.words.length()):
+        for word in 0..self.words.length():
             var bits = self.words.get(word)
 
             while bits != 0:
@@ -120,7 +119,7 @@ impl BitSet:
         if other.words.length() > count:
             count = other.words.length()
 
-        for word in range(0, count):
+        for word in 0..count:
             var left = 0
             if word < self.words.length():
                 left = self.words.get(word)

@@ -94,7 +94,7 @@ export type FlagKind:
     case String
     # `Int` field. A whole number that fits in Int; other text is an InvalidValue error.
     case Int
-    # `Float` field. A decimal number that parses as Float; other text is an InvalidValue error.
+    # `Float` field. A finite decimal number that parses as Float; other text, including NaN and infinities, is an InvalidValue error.
     case Float
     # `List[String]` field. The flag may repeat; every occurrence is kept in order.
     case List
@@ -165,7 +165,7 @@ impl Matches:
     # Returns the text, or none for an optional argument or flag that was not supplied.
     def string_or_none(name: String) -> Optional[String]:
         if let items = self.values.get(name):
-            if not items.is_empty(): return some(items[0].clone())
+            if not items.is_empty(): return items[0].clone()
         return none
 
     # Returns an Int value, or none when absent.
@@ -257,12 +257,12 @@ impl Command:
             node = next.get().clone()
             names.append(word.clone())
 
-        return some(render_help(node, names, inherited))
+        return render_help(node, names, inherited)
 
     # Returns the child named `word`, or none.
     def child(word: String) -> Optional[Command]:
         for candidate in self.children:
-            if candidate.name == word: return some(candidate.clone())
+            if candidate.name == word: return candidate.clone()
         return none
 
 # Builds a leaf command whose handler receives the options record `T`.
@@ -387,7 +387,10 @@ def fits(flag: Flag, value: String) -> Bool:
     match flag.kind:
         case Bool: return value == "true" or value == "false"
         case Int: return value.parse_int().is_some()
-        case Float: return value.parse_float().is_some()
+        case Float:
+            if let number = value.parse_float(): return number.is_finite()
+
+            return False
         case _: return True
 
 # Checks one flag name or short against names already seen.
@@ -484,10 +487,8 @@ def check_schema(
 # Finds a flag by long name or one-letter alias.
 def find_flag(flags: List[Flag], key: String, long: Bool) -> Optional[Flag]:
     for flag in flags:
-        if long and flag.name == key: return some(flag.clone())
-        if not long and not flag.short.is_empty() and flag.short == key: return some(
-            flag.clone()
-        )
+        if long and flag.name == key: return flag.clone()
+        if not long and not flag.short.is_empty() and flag.short == key: return flag.clone()
 
     return none
 
@@ -695,10 +696,12 @@ def render_help(node: Command, path: List[String], inherited: List[Flag]) -> Str
         var width = 0
         for child in node.children: width = max_int(width, child.name.length())
         for child in node.children: out += (
-            "  "
-            + child.name.pad_end(width, " ")
-            + "  "
-            + child.about
+            (
+                "  "
+                + child.name.pad_end(width, " ")
+                + "  "
+                + child.about
+            ).trim_end()
             + "\n"
         )
 
@@ -708,10 +711,12 @@ def render_help(node: Command, path: List[String], inherited: List[Flag]) -> Str
         var width = 0
         for arg in node.args: width = max_int(width, arg.name.length())
         for arg in node.args: out += (
-            "  "
-            + arg.name.pad_end(width, " ")
-            + "  "
-            + arg.help
+            (
+                "  "
+                + arg.name.pad_end(width, " ")
+                + "  "
+                + arg.help
+            ).trim_end()
             + "\n"
         )
 

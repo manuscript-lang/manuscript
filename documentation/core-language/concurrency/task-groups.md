@@ -37,7 +37,7 @@ test "a group collects its results in start order":
 
 ## Timeouts
 
-A task has no time limit unless you give one. `spawn(entry, timeout: some(nanoseconds(...)))` limits one task. `TaskGroup[T](timeout: some(nanoseconds(...)))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
+A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds(...))` limits one task. `TaskGroup[T](timeout: nanoseconds(...))` limits every task in the group, counted from the group's creation; a task takes the shorter of the two. A task that passes its limit is cancelled at its next wait, so a loop that never waits is not stopped by its timeout. A task that passes its limit is cancelled, and its `result()` is `error(TaskError.TimedOut)`. A task cancelled any other way gives `TaskError.Cancelled`. `TaskError.Closed` means the task's group was closed or its result was already collected.
 
 <!-- manuscript-example: test -->
 ```manuscript
@@ -52,7 +52,7 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
 
 test "a task that passes its timeout is cancelled":
     with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: some(nanoseconds(10000000)))
+        let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
         task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
@@ -60,7 +60,7 @@ test "a task that passes its timeout is cancelled":
 
 ## What a task may use
 
-A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task and the caller can no longer use it. A task cannot change a captured `var`. Return a result instead, and combine results in the caller. Use `.clone()` to keep a copy.
+A spawned function outlives the statement that started it, so it owns what it captures: a captured value moves into the task when this is its last use, and is copied into the task when the caller uses it again. A function value or a resource cannot be copied, so those must be the last use. A task cannot change a captured `var`. Return a result instead, and combine results in the caller.
 
 Values reach a task by being captured or sent on its channel, and come back as messages or as its result. Tasks do not share mutable state.
 

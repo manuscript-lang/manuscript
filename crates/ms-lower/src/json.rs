@@ -34,6 +34,27 @@ pub struct JsonJob {
     pub hir: Rc<ModuleHir>,
 }
 
+/// `name` as a JSON string literal, so a fixed member name is escaped once at compile time.
+fn json_quote(name: &str) -> String {
+    let mut out = String::with_capacity(name.len() + 2);
+    out.push('"');
+    for c in name.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < ' ' => out.push_str(&format!("\\u{:04x}", u32::from(c))),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
 fn borrowed(ty: MTy) -> Param {
     Param {
         ty,
@@ -341,7 +362,7 @@ impl FnLower<'_> {
         } else if t.is_source_type("@std/net.ms", "Cidr") {
             Some((KIND_STRING, "msrt_json_dec_cidr", false))
         } else if t.is_std("Decimal") {
-            Some((KIND_NUMBER, "msstd_decimal_literal", false))
+            Some((KIND_NUMBER, "msstd_decimal_parse", false))
         } else if t.is_std("BigInt") {
             Some((KIND_NUMBER, "msstd_bigint_parse", false))
         } else {
@@ -363,9 +384,6 @@ impl FnLower<'_> {
                 let has_max = self.b.bconst(true);
                 let max = self.b.iconst(10_000);
                 self.status_code(sym, &[text, radix, has_max, max, slot])?
-            } else if sym == "msstd_decimal_literal" {
-                self.call_runtime(sym, &[text, slot], MTy::UNIT)?;
-                self.b.iconst(0)
             } else {
                 self.status_code(sym, &[text, slot])?
             };
@@ -1055,8 +1073,8 @@ impl FnLower<'_> {
         } else {
             (ty.clone(), value)
         };
-        let key = self.b.str_lit(name);
-        self.jw("msrt_json_w_key", &[w, key])?;
+        let key = self.b.str_lit(&json_quote(name));
+        self.jw("msrt_json_w_key_quoted", &[w, key])?;
         let written = self.jencode_nested(&inner_ty, w, inner)?;
         self.jslot_or(w, written, &mut |_| Ok(()))?;
         self.b.br(after, &[]);
@@ -1165,8 +1183,8 @@ impl FnLower<'_> {
         for (i, c) in cases.iter().enumerate() {
             self.b.seal_block(blocks[i]);
             self.b.switch_to(blocks[i]);
-            let name = self.b.str_lit(c.name.as_str());
-            self.jw("msrt_json_w_key", &[w, name])?;
+            let name = self.b.str_lit(&json_quote(c.name.as_str()));
+            self.jw("msrt_json_w_key_quoted", &[w, name])?;
             self.b.br(join, &[]);
         }
         self.b.seal_block(join);
@@ -1247,8 +1265,8 @@ impl FnLower<'_> {
                 self.jw("msrt_json_w_string", &[w, name])?;
             } else {
                 self.jw("msrt_json_w_begin_object", &[w])?;
-                let key = self.b.str_lit(c.name.as_str());
-                self.jw("msrt_json_w_key", &[w, key])?;
+                let key = self.b.str_lit(&json_quote(c.name.as_str()));
+                self.jw("msrt_json_w_key_quoted", &[w, key])?;
                 self.jw("msrt_json_w_begin_object", &[w])?;
                 for (j, f) in c.fields.iter().enumerate() {
                     let fv = self.b.alt_get(a, i as u32, j as u32, value);
@@ -1264,7 +1282,8 @@ impl FnLower<'_> {
         Ok(self.jwritten())
     }
 
-    /// A stored `JsonValue` is written as it is.
+    /// A stored `JsonValue` is written as it is, by the runtime walking the value through
+    /// [`Self::json_tree_view`].
     fn jencode_tree(
         &mut self,
         t: &ct::Ty,
@@ -1272,59 +1291,16 @@ impl FnLower<'_> {
         w: Value,
         value: Value,
     ) -> Result<Value, Error> {
-        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
-            return Err(Error::new("JsonValue is an alternative"));
-        };
-        let cases = ct::cases(t);
-        let tag = self.b.alt_tag(value);
-        let blocks: Vec<_> = cases.iter().map(|_| self.b.new_block()).collect();
-        let join = self.b.new_block();
-        let arms: Vec<(i64, _)> = blocks
-            .iter()
-            .enumerate()
-            .map(|(i, b)| (i as i64, *b))
-            .collect();
-        let other = self.b.new_block();
-        self.b.switch(tag, &arms, other);
-        self.b.seal_block(other);
-        self.b.switch_to(other);
-        self.b.unreachable();
-        for (i, c) in cases.iter().enumerate() {
-            self.b.seal_block(blocks[i]);
-            self.b.switch_to(blocks[i]);
-            match c.name.as_str() {
-                "Null" => self.jw("msrt_json_w_null", &[w])?,
-                "BoolValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_bool", &[w, v])?;
-                }
-                "NumberValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_number", &[w, v])?;
-                }
-                "StringValue" => {
-                    let v = self.b.alt_get(a, i as u32, 0, value);
-                    self.jw("msrt_json_w_string", &[w, v])?;
-                }
-                "ArrayValue" => {
-                    let l = self.b.alt_get(a, i as u32, 0, value);
-                    self.jencode_list(t, w, l)?;
-                }
-                "ObjectValue" => {
-                    let m = self.b.alt_get(a, i as u32, 0, value);
-                    let map = &c.fields[0].ty;
-                    self.jencode_map(&map.args[0], &map.args[1], w, m)?;
-                }
-                other => {
-                    return Err(Error::new(format!(
-                        "json: unexpected JsonValue case {other}"
-                    )));
-                }
-            }
-            self.b.br(join, &[]);
-        }
-        self.b.seal_block(join);
-        self.b.switch_to(join);
+        let view = self.json_tree_view(t, mt)?;
+        let view = self
+            .b
+            .emit(Op::FuncAddr, &[], Imm::Func(view), Some(MTy::PTR))
+            .expect("func.addr");
+        let desc = self.type_desc(mt);
+        // The runtime reads the value from memory; the copy is bitwise and never dropped.
+        let slot = self.jslot(mt);
+        self.b.emit(Op::Store, &[slot, value], Imm::None, None);
+        self.jw("msrt_json_w_tree", &[w, desc, view, slot])?;
         Ok(self.jwritten())
     }
 
@@ -1510,6 +1486,95 @@ impl FnLower<'_> {
             tb.emit(Op::Put, &[out, v], Imm::None, None);
             let zero = tb.iconst(0);
             tb.ret(Some(zero));
+        }
+        let thunk = tb.into_func();
+        let id = self.b.m.add_func(thunk);
+        self.cx.helpers.insert(key, id);
+        Ok(id)
+    }
+
+    /// The thunk the runtime calls to write a `JsonValue`: `view(value, w, walk)` hands the case
+    /// `value` holds to the writer natives (scalars, with the writer object `w`) or to the walk
+    /// (a list or a map, whose members the runtime visits next). The one dispatch on the case
+    /// is the thunk's; the runtime loop has none.
+    fn json_tree_view(&mut self, t: &ct::Ty, mt: MTy) -> Result<FuncId, Error> {
+        let key = format!("json-tree-view:{}", ct::type_key(t));
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return Ok(*f);
+        }
+        let TyKind::Alt(a) = self.b.m.types.kind(mt).clone() else {
+            return Err(Error::new("JsonValue is an alternative"));
+        };
+        let cases = ct::cases(t);
+        // Per case: the native, whether it takes the writer or the walk, and its extern.
+        let mut calls = Vec::new();
+        for c in &cases {
+            let (sym, on_walk, payload_ty) = match c.name.as_str() {
+                "Null" => ("msrt_json_w_null", false, None),
+                "BoolValue" => ("msrt_json_w_bool", false, Some(MTy::BOOL)),
+                "NumberValue" => ("msrt_json_w_number", false, Some(MTy::STR)),
+                "StringValue" => ("msrt_json_w_string", false, Some(MTy::STR)),
+                "ArrayValue" => (
+                    "msrt_json_tree_array",
+                    true,
+                    Some(self.jmty(&c.fields[0].ty)?),
+                ),
+                "ObjectValue" => (
+                    "msrt_json_tree_object",
+                    true,
+                    Some(self.jmty(&c.fields[0].ty)?),
+                ),
+                other => {
+                    return Err(Error::new(format!(
+                        "json: unexpected JsonValue case {other}"
+                    )));
+                }
+            };
+            let mut params = vec![borrowed(MTy::PTR)];
+            params.extend(payload_ty.map(borrowed));
+            let ext = self.b.m.add_extern(ms_mir::ir::ExternDef {
+                name: sym.to_string(),
+                params,
+                ret: MTy::UNIT,
+                noreturn: false,
+                pure_: false,
+                fresh: crate::rtcall::fresh_result(sym),
+            });
+            calls.push((ext, on_walk, payload_ty.is_some()));
+        }
+        let mut tb = FuncBuilder::new(
+            self.b.m,
+            "json_tree_view",
+            vec![borrowed(MTy::PTR), borrowed(MTy::PTR), borrowed(MTy::PTR)],
+            MTy::UNIT,
+        );
+        tb.func_mut().linkage = ms_mir::ir::Linkage::Internal;
+        let args = tb.params();
+        let (value, w, walk) = (args[0], args[1], args[2]);
+        let v = tb
+            .emit(Op::Load, &[value], Imm::Ty(mt), Some(mt))
+            .expect("load");
+        let tag = tb.alt_tag(v);
+        let blocks: Vec<_> = cases.iter().map(|_| tb.new_block()).collect();
+        let arms: Vec<(i64, _)> = blocks
+            .iter()
+            .enumerate()
+            .map(|(i, b)| (i as i64, *b))
+            .collect();
+        let other = tb.new_block();
+        tb.switch(tag, &arms, other);
+        tb.seal_block(other);
+        tb.switch_to(other);
+        tb.unreachable();
+        for (i, (ext, on_walk, has_payload)) in calls.iter().enumerate() {
+            tb.seal_block(blocks[i]);
+            tb.switch_to(blocks[i]);
+            let mut call_args = vec![if *on_walk { walk } else { w }];
+            if *has_payload {
+                call_args.push(tb.alt_get(a, i as u32, 0, v));
+            }
+            tb.call_rt(*ext, &call_args);
+            tb.ret(None);
         }
         let thunk = tb.into_func();
         let id = self.b.m.add_func(thunk);

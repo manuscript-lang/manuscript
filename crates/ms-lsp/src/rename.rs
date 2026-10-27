@@ -4,7 +4,7 @@
 //! edits applied; nothing is proposed that would not check.
 
 use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
-use crate::index::{Occurrence, source_index};
+use crate::index::Occurrence;
 use crate::json::{Json, obj};
 use crate::nav::occurrence_at;
 use crate::text::{self, Position, Range};
@@ -65,14 +65,12 @@ pub fn rename(
     for target in &targets {
         canceled(cancel)?;
         let other;
-        let entries_other;
         let (checked, entries): (&Analysis, &[Occurrence]) = if target.uri == d.uri {
             (analysis, index)
         } else {
             other = workspace_analysis(target, &docs);
             canceled(cancel)?;
-            entries_other = source_index(&other);
-            (&other, &entries_other)
+            (&other, other.index())
         };
         canceled(cancel)?;
         let Some(program) = &checked.program else {
@@ -84,7 +82,7 @@ pub fn rename(
             }
             has_declaration |= entry.declaration;
             let path = checked.module_path(entry.file.as_str());
-            let file_uri = uri::file_uri(&path);
+            let file_uri = open_uri(&docs, &path);
             if !content.contains_key(&file_uri) {
                 let mut file = Document::new(file_uri.clone(), String::new());
                 if let Some(m) = program.modules.iter().find(|m| m.file == entry.file) {
@@ -128,6 +126,25 @@ pub fn rename(
     Ok(obj([("documentChanges", Json::Arr(changes))]))
 }
 
+/// The URI an editor opened `path` under, so one file keeps one snapshot and
+/// version however its URI is spelled (symlink, percent-encoding); the
+/// canonical URI when it is not open.
+fn open_uri(docs: &Documents, path: &str) -> String {
+    let canonical = uri::file_uri(path);
+    if docs.contains_key(&canonical) {
+        return canonical;
+    }
+    let resolve = |p: &str| ms_driver::project::pathops::eval_symlinks(p).unwrap_or(p.to_string());
+    let wanted = resolve(path);
+    let mut matches: Vec<&String> = docs
+        .values()
+        .filter(|open| !uri::is_standard_library(&open.uri) && resolve(&open.path()) == wanted)
+        .map(|open| &open.uri)
+        .collect();
+    matches.sort();
+    matches.first().map_or(canonical, |u| (*u).clone())
+}
+
 fn is_identifier(name: &str) -> bool {
     let file: Arc<str> = "rename".into();
     let Ok(lexed) = ms_syntax::lexer::lex(&file, name) else {
@@ -152,7 +169,7 @@ fn rename_changes(
     let mut changes = Vec::new();
     for (file_uri, mut edits) in by_uri {
         canceled(cancel)?;
-        let file = content[&file_uri].clone();
+        let file = &content[&file_uri];
         let filename: Arc<str> = uri::filename(&file_uri).into();
         let lexed = ms_syntax::lexer::lex(&filename, &file.text).map_err(|e| e.message.clone())?;
         for token in &lexed.tokens {
@@ -166,32 +183,19 @@ fn rename_changes(
             }
         }
         edits.sort_by_key(|e| std::cmp::Reverse(e.start));
+        let positions = text::SourcePositions::new(&file.text);
         let mut lsp_edits = Vec::new();
-        let mut new_source = file.text.clone();
+        let mut updated = file.clone();
         for edit in &edits {
-            if edit.end > new_source.len() {
+            if edit.end > updated.text.len() {
                 return Err("source revision changed".to_string());
             }
             lsp_edits.push(obj([
-                (
-                    "range",
-                    Range {
-                        start: text::position(&file.text, edit.start),
-                        end: text::position(&file.text, edit.end),
-                    }
-                    .json(),
-                ),
+                ("range", positions.range(edit.start, edit.end).json()),
                 ("newText", name.into()),
             ]));
-            new_source = format!(
-                "{}{}{}",
-                &new_source[..edit.start],
-                name,
-                &new_source[edit.end..]
-            );
+            updated.text.replace_range(edit.start..edit.end, name);
         }
-        let mut updated = file.clone();
-        updated.text = new_source;
         modified.insert(file_uri.clone(), updated);
         let version = match docs.get(&file_uri) {
             Some(opened) => opened.version.into(),

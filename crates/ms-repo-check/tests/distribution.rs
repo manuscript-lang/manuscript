@@ -35,9 +35,21 @@ fn distribution_contains_the_documented_hello_test() {
     ] {
         write(&root, name, bytes);
     }
-    // Cargo is deliberately inert: only the packaging step is under test.
-    write(&root, "mock-bin/cargo", b"#!/bin/sh\nexit 0\n");
-    write(&root, "target/release/ms", b"compiler fixture\n");
+    // Cargo only places the fixture where the requested target puts it: only packaging is under test.
+    write(
+        &root,
+        "mock-bin/cargo",
+        br#"#!/bin/sh
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = --target ]; then shift; triple=$1; fi
+    shift
+done
+if [ -n "${triple:-}" ]; then
+    mkdir -p "target/$triple/release"
+    printf 'compiler fixture\n' > "target/$triple/release/ms"
+fi
+"#,
+    );
     std::fs::set_permissions(
         root.join("mock-bin/cargo"),
         std::fs::Permissions::from_mode(0o755),

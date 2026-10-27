@@ -330,7 +330,10 @@ fn unicode_valid(s: &[u8]) -> bool {
 const ONES: u64 = 0x0101_0101_0101_0101;
 const HIGHS: u64 = 0x8080_8080_8080_8080;
 
-use ms_rt::scan::{json_special as find_special, skip_spaces};
+use ms_rt::scan::{
+    json_plain_digits, json_simple_number, json_special as find_special, push_member_name,
+    push_member_quoted, push_short, push_string_short, skip_spaces,
+};
 
 enum Frame {
     /// An array whose items so far are `vals[start..]`.
@@ -351,6 +354,58 @@ fn hash_key(k: &[u8]) -> u64 {
         h = (h.rotate_left(5) ^ u64::from_le_bytes(w)).wrapping_mul(0x517c_c1b7_2722_0a95);
     }
     h ^ (h >> 29)
+}
+
+/// Advances `pos` over ASCII digits; false when there were none.
+fn scan_digits(text: &[u8], pos: &mut usize) -> bool {
+    let start = *pos;
+    // Eight digits at a time: a byte is a digit when `b ^ 0x30` is below ten.
+    while let Some(chunk) = text.get(*pos..*pos + 8) {
+        let w = u64::from_le_bytes([
+            chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+        ]) ^ (ONES * 0x30);
+        let non_digit = (w.wrapping_add(ONES * 0x76) | w) & HIGHS;
+        if non_digit != 0 {
+            *pos += (non_digit.trailing_zeros() / 8) as usize;
+            return *pos > start;
+        }
+        *pos += 8;
+    }
+    while text.get(*pos).is_some_and(u8::is_ascii_digit) {
+        *pos += 1;
+    }
+    *pos > start
+}
+
+/// Advances `pos` over one JSON number; false when the text there is not one.
+fn scan_number(text: &[u8], pos: &mut usize) -> bool {
+    if text.get(*pos) == Some(&b'-') {
+        *pos += 1;
+    }
+    let Some(&c) = text.get(*pos) else {
+        return false;
+    };
+    if c == b'0' {
+        *pos += 1;
+    } else if !scan_digits(text, pos) {
+        return false;
+    }
+    if text.get(*pos) == Some(&b'.') {
+        *pos += 1;
+        if !scan_digits(text, pos) {
+            return false;
+        }
+    }
+    if matches!(text.get(*pos), Some(b'e' | b'E')) {
+        *pos += 1;
+        if matches!(text.get(*pos), Some(b'+' | b'-')) {
+            *pos += 1;
+        }
+        if !scan_digits(text, pos) {
+            return false;
+        }
+    }
+    true
 }
 
 struct Scanner<'a> {
@@ -391,54 +446,8 @@ impl Scanner<'_> {
         }
     }
 
-    fn digits(&mut self) -> bool {
-        let start = self.pos;
-        // Eight digits at a time: a byte is a digit when `b ^ 0x30` is below ten.
-        while let Some(chunk) = self.text.get(self.pos..self.pos + 8) {
-            let w = u64::from_le_bytes([
-                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-            ]) ^ (ONES * 0x30);
-            let non_digit = (w.wrapping_add(ONES * 0x76) | w) & HIGHS;
-            if non_digit != 0 {
-                self.pos += (non_digit.trailing_zeros() / 8) as usize;
-                return self.pos > start;
-            }
-            self.pos += 8;
-        }
-        while self.text.get(self.pos).is_some_and(u8::is_ascii_digit) {
-            self.pos += 1;
-        }
-        self.pos > start
-    }
-
     fn number(&mut self) -> bool {
-        if self.text[self.pos] == b'-' {
-            self.pos += 1;
-        }
-        let Some(&c) = self.text.get(self.pos) else {
-            return false;
-        };
-        if c == b'0' {
-            self.pos += 1;
-        } else if !self.digits() {
-            return false;
-        }
-        if self.text.get(self.pos) == Some(&b'.') {
-            self.pos += 1;
-            if !self.digits() {
-                return false;
-            }
-        }
-        if matches!(self.text.get(self.pos), Some(b'e' | b'E')) {
-            self.pos += 1;
-            if matches!(self.text.get(self.pos), Some(b'+' | b'-')) {
-                self.pos += 1;
-            }
-            if !self.digits() {
-                return false;
-            }
-        }
-        true
+        scan_number(self.text, &mut self.pos)
     }
 
     fn hex4(&self, at: usize) -> Option<u32> {
@@ -895,11 +904,8 @@ pub fn parse_tree(text: &str, limits: Limits, b: &mut TreeBuilder<'_>) -> Result
 
 /// Whether `s` is exactly one JSON number.
 pub fn number_text_valid(s: &str) -> bool {
-    if s.is_empty() {
-        return false;
-    }
-    let mut p = scanner(s, 0, 0, Doc::default());
-    p.number() && p.pos == s.len()
+    let mut pos = 0;
+    scan_number(s.as_bytes(), &mut pos) && pos == s.len()
 }
 
 // ---- serialization ----
@@ -1089,11 +1095,42 @@ struct Level {
     undo_count: u32,
 }
 
+/// "00" to "99": two digits per step when writing integers.
+static PAIRS: [u8; 200] = {
+    let mut t = [0u8; 200];
+    let mut i = 0;
+    while i < 100 {
+        t[i * 2] = b'0' + (i / 10) as u8;
+        t[i * 2 + 1] = b'0' + (i % 10) as u8;
+        i += 1;
+    }
+    t
+};
+
+/// The letter after the backslash that escapes each byte, `u` for `\u00xx`, 0 for none.
+const ESCAPES: [u8; 256] = {
+    let mut t = [0u8; 256];
+    let mut c = 0;
+    while c < 0x20 {
+        t[c] = b'u';
+        c += 1;
+    }
+    t[b'"' as usize] = b'"';
+    t[b'\\' as usize] = b'\\';
+    t[8] = b'b';
+    t[12] = b'f';
+    t[b'\n' as usize] = b'n';
+    t[b'\r' as usize] = b'r';
+    t[b'\t' as usize] = b't';
+    t
+};
+
 /// Writes JSON text straight into a buffer: typed encoders call it in document order and never
 /// build a [`Doc`]. A failure (`max_bytes`, a number that is not JSON, nesting past
 /// [`DEPTH_CEILING`], a bad budget) is kept and every later call does nothing.
 pub struct Writer {
-    buf: String,
+    /// UTF-8: only whole `&str`s and ASCII are appended, and [`Writer::undo`] cuts at a recorded length.
+    buf: Vec<u8>,
     max: usize,
     width: usize,
     err: Option<Fail>,
@@ -1118,7 +1155,7 @@ impl Writer {
         }
         .min(INDENT_CEILING);
         Writer {
-            buf: String::new(),
+            buf: Vec::with_capacity(256.min(max)),
             max,
             width,
             err,
@@ -1139,12 +1176,8 @@ impl Writer {
 
     fn newline(&mut self, level: usize) {
         if self.width > 0 {
-            self.buf.push('\n');
-            let n = self.width * level;
-            self.buf.reserve(n);
-            for _ in 0..n {
-                self.buf.push(' ');
-            }
+            self.buf.push(b'\n');
+            self.buf.resize(self.buf.len() + self.width * level, b' ');
         }
     }
 
@@ -1159,7 +1192,7 @@ impl Writer {
         let comma = top.count > 0;
         top.count += 1;
         if comma {
-            self.buf.push(',');
+            self.buf.push(b',');
         }
         self.newline(depth);
     }
@@ -1176,11 +1209,64 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_name(&mut self.buf, top.count > 0, key.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
+        }
+        self.buf.reserve(key.len() + 8);
         self.separate();
         self.quoted(key);
-        self.buf.push(':');
+        self.buf.push(b':');
         if self.width > 0 {
-            self.buf.push(' ');
+            self.buf.push(b' ');
+        }
+        self.check();
+    }
+
+    /// [`Writer::key`] for a walk that never calls [`Writer::undo`] and writes the member's value
+    /// next, which checks the limit: the undo record and the limit check are skipped.
+    pub fn key_walked(&mut self, key: &str) {
+        if self.err.is_none()
+            && self.width == 0
+            && let Some(top) = self.levels.last_mut()
+            && push_member_name(&mut self.buf, top.count > 0, key.as_bytes())
+        {
+            top.count += 1;
+            return;
+        }
+        self.key(key);
+    }
+
+    /// Starts a member whose name is already escaped: `quoted_name` is the name with its quotes.
+    pub fn key_quoted(&mut self, quoted_name: &str) {
+        if self.err.is_some() {
+            return;
+        }
+        if self.width == 0
+            && let Some(top) = self.levels.last_mut()
+        {
+            let at = self.buf.len();
+            if push_member_quoted(&mut self.buf, top.count > 0, quoted_name.as_bytes()) {
+                top.undo_len = at;
+                top.undo_count = top.count;
+                top.count += 1;
+                self.check();
+                return;
+            }
+        }
+        self.separate();
+        push_short(&mut self.buf, quoted_name.as_bytes());
+        self.buf.push(b':');
+        if self.width > 0 {
+            self.buf.push(b' ');
         }
         self.check();
     }
@@ -1196,7 +1282,7 @@ impl Writer {
         }
     }
 
-    fn open(&mut self, c: char) {
+    fn open(&mut self, c: u8) {
         if self.err.is_some() {
             return;
         }
@@ -1209,7 +1295,7 @@ impl Writer {
         self.check();
     }
 
-    fn close(&mut self, c: char) {
+    fn close(&mut self, c: u8) {
         if self.err.is_some() {
             return;
         }
@@ -1224,16 +1310,16 @@ impl Writer {
     }
 
     pub fn begin_array(&mut self) {
-        self.open('[');
+        self.open(b'[');
     }
     pub fn end_array(&mut self) {
-        self.close(']');
+        self.close(b']');
     }
     pub fn begin_object(&mut self) {
-        self.open('{');
+        self.open(b'{');
     }
     pub fn end_object(&mut self) {
-        self.close('}');
+        self.close(b'}');
     }
 
     pub fn null(&mut self) {
@@ -1248,32 +1334,41 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
+        if v < 0 {
+            self.buf.push(b'-');
+        }
         let mut digits = [0u8; 20];
         let mut at = digits.len();
         let mut n = v.unsigned_abs();
-        loop {
+        while n >= 100 {
+            let pair = (n % 100) as usize * 2;
+            n /= 100;
+            at -= 2;
+            digits[at] = PAIRS[pair];
+            digits[at + 1] = PAIRS[pair + 1];
+        }
+        if n >= 10 {
+            at -= 2;
+            digits[at] = PAIRS[n as usize * 2];
+            digits[at + 1] = PAIRS[n as usize * 2 + 1];
+        } else {
             at -= 1;
-            digits[at] = b'0' + (n % 10) as u8;
-            n /= 10;
-            if n == 0 {
-                break;
-            }
+            digits[at] = b'0' + n as u8;
         }
-        if v < 0 {
-            self.buf.push('-');
-        }
-        for &d in &digits[at..] {
-            self.buf.push(char::from(d));
-        }
+        push_short(&mut self.buf, &digits[at..]);
         self.check();
     }
 
     /// A float; NaN and infinities are `null`.
     pub fn float(&mut self, v: f64) {
-        match float_text(v) {
-            Some(t) => self.raw(&t),
-            None => self.null(),
+        if self.err.is_some() {
+            return;
         }
+        if float_append(&mut self.buf, v).is_none() {
+            self.null();
+            return;
+        }
+        self.check();
     }
 
     /// Number text from a caller, which has to be one JSON number.
@@ -1281,7 +1376,11 @@ impl Writer {
         if self.err.is_some() {
             return;
         }
-        if !number_text_valid(text) {
+        let b = text.as_bytes();
+        if !(b.len() <= 16 && json_plain_digits(b))
+            && !json_simple_number(b)
+            && !number_text_valid(text)
+        {
             return self.fail();
         }
         self.raw(text);
@@ -1297,38 +1396,44 @@ impl Writer {
 
     fn raw(&mut self, text: &str) {
         if self.err.is_none() {
-            self.buf.push_str(text);
+            push_short(&mut self.buf, text.as_bytes());
             self.check();
         }
     }
 
     fn quoted(&mut self, s: &str) {
-        const HEX: &[u8; 16] = b"0123456789abcdef";
         let b = s.as_bytes();
+        // Most names and short values: no escape, one capacity check.
+        if push_string_short(&mut self.buf, b) {
+            return;
+        }
         self.buf.reserve(b.len() + 2);
-        self.buf.push('"');
+        self.buf.push(b'"');
         let mut at = 0;
         while let Some(i) = find_special(b, at) {
-            // Runs end at ASCII bytes, so they are character boundaries.
-            self.buf.push_str(s.get(at..i).unwrap_or(""));
-            match b[i] {
-                b'"' => self.buf.push_str("\\\""),
-                b'\\' => self.buf.push_str("\\\\"),
-                8 => self.buf.push_str("\\b"),
-                12 => self.buf.push_str("\\f"),
-                b'\n' => self.buf.push_str("\\n"),
-                b'\r' => self.buf.push_str("\\r"),
-                b'\t' => self.buf.push_str("\\t"),
-                c => {
-                    self.buf.push_str("\\u00");
-                    self.buf.push(char::from(HEX[usize::from(c >> 4)]));
-                    self.buf.push(char::from(HEX[usize::from(c & 0xf)]));
-                }
-            }
+            push_short(&mut self.buf, &b[at..i]);
+            self.escape(b[i], ESCAPES[usize::from(b[i])]);
             at = i + 1;
         }
-        self.buf.push_str(s.get(at..).unwrap_or(""));
-        self.buf.push('"');
+        push_short(&mut self.buf, &b[at..]);
+        self.buf.push(b'"');
+    }
+
+    /// The escape of byte `c`, whose [`ESCAPES`] entry is `code`.
+    fn escape(&mut self, c: u8, code: u8) {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        if code == b'u' {
+            self.buf.extend_from_slice(&[
+                b'\\',
+                b'u',
+                b'0',
+                b'0',
+                HEX[usize::from(c >> 4)],
+                HEX[usize::from(c & 0xf)],
+            ]);
+        } else {
+            self.buf.extend_from_slice(&[b'\\', code]);
+        }
     }
 
     /// The text written, or the first failure.
@@ -1336,7 +1441,10 @@ impl Writer {
         match self.err {
             Some(e) => Err(e),
             None if !self.levels.is_empty() => Err(Fail::InvalidData),
-            None => Ok(core::mem::take(&mut self.buf)),
+            // Only whole `&str`s and ASCII were appended, and `undo` cuts at a recorded boundary.
+            None => Ok(ms_rt::scan::string_from_valid_utf8(core::mem::take(
+                &mut self.buf,
+            ))),
         }
     }
 }
@@ -1346,53 +1454,239 @@ impl Writer {
 /// Go's `json.Marshal(float64)`: shortest round-trip digits, exponent form outside
 /// `1e-6 <= |v| < 1e21`. `None` for NaN and infinities (encoded as `null`).
 pub fn float_text(v: f64) -> Option<String> {
+    let mut out = Vec::new();
+    float_append(&mut out, v)?;
+    String::from_utf8(out).ok()
+}
+
+/// Fixed-size text for the `{:e}` form of a float: at most 17 digits, a point, and an exponent.
+struct Sci {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl core::fmt::Write for Sci {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let end = self.len + s.len();
+        self.bytes
+            .get_mut(self.len..end)
+            .ok_or(core::fmt::Error)?
+            .copy_from_slice(s.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
+/// Powers of ten that a double holds exactly.
+const POW10: [f64; 23] = [
+    1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+    1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+];
+
+/// The shortest digits of `abs` (1e-6 <= abs < 1e15) when it is a decimal of at most 15
+/// significant digits, written to `buf` with the decimal exponent of the first digit. Two
+/// different 15-digit decimals never round to one double, so a decimal that divides back to `abs`
+/// is the only candidate and, once trailing zeros are dropped, the shortest one: the same digits
+/// the shortest-round-trip formatter finds.
+fn short_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
+    if !(1e-6..1e15).contains(&abs) {
+        return None;
+    }
+    // floor(log10(abs)) from the binary exponent: right or one too low or high, which the
+    // 15-digit range below catches and the second try fixes.
+    let e2 = ((abs.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+    let mut exp = (e2 * 1233) >> 12;
+    let (mut scale, mut n, mut pow);
+    let mut tries = 0;
+    loop {
+        scale = 14 - exp; // 10^scale puts 15 digits before the point
+        pow = *POW10.get(usize::try_from(scale).ok()?)?;
+        n = (abs * pow + 0.5) as u64; // rounds to nearest; the check below catches a bad tie
+        tries += 1;
+        if n >= 1_000_000_000_000_000 && tries < 3 {
+            exp += 1;
+        } else if n < 100_000_000_000_000 && tries < 3 {
+            exp -= 1;
+        } else {
+            break;
+        }
+    }
+    if !(100_000_000_000_000..1_000_000_000_000_000).contains(&n) || n as f64 / pow != abs {
+        return None;
+    }
+    // Drop trailing zeros, then write what is left from the end.
+    let mut len = 15;
+    for (step, zeros) in [(100_000_000, 8), (10_000, 4), (100, 2), (10, 1)] {
+        if n % step == 0 {
+            n /= step;
+            len -= zeros;
+        }
+    }
+    // Two digits per step, as in `Writer::int`.
+    let mut at = len;
+    while n >= 100 {
+        let pair = (n % 100) as usize * 2;
+        n /= 100;
+        at -= 2;
+        buf[at] = PAIRS[pair];
+        buf[at + 1] = PAIRS[pair + 1];
+    }
+    if at == 2 {
+        buf[0] = PAIRS[n as usize * 2];
+        buf[1] = PAIRS[n as usize * 2 + 1];
+    } else {
+        buf[0] = b'0' + n as u8;
+    }
+    Some((len, 14 - scale))
+}
+
+/// The shortest round-trip digits of `abs` through the standard formatter, as in
+/// [`short_digits`].
+fn sci_digits(abs: f64, buf: &mut [u8; 24]) -> Option<(usize, i32)> {
     use core::fmt::Write;
+    let mut sci = Sci {
+        bytes: [0; 32],
+        len: 0,
+    };
+    write!(sci, "{abs:e}").ok()?;
+    let text = &sci.bytes[..sci.len];
+    let e_at = text.iter().position(|&c| c == b'e')?;
+    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
+    let mut n = 0;
+    for &c in &text[..e_at] {
+        if c != b'.' {
+            *buf.get_mut(n)? = c;
+            n += 1;
+        }
+    }
+    Some((n, exp))
+}
+
+const POW10_INT: [u64; 5] = [1, 10, 100, 1000, 10000];
+
+/// Writes the decimal digits of `n` (none for zero) so that they end just before `end`, two at a
+/// time, and returns where they start.
+#[inline(always)]
+fn put_digits(buf: &mut [u8; 24], mut end: usize, mut n: u64) -> usize {
+    while n >= 100 {
+        let pair = (n % 100) as usize * 2;
+        n /= 100;
+        end -= 2;
+        buf[end] = PAIRS[pair];
+        buf[end + 1] = PAIRS[pair + 1];
+    }
+    if n >= 10 {
+        end -= 2;
+        buf[end] = PAIRS[n as usize * 2];
+        buf[end + 1] = PAIRS[n as usize * 2 + 1];
+    } else if n > 0 {
+        end -= 1;
+        buf[end] = b'0' + n as u8;
+    }
+    end
+}
+
+/// Writes `v` when it is a decimal with one to four fraction digits and at most 15 digits in all
+/// (`12345.5`, `0.25`, `99.99`), by scaling to an integer and checking that it divides back to
+/// `abs`: the quotient of an exact integer by an exact power of ten is the correctly rounded
+/// double of that decimal, so a match is the digits the shortest-round-trip formatter finds, and
+/// the first scale that matches is the fewest fraction digits. Anything else returns false and
+/// writes nothing.
+fn short_fraction(out: &mut Vec<u8>, v: f64, abs: f64) -> bool {
+    if !(1e-3..1e11).contains(&abs) {
+        return false;
+    }
+    for (k, pow) in [(1usize, 10.0), (2, 100.0), (3, 1000.0), (4, 10000.0)] {
+        // Below 1e15 either way, so the signed conversions (cheaper than unsigned ones) are exact.
+        let n = (abs * pow + 0.5) as i64;
+        if n as f64 / pow != abs {
+            continue;
+        }
+        let n = n as u64;
+        let scale = POW10_INT[k];
+        // `n` has no trailing zero here: one fewer fraction digit would have matched first.
+        // The buffer starts as zeros, so a short fraction keeps its leading zeros.
+        let mut text = [b'0'; 24];
+        let mut at = 24 - k;
+        put_digits(&mut text, 24, n % scale);
+        at -= 1;
+        text[at] = b'.';
+        let start = put_digits(&mut text, at, n / scale);
+        at = if start == at { at - 1 } else { start };
+        if v.is_sign_negative() {
+            out.push(b'-');
+        }
+        push_short(out, &text[at..]);
+        return true;
+    }
+    false
+}
+
+/// Appends [`float_text`] to `out`; `None` (and nothing appended) for NaN and infinities.
+fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
     if !v.is_finite() {
         return None;
     }
     let abs = v.abs();
-    let mut sci = String::new();
-    let _ = write!(sci, "{abs:e}");
-    let (mant, exp) = sci.split_once('e')?;
-    let exp: i32 = exp.parse().ok()?;
-    let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    let mut out = String::new();
+    if abs < 1e15 && (abs as i64) as f64 == abs {
+        // A whole number prints as its digits, with no point or exponent.
+        if v.is_sign_negative() {
+            out.push(b'-');
+        }
+        let mut digits = [b'0'; 24];
+        let start = put_digits(&mut digits, 24, abs as u64);
+        // Zero has no digits from `put_digits`; its one `0` is already in the buffer.
+        let at = start.min(23);
+        push_short(out, &digits[at..]);
+        return Some(());
+    }
+    if short_fraction(out, v, abs) {
+        return Some(());
+    }
+    let mut buf = [0u8; 24];
+    let (n, exp) = match short_digits(abs, &mut buf) {
+        Some(found) => found,
+        None => sci_digits(abs, &mut buf)?,
+    };
+    let digits = &buf[..n];
     if v.is_sign_negative() {
-        out.push('-');
+        out.push(b'-');
     }
     if abs != 0.0 && !(1e-6..1e21).contains(&abs) {
-        out.push_str(&digits[..1]);
-        if digits.len() > 1 {
-            out.push('.');
-            out.push_str(&digits[1..]);
+        out.push(digits[0]);
+        if n > 1 {
+            out.push(b'.');
+            push_short(out, &digits[1..]);
         }
-        out.push('e');
-        out.push(if exp < 0 { '-' } else { '+' });
+        out.push(b'e');
+        out.push(if exp < 0 { b'-' } else { b'+' });
         let e = exp.unsigned_abs();
         if e < 10 && exp >= 0 {
-            out.push('0');
+            out.push(b'0');
         }
-        let _ = write!(out, "{e}");
-        return Some(out);
+        if e >= 100 {
+            out.push(b'0' + (e / 100) as u8);
+        }
+        if e >= 10 {
+            out.push(b'0' + (e / 10 % 10) as u8);
+        }
+        out.push(b'0' + (e % 10) as u8);
+        return Some(());
     }
     let point = exp + 1; // digits before the decimal point
     if point <= 0 {
-        out.push_str("0.");
-        for _ in 0..-point {
-            out.push('0');
-        }
-        out.push_str(&digits);
-    } else if digits.len() as i32 <= point {
-        out.push_str(&digits);
-        for _ in 0..(point - digits.len() as i32) {
-            out.push('0');
-        }
+        push_short(out, b"0.");
+        out.resize(out.len() + (-point) as usize, b'0');
+        push_short(out, digits);
+    } else if n as i32 <= point {
+        push_short(out, digits);
+        out.resize(out.len() + (point - n as i32) as usize, b'0');
     } else {
-        out.push_str(&digits[..point as usize]);
-        out.push('.');
-        out.push_str(&digits[point as usize..]);
+        push_short(out, &digits[..point as usize]);
+        out.push(b'.');
+        push_short(out, &digits[point as usize..]);
     }
-    Some(out)
+    Some(())
 }
 
 /// `strconv.ParseInt(text, 10, 64)` on number text.

@@ -14,7 +14,7 @@ use crate::net::{Network, Resource};
 use crate::rt;
 use crate::tls::{self, TlsOptions};
 use crate::wait::Deadline;
-use flate2::write::GzDecoder;
+use flate2::write::MultiGzDecoder;
 use ms_rt::fault::with_cleanup;
 use rustls::ClientConfig;
 use std::cell::{Cell, RefCell};
@@ -748,7 +748,9 @@ impl Client {
                 .fields
                 .iter()
                 .find(|(n, _)| n.eq_ignore_ascii_case("Content-Encoding"))
-                .is_some_and(|(_, v)| v.eq_ignore_ascii_case(b"gzip"));
+                .is_some_and(|(_, v)| {
+                    v.eq_ignore_ascii_case(b"gzip") || v.eq_ignore_ascii_case(b"x-gzip")
+                });
         let mut fields = head.fields.clone();
         let mut state = BodyState::start(head, wire, key, method, gzip, max_response);
         let gzip = state.gzip.is_some();
@@ -1329,7 +1331,7 @@ struct BodyState {
     key: String,
     decoder: BodyDecoder,
     keep_alive: bool,
-    gzip: Option<GzDecoder<Sink>>,
+    gzip: Option<MultiGzDecoder<Sink>>,
     /// Compressed bytes not yet fed to the decoder.
     gz_in: Vec<u8>,
     /// Decoded bytes not yet delivered.
@@ -1366,7 +1368,7 @@ impl BodyState {
             decoder: BodyDecoder::new(framing),
             keep_alive,
             gzip: gzip.then(|| {
-                GzDecoder::new(Sink {
+                MultiGzDecoder::new(Sink {
                     buf: Vec::new(),
                     room: 0,
                 })
@@ -1565,7 +1567,7 @@ fn gzip_error(e: std::io::Error) -> IoErr {
         std::io::ErrorKind::UnexpectedEof => {
             IoErr::Failed("connection closed before the exchange completed".into())
         }
-        _ => IoErr::Failed("gzip: invalid header".into()),
+        _ => IoErr::Failed(format!("gzip: {e}")),
     }
 }
 
@@ -2344,6 +2346,49 @@ mod tests {
         let (_net, plain) = client(ClientOptions::default());
         let body = plain.send(request("GET", &address, "/gz")).unwrap();
         assert!(body.headers.borrow().values("Content-Encoding").is_some());
+    }
+
+    #[test]
+    fn gzip_bodies_decode_every_member_and_report_corruption() {
+        let member = |data: &[u8]| {
+            let mut e = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+            e.write_all(data).unwrap();
+            e.finish().unwrap()
+        };
+        let multi = [member(b"hello "), member(b"world")].concat();
+        let mut corrupt = member(b"checksummed");
+        let crc = corrupt.len() - 8;
+        corrupt[crc] ^= 0xff;
+        let (address, _) = serve(move |s, _| {
+            let request = read_request(s).unwrap();
+            let (encoding, body) = if request.starts_with("GET /multi") {
+                ("gzip", multi.clone())
+            } else if request.starts_with("GET /alias") {
+                ("x-gzip", member(b"alias"))
+            } else {
+                ("gzip", corrupt.clone())
+            };
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Encoding: {encoding}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            s.write_all(head.as_bytes()).unwrap();
+            s.write_all(&body).unwrap();
+        });
+        let (_net, c) = client(ClientOptions {
+            decompress: true,
+            ..ClientOptions::default()
+        });
+        assert_eq!(
+            text(&c.send(request("GET", &address, "/multi")).unwrap()),
+            "hello world"
+        );
+        assert_eq!(
+            text(&c.send(request("GET", &address, "/alias")).unwrap()),
+            "alias"
+        );
+        let body = c.send(request("GET", &address, "/corrupt")).unwrap();
+        assert_eq!(body.read_all(), Err(ReadAll::Invalid));
     }
 
     #[test]

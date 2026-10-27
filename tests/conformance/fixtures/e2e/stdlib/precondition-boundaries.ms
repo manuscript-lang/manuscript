@@ -7,15 +7,13 @@ from "@std/queue.ms" import PriorityQueue, Queue
 from "@std/math.ms" import from_int
 from "@std/math.ms" import parse_int, NumberError
 
-def compare(left: Int, right: Int) -> Int: left - right
-
 test "byte updates retain relative bounds and immutable storage":
     let bytes = Bytes([0, 255])
     try expect_equal(bytes.with_value(-2, 255), Bytes([255, 255]))
     try expect_equal(bytes.with_value(1, 0), Bytes([0, 0]))
     try expect_equal(bytes, Bytes([0, 255]))
-    try expect_equal(bytes.get(-3, default: -1), -1)
-    try expect_equal(bytes.get(2, default: -1), -1)
+    try expect_equal(bytes.get(-3, default: 7), 7)
+    try expect_equal(bytes.get(2, default: 7), 7)
     try expect_equal(bytes.slice(2, 2).get(), Bytes([]))
 
     var builder = BytesBuilder()
@@ -65,9 +63,9 @@ test "queue capacities retain omission none minimum maximum and full results":
     var large = Queue[Int](9223372036854775807)
     try expect_false(not unbounded.enqueue(1) or not large.enqueue(1))
 
-    var priority = PriorityQueue[Int](compare, 1)
+    var priority = PriorityQueue[Int](1)
     try expect_false(not priority.enqueue(1) or priority.enqueue(2))
 
-    var unlimited = PriorityQueue[Int](compare, none)
-    var large_priority = PriorityQueue[Int](compare, 9223372036854775807)
+    var unlimited = PriorityQueue[Int](none)
+    var large_priority = PriorityQueue[Int](9223372036854775807)
     try expect_false(not unlimited.enqueue(1) or not large_priority.enqueue(1))

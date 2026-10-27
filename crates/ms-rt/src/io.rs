@@ -8,9 +8,6 @@ static OUT: Process<Vec<u8>> = Process::new(Vec::new());
 /// 0 unknown, 1 pipe/file, 2 terminal.
 static TTY: Process<u8> = Process::new(0);
 
-/// Bit 0: standard output was closed; bit 1: standard error was closed.
-static CLOSED: Process<u8> = Process::new(0);
-
 /// Serializes whole writes from worker isolates, which skip the main isolate's buffer.
 static WORKER_OUT: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -133,17 +130,9 @@ pub extern "C-unwind" fn msrt_io_flush() {
     flush_stdout();
 }
 
-/// Closes standard output (`which` 0) or standard error (1): later writes through the stream fail.
+/// Closing a standard stream only flushes it: the descriptors belong to the process, so the
+/// stream stays usable (`which` is 0 for output, 1 for error).
 #[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_io_close(which: i64) {
+pub extern "C-unwind" fn msrt_io_close(_which: i64) {
     flush_stdout();
-    // SAFETY: single threaded access.
-    unsafe { *CLOSED.ptr() |= 1 << (which & 1) };
-}
-
-/// Whether standard output (`which` 0) or standard error (1) was closed.
-#[unsafe(no_mangle)]
-pub extern "C-unwind" fn msrt_io_closed(which: i64) -> bool {
-    // SAFETY: single threaded access.
-    unsafe { *CLOSED.ptr() & (1 << (which & 1)) != 0 }
 }

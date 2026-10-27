@@ -45,7 +45,6 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
         {
             let declaration = [
                 "import ",
-                "from ",
                 "export ",
                 "def ",
                 "extern ",
@@ -57,7 +56,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                 "test ",
             ]
             .iter()
-            .any(|k| trimmed.starts_with(k));
+            .any(|k| trimmed.starts_with(k))
+                || is_from_import(trimmed);
             // A fresh declaration synchronizes even after an unmatched opener.
             // Other column-zero lines can still belong to a continued header,
             // import, or expression. Let the lexer handle strings and comments
@@ -177,10 +177,18 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
 /// Only a bound for optimistic parsing, never a recovery boundary. Includes
 /// constants and token boundaries such as `import{` and `let(`; malformed input
 /// still synchronizes using the original rules.
+/// `from` begins an import only before a module path; elsewhere it is an ordinary name.
+fn is_from_import(line: &str) -> bool {
+    line.strip_prefix("from")
+        .is_some_and(|rest| rest.trim_start().starts_with('"'))
+}
+
 fn partial_root_start(source: &str) -> bool {
+    if source.starts_with("from") {
+        return is_from_import(source);
+    }
     for keyword in [
         "import",
-        "from",
         "export",
         "def",
         "extern",

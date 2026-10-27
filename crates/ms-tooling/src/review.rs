@@ -76,7 +76,12 @@ pub struct DiffInput {
 /// Classifies what changed between base and head. Both are produced by the
 /// same checker; `input.touched` maps a file to its changed head lines.
 pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Finding> {
-    let reach = reach_counts(head);
+    let mut callers: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (key, fact) in &head.entities {
+        for callee in &fact.calls {
+            callers.entry(callee).or_default().push(key);
+        }
+    }
     let keys: BTreeSet<&String> = head.entities.keys().chain(base.entities.keys()).collect();
     let touched = touched_keys(head, &input.touched);
     let mut findings = Vec::new();
@@ -86,7 +91,7 @@ pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Findi
         if b.is_some_and(|b| input.added.contains(&b.file)) {
             b = None;
         }
-        let mut f = classify(key, h, b, input.base_checked, &reach, head);
+        let mut f = classify(key, h, b, input.base_checked, &callers, head);
         if f.changes.is_empty() && touched.contains(key) {
             f.changes = vec!["body changed".to_string()];
         }
@@ -133,7 +138,7 @@ fn classify(
     h: Option<&Fact>,
     b: Option<&Fact>,
     base_checked: bool,
-    reach: &HashMap<String, usize>,
+    callers: &HashMap<&str, Vec<&str>>,
     head: &Facts,
 ) -> Finding {
     let subject = h.or(b).expect("a key comes from base or head");
@@ -183,7 +188,7 @@ fn classify(
         }
     }
     if !s.finding.changes.is_empty() && s.finding.score > 1 {
-        let r = reach.get(key).copied().unwrap_or(0);
+        let r = reach_count(key, callers);
         s.finding.reach = r;
         if r > 0 {
             let weight = 2 * (usize::BITS - r.leading_zeros()) as i64;
@@ -308,28 +313,19 @@ fn has_any(have: &[String], want: &[String]) -> bool {
     want.iter().any(|w| have.contains(w))
 }
 
-/// The number of distinct project entities that transitively call each entity.
-fn reach_counts(facts: &Facts) -> HashMap<String, usize> {
-    let mut callers: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (key, fact) in &facts.entities {
-        for callee in &fact.calls {
-            callers.entry(callee).or_default().push(key);
-        }
-    }
-    let mut result = HashMap::new();
-    for key in facts.entities.keys() {
-        let mut seen: BTreeSet<&str> = BTreeSet::from([key.as_str()]);
-        let mut queue = VecDeque::from([key.as_str()]);
-        while let Some(next) = queue.pop_front() {
-            for caller in callers.get(next).into_iter().flatten() {
-                if seen.insert(caller) {
-                    queue.push_back(caller);
-                }
+/// The number of distinct project entities that transitively call this entity.
+/// Only scored changes need a traversal; unchanged and body-only entities do not.
+fn reach_count(key: &str, callers: &HashMap<&str, Vec<&str>>) -> usize {
+    let mut seen: BTreeSet<&str> = BTreeSet::from([key]);
+    let mut queue = VecDeque::from([key]);
+    while let Some(next) = queue.pop_front() {
+        for caller in callers.get(next).into_iter().flatten() {
+            if seen.insert(caller) {
+                queue.push_back(caller);
             }
         }
-        result.insert(key.clone(), seen.len() - 1);
     }
-    result
+    seen.len() - 1
 }
 
 /// Maps changed head lines to the most specific entity containing them.

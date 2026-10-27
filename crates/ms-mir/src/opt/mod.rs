@@ -14,8 +14,9 @@
 //! * `poll` instructions are not inserted on loop back edges (the stop signal is observed
 //!   at runtime calls and I/O); a pass must keep any `poll` that is present.
 
-use crate::ir::Module;
+use crate::ir::{Module, Op};
 
+pub mod buildmove;
 pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
@@ -50,9 +51,22 @@ pub fn instruction_count(f: &crate::ir::Func) -> usize {
 /// the first failure panics with the pass name (used by tests and debug builds).
 pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     if level == Level::None {
+        // A copy whose source dies right after it is a move; keeping the copies makes rebuilding a
+        // value from itself, or unwrapping a nested `try` result, quadratic in the depth.
+        simplify::run_phis(m);
+        strfuse::run_append(m);
+        copyelim::run(m);
         // Owned values otherwise live to scope end, and register allocation grows with the number
         // that are live at once, so only a long function pays for the earlier drops.
-        lastuse::run_where(m, |f| instruction_count(f) > LONG_FUNCTION_INSTS);
+        // A function that reads alternative payloads also drops early, so that the payloads it
+        // copies out of a dying value can be moved (`copyelim::run_takes`).
+        lastuse::run_where(m, |f| {
+            instruction_count(f) > LONG_FUNCTION_INSTS
+                || f.blocks
+                    .iter()
+                    .any(|b| b.insts.iter().any(|i| i.op == Op::AltGet))
+        });
+        copyelim::run_takes(m);
         return;
     }
     let check = |m: &Module, pass: &str| {
@@ -79,6 +93,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "inline");
     strfuse::run(m);
     check(m, "strfuse");
+    buildmove::run(m);
+    check(m, "buildmove");
     slotfuse::run(m);
     check(m, "slotfuse");
     for round in 0..3 {
@@ -100,6 +116,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "reserve");
     lastuse::run(m);
     check(m, "lastuse");
+    copyelim::run_takes(m);
+    check(m, "copyelim takes");
     simplify::run(m);
     check(m, "simplify");
 }

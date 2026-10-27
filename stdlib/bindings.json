@@ -13,7 +13,11 @@
     "Int16": "Int16Operations",
     "Int32": "Int32Operations",
     "Int8": "Int8Operations",
-    "String": "StringOperations"
+    "String": "StringOperations",
+    "UInt16": "UInt16Operations",
+    "UInt32": "UInt32Operations",
+    "UInt64": "UInt64Operations",
+    "UInt8": "UInt8Operations"
   },
   "native_types": {
     "@std/bytes.ms/Bytes": "native",
@@ -83,7 +87,6 @@
     "http/headers_clone": "msrt_http_headers_clone",
     "http/headers_names": "msrt_http_headers_names",
     "http/headers_remove": "msrt_http_headers_remove",
-    "http/headers_text": "msrt_http_headers_text",
     "http/headers_values": "msrt_http_headers_values",
     "io/read_line": "msstd_io_read_line",
     "json/parse": "msrt_json_parse",

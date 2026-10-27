@@ -1,42 +1,10 @@
 {
   "format": 1,
-  "phase": "check",
+  "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
-    "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "this closure outlives the statement, so it takes `xs` with it, but `xs` is used again at 9:21; capture `xs.clone()` to keep the original",
-        "position": {
-          "file": "task-capture-reuse.ms",
-          "line": 8,
-          "column": 21,
-          "offset": 258
-        },
-        "fix": {
-          "position": {
-            "file": "task-capture-reuse.ms",
-            "line": 8,
-            "column": 43,
-            "offset": 280
-          },
-          "end": {
-            "file": "task-capture-reuse.ms",
-            "line": 8,
-            "column": 43,
-            "offset": 280
-          },
-          "replacement": ".clone()"
-        }
-      }
-    ],
-    "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/task-capture-reuse.ms:8:21: type: this closure outlives the statement, so it takes `xs` with it, but `xs` is used again at 9:21; capture `xs.clone()` to keep the original\n   |\n 8 |         group.spawn(lambda ch: xs.length())\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
-    }
+    "exit_code": 0,
+    "stdout": "0\n",
+    "stderr": ""
   }
 }

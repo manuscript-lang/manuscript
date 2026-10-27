@@ -16,12 +16,12 @@ from "@std/bytes.ms" import Bytes
 
 def repeated_headers() -> Result[HttpHeaders, Error]:
     let fields = headers()
-    let _first = fields.append("x-dup", "first".to_bytes()) | try expect_ok
-    let _second = fields.append("X-Dup", "second".to_bytes()) | try expect_ok
+    let _first = fields.append("x-dup", "first") | try expect_ok
+    let _second = fields.append("X-Dup", "second") | try expect_ok
     let _cookie = fields.append(
-        "Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT".to_bytes()
+        "Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT"
     ) | try expect_ok
-    let _other = fields.append("set-cookie", "b=2".to_bytes()) | try expect_ok
+    let _other = fields.append("set-cookie", "b=2") | try expect_ok
     return ok(fields)
 
 def header_failure(message: String) -> HttpResponse:
@@ -30,11 +30,8 @@ def header_failure(message: String) -> HttpResponse:
 def handle_headers(request: HttpRequest) -> HttpResponse:
     if request.method != HttpMethod.Get: return header_failure("typed request method")
 
-    let received = match request.headers.text("X-DUP"):
-        case ok(found): found
-        case error(cause): return header_failure(cause.message())
-
-    if received != some(["first", "second"]): return header_failure(
+    let received = request.headers.values("X-DUP")
+    if received != ["first", "second"]: return header_failure(
         "case-insensitive received fields"
     )
 
@@ -55,40 +52,27 @@ test "one header type preserves repeated values through buffered requests":
         ) | try expect_ok
         let metadata = response.metadata()
         metadata.status | try expect_equal(200)
-        metadata.headers.text(
-            "x-dup"
-        ) | try expect_ok | try expect_equal(some(["first", "second"]))
+        metadata.headers.values("x-dup") | try expect_equal(["first", "second"])
         try expect_false(
             (
-                (
-                    metadata
-                    .headers
-                    .text("SET-COOKIE") | try expect_ok
-                ) != some(["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"])
+                (metadata.headers.values("SET-COOKIE")) != [
+                    "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT", "b=2"
+                ]
             )
         )
 
-        let _appended = (
-            (
-                metadata
-                .headers
-                .append("x-dup", "third".to_bytes())
-            ) | try expect_ok
-        )
+        let _appended = ((metadata.headers.append("x-dup", "third")) | try expect_ok)
         try expect_false(
             (
-                (
-                    response
-                    .metadata()
-                    .headers
-                    .text("X-Dup") | try expect_ok
-                ) != some(["first", "second", "third"])
+                (response.metadata().headers.values("X-Dup")) != [
+                    "first", "second", "third"
+                ]
             )
         )
 
 def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
     let received = exchange.headers()
-    if (try received.text("X-DUP")) != some(["first", "second"]): return error(
+    if received.values("X-DUP") != ["first", "second"]: return error(
         HttpError.InvalidData
     )
 
@@ -108,44 +92,38 @@ test "streaming proxy uses the same byte-valued header type":
         ) | try expect_ok
         try expect_false(
             (
-                (
-                    response
-                    .metadata()
-                    .headers
-                    .text("x-DUP") | try expect_ok
-                ) != some(["first", "second"])
+                (response.metadata().headers.values("x-DUP")) != [
+                    "first", "second"
+                ]
             )
         )
 
 test "lookup returns membership and clone separates it":
     let fields = (try repeated_headers())
-    let _appended = fields.append("x-dup", "third".to_bytes()) | try expect_ok
-    let values = fields.values("X-DUP").get().clone()
+    let _appended = fields.append("x-dup", "third") | try expect_ok
+    let values = fields.values("X-DUP")
     values.length() | try expect_equal(3)
 
     let copy = fields.clone()
-    let _copy_appended = copy.append("x-dup", "copy".to_bytes()) | try expect_ok
-    fields.values("x-dup").get().length() | try expect_equal(3)
-    (fields.values("missing").is_none()) | try expect_true
+    let _copy_appended = copy.append("x-dup", "copy") | try expect_ok
+    fields.values("x-dup").length() | try expect_equal(3)
+    (not fields.contains("missing")) | try expect_true
 
-    let _k = fields.append("K", "ASCII".to_bytes()) | try expect_ok
-    (fields.values("K").is_none()) | try expect_true
+    let _k = fields.append("K", "ASCII") | try expect_ok
+    (not fields.contains("K")) | try expect_true
 
     let _removed = fields.remove("X-DUP")
-    let _new_field = fields.append("X-Dup", "new".to_bytes()) | try expect_ok
-    (fields.values("x-dup").get().length() != 1) | try expect_false
+    let _new_field = fields.append("X-Dup", "new") | try expect_ok
+    (fields.values("x-dup").length() != 1) | try expect_false
 
-test "explicit text extraction fails with typed UTF8 error":
+test "string lookup leaves out values that are not UTF-8":
     let fields = headers()
-    let _valid = fields.append("Raw", "first".to_bytes()) | try expect_ok
-    let _invalid = fields.append("raw", Bytes(values: [255])) | try expect_ok
+    let _valid = fields.append("Raw", "first") | try expect_ok
+    let _invalid = fields.append_bytes("raw", Bytes(values: [255])) | try expect_ok
+    fields.values("RAW") | try expect_equal(["first"])
+    fields.values_bytes("RAW").get().length() | try expect_equal(2)
 
-    match fields.text("RAW"):
-        case ok(_): return fail("invalid UTF8 accepted")
-        case error(cause):
-            try expect_equal(cause, HttpError.InvalidData)
-
-    match fields.append("bad name", "value".to_bytes()):
+    match fields.append("bad name", "value"):
         case ok(_): return fail("malformed name accepted")
         case error(cause):
             try expect_equal(cause, HttpError.InvalidInput)

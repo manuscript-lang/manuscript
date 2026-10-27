@@ -32,22 +32,17 @@ test "host accessors work in callbacks":
     let check = check_services
     try check()
 
-test "repeated accessors retain closed root state":
+test "closing a standard stream leaves the process stream open":
     stdin().close()
     stdout().close()
     stderr().close()
     network().close()
 
-    let cause = match stdout().write(""):
+    match stdout().write(""):
         case ok(_):
-            return fail("accessor reopened stdout")
-        case error(cause): cause
-
-    match cause:
-        case Closed:
             return
-        case _:
-            return fail("unexpected closed-stream error")
+        case error(_):
+            return fail("closing stdout closed the process stream")
 
 test "a later test receives fresh standard output":
     match stdout().write(""):

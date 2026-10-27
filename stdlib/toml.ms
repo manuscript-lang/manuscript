@@ -1,6 +1,7 @@
 # TOML 1.0 parser implemented in Manuscript.
 from "@std/math.ms" import parse_int, parse_float
-from "@std/string.ms" import from_scalars, StringBuilder
+from "@std/string.ms" import from_scalars, StringBuilder, Regex, compile
+from "@std/bytes.ms" import Bytes
 from "@std/math.ms" import log, sqrt
 
 # A TOML value. Date and time values retain their original TOML text.
@@ -75,11 +76,11 @@ impl Error for TomlError:
             case InvalidData(line, column, reason): return f"TOML {line}:{column}: {reason}"
             case LimitExceeded: return "TOML limit exceeded"
 
+# The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
+# only when an error is reported.
 type Reader:
-    chars: List[String]
+    data: Bytes
     pos: Int
-    line: Int
-    column: Int
     limits: TomlLimits
     values: Int
     tables: List[Table]
@@ -123,46 +124,98 @@ def put(var reader: Reader, id: Int, key: String, node: Node) -> Unit:
 def put_array(var reader: Reader, id: Int, key: String, ids: List[Int]) -> Unit:
     put(var reader, id, key, Node.TableArray(ids))
 
-def peek(reader: Reader) -> String:
-    return reader.chars.get(reader.pos, default: "").clone()
+# Byte values the parser tests.
+let TAB = 9
+let NEWLINE = 10
+let SPACE = 32
+let DOUBLE_QUOTE = 34
+let HASH = 35
+let SINGLE_QUOTE = 39
+let COMMA = 44
+let DOT = 46
+let EQUALS = 61
+let LEFT_BRACKET = 91
+let BACKSLASH = 92
+let RIGHT_BRACKET = 93
+let LEFT_BRACE = 123
+let RIGHT_BRACE = 125
 
-def ahead(reader: Reader, offset: Int) -> String:
-    return reader.chars.get(reader.pos + offset, default: "").clone()
+# The byte at `pos` as an Int, or -1 past either end of the document.
+def byte_at(data: Bytes, pos: Int) -> Int:
+    if pos < 0 or pos >= data.length(): return -1
 
-def advance(var reader: Reader) -> String:
-    let c = peek(reader)
-    if c == "": return c.clone()
+    return data.get(pos).to_int()
 
-    reader.pos += 1
+# The cursor as its own value, which stays valid while the reader moves.
+def cursor(reader: Reader) -> Int:
+    return reader.pos
 
-    if c == "\n":
-        reader.line += 1
-        reader.column = 1
-    else:
-        reader.column += 1
+# The byte at the cursor, or -1 at the end of the document.
+def peek(reader: Reader) -> Int:
+    return byte_at(reader.data, reader.pos)
 
-    return c.clone()
+def ahead(reader: Reader, offset: Int) -> Int:
+    return byte_at(reader.data, reader.pos + offset)
 
-def invalid(reader: Reader, reason: String) -> TomlError:
+# Consumes one byte and returns it, or returns -1 without moving at the end.
+def advance(var reader: Reader) -> Int:
+    let b = byte_at(reader.data, reader.pos)
+    if b >= 0: reader.pos += 1
+    return b
+
+# The 1-based line and scalar column of the byte offset.
+def locate(data: Bytes, pos: Int) -> List[Int]:
+    var line = 1
+    var column = 1
+    var index = 0
+
+    while index < pos:
+        let b = data.get(index).to_int()
+
+        if b == NEWLINE:
+            line += 1
+            column = 1
+        elif b < 128 or b >= 192:
+            column += 1
+
+        index += 1
+
+    return [line, column]
+
+def invalid_at(reader: Reader, pos: Int, reason: String) -> TomlError:
+    let place = locate(reader.data, pos)
     return TomlError.InvalidData(
-        line: reader.line, column: reader.column, reason: reason
+        line: place.get(0), column: place.get(1), reason: reason
     )
 
-def space(var reader: Reader, multiline: Bool) -> Unit:
-    while True:
-        let c = peek(reader)
+def invalid(reader: Reader, reason: String) -> TomlError:
+    return invalid_at(reader, reader.pos, reason)
 
-        if (c == " " or c == "\t" or (multiline and c == "\n")):
-            advance(var reader)
-        elif multiline and c == "#":
-            while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
+# The text between two byte offsets of the document.
+def slice_text(reader: Reader, start: Int, end: Int) -> String:
+    return reader.data.slice(start, end).get().decode_utf8().get("")
+
+def space(var reader: Reader, multiline: Bool) -> Unit:
+    var pos = cursor(reader)
+
+    while True:
+        var b = byte_at(reader.data, pos)
+
+        if b == SPACE or b == TAB or (multiline and b == NEWLINE):
+            pos += 1
+        elif multiline and b == HASH:
+            while b >= 0 and b != NEWLINE:
+                pos += 1
+                b = byte_at(reader.data, pos)
         else:
             break
+
+    reader.pos = pos
 
 # Limits applied when `parse` is called without any: deep nesting and alias expansion are
 # the usual resource attacks. Pass a `TomlLimits` (even an empty one) to lift or change them.
 def default_limits() -> TomlLimits:
-    return TomlLimits(max_depth: some(10000), max_values: some(1000000))
+    return TomlLimits(max_depth: 10000, max_values: 1000000)
 
 def within(value: Int, limit: Optional[Int]) -> Bool:
     if let maximum = limit:
@@ -183,6 +236,15 @@ def budget(reader: Reader, depth: Int) -> Result[Unit, TomlError]:
 
     return ok(())
 
+# Whether a byte is a control character that a string may not contain unescaped.
+def string_control(b: Int, multiline: Bool) -> Bool:
+    return (b < 32 and b != TAB and not (multiline and b == NEWLINE)) or b == 127
+
+def quote_char(quote: Int) -> String:
+    if quote == DOUBLE_QUOTE: return "\""
+
+    return "'"
+
 # Basic and literal strings, including multiline delimiters and escaped newline folding.
 def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
     let quote = advance(var reader)
@@ -192,82 +254,107 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
         advance(var reader)
         advance(var reader)
         multiline = True
-        if peek(reader) == "\n": advance(var reader)
+        if peek(reader) == NEWLINE: advance(var reader)
+
+    # A single-line string without escapes is one slice of the document.
+    if not multiline:
+        var end = cursor(reader)
+        var b = byte_at(reader.data, end)
+
+        while (
+            b != quote
+            and b >= 0
+            and not string_control(b, False)
+            and (b != BACKSLASH or quote == SINGLE_QUOTE)
+        ):
+            end += 1
+            b = byte_at(reader.data, end)
+
+        if b == quote:
+            let text = slice_text(reader, reader.pos, end)
+            reader.pos = end + 1
+            return ok(text)
 
     # Append through a builder: per-character concatenation is quadratic on long strings.
     var result = StringBuilder()
+    var run = cursor(reader)
 
     while True:
         let c = advance(var reader)
-        if c == "": return error(invalid(reader, "unterminated string"))
+        if c < 0:
+            return error(invalid(reader, "unterminated string"))
 
         if c == quote:
-            if not multiline: return ok(result.build())
+            if not multiline:
+                result.append(slice_text(reader, run, reader.pos - 1))
+                return ok(result.build())
 
             if peek(reader) == quote and ahead(reader, 1) == quote:
+                result.append(slice_text(reader, run, reader.pos - 1))
                 advance(var reader)
                 advance(var reader)
 
                 var extra = 0
 
                 while peek(reader) == quote and extra < 2:
-                    result.append(advance(var reader))
+                    advance(var reader)
+                    result.append(quote_char(quote))
                     extra += 1
 
                 return ok(result.build())
 
-            result.append(c)
             continue
 
-        let code = c.scalar_at(0)
-        if (code < 32 and c != "\t" and not (multiline and c == "\n")) or code == 127:
+        if string_control(c, multiline):
             return error(invalid(reader, "control character in string"))
+        if c != BACKSLASH or quote == SINGLE_QUOTE: continue
 
-        if c != "\\" or quote == "'":
-            result.append(c)
-            continue
+        result.append(slice_text(reader, run, reader.pos - 1))
 
         if (
             multiline
             and (
-                peek(reader) == " "
-                or peek(reader) == "\t"
-                or peek(reader) == "\n"
+                peek(reader) == SPACE
+                or peek(reader) == TAB
+                or peek(reader) == NEWLINE
             )
         ):
-            while peek(reader) == " " or peek(reader) == "\t": advance(var reader)
-            if advance(var reader) != "\n": return error(
+            while peek(reader) == SPACE or peek(reader) == TAB: advance(var reader)
+            if advance(var reader) != NEWLINE: return error(
                 invalid(reader, "expected escaped newline")
             )
 
-            while (peek(reader) == " " or peek(reader) == "\t" or peek(reader) == "\n"): advance(
-                var reader
-            )
+            while (
+                peek(reader) == SPACE
+                or peek(reader) == TAB
+                or peek(reader) == NEWLINE
+            ): advance(var reader)
+            run = reader.pos
             continue
 
         let escaped = advance(var reader)
 
-        if escaped == "b": result.append(f"\u{8}")
-        elif escaped == "t": result.append("\t")
-        elif escaped == "n": result.append("\n")
-        elif escaped == "f": result.append(f"\u{c}")
-        elif escaped == "r": result.append("\r")
-        elif escaped == "\"" or escaped == "\\": result.append(escaped)
-        elif escaped == "u" or escaped == "U":
+        if escaped == 98: result.append(f"\u{8}")
+        elif escaped == 116: result.append("\t")
+        elif escaped == 110: result.append("\n")
+        elif escaped == 102: result.append(f"\u{c}")
+        elif escaped == 114: result.append("\r")
+        elif escaped == DOUBLE_QUOTE: result.append("\"")
+        elif escaped == BACKSLASH: result.append("\\")
+        elif escaped == 117 or escaped == 85:
             var count = 4
-            if escaped == "U": count = 8
+            if escaped == 85: count = 8
 
-            var hex = ""
+            let digits_start = cursor(reader)
 
             while count > 0:
                 let digit = advance(var reader)
-                if digit == "" or not "0123456789abcdefABCDEF".contains(digit):
+                if not hex_digit(digit):
                     return error(invalid(reader, "invalid Unicode escape"))
 
-                hex = hex.concat(digit)
                 count -= 1
 
-            let parsed = parse_int(hex, 16)
+            let parsed = parse_int(slice_text(reader, digits_start, reader.pos), 16)
             if parsed.is_error(): return error(
                 invalid(reader, "invalid Unicode escape")
             )
@@ -279,6 +366,20 @@ def string_value(var reader: Reader, key: Bool) -> Result[String, TomlError]:
         else:
             return error(invalid(reader, "invalid string escape"))
 
+        run = reader.pos
+
+def hex_digit(b: Int) -> Bool:
+    return (b >= 48 and b <= 57) or (b >= 65 and b <= 70) or (b >= 97 and b <= 102)
+
+def bare_key_byte(b: Int) -> Bool:
+    return (
+        (b >= 97 and b <= 122)
+        or (b >= 65 and b <= 90)
+        or (b >= 48 and b <= 57)
+        or b == 95
+        or b == 45
+    )
+
 def key_path(var reader: Reader) -> Result[List[String], TomlError]:
     var keys: List[String] = []
 
@@ -287,21 +388,20 @@ def key_path(var reader: Reader) -> Result[List[String], TomlError]:
 
         var key = ""
 
-        if peek(reader) == "\"" or peek(reader) == "'":
+        if peek(reader) == DOUBLE_QUOTE or peek(reader) == SINGLE_QUOTE:
             key = try string_value(var reader, key: True)
         else:
-            while (
-                peek(reader) != ""
-                and "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".contains(
-                    peek(reader)
-                )
-            ):
-                key = key.concat(advance(var reader))
-            if key == "": return error(invalid(reader, "expected key"))
+            let start = cursor(reader)
+            var end = start
+            while bare_key_byte(byte_at(reader.data, end)): end += 1
+            if end == start: return error(invalid(reader, "expected key"))
+
+            key = slice_text(reader, start, end)
+            reader.pos = end
 
         keys.append(key)
         space(var reader, multiline: False)
-        if peek(reader) != ".": return ok(keys)
+        if peek(reader) != DOT: return ok(keys)
 
         advance(var reader)
 
@@ -371,13 +471,58 @@ def assign(var reader: Reader, parent: Int, keys: List[String], value: Node) -> 
         )
         index += 1
 
-    let key = keys.last().get()
-    if flags(reader, current).sealed or contains_key(reader, current, key): return error(
+    return assign_one(
+        reader: var reader, parent: current, key: keys.last().get(), value: value
+    )
+
+# Adds a key that must not exist yet to an open table.
+def assign_one(var reader: Reader, parent: Int, key: String, value: Node) -> Result[
+    Unit, TomlError
+]:
+    if flags(reader, parent).sealed: return error(
         invalid(reader, "duplicate or closed key")
     )
 
-    put(var reader, current, key, value)
+    let before = reader.entries.get(parent).length()
+    reader.entries[parent].add_default(key.clone(), value)
+    if reader.entries.get(parent).length() == before: return error(
+        invalid(reader, "duplicate or closed key")
+    )
+
     return ok(())
+
+# Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where it was.
+def simple_key(var reader: Reader) -> Optional[String]:
+    space(var reader, multiline: False)
+
+    let start = cursor(reader)
+    var end = start
+    while bare_key_byte(byte_at(reader.data, end)): end += 1
+    if end == start: return none
+
+    var after = end
+    var b = byte_at(reader.data, after)
+
+    while b == SPACE or b == TAB:
+        after += 1
+        b = byte_at(reader.data, after)
+
+    if b != EQUALS: return none
+
+    reader.pos = after + 1
+    return slice_text(reader, start, end)
+
+# Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
+def key_value(var reader: Reader, table: Int, depth: Int) -> Result[Unit, TomlError]:
+    if let key = simple_key(var reader):
+        let value = try read_value(var reader, depth + 1)
+        return assign_one(reader: var reader, parent: table, key: key, value: value)
+
+    let keys = try key_path(var reader)
+    if advance(var reader) != EQUALS: return error(invalid(reader, "expected equals"))
+
+    let value = try read_value(var reader, depth + keys.length())
+    return assign(reader: var reader, parent: table, keys: keys, value: value)
 
 def seal(var reader: Reader, value: Node) -> Unit:
     match value:
@@ -494,7 +639,7 @@ def datetime_valid(text: String) -> Bool:
 
     return time_valid(rest)
 
-def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
+def scalar(reader: Reader, text: String, at: Int) -> Result[Node, TomlError]:
     if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(True)))
     if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(False)))
     if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
@@ -526,7 +671,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                 clean.slice(2, clean.scalar_length()).get(""), alphabet
             )
         ):
-            return error(invalid(reader, "invalid integer"))
+            return error(invalid_at(reader, at, "invalid integer"))
         if let value = parse_int(
             (
                 clean
@@ -537,7 +682,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             radix
         ): return ok(Node.Leaf(TomlValue.IntValue(value)))
 
-        return error(invalid(reader, "integer out of range"))
+        return error(invalid_at(reader, at, "integer out of range"))
 
     # Bare words such as True, yes, or abc are not numbers, even when they
     # contain an e.
@@ -545,7 +690,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
         clean != "inf"
         and clean != "nan"
         and not "0123456789".contains(clean.get(0, default: "x"))
-    ): return error(invalid(reader, "invalid value"))
+    ): return error(invalid_at(reader, at, "invalid value"))
 
     if (
         clean == "inf"
@@ -556,7 +701,7 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
     ):
         if clean != "inf" and clean != "nan":
             let parts = clean.lower().split("e")
-            if parts.length() > 2: return error(invalid(reader, "invalid float"))
+            if parts.length() > 2: return error(invalid_at(reader, at, "invalid float"))
 
             if parts.length() == 2:
                 var exponent = parts.get(1).clone()
@@ -566,15 +711,15 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
                     .get("")
                 )
                 if not decimal_digits(exponent): return error(
-                    invalid(reader, "invalid exponent")
+                    invalid_at(reader, at, "invalid exponent")
                 )
 
             let fraction = parts.first().get().split(".")
             if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
-                invalid(reader, "invalid float")
+                invalid_at(reader, at, "invalid float")
             )
             if fraction.length() == 2 and not decimal_digits(fraction.get(1)): return error(
-                invalid(reader, "invalid fraction")
+                invalid_at(reader, at, "invalid fraction")
             )
 
         if clean == "inf":
@@ -589,14 +734,42 @@ def scalar(reader: Reader, text: String) -> Result[Node, TomlError]:
             Node.Leaf(TomlValue.FloatValue(value))
         )
 
-        return error(invalid(reader, "float out of range"))
+        return error(invalid_at(reader, at, "float out of range"))
 
-    if not decimal_part(clean): return error(invalid(reader, "invalid value"))
+    if not decimal_part(clean): return error(invalid_at(reader, at, "invalid value"))
     if let value = parse_int(text.replace("_", ""), 10): return ok(
         Node.Leaf(TomlValue.IntValue(value))
     )
 
-    return error(invalid(reader, "integer out of range"))
+    return error(invalid_at(reader, at, "integer out of range"))
+
+# Whether a byte ends a bare value token.
+def token_end(b: Int) -> Bool:
+    return (
+        b < 0
+        or b == NEWLINE
+        or b == TAB
+        or b == HASH
+        or b == COMMA
+        or b == RIGHT_BRACKET
+        or b == RIGHT_BRACE
+        or b == SPACE
+    )
+
+# The byte offset after `count` scalars from the cursor.
+def scalar_offset(reader: Reader, count: Int) -> Int:
+    var pos = cursor(reader)
+    var left = count
+
+    while left > 0 and pos < reader.data.length():
+        pos += 1
+        while (
+            reader.data.get(pos, default: 0) >= 128
+            and reader.data.get(pos, default: 0) < 192
+        ): pos += 1
+        left -= 1
+
+    return pos
 
 def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     try allocate(var reader)
@@ -604,23 +777,23 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
     space(var reader, multiline: False)
 
     let c = peek(reader)
-    if c == "\"" or c == "'": return ok(
+    if c == DOUBLE_QUOTE or c == SINGLE_QUOTE: return ok(
         Node.Leaf(
             TomlValue.StringValue(try string_value(var reader, key: False))
         )
     )
 
-    if c == "[":
+    if c == LEFT_BRACKET:
         advance(var reader)
 
         var values: List[Node] = []
         space(var reader, multiline: True)
 
-        while peek(reader) != "]":
+        while peek(reader) != RIGHT_BRACKET:
             values.append(try read_value(var reader, depth + 1))
             space(var reader, multiline: True)
-            if peek(reader) == "]": break
-            if advance(var reader) != ",": return error(
+            if peek(reader) == RIGHT_BRACKET: break
+            if advance(var reader) != COMMA: return error(
                 invalid(reader, "expected array comma")
             )
 
@@ -629,24 +802,18 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
         advance(var reader)
         return ok(Node.ArrayNode(values))
 
-    if c == "{":
+    if c == LEFT_BRACE:
         advance(var reader)
 
         let result = new_table(var reader, explicit: True, dotted: False)
         space(var reader, multiline: False)
 
-        if peek(reader) != "}":
+        if peek(reader) != RIGHT_BRACE:
             while True:
-                let keys = try key_path(var reader)
-                if advance(var reader) != "=": return error(
-                    invalid(reader, "expected equals")
-                )
-
-                let value = try read_value(var reader, depth + keys.length())
-                try assign(reader: var reader, parent: result, keys: keys, value: value)
+                try key_value(var reader, result, depth)
                 space(var reader, multiline: False)
-                if peek(reader) == "}": break
-                if advance(var reader) != ",": return error(
+                if peek(reader) == RIGHT_BRACE: break
+                if advance(var reader) != COMMA: return error(
                     invalid(reader, "expected inline table comma")
                 )
 
@@ -656,82 +823,104 @@ def read_value(var reader: Reader, depth: Int) -> Result[Node, TomlError]:
         seal(var reader, node.clone())
         return ok(node)
 
-    var text = ""
-    let start_line = reader.line
-    let start_column = reader.column
-    while (
-        peek(reader) != ""
-        and peek(reader) != "\n"
-        and peek(reader) != "\t"
-        and peek(reader) != "#"
-        and peek(reader) != ","
-        and peek(reader) != "]"
-        and peek(reader) != "}"
-        and peek(reader) != " "
+    let start = cursor(reader)
+    var end = start
+    while not token_end(byte_at(reader.data, end)): end += 1
+
+    # Short plain decimal integers, the common scalar, skip the general classifier.
+    var sign = 0
+    if c == 45 or c == 43: sign = 1
+
+    let width = end - start - sign
+
+    if (
+        width >= 1
+        and width <= 18
+        and (reader.data.get(start + sign).to_int() != 48 or width == 1)
     ):
-        text = text.concat(advance(var reader))
+        var number = 0
+        var index = start + sign
+
+        while index < end:
+            let digit = reader.data.get(index).to_int() - 48
+
+            if digit < 0 or digit > 9:
+                number = -1
+                break
+
+            number = number * 10 + digit
+            index += 1
+
+        if number >= 0:
+            reader.pos = end
+            if c == 45: number = -number
+            return ok(Node.Leaf(TomlValue.IntValue(number)))
+
+    var text = slice_text(reader, start, end)
+    reader.pos = end
 
     # A space may separate date and time, but otherwise ends the token.
-    if (date_valid(text) and peek(reader) == " " and ahead(reader, 3) == ":"):
-        text = text.concat(advance(var reader))
-        while (
-            peek(reader) != ""
-            and peek(reader) != "\n"
-            and peek(reader) != " "
-            and peek(reader) != "\t"
-            and peek(reader) != "#"
-            and peek(reader) != ","
-            and peek(reader) != "]"
-            and peek(reader) != "}"
-        ):
-            text = text.concat(advance(var reader))
+    if (
+        date_valid(text)
+        and peek(reader) == SPACE
+        and byte_at(reader.data, scalar_offset(reader, 3)) == 58
+    ):
+        end += 1
+        while not token_end(byte_at(reader.data, end)): end += 1
+        text = slice_text(reader, start, end)
+        reader.pos = end
 
     # Report token errors where the token starts, not where it ended.
-    let end_line = reader.line
-    let end_column = reader.column
-    reader.line = start_line
-    reader.column = start_column
+    return scalar(reader, text, start)
 
-    let result = scalar(reader, text)
-    reader.line = end_line
-    reader.column = end_column
-    return result
+# Counts the values of the finished document against the limits.
+type Budget:
+    limits: TomlLimits
+    values: Int
 
-def materialize(var reader: Reader, node: Node, depth: Int) -> Result[
-    TomlValue, TomlError
-]:
-    try budget(reader, depth)
-    reader.values += 1
-    if not within(reader.values, reader.limits.max_values): return error(
+def materialize(
+    tables: List[Map[String, Node]],
+    node: Node,
+    depth: Int,
+    var budget: Budget
+) -> Result[TomlValue, TomlError]:
+    if not within(depth, budget.limits.max_depth): return error(TomlError.LimitExceeded)
+
+    budget.values += 1
+    if not within(budget.values, budget.limits.max_values): return error(
         TomlError.LimitExceeded
     )
 
     match node:
-        case Leaf(value): return ok(value)
+        case Leaf(value): return ok(value.clone())
         case TableNode(id):
             var entries = Map[String, TomlValue]()
-            for entry in reader.entries.get(id).clone():
+            for entry in tables.get(id):
                 entries.add(
                     entry.key.clone(),
                     try materialize(
-                        var reader, entry.value.clone(), (depth + 1)
+                        tables, entry.value, (depth + 1), var budget
                     )
                 )
             return ok(TomlValue.TableValue(entries))
         case ArrayNode(values):
             var result: List[TomlValue] = []
             for value in values: result.append(
-                try materialize(var reader, value, (depth + 1))
+                try materialize(tables, value, (depth + 1), var budget)
             )
             return ok(TomlValue.ArrayValue(result))
         case TableArray(ids):
             var result: List[TomlValue] = []
             for id in ids: result.append(
                 try materialize(
-                    var reader, Node.TableNode(id), (depth + 1)
+                    tables, Node.TableNode(id), (depth + 1), var budget
                 )
             )
             return ok(TomlValue.ArrayValue(result))
+
+# ASCII control characters other than tab and newline, which no TOML document may contain.
+def control_pattern() -> Regex:
+    return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
 # Parses a TOML document into a table value and reports source line and column on invalid input.
 export def parse(
@@ -750,32 +939,24 @@ export def parse(
 
     # TOML permits CR only as part of CRLF. Report the first offending scalar
     # at its own line and column.
-    let normalized = text.replace("\r\n", "\n")
-    var scan_line = 1
-    var scan_column = 1
-
-    for code in normalized.scalar_values():
-        if code == 13: return error(
-            TomlError.InvalidData(
-                line: scan_line, column: scan_column, reason: "bare carriage return"
-            )
-        )
-        if (code < 32 and code != 9 and code != 10) or code == 127: return error(
-            TomlError.InvalidData(
-                line: scan_line, column: scan_column,
-                reason: "invalid control character"
-            )
-        )
-
-        if code == 10:
-            scan_line += 1
-            scan_column = 1
-        else: scan_column += 1
+    var normalized = text.clone()
+    if text.contains("\r"): normalized = text.replace("\r\n", "\n")
 
     var reader = Reader(
-        chars: normalized.split(""), pos: 0, line: 1, column: 1, limits: options,
-        values: 0, tables: [], entries: []
+        data: normalized.to_bytes(), pos: 0, limits: options, values: 0, tables: [],
+        entries: []
     )
+
+    if let span = control_pattern().find_span(normalized):
+        let place = locate(reader.data, span.get(0))
+        var reason = "invalid control character"
+        if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
+        return error(
+            TomlError.InvalidData(
+                line: place.get(0), column: place.get(1), reason: reason
+            )
+        )
+
     try allocate(var reader)
 
     let root = new_table(var reader, explicit: True, dotted: False)
@@ -784,21 +965,22 @@ export def parse(
 
     while True:
         space(var reader, multiline: True)
-        if peek(reader) == "": break
+        if peek(reader) < 0: break
 
-        if peek(reader) == "[":
+        if peek(reader) == LEFT_BRACKET:
             advance(var reader)
 
             var array = False
 
-            if peek(reader) == "[":
+            if peek(reader) == LEFT_BRACKET:
                 advance(var reader)
                 array = True
 
             let keys = try key_path(var reader)
-            if advance(var reader) != "]" or (array and advance(var reader) != "]"): return error(
-                invalid(reader, "expected closing table bracket")
-            )
+            if (
+                advance(var reader) != RIGHT_BRACKET
+                or (array and advance(var reader) != RIGHT_BRACKET)
+            ): return error(invalid(reader, "expected closing table bracket"))
 
             var parent = root
             var index = 0
@@ -840,23 +1022,17 @@ export def parse(
             if array: current_depth += 1
             try budget(reader, current_depth)
         else:
-            let keys = try key_path(var reader)
-            if advance(var reader) != "=": return error(
-                invalid(reader, "expected equals")
-            )
-
-            let value = try read_value(var reader, (current_depth + keys.length()))
-            try assign(reader: var reader, parent: current, keys: keys, value: value)
+            try key_value(var reader, current, current_depth)
 
         space(var reader, multiline: False)
-        if peek(reader) == "#":
-            while peek(reader) != "" and peek(reader) != "\n": advance(var reader)
-        if peek(reader) != "" and advance(var reader) != "\n": return error(
+        if peek(reader) == HASH:
+            while peek(reader) >= 0 and peek(reader) != NEWLINE: advance(var reader)
+        if peek(reader) >= 0 and advance(var reader) != NEWLINE: return error(
             invalid(reader, "unexpected trailing text")
         )
 
-    reader.values = 0
-    return materialize(var reader, Node.TableNode(root), 1)
+    var budget = Budget(limits: reader.limits.clone(), values: 0)
+    return materialize(reader.entries, Node.TableNode(root), 1, var budget)
 
 type Writer:
     out: StringBuilder

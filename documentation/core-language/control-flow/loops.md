@@ -114,7 +114,7 @@ impl Iterator[Int] for Countdown:
         if self.left == 0:
             return none
         self.left -= 1
-        return some(self.left + 1)
+        return self.left + 1
 
 export def main() -> Int:
     for n in Countdown(3):

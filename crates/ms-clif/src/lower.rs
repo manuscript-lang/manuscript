@@ -11,7 +11,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Switch};
 use cranelift_module::{DataId, FuncId, Module as _};
 use ms_mir::ir::{Cc, FaultKind, Func, Imm, Inst, Op, Target, Term};
 use ms_mir::types::{Ty, TyKind};
-use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, STACK_SLOT};
+use ms_rt_abi::symbols::{ISOLATE_HDR_CANCEL, ISOLATE_HDR_GUARDED, STACK_SLOT};
 use ms_rt_abi::{
     ASCII_CHAR_STRIDE, STR_INLINE, STR_INLINE_LEN_SHIFT, STR_LEN_MASK, STR_LEN_OFFSET,
     STR_PTR_OFFSET, STR_STATIC, VEC_CAP_OFFSET, VEC_LEN_OFFSET, VEC_PTR_OFFSET,
@@ -179,7 +179,9 @@ impl<'a, 'm> Lower<'a, 'm> {
         match l {
             Leaf::I64 => self.b.ins().iconst(types::I64, 0),
             Leaf::I8 => self.b.ins().iconst(types::I8, 0),
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().iconst(types::I64, 0),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().iconst(types::I64, 0)
+            }
             Leaf::F64 => self.b.ins().f64const(0.0),
             Leaf::F32 => self.b.ins().f32const(0.0),
         }
@@ -289,6 +291,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         let v = self.b.ins().load(mem_type(l), flags(), ptr, off);
         match l {
             Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().sextend(types::I64, v),
+            Leaf::U8 | Leaf::U16 | Leaf::U32 => self.b.ins().uextend(types::I64, v),
             _ => v,
         }
     }
@@ -296,7 +299,9 @@ impl<'a, 'm> Lower<'a, 'm> {
     /// Writes a leaf's register value to memory, narrowing a packed number.
     fn store_leaf(&mut self, l: Leaf, v: Value, ptr: Value, off: i32) {
         let v = match l {
-            Leaf::N8 | Leaf::N16 | Leaf::N32 => self.b.ins().ireduce(mem_type(l), v),
+            Leaf::N8 | Leaf::N16 | Leaf::N32 | Leaf::U8 | Leaf::U16 | Leaf::U32 => {
+                self.b.ins().ireduce(mem_type(l), v)
+            }
             _ => v,
         };
         self.b.ins().store(flags(), v, ptr, off);
@@ -1695,18 +1700,17 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Op::NarrowChk => {
                 let x = self.a(inst, 0)[0];
-                let bits = self
+                let (lo, hi) = self
                     .g
                     .lay
                     .m
                     .types
-                    .int_bits(f.ty(inst.args[0]))
-                    .unwrap_or(64);
+                    .int_range(f.ty(inst.args[0]))
+                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
                 if checks {
-                    let half = 1i64 << (bits - 1);
                     let (lo_k, hi_k) = (
-                        self.b.ins().iconst(types::I64, -half),
-                        self.b.ins().iconst(types::I64, half - 1),
+                        self.b.ins().iconst(types::I64, lo as i64),
+                        self.b.ins().iconst(types::I64, hi as i64),
                     );
                     let lo = self.b.ins().icmp(IntCC::SignedLessThan, x, lo_k);
                     let hi = self.b.ins().icmp(IntCC::SignedGreaterThan, x, hi_k);
@@ -1727,13 +1731,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
                 let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let bits = inner
-                    .and_then(|i| self.g.lay.m.types.int_bits(i))
-                    .unwrap_or(64);
-                let half = 1i128 << (bits - 1);
+                let from = f.ty(inst.args[0]);
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    self.g.lay.m.types.narrow_range(from, i)
+                });
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, (-half) as i64),
-                    self.b.ins().iconst(types::I64, (half - 1) as i64),
+                    self.b.ins().iconst(types::I64, lo),
+                    self.b.ins().iconst(types::I64, hi),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
@@ -1759,6 +1763,24 @@ impl<'a, 'm> Lower<'a, 'm> {
                         _ => self.mul_overflow(x, y),
                     };
                     self.fault_if(of, "msrt_fault_int_overflow", vec![]);
+                    vec![v]
+                }
+            }
+            Op::UAddChk | Op::USubChk | Op::UMulChk => {
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                if !checks {
+                    vec![match inst.op {
+                        Op::UAddChk => self.b.ins().iadd(x, y),
+                        Op::USubChk => self.b.ins().isub(x, y),
+                        _ => self.mul(x, y),
+                    }]
+                } else {
+                    let (v, of) = match inst.op {
+                        Op::UAddChk => self.b.ins().uadd_overflow(x, y),
+                        Op::USubChk => self.b.ins().usub_overflow(x, y),
+                        _ => self.b.ins().umul_overflow(x, y),
+                    };
+                    self.fault_if(of, "msrt_fault_int_range", vec![]);
                     vec![v]
                 }
             }
@@ -1830,6 +1852,21 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let x = self.a(inst, 0)[0];
                 self.b.ins().bxor_imm_s(x, 1)
             }],
+            Op::UICmp => {
+                let Imm::Cc(cc) = inst.imm else {
+                    unreachable!()
+                };
+                let (x, y) = (self.a(inst, 0)[0], self.a(inst, 1)[0]);
+                let cc = match cc {
+                    Cc::Eq => IntCC::Equal,
+                    Cc::Ne => IntCC::NotEqual,
+                    Cc::Lt => IntCC::UnsignedLessThan,
+                    Cc::Le => IntCC::UnsignedLessThanOrEqual,
+                    Cc::Gt => IntCC::UnsignedGreaterThan,
+                    Cc::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                };
+                vec![self.b.ins().icmp(cc, x, y)]
+            }
             Op::ICmp => {
                 let Imm::Cc(cc) = inst.imm else {
                     unreachable!()
@@ -1949,7 +1986,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => vec![v[0]],
                 }
             }
-            Op::AltGet => {
+            Op::AltGet | Op::AltTake => {
                 let Imm::AltField(a, c, i) = inst.imm else {
                     unreachable!()
                 };
@@ -1972,6 +2009,45 @@ impl<'a, 'm> Lower<'a, 'm> {
                     }
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
+            }
+            Op::AltRelease => {
+                let Imm::AltMask(a, c, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let case = self.alt_fields(a)[c as usize].clone();
+                let v = self.a(inst, 0);
+                let boxed = match &self.g.lay.shape(ty).alt {
+                    Some(AltRepr::Boxed { block, .. }) => Some(block.clone()),
+                    _ => None,
+                };
+                // Drop the payload fields that were not moved out, then free the block.
+                for (k, (fty, idx)) in case.iter().enumerate() {
+                    if mask >> k & 1 == 1 || !m.needs_drop(*fty) {
+                        continue;
+                    }
+                    let fv: Vs = match &boxed {
+                        Some(block) => {
+                            let lay = mem_layout(block);
+                            idx.iter()
+                                .map(|j| {
+                                    self.b.ins().load(
+                                        leaf_type(block[*j]),
+                                        flags(),
+                                        v[0],
+                                        lay.offsets[*j] as i32,
+                                    )
+                                })
+                                .collect()
+                        }
+                        None => idx.iter().map(|j| v[*j]).collect(),
+                    };
+                    self.drop_value(*fty, &fv);
+                }
+                if boxed.is_some() {
+                    self.free(v[0]);
+                }
+                vec![]
             }
             Op::AltUnbox => {
                 let Imm::AltField(a, c, i) = inst.imm else {
@@ -2398,11 +2474,34 @@ impl<'a, 'm> Lower<'a, 'm> {
                 let ty = f.ty(inst.args[0]);
                 let leaves = self.g.lay.leaves(ty);
                 let v = self.a(inst, 0);
-                let slot = self.spill(&v, &leaves);
                 let thunk = self.g.glue(Glue::CleanupThunk(c.0), Ty::UNIT);
-                let r = self.fref(thunk);
-                let fa = self.b.ins().func_addr(types::I64, r);
-                self.rt_call("msrt_cleanup_push", &[fa, slot])
+                if !self.g.m.funcs[c.index()].unwind_only {
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    self.rt_call("msrt_cleanup_push", &[fa, slot])
+                } else {
+                    // A closer that only acts while a guarded task unwinds: with no guard open the
+                    // registration is skipped, and its handle 0 makes the discard a no-op.
+                    let hdr = self.task_hdr();
+                    let guarded =
+                        self.b
+                            .ins()
+                            .load(types::I8, flags(), hdr, ISOLATE_HDR_GUARDED as i32);
+                    let none = self.iconst(0);
+                    let push = self.b.create_block();
+                    let join = self.b.create_block();
+                    self.b.append_block_param(join, types::I64);
+                    self.b.ins().brif(guarded, push, &[], join, &[none.into()]);
+                    self.b.switch_to_block(push);
+                    let slot = self.spill(&v, &leaves);
+                    let r = self.fref(thunk);
+                    let fa = self.b.ins().func_addr(types::I64, r);
+                    let h = self.rt_call("msrt_cleanup_push", &[fa, slot])[0];
+                    self.b.ins().jump(join, &[h.into()]);
+                    self.b.switch_to_block(join);
+                    self.b.block_params(join).to_vec()
+                }
             }
             Op::CleanupRun => {
                 let h = self.a(inst, 0)[0];
@@ -2899,6 +2998,14 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             return self.string_eq_inline(f, inst);
         }
+        if self.g.m.externs[e.index()].name == "msrt_cleanup_discard" {
+            // Handle 0 is a registration skipped for lack of a guard.
+            let h = self.a(inst, 0)[0];
+            self.if_then(h, |s| {
+                s.call_extern_plain(f, inst);
+            });
+            return vec![];
+        }
         self.call_extern_plain(f, inst)
     }
 
@@ -2963,6 +3070,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             && args.len() == 2
             && self.g.lay.leaves(ret_ty).is_empty()
         {
+            if let Some(&lit) = self.str_lits.get(&inst.args[1].index()) {
+                let bytes = self.g.m.strings[lit as usize].as_bytes().to_vec();
+                if (1..=16).contains(&bytes.len()) {
+                    return self.strbuilder_append_literal(id, args[0], args[1], &bytes);
+                }
+            }
             return self.strbuilder_append(id, args[0], args[1]);
         }
         if def.name == "msrt_bytes_append"
@@ -2997,9 +3110,74 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    /// `StringBuilder.append` of a one-byte string with room to spare is a store and a length
-    /// bump; everything else (longer text, a full buffer) calls the runtime. This is the same
-    /// test the runtime makes first, so the common character-at-a-time append needs no call.
+    /// `StringBuilder.append` of a literal of 1 to 16 bytes with room to spare is a few constant
+    /// stores and a length bump. The bytes are known here, so no length decode or copy loop
+    /// remains; a full buffer calls the runtime.
+    fn strbuilder_append_literal(
+        &mut self,
+        id: FuncId,
+        builder: Value,
+        text: Value,
+        bytes: &[u8],
+    ) -> Vs {
+        let n = bytes.len();
+        let len = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_LEN_OFFSET as i32);
+        let cap = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
+        let next = self.b.ins().iadd_imm_s(len, n as i64);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let store = self.b.create_block();
+        let slow = self.b.create_block();
+        self.b.set_cold_block(slow);
+        let join = self.b.create_block();
+        self.b.ins().brif(room, store, &[], slow, &[]);
+        self.b.switch_to_block(store);
+        let data = self
+            .b
+            .ins()
+            .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
+        let at = self.b.ins().iadd(data, len);
+        // Overlapping stores of the widest width that fits cover every length without a loop.
+        let unaligned = MemFlagsData::new().with_notrap();
+        let word = |from: usize, w: usize| {
+            let mut x = 0u64;
+            for (i, b) in bytes[from..from + w].iter().enumerate() {
+                x |= (*b as u64) << (8 * i);
+            }
+            x as i64
+        };
+        let (w, ty) = match n {
+            8..=16 => (8, types::I64),
+            4..=7 => (4, types::I32),
+            2..=3 => (2, types::I16),
+            _ => (1, types::I8),
+        };
+        let first = self.b.ins().iconst(ty, word(0, w));
+        self.b.ins().store(unaligned, first, at, 0);
+        if n > w {
+            let last = self.b.ins().iconst(ty, word(n - w, w));
+            self.b.ins().store(unaligned, last, at, (n - w) as i32);
+        }
+        self.b
+            .ins()
+            .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(slow);
+        self.call_id(id, &[builder, text]);
+        self.b.ins().jump(join, &[]);
+        self.b.switch_to_block(join);
+        Vec::new()
+    }
+
+    /// `StringBuilder.append` of a string with room to spare is a capacity check, a copy and a
+    /// length bump: a one-byte string is a store, anything longer one `memcpy`. An inline string
+    /// (whose length sits in different bits) and a full buffer call the runtime, which makes the
+    /// same tests first.
     fn strbuilder_append(&mut self, id: FuncId, builder: Value, text: Value) -> Vs {
         let len = self
             .b
@@ -3009,14 +3187,16 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_CAP_OFFSET as i32);
-        let size = self
+        let tagged = self
             .b
             .ins()
             .load(types::I64, flags(), text, STR_LEN_OFFSET as i32);
-        let size = self.b.ins().band_imm_s(size, STR_LEN_MASK as i64);
-        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
-        let room = self.b.ins().icmp(IntCC::UnsignedLessThan, len, cap);
-        let fast = self.b.ins().band(single, room);
+        let size = self.b.ins().band_imm_s(tagged, STR_LEN_MASK as i64);
+        let tag = self.b.ins().ushr_imm_u(tagged, 62);
+        let flat = self.b.ins().icmp_imm_s(IntCC::NotEqual, tag, 1);
+        let next = self.b.ins().iadd(len, size);
+        let room = self.b.ins().icmp(IntCC::UnsignedLessThanOrEqual, next, cap);
+        let fast = self.b.ins().band(flat, room);
         let store = self.b.create_block();
         let slow = self.b.create_block();
         self.b.set_cold_block(slow);
@@ -3027,14 +3207,25 @@ impl<'a, 'm> Lower<'a, 'm> {
             .b
             .ins()
             .load(types::I64, flags(), text, STR_PTR_OFFSET as i32);
-        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         let data = self
             .b
             .ins()
             .load(types::I64, flags(), builder, VEC_PTR_OFFSET as i32);
         let at = self.b.ins().iadd(data, len);
+        let single = self.b.ins().icmp_imm_s(IntCC::Equal, size, 1);
+        let one = self.b.create_block();
+        let many = self.b.create_block();
+        let done = self.b.create_block();
+        self.b.ins().brif(single, one, &[], many, &[]);
+        self.b.switch_to_block(one);
+        let byte = self.b.ins().load(types::I8, flags(), bytes, 0);
         self.b.ins().store(flags(), byte, at, 0);
-        let next = self.b.ins().iadd_imm_s(len, 1);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(many);
+        self.b
+            .call_memcpy(self.g.module.target_config(), at, bytes, size);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(done);
         self.b
             .ins()
             .store(flags(), next, builder, VEC_LEN_OFFSET as i32);
@@ -3096,6 +3287,10 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::Int8
             | TyKind::Int16
             | TyKind::Int32
+            | TyKind::UInt8
+            | TyKind::UInt16
+            | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr

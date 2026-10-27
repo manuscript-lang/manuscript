@@ -84,6 +84,181 @@ unsafe fn copy_forward(dst: *mut u8, src: *const u8, n: usize) {
     }
 }
 
+/// Largest forward copy done with vector blocks; `rep movsb` pays a startup cost that only a
+/// longer copy amortises (glibc switches at about the same size).
+#[cfg(target_arch = "x86_64")]
+const REP_MOVSB_MIN: usize = 2048;
+
+/// Copies `64 < n` bytes forward in 64-byte blocks. The last 64 bytes are loaded up front and
+/// stored at the end, so the tail needs no byte loop. Safe when `dst <= src` overlaps, because
+/// every block loads before it stores and the stores never reach the tail's source.
+///
+/// # Safety
+/// Both ranges must be valid for `n > 64` bytes, and `dst` must not lie inside `(src, src + n)`.
+#[cfg(target_arch = "x86_64")]
+#[inline(always)]
+unsafe fn copy_blocks(dst: *mut u8, src: *const u8, n: usize) {
+    use core::arch::x86_64::{__m128i, _mm_loadu_si128, _mm_storeu_si128};
+    // SAFETY: every block lies within the first `n` bytes of both ranges.
+    unsafe {
+        let load = |at: usize| _mm_loadu_si128(src.add(at) as *const __m128i);
+        let store = |at: usize, v: __m128i| _mm_storeu_si128(dst.add(at) as *mut __m128i, v);
+        let tail = [load(n - 64), load(n - 48), load(n - 32), load(n - 16)];
+        let mut at = 0;
+        while at + 64 < n {
+            let (a, b, c, d) = (load(at), load(at + 16), load(at + 32), load(at + 48));
+            store(at, a);
+            store(at + 16, b);
+            store(at + 32, c);
+            store(at + 48, d);
+            at += 64;
+        }
+        store(n - 64, tail[0]);
+        store(n - 48, tail[1]);
+        store(n - 32, tail[2]);
+        store(n - 16, tail[3]);
+    }
+}
+
+/// One copy implementation: the C `memcpy` signature.
+#[cfg(target_arch = "x86_64")]
+type CopyFn = unsafe extern "C" fn(*mut u8, *const u8, usize) -> *mut u8;
+
+/// The `memcpy` body for CPUs with AVX2: 32-byte registers halve the loads and stores of a
+/// medium copy. Chosen once by [`memcpy_probe`] and reached through [`COPY_IMPL`], so a copy
+/// pays one indirect jump and no frame.
+///
+/// # Safety
+/// As the C `memcpy`, and the CPU must support AVX2.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+#[target_feature(enable = "avx2")]
+unsafe extern "C" fn memcpy_avx2(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    use core::arch::x86_64::{__m256i, _mm256_loadu_si256, _mm256_storeu_si256};
+    // SAFETY: every block lies within the first `n` bytes of both ranges.
+    unsafe {
+        if n <= 64 {
+            if n > 32 {
+                // Two overlapping 32-byte moves cover 33..=64 bytes.
+                let a = _mm256_loadu_si256(src as *const __m256i);
+                let b = _mm256_loadu_si256(src.add(n - 32) as *const __m256i);
+                _mm256_storeu_si256(dst as *mut __m256i, a);
+                _mm256_storeu_si256(dst.add(n - 32) as *mut __m256i, b);
+            } else {
+                copy_small(dst, src, n);
+            }
+            return dst;
+        }
+        if n >= REP_MOVSB_MIN {
+            copy_forward(dst, src, n);
+            return dst;
+        }
+        let load = |at: usize| _mm256_loadu_si256(src.add(at) as *const __m256i);
+        let store = |at: usize, v: __m256i| _mm256_storeu_si256(dst.add(at) as *mut __m256i, v);
+        if n <= 128 {
+            let (a, b, c, d) = (load(0), load(32), load(n - 64), load(n - 32));
+            store(0, a);
+            store(32, b);
+            store(n - 64, c);
+            store(n - 32, d);
+            return dst;
+        }
+        let tail = [load(n - 128), load(n - 96), load(n - 64), load(n - 32)];
+        let mut at = 0;
+        while at + 128 < n {
+            let (a, b, c, d) = (load(at), load(at + 32), load(at + 64), load(at + 96));
+            store(at, a);
+            store(at + 32, b);
+            store(at + 64, c);
+            store(at + 96, d);
+            at += 128;
+        }
+        store(n - 128, tail[0]);
+        store(n - 96, tail[1]);
+        store(n - 64, tail[2]);
+        store(n - 32, tail[3]);
+    }
+    dst
+}
+
+/// The `memcpy` body for any x86_64 CPU.
+///
+/// # Safety
+/// As the C `memcpy`.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+unsafe extern "C" fn memcpy_sse(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    // SAFETY: the caller gives valid, disjoint ranges.
+    unsafe {
+        if n <= 64 {
+            copy_small(dst, src, n);
+        } else {
+            copy_forward_any(dst, src, n);
+        }
+    }
+    dst
+}
+
+/// The implementation `memcpy` jumps to; starts at [`memcpy_probe`].
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+static COPY_IMPL: core::sync::atomic::AtomicPtr<()> =
+    core::sync::atomic::AtomicPtr::new(memcpy_probe as CopyFn as *mut ());
+
+/// First `memcpy` call: picks the implementation for this CPU, then runs it.
+///
+/// # Safety
+/// As the C `memcpy`.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+unsafe extern "C" fn memcpy_probe(dst: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    let pick: CopyFn = if probe_avx2() {
+        memcpy_avx2
+    } else {
+        memcpy_sse
+    };
+    COPY_IMPL.store(pick as *mut (), core::sync::atomic::Ordering::Relaxed);
+    // SAFETY: forwarded contract.
+    unsafe { pick(dst, src, n) }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+fn probe_avx2() -> bool {
+    use core::arch::x86_64::{__cpuid, __cpuid_count, _xgetbv};
+    // SAFETY: cpuid exists on every x86_64 CPU; xgetbv is read only after OSXSAVE is reported.
+    unsafe {
+        if __cpuid(0).eax < 7 {
+            return false;
+        }
+        let l1 = __cpuid(1);
+        let osxsave = l1.ecx & (1 << 27) != 0;
+        let avx = l1.ecx & (1 << 28) != 0;
+        if !osxsave || !avx || _xgetbv(0) & 6 != 6 {
+            return false;
+        }
+        __cpuid_count(7, 0).ebx & (1 << 5) != 0
+    }
+}
+
+/// Copies forward: vector blocks for a medium size, `rep movsb` beyond.
+///
+/// # Safety
+/// As [`copy_blocks`], for any `n > 64`.
+#[cfg(target_arch = "x86_64")]
+#[cfg_attr(test, allow(dead_code))]
+#[inline(always)]
+unsafe fn copy_forward_any(dst: *mut u8, src: *const u8, n: usize) {
+    // SAFETY: forwarded contract.
+    unsafe {
+        if n < REP_MOVSB_MIN {
+            copy_blocks(dst, src, n);
+        } else {
+            copy_forward(dst, src, n);
+        }
+    }
+}
+
 /// Copies backward in blocks whose loads all precede their stores.
 ///
 /// # Safety
@@ -116,13 +291,10 @@ unsafe fn copy_backward(dst: *mut u8, src: *const u8, mut n: usize) {
 pub unsafe extern "C" fn memcpy(dst: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
     // SAFETY: the C contract gives valid, disjoint ranges.
     unsafe {
-        if n <= 64 {
-            copy_small(dst.cast(), src.cast(), n);
-        } else {
-            copy_forward(dst.cast(), src.cast(), n);
-        }
+        let copy: CopyFn =
+            core::mem::transmute(COPY_IMPL.load(core::sync::atomic::Ordering::Relaxed));
+        copy(dst.cast(), src.cast(), n).cast()
     }
-    dst
 }
 
 /// The C `memmove`.
@@ -144,7 +316,7 @@ pub unsafe extern "C" fn memmove(dst: *mut c_void, src: *const c_void, n: usize)
             copy_small(d, s, n);
         } else if (d as usize).wrapping_sub(s as usize) >= n {
             // `dst` is below `src` or past its end: copying forward never overwrites unread bytes.
-            copy_forward(d, s, n);
+            copy_forward_any(d, s, n);
         } else {
             copy_backward(d, s, n);
         }
@@ -272,6 +444,58 @@ mod tests {
         (0..n)
             .map(|i| (i as u8).wrapping_mul(31).wrapping_add(seed))
             .collect()
+    }
+
+    #[test]
+    fn block_copy_matches_slice_copy_and_forward_overlap() {
+        // SAFETY: `check_blocks` passes in-bounds ranges.
+        check_blocks(|d, s, n| unsafe { copy_blocks(d, s, n) });
+    }
+
+    #[test]
+    fn each_memcpy_body_copies_every_size_exactly() {
+        let mut bodies: Vec<CopyFn> = vec![memcpy_sse];
+        if probe_avx2() {
+            bodies.push(memcpy_avx2);
+        }
+        for copy in bodies {
+            for n in (0..=300).chain([1023, 1024, 2047, 2048, 2049, 4097]) {
+                let src = pattern(n + 16, 5);
+                let mut dst = vec![0xAAu8; n + 16];
+                // SAFETY: both buffers hold `n + 16` bytes and are disjoint.
+                let ret = unsafe { copy(dst.as_mut_ptr().add(3), src.as_ptr().add(1), n) };
+                assert_eq!(ret, unsafe { dst.as_mut_ptr().add(3) }, "return n={n}");
+                assert_eq!(dst[3..3 + n], src[1..1 + n], "n={n}");
+                assert!(dst[..3].iter().all(|b| *b == 0xAA), "head touched n={n}");
+                assert!(
+                    dst[3 + n..].iter().all(|b| *b == 0xAA),
+                    "tail touched n={n}"
+                );
+            }
+        }
+    }
+
+    fn check_blocks(copy: impl Fn(*mut u8, *const u8, usize)) {
+        for n in (65..=300).chain([1023, 2047, 2048, 4097]) {
+            let src = pattern(n + 16, 3);
+            let mut dst = vec![0xAAu8; n + 16];
+            // SAFETY: both buffers hold `n + 16` bytes.
+            unsafe { copy(dst.as_mut_ptr().add(5), src.as_ptr().add(2), n) };
+            assert_eq!(dst[5..5 + n], src[2..2 + n], "n={n}");
+            assert!(dst[..5].iter().all(|b| *b == 0xAA), "head touched n={n}");
+            assert!(
+                dst[5 + n..].iter().all(|b| *b == 0xAA),
+                "tail touched n={n}"
+            );
+            for gap in [1usize, 7, 16, 63, 64, 65] {
+                let mut buf = pattern(n + gap, 9);
+                let want = buf[gap..gap + n].to_vec();
+                let p = buf.as_mut_ptr();
+                // SAFETY: dst < src within one buffer of `n + gap` bytes, a forward overlap.
+                unsafe { copy(p, p.add(gap), n) };
+                assert_eq!(buf[..n], want[..], "overlap n={n} gap={gap}");
+            }
+        }
     }
 
     #[test]

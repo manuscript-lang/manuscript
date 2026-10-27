@@ -188,7 +188,6 @@ test "clone slice and nested values keep their own contracts":
 test "function values can replace later backing elements":
     var seen: List[Int] = []
     let original = lambda () -> Int: 7
-    let replacement = lambda () -> Int: 9
     let twin = lambda () -> Int: 7
     var functions = [original, twin]
     let clone = functions.clone()
@@ -197,7 +196,7 @@ test "function values can replace later backing elements":
         functions.clone().for_each(
             lambda value:
                 seen.append(value())
-                functions.fill(replacement, 0, 2)
+                functions.fill(lambda () -> Int: 9, 0, 2)
         )
     )
 

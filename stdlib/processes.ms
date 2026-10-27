@@ -7,7 +7,6 @@
 # fault in the child ends only the child, and the parent sees its exit status.
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/channels.ms" import Channel, ChannelError, Transport
-from "@std/collections.ms" import range
 from "@std/core.ms" import Closeable
 from "@std/io.ms" import ReadStream, WriteStream
 from "@std/json.ms" import parse, stringify
@@ -117,8 +116,8 @@ export type Inbox:
 def frame(kind: Int, body: String) -> Bytes:
     let data = body.to_bytes()
     var out = BytesBuilder()
-    out.append_uint32_le(data.length())
-    out.append(kind)
+    out.append_uint32_le(data.length().to_uint32().get(0))
+    out.append(kind.to_uint8().get(0))
     out.append_bytes(data)
     return out.build()
 
@@ -150,23 +149,23 @@ def next_frame(
             let available = state.value.pending.length()
 
             if available >= 5:
-                let size = state.value.pending.uint32_le(0).get(0)
+                let size = state.value.pending.uint32_le(0).get(0).to_int()
                 if size > FRAME_LIMIT:
                     return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 
                 if available >= 5 + size:
-                    let kind = state.value.pending.get(4)
+                    let kind = state.value.pending.get(4).to_int()
                     let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
                     state.value.pending = state.value.pending.slice(
                         5 + size, available
                     ).get("".to_bytes())
                     if let text = body.decode_utf8():
-                        return ok(some(Frame(kind: kind, body: text)))
+                        return ok(Frame(kind: kind, body: text))
 
                     return error(ChannelError.Broken("a frame is not UTF-8"))
 
         if msstd_process_ipc_wait_reader(link):
-            return ok(some(Frame(kind: RETRY, body: "")))
+            return ok(Frame(kind: RETRY, body: ""))
 
         let chunk = msstd_process_ipc_read(link, 65536)
         if chunk.is_empty():
@@ -234,14 +233,14 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
                 continue
 
             if frame.kind == MESSAGE:
-                return ok(some(try decode[Out](frame.body)))
+                return ok(try decode[Out](frame.body))
 
             if frame.kind == CLOSE:
                 finish(self.inbox, none)
                 return ok(none)
 
             if frame.kind == RESULT:
-                finish(self.inbox, some(frame.body.clone()))
+                finish(self.inbox, frame.body.clone())
                 return ok(none)
 
             return error(ChannelError.Broken("a frame has an unknown kind"))
@@ -296,7 +295,7 @@ def wait_result[T](
                 let frame = next.get(Frame(kind: -1, body: ""))
 
                 if frame.kind == RESULT:
-                    finish(inbox, some(frame.body.clone()))
+                    finish(inbox, frame.body.clone())
                 elif frame.kind == CLOSE:
                     finish(inbox, none)
             case error(e):
@@ -377,7 +376,7 @@ impl Closeable for Process[T, In, Out]:
         stop_child(self.link, self.inbox, self.native)
 
         with var all = lock(self.registry):
-            for index in range(0, all.value.length()):
+            for index in 0..all.value.length():
                 if all.value[index].id == self.id:
                     all.value.remove(index)
                     break
@@ -441,7 +440,7 @@ impl ProcessGroup[T, In, Out]:
         let count = self.processes.get().length()
         var values = List[T]()
 
-        for index in range(0, count):
+        for index in 0..count:
             let open = self.processes.get().get(index)
             values.append(try wait_result[T](open.native, open.link, open.inbox))
 
@@ -451,7 +450,7 @@ impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var def close() -> Unit:
         with var all = lock(self.processes):
-            for index in range(0, all.value.length()):
+            for index in 0..all.value.length():
                 stop_child(
                     all.value[index].link, all.value[index].inbox,
                     all.value[index].native

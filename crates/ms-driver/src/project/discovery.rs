@@ -12,7 +12,10 @@ fn skipped_name(name: &str) -> bool {
 }
 
 fn is_test_name(name: &str) -> bool {
-    name == "test.ms" || name.ends_with("_test.ms")
+    name == "test.ms"
+        || name.ends_with("_test.ms")
+        || name == "bench.ms"
+        || name.ends_with("_bench.ms")
 }
 
 /// `filepath.WalkDir` semantics: lexical order, symlinks are not followed
@@ -40,19 +43,26 @@ fn walk_entry(
         let file_type = entry
             .file_type()
             .map_err(|e| ProjectError::path("lstat", path, &e))?;
+        // A symlink to a directory is skipped, even when its name ends in `.ms`.
+        let linked_dir =
+            file_type.is_symlink() && std::fs::metadata(entry.path()).is_ok_and(|m| m.is_dir());
         entries.push((
             entry.file_name().to_string_lossy().into_owned(),
             file_type.is_dir(),
+            linked_dir,
         ));
     }
     entries.sort();
-    for (child, child_is_dir) in entries {
+    for (child, child_is_dir, linked_dir) in entries {
+        if linked_dir {
+            continue;
+        }
         walk_entry(&pathops::join(&[path, &child]), &child, child_is_dir, visit)?;
     }
     Ok(())
 }
 
-/// Find project `test.ms` and `*_test.ms` files. With `include_source`, also
+/// Find project `test.ms`, `*_test.ms`, `bench.ms` and `*_bench.ms` files. With `include_source`, also
 /// every `.ms` file below the configured source directory. Hidden, `vendor`
 /// and `node_modules` directories are skipped and directory symlinks are not
 /// followed. Traversal errors are returned so callers cannot report a partial

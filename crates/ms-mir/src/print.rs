@@ -35,6 +35,10 @@ fn write_ty(m: &Module, t: Ty, out: &mut String) {
         TyKind::Int16 => out.push_str("int16"),
         TyKind::Int32 => out.push_str("int32"),
         TyKind::Float32 => out.push_str("float32"),
+        TyKind::UInt8 => out.push_str("uint8"),
+        TyKind::UInt16 => out.push_str("uint16"),
+        TyKind::UInt32 => out.push_str("uint32"),
+        TyKind::UInt64 => out.push_str("uint64"),
         TyKind::Str => out.push_str("str"),
         TyKind::Bytes => out.push_str("bytes"),
         TyKind::Ptr => out.push_str("ptr"),
@@ -355,6 +359,17 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
                 case.name,
                 case.fields[f as usize].0
             )
+        }
+        Imm::AltMask(a, c, mask) => {
+            let case = &m.alts[a.index()].cases[c as usize];
+            let mut s = format!("{}.{}", m.alts[a.index()].name, case.name);
+            for (i, (name, _)) in case.fields.iter().enumerate() {
+                if mask >> i & 1 == 1 {
+                    s.push('.');
+                    s.push_str(name);
+                }
+            }
+            s
         }
         Imm::Vtable(v) => format!("@{}", m.vtables[v.index()].name),
         Imm::Global(g) => format!("@{}", m.globals[g.index()].name),

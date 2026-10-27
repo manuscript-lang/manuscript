@@ -70,9 +70,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
             )
         )
         (
-            response.metadata().headers.text(
-                "X-Test"
-            ) | try expect_ok | try expect_equal(some(["manuscript"]))
+            response.metadata().headers.values("X-Test") | try expect_equal(["manuscript"])
         )
 
         let client_options = HttpClientOptions(
@@ -137,7 +135,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
             (not message.text or message.data != "é🙂".to_bytes()) | try expect_false
 
 def report_host(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let hosts = (try exchange.headers().text("Host")).get([])
+    let hosts = exchange.headers().values("Host")
     let started = (try exchange.send_headers(status: 200, headers: headers()))
     let written = (try http_result(exchange.write(hosts.join(","))))
     return ok(())

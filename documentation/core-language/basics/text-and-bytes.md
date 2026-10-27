@@ -108,12 +108,12 @@ The removed spellings migrate as follows.
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]`; `parse_float() -> Optional[Float]` |
-| `Bytes(values: List[Int])` | Immutable bytes; each value must be 0–255, otherwise a programming fault |
-| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[Int] = none) -> Int`; `[index] Int`; `concat(values: Bytes) -> Bytes` |
+| `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
+| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[UInt8] = none) -> UInt8`; `[index] UInt8`; `concat(values: Bytes) -> Bytes` |
 | `Bytes` | `to_string() -> Optional[String]` |
-| `Bytes` | `values() -> List[Int]`; a fresh mutable list of unsigned byte values |
+| `Bytes` | `values() -> List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
-`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the unsigned byte as Int; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
+`to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
 `Bytes(values:)` copies its list, and `data.values()` (like the free function `values(data:)` in `@std/bytes.ms`) returns a fresh copy; editing either never changes the Bytes. `values` is a method, not a data field.
 
@@ -153,7 +153,7 @@ test "padding and fixed digits":
 
 ## Binary data
 
-`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `Result[T, BinaryError]`; bytes that are not all there give `BinaryError.OutOfRange`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); unsigned reads return `Int`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many. An unsigned append outside its range faults.
+`Bytes` reads fixed-width numbers at an absolute offset: `int8`, `uint8`, and for each of `int16`, `int32`, `int64`, `uint16`, `uint32`, `float32`, `float64` a `_le` and `_be` spelling, such as `data.int32_le(at: 2)`. Each returns `Result[T, BinaryError]`; bytes that are not all there give `BinaryError.OutOfRange`. Signed reads return `Int8`, `Int16`, `Int32` and `Int` (64-bit); `uint8`, `uint16` and `uint32` reads return `UInt8`, `UInt16` and `UInt32`; `float32` returns `Float32` and `float64` returns `Float`. `BytesBuilder` writes with matching `append_int32_le(value)` and siblings; `append` adds one byte and `append_bytes` adds many.
 
 ```manuscript
 from "@std/bytes.ms" import BytesBuilder

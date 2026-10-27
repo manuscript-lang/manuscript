@@ -99,6 +99,7 @@ fn entity_kind(decl: &DeclRef) -> &'static str {
         DeclKind::Alternative(_) => "alternative",
         DeclKind::Interface(_) => "interface",
         DeclKind::Impl(_) => "impl",
+        DeclKind::Test(t) if t.bench => "bench",
         DeclKind::Test(_) => "test",
     }
 }
@@ -179,8 +180,9 @@ pub fn inspect(program: &Program) -> Inspection {
                 exported: decl.decl().export,
                 effects: Vec::new(),
             };
-            if let DeclKind::Test(_) = decl.decl().kind {
-                entity.id = format!("{file}#test#{name}");
+            if let DeclKind::Test(t) = &decl.decl().kind {
+                let kind = if t.bench { "bench" } else { "test" };
+                entity.id = format!("{file}#{kind}#{name}");
             }
             if let Some(symbol) = symbol_of(program, module, decl.decl_name_for_symbol().as_str())
                 && symbol.decl.as_ref().is_some_and(|d| d.same(decl))

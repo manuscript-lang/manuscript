@@ -1,13 +1,15 @@
 //! The shared test fixture: `make_fixture`, then the `TestHooks` around each test.
 //!
 //! Every test runs in its own process, so the factory and `before_all` run once per test
-//! and `after_all` follows `after_each`.
+//! and `after_all` follows `after_each`. The `after_*` hooks are also entries on the runtime
+//! cleanup stack, so a skip or a fault runs them like the close of a `with` block.
 
 use crate::Error;
 use crate::func::FnLower;
+use crate::with::CloseKind;
 use ms_check::hir::Callable;
 use ms_check::types::{self as ct, BindingRef, Subst};
-use ms_mir::ir::{Imm, Op};
+use ms_mir::ir::{Imm, Op, Value};
 use ms_mir::types::Ty as MTy;
 use std::rc::Rc;
 
@@ -17,6 +19,8 @@ pub(crate) struct Hooks {
     binding: BindingRef,
     after_each: Option<Rc<Callable>>,
     after_all: Option<Rc<Callable>>,
+    /// The cleanup-stack entries of the `after_*` hooks, outermost first.
+    handles: Vec<Value>,
 }
 
 impl FnLower<'_> {
@@ -38,16 +42,63 @@ impl FnLower<'_> {
         )?;
         let fid = self.cx.function_for(self.b.m, &factory, &Subst::new())?;
         let made = self.b.call(fid, &[]);
-        self.bind_local(binding, crate::func::Val { v: made, own: true });
         let hook = |s: &Self, name: &str| s.fixture_hook(&fixture.ty, name);
         let (before_all, before_each) = (hook(self, "before_all"), hook(self, "before_each"));
+        let (after_each, after_all) = (hook(self, "after_each"), hook(self, "after_all"));
+        // A fault or skip runs the registered hooks from the cleanup stack, which reads the fixture
+        // in memory: hooks that change `self` store the new value back there.
+        if after_each.is_some() || after_all.is_some() {
+            self.slotted.insert(binding.uid);
+        }
+        self.bind_local(binding, crate::func::Val { v: made, own: true });
         self.fixture = Some(Hooks {
             binding: binding.clone(),
-            after_each: hook(self, "after_each"),
-            after_all: hook(self, "after_all"),
+            after_each: after_each.clone(),
+            after_all: after_all.clone(),
+            handles: Vec::new(),
         });
-        for c in [before_all, before_each].into_iter().flatten() {
-            self.run_hook(&c, binding)?;
+        // `after_all` also runs when `before_all` fails; `after_each` only once `before_all` ran.
+        if let Some(c) = &after_all {
+            self.register_teardown(c, binding)?;
+        }
+        if let Some(c) = &before_all {
+            self.run_hook(c, binding)?;
+        }
+        if let Some(c) = &after_each {
+            self.register_teardown(c, binding)?;
+        }
+        if let Some(c) = &before_each {
+            self.run_hook(c, binding)?;
+        }
+        Ok(())
+    }
+
+    /// Puts `hook` on the runtime cleanup stack, so a fault or skip runs it on the fixture.
+    fn register_teardown(
+        &mut self,
+        hook: &Rc<Callable>,
+        binding: &BindingRef,
+    ) -> Result<(), Error> {
+        let fid = self.cx.function_for(self.b.m, hook, &Subst::new())?;
+        let writes_back = self.cx.var_positions(hook).contains(&0);
+        let local = self.local(binding)?;
+        let kind = CloseKind::Func { fid, writes_back };
+        let thunk = self.close_thunk(&kind, local.ty, local.slot.is_some());
+        let registered = match local.slot {
+            Some(ptr) => ptr,
+            None => self.read_local(binding)?.v,
+        };
+        let handle = self
+            .b
+            .emit(
+                Op::CleanupPush,
+                &[registered],
+                Imm::Func(thunk),
+                Some(MTy::INT),
+            )
+            .expect("handle");
+        if let Some(hooks) = self.fixture.as_mut() {
+            hooks.handles.push(handle);
         }
         Ok(())
     }
@@ -58,6 +109,9 @@ impl FnLower<'_> {
             return;
         };
         let mark = self.temps.len();
+        for handle in hooks.handles.iter().rev() {
+            let _ = self.call_runtime("msrt_cleanup_discard", &[*handle], MTy::UNIT);
+        }
         for c in [&hooks.after_each, &hooks.after_all].into_iter().flatten() {
             // A hook that cannot be lowered was already reported when the fixture began.
             let _ = self.run_hook(c, &hooks.binding);

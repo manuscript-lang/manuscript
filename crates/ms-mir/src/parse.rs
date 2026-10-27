@@ -636,6 +636,10 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "int16" => Ty::INT16,
         "int32" => Ty::INT32,
         "float32" => Ty::FLOAT32,
+        "uint8" => Ty::UINT8,
+        "uint16" => Ty::UINT16,
+        "uint32" => Ty::UINT32,
+        "uint64" => Ty::UINT64,
         "str" => Ty::STR,
         "bytes" => Ty::BYTES,
         "ptr" => Ty::PTR,
@@ -968,7 +972,7 @@ fn parse_line(
         (op, None)
     } else if let Some((head, tail)) = mn.rsplit_once('.') {
         match (Op::from_name(head), Cc::from_name(tail)) {
-            (Some(op @ (Op::ICmp | Op::FCmp)), Some(cc)) => (op, Some(cc)),
+            (Some(op @ (Op::ICmp | Op::UICmp | Op::FCmp)), Some(cc)) => (op, Some(cc)),
             _ => return c.err(format!("unknown instruction '{mn}'")),
         }
     } else {
@@ -1144,6 +1148,38 @@ fn parse_line(
                     message: format!("unknown field {n}"),
                 })?;
             Imm::AltField(aid, ci as u32, fi as u32)
+        }
+        ImmKind::AltMask => {
+            let n = c.ident()?;
+            let parts: Vec<&str> = n.split('.').collect();
+            if parts.len() < 2 {
+                return c.err("expected Alt.Case.field...");
+            }
+            let aid = m.alt_by_name(parts[0]).ok_or_else(|| ParseError {
+                line: c.line,
+                message: format!("unknown alternative {}", parts[0]),
+            })?;
+            let ci = m.alts[aid.index()]
+                .cases
+                .iter()
+                .position(|x| x.name == parts[1])
+                .ok_or_else(|| ParseError {
+                    line: c.line,
+                    message: format!("unknown case {n}"),
+                })?;
+            let mut mask = 0u32;
+            for name in &parts[2..] {
+                let fi = m.alts[aid.index()].cases[ci]
+                    .fields
+                    .iter()
+                    .position(|x| x.0 == *name)
+                    .ok_or_else(|| ParseError {
+                        line: c.line,
+                        message: format!("unknown field {n}"),
+                    })?;
+                mask |= 1 << fi;
+            }
+            Imm::AltMask(aid, ci as u32, mask)
         }
         ImmKind::Method => {
             let n = c.ident()?;

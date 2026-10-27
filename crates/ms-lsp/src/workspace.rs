@@ -2,7 +2,7 @@
 //! and workspace symbols.
 
 use crate::analysis::{Analysis, Document, Documents, workspace_analysis};
-use crate::index::{Occurrence, source_index};
+use crate::index::Occurrence;
 use crate::json::{Json, obj};
 use crate::nav::{self, go_location_order};
 use crate::text::Position;
@@ -53,6 +53,12 @@ impl From<Canceled> for ScanError {
     }
 }
 
+/// A file's identity: its path with symlinks resolved, so an open buffer and
+/// the file it is a link to are one document.
+fn identity(path: &str) -> String {
+    pathops::eval_symlinks(path).unwrap_or_else(|_| path.to_string())
+}
+
 /// The open and on-disk `.ms` documents under a document's project (or its
 /// directory), sorted by URI.
 pub fn workspace_documents(
@@ -72,17 +78,11 @@ pub fn workspace_documents(
             && relative != ".."
             && !relative.starts_with("../")
         {
-            files.insert(name, open.clone());
+            files.insert(identity(&name), open.clone());
         }
     }
-    files.insert(path, d.clone());
-    match walk(
-        Path::new(&root),
-        Path::new(&root),
-        nested,
-        &mut files,
-        cancel,
-    ) {
+    files.insert(identity(&path), d.clone());
+    match walk(Path::new(&root), nested, &mut files, cancel) {
         Ok(()) => {}
         Err(ScanError::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(e),
@@ -93,7 +93,6 @@ pub fn workspace_documents(
 }
 
 fn walk(
-    root: &Path,
     dir: &Path,
     nested: bool,
     files: &mut BTreeMap<String, Document>,
@@ -114,20 +113,22 @@ fn walk(
             if !nested || name.starts_with('.') || name == "node_modules" || name == "vendor" {
                 continue;
             }
-            walk(root, &path, nested, files, cancel)?;
+            walk(&path, nested, files, cancel)?;
             continue;
         }
         let text_path = path.to_string_lossy().into_owned();
-        if kind.is_symlink() || !text_path.ends_with(".ms") || files.contains_key(&text_path) {
+        if kind.is_symlink()
+            || !text_path.ends_with(".ms")
+            || files.contains_key(&identity(&text_path))
+        {
             continue;
         }
         let data = std::fs::read(&path).map_err(ScanError::Io)?;
         files.insert(
-            text_path.clone(),
+            identity(&text_path),
             Document::new(uri::file_uri(&text_path), String::from_utf8_lossy(&data)),
         );
     }
-    let _ = root;
     Ok(())
 }
 
@@ -171,7 +172,6 @@ pub fn workspace_references(
             return nav::references_with_index(analysis, index, d, p, include);
         }
     };
-    let selected_key = selected.key.clone();
     let mut locations: Vec<Json> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
     for file in &documents {
@@ -182,14 +182,14 @@ pub fn workspace_references(
         if canceled(cancel).is_err() {
             return Vec::new();
         }
-        for entry in source_index(&checked) {
+        for entry in checked.index() {
             if canceled(cancel).is_err() {
                 return Vec::new();
             }
-            if entry.key != selected_key || (!include && entry.declaration) {
+            if entry.key != selected.key || (!include && entry.declaration) {
                 continue;
             }
-            let Some(location) = nav::occurrence_location(&checked, &entry) else {
+            let Some(location) = nav::occurrence_location(&checked, entry) else {
                 continue;
             };
             if seen.insert(go_location_order(&location)) {

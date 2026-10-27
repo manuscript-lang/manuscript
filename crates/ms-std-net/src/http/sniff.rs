@@ -68,6 +68,19 @@ fn is_text(data: &[u8]) -> bool {
 /// The detected media type of `data` (at most its first 512 bytes matter).
 pub fn detect(data: &[u8]) -> &'static str {
     let data = &data[..data.len().min(512)];
+    // Every signature starts with whitespace, `<`, a byte outside printable ASCII, or one of these
+    // letters (mp4 is the exception: it is keyed on bytes 4 to 8).
+    if let Some(&b) = data.first()
+        && (0x21..=0x7e).contains(&b)
+        && !b"<%GBRFIOMPwt".contains(&b)
+        && !mp4(data)
+    {
+        return if is_text(data) {
+            "text/plain; charset=utf-8"
+        } else {
+            "application/octet-stream"
+        };
+    }
     const HTML: &[&str] = &[
         "<!DOCTYPE HTML",
         "<HTML",

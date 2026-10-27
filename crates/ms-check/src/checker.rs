@@ -115,12 +115,20 @@ pub struct Program {
     /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
     /// the ownership pass ran (every program that type checks).
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
+    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
+    pub implicit_closes: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
     /// `ref` functions that return a borrow on every path, by module file and node, for lowering.
     /// Filled together with `borrows`.
     pub lenders: Rc<HashSet<(Name, NodeId)>>,
+    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
+    /// identity. Filled together with `borrows`.
+    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
+    /// Parameters each callable consumes (moves, stores or returns), by module file and node, for
+    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
+    pub consumes: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
 }
 
 /// A body-check result retained from an inference probe.
@@ -926,6 +934,12 @@ impl Checker {
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
                 for method in &i.methods {
+                    for param in method.func.params.iter().filter(|p| p.mutable) {
+                        self.type_error(
+                            param.pos,
+                            "an interface operation cannot take a `var` parameter, only a `var` receiver; return the new value, or pass a type that holds the state",
+                        );
+                    }
                     for param in &method.func.params {
                         let Some(default) = &param.default else {
                             continue;
@@ -1317,8 +1331,10 @@ impl Checker {
         let is_test = matches!(d.decl.decl().kind, DeclKind::Test(_)) && d.index.is_none();
         if is_test {
             self.test_function = self.function;
+            // A bench body is timed repeatedly, so the file fixture and its hooks apply to tests only.
+            let bench = matches!(&d.decl.decl().kind, DeclKind::Test(t) if t.bench);
             let fixture = self.p.test_fixtures.get(&self.current_file()).cloned();
-            if let Some(fixture) = fixture {
+            if let Some(fixture) = fixture.filter(|_| !bench) {
                 let b = self.bind(n("fixture"), &fixture.ty, false, d.pos());
                 self.m()
                     .facts_mut()

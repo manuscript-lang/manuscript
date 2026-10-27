@@ -284,15 +284,6 @@ native! {
         1
     }
 
-    /// `HttpHeaders.text(name)`.
-    fn msrt_http_headers_text(h: ObjRef<HeadersH>, name: &str, out: Out<Vec<String>>) -> Result<(), StatusCode> {
-        match h.borrow().text(name).map_err(code)? {
-            Some(values) => out.write(values),
-            None => return Err(StatusCode(STATUS_NONE)),
-        }
-        Ok(())
-    }
-
     /// `HttpHeaders.names()`.
     fn msrt_http_headers_names(h: ObjRef<HeadersH>, out: Out<Vec<String>>) -> () {
         out.write(h.borrow().names().into_iter().map(str::to_string).collect());

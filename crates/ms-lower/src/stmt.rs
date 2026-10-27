@@ -137,7 +137,7 @@ impl<'a> FnLower<'a> {
     fn stmt_inner(&mut self, s: &Stmt) -> Result<(), Error> {
         let mark = self.temps.len();
         match &s.kind {
-            StmtKind::Bind { pattern, value, .. } => self.bind(pattern, value)?,
+            StmtKind::Bind { pattern, value, .. } => self.bind(s, pattern, value)?,
             StmtKind::Assign { target, value, .. } => self.assign(target, value)?,
             StmtKind::Call(e) => {
                 self.discard = Some(e as *const Expr as usize);
@@ -223,7 +223,7 @@ impl<'a> FnLower<'a> {
         Ok(())
     }
 
-    fn bind(&mut self, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
+    fn bind(&mut self, s: &Stmt, pattern: &Pattern, value: &Expr) -> Result<(), Error> {
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
             && self.cx.exclusive(b.uid)
@@ -277,6 +277,13 @@ impl<'a> FnLower<'a> {
             }
             self.bind_lent(&b, x.v);
             return Ok(());
+        }
+        if let PatternKind::Name(_) = pattern.kind
+            && let Some(b) = self.hir.pattern_binding(pattern)
+            && self.cx.implicit_closes.contains(&b.uid)
+            && let Some(cleanup) = self.hir.stmt(s).cleanup
+        {
+            return self.bind_closing(&b, x, &cleanup);
         }
         self.bind_pattern(pattern, x)
     }
@@ -382,6 +389,10 @@ impl<'a> FnLower<'a> {
                 let l = self.local(&b)?;
                 let new = self.owned(x);
                 let old = self.local_take(&l);
+                // A registered resource closes the value it replaces; the scope closes the new one.
+                if let Some(closer) = self.closers.get(&b.uid).cloned() {
+                    self.close_replaced(&closer, old, l.ty);
+                }
                 self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {
                     self.drop_value(old);

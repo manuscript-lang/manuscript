@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "host-accessors.ms::repeated accessors retain closed root state",
+          "name": "host-accessors.ms::closing a standard stream leaves the process stream open",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN host-accessors.ms::host accessors work in callbacks\nPASS host-accessors.ms::host accessors work in callbacks\nRUN host-accessors.ms::repeated accessors retain closed root state\nPASS host-accessors.ms::repeated accessors retain closed root state\nRUN host-accessors.ms::a later test receives fresh standard output\nPASS host-accessors.ms::a later test receives fresh standard output\n3 tests, 0 failed\n",
+      "stdout": "RUN host-accessors.ms::host accessors work in callbacks\nPASS host-accessors.ms::host accessors work in callbacks\nRUN host-accessors.ms::closing a standard stream leaves the process stream open\nPASS host-accessors.ms::closing a standard stream leaves the process stream open\nRUN host-accessors.ms::a later test receives fresh standard output\nPASS host-accessors.ms::a later test receives fresh standard output\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
