@@ -16,6 +16,7 @@
 
 use crate::ir::{Module, Op};
 
+pub mod buildmove;
 pub mod copyelim;
 pub mod ifconv;
 pub mod inline;
@@ -92,6 +93,8 @@ pub fn optimize(m: &mut Module, level: Level, verify: bool) {
     check(m, "inline");
     strfuse::run(m);
     check(m, "strfuse");
+    buildmove::run(m);
+    check(m, "buildmove");
     slotfuse::run(m);
     check(m, "slotfuse");
     for round in 0..3 {
