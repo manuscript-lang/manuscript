@@ -56,6 +56,8 @@ Before/after:
 - Full drop glue with drop flags for conditional moves: covers more, but needs flow analysis the checker lacks; defer until the narrow rule proves out.
 - Close in Rust `Drop` of native handles: cannot call user `close()`; rejected.
 
+- Fallible or split `drop`/`close` (rejected): breaks about 14 stdlib impls and adds a second concept. Goal is simplicity for agents (Chinmay). Errors that matter belong to explicit fallible methods (`flush`, `commit`) called with `try` before scope exit, as `cleanup-faults.md` already advises. A fault in `close` keeps today's rules.
+
 ## Staging and verification
 
 - Stage 1: checker + lowering + lower/conformance tests (early return, loop `break`, fault, cancellation, generic bound).
