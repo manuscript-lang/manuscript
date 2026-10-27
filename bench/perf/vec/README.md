@@ -16,23 +16,30 @@ fp32 matrix-vector products (`y = W x`, the inner loop of language-model inferen
 
 Run `sh bench/perf/vec/run.sh 5` (best of N). Compare only runs from the same machine. The C variants other than `c-lanes-omp` run on one core.
 
-## Multiple cores (2026-10-27)
+## Multiple cores (2026-10-27, second run)
 
-Same machine as below; `matvec` now splits rows across the runtime's compute pool above 262,144 multiply-adds, so 288x288 and 768x288 stay on one core. Best of 5, GFLOPS.
+A fresh VM of the same type (linux/amd64, four vCPUs, AVX2); best of 7, GFLOPS. Pool kernels now write results through the list without rewriting its header, which four cores had been fighting over on every row.
+
+| Variant | 288x288 | 768x288 | 1024x1024 | 4096x4096 |
+| --- | ---: | ---: | ---: | ---: |
+| ms-vec (4 cores) | 19.50 | 18.26 | 41.86 | 14.43 |
+| c-lanes-omp (4 cores) | 17.45 | 17.13 | 23.08 | 18.16 |
+| ms-vec-1thread | 19.54 | 19.05 | 12.70 | 4.71 |
+| c-lanes (1 core) | 18.84 | 17.72 | 11.89 | 4.39 |
+| c-fastmath (1 core) | 16.26 | 15.77 | 11.97 | 4.48 |
+
+- This VM is noisy: 15 alternating runs at 1024x1024 gave medians of 45 (ms) and 25 (OpenMP) GFLOPS; 10 at 4096x4096 gave 14.4 and 15.8. The 4096 gap (about 10%, memory-bound) is not explained yet.
+- 288x288 and 768x288 are below the pool's threshold and run on one core.
+
+## Multiple cores (2026-10-27, first run)
+
+Before the header fix; same machine as the one-core run below.
 
 | Variant | 288x288 | 768x288 | 1024x1024 | 4096x4096 |
 | --- | ---: | ---: | ---: | ---: |
 | ms-vec (4 cores) | 17.59 | 17.61 | 29.27 | 12.84 |
 | c-lanes-omp (4 cores) | 17.39 | 16.73 | 32.77 | 12.87 |
 | ms-vec-1thread | 18.79 | 17.23 | 11.02 | 3.83 |
-| c-lanes (1 core) | 18.68 | 17.35 | 11.30 | 3.72 |
-| ms-vec-baseline (4 cores) | 14.52 | 14.15 | 18.92 | 11.42 |
-| c-fastmath (1 core) | 15.35 | 15.33 | 11.81 | 4.09 |
-| c-scalar | 1.81 | 1.86 | 1.63 | 1.52 |
-| ms-scalar | 0.45 | 0.45 | 0.43 | 0.42 |
-
-- Four cores give 2.7x at 1024x1024 and 3.4x at 4096x4096, level with OpenMP running the same kernel.
-- The small sizes differ only by run-to-run noise (about 7% here); they take the same one-core path.
 
 ## One core (2026-10-27)
 
