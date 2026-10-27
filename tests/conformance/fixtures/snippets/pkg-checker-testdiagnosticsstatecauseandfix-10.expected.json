@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-10.ms:8:12: type: cannot infer type argument T for g; write g[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-10.ms:8:12: type: cannot infer type argument T for g; write g[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 8 |     return g()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

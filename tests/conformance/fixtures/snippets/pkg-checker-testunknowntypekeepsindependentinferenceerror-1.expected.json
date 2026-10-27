@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:4:19: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:9:17: type: cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:4:19: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | def broken(value: Missing) -> Unit: return\n   |                   ^\n<DIR>/pkg-checker-testunknowntypekeepsindependentinferenceerror-1.ms:9:17: type: cannot infer type argument T for empty; write empty[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 9 |     let value = empty()\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

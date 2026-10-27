@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-8.ms:6:13: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-8.ms:6:13: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n   |\n 6 | def f(node: Node) -> Int: return hash(node)\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

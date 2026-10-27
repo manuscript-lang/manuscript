@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-8.ms:7:5: type: cannot assign to constant A; assignment targets are 'var' bindings and record fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testconstantdiagnostics-8.ms:7:5: type: cannot assign to constant A; assignment targets are 'var' bindings and record fields\n   |\n 7 |     A = 2\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

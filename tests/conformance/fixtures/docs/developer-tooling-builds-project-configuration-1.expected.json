@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/developer-tooling-builds-project-configuration-1.ms:4:1: resolution: cannot find module ./domain/customers.ms (looked for domain); check the spelling, make sure the file exists, and that the path is relative to the importing file\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/developer-tooling-builds-project-configuration-1.ms:4:1: resolution: cannot find module ./domain/customers.ms (looked for domain); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | from \"./domain/customers.ms\" import CustomerId\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

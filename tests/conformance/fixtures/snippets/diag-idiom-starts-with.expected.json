@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-starts-with.ms:5:17: resolution: unknown or ambiguous member startsWith on String; did you mean 'starts_with'?\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-starts-with.ms:5:17: resolution: unknown or ambiguous member startsWith on String; did you mean 'starts_with'?\n   |\n 5 |     let a = \"x\".startsWith(\"x\")\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

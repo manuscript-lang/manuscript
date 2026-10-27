@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-constant-fault-index-past-end.ms:5:12: type: index 2 is outside this list literal of 2 element(s) and always faults\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-constant-fault-index-past-end.ms:5:12: type: index 2 is outside this list literal of 2 element(s) and always faults\n   |\n 5 |     return [1, 2][2]\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:9: type: duplicate operation m; rename or remove one of them\n<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:9: type: duplicate implementation operation m; define each operation once per impl\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:9: type: duplicate operation m; rename or remove one of them\n    |\n 12 |     def m() -> Int:\n    |         ^\n<DIR>/tests-e2e-testinherentimplrejections-6.ms:12:9: type: duplicate implementation operation m; define each operation once per impl\n    |\n 12 |     def m() -> Int:\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

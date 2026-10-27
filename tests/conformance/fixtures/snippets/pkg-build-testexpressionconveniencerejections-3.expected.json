@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-3.ms:4:40: type: expected Int, found String\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-3.ms:4:40: type: expected Int, found String\n   |\n 4 | def f(xs: List[Int]) -> Int: return xs[\"0\"]\n   |                                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

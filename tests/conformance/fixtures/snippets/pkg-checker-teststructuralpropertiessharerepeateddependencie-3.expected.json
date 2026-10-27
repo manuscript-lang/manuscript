@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-3.ms:4:17: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-teststructuralpropertiessharerepeateddependencie-3.ms:4:17: resolution: unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it\n   |\n 4 | def hash(value: Layer32) -> Int: return value.hash()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

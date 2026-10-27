@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcoreparityrejectsinvalidcontracts-2.ms:5:24: type: U does not satisfy Hashable; pass a type that already implements it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcoreparityrejectsinvalidcontracts-2.ms:5:24: type: U does not satisfy Hashable; pass a type that already implements it\n   |\n 5 |     let output = value.map(transform)\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
