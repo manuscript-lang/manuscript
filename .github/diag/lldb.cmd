@@ -1,10 +1,10 @@
 breakpoint set -n msrt_string_replace
-breakpoint command add 1
-memory read -fx -s8 -c2 $x0
-memory read -fx -s8 -c2 $x1
-memory read -fx -s8 -c2 $x2
-continue
-DONE
 run
-bt 15
-register read x0 x1 x2 x3 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28
+script exec(open('../.github/diag/w.py').read())
+breakpoint disable 1
+continue
+bt 12
+disassemble -p -c 8
+register read x0 x1 x2 x3 x19 x20 x21 x22 x23 x24
+continue
+bt 12
