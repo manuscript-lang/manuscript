@@ -2,6 +2,16 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+## 2026-10-27 (SortedMap)
+
+Revision: this branch on top of `d370bb89`; best of 10 runs of the `sorted_map_add_contains` row, same machine class.
+
+| Operation | Manuscript before | Manuscript after | Rust |
+| --- | ---: | ---: | ---: |
+| SortedMap add and contains | 214 | 193 | 169 |
+
+Chunks now split at 128 entries instead of 256. Split by operation at 300k keys: add 290 to 255 ns, contains unchanged at 138 ns, which already beats `BTreeMap` (157). The remaining gap is all in add: callgrind shows 58% of data-cache read misses inside `memmove` shifting chunk tails and the chunk-header lists. A three-level layout (segments of chunks, as a struct or as nested lists) made both add and contains slower on this compiler and was dropped; mutating a struct element of a list in place also copies it today.
+
 ## 2026-10-27
 
 Revision: this branch on top of `90e401c46`; same machine class, one `run.sh 5` before and after.
