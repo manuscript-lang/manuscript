@@ -548,10 +548,34 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
 
     # Slice once: appending each character to a string is quadratic on long scalars.
     var text = flow.chars.slice(start, flow.pos).get([]).join("").trim()
+    if text.starts_with("?") and (text.length() == 1 or " \t".contains(text.get(1))): return error(
+        YamlError.UnsupportedFeature(
+            line: flow.line, reason: "explicit mapping keys are unsupported"
+        )
+    )
+    if not plain_may_start(text): return error(
+        flow_invalid(
+            flow, "a plain scalar cannot start with an indicator character"
+        )
+    )
+
     if flow.delimited: text = fold_plain(text)
     if key: return ok(YamlValue.StringValue(text))
 
     return ok(plain(text))
+
+# A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed by a space or the end.
+def plain_may_start(text: String) -> Bool:
+    if text == "": return True
+
+    let first = text.get(0)
+    if "]},%@`".contains(first): return False
+    if first == "-" or first == "?": return not (
+        text.length() == 1
+        or " \t".contains(text.get(1))
+    )
+
+    return True
 
 def quoted_or_nested(text: String) -> Bool:
     return (
