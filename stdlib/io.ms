@@ -159,11 +159,11 @@ impl Error for IoError:
 export def stdin() -> ReadStream:
     return msstd_io_stdin()
 
-# Returns the process standard-output stream. Closing it only flushes: the stream belongs to the process and stays usable.
+# Returns the process standard-output stream.
 export def stdout() -> WriteStream:
     return msstd_io_stdout()
 
-# Returns the process standard-error stream. Closing it has no effect: the stream belongs to the process and stays usable.
+# Returns the process standard-error stream.
 export def stderr() -> WriteStream:
     return msstd_io_stderr()
 
