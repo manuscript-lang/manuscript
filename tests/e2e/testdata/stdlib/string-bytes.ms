@@ -139,3 +139,24 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 
     let out_of_range: Result[String, StringError] = error(StringError.OutOfRange)
     try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
+
+test "builder appends literals of every short length across growth":
+    var sb = StringBuilder()
+
+    for i in range(0, 40):
+        sb.append("a")
+        sb.append("bc")
+        sb.append("def")
+        sb.append("ghij")
+        sb.append("klmno")
+        sb.append("pqrstuv")
+        sb.append("wxyzABCD")
+        sb.append("EFGHIJKLMNOPQRS")
+        sb.append("0123456789abcdef")
+        sb.append("é€")
+
+    let one = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
+    var want = StringBuilder()
+    for i in range(0, 40):
+        want.append(one)
+    try expect_equal(sb.build(), want.build())
