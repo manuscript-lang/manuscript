@@ -320,6 +320,11 @@ fn fcc(cc: FloatCC) -> &'static str {
     }
 }
 
+/// The intrinsic name suffix of a float type.
+fn fsuf(t: Type) -> &'static str {
+    if t == types::F32 { "f32" } else { "f64" }
+}
+
 fn double_lit(bits: u64) -> String {
     format!("0x{bits:016X}")
 }
@@ -487,6 +492,11 @@ impl<'a> Tr<'a> {
                 };
                 self.set(inst, 0, v.to_string());
             }
+            InstructionData::UnaryIeee32 { imm, .. } => {
+                // LLVM spells a `float` constant as the double with the same value.
+                let wide = f32::from_bits(imm.bits()) as f64;
+                self.set(inst, 0, double_lit(wide.to_bits()));
+            }
             InstructionData::UnaryIeee64 { imm, .. } => {
                 self.set(inst, 0, double_lit(imm.bits()));
             }
@@ -500,7 +510,11 @@ impl<'a> Tr<'a> {
             }
             InstructionData::FloatCompare { args, cond, .. } => {
                 let (a, b) = (self.op(args[0]), self.op(args[1]));
-                let c = self.def(format!("fcmp {} double {a}, {b}", fcc(cond)));
+                let c = self.def(format!(
+                    "fcmp {} {} {a}, {b}",
+                    fcc(cond),
+                    llty(self.ty(args[0]))
+                ));
                 let z = self.def(format!("zext i1 {c} to i8"));
                 self.set(inst, 0, z);
             }
@@ -820,10 +834,10 @@ impl<'a> Tr<'a> {
             Opcode::Band => simple("and"),
             Opcode::Bor => simple("or"),
             Opcode::Bxor => simple("xor"),
-            Opcode::Fadd => format!("fadd double {a}, {b}"),
-            Opcode::Fsub => format!("fsub double {a}, {b}"),
-            Opcode::Fmul => format!("fmul double {a}, {b}"),
-            Opcode::Fdiv => format!("fdiv double {a}, {b}"),
+            Opcode::Fadd => simple("fadd"),
+            Opcode::Fsub => simple("fsub"),
+            Opcode::Fmul => simple("fmul"),
+            Opcode::Fdiv => simple("fdiv"),
             Opcode::Ishl | Opcode::Sshr | Opcode::Ushr => {
                 // Cranelift masks the shift amount to the type width; LLVM makes oversize shifts poison.
                 let mask = t.bits() - 1;
@@ -888,12 +902,12 @@ impl<'a> Tr<'a> {
         let rt = self.f.dfg.ctrl_typevar(inst);
         let rhs = match opc {
             Opcode::Ineg => format!("sub {} 0, {a}", llty(t)),
-            Opcode::Fneg => format!("fneg double {a}"),
-            Opcode::Fabs => format!("call double @llvm.fabs.f64(double {a})"),
-            Opcode::Sqrt => format!("call double @llvm.sqrt.f64(double {a})"),
-            Opcode::Floor => format!("call double @llvm.floor.f64(double {a})"),
-            Opcode::Ceil => format!("call double @llvm.ceil.f64(double {a})"),
-            Opcode::Trunc => format!("call double @llvm.trunc.f64(double {a})"),
+            Opcode::Fneg => format!("fneg {} {a}", llty(t)),
+            Opcode::Fabs => format!("call {0} @llvm.fabs.{1}({0} {a})", llty(t), fsuf(t)),
+            Opcode::Sqrt => format!("call {0} @llvm.sqrt.{1}({0} {a})", llty(t), fsuf(t)),
+            Opcode::Floor => format!("call {0} @llvm.floor.{1}({0} {a})", llty(t), fsuf(t)),
+            Opcode::Ceil => format!("call {0} @llvm.ceil.{1}({0} {a})", llty(t), fsuf(t)),
+            Opcode::Trunc => format!("call {0} @llvm.trunc.{1}({0} {a})", llty(t), fsuf(t)),
             Opcode::Uextend => format!("zext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Sextend => format!("sext {} {a} to {}", llty(t), llty(rt)),
             Opcode::Ireduce => format!("trunc {} {a} to {}", llty(t), llty(rt)),
@@ -901,7 +915,12 @@ impl<'a> Tr<'a> {
             Opcode::Fpromote => format!("fpext float {a} to double"),
             Opcode::FcvtFromSint => format!("sitofp {} {a} to {}", llty(t), llty(rt)),
             Opcode::FcvtToSintSat => {
-                format!("call {0} @llvm.fptosi.sat.{0}.f64(double {a})", llty(rt))
+                format!(
+                    "call {0} @llvm.fptosi.sat.{0}.{2}({1} {a})",
+                    llty(rt),
+                    llty(t),
+                    fsuf(t)
+                )
             }
             Opcode::Bnot => format!("xor {} {a}, -1", llty(t)),
             other => panic!("unsupported unary op {other}"),
@@ -1160,7 +1179,13 @@ impl LlvmModule {
              declare double @llvm.floor.f64(double)\n\
              declare double @llvm.ceil.f64(double)\n\
              declare double @llvm.trunc.f64(double)\n\
-             declare i64 @llvm.fptosi.sat.i64.f64(double)\n",
+             declare float @llvm.fabs.f32(float)\n\
+             declare float @llvm.sqrt.f32(float)\n\
+             declare float @llvm.floor.f32(float)\n\
+             declare float @llvm.ceil.f32(float)\n\
+             declare float @llvm.trunc.f32(float)\n\
+             declare i64 @llvm.fptosi.sat.i64.f64(double)\n\
+             declare i64 @llvm.fptosi.sat.i64.f32(float)\n",
         );
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             for t in ["i64", "i32", "i8"] {
