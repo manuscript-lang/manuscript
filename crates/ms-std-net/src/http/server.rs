@@ -904,6 +904,8 @@ impl Server {
         loop {
             let accepted = match self.listener.borrow().as_ref() {
                 Some(listener) => {
+                    #[cfg(windows)]
+                    ms_rt::dbgf!("[srv] renb {}", listener.set_nonblocking(true).is_ok());
                     ms_rt::dbgf!("[srv] accept enter");
                     let r = listener.accept();
                     ms_rt::dbgf!("[srv] accept exit ok={}", r.is_ok());
