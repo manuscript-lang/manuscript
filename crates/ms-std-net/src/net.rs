@@ -542,6 +542,8 @@ impl Network {
         probe("end of listen_tcp a", &sock);
         probe("end of listen_tcp b", &sock);
         probe("end of listen_tcp c", &sock);
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        probe("end of listen_tcp after sleep", &sock);
         Ok(sock)
     }
 

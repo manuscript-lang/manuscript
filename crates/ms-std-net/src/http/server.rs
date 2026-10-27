@@ -722,8 +722,10 @@ impl Server {
         } else {
             owner.listen_tcp(address)?
         };
-        let local = listener
-            .local_addr()
+        probe("serve: before local_addr", &listener);
+        let local_sa = listener.local_addr();
+        probe("serve: after local_addr", &listener);
+        let local = local_sa
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
         probe("start of serve", &listener);
