@@ -838,7 +838,15 @@ impl Checker {
         };
         let actual = info.ty.clone();
         if compatible(&actual, expected_optional) {
-            return self.check_expression(e, info, expected);
+            let redundant = is_written_some(e)
+                && matches!(&e.kind, ExprKind::Call { args, .. }
+                    if self.info_of(&args[0].value).and_then(|i| i.ty).is_some_and(|t| !t.is_std("Optional") && same(&t, &payload)));
+            let mut info = self.check_expression(e, info, expected);
+            if redundant {
+                info.redundant_some = true;
+                self.set_info(e, info.clone());
+            }
+            return info;
         }
         let payload_ok = compatible(&actual, &payload)
             || actual
@@ -960,4 +968,13 @@ fn without_json_form(t: &Ty, custom: &dyn Fn(&Ty) -> bool, visiting: &mut Vec<Na
     }
     visiting.pop();
     found
+}
+
+/// A call written `some(x)` or `some(value: x)` through the prelude name.
+fn is_written_some(e: &Expr) -> bool {
+    let ExprKind::Call { callee, args } = &e.kind else {
+        return false;
+    };
+    matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "some")
+        && matches!(args.as_slice(), [a] if a.name.is_none_or(|n| n.as_str() == "value"))
 }

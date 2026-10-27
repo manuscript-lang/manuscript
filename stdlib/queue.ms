@@ -31,7 +31,7 @@ impl Queue[T]:
             self.items = live
             self.head = 0
 
-        self.items.append(some(value))
+        self.items.append(value)
         return True
 
     # Removes and returns the oldest value, or `none` when empty.
@@ -153,7 +153,7 @@ impl PriorityQueue[T]:
         if self.heap.length() == 0:
             return none
 
-        return some(self.heap.get(0).clone())
+        return self.heap.get(0).clone()
 
     # Returns the number of enqueued values, independent of their priorities.
     def length() -> Int:

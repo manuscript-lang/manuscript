@@ -121,7 +121,7 @@ impl JsonValue:
     # Returns a boolean value, or `none` for any other value.
     def as_bool() -> Optional[Bool]:
         match self:
-            case BoolValue(value): return some(value)
+            case BoolValue(value): return value
             case _: return none
 
     # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.

@@ -134,7 +134,7 @@ impl Iterator[String] for LineReader:
         let line = read_line(self.input, self.max_bytes)
 
         if line.is_error():
-            self.failure = some(line.err().clone())
+            self.failure = line.err().clone()
             return none
 
         return line.get().clone()

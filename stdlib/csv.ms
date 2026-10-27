@@ -112,11 +112,8 @@ def take_line(var reader: Reader) -> Optional[Line]:
     var length = cells.length()
     if length > 0 and cells[length - 1] == 13: length -= 1
     reader.next_line += 1
-    return some(
-        Line(
-            cells: cells, length: length,
-            ended: reader.next_line < reader.lines.length()
-        )
+    return Line(
+        cells: cells, length: length, ended: reader.next_line < reader.lines.length()
     )
 
 # Reads the next record, skipping empty lines; none at end of input.
@@ -180,7 +177,7 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
 
             if at >= line.length:
                 row.append(text_of(cell))
-                return ok(some(row))
+                return ok(row)
 
             if line.cells[at] == 34:
                 cell.append(34)
@@ -194,7 +191,7 @@ def read_record(var reader: Reader) -> Result[Optional[List[String]], CsvError]:
             cell = List[Int]()
             break
 
-    return ok(some(row))
+    return ok(row)
 
 # Encodes rows as CSV with comma delimiters and LF endings by default.
 # Quotes cells when required by the delimiter or line ending.
