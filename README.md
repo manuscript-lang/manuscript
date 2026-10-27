@@ -106,8 +106,6 @@ An agent writes the straightforward loop, not the clever one, so the compiler ha
 
 The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP](bench/perf/web/results.md) · [CSV](bench/perf/csv/README.md) · [JSON](bench/perf/json/results.md) · [List loops](bench/perf/listloops/README.md)
 
-Native release builds for Linux, macOS and Windows, amd64 and arm64. The conformance corpus runs on all three in CI.
-
 ## The language is built the way it will be used
 
 We build Manuscript with coding agents, and we measure them. The [agent benchmark](bench/agent/README.md) gives the same challenges to an agent in Manuscript, TypeScript, Go and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges. First-build success (1 of 10) and source size (1.3× TypeScript) are published too, because every friction point there becomes a diagnostic, an API or a rule above.
