@@ -232,6 +232,12 @@ impl ConnSt {
     }
 }
 
+fn dg(text: &str) {
+    if std::env::var_os("MS_DIAG_POLL").is_some() {
+        eprintln!("[srv] {text}");
+    }
+}
+
 // -------------------------------------------------------------------- reactor
 
 enum Target {
@@ -453,9 +459,12 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
     // SAFETY: `arg` is the `Box<Rc<Reactor>>` leaked by `spawn_task` for this task.
     let reactor = unsafe { *Box::from_raw(arg.cast::<Rc<Reactor>>()) };
     reactor.task.set(rt::current_task());
+    dg("reactor start");
     let mut drain = DrainShield::default();
     loop {
+        dg("service begin");
         reactor.service();
+        dg("service end");
         // No servers left: end; the next server starts a new reactor task.
         if reactor.targets.borrow().is_empty() {
             reactor.task.set(0);
@@ -463,6 +472,7 @@ unsafe extern "C-unwind" fn reactor_task(arg: *mut u8) {
             return;
         }
         drain.set(reactor.drains());
+        dg("drains set");
         let timeout = reactor.next_sweep.get().map_or(-1, |at| {
             at.saturating_duration_since(Instant::now()).as_nanos() as i64
         });
@@ -521,8 +531,11 @@ impl Reactor {
     fn service(&self) {
         let mut events = Vec::new();
         loop {
+            dg("poll begin");
             let raw = self.poller.poll(&mut events, 64);
+            dg(&format!("poll got {raw} events {}", events.len()));
             for &(token, flags) in &events {
+                dg(&format!("event {token} {flags:?}"));
                 self.handle_event(token, flags);
             }
             loop {
@@ -909,6 +922,7 @@ impl Server {
             };
             match accepted {
                 Ok((sock, _peer)) => {
+                    dg("accepted");
                     if self.st.borrow().closing {
                         continue;
                     }
