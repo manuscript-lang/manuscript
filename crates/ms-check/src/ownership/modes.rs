@@ -327,17 +327,18 @@ fn native_method_modes(
             let Some(p) = label(i).and_then(|l| params.iter().find(|p| p.name == l)) else {
                 return ParamMode::Borrow;
             };
-            if p.ty.kind == Kind::Function {
+            // A mutator stores the elements it is given, a function among them
+            // (`fs.append(lambda ...)` on a list of callables).
+            let stored = p.ty.kind == Kind::Variable
+                || same(&p.ty, receiver)
+                || receiver.args.iter().any(|a| same(a, &p.ty));
+            if p.ty.kind == Kind::Function && !(mutator && stored) {
                 return if callbacks_borrowed {
                     ParamMode::Borrow
                 } else {
                     ParamMode::Consume
                 };
             }
-            // A mutator stores the elements it is given.
-            let stored = p.ty.kind == Kind::Variable
-                || same(&p.ty, receiver)
-                || receiver.args.iter().any(|a| same(a, &p.ty));
             if (mutator && stored) || method.native.as_str() == "shared/put" {
                 ParamMode::Consume
             } else {

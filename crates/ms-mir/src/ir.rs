@@ -829,6 +829,10 @@ pub struct Func {
     /// Indexes of pointer parameters that no other parameter or memory the function reaches
     /// overlaps while it runs (`var` parameters, which the checker keeps exclusive).
     pub noalias: Vec<u32>,
+    /// A closure function whose environment points into its maker's frame (a borrowed capture
+    /// or a shared variable): the closure may be called, copied and dropped, but never stored
+    /// or returned, and the verifier rejects code that does.
+    pub scoped: bool,
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
@@ -850,6 +854,7 @@ impl Func {
             blocks: vec![BlockData::new()],
             scopes: Vec::new(),
             noalias: Vec::new(),
+            scoped: false,
             unwind_only: false,
         };
         for p in params {

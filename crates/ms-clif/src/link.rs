@@ -9,7 +9,7 @@ mod bundled;
 mod fetch;
 mod lld;
 pub(crate) use bundled::RUNTIME_HOT_IR;
-pub(crate) use lld::llvm_tools;
+pub use lld::llvm_tools;
 
 /// Links `object` and the runtime inputs (objects or static libraries), in order, into the executable `out`.
 pub fn link_all(object: &Path, inputs: &[&Path], out: &Path) -> Result<(), Error> {
