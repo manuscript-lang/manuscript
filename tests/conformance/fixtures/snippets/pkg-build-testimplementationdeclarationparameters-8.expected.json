@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-8.ms:15:18: resolution: unknown or ambiguous member same on Box[T]; available: same, value\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-8.ms:15:18: resolution: unknown or ambiguous member same on Box[T]; available: same, value\n    |\n 15 |     return value.same(other: other)\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

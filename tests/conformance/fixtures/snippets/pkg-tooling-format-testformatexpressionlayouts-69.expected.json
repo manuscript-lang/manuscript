@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:6:9: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:7:12: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:6:9: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n   |\n 6 |         tagged_detail(integer) != \"integer 7\"\n   |         ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-69.ms:7:12: resolution: unknown binding tagged_detail; declare it with 'let tagged_detail = ...' before use, define 'def tagged_detail(...) -> T:', or import it from a module\n   |\n 7 |         or tagged_detail(text) != \"text diagnostic\"\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

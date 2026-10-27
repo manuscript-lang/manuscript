@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-equality-and-hashing-1.ms:4:1: resolution: declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declaration\n<DIR>/core-language-types-equality-and-hashing-1.ms:7:1: resolution: declaration Hashable reuses a prelude name; rename it, because Hashable always refers to the standard declaration\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-equality-and-hashing-1.ms:4:1: resolution: declaration Equal reuses a prelude name; rename it, because Equal always refers to the standard declaration\n   |\n 4 | interface Equal:\n   | ^\n<DIR>/core-language-types-equality-and-hashing-1.ms:7:1: resolution: declaration Hashable reuses a prelude name; rename it, because Hashable always refers to the standard declaration\n   |\n 7 | interface Hashable:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

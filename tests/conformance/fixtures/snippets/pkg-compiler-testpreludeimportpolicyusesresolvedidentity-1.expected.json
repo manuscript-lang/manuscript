@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-1.ms:4:1: resolution: unknown import alias @types; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-1.ms:4:1: resolution: unknown import alias @types; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)\n   |\n 4 | from \"@types\" import List, Set, ListEntry\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

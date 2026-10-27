@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-records-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-records-2.ms:5:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-records-2.ms:4:16: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let customer = Customer(name: \"Ada\", email: none)\n   |                ^\n<DIR>/core-language-types-records-2.ms:5:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let name = customer.name\n   |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

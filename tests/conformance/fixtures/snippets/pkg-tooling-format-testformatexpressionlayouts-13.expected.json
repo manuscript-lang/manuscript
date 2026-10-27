@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:5:33: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:7:6: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:5:33: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n   |\n 5 |     b_wwwwwwwwwwwwwwwwwwwwwwww: Box_wwwwwwwwwwwwwwwwwww[T],\n   |                                 ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-13.ms:7:6: resolution: unknown type Box_wwwwwwwwwwwwwwwwwww; declare it with 'type Box_wwwwwwwwwwwwwwwwwww:' / 'interface Box_wwwwwwwwwwwwwwwwwww:', declare it as a type parameter, or import it\n   |\n 7 | ) -> Box_wwwwwwwwwwwwwwwwwww[U_wwwwwwwwwwww]:\n   |      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

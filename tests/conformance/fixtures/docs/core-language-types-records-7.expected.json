@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-records-7.ms:4:19: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n<DIR>/core-language-types-records-7.ms:6:15: resolution: unknown type OrderId; declare it with 'type OrderId:' / 'interface OrderId:', declare it as a type parameter, or import it\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-records-7.ms:4:19: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let customer_id = CustomerId(\"42\")\n   |                   ^\n<DIR>/core-language-types-records-7.ms:6:15: resolution: unknown type OrderId; declare it with 'type OrderId:' / 'interface OrderId:', declare it as a type parameter, or import it\n   |\n 6 | let order_id: OrderId = customer_id\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testunknowncallbacklabeldoesnotconflictwithinfe-1.ms:5:5: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testunknowncallbacklabeldoesnotconflictwithinfe-1.ms:5:5: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'def choose(...) -> T:', or import it from a module\n   |\n 5 |     choose(first: lambda: \"a\", second: lambda: \"b\", other: lambda: missing)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

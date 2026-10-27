@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:10:22: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:10:11: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:11:18: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:10:22: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n    |\n 10 | impl Read[U] for Box[U]:\n    |                      ^\n<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:10:11: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n    |\n 10 | impl Read[U] for Box[U]:\n    |           ^\n<DIR>/pkg-build-testimplementationdeclarationparameters-5.ms:11:18: resolution: unknown type U; declare it with 'type U:' / 'interface U:', declare it as a type parameter, or import it\n    |\n 11 |     def get() -> U:\n    |                  ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

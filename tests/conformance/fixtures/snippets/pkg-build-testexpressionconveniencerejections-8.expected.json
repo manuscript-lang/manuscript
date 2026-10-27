@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-8.ms:4:31: type: arithmetic requires numeric operands\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-8.ms:4:31: type: arithmetic requires numeric operands\n   |\n 4 | def f() -> String: return \"a\" - \"b\"\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

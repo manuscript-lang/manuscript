@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-6.ms:4:37: type: too many positional arguments; every parameter is already supplied, so remove this argument\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-6.ms:4:37: type: too many positional arguments; every parameter is already supplied, so remove this argument\n   |\n 4 | def f() -> Unit: let xs = List[Int](1)\n   |                                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

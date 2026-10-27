@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-1.ms:5:18: type: expected Int, found Bool\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testfielddefaultboundaries-1.ms:5:18: type: expected Int, found Bool\n   |\n 5 |     count: Int = True\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

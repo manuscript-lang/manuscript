@@ -88,7 +88,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-1.ms:14:21: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-1.ms:14:39: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n<DIR>/core-language-errors-results-1.ms:14:58: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-1.ms:14:21: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                     ^\n<DIR>/core-language-errors-results-1.ms:14:39: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                                       ^\n<DIR>/core-language-errors-results-1.ms:14:58: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                                                          ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
