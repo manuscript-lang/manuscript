@@ -13,6 +13,7 @@ ms lint ms.toml --json
 ms fmt source.ms --check
 ms fmt ms.toml --check
 ms fmt source.ms --drop-labels
+ms check source.ms --fix
 ms verify ms.toml --json
 ms lsp
 ms search_symbol read file lines
@@ -25,6 +26,7 @@ ms profile ms.toml --out-dir capture --top 10 -- arg1
 - Long options take `--output path` or `--output=path`; only the first `=` splits, so `--output=api=v1.md` writes `api=v1.md`. Required values cannot be empty.
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
+- `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
 
 ## Rebuild on save
 
