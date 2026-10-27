@@ -1859,6 +1859,12 @@ impl<'a> FnLower<'a> {
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
         }
+        if name == "set"
+            && !hands_back
+            && let Some(done) = self.slot_list_set(recv_expr, &args)?
+        {
+            return Ok(done);
+        }
         if !self.is_place(recv_expr) {
             let x = self.expr(recv_expr)?;
             if self.dead {
@@ -1887,6 +1893,51 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: u, own: false })
             }
         }
+    }
+
+    /// `xs.set(i, v)` on a list variable that lives in memory (a closure shares it): the element
+    /// is written where it lies. Taking the list out of its slot and putting the unchanged header
+    /// back would store ptr, len and cap again after every write.
+    fn slot_list_set(&mut self, recv_expr: &Expr, args: &[NArg]) -> Result<Option<Val>, Error> {
+        use ms_mir::ir::{Cc, Imm, Op};
+        let ExprKind::Name(_) = &recv_expr.kind else {
+            return Ok(None);
+        };
+        let Resolution::Local(binding) = self.hir.resolution(recv_expr) else {
+            return Ok(None);
+        };
+        if self.aliases.contains_key(&binding.uid) {
+            return Ok(None);
+        }
+        let l = self.local(&binding)?;
+        let (Some(_), TyKind::List(elem)) = (l.slot, self.b.m.types.kind(l.ty).clone()) else {
+            return Ok(None);
+        };
+        let list = self.read_local(&binding)?.v;
+        let i = self.borrow(args[0].val);
+        let n = self.b.list_len(list);
+        let zero = self.b.iconst(0);
+        let neg = self.b.icmp(Cc::Lt, i, zero);
+        let shifted = self.b.binop(Op::IAdd, i, n);
+        let r = self.b.select(neg, shifted, i);
+        self.check_index(2, i, r, n, false);
+        let v = self.element_value(&args[1]);
+        let at = self
+            .b
+            .emit(Op::ListAddrU, &[list, r], Imm::None, Some(MTy::PTR))
+            .expect("list.addr.u");
+        if self.needs_drop(elem) {
+            let old = self
+                .b
+                .emit(Op::Take, &[at], Imm::Ty(elem), Some(elem))
+                .expect("take");
+            self.drop_value(old);
+            self.b.emit(Op::Put, &[at, v], Imm::None, None);
+        } else {
+            self.b.emit(Op::Store, &[at, v], Imm::None, None);
+        }
+        let u = self.b.unit();
+        Ok(Some(Val { v: u, own: false }))
     }
 
     /// Runs two branches that each produce an owned value of `ty` (or diverge with `None`).
