@@ -210,6 +210,9 @@ impl Stream {
 
     /// `read_lines`: the remaining text split on `\n`, a trailing `\r` removed from each line.
     pub fn read_lines(&mut self, max_bytes: i64, max_lines: i64) -> Res<Vec<Vec<u8>>> {
+        if max_bytes < 0 || max_lines < 0 {
+            return Err(Fail::invalid());
+        }
         let data = self.read_file(max_bytes)?;
         if core::str::from_utf8(&data).is_err() {
             return Err(Fail::status(STATUS_INVALID_DATA));
@@ -334,6 +337,14 @@ mod tests {
         assert_eq!(
             h.read_lines(i64::MAX, 2).unwrap_err().status,
             STATUS_LIMIT_EXCEEDED
+        );
+        assert_eq!(
+            h.read_lines(-1, i64::MAX).unwrap_err().status,
+            STATUS_INVALID_INPUT
+        );
+        assert_eq!(
+            h.read_lines(i64::MAX, -1).unwrap_err().status,
+            STATUS_INVALID_INPUT
         );
         assert_eq!(h.seek(-1, 0).unwrap_err().status, STATUS_INVALID_INPUT);
         assert_eq!(h.stat().unwrap().size, 23);

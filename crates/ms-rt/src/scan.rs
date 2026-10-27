@@ -81,13 +81,27 @@ pub fn json_special(b: &[u8], mut i: usize) -> Option<usize> {
         i += 8;
     }
     while let Some(&c) = b.get(i) {
-        if c == b'"' || c == b'\\' || c < 0x20 {
+        if JSON_ESCAPE[usize::from(c)] {
             return Some(i);
         }
         i += 1;
     }
     None
 }
+
+/// Bytes a JSON string must escape; short tails use it because one load per byte beats three
+/// compares.
+static JSON_ESCAPE: [bool; 256] = {
+    let mut t = [false; 256];
+    let mut c = 0;
+    while c < 0x20 {
+        t[c] = true;
+        c += 1;
+    }
+    t[b'"' as usize] = true;
+    t[b'\\' as usize] = true;
+    t
+};
 
 /// The index of the first byte at or after `i` that is not a space (`b.len()` when none).
 #[inline]

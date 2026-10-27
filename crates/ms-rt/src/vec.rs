@@ -534,11 +534,29 @@ pub unsafe extern "C-unwind" fn msrt_list_swap(v: *mut VecVal, d: *const TypeDes
             index_fault("List.swap", v.len, j);
         }
         if a != b {
-            core::ptr::swap_nonoverlapping(
+            swap_slots(
                 elem(v, d, a as usize),
                 elem(v, d, b as usize),
                 d.size as usize,
             );
+        }
+    }
+}
+
+/// Exchanges two distinct slots of `size` bytes, a word at a time when the size allows: a byte-wise swap of a runtime length costs tens of instructions per slot.
+#[inline]
+unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
+    // SAFETY: caller contract; the slots are distinct, so they do not overlap.
+    unsafe {
+        if !size.is_multiple_of(8) {
+            core::ptr::swap_nonoverlapping(a, b, size);
+            return;
+        }
+        let (a, b) = (a as *mut u64, b as *mut u64);
+        for k in 0..size / 8 {
+            let t = a.add(k).read_unaligned();
+            a.add(k).write_unaligned(b.add(k).read_unaligned());
+            b.add(k).write_unaligned(t);
         }
     }
 }

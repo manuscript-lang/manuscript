@@ -96,7 +96,7 @@ impl Checker {
                 ty,
                 value,
                 ..
-            } => self.check_bind(*mutable, pattern, ty.as_ref(), value),
+            } => self.check_bind(s, *mutable, pattern, ty.as_ref(), value),
             StmtKind::Assign { target, value, .. } => self.check_assign(s, target, value),
             StmtKind::Return(value) => self.check_return(s, value.as_ref()),
             StmtKind::Call(value) => self.check_call_statement(s.pos, value),
@@ -138,6 +138,7 @@ impl Checker {
 
     fn check_bind(
         &mut self,
+        s: &Stmt,
         mutable: bool,
         pattern: &Pattern,
         ty: Option<&TypeRef>,
@@ -171,6 +172,16 @@ impl Checker {
             info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
+        // The scope closes a resource nothing takes; ownership decides which bindings that is.
+        if matches!(pattern.kind, PatternKind::Name(_))
+            && !is_invalid_id(&bound)
+            && self.closeable(&bound)
+        {
+            let mut close = self.close_method(&bound);
+            if close.len() == 1 {
+                self.m().facts_mut().stmts.entry(s.id).or_default().cleanup = close.pop();
+            }
+        }
         (!info.no_return, info.breaks)
     }
 
@@ -556,6 +567,24 @@ impl Checker {
         self.block(&expansion, false)
     }
 
+    /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
+    fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
+        let mut candidates: Vec<MethodRef> = Vec::new();
+        for method in self.methods(t, n("close")) {
+            if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {
+                if method
+                    .contract
+                    .as_ref()
+                    .is_some_and(|c| c.is_std("Closeable"))
+                {
+                    return vec![method];
+                }
+                candidates.push(method);
+            }
+        }
+        candidates
+    }
+
     fn check_with(
         &mut self,
         s: &Stmt,
@@ -571,21 +600,7 @@ impl Checker {
             let msg = self.with_not_closeable_message(&t);
             self.type_error(s.pos, msg);
         }
-        let methods = self.methods(&t, n("close"));
-        let mut candidates: Vec<MethodRef> = Vec::new();
-        for method in methods {
-            if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {
-                if method
-                    .contract
-                    .as_ref()
-                    .is_some_and(|c| c.is_std("Closeable"))
-                {
-                    candidates = vec![method];
-                    break;
-                }
-                candidates.push(method);
-            }
-        }
+        let candidates = self.close_method(&t);
         if candidates.len() == 1 {
             self.m().facts_mut().stmts.entry(s.id).or_default().cleanup =
                 Some(candidates[0].clone());
