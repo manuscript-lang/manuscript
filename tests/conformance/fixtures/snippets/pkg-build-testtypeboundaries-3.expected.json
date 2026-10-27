@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testtypeboundaries-3.ms:5:18: type: equality requires Equal operands; Callable[[], Int] has no equality, so add 'impl Equal for Callable[[], Int]:' or compare fields\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testtypeboundaries-3.ms:5:18: type: equality requires Equal operands; Callable[[], Int] has no equality, so add 'impl Equal for Callable[[], Int]:' or compare fields\n   |\n 5 |     return value == value\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

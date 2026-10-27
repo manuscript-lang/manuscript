@@ -335,9 +335,7 @@ def replay[T](
     property: Callable[[T], Result[Unit, Error]],
     choices: List[Int]
 ) -> Outcome:
-    # Bind the source first: passing a freshly built record straight into the call miscompiles in Release builds (issue 1517).
-    let replayed = Source(choices.clone(), 0, 0, False, False)
-    return run_case(gen, property, replayed)
+    return run_case(gen, property, Source(choices.clone(), 0, 0, False, False))
 
 # Tries `candidate`; returns the used draws when it still fails and is simpler than `current`.
 def attempt[T](
@@ -448,8 +446,7 @@ export def check[T](
         let case_seed = wrapping_add(base, case_index)
         case_index += 1
 
-        let fresh = source(case_seed)
-        let outcome = run_case(gen, property, fresh)
+        let outcome = run_case(gen, property, source(case_seed))
 
         if outcome.source.invalid:
             discarded += 1
@@ -480,8 +477,7 @@ def report[T](
     let used = failing.choices.take(failing.pos)
     let small = shrink(gen, property, used, 2000)
     let final = replay(gen, property, small)
-    let replayed = Source(small.clone(), 0, 0, False, False)
-    let {value: shown} = gen.make(replayed)
+    let {value: shown} = gen.make(Source(small.clone(), 0, 0, False, False))
     let reason = final.failure.get(message)
     return fail(
         f"property '{name}' failed after {executed} cases (case seed {seed}; rerun with --seed {seed})\ncounterexample: {shown}\n{reason}"

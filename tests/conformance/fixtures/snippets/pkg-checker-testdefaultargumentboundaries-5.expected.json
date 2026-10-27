@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-5.ms:8:17: type: duplicate argument value; pass each argument once\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-5.ms:8:17: type: duplicate argument value; pass each argument once\n   |\n 8 |     return f(2, value: 3)\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

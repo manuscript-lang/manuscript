@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testknownstandardtypeimporthint-1.ms:4:18: resolution: unknown type SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testknownstandardtypeimporthint-1.ms:4:18: resolution: unknown type SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n   |\n 4 | def boxed(value: SetBuilder[Int]) -> Unit: return\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

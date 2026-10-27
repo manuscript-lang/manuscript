@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:33: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:41: type: expected Int, found String (in argument 'second' of f)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:33: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 6 | def call() -> Unit: f(first: 4, second: \"wrong\")\n   |                                 ^\n<DIR>/pkg-compiler-testoptionalargumentboundaries-10.ms:6:41: type: expected Int, found String (in argument 'second' of f)\n   |\n 6 | def call() -> Unit: f(first: 4, second: \"wrong\")\n   |                                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-sep-in-exponent.ms:5:15: parse: an exponent requires digits; write e.g. 1e3 or 2.5e-4\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-sep-in-exponent.ms:5:15: parse: an exponent requires digits; write e.g. 1e3 or 2.5e-4\n   |\n 5 |     let x = 1e_3\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

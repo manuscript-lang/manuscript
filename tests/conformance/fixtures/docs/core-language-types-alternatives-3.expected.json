@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-alternatives-3.ms:14:17: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n<DIR>/core-language-types-alternatives-3.ms:12:28: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n<DIR>/core-language-types-alternatives-3.ms:16:35: type: expected LeftState, found RightState\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-alternatives-3.ms:14:17: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n    |\n 14 | let ambiguous = Ready\n    |                 ^\n<DIR>/core-language-types-alternatives-3.ms:12:28: resolution: ambiguous alternative case Ready; qualify it with its type, e.g. Type.Ready\n    |\n 12 | let annotated: LeftState = Ready\n    |                            ^\n<DIR>/core-language-types-alternatives-3.ms:16:35: type: expected LeftState, found RightState\n    |\n 16 | let wrong: LeftState = RightState.Ready\n    |                                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

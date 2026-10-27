@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:21: type: expected Bool, found none; none is absent, so it fits only an Optional position: declare the target Optional[Bool] or give a value\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:21: type: expected Bool, found none; none is absent, so it fits only an Optional position: declare the target Optional[Bool] or give a value\n   |\n 4 | def f(value: Bool = none) -> Bool: ...\n   |                     ^\n<DIR>/pkg-checker-testnativedefaultsarecheckedinparameterscope-5.ms:4:1: type: reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)\n   |\n 4 | def f(value: Bool = none) -> Bool: ...\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/task-capture-reuse.ms:8:21: type: this closure outlives the statement, so it takes `xs` with it, but `xs` is used again at 9:21; capture `xs.clone()` to keep the original\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/task-capture-reuse.ms:8:21: type: this closure outlives the statement, so it takes `xs` with it, but `xs` is used again at 9:21; capture `xs.clone()` to keep the original\n   |\n 8 |         group.spawn(lambda ch: xs.length())\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

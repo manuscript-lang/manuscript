@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms:4:23: resolution: unknown binding Shape; did you mean 'shape'?\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | def shape() -> Shape: Shape(Sq(2))\n   |                ^\n<DIR>/pkg-checker-testinterfacehintcorrectionsandreceiverscope-3.ms:4:23: resolution: unknown binding Shape; did you mean 'shape'?\n   |\n 4 | def shape() -> Shape: Shape(Sq(2))\n   |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

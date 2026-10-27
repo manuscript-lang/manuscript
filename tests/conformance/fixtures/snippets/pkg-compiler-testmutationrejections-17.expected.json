@@ -47,7 +47,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-17.ms:4:14: resolution: unknown type Queue; add: from \"@std/queue.ms\" import Queue\n<DIR>/pkg-compiler-testmutationrejections-17.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-17.ms:4:14: resolution: unknown type Queue; add: from \"@std/queue.ms\" import Queue\n   |\n 4 | def f(queue: Queue[Int]) -> Unit:\n   |              ^\n<DIR>/pkg-compiler-testmutationrejections-17.ms:5:11: type: assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'\n   |\n 5 |     queue.capacity = 1\n   |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-contracts-3.ms:5:20: resolution: unknown type Offset; declare it with 'type Offset:' / 'interface Offset:', declare it as a type parameter, or import it\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-contracts-3.ms:5:20: resolution: unknown type Offset; declare it with 'type Offset:' / 'interface Offset:', declare it as a type parameter, or import it\n   |\n 5 | impl Increment for Offset:\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmutationrejections-7.ms:4:14: resolution: unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:13: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmutationrejections-7.ms:4:14: resolution: unknown type Val; declare it with 'type Val:' / 'interface Val:', declare it as a type parameter, or import it\n   |\n 4 | def f(value: Val) -> Unit:\n   |              ^\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n   |\n 5 |     value = Val(val: 1)\n   |     ^\n<DIR>/pkg-compiler-testmutationrejections-7.ms:5:13: resolution: unknown binding Val; declare it with 'let Val = ...' before use, define 'def Val(...) -> T:', or import it from a module\n   |\n 5 |     value = Val(val: 1)\n   |             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
