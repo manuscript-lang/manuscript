@@ -38,4 +38,4 @@ See [Closeable](closeable.md) for exact checks.
 
 ## Keep the lifetime tied to the block
 
-A resource acquired in a loop closes at the end of that iteration. Returning it or capturing it in a closure keeps its cleanup. An ordinary `let` registers none. `with` adds no enter or error-suppression hooks.
+A resource acquired in a loop closes at the end of that iteration. Returning it or capturing it in a closure keeps its cleanup. A `let` or `var` that holds a `Closeable` and is never moved on closes when its scope ends, on every exit, exactly as if the rest of the block were inside `with`; a manual `.close()` first is harmless because close is idempotent. A resource that is moved on (returned, passed to a consuming parameter, stored, captured) is closed by its new owner. `with` adds no enter or error-suppression hooks.
