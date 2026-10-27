@@ -28,6 +28,17 @@ pub fn push_short(buf: &mut crate::stdalloc::vec::Vec<u8>, s: &[u8]) {
     }
 }
 
+/// Turns bytes the caller built from whole `&str`s and ASCII into a `String` without the
+/// validation pass a serializer's output already satisfies.
+#[inline]
+pub fn string_from_valid_utf8(
+    bytes: crate::stdalloc::vec::Vec<u8>,
+) -> crate::stdalloc::string::String {
+    debug_assert!(core::str::from_utf8(&bytes).is_ok());
+    // SAFETY: the caller guarantees `bytes` is valid UTF-8.
+    unsafe { crate::stdalloc::string::String::from_utf8_unchecked(bytes) }
+}
+
 /// The index of the first byte at or after `i` that a JSON string must escape (`"`, `\` or a
 /// control character).
 #[inline]
