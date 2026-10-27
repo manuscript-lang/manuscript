@@ -21,11 +21,15 @@ export def main() -> Int:
     let text = document(2000)
     var best = 1000000000000
     var ok = 0
+
     for run in range(0, 200):
         let started = clock().now()
         ok = parse_ok(text) + run * 0
+
         let elapsed = clock().now().difference(started).to_nanoseconds()
         if elapsed < best: best = elapsed
 
-    let _ignored = stdout().write(f"ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n")
+    let _ignored = stdout().write(
+        f"ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
+    )
     return 0
