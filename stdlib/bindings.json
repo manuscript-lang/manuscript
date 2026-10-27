@@ -16,6 +16,7 @@
     "String": "StringOperations",
     "UInt16": "UInt16Operations",
     "UInt32": "UInt32Operations",
+    "UInt64": "UInt64Operations",
     "UInt8": "UInt8Operations"
   },
   "native_types": {

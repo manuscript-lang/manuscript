@@ -300,7 +300,8 @@ impl<'m> Interp<'m> {
             | TyKind::Int32
             | TyKind::UInt8
             | TyKind::UInt16
-            | TyKind::UInt32 => Val::Int(0),
+            | TyKind::UInt32
+            | TyKind::UInt64 => Val::Int(0),
             TyKind::Float | TyKind::Float32 => Val::Float(0.0),
             TyKind::Str => Val::str(""),
             TyKind::Ptr => Val::Ptr(0),
@@ -567,10 +568,10 @@ impl<'m> Interp<'m> {
             Op::INarrowOpt => {
                 let v = int!(0);
                 let inner = inst.res.and_then(|r| m.opt_inner(f.values[r.index()]));
-                let (lo, hi) = inner
-                    .and_then(|i| m.types.int_range(i))
-                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
-                let fits = (lo..=hi).contains(&i128::from(v));
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    m.types.narrow_range(f.values[a[0].index()], i)
+                });
+                let fits = (lo..=hi).contains(&v);
                 set!(Val::Opt(fits.then(|| Rc::new(Val::Int(v)))));
             }
             Op::F32Round => set!(Val::Float(flt!(0) as f32 as f64)),

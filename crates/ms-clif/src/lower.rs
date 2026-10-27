@@ -1731,12 +1731,13 @@ impl<'a, 'm> Lower<'a, 'm> {
             Op::INarrowOpt => {
                 let x = self.a(inst, 0)[0];
                 let inner = res_ty.and_then(|r| self.g.lay.m.opt_inner(r));
-                let (lo, hi) = inner
-                    .and_then(|i| self.g.lay.m.types.int_range(i))
-                    .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+                let from = f.ty(inst.args[0]);
+                let (lo, hi) = inner.map_or((i64::MIN, i64::MAX), |i| {
+                    self.g.lay.m.types.narrow_range(from, i)
+                });
                 let (lo_k, hi_k) = (
-                    self.b.ins().iconst(types::I64, lo as i64),
-                    self.b.ins().iconst(types::I64, hi as i64),
+                    self.b.ins().iconst(types::I64, lo),
+                    self.b.ins().iconst(types::I64, hi),
                 );
                 let ge = self.b.ins().icmp(IntCC::SignedGreaterThanOrEqual, x, lo_k);
                 let le = self.b.ins().icmp(IntCC::SignedLessThanOrEqual, x, hi_k);
@@ -3242,6 +3243,7 @@ impl<'a, 'm> Lower<'a, 'm> {
             | TyKind::UInt8
             | TyKind::UInt16
             | TyKind::UInt32
+            | TyKind::UInt64
             | TyKind::Float
             | TyKind::Float32
             | TyKind::Ptr

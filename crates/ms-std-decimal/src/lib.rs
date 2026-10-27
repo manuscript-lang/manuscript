@@ -179,6 +179,11 @@ impl Dec {
         Dec::pack(&coef, exp)
     }
 
+    pub fn from_uint(n: u64) -> Dec {
+        let (coef, exp) = normalize(BigInt::from(n), 0);
+        Dec::pack(&coef, exp)
+    }
+
     pub fn is_zero(&self) -> bool {
         self.lo == 0 && self.hi == 0
     }

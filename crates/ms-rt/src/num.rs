@@ -487,6 +487,96 @@ pub extern "C-unwind" fn msrt_int_compare(a: i64, b: i64) -> i64 {
     (a > b) as i64 - (a < b) as i64
 }
 
+/// `UInt64.compare`: the operands are bit patterns.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_compare(a: i64, b: i64) -> i64 {
+    let (a, b) = (a as u64, b as u64);
+    (a > b) as i64 - (a < b) as i64
+}
+
+/// `UInt64.+`: faults when the sum exceeds 2^64 - 1.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_add(a: i64, b: i64) -> i64 {
+    match (a as u64).checked_add(b as u64) {
+        Some(p) => p as i64,
+        None => crate::fault::msrt_fault_int_range(),
+    }
+}
+
+/// `UInt64.-`: faults when `b` exceeds `a`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_sub(a: i64, b: i64) -> i64 {
+    match (a as u64).checked_sub(b as u64) {
+        Some(p) => p as i64,
+        None => crate::fault::msrt_fault_int_range(),
+    }
+}
+
+/// `UInt64.*`: faults when the product leaves 0 to 2^64 - 1.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_mul(a: i64, b: i64) -> i64 {
+    match (a as u64).checked_mul(b as u64) {
+        Some(p) => p as i64,
+        None => crate::fault::msrt_fault_int_range(),
+    }
+}
+
+/// `UInt64./`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_div(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        crate::fault::msrt_fault_div_zero();
+    }
+    ((a as u64) / (b as u64)) as i64
+}
+
+/// `UInt64.%`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_rem(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        crate::fault::msrt_fault_rem_zero();
+    }
+    ((a as u64) % (b as u64)) as i64
+}
+
+/// `UInt64.to_float`.
+#[unsafe(no_mangle)]
+pub extern "C-unwind" fn msrt_uint_to_float(v: i64) -> f64 {
+    v as u64 as f64
+}
+
+/// `UInt64` in decimal digits.
+pub fn format_u64(v: u64, tmp: &mut [u8; 20]) -> &[u8] {
+    let mut n = v;
+    let mut i = tmp.len();
+    loop {
+        i -= 1;
+        tmp[i] = b'0' + (n % 10) as u8;
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+    &tmp[i..]
+}
+
+/// `UInt64.to_string_radix`.
+pub fn format_radix_u64(v: u64, radix: u32, out: &mut Vec<u8>) {
+    let mut tmp = [0u8; 64];
+    let mut i = tmp.len();
+    let mut n = v;
+    loop {
+        i -= 1;
+        let d = (n % radix as u64) as u8;
+        tmp[i] = if d < 10 { b'0' + d } else { b'a' + d - 10 };
+        n /= radix as u64;
+        if n == 0 {
+            break;
+        }
+    }
+    out.extend_from_slice(&tmp[i..]);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -494,6 +584,21 @@ mod tests {
 
     fn s(b: Vec<u8>) -> String {
         String::from_utf8(b.as_slice().to_vec()).unwrap()
+    }
+
+    #[test]
+    fn uint64_helpers() {
+        let big = u64::MAX as i64;
+        assert_eq!(msrt_uint_compare(big, 1), 1);
+        assert_eq!(msrt_uint_compare(1, big), -1);
+        assert_eq!(msrt_uint_div(big, 2) as u64, u64::MAX / 2);
+        assert_eq!(msrt_uint_rem(big, 10), 5);
+        assert_eq!(msrt_uint_to_float(big), u64::MAX as f64);
+        let mut tmp = [0u8; 20];
+        assert_eq!(format_u64(u64::MAX, &mut tmp), b"18446744073709551615");
+        let mut out = Vec::new();
+        format_radix_u64(u64::MAX, 16, &mut out);
+        assert_eq!(out, b"ffffffffffffffff");
     }
 
     #[test]

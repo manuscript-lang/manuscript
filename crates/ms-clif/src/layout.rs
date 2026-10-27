@@ -11,6 +11,7 @@
 //! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
 //! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
 //! | `UInt8`, `UInt16`, `UInt32` | `i64` in registers (zero-extended), 1, 2, 4 bytes in memory |
+//! | `UInt64` | `i64` bit pattern |
 //! | `Float` | `f64` |
 //! | `Float32` | `f64` in registers, 4 bytes in memory |
 //! | `String` | `ptr, tagged` (length and ownership tag, see `ms_rt_abi::StrVal`) |
@@ -267,6 +268,7 @@ impl<'m> Layouts<'m> {
             TyKind::UInt8 => plain(vec![U8]),
             TyKind::UInt16 => plain(vec![U16]),
             TyKind::UInt32 => plain(vec![U32]),
+            TyKind::UInt64 => plain(vec![I64]),
             TyKind::Float => plain(vec![F64]),
             TyKind::Float32 => plain(vec![F32]),
             TyKind::Str => plain(vec![I64, I64]),

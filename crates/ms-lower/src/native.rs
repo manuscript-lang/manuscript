@@ -888,6 +888,34 @@ impl<'a> FnLower<'a> {
         }
     }
 
+    /// The `UInt64` operations whose runtime function treats the word as unsigned.
+    fn uint64_method(
+        &mut self,
+        native: &str,
+        result: MTy,
+        recv: Val,
+        args: &[NArg],
+    ) -> Result<Option<Val>, Error> {
+        let name = native.rsplit('/').next().unwrap_or(native);
+        let v = self.borrow(recv);
+        let out = match name {
+            "format_int" => {
+                let radix = self.borrow(args[0].val);
+                self.call_runtime("msrt_uint_to_string_radix", &[v, radix], MTy::STR)?
+            }
+            "compare_int" => {
+                let other = self.borrow(args[0].val);
+                self.call_runtime("msrt_uint_compare", &[v, other], MTy::INT)?
+            }
+            "to_decimal" => self.call_runtime("msstd_decimal_from_uint", &[v], result)?,
+            _ => return Ok(None),
+        };
+        Ok(Some(Val {
+            v: out,
+            own: name != "compare_int",
+        }))
+    }
+
     /// `to_int8()` ... `to_float64()`: widening is exact, narrowing an integer yields an
     /// optional, and a float conversion rounds to the target.
     fn numeric_conversion(&mut self, result: MTy, recv: Val) -> Result<Val, Error> {
@@ -897,7 +925,9 @@ impl<'a> FnLower<'a> {
         let v = if let Some(inner) = self.b.m.opt_inner(result) {
             self.b.inarrow_opt(x, inner)
         } else if types.is_float(result) {
-            let float = if types.is_int(from) {
+            let float = if from == MTy::UINT64 {
+                self.call_runtime("msrt_uint_to_float", &[x], MTy::FLOAT)?
+            } else if types.is_int(from) {
                 self.b.i2f(x, result)
             } else {
                 x
@@ -1100,12 +1130,18 @@ impl<'a> FnLower<'a> {
                 | "to_uint8"
                 | "to_uint16"
                 | "to_uint32"
+                | "to_uint64"
                 | "to_float32"
                 | "to_float64"
         ) || (numeric_recv && matches!(native, "to_int" | "to_float")))
             && !float_to_float32
         {
             return self.numeric_conversion(result, recv);
+        }
+        if recv_ty == MTy::UINT64
+            && let Some(v) = self.uint64_method(native, result, recv, &args)?
+        {
+            return Ok(v);
         }
         // Other operations on a sized number run on its 64-bit kind; a clone keeps its width.
         let recv_nums = {
