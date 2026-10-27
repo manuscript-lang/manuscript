@@ -12,7 +12,7 @@ use support::Workspace;
 #[test]
 fn with_snippet_inserts_a_checked_resource_binding() {
     let workspace = Workspace::new("completion-snippet");
-    let source = "from \"@std/core.ms\" import Closeable\n\ntype Resource:\n    value: Int\n\nimpl Closeable for Resource:\n    var def close() -> Unit: return ()\n\ndef main() -> Unit:\n    wi\n";
+    let source = include_str!("completion/with-snippet-inserts-a-checked-resource-binding.ms");
     for source in [source.to_string(), source.replace('\n', "\r\n")] {
         let mut document = Document::new(workspace.uri("completion.ms"), source);
         assert!(Path::new(&document.path()).is_absolute());

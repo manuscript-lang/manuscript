@@ -60,7 +60,7 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
     let source = dir.join("sites.ms");
     std::fs::write(
         &source,
-        "test \"first\":\n    var items = [1]\n    items.set(5, 2)\n\ntest \"second\":\n    var items = [1]\n    items.remove(7)\n\ntest \"continues\":\n    var items = [1]\n    items.set(0, 2)\n",
+        include_str!("llvm/llvm-native-calls-keep-distinct-fault-sites.ms"),
     )
     .unwrap();
     let run = |backend| {
