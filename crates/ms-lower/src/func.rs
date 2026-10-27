@@ -154,10 +154,11 @@ pub(crate) const LENT: &str = "$lent";
 
 impl Cx {
     /// The parameters a direct call hands over owned: those the body consumes (moves, stores or
-    /// returns), for a plain function whose parameters all pass by value. Every other callable,
-    /// and every call through a function value or interface, uses the borrowed signature.
+    /// returns), for a function or method whose parameters all pass by value; a method's mask
+    /// starts with its receiver. Every other callable, and every call through a function value or
+    /// interface, uses the borrowed signature.
     pub(crate) fn owned_mask(&self, c: &Callable) -> Option<Vec<bool>> {
-        if c.kind != CallableKind::Function || c.self_binding.is_some() {
+        if !matches!(c.kind, CallableKind::Function | CallableKind::Method) {
             return None;
         }
         let f = c.func.func()?;
@@ -169,7 +170,7 @@ impl Cx {
             return None;
         }
         let mask = self.consumes.get(&key)?;
-        (mask.len() == c.parameters.len()).then(|| mask.clone())
+        (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
     }
 
     /// The instance of `c` that takes the parameters `owned_mask` names owned.
