@@ -1089,11 +1089,33 @@ struct Level {
     undo_count: u32,
 }
 
+/// Strings under this many bytes are scanned a byte at a time.
+const SHORT_STRING: usize = 24;
+
+/// The letter after the backslash that escapes each byte, `u` for `\u00xx`, 0 for none.
+const ESCAPES: [u8; 256] = {
+    let mut t = [0u8; 256];
+    let mut c = 0;
+    while c < 0x20 {
+        t[c] = b'u';
+        c += 1;
+    }
+    t[b'"' as usize] = b'"';
+    t[b'\\' as usize] = b'\\';
+    t[8] = b'b';
+    t[12] = b'f';
+    t[b'\n' as usize] = b'n';
+    t[b'\r' as usize] = b'r';
+    t[b'\t' as usize] = b't';
+    t
+};
+
 /// Writes JSON text straight into a buffer: typed encoders call it in document order and never
 /// build a [`Doc`]. A failure (`max_bytes`, a number that is not JSON, nesting past
 /// [`DEPTH_CEILING`], a bad budget) is kept and every later call does nothing.
 pub struct Writer {
-    buf: String,
+    /// UTF-8: only whole `&str`s and ASCII are appended, and [`Writer::undo`] cuts at a recorded length.
+    buf: Vec<u8>,
     max: usize,
     width: usize,
     err: Option<Fail>,
@@ -1118,7 +1140,7 @@ impl Writer {
         }
         .min(INDENT_CEILING);
         Writer {
-            buf: String::new(),
+            buf: Vec::new(),
             max,
             width,
             err,
@@ -1139,12 +1161,8 @@ impl Writer {
 
     fn newline(&mut self, level: usize) {
         if self.width > 0 {
-            self.buf.push('\n');
-            let n = self.width * level;
-            self.buf.reserve(n);
-            for _ in 0..n {
-                self.buf.push(' ');
-            }
+            self.buf.push(b'\n');
+            self.buf.resize(self.buf.len() + self.width * level, b' ');
         }
     }
 
@@ -1159,7 +1177,7 @@ impl Writer {
         let comma = top.count > 0;
         top.count += 1;
         if comma {
-            self.buf.push(',');
+            self.buf.push(b',');
         }
         self.newline(depth);
     }
@@ -1178,9 +1196,23 @@ impl Writer {
         }
         self.separate();
         self.quoted(key);
-        self.buf.push(':');
+        self.buf.push(b':');
         if self.width > 0 {
-            self.buf.push(' ');
+            self.buf.push(b' ');
+        }
+        self.check();
+    }
+
+    /// Starts a member whose name is already escaped: `quoted_name` is the name with its quotes.
+    pub fn key_quoted(&mut self, quoted_name: &str) {
+        if self.err.is_some() {
+            return;
+        }
+        self.separate();
+        self.buf.extend_from_slice(quoted_name.as_bytes());
+        self.buf.push(b':');
+        if self.width > 0 {
+            self.buf.push(b' ');
         }
         self.check();
     }
@@ -1196,7 +1228,7 @@ impl Writer {
         }
     }
 
-    fn open(&mut self, c: char) {
+    fn open(&mut self, c: u8) {
         if self.err.is_some() {
             return;
         }
@@ -1209,7 +1241,7 @@ impl Writer {
         self.check();
     }
 
-    fn close(&mut self, c: char) {
+    fn close(&mut self, c: u8) {
         if self.err.is_some() {
             return;
         }
@@ -1224,16 +1256,16 @@ impl Writer {
     }
 
     pub fn begin_array(&mut self) {
-        self.open('[');
+        self.open(b'[');
     }
     pub fn end_array(&mut self) {
-        self.close(']');
+        self.close(b']');
     }
     pub fn begin_object(&mut self) {
-        self.open('{');
+        self.open(b'{');
     }
     pub fn end_object(&mut self) {
-        self.close('}');
+        self.close(b'}');
     }
 
     pub fn null(&mut self) {
@@ -1260,20 +1292,22 @@ impl Writer {
             }
         }
         if v < 0 {
-            self.buf.push('-');
+            self.buf.push(b'-');
         }
-        for &d in &digits[at..] {
-            self.buf.push(char::from(d));
-        }
+        self.buf.extend_from_slice(&digits[at..]);
         self.check();
     }
 
     /// A float; NaN and infinities are `null`.
     pub fn float(&mut self, v: f64) {
-        match float_text(v) {
-            Some(t) => self.raw(&t),
-            None => self.null(),
+        if self.err.is_some() {
+            return;
         }
+        if float_append(&mut self.buf, v).is_none() {
+            self.null();
+            return;
+        }
+        self.check();
     }
 
     /// Number text from a caller, which has to be one JSON number.
@@ -1297,38 +1331,54 @@ impl Writer {
 
     fn raw(&mut self, text: &str) {
         if self.err.is_none() {
-            self.buf.push_str(text);
+            self.buf.extend_from_slice(text.as_bytes());
             self.check();
         }
     }
 
     fn quoted(&mut self, s: &str) {
-        const HEX: &[u8; 16] = b"0123456789abcdef";
         let b = s.as_bytes();
         self.buf.reserve(b.len() + 2);
-        self.buf.push('"');
-        let mut at = 0;
-        while let Some(i) = find_special(b, at) {
-            // Runs end at ASCII bytes, so they are character boundaries.
-            self.buf.push_str(s.get(at..i).unwrap_or(""));
-            match b[i] {
-                b'"' => self.buf.push_str("\\\""),
-                b'\\' => self.buf.push_str("\\\\"),
-                8 => self.buf.push_str("\\b"),
-                12 => self.buf.push_str("\\f"),
-                b'\n' => self.buf.push_str("\\n"),
-                b'\r' => self.buf.push_str("\\r"),
-                b'\t' => self.buf.push_str("\\t"),
-                c => {
-                    self.buf.push_str("\\u00");
-                    self.buf.push(char::from(HEX[usize::from(c >> 4)]));
-                    self.buf.push(char::from(HEX[usize::from(c & 0xf)]));
+        self.buf.push(b'"');
+        // Names and short values: a table walk beats the vector scan's setup.
+        if b.len() < SHORT_STRING {
+            let mut at = 0;
+            for (i, &c) in b.iter().enumerate() {
+                let code = ESCAPES[usize::from(c)];
+                if code != 0 {
+                    self.buf.extend_from_slice(&b[at..i]);
+                    self.escape(c, code);
+                    at = i + 1;
                 }
             }
-            at = i + 1;
+            self.buf.extend_from_slice(&b[at..]);
+        } else {
+            let mut at = 0;
+            while let Some(i) = find_special(b, at) {
+                self.buf.extend_from_slice(&b[at..i]);
+                self.escape(b[i], ESCAPES[usize::from(b[i])]);
+                at = i + 1;
+            }
+            self.buf.extend_from_slice(&b[at..]);
         }
-        self.buf.push_str(s.get(at..).unwrap_or(""));
-        self.buf.push('"');
+        self.buf.push(b'"');
+    }
+
+    /// The escape of byte `c`, whose [`ESCAPES`] entry is `code`.
+    fn escape(&mut self, c: u8, code: u8) {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        if code == b'u' {
+            self.buf.extend_from_slice(&[
+                b'\\',
+                b'u',
+                b'0',
+                b'0',
+                HEX[usize::from(c >> 4)],
+                HEX[usize::from(c & 0xf)],
+            ]);
+        } else {
+            self.buf.extend_from_slice(&[b'\\', code]);
+        }
     }
 
     /// The text written, or the first failure.
@@ -1336,7 +1386,9 @@ impl Writer {
         match self.err {
             Some(e) => Err(e),
             None if !self.levels.is_empty() => Err(Fail::InvalidData),
-            None => Ok(core::mem::take(&mut self.buf)),
+            None => {
+                String::from_utf8(core::mem::take(&mut self.buf)).map_err(|_| Fail::InvalidData)
+            }
         }
     }
 }
@@ -1346,53 +1398,111 @@ impl Writer {
 /// Go's `json.Marshal(float64)`: shortest round-trip digits, exponent form outside
 /// `1e-6 <= |v| < 1e21`. `None` for NaN and infinities (encoded as `null`).
 pub fn float_text(v: f64) -> Option<String> {
+    let mut out = Vec::new();
+    float_append(&mut out, v)?;
+    String::from_utf8(out).ok()
+}
+
+/// Fixed-size text for the `{:e}` form of a float: at most 17 digits, a point, and an exponent.
+struct Sci {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl core::fmt::Write for Sci {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        let end = self.len + s.len();
+        self.bytes
+            .get_mut(self.len..end)
+            .ok_or(core::fmt::Error)?
+            .copy_from_slice(s.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
+/// Appends [`float_text`] to `out`; `None` (and nothing appended) for NaN and infinities.
+fn float_append(out: &mut Vec<u8>, v: f64) -> Option<()> {
     use core::fmt::Write;
     if !v.is_finite() {
         return None;
     }
     let abs = v.abs();
-    let mut sci = String::new();
-    let _ = write!(sci, "{abs:e}");
-    let (mant, exp) = sci.split_once('e')?;
-    let exp: i32 = exp.parse().ok()?;
-    let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    let mut out = String::new();
+    if abs < 1e15 && abs.fract() == 0.0 {
+        // A whole number prints as its digits, with no point or exponent.
+        if v.is_sign_negative() {
+            out.push(b'-');
+        }
+        let mut digits = [0u8; 16];
+        let mut at = digits.len();
+        let mut n = abs as u64;
+        loop {
+            at -= 1;
+            digits[at] = b'0' + (n % 10) as u8;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        out.extend_from_slice(&digits[at..]);
+        return Some(());
+    }
+    let mut sci = Sci {
+        bytes: [0; 32],
+        len: 0,
+    };
+    write!(sci, "{abs:e}").ok()?;
+    let text = &sci.bytes[..sci.len];
+    let e_at = text.iter().position(|&c| c == b'e')?;
+    let exp: i32 = core::str::from_utf8(&text[e_at + 1..]).ok()?.parse().ok()?;
+    // Mantissa digits without the point.
+    let mut digits = [0u8; 20];
+    let mut n = 0;
+    for &c in &text[..e_at] {
+        if c != b'.' {
+            *digits.get_mut(n)? = c;
+            n += 1;
+        }
+    }
+    let digits = &digits[..n];
     if v.is_sign_negative() {
-        out.push('-');
+        out.push(b'-');
     }
     if abs != 0.0 && !(1e-6..1e21).contains(&abs) {
-        out.push_str(&digits[..1]);
-        if digits.len() > 1 {
-            out.push('.');
-            out.push_str(&digits[1..]);
+        out.push(digits[0]);
+        if n > 1 {
+            out.push(b'.');
+            out.extend_from_slice(&digits[1..]);
         }
-        out.push('e');
-        out.push(if exp < 0 { '-' } else { '+' });
+        out.push(b'e');
+        out.push(if exp < 0 { b'-' } else { b'+' });
         let e = exp.unsigned_abs();
         if e < 10 && exp >= 0 {
-            out.push('0');
+            out.push(b'0');
         }
-        let _ = write!(out, "{e}");
-        return Some(out);
+        if e >= 100 {
+            out.push(b'0' + (e / 100) as u8);
+        }
+        if e >= 10 {
+            out.push(b'0' + (e / 10 % 10) as u8);
+        }
+        out.push(b'0' + (e % 10) as u8);
+        return Some(());
     }
     let point = exp + 1; // digits before the decimal point
     if point <= 0 {
-        out.push_str("0.");
-        for _ in 0..-point {
-            out.push('0');
-        }
-        out.push_str(&digits);
-    } else if digits.len() as i32 <= point {
-        out.push_str(&digits);
-        for _ in 0..(point - digits.len() as i32) {
-            out.push('0');
-        }
+        out.extend_from_slice(b"0.");
+        out.resize(out.len() + (-point) as usize, b'0');
+        out.extend_from_slice(digits);
+    } else if n as i32 <= point {
+        out.extend_from_slice(digits);
+        out.resize(out.len() + (point - n as i32) as usize, b'0');
     } else {
-        out.push_str(&digits[..point as usize]);
-        out.push('.');
-        out.push_str(&digits[point as usize..]);
+        out.extend_from_slice(&digits[..point as usize]);
+        out.push(b'.');
+        out.extend_from_slice(&digits[point as usize..]);
     }
-    Some(out)
+    Some(())
 }
 
 /// `strconv.ParseInt(text, 10, 64)` on number text.

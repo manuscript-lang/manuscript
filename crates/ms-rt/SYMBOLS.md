@@ -477,6 +477,7 @@ msrt_json_key(d: *const DocObj, id: u32, i: i64, out: *mut StrVal)
 msrt_json_writer_new( has_max_bytes: u8, max_bytes: i64, has_indent: u8, indent: i64, ) -> *mut WriterObj
 msrt_json_w_item(w: *mut WriterObj)
 msrt_json_w_key(w: *mut WriterObj, key: *const StrVal)
+msrt_json_w_key_quoted(w: *mut WriterObj, quoted_name: *const StrVal)
 msrt_json_w_undo(w: *mut WriterObj)
 msrt_json_w_begin_array(w: *mut WriterObj)
 msrt_json_w_end_array(w: *mut WriterObj)
