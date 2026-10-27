@@ -53,12 +53,13 @@ jobs:
           run v6 Debug dbg/win/v6_two_servers_fast.ms
           nm=$(find "$MS_MINGW" -iname 'llvm-nm*' | head -1)
           echo "nm=$nm" >> summary.txt
-          "$nm" --numeric-sort prog.exe > syms.txt 2>/dev/null
+          "$nm" --numeric-sort --defined-only prog.exe > syms.txt 2>/dev/null
           echo "syms: $(wc -l < syms.txt)" >> summary.txt
-          for off in $(grep -o 'pc=+[0-9a-f]*\|ret=+[0-9a-f]*' dbg.log | sed 's/.*+//' | sort -u | head -60); do
-            addr=$(printf '%016x' $((0x140000000 + 0x$off)))
-            awk -v a="$addr" '$1 <= a { last=$0 } $1 > a { print "  sym " last; exit }' syms.txt >> summary.txt
-          done
+          head -3 syms.txt >> summary.txt
+          objdump=$(find "$MS_MINGW" -iname 'llvm-objdump*' | head -1)
+          "$objdump" -p prog.exe 2>/dev/null | grep -i imagebase >> summary.txt
+          offs=$(grep -o 'ret=+[0-9a-f]*' dbg.log | sed 's/.*+//' | sort -u | tr '\n' ' ')
+          python dbg/win/sym.py 140000000 $offs >> summary.txt
           exit 0
       - name: Summary
         if: always()
