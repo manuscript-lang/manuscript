@@ -6,7 +6,7 @@ Manuscript starts from one premise: agents will write most of the code, and peop
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
-## Each round trip costs context, so the compiler names the repair
+## Diagnostics that name the repair
 
 An agent that gets "syntax error" guesses. One that gets the fix types it. Every Manuscript diagnostic reads `cause; fix`, and a habit from another language is answered with the Manuscript spelling:
 
@@ -25,7 +25,7 @@ A runtime fault comes back from `ms test --json` as data with kind, values, posi
 
 The agent does not need the manual in its context: `ms guide` is the whole language in 4 KB, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
-## Memory is decided by the compiler, so the agent cannot get it wrong
+## Memory decided by the compiler
 
 Lifetimes are a whole-program fact, and an agent working from a window of a file cannot track them. A collector hides the cost and makes a binary carry a runtime.
 
@@ -47,7 +47,7 @@ def grow(var b: Box) -> Int:
 
 Every place the agent mutates (`var`) or copies (`.clone()`) is visible in the source, so a reviewer sees what a generated change does to data without reading the callee. [References](documentation/core-language/types/references.md)
 
-## Mistakes an agent makes often are compile errors, not runtime surprises
+## Compile errors, not surprises
 
 A dropped error, a forgotten case and an unclosed handle are the mistakes a model makes when it is confident. Finding them in production costs a debugging session; finding them at `ms check` costs one message. So these are errors:
 
@@ -58,7 +58,7 @@ A dropped error, a forgotten case and an unclosed handle are the mistakes a mode
 
 Everything the checker cannot prove, the runtime catches as a fault with a source trace: overflow, bounds, deadlock, a cleanup that did not run. [Faults](documentation/core-language/errors/faults.md)
 
-## One function model, because `async` doubles the surface an agent has to learn
+## One function model
 
 Function coloring means two of every API and a leaf change that rewrites every caller. In Manuscript any function can wait, so a change stays where it was made.
 
@@ -74,7 +74,7 @@ A worker's entry is a named top-level function with no arguments. There is nothi
 
 Eight CPU jobs scale 3.95× on four workers in the [recorded run](bench/perf/workers/README.md). Mutual waiting is a deadlock fault, not a hang. [Concurrency](documentation/core-language/concurrency/_index.md)
 
-## Generated inputs, because an agent's tests share its blind spots
+## Generated inputs
 
 A model writes tests that encode the same assumptions as its code. Property tests draw inputs the agent did not think of, and shrink a failure to the smallest case that still fails:
 
@@ -88,7 +88,7 @@ test "reversing twice restores a list":
 
 A failure prints a counterexample and the seed to replay it. `ms test --fuzz 30s` turns the same test into a fuzzer, each case in a forked child so a crash is still reported. [Testing](documentation/learn/testing.md)
 
-## The standard library is Manuscript, so there is one language to learn
+## A standard library in Manuscript
 
 An agent that reads a library implemented in another language learns nothing it can reuse.
 
@@ -96,7 +96,7 @@ Manuscript's library is about 14,000 lines of Manuscript across more than 40 mod
 
 What the agent reads is what it would write, and what it would write can become part of the library. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 
-## Review evidence has to come from somewhere other than the generator
+## Independent review evidence
 
 If a model wrote the change, asking a model to summarize it is not a check.
 
@@ -104,7 +104,7 @@ If a model wrote the change, asking a model to summarize it is not a check.
 
 `ms diagram` draws call and flow graphs from the same analysis. Same input, same bytes, every time. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
-## Ordinary code has to be fast, because agents write ordinary code
+## Fast ordinary code
 
 An agent writes the straightforward loop, not the clever one, so the compiler has to make the straightforward loop fast. Debug builds go through Cranelift for a fast edit-check-run loop; release builds go through LLVM.
 
@@ -128,7 +128,7 @@ Against Rust at `opt-level=3` with overflow checks on, the configuration that ma
 
 The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP](bench/perf/web/results.md) · [CSV](bench/perf/csv/README.md) · [JSON](bench/perf/json/results.md) · [List loops](bench/perf/listloops/README.md)
 
-## The language is built the way it will be used
+## Built with agents
 
 We build Manuscript with coding agents, and we measure them. The [agent benchmark](bench/agent/README.md) gives the same challenges to an agent in Manuscript, TypeScript, Go and Rust with hidden tests. The [October 22 run](bench/agent/results/summary-2026-10-22.md) passed 10 of 10 small challenges.
 
