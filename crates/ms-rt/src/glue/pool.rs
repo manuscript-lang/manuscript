@@ -260,8 +260,10 @@ pub fn run<I: Send + Sync + 'static, O: Send + 'static>(
 ) -> Option<O> {
     let (job, ptr) = submit(lane, input, f);
     let mut value = 0u64;
+    eprintln!("[pool] run park tok={} t={timeout_ns}", ptr.token());
     // SAFETY: parks the current task on its own token.
     let got = unsafe { msrt_token_park(ptr.token(), timeout_ns, &mut value) };
+    eprintln!("[pool] run woke got={got}");
     // A job that finished as the wait ended is complete, so it is taken all the same.
     let gave_up = got & (WAIT_TIMEOUT | WAIT_CANCELLED) != 0 && give_up(ptr);
     // SAFETY: not given up, so the job is done.
@@ -315,8 +317,10 @@ pub fn run_shielded<I: Send + Sync + 'static, O: Send + 'static>(
     };
     let (job, ptr) = submit(lane, lent, call_lent::<I, O>);
     let mut value = 0u64;
+    eprintln!("[pool] shielded park tok={}", ptr.token());
     // SAFETY: parks the current task on its own token.
     let got = unsafe { msrt_token_park(ptr.token(), -1, &mut value) };
+    eprintln!("[pool] shielded woke got={got}");
     if got & WAIT_CANCELLED != 0 {
         // A pending stop ends every park at once: block the thread until the job is done.
         let mut pool = lock();
@@ -420,6 +424,7 @@ fn work() -> ! {
             READY.notify_one();
         }
         if let Some(token) = post {
+            eprintln!("[pool] post tok={token}");
             msrt_token_post_remote(token, 1);
         }
     }

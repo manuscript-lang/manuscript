@@ -45,7 +45,7 @@ jobs:
             timeout 30 target/debug/ms.exe run "$3" --build-type "$2" > out.txt 2>&1
             code=$?
             echo "CASE $1 $2 code=$code secs=$(( $(date +%s) - start ))" >> summary.txt
-            tail -45 out.txt | cut -c1-90 | sed "s/^/  o: /" >> summary.txt
+            tail -70 out.txt | cut -c1-90 | sed "s/^/  o: /" >> summary.txt
             tail -14 trace.txt 2>/dev/null | cut -c1-60 | sed "s/^/  t: /" >> summary.txt
           }
           run v6 Debug dbg/win/v6_two_servers_fast.ms

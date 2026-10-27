@@ -612,7 +612,9 @@ mod imp {
             }
             _ => None,
         };
+        eprintln!("[poll] wait enter t={timeout_ns}");
         let polled = s.poll.poll(&mut s.events, timeout);
+        eprintln!("[poll] wait exit n={}", s.events.iter().count());
         if let Some(handle) = armed {
             // SAFETY: as above. A wake for another reason must not leave a stale signal behind.
             unsafe { crate::sys::precise_timer_cancel(handle as *mut _) };
