@@ -53,6 +53,12 @@ impl From<Canceled> for ScanError {
     }
 }
 
+/// A file's identity: its path with symlinks resolved, so an open buffer and
+/// the file it is a link to are one document.
+fn identity(path: &str) -> String {
+    pathops::eval_symlinks(path).unwrap_or_else(|_| path.to_string())
+}
+
 /// The open and on-disk `.ms` documents under a document's project (or its
 /// directory), sorted by URI.
 pub fn workspace_documents(
@@ -72,10 +78,10 @@ pub fn workspace_documents(
             && relative != ".."
             && !relative.starts_with("../")
         {
-            files.insert(name, open.clone());
+            files.insert(identity(&name), open.clone());
         }
     }
-    files.insert(path, d.clone());
+    files.insert(identity(&path), d.clone());
     match walk(
         Path::new(&root),
         Path::new(&root),
@@ -118,12 +124,15 @@ fn walk(
             continue;
         }
         let text_path = path.to_string_lossy().into_owned();
-        if kind.is_symlink() || !text_path.ends_with(".ms") || files.contains_key(&text_path) {
+        if kind.is_symlink()
+            || !text_path.ends_with(".ms")
+            || files.contains_key(&identity(&text_path))
+        {
             continue;
         }
         let data = std::fs::read(&path).map_err(ScanError::Io)?;
         files.insert(
-            text_path.clone(),
+            identity(&text_path),
             Document::new(uri::file_uri(&text_path), String::from_utf8_lossy(&data)),
         );
     }
