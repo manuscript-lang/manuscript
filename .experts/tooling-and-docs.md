@@ -156,7 +156,7 @@ Apply when: adding agent-facing commands, changing search ranking, or touching t
 Evidence: [search](../crates/ms-tooling/src/guide/search.rs), [workspace queries](../crates/ms-lsp/src/workspace.rs), [project search regressions](../crates/ms-lsp/tests/search_symbol.rs), [guide](../crates/ms-tooling/data/cheatsheet.md), [search_symbol CLI tests](../crates/ms-cli/tests/search_symbol.rs), [agent commands](../documentation/developer-tooling/implementation.md#commands-for-agents).
 Verify: `cargo nextest run -p ms-lsp -p ms-tooling -p ms-cli`; search tests pin typo, synonym, partial, and dedup behavior; compare release timings and output for project, standard-library and no-match queries in a large source tree. The cheat sheet's program must check and stay short.
 
-### Public positioning is evidence-led: every claim names a committed, reproducible number
+### Keep the README concise and link to measured evidence
 
 Decision: make the case through shipped benefits and measured evidence. The user's October 27 correction—"readme is so text heavy the actual points are getting missed"—supersedes the earlier request to put detailed benchmark tables in the README. Use a concise opening, visibly separated reasons to try Manuscript, one natural example, a quick start and links. Detailed measurements belong in the existing `bench/perf` and `bench/agent` result pages, including unfavorable outcomes, revisions, machines and reproduction commands. Any numeric public claim still cites its particular dated evidence; add new runs rather than rewriting old numbers. Present a batteries-included environment as direction, and keep process history and implementation inventories out of the opening.
 
