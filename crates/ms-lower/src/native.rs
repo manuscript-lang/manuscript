@@ -3429,28 +3429,6 @@ fn build_stream_method(
             .position(|c| c.name == n)
             .map(|i| i as u32)
     };
-    if matches!(name, "write" | "write_bytes")
-        && let Some(a) = alt
-        && let Some(error) = case(b.m, a, "error")
-        && let TyKind::Alt(io) =
-            b.m.types
-                .kind(b.m.alts[a.index()].cases[error as usize].fields[0].1)
-                .clone()
-        && let Some(closed) = case(b.m, io, "Closed")
-    {
-        // A closed stream reports `Closed` instead of writing.
-        let is_closed = runtime_fn(b.m, "msrt_io_closed", &[MTy::INT], MTy::BOOL);
-        let shut = b.call_rt(is_closed, &[which]);
-        let (fail, go) = (b.new_block(), b.new_block());
-        b.br_if(shut, fail, &[], go, &[]);
-        b.seal_block(fail);
-        b.seal_block(go);
-        b.switch_to(fail);
-        let cause = b.alt_new(io, closed, &[]);
-        let r = b.alt_new(a, error, &[cause]);
-        b.ret(Some(r));
-        b.switch_to(go);
-    }
     if name == "write" || name == "write_bytes" {
         let (sym, arg) = match (name == "write", stderr) {
             (true, true) => ("msrt_io_write_stderr", MTy::STR),

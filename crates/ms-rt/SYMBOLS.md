@@ -61,7 +61,6 @@ msrt_io_write_bytes_stdout(v: *const VecVal)
 msrt_io_write_bytes_stderr(v: *const VecVal)
 msrt_io_flush()
 msrt_io_close(which: i64)
-msrt_io_closed(which: i64) -> bool
 msrt_map_new(out: *mut MapVal)
 msrt_map_drop( m: *mut MapVal, kd: *const TypeDesc, vd: *const TypeDesc, )
 msrt_map_stamp(m: *mut MapVal, kd: *const TypeDesc)
