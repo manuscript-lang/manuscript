@@ -16,6 +16,21 @@ fp32 matrix-vector products (`y = W x`, the inner loop of language-model inferen
 
 Run `sh bench/perf/vec/run.sh 5` (best of N). Compare only runs from the same machine. The C variants other than `c-lanes-omp` run on one core.
 
+## Multiple cores (2026-10-27, third run)
+
+After the pool switched from equal chunks to shrinking claims and spins longer before parking. linux/amd64, four vCPUs, AVX2; best of 7, GFLOPS.
+
+| Variant | 288x288 | 768x288 | 1024x1024 | 4096x4096 |
+| --- | ---: | ---: | ---: | ---: |
+| ms-vec (4 cores) | 19.14 | 18.08 | 51.19 | 16.10 |
+| c-lanes-omp (4 cores) | 16.60 | 17.81 | 39.33 | 16.23 |
+| ms-vec-1thread | 19.44 | 18.31 | 12.27 | 4.41 |
+| c-lanes (1 core) | 18.81 | 17.80 | 11.89 | 3.97 |
+| c-fastmath (1 core) | 15.83 | 15.25 | 11.93 | 4.17 |
+
+- Timing each chunk of a 4096x4096 call showed about 12% of the four threads' time idle: parked threads woke 20 to 60 microseconds late, and with 16 equal chunks of about 500 microseconds the last one ran while the other cores waited. Claims now shrink as rows run out, so threads finish together.
+- 20 alternating runs at 4096x4096: median 13.3 (ms) against 13.2 (OpenMP), mean 13.3 against 12.8. Before the change OpenMP led by about 7%.
+
 ## Multiple cores (2026-10-27, second run)
 
 A fresh VM of the same type (linux/amd64, four vCPUs, AVX2); best of 7, GFLOPS. Pool kernels now write results through the list without rewriting its header, which four cores had been fighting over on every row.
