@@ -183,6 +183,13 @@ impl<'a> FnLower<'a> {
                 let v = self.b.iconst_ty(n, ty);
                 Ok(Val { v, own: false })
             }
+            "UInt64" => {
+                let n: i128 = parse_int(text)
+                    .ok_or_else(|| Error::new(format!("bad integer literal {text}")))?;
+                let n = u64::try_from(n).map_err(|_| Error::new("integer literal out of range"))?;
+                let v = self.b.iconst_ty(n as i64, MTy::UINT64);
+                Ok(Val { v, own: false })
+            }
             "Float" | "Float32" | "Float64" => {
                 let f: f64 = ms_syntax::number::canonical(text)
                     .parse()
@@ -523,6 +530,16 @@ impl<'a> FnLower<'a> {
     }
 
     fn arithmetic(&mut self, op: BinaryOp, t: MTy, l: Val, r: Val) -> Result<Value, Error> {
+        if t == MTy::UINT64 {
+            let sym = match op {
+                BinaryOp::Add => "msrt_uint_add",
+                BinaryOp::Sub => "msrt_uint_sub",
+                BinaryOp::Mul => "msrt_uint_mul",
+                BinaryOp::Div => "msrt_uint_div",
+                _ => "msrt_uint_rem",
+            };
+            return self.call_runtime(sym, &[l.v, r.v], t);
+        }
         if self.b.m.types.is_int(t) {
             let o = match op {
                 BinaryOp::Add => Op::IAddChk,

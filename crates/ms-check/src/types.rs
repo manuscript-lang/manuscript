@@ -530,13 +530,14 @@ pub fn int_bits(t: &Type) -> Option<u32> {
         "UInt8" => Some(8),
         "UInt16" => Some(16),
         "UInt32" => Some(32),
+        "UInt64" => Some(64),
         _ => None,
     }
 }
 
 /// Whether `t` is an unsigned integer type.
 pub fn int_unsigned(t: &Type) -> bool {
-    matches!(t.id.as_str(), "UInt8" | "UInt16" | "UInt32")
+    matches!(t.id.as_str(), "UInt8" | "UInt16" | "UInt32" | "UInt64")
 }
 
 /// The inclusive range of values an integer type holds, or none for any other type.

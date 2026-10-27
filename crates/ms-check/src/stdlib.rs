@@ -40,9 +40,9 @@ pub const STANDARD_PRELUDE_NAMES: [&str; 14] = [
 ];
 
 /// The built-in types every module sees without an import.
-pub const PRIMITIVE_NAMES: [&str; 15] = [
+pub const PRIMITIVE_NAMES: [&str; 16] = [
     "Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
-    "Float32", "Float64", "String", "Unit", "Never",
+    "UInt64", "Float32", "Float64", "String", "Unit", "Never",
 ];
 
 /// The result of checking one bundled source module.

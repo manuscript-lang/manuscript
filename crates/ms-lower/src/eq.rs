@@ -317,7 +317,7 @@ impl Cx {
         out: &mut Vec<u32>,
     ) -> bool {
         let size = match m.types.kind(t) {
-            TyKind::Int => 8,
+            TyKind::Int | TyKind::UInt64 => 8,
             TyKind::Int32 | TyKind::UInt32 => 4,
             TyKind::Int16 | TyKind::UInt16 => 2,
             TyKind::Int8 | TyKind::UInt8 | TyKind::Bool => 1,

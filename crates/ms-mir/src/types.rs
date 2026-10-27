@@ -59,6 +59,9 @@ pub enum TyKind {
     UInt16,
     /// `UInt32`: an unsigned integer in 32 bits, held zero-extended in a 64-bit register.
     UInt32,
+    /// `UInt64`: an unsigned integer in 64 bits; the register holds its bit pattern, so values
+    /// above `i64::MAX` look negative to signed operations.
+    UInt64,
     /// `String`: an owned two-word UTF-8 value.
     Str,
     /// `Bytes`: an owned byte string.
@@ -121,6 +124,8 @@ impl Ty {
     pub const UINT16: Ty = Ty(12);
     /// `UInt32`.
     pub const UINT32: Ty = Ty(13);
+    /// `UInt64`.
+    pub const UINT64: Ty = Ty(14);
 
     const SCOPE_SHIFT: u32 = 20;
 
@@ -170,6 +175,7 @@ impl TyTable {
             TyKind::UInt8,
             TyKind::UInt16,
             TyKind::UInt32,
+            TyKind::UInt64,
         ] {
             t.intern(k);
         }
@@ -262,6 +268,7 @@ impl TyTable {
                 | TyKind::UInt8
                 | TyKind::UInt16
                 | TyKind::UInt32
+                | TyKind::UInt64
                 | TyKind::Float
                 | TyKind::Float32
         )
@@ -286,6 +293,7 @@ impl TyTable {
     pub fn int_bits(&self, ty: Ty) -> Option<u32> {
         match self.kind(ty) {
             TyKind::Int => Some(64),
+            TyKind::UInt64 => Some(64),
             TyKind::Int8 => Some(8),
             TyKind::Int16 => Some(16),
             TyKind::Int32 | TyKind::UInt32 => Some(32),
@@ -305,11 +313,30 @@ impl TyTable {
         })
     }
 
+    /// The bounds of a signed comparison on the register of an integer of type `from` that
+    /// hold exactly when its value fits `to`. A `UInt64` above `i64::MAX` is a negative
+    /// register, so it fits nothing narrower than itself; a value converted to `UInt64` must
+    /// not be negative.
+    pub fn narrow_range(&self, from: Ty, to: Ty) -> (i64, i64) {
+        let (lo, hi) = self
+            .int_range(to)
+            .unwrap_or((i64::MIN.into(), i64::MAX.into()));
+        let lo = if self.kind(from) == &TyKind::UInt64 {
+            lo.max(0)
+        } else {
+            lo
+        };
+        (
+            lo.max(i64::MIN.into()) as i64,
+            hi.min(i64::MAX.into()) as i64,
+        )
+    }
+
     /// Whether `ty` is an unsigned integer.
     pub fn is_unsigned(&self, ty: Ty) -> bool {
         matches!(
             self.kind(ty),
-            TyKind::UInt8 | TyKind::UInt16 | TyKind::UInt32
+            TyKind::UInt8 | TyKind::UInt16 | TyKind::UInt32 | TyKind::UInt64
         )
     }
 
