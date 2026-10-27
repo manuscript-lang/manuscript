@@ -235,6 +235,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL111 | `while True` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL113 | `some(x)` where a plain `x` is wrapped to the same Optional (argument, return, binding, assignment, field, default, element); `ms lint --fix` removes the `some(...)`. See [passing optional arguments](../core-language/types/optionals.md#passing-optional-arguments) |
+| MSL114 | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 
