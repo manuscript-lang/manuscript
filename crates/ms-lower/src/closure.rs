@@ -14,6 +14,8 @@ use std::rc::Rc;
 /// Captures use environment indices, never SSA values from the enclosing function.
 pub(crate) enum LambdaCapture {
     Local(ct::BindingRef, usize),
+    /// A pointer to a borrowed copy of a variable the closure only reads (`lend_captures`).
+    Lent(ct::BindingRef, usize),
     Alias {
         binding: ct::BindingRef,
         root: ct::BindingRef,
@@ -49,6 +51,25 @@ impl FnLower<'_> {
             {
                 saved.push(self.capture_alias(b, alias, &mut cap_tys, &mut cap_vals)?);
                 continue;
+            }
+            let lend = self.lend_captures && !changed.contains(&b.uid);
+            if lend {
+                let x = self.read_local(b)?;
+                let ty = self.ty_of(x.v);
+                if self.needs_drop(ty) {
+                    // The maker outlives the closure's every call, so the closure reads the
+                    // variable through a pointer instead of owning a copy.
+                    let v = self.borrow(x);
+                    let slot = self
+                        .b
+                        .emit(Op::Slot, &[], Imm::Ty(ty), Some(MTy::PTR))
+                        .expect("slot");
+                    self.b.emit(Op::Store, &[slot, v], Imm::None, None);
+                    saved.push(LambdaCapture::Lent(b.clone(), cap_vals.len()));
+                    cap_tys.push(MTy::PTR);
+                    cap_vals.push(slot);
+                    continue;
+                }
             }
             saved.push(LambdaCapture::Local(b.clone(), cap_vals.len()));
             if changed.contains(&b.uid) {
@@ -1406,6 +1427,14 @@ fn lower_lambda_body(fl: &mut FnLower<'_>, job: &LambdaJob, captures: &[MTy]) ->
         .collect();
     for capture in &job.captures {
         if restore_alias_capture(fl, capture, &values)? {
+            continue;
+        }
+        if let LambdaCapture::Lent(b, index) = capture {
+            let ty = fl.mty(&b.ty)?;
+            let v =
+                fl.b.emit(Op::Load, &[values[*index]], Imm::Ty(ty), Some(ty))
+                    .expect("load");
+            fl.bind_borrowed(b, v);
             continue;
         }
         let LambdaCapture::Local(b, index) = capture else {

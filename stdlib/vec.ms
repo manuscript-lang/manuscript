@@ -2,13 +2,16 @@
 # matrix-vector products, the building blocks of neural-network inference.
 #
 # The reductions (`dot`, `dot_at`, `fast_sum`, `Matrix.matvec`, and the maximum inside `softmax`)
-# use the CPU's vector instructions. Each binary carries a baseline copy and, on x86-64, an AVX2 and FMA copy of these
-# kernels, and runs the best one the machine supports; nothing needs to be configured.
+# use the CPU's vector instructions. Each binary carries a baseline copy and, on x86-64, an AVX2
+# and FMA copy of these kernels, and runs the best one the machine supports. A `matvec` of more
+# than about 250,000 multiply-adds also splits its rows across every core. Nothing needs to be
+# configured.
 #
 # They add in a fixed order of their own instead of left to right: eight lanes, four
 # accumulators, then a pairwise sum. Results therefore differ in the last bits from a plain loop,
 # and the AVX2 copy fuses each multiply-add, so they can also differ between CPUs. The same binary
-# on the same CPU always gives the same result. Compare with a tolerance (`expect_close`).
+# on the same CPU always gives the same result, whatever the number of cores. Compare with a
+# tolerance (`expect_close`).
 #
 # ```manuscript
 # from "@std/vec.ms" import Matrix, dot
@@ -41,6 +44,16 @@ extern def msrt_lanes_max(left: Lanes, right: Lanes) -> Lanes
 extern def msrt_lanes_sum(values: Lanes) -> Float32
 
 extern def msrt_lanes_hmax(values: Lanes) -> Float32
+
+# Runs `body(start, end)` over `0 .. count` in chunks of at least `grain` rows on the runtime's
+# compute pool, the calling thread included, and returns when all have finished. `body` runs on
+# other threads, so it may only read its captures and write disjoint elements of a `var` capture:
+# no allocation, recursion or faults. Small ranges run on the calling thread.
+extern def msrt_parallel_rows(
+    count: Int,
+    grain: Int,
+    body: Callable[[Int, Int], Unit]
+) -> Unit
 
 # The sum of `a[a_start + i] * b[b_start + i]` for each `i` below `count`. Faults when either range
 # leaves its list.
@@ -303,8 +316,25 @@ impl Matrix:
             panic(f"matvec: {count} rows requested, matrix has {self.rows}")
         resize(var out, count)
 
-        var r = 0
+        let cols = self.cols
+        check_range("matvec", self.data.length(), 0, count * cols)
 
-        while r < count:
-            out[r] = dot_at(self.data, r * self.cols, x, 0, self.cols)
-            r += 1
+        # Rows are independent, so the result does not depend on how the pool splits them. Each
+        # chunk does at least `PARALLEL_WORK` multiply-adds.
+        msrt_parallel_rows(
+            count,
+            PARALLEL_WORK / max_int(cols, 1),
+            lambda (start: Int, end: Int):
+                var r = start
+
+                while r < end:
+                    out[r] = dot_at(self.data, r * cols, x, 0, cols)
+                    r += 1
+        )
+
+# The fewest multiply-adds `matvec` hands to one thread: waking the pool costs a few
+# microseconds, a small part of what one core needs for this many.
+let PARALLEL_WORK = 262144
+
+def max_int(a: Int, b: Int) -> Int:
+    return a if a > b else b

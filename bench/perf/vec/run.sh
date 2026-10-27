@@ -17,12 +17,15 @@ cp -r "$HERE/ms" "$W/"
 "$CC" -O3 -Wno-psabi -DKERNEL_lanes "$HERE/c/matvec.c" -o "$W/c-lanes-sse2"
 "$CC" -O3 -mavx2 -mfma -DKERNEL_lanes "$HERE/c/matvec.c" -o "$W/c-lanes"
 "$CC" -O3 -march=native -ffast-math -DKERNEL_fast "$HERE/c/matvec.c" -o "$W/c-fastmath"
+"$CC" -O3 -mavx2 -mfma -fopenmp -DKERNEL_lanes "$HERE/c/matvec.c" -o "$W/c-lanes-omp"
 : > "$W/raw.txt"
 i=0
 while [ "$i" -lt "$N" ]; do
   "$W/ms/bench" | sed 's/^vec /ms-vec /; s/^scalar /ms-scalar /' >> "$W/raw.txt"
   MS_VEC_LEVEL=baseline "$W/ms/bench" | grep '^vec ' | sed 's/^vec /ms-vec-baseline /' >> "$W/raw.txt"
-  for c in c-scalar c-lanes-sse2 c-lanes c-fastmath; do "$W/$c" "$c" >> "$W/raw.txt"; done
+  MS_VEC_THREADS=1 "$W/ms/bench" | grep '^vec ' | sed 's/^vec /ms-vec-1thread /' >> "$W/raw.txt"
+  for c in c-scalar c-lanes-sse2 c-lanes c-fastmath; do OMP_NUM_THREADS=1 "$W/$c" "$c" >> "$W/raw.txt"; done
+  "$W/c-lanes-omp" c-lanes-omp >> "$W/raw.txt"
   i=$((i + 1))
 done
 # Best GFLOPS per (version, size).

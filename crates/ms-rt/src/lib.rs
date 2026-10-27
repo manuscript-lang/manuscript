@@ -41,6 +41,7 @@ pub mod map;
 pub mod mem;
 pub mod num;
 pub mod obj;
+pub mod parallel;
 pub mod pipe;
 pub mod poller;
 pub mod process;

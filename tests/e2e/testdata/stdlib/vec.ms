@@ -119,3 +119,23 @@ test "matvec multiplies by each row":
     try expect_equal(out.length(), 4)
 
     let _ = try expect_fault(lambda (): m.matvec(ramp(36, 1), var out))
+
+test "a large matvec split across threads matches a scalar loop":
+    # 1501 x 1001 is past the size where matvec uses the compute pool; odd sizes leave a short
+    # last chunk and a scalar tail in every row.
+    let rows = 1501
+    let cols = 1001
+    let data = ramp(rows * cols, 5)
+    let x = ramp(cols, 3)
+    let m = Matrix(rows: rows, cols: cols, data: data.clone())
+    var out = List[Float32]()
+
+    for _round in 0..3:
+        m.matvec(x, var out)
+        try expect_equal(out.length(), rows)
+        for r in 0..rows:
+            try expect_equal(out[r], scalar_dot(data, r * cols, x, 0, cols))
+
+    m.matvec_rows(x, 1100, var out)
+    try expect_equal(out.length(), 1100)
+    try expect_equal(out[1099], scalar_dot(data, 1099 * cols, x, 0, cols))

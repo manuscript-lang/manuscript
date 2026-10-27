@@ -63,5 +63,6 @@ def run(rows: Int, cols: Int, reps: Int) -> Unit:
 export def main() -> Int:
     run(288, 288, 20000)
     run(768, 288, 5000)
+    run(1024, 1024, 1000)
     run(4096, 4096, 20)
     return 0

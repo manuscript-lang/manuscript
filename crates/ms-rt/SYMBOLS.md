@@ -211,6 +211,7 @@ msrt_worker_cancel(handle: u64)
 msrt_worker_join(handle: u64, msg_out: *mut StrVal) -> u8
 msrt_worker_end() -> i64
 msrt_worker_start(entry: *mut Closure, end: i64) -> i64
+msrt_parallel_rows(count: i64, grain: i64, body: *mut Closure)
 msrt_worker_wait(handle: i64, out: *mut StrVal)
 msrt_pipe_new() -> i64
 msrt_pipe_peer(end: i64) -> i64

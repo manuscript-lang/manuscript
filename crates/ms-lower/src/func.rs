@@ -99,6 +99,9 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Set while lowering the body argument of `msrt_parallel_rows`: the closure lends what it
+    /// only reads (a pointer to a borrowed copy) instead of owning a copy of it.
+    pub lend_captures: bool,
     /// Values that are views into another string: no drop, and an immutable `let` may hold one.
     pub views: HashSet<Value>,
     /// Parameters the body only reads: the caller keeps them alive and unchanged for the whole
@@ -384,6 +387,7 @@ impl<'a> FnLower<'a> {
             lent_violation: false,
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            lend_captures: false,
             views: HashSet::new(),
             borrowed_params: HashSet::new(),
             stable_reads: HashSet::new(),

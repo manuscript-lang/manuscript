@@ -1,7 +1,8 @@
 /* The matrix-vector product of ms/src/main.ms in C. KERNEL picks the inner loop:
  *   scalar  plain loop, strict IEEE order (no -ffast-math), what C gives without opting in
  *   lanes   explicit 8-lane vectors, four accumulators, the same order as @std/vec.ms
- *   fast    plain loop; build with -ffast-math so the compiler may reorder and vectorize it */
+ *   fast    plain loop; build with -ffast-math so the compiler may reorder and vectorize it
+ * Built with -fopenmp, the rows are split across threads above the same size as @std/vec.ms. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,6 +40,7 @@ static void run(const char *name, int rows, int cols, int reps) {
     struct timespec a, b;
     clock_gettime(CLOCK_MONOTONIC, &a);
     for (int r = 0; r < reps; r++)
+#pragma omp parallel for schedule(static) if ((long)rows * cols > 262144)
         for (int i = 0; i < rows; i++) o[i] = dot(w + (long)i * cols, x, cols);
     clock_gettime(CLOCK_MONOTONIC, &b);
     double ns = (b.tv_sec - a.tv_sec) * 1e9 + (b.tv_nsec - a.tv_nsec);
@@ -50,6 +52,7 @@ int main(int argc, char **argv) {
     const char *name = argc > 1 ? argv[1] : "c";
     run(name, 288, 288, 20000);
     run(name, 768, 288, 5000);
+    run(name, 1024, 1024, 1000);
     run(name, 4096, 4096, 20);
     return 0;
 }

@@ -137,6 +137,13 @@ impl<'a> FnLower<'a> {
         sym: &ct::SymRef,
     ) -> Result<Val, Error> {
         let native = json_native(native);
+        if native == "extern:msrt_parallel_rows" && !self.lend_captures {
+            // The pool runs the body before the call returns, so its captures can be lent.
+            self.lend_captures = true;
+            let r = self.native_function(e, view, native, params, sym);
+            self.lend_captures = false;
+            return r;
+        }
         if let Some(symbol) = native.strip_prefix("extern:") {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
