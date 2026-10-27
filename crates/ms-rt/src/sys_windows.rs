@@ -718,11 +718,11 @@ pub fn dbg_image_base() -> usize {
     unsafe { GetModuleHandleW(core::ptr::null()) as usize }
 }
 
-/// TEMPORARY: suspends `thread`, returns its `(pc, sp)` and up to 48 words of its stack.
+/// TEMPORARY: suspends `thread`, returns its `(pc, sp)` and up to 256 words of its stack.
 ///
 /// # Safety
 /// `thread` is a handle from [`current_thread_for_sampling`] of a live other thread.
-pub unsafe fn dbg_snapshot(thread: *mut c_void, words: &mut [usize; 48]) -> Option<(usize, usize)> {
+pub unsafe fn dbg_snapshot(thread: *mut c_void, words: &mut [usize; 256]) -> Option<(usize, usize)> {
     let mut c = Context([0; ctx::SIZE]);
     // SAFETY: as `sample_thread`; the stack words are read while the thread is suspended.
     unsafe {

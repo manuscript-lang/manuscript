@@ -417,9 +417,9 @@ mod imp {
     unsafe extern "system" fn dbg_watchdog(_: *mut core::ffi::c_void) -> u32 {
         let base = crate::sys::dbg_image_base();
         let thread = WD_THREAD.load(core::sync::atomic::Ordering::Relaxed) as *mut core::ffi::c_void;
-        for i in 0..10 {
+        for i in 0..3 {
             crate::sys::sleep_ms(2000);
-            let mut words = [0usize; 48];
+            let mut words = [0usize; 256];
             // SAFETY: `thread` is the runtime thread's sampling handle.
             let snap = unsafe { crate::sys::dbg_snapshot(thread, &mut words) };
             match snap {
