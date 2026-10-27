@@ -6,5 +6,5 @@ def absent[T]() -> Optional[T]: none
 def transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback
 
 def answer() -> Unit:
-    let empty: Optional[Int] = absent()
-    let callback: Callable[[Int], String] = transform(lambda item: item.to_string())
+    let _empty: Optional[Int] = absent()
+    let _callback: Callable[[Int], String] = transform(lambda item: item.to_string())

@@ -70,7 +70,7 @@ test "a read while the payload is locked faults":
     with var held = lock(shared):
         let message = try expect_fault(
             lambda () -> Unit:
-                let length = shared.get().values.length()
+                let _length = shared.get().values.length()
         )
         try expect_equal(message, "shared value is in use")
         held.value.bump()

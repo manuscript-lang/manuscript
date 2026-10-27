@@ -3,7 +3,7 @@
 # conform: origin=pkg/checker/defaults_test.go:29 TestDefaultArgumentBoundaries
 def f() -> Unit:
     var outer = 1
-    let callback = lambda (
+    let _callback = lambda (
         value: Int = (
             lambda () -> Int:
                 outer = 2

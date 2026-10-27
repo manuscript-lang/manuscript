@@ -88,10 +88,10 @@ test "an out of range read or write inside a cached loop faults":
     let read = try expect_fault(
         lambda:
             var i = 0
-            var total = 0
+            var _total = 0
 
             while i < 5:
-                total += values.get(i)
+                _total += values.get(i)
                 i += 1
     )
 

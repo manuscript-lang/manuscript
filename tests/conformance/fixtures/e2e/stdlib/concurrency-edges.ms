@@ -27,7 +27,7 @@ def mute(ch: Channel[Int, Unit]) -> Int:
 
 def waits() -> Unit:
     var ch = worker_channel[Int, Int]()
-    let got = ch.receive()
+    let _got = ch.receive()
 
 def waiter(t: Task[Int]) -> Int:
     let r = t.result()
@@ -144,6 +144,6 @@ test "the worker limit refuses extra workers and frees slots when they end":
         for i in range(0, started.length()):
             started[i].cancel()
         for i in range(0, started.length()):
-            let ended = started[i].wait()
+            let _ended = started[i].wait()
         let again = group.spawn(waits)
         try expect_equal(again.is_ok(), True)

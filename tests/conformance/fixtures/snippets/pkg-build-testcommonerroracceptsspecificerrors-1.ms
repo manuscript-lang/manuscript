@@ -14,7 +14,7 @@ def forwarded() -> Result[Unit, Error]:
     return failed()
 
 def propagated() -> Result[Unit, Error]:
-    let bytes = try hex_decode(text: "zz")
+    let _bytes = try hex_decode(text: "zz")
     return ok(value: ())
 
 def constructed() -> Result[Unit, Error]:

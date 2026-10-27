@@ -9,7 +9,7 @@ type Res:
 
 impl Closeable for Res:
     def close() -> Unit:
-        let x = self.n
+        let _x = self.n
 
 def run[T: Closeable](r: T, early: Bool) -> Int:
     with let it = r:

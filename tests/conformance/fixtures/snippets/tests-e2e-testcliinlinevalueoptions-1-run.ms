@@ -23,7 +23,7 @@ export def main() -> Int:
     match exercise():
         case ok(status): return status
         case error(cause):
-            let written = stderr().write(f"{cause.message()}\n")
+            let _written = stderr().write(f"{cause.message()}\n")
             return 1
 
 test "selected=a=b":

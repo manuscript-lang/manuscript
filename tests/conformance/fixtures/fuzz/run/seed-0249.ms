@@ -7,7 +7,7 @@ from "@std/io.ms" import stdout
 from "@std/collections.ms" import range
 
 def say(text: String) -> Unit:
-    let written = stdout().write(f"{text}\n")
+    let _written = stdout().write(f"{text}\n")
 
 def fact(n: Int) -> Int:
     if n <= 1:

@@ -63,7 +63,7 @@ def hidden(n: Int) -> Result[Int, TextError]:
         return error(
             TextError(
                 match some(n):
-                    case some(value):
+                    case some(_value):
                         return ok(9223372036854775807)
                     case none: "negative"
             )
@@ -113,20 +113,20 @@ test "bounded successful Results preserve both branch budgets":
     total(False) | try expect_equal(-500502)
 
 test "Result payload bounds retain intermediate overflow":
-    (try expect_fault(lambda: let ignored = prefix())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = prefix())) | try expect_contains(
         "Int overflow"
     )
-    (try expect_fault(lambda: let ignored = peer())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = peer())) | try expect_contains(
         "Int overflow"
     )
 
 test "Result helper overflow still occurs in the original call":
-    (try expect_fault(lambda: let ignored = checked(9223372036854775807))) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = checked(9223372036854775807))) | try expect_contains(
         "Int overflow"
     )
 
 test "hidden successful returns in error construction keep checks":
-    (try expect_fault(lambda: let ignored = hidden_success())) | try expect_contains(
+    (try expect_fault(lambda: let _ignored = hidden_success())) | try expect_contains(
         "Int overflow"
     )
 

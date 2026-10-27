@@ -8,5 +8,5 @@ export def main() -> Int:
     var total = 0
     for x in [1, 2, 3]:
         total += x
-    let r = stdout().write(f"total {total}\n")
+    let _r = stdout().write(f"total {total}\n")
     return 0

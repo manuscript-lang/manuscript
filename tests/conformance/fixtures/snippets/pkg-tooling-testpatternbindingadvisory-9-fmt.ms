@@ -5,7 +5,7 @@ type Flag:
     case Ready
 
 def use(value: Optional[Int]) -> Int:
-    let Flag = 2
+    let _Flag = 2
 
     match value:
         case some(Ready): return Ready

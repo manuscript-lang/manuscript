@@ -4,5 +4,5 @@ def original(value: Float = 7.0) -> Float: value
 export def main() -> Int:
     var callback = original
     callback = floor
-    let result = callback(3.5)
+    let _result = callback(3.5)
     return 0
