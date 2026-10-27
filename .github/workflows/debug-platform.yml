@@ -49,22 +49,28 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          ms=target/debug/ms
-          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          touch /tmp/marker
-          sleep 1
-          "$ms" test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type Release --filter "a fault" 2>&1 | grep -a -E "DBG|at "
-          echo "cache: $XDG_CACHE_HOME $HOME"
-          exe=$(find "${XDG_CACHE_HOME:-$HOME/.cache}" "$HOME/Library/Caches" "$TMPDIR" /tmp -type f -newer /tmp/marker \( -perm -u+x -o -name '*.exe' \) 2>/dev/null | head -20)
-          echo "candidates: $exe"
-          for e in $exe; do
-            if llvm-objdump -d -l "$e" 2>/dev/null | grep -a -q "teardown-on-skip.ms:35"; then
-              echo "::group::disasm $e"
-              llvm-objdump -d -l --no-show-raw-insn "$e" 2>/dev/null | awk '/teardown-on-skip.ms:/{keep=40} keep>0{print; keep--}' | head -500
-              echo "::endgroup::"
-              echo "::group::dwarf line $e"
-              llvm-dwarfdump --debug-line "$e" 2>/dev/null | grep -a -B1 -A1 -E " (15|35) +[0-9]+" | head -80
-              echo "::endgroup::"
-              break
-            fi
-          done
+          ms="$GITHUB_WORKSPACE/target/debug/ms"
+          mkdir -p "$RUNNER_TEMP/probe" && cd "$RUNNER_TEMP/probe"
+          MS_KEEP_LL=1 "$ms" test "$GITHUB_WORKSPACE/tests/e2e/testdata/stdlib/yaml.ms" --build-type Release --filter "quoted folding trims" 2>&1 | tail -3
+          ls -la
+          sleep 5
+          cp ~/Library/Logs/DiagnosticReports/program-*.ips . 2>/dev/null
+          python3 - <<'PY'
+          import json,glob
+          for f in glob.glob('program-*.ips'):
+              t=open(f).read().split('\n',1)
+              d=json.loads(t[1])
+              th=d['threads'][d['faultingThread']]
+              print(f, d.get('exception'))
+              print('x regs', [r['value'] for r in th['threadState']['x']][:31])
+              print('pc/lr', th['threadState'].get('pc'), th['threadState'].get('lr'))
+              imgs=d['usedImages']
+              for fr in th['frames'][:12]:
+                  im=imgs[fr['imageIndex']] if 'imageIndex' in fr else {}
+                  print(fr.get('imageOffset'), fr.get('symbol'), im.get('name'), im.get('base'))
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: probe-${{ matrix.os }}
+          path: ${{ runner.temp }}/probe
