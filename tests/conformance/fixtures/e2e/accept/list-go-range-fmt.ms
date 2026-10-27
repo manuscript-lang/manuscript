@@ -200,7 +200,7 @@ test "function values can replace later backing elements":
         functions.clone().for_each(
             lambda value:
                 seen.append(value())
-                functions.fill(replacement, 0, 2)
+                functions.fill(replacement.clone(), 0, 2)
         )
     )
 
