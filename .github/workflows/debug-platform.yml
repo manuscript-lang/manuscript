@@ -68,7 +68,18 @@ jobs:
           crashes() {
             rm -rf "$RUNNER_TEMP/c"; cp -R "$snap" "$RUNNER_TEMP/c"
             : > "$RUNNER_TEMP/bisect.log"
-            BISECT=$1 XDG_CACHE_HOME="$RUNNER_TEMP/c" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "$f" 2>&1 | grep -a -q "signal 11"
+            out=$(BISECT=$1 XDG_CACHE_HOME="$RUNNER_TEMP/c" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "$f" 2>&1)
+            case "$out" in *"signal 11"*) return 0;; *) return 1;; esac
           }
           BISECT=-1 XDG_CACHE_HOME="$snap" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "$f" 2>&1 | tail -8
           crashes -1; echo "full: crash=$?"; total=$(grep -a -c "BISECT: running" "$RUNNER_TEMP/bisect.log"); echo "passes: $total"
+          crashes 0; echo "limit0: crash=$?"
+          lo=0; hi=$total
+          while [ $((hi-lo)) -gt 1 ]; do
+            mid=$(( (lo+hi)/2 ))
+            if crashes $mid; then echo "mid $mid: crash"; hi=$mid; else echo "mid $mid: pass"; lo=$mid; fi
+          done
+          echo "first crashing limit: $hi"
+          crashes $hi
+          grep -a "BISECT: running pass ($hi)" "$RUNNER_TEMP/bisect.log"
+          grep -a "BISECT: running pass ($lo)" "$RUNNER_TEMP/bisect.log"
