@@ -108,7 +108,7 @@ test "all builders keep Unit mutation function types":
     try expect_equal(set.build().values(), [2, 1])
 
     var bytes = BytesBuilder()
-    let append_byte: Callable[[Int], Unit] = bytes.append
+    let append_byte: Callable[[UInt8], Unit] = bytes.append
     append_byte(65)
 
     let concat_bytes: Callable[[Bytes], Unit] = bytes.append_bytes

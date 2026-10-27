@@ -9,7 +9,7 @@ type ZeroEntropy:
 impl Entropy for ZeroEntropy:
     var def bytes(count: Int) -> Result[Bytes, RandomError]:
         self.requested = count
-        return ok(Bytes(filled(0, count).get()))
+        return ok(Bytes(filled[UInt8](0, count).get()))
 
 type ExactEntropy:
     expected: Int
@@ -19,7 +19,7 @@ impl Entropy for ExactEntropy:
         if count != self.expected:
             return error(RandomError.Failed("unexpected count"))
 
-        return ok(Bytes(filled(0, count).get()))
+        return ok(Bytes(filled[UInt8](0, count).get()))
 
 type FailedEntropy:
     message: String

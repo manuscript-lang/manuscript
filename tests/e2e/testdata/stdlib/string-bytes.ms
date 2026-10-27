@@ -36,7 +36,7 @@ test "strings honor omitted none zero and explicit output limits":
 test "bytes copy slice search and UTF8 validation":
     let data = Bytes([0, 1, 255, 1])
     try expect_equal(data.get(-1), 1)
-    try expect_equal(data.get(4, default: -1), -1)
+    try expect_equal(data.get(4, default: 7), 7)
     try expect_equal(data.index_of(Bytes([1])), some(1))
     try expect_equal(data.last_index_of(Bytes([1])), some(3))
     try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
@@ -53,11 +53,11 @@ test "bytes copy slice search and UTF8 validation":
     try expect_equal("é".to_bytes().decode_utf8(), some("é"))
 
 test "Bytes values direct bound and free calls return independent lists":
-    var input = [0, 1, 255]
+    var input: List[UInt8] = [0, 1, 255]
     let data = Bytes(input.clone())
     input.set(0, 42)
 
-    let extract: Callable[[], List[Int]] = data.values
+    let extract: Callable[[], List[UInt8]] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
     var direct = data.values()
@@ -68,7 +68,7 @@ test "Bytes values direct bound and free calls return independent lists":
     free.reverse()
     try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
 
-    let empty: List[Int] = []
+    let empty: List[UInt8] = []
     try expect_false(
         Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
     )

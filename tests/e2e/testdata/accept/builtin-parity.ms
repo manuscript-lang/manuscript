@@ -316,7 +316,7 @@ test "bytes have analogous immutable operations":
     data.get(index: -1) | try expect_equal(2)
 
     let missing: Optional[Int] = none
-    data.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
+    data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
     data.index_of(value: Bytes([2])) | try expect_equal(some(1))
     data.last_index_of(value: Bytes([2])) | try expect_equal(some(3))

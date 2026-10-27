@@ -404,7 +404,7 @@ impl<'a> FnLower<'a> {
                 let zero = self.b.iconst(0);
                 self.at(e.pos);
                 let got =
-                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::INT)?;
+                    self.call_runtime("msrt_bytes_get", &[l.v, i.v, no_default, zero], MTy::UINT8)?;
                 if l.own {
                     self.drop_value(l.v);
                 }

@@ -66,7 +66,7 @@ impl ReadStream for EchoReader:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
-        return ok(some(Bytes([requested])))
+        return ok(some(Bytes([requested.to_uint8().get(0)])))
 
     def close() -> Unit: ()
 

@@ -24,14 +24,14 @@ impl Bytes:
     def slice(start: Int, end: Int) -> Result[Bytes, CollectionError]: ...
 
     # Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
-    def get(index: Int, default: Optional[Int] = none) -> Int: ...
+    def get(index: Int, default: Optional[UInt8] = none) -> UInt8: ...
 
     # Returns the first matching byte offset or `none`; empty `value` matches at zero.
     def index_of(value: Bytes) -> Optional[Int]: ...
 
-    # Returns the first offset at or after `start` holding the unsigned byte `value`, or `none`.
-    # A `value` outside 0..255 or a `start` past length() gives `none`; a negative `start` counts as zero.
-    def index_of_byte(value: Int, start: Int) -> Optional[Int]: ...
+    # Returns the first offset at or after `start` holding the byte `value`, or `none`.
+    # A `start` past length() gives `none`; a negative `start` counts as zero.
+    def index_of_byte(value: UInt8, start: Int) -> Optional[Int]: ...
 
     # Returns the last matching byte offset or `none`; empty `value` matches at length().
     def last_index_of(value: Bytes) -> Optional[Int]: ...
@@ -46,14 +46,14 @@ impl Bytes:
     def reversed() -> Bytes: ...
 
     # Returns a copy with one byte replaced; negative indexes are relative to the end.
-    # An out-of-range index or a value outside 0 through 255 faults.
-    def with_value(index: Int, value: Int) -> Bytes: ...
+    # An out-of-range index faults.
+    def with_value(index: Int, value: UInt8) -> Bytes: ...
 
     # Tests whether the receiver contains no bytes.
     def is_empty() -> Bool: ...
 
     # Returns a fresh mutable list of unsigned byte values; changing it leaves the Bytes unchanged.
-    def values() -> List[Int]: ...
+    def values() -> List[UInt8]: ...
 
     # Returns concatenated bytes without changing either operand.
     def concat(other: Bytes) -> Bytes: ...
@@ -71,15 +71,15 @@ impl Bytes:
 # Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
 export def join(parts: List[Bytes]) -> Bytes: ...
 
-# Returns a fresh mutable list of byte values in the range 0 through 255, like data.values().
-export def values(data: Bytes) -> List[Int]: ...
+# Returns a fresh mutable list of bytes, like data.values().
+export def values(data: Bytes) -> List[UInt8]: ...
 
 # Builds a byte sequence efficiently before freezing it into an immutable value.
 export type BytesBuilder: ...
 
 impl BytesBuilder:
-    # Appends one unsigned byte; values outside 0 through 255 or writes after build fault.
-    def append(value: Int) -> Unit: ...
+    # Appends one byte; a write after build faults.
+    def append(value: UInt8) -> Unit: ...
 
     # Appends all supplied bytes in order; the input is unchanged, and a sealed builder faults.
     def append_bytes(values: Bytes) -> Unit: ...
@@ -124,18 +124,11 @@ def put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) -> Uni
         var place = width - 1 - i
         if little:
             place = i
-        out.append(msrt_bits_bit_and(msrt_bits_shift_right(value, 8 * place), 255))
-
-# Appends an unsigned `value` after checking that it is below `limit`, which is 2 to the power `bits`.
-def put_unsigned(
-    var out: BytesBuilder, value: Int, limit: Int, width: Int, little: Bool,
-    name: String
-) -> Unit:
-    if value < 0 or value >= limit:
-        panic(
-            f"BytesBuilder.{name}: value {value} does not fit {width * 8} unsigned bits"
+        out.append(
+            msrt_bits_bit_and(
+                msrt_bits_shift_right(value, 8 * place), 255
+            ).to_uint8().get(0)
         )
-    put_word(var out, value, width, little)
 
 # Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
 def signed(raw: Int, half: Int) -> Int:
@@ -146,15 +139,15 @@ def signed(raw: Int, half: Int) -> Int:
 
 interface BytesCodecs:
     def int8(at: Int) -> Result[Int8, BinaryError]
-    def uint8(at: Int) -> Result[Int, BinaryError]
+    def uint8(at: Int) -> Result[UInt8, BinaryError]
     def int16_le(at: Int) -> Result[Int16, BinaryError]
-    def uint16_le(at: Int) -> Result[Int, BinaryError]
+    def uint16_le(at: Int) -> Result[UInt16, BinaryError]
     def int16_be(at: Int) -> Result[Int16, BinaryError]
-    def uint16_be(at: Int) -> Result[Int, BinaryError]
+    def uint16_be(at: Int) -> Result[UInt16, BinaryError]
     def int32_le(at: Int) -> Result[Int32, BinaryError]
-    def uint32_le(at: Int) -> Result[Int, BinaryError]
+    def uint32_le(at: Int) -> Result[UInt32, BinaryError]
     def int32_be(at: Int) -> Result[Int32, BinaryError]
-    def uint32_be(at: Int) -> Result[Int, BinaryError]
+    def uint32_be(at: Int) -> Result[UInt32, BinaryError]
     def int64_le(at: Int) -> Result[Int, BinaryError]
     def int64_be(at: Int) -> Result[Int, BinaryError]
     def float32_le(at: Int) -> Result[Float32, BinaryError]
@@ -168,45 +161,50 @@ impl BytesCodecs for Bytes:
         let raw = try msrt_bytes_read_word(self, at, 1, True)
         return ok(signed(raw, 128).to_int8().get(0))
 
-    # Reads one unsigned byte at `at` as an Int (0 through 255).
-    def uint8(at: Int) -> Result[Int, BinaryError]:
-        return msrt_bytes_read_word(self, at, 1, True)
+    # Reads one unsigned byte at `at`.
+    def uint8(at: Int) -> Result[UInt8, BinaryError]:
+        let raw = try msrt_bytes_read_word(self, at, 1, True)
+        return ok(raw.to_uint8().get(0))
 
     # Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def int16_le(at: Int) -> Result[Int16, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 2, True)
         return ok(signed(raw, 32768).to_int16().get(0))
 
-    # Reads an unsigned 16-bit little-endian integer from two bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
-    def uint16_le(at: Int) -> Result[Int, BinaryError]:
-        return msrt_bytes_read_word(self, at, 2, True)
+    # Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def uint16_le(at: Int) -> Result[UInt16, BinaryError]:
+        let raw = try msrt_bytes_read_word(self, at, 2, True)
+        return ok(raw.to_uint16().get(0))
 
     # Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def int16_be(at: Int) -> Result[Int16, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 2, False)
         return ok(signed(raw, 32768).to_int16().get(0))
 
-    # Reads an unsigned 16-bit big-endian integer from two bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
-    def uint16_be(at: Int) -> Result[Int, BinaryError]:
-        return msrt_bytes_read_word(self, at, 2, False)
+    # Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def uint16_be(at: Int) -> Result[UInt16, BinaryError]:
+        let raw = try msrt_bytes_read_word(self, at, 2, False)
+        return ok(raw.to_uint16().get(0))
 
     # Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def int32_le(at: Int) -> Result[Int32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, True)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
-    # Reads an unsigned 32-bit little-endian integer from four bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
-    def uint32_le(at: Int) -> Result[Int, BinaryError]:
-        return msrt_bytes_read_word(self, at, 4, True)
+    # Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def uint32_le(at: Int) -> Result[UInt32, BinaryError]:
+        let raw = try msrt_bytes_read_word(self, at, 4, True)
+        return ok(raw.to_uint32().get(0))
 
     # Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def int32_be(at: Int) -> Result[Int32, BinaryError]:
         let raw = try msrt_bytes_read_word(self, at, 4, False)
         return ok(signed(raw, 2147483648).to_int32().get(0))
 
-    # Reads an unsigned 32-bit big-endian integer from four bytes at `at` as an Int; missing bytes return BinaryError.OutOfRange.
-    def uint32_be(at: Int) -> Result[Int, BinaryError]:
-        return msrt_bytes_read_word(self, at, 4, False)
+    # Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing bytes return BinaryError.OutOfRange.
+    def uint32_be(at: Int) -> Result[UInt32, BinaryError]:
+        let raw = try msrt_bytes_read_word(self, at, 4, False)
+        return ok(raw.to_uint32().get(0))
 
     # Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return BinaryError.OutOfRange.
     def int64_le(at: Int) -> Result[Int, BinaryError]:
@@ -241,13 +239,13 @@ impl BytesCodecs for Bytes:
 interface BytesBuilderCodecs:
     var def append_int8(value: Int8) -> Unit
     var def append_int16_le(value: Int16) -> Unit
-    var def append_uint16_le(value: Int) -> Unit
+    var def append_uint16_le(value: UInt16) -> Unit
     var def append_int16_be(value: Int16) -> Unit
-    var def append_uint16_be(value: Int) -> Unit
+    var def append_uint16_be(value: UInt16) -> Unit
     var def append_int32_le(value: Int32) -> Unit
-    var def append_uint32_le(value: Int) -> Unit
+    var def append_uint32_le(value: UInt32) -> Unit
     var def append_int32_be(value: Int32) -> Unit
-    var def append_uint32_be(value: Int) -> Unit
+    var def append_uint32_be(value: UInt32) -> Unit
     var def append_int64_le(value: Int) -> Unit
     var def append_int64_be(value: Int) -> Unit
     var def append_float32_le(value: Float32) -> Unit
@@ -264,33 +262,33 @@ impl BytesBuilderCodecs for BytesBuilder:
     var def append_int16_le(value: Int16) -> Unit:
         put_word(var self, value.to_int(), 2, True)
 
-    # Appends an unsigned 16-bit little-endian integer; a value outside 0 through 65535 faults.
-    var def append_uint16_le(value: Int) -> Unit:
-        put_unsigned(var self, value, 65536, 2, True, "append_uint16_le")
+    # Appends an unsigned 16-bit little-endian integer.
+    var def append_uint16_le(value: UInt16) -> Unit:
+        put_word(var self, value.to_int(), 2, True)
 
     # Appends a signed 16-bit big-endian integer.
     var def append_int16_be(value: Int16) -> Unit:
         put_word(var self, value.to_int(), 2, False)
 
-    # Appends an unsigned 16-bit big-endian integer; a value outside 0 through 65535 faults.
-    var def append_uint16_be(value: Int) -> Unit:
-        put_unsigned(var self, value, 65536, 2, False, "append_uint16_be")
+    # Appends an unsigned 16-bit big-endian integer.
+    var def append_uint16_be(value: UInt16) -> Unit:
+        put_word(var self, value.to_int(), 2, False)
 
     # Appends a signed 32-bit little-endian integer.
     var def append_int32_le(value: Int32) -> Unit:
         put_word(var self, value.to_int(), 4, True)
 
-    # Appends an unsigned 32-bit little-endian integer; a value outside 0 through 4294967295 faults.
-    var def append_uint32_le(value: Int) -> Unit:
-        put_unsigned(var self, value, 4294967296, 4, True, "append_uint32_le")
+    # Appends an unsigned 32-bit little-endian integer.
+    var def append_uint32_le(value: UInt32) -> Unit:
+        put_word(var self, value.to_int(), 4, True)
 
     # Appends a signed 32-bit big-endian integer.
     var def append_int32_be(value: Int32) -> Unit:
         put_word(var self, value.to_int(), 4, False)
 
-    # Appends an unsigned 32-bit big-endian integer; a value outside 0 through 4294967295 faults.
-    var def append_uint32_be(value: Int) -> Unit:
-        put_unsigned(var self, value, 4294967296, 4, False, "append_uint32_be")
+    # Appends an unsigned 32-bit big-endian integer.
+    var def append_uint32_be(value: UInt32) -> Unit:
+        put_word(var self, value.to_int(), 4, False)
 
     # Appends a signed 64-bit little-endian integer.
     var def append_int64_le(value: Int) -> Unit:

@@ -33,24 +33,19 @@
           "index": 4,
           "name": "binary.ms::reads past the end or before the start are out of range",
           "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "binary.ms::unsigned appends fault outside their range",
-          "status": "passed"
         }
       ],
       "summary": {
-        "available": 6,
-        "selected": 6,
-        "passed": 6,
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN binary.ms::integers round-trip in both byte orders\nPASS binary.ms::integers round-trip in both byte orders\nRUN binary.ms::byte order and unsigned reads follow the bytes\nPASS binary.ms::byte order and unsigned reads follow the bytes\nRUN binary.ms::floats round-trip in both byte orders\nPASS binary.ms::floats round-trip in both byte orders\nRUN binary.ms::append_bytes appends many and append one\nPASS binary.ms::append_bytes appends many and append one\nRUN binary.ms::reads past the end or before the start are out of range\nPASS binary.ms::reads past the end or before the start are out of range\nRUN binary.ms::unsigned appends fault outside their range\nPASS binary.ms::unsigned appends fault outside their range\n6 tests, 0 failed\n",
+      "stdout": "RUN binary.ms::integers round-trip in both byte orders\nPASS binary.ms::integers round-trip in both byte orders\nRUN binary.ms::byte order and unsigned reads follow the bytes\nPASS binary.ms::byte order and unsigned reads follow the bytes\nRUN binary.ms::floats round-trip in both byte orders\nPASS binary.ms::floats round-trip in both byte orders\nRUN binary.ms::append_bytes appends many and append one\nPASS binary.ms::append_bytes appends many and append one\nRUN binary.ms::reads past the end or before the start are out of range\nPASS binary.ms::reads past the end or before the start are out of range\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

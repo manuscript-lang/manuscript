@@ -5135,10 +5135,10 @@ def answer() -> Int:
 def count(values: List[String]) -> Int:
     return values.length()
 from "@std/bytes.ms" import Bytes
-def extract(data: Bytes) -> List[Int]:
-    let bound: Callable[[], List[Int]] = data.values
+def extract(data: Bytes) -> List[UInt8]:
+    let bound: Callable[[], List[UInt8]] = data.values
     return data.values()
-type	3	9	81	local binding bound is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/bytes.ms" import Bytes
+type	3	9	83	local binding bound is never read; remove it, use it, or name it with a leading '_' to ignore itfrom "@std/bytes.ms" import Bytes
 def make() -> Bytes:
     return type	3	5	59	bare return requires Unit; this function returns Bytes, so write 'return <value>'export def first() -> Int:
     return 1
