@@ -112,6 +112,7 @@ impl PriorityQueue[T]:
         while at >= 0 and at < parents:
             let left = at * 2 + 1
             let right = left + 1
+
             if right < size and self.before(right, left):
                 self.swap_entries(right, at)
                 at = right
