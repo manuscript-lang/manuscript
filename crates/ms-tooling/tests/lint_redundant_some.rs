@@ -37,7 +37,7 @@ fn needed_somes_are_kept() {
 }
 
 #[test]
-fn ref_results_keep_the_explicit_some() {
+fn ref_results_wrap_a_borrow_without_some() {
     let found = findings(include_str!("lint_redundant_some/ref_result.ms"));
-    assert!(found.is_empty(), "{found:?}");
+    assert_eq!(found.len(), 1, "{found:?}");
 }
