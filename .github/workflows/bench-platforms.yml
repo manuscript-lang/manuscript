@@ -52,6 +52,13 @@ jobs:
         with:
           os: ${{ matrix.os }}
           arch: ${{ matrix.arch }}
+      - name: Record the CPU
+        run: |
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep -E 'Model name|Flags' | cut -c1-200 ;;
+            macOS) sysctl -n machdep.cpu.brand_string ;;
+            Windows) powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name" ;;
+          esac
       - name: Build the native runtime
         run: cargo xtask runtime
       - name: Runtime allocator and memory tests
