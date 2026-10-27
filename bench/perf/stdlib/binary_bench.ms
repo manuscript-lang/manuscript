@@ -39,7 +39,7 @@ bench "bytes.builder":
     def work() -> Result[Unit, Error]:
         var bb = BytesBuilder()
         for j in range(0, 100000):
-            bb.append(j % 256)
+            bb.append((j % 256).to_uint8().get(0))
         return keep(bb.build().length())
 
     try measure(100000, work)
@@ -61,7 +61,7 @@ bench "bytes.read_uint32_le":
     def work() -> Result[Unit, Error]:
         var sum = 0
         for j in range(0, 25000):
-            sum += packed.uint32_le(j * 4).get(0)
+            sum += packed.uint32_le(j * 4).get(0).to_int()
         return keep(sum)
 
     try measure(25000, work)
