@@ -10,7 +10,7 @@ Revision: this branch on top of `d370bb89`; best of 10 runs of the `sorted_map_a
 | --- | ---: | ---: | ---: |
 | SortedMap add and contains | 214 | 193 | 169 |
 
-Chunks now split at 128 entries instead of 256. Split by operation at 300k keys: add 290 to 255 ns, contains unchanged at 138 ns, which already beats `BTreeMap` (157). The remaining gap is all in add: callgrind shows 58% of data-cache read misses inside `memmove` shifting chunk tails and the chunk-header lists. A three-level layout (segments of chunks, as a struct or as nested lists) made both add and contains slower on this compiler and was dropped; mutating a struct element of a list in place also copies it today.
+Chunks now split at 128 entries instead of 256. Split by operation at 300k keys: add 290 to 255 ns, contains unchanged at 138 ns, which already beats `BTreeMap` (157). The remaining gap is all in add: callgrind shows 58% of data-cache read misses inside `memmove` shifting chunk tails and the chunk-header lists. A three-level layout (segments of chunks, as a struct or as nested lists) made both add and contains slower and was dropped. As a struct list it first hit #1661 (a `var def` on a list element deep-copied it, 4 µs per add), fixed in the same change; retried after the fix it is still slower (add 317 vs 298 ns, contains 164 vs 137 ns at 300k keys, chunks of 64 or 128 and 32 or 64 chunks per segment), so the top-level shifts are not the cost.
 
 ## 2026-10-27
 
