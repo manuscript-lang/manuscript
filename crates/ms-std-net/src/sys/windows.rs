@@ -106,6 +106,15 @@ impl Wake {
     }
 }
 
+/// Restores nonblocking mode on a watched socket. On Windows a listener
+/// registered after an earlier server closed its own can come back blocking
+/// (#1557), which would hang the single-threaded reactor inside `accept`.
+fn keep_nonblocking(sock: Raw) {
+    // SAFETY: the wrapper is `ManuallyDrop`, so it never closes the socket.
+    let stream = std::mem::ManuallyDrop::new(unsafe { std::net::TcpStream::from_raw_socket(sock) });
+    let _ = stream.set_nonblocking(true);
+}
+
 /// The server's set of watched sockets, on mio (see [`Sockets::report`] for how its edge
 /// events serve the server's level-triggered reads and writes).
 ///
@@ -189,7 +198,9 @@ impl Poller {
         let token = mio::Token(token as usize);
         let mut views = self.views.borrow_mut();
         if let Some(view) = views.get_mut(&sock) {
-            return self.registry.reregister(view, token, mio_interest(ev));
+            let armed = self.registry.reregister(view, token, mio_interest(ev));
+            keep_nonblocking(sock);
+            return armed;
         }
         // SAFETY: the view never closes the socket: it ends in `into_raw_socket`.
         let stream = unsafe { std::net::TcpStream::from_raw_socket(sock) };
@@ -197,6 +208,7 @@ impl Poller {
         match self.registry.register(&mut view, token, mio_interest(ev)) {
             Ok(()) => {
                 views.insert(sock, view);
+                keep_nonblocking(sock);
                 Ok(())
             }
             Err(e) => {
