@@ -6,6 +6,11 @@ name: Platform benchmarks
 # checked on Linux, macOS and Windows before and after merging.
 on:
   workflow_dispatch:
+    inputs:
+      asm_only:
+        description: Only print the disassembly of the append loop (Linux and macOS arm64), skip the benchmarks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -16,6 +21,7 @@ env:
 
 jobs:
   strappend:
+    if: ${{ !inputs.asm_only }}
     name: strappend ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
@@ -90,3 +96,80 @@ jobs:
           path: |
             strappend-${{ matrix.name }}.txt
             json-${{ matrix.name }}.txt
+
+  asm:
+    if: ${{ inputs.asm_only }}
+    name: asm ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-amd64, os: linux, arch: amd64, runner: ubuntu-24.04 }
+          - { name: darwin-arm64, os: darwin, arch: arm64, runner: macos-15 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/native-toolchain
+        with:
+          os: ${{ matrix.os }}
+          arch: ${{ matrix.arch }}
+      - run: cargo xtask runtime
+      - run: cargo build --release --locked -p ms-cli
+      - name: Disassemble the 64 B append loop of Manuscript and Rust
+        run: |
+          mkdir -p asm/ms/src
+          cp bench/perf/strappend/ms/ms.toml asm/ms/
+          cat > asm/ms/src/main.ms <<'EOF'
+          from "@std/collections.ms" import range
+          from "@std/string.ms" import StringBuilder
+
+          def run(piece: String, count: Int) -> Int:
+              var sb = StringBuilder()
+              for i in range(0, count):
+                  sb.append(piece)
+              return sb.build().byte_length()
+
+          export def main() -> Int:
+              let piece = "x".repeat(64).get()
+              var total = 0
+              for rep in range(0, 20):
+                  total += run(piece, 15625)
+              return total - total
+          EOF
+          cat > asm/r.rs <<'EOF'
+          fn run(p: &str, c: usize) -> usize {
+              let mut s = String::new();
+              for _ in 0..c {
+                  s.push_str(p);
+              }
+              std::hint::black_box(s).len()
+          }
+          fn main() {
+              let p = std::hint::black_box("x".repeat(64));
+              let mut t = 0;
+              for _ in 0..20 {
+                  t += run(&p, 15625);
+              }
+              std::process::exit((t - t) as i32);
+          }
+          EOF
+          (cd asm/ms && rm -f ms.lock && ../../target/release/ms build ms.toml -o ../msb)
+          rustc --edition 2021 -C opt-level=3 -C codegen-units=1 -o asm/rb asm/r.rs
+          for b in msb rb; do
+            if [ "$RUNNER_OS" = macOS ]; then otool -tV "asm/$b" > "asm/$b.s"; else objdump -d --no-show-raw-insn -M intel "asm/$b" > "asm/$b.s"; fi
+            echo "=== $b: code around each memcpy call"
+            grep -n -E 'memcpy' "asm/$b.s" | grep -E 'bl|call' | head -20
+          done
+          for b in msb rb; do
+            echo "=== $b: 70 lines before the first memcpy call"
+            n=$(grep -n -E '(bl|call).*memcpy' "asm/$b.s" | head -1 | cut -d: -f1)
+            if [ -n "$n" ]; then sed -n "$((n>70?n-70:1)),$((n+25))p" "asm/$b.s"; fi
+          done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: asm-${{ matrix.name }}
+          path: asm/*.s
