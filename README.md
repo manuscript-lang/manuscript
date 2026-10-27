@@ -97,14 +97,14 @@ An agent writes the straightforward loop, not the clever one, so the compiler ha
 | Sort 1M | 23.5 ms | 34.1 ms | 0.69× |
 | n-body | 8.2 ms | 6.7 ms | 1.23× |
 | String append, per op | 5.12 ns | 1.14 ns | 4.51× |
+| HTTP `/health` vs hyper, 2 workers (req/s) | 113k–119k | 114k–119k | 1.0× |
+| CSV parse, plain, vs Rust `csv` | 476–535 µs | 974–1212 µs | 0.46× |
+| CSV parse, quoted, vs Rust `csv` | 785–832 µs | 804–911 µs | 0.94× |
+| JSON parse `twitter.json`, vs `serde_json::Value` | 451 MB/s | 137 MB/s | 0.30× |
+| List loop `Float32` multiply-add, vs C `-O3` | 12.68 GFLOPS | 12.78 GFLOPS | 1.01× |
+| List loop `Float` scale, vs C `-O3` | 5.30 GFLOPS | 3.54 GFLOPS | 0.67× |
 
-The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP vs Go](bench/perf/web/results.md)
-
-Library results from the October 27 runs (linux/amd64, 4 shared cores; compare only within one page):
-
-- **HTTP server:** at parity with hyper on two workers. `/health` 113k–119k req/s against 114k–119k, p99 2.2 ms against 1.9–2.7 ms, and 62 MB against 104 MB resident with 10,000 idle connections. [Web results](bench/perf/web/results.md#2026-10-27-rust-baseline-equal-cores)
-- **CSV:** `parse` on plain input takes 476–535 µs against the Rust `csv` crate's 974–1212 µs, about 2× faster. On quoted input it takes 785–832 µs against 804–911 µs, within run-to-run noise. [CSV](bench/perf/csv/README.md)
-- **JSON:** parsing `twitter.json` into a tree runs at 451 MB/s against `serde_json::Value` at 137 MB/s, about 3×. [JSON](bench/perf/json/results.md#2026-10-27-against-serde_json-and-the-writer)
+The linked pages add the unchecked Rust column, Go, and reproduction commands. [Kernels](bench/perf/kernels/README.md#main-at-c1b81215-2026-10-25) · [Competence](bench/perf/competence/README.md#latest-2026-10-25) · [Operations](bench/perf/programs/results.md#main-at-c1b81215-2026-10-25) · [HTTP](bench/perf/web/results.md) · [CSV](bench/perf/csv/README.md) · [JSON](bench/perf/json/results.md) · [List loops](bench/perf/listloops/README.md)
 
 Native release builds for Linux, macOS and Windows, amd64 and arm64. The conformance corpus runs on all three in CI.
 
