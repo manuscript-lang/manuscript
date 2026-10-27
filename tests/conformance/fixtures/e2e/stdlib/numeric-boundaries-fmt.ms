@@ -1,7 +1,7 @@
 # conform: tags=decimal,formatter,modules,parser,stdlib-bigint,stdlib-decimal,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/numeric-boundaries.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/decimal.ms" import Decimal
 from "@std/time.ms" import nanoseconds
 from "@std/math.ms" import BigInt, BigIntError, from_int

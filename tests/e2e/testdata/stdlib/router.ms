@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/http.ms" import from_io, headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod, HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
 from "@std/io.ms" import IoError, read_all
 from "@std/net.ms" import network

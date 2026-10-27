@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,generics,interfaces,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/pattern-binding-capture.ms
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 type Failure[T]:
     case NotFound

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interfaces,interpolation,modules,parser,records,stdlib-http,stdlib-net,stdlib-testing,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/test_fixture_test.go:140 TestCLITestSharedRESTServer
-from "@std/testing.ms" import TestHooks, expect_equal, expect_ok
+from "@std/test.ms" import TestHooks, expect_equal, expect_ok
 from "@std/http.ms" import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered
 from "@std/net.ms" import network
 

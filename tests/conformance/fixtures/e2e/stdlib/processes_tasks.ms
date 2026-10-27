@@ -4,7 +4,7 @@ from "@std/channels.ms" import Channel
 from "@std/process.ms" import commands, os_type
 from "@std/processes.ms" import ProcessGroup
 from "@std/tasks.ms" import TaskGroup
-from "@std/testing.ms" import expect_equal, expect_ok
+from "@std/test.ms" import expect_equal, expect_ok
 from "@std/time.ms" import nanoseconds, sleep
 
 def talker(ch: Channel[Int, Unit]) -> Int:

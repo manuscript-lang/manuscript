@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,interpolation,lists,maps,match,modules,mutation,optional,records,stdlib-collections,stdlib-errors,stdlib-string,stdlib-testing,stdlib-yaml,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/yaml.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
 from "@std/string.ms" import from_scalars
 from "@std/core.ms" import TextError
 from "@std/collections.ms" import range

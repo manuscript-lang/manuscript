@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,generics,interfaces,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/result-error-widening-inference.ms
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 type Failure:
     code: Int

@@ -1,7 +1,7 @@
 # conform: tags=interpolation,modules,mutation,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:31
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 test "unread message count":
     let customer = "Sam"

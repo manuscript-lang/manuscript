@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/bytes.ms" import Bytes
 
 test "Bytes split is binary safe":

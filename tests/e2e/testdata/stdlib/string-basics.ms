@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 
 test "Unicode lowercase sigma ignores combining marks and format characters":
     for mark in [f"\u{1ab0}", f"\u{5bf}", f"\u{2060}", f"\u{fe0f}"]:

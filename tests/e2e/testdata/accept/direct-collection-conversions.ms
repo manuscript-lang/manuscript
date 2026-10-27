@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 
 def append_generic[T](var values: List[Optional[T]], value: T) -> Unit:
     values.append(value)

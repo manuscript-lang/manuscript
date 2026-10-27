@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ntype State:\n    case Ready\n    case Waiting\n\ndef loop(state: State) -> Int:\n    var count = 0\n\n    for value in [1, 2, 3]:\n        count += 1\n\n        match state:\n            case Ready:\n                break\n            case Waiting:\n                continue\n\n        count += 100\n\n    return count\n\ntest \"match controls nearest source loop\":\n    try expect_equal(loop(State.Ready), 1)\n    try expect_equal(loop(State.Waiting), 3)\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal\n\ntype State:\n    case Ready\n    case Waiting\n\ndef loop(state: State) -> Int:\n    var count = 0\n\n    for value in [1, 2, 3]:\n        count += 1\n\n        match state:\n            case Ready:\n                break\n            case Waiting:\n                continue\n\n        count += 100\n\n    return count\n\ntest \"match controls nearest source loop\":\n    try expect_equal(loop(State.Ready), 1)\n    try expect_equal(loop(State.Waiting), 3)\n"
   }
 }

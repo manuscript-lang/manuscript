@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/json.ms" import parse, JsonError, JsonLimits
 from "@std/encoding.ms" import EncodingError, hex_decode
 

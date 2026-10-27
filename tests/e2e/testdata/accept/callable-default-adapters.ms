@@ -1,5 +1,5 @@
 from "@std/math.ms" import floor
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 def original(value: Int = 7) -> Int: value + 1
 

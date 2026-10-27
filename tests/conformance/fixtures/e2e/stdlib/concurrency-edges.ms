@@ -3,7 +3,7 @@
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/collections.ms" import range
 from "@std/tasks.ms" import Task, TaskGroup
-from "@std/testing.ms" import expect_equal, expect_true
+from "@std/test.ms" import expect_equal, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
 

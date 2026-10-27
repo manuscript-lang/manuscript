@@ -1,7 +1,7 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,decimal,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,numbers,optional,parser,records,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-decimal,stdlib-errors,stdlib-json,stdlib-testing,stdlib-time,stdlib-url,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
-from "@std/testing.ms" import expect_equal, expect_false, expect_not_equal, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/collections.ms" import range
 from "@std/json.ms" import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode
 from "@std/time.ms" import timestamp, nanoseconds, clock, Timestamp, Duration, Instant

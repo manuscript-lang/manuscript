@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "@std/collections.ms" import range
 from "@std/string.ms" import from_scalars, StringError, StringBuilder
 from "@std/bytes.ms" import Bytes, BytesBuilder, values

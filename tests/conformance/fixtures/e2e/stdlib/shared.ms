@@ -2,7 +2,7 @@
 # conform: phase=test
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal, expect_fault
+from "@std/test.ms" import expect_equal, expect_fault
 
 type Config:
     name: String

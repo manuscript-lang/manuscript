@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal\nfrom \"./other.ms\" import flip, shifted\n\n# The same type names in two modules lower to distinct Go types.\ntype Point:\n    x: Int\n\ntype Mode:\n    case Off\n    case On\n\ntest \"same-named records and alternatives stay distinct\":\n    try expect_equal(Point(1).x, 1)\n    try expect_equal(shifted(), 11)\n\n    match Mode.On:\n        case Mode.On: try expect_equal(flip(), 2)\n        case _: try expect_equal(True, False)\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal\nfrom \"./other.ms\" import flip, shifted\n\n# The same type names in two modules lower to distinct Go types.\ntype Point:\n    x: Int\n\ntype Mode:\n    case Off\n    case On\n\ntest \"same-named records and alternatives stay distinct\":\n    try expect_equal(Point(1).x, 1)\n    try expect_equal(shifted(), 11)\n\n    match Mode.On:\n        case Mode.On: try expect_equal(flip(), 2)\n        case _: try expect_equal(True, False)\n"
   }
 }

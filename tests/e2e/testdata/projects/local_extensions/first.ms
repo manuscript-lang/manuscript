@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false
+from "@std/test.ms" import expect_equal, expect_false
 from "./domain.ms" import Item, Box, Holder, Choice
 from "./contracts.ms" import Read, invoke, relay, as_view
 from "@std/core.ms" import Closeable

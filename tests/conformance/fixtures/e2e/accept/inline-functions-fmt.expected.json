@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/testing.ms\" import expect_equal\n\ntype Transform:\n    operation: Callable[[Int], Int]\n\ndef apply[T](operation: Callable[[T], T], value: T) -> T:\n    return operation(value)\n\ntest \"inline callbacks survive contextual rechecking\":\n    let value = apply(value: 3, lambda value: return value + 1)\n    try expect_equal(value, 4)\n\n    let transform = Transform(lambda value: return value + 2)\n    try expect_equal(transform.operation(3), 5)\n"
+    "fmt": "from \"@std/test.ms\" import expect_equal\n\ntype Transform:\n    operation: Callable[[Int], Int]\n\ndef apply[T](operation: Callable[[T], T], value: T) -> T:\n    return operation(value)\n\ntest \"inline callbacks survive contextual rechecking\":\n    let value = apply(value: 3, lambda value: return value + 1)\n    try expect_equal(value, 4)\n\n    let transform = Transform(lambda value: return value + 2)\n    try expect_equal(transform.operation(3), 5)\n"
   }
 }

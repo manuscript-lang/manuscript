@@ -1,4 +1,4 @@
-from "@std/testing.ms" import expect_equal, expect_false, expect_true, fail
+from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
 from "@std/process.ms" import control
 from "@std/process.ms" import arguments
 from "@std/random.ms" import entropy

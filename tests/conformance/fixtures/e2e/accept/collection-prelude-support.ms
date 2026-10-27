@@ -1,7 +1,7 @@
 # conform: tags=aliasing,alternatives,closures,faults,generics,lists,maps,match,modules,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/collection-prelude-support.ms
-from "@std/testing.ms" import expect_equal, expect_false, fail
+from "@std/test.ms" import expect_equal, expect_false, fail
 
 def slice(values: List[Int]) -> Result[List[Int], CollectionError]: values.slice(0, 1)
 

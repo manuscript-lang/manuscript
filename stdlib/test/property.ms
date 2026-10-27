@@ -4,7 +4,7 @@ from "@std/io.ms" import stderr
 from "@std/math.ms" import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int
 from "@std/process.ms" import control
 from "@std/random.ms" import entropy, secure_int
-from "@std/testing.ms" import expect_fault, fail
+from "@std/test.ms" import expect_fault, fail
 from "@std/time.ms" import clock, milliseconds
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.

@@ -1,6 +1,6 @@
 from "@std/shared.ms" import share
 from "@std/sync.ms" import lock
-from "@std/testing.ms" import expect_equal
+from "@std/test.ms" import expect_equal
 
 # A `Shared[T]` handle is `Copy`: another copy of it can replace the value while a reader
 # holds what `get()` returned, so a kept result is a copy, never a view of the cell.

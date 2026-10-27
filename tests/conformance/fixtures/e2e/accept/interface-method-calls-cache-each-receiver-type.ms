@@ -1,7 +1,7 @@
 # conform: tags=control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/interface-method-calls-cache-each-receiver-type.ms
-from "@std/testing.ms" import expect_true
+from "@std/test.ms" import expect_true
 
 interface Shape:
     def area(scale: Int) -> Int
