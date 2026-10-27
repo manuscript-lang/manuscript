@@ -59,11 +59,11 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          for f in rep yp; do
+          for f in ym; do
             target/debug/ms build .github/diag/$f.ms -o $f-bin
             ./$f-bin 2>&1 | tail -3
             echo "exit $?"
-            lldb -b -o run -o "bt 12" -o "register read pc lr" -o "image lookup -a \$pc" -- ./$f-bin 2>&1 | tail -30
+            lldb -b -o run -o "bt 15" -o "image lookup -a \$lr" -o "disassemble -p -c 12" -o "register read pc lr" -o "image lookup -a \$pc" -- ./$f-bin 2>&1 | tail -30
           done
           true
       - name: workers remaining tests
