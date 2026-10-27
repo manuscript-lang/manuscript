@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, 2026-10-27, against `dcdaee5d`. Direction (Chinmay): "can we follow drop for close? we can avoid with and an indent".
+Stage 1 implemented on this branch; proposal, 2026-10-27, against `dcdaee5d`. Direction (Chinmay): "can we follow drop for close? we can avoid with and an indent".
 
 ## Problem
 

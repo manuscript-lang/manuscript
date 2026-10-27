@@ -115,6 +115,8 @@ pub struct Program {
     /// Bindings that borrow a place another binding owns, and how, for lowering. Filled when
     /// the ownership pass ran (every program that type checks).
     pub borrows: Rc<HashMap<usize, crate::ownership::BorrowKind>>,
+    /// Resource bindings closed implicitly when their scope ends. Filled together with `borrows`.
+    pub implicit_closes: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,

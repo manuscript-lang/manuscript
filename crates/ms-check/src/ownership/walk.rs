@@ -236,7 +236,7 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos)>,
+    resources: Vec<(usize, Name, Pos, bool)>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -337,14 +337,20 @@ impl Walker<'_> {
     /// never moved (returned, passed on, stored, captured) and never closed by hand leaks.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos) in resources {
-            let handled = self.closed.contains(&uid)
-                || self
-                    .facts
-                    .uses
-                    .values()
-                    .any(|u| u.binding == uid && u.access == Access::Move);
-            if !handled {
+        for (uid, name, pos, closable) in resources {
+            let moved = self
+                .facts
+                .uses
+                .values()
+                .any(|u| u.binding == uid && u.access == Access::Move);
+            if moved {
+                continue;
+            }
+            if closable {
+                // Never handed on: the scope closes it, after any early `.close()` of its own
+                // (close is idempotent).
+                self.facts.implicit_closes.insert(uid);
+            } else if !self.closed.contains(&uid) {
                 self.error(
                     pos,
                     format!(
@@ -1283,7 +1289,8 @@ impl Walker<'_> {
             false,
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
-            self.resources.push((b.uid, b.name, pattern.pos));
+            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
     }
 
