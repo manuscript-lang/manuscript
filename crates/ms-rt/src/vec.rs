@@ -1876,7 +1876,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
 /// Copies `n <= 16` bytes with at most two overlapping loads and stores, so the compiler cannot
 /// turn it into a vector loop or a `memcpy` call. The ranges must not overlap.
 #[inline(always)]
-unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
+pub(crate) unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
     // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
     unsafe {
         if n >= 8 {
