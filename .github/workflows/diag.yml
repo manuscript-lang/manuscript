@@ -54,6 +54,18 @@ jobs:
           MS_KEEP_LL=1 MS_DEBUG_TABLES=1 MS_DIAG_FRAMES=1 ../target/debug/ms test ../tests/conformance/fixtures/e2e/stdlib/yaml.ms --test "yaml.ms::YAML quoted folding trims physical whitespace and preserves escapes" > out.txt 2>&1
           grep -E "^fn |SEGV|diag" out.txt | cut -c1-220 | head -200
           true
+      - name: mac repros under lldb
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: |
+          set +e
+          for f in rep yp; do
+            target/debug/ms build .github/diag/$f.ms -o $f-bin
+            ./$f-bin 2>&1 | tail -3
+            echo "exit $?"
+            lldb -b -o run -o "bt 12" -o "register read pc lr" -o "image lookup -a \$pc" -- ./$f-bin 2>&1 | tail -30
+          done
+          true
       - name: workers remaining tests
         if: runner.os == 'Windows'
         continue-on-error: true

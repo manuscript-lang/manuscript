@@ -831,6 +831,9 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
+                if std::env::var_os("MS_DIAG_FRAMES").is_some() {
+                    out.extend_from_slice(format!("\n  [diag unresolved ret={ret:#x}]").as_bytes());
+                }
                 return true;
             };
             if std::env::var_os("MS_DIAG_FRAMES").is_some() {
