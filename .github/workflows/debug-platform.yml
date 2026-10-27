@@ -48,4 +48,9 @@ jobs:
         run: |
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          "$ms" test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type Release 2>&1 | grep -a -E "DBG|at " || true
+          mkdir -p /tmp/pc && cp crates/ms-cli/tests/vectorized_loops/fault.ms /tmp/pc/ && cd /tmp/pc
+          msx="$GITHUB_WORKSPACE/$ms"
+          MS_BACKEND=llvm "$msx" build fault.ms -o fault 2>&1 | tail -5
+          for lvl in native baseline; do MS_CPU_LEVEL=$lvl ./fault 2>&1 | grep -a -E "DBG|at |index" || true; done
+          MS_VECTORIZE=off MS_BACKEND=llvm "$msx" build fault.ms -o faultoff 2>&1 | tail -5
+          ./faultoff 2>&1 | grep -a -E "DBG|at |index" || true

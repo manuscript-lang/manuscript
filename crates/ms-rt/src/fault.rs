@@ -575,8 +575,10 @@ const FRAME_RECORD_SCAN: usize = 4096;
 unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut(usize) -> bool) {
     let Some((pc, sp, fp, remaining)) = sys::source_frame(anchor, |pc| find_func(t, pc).is_some())
     else {
+        sys::write_all(sys::STDERR, b"\nDBG source_frame none\n");
         return;
     };
+    sys::write_all(sys::STDERR, b"\nDBG source_frame found\n");
     let (lo, hi) = sys::stack_limits();
     // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record, by an amount that
     // differs per function, and the CONTEXT register can be a caller's: find each frame's own
@@ -818,6 +820,7 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
+                sys::write_all(sys::STDERR, b"\nDBG no func for ret\n");
                 return true;
             };
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
