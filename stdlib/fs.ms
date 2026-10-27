@@ -321,9 +321,9 @@ export interface FileHandle:
         offset: Int,
         max_bytes: Optional[Int] = none
     ) -> Result[Bytes, FileSystemError]
-    # Writes the UTF-8 text at a nonnegative offset without moving the position; errors can leave a prefix.
+    # Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
     def write_at(offset: Int, data: String) -> Result[Unit, FileSystemError]
-    # Writes all bytes at a nonnegative offset without moving the position; errors can leave a prefix.
+    # Writes all bytes at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
     def write_at_bytes(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
     def read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
@@ -333,7 +333,7 @@ export interface FileHandle:
         sizes: List[Int],
         offset: Int
     ) -> Result[List[Bytes], FileSystemError]
-    # Writes every buffer; offset -1 uses the current position.
+    # Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns InvalidInput.
     def write_vectors(
         buffers: List[Bytes],
         offset: Int

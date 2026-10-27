@@ -411,7 +411,7 @@ impl Copier<'_, '_> {
             let mut target =
                 sys::readlink(&cpath(source)?).map_err(|e| Fail::errno(e, "readlink", source))?;
             if !self.o.verbatim && !path::is_abs(&target) {
-                target = path::join(&path::dir(source), &target);
+                target = path::join(&ops::absolute(&path::dir(source)), &target);
             }
             if exists {
                 remove_ignoring_missing(dest)?;
@@ -907,6 +907,22 @@ mod tests {
             entries: UNLIMITED,
             bytes: UNLIMITED,
         }
+    }
+
+    #[test]
+    fn copy_rewrites_relative_symlink_targets() {
+        let root = tree();
+        let link = path::join(&root, b"rel");
+        sys::symlink(&cpath(b"a.txt").unwrap(), &cpath(&link).unwrap()).unwrap();
+        let dest = path::join(&root, b"cp-rel");
+        ops::create_directory(&dest, false).unwrap();
+        let copy_path = path::join(&dest, b"rel");
+        copy(&link, &copy_path, options(), None).unwrap();
+        let target = sys::readlink(&cpath(&copy_path).unwrap()).unwrap();
+        assert!(path::is_abs(&target));
+        assert!(ops::stat(&copy_path, true).is_ok());
+        assert!(path::is_abs(&ops::absolute(b"x")));
+        ops::remove(&root, true).unwrap();
     }
 
     #[test]
