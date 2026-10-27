@@ -48,4 +48,9 @@ jobs:
         run: |
           ms=target/debug/ms
           if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
-          "$ms" test tests/conformance/fixtures/snippets/testing-fixture-teardown-on-skip.ms --build-type Release --filter "a fault" 2>&1 | grep -a -E "DBG|at " || true
+          for bt in Release Debug; do
+            echo "::group::yaml $bt"
+            "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type $bt 2>&1 | grep -a -v "^PASS\|^RUN\|DBG" | tail -25 || true
+            echo "::endgroup::"
+          done
+          "$ms" test tests/e2e/testdata/stdlib/yaml.ms --build-type Release --list 2>&1 | sed -n 1,12p
