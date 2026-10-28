@@ -61,3 +61,32 @@ fn long_with_initializers_group_only_the_resource_expression() {
         }
     }
 }
+
+#[test]
+fn deeply_nested_groups_preserve_layout_and_syntax() {
+    let file: Arc<str> = Arc::from("nested.ms");
+    for depth in [64usize, 128] {
+        let source = format!("let x = {}1{}\n", "(".repeat(depth), ")".repeat(depth));
+        let mut expected = String::from("let x = ");
+        for level in 0..depth {
+            if level > 0 {
+                expected.push_str(&" ".repeat(4 * level));
+            }
+            expected.push_str("(\n");
+        }
+        expected.push_str(&" ".repeat(4 * depth));
+        expected.push_str("1\n");
+        for level in (0..depth).rev() {
+            expected.push_str(&" ".repeat(4 * level));
+            expected.push_str(")\n");
+        }
+        for input in [source.clone(), source.replace('\n', "\r\n")] {
+            let formatted = ms_syntax::format(&file, &input).unwrap();
+            assert_eq!(formatted, expected);
+            assert_eq!(ms_syntax::format(&file, &formatted).unwrap(), formatted);
+            let before = ms_syntax::parser::parse(&file, &source).unwrap();
+            let after = ms_syntax::parser::parse(&file, &formatted).unwrap();
+            assert_eq!(shape(&before), shape(&after));
+        }
+    }
+}
