@@ -65,7 +65,7 @@ test "divide minimum overflows":
         lambda:
             let _bad = divide(a: -9223372036854775808, b: -1)
     )
-    message | try expect_contains("Int./: overflow;")
+    message | try expect_contains("division overflow;")
 
 test "divide by zero faults":
     let message = try expect_fault(

@@ -2555,10 +2555,10 @@ type	2	11	37	assignment requires a record field; only fields of a record value c
     stdout().clone()
 resolution	2	5	21	unknown binding stdout; add: from "@std/io.ms" import stdoutdef f(file: File) -> Unit:
     file.clone()
-resolution	1	13	12	unknown type File; add: from "@std/io.ms" import Filefrom "@std/net.ms" import Connection
-def f(socket: Connection) -> Unit:
+resolution	1	13	12	unknown type File; add: from "@std/io.ms" import Filefrom "@std/net.ms" import Network
+def f(socket: Network) -> Unit:
     socket.clone()
-resolution	3	12	83	unknown or ambiguous member clone on Connection; did you mean 'close'?; available: close, local_address, peer_address, read, shutdown_write, tls_info, write, write_bytesdef f(queue: Queue[Int]) -> Unit:
+resolution	3	12	77	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, web_socket, with_resolverdef f(queue: Queue[Int]) -> Unit:
     queue.clone()
 resolution	1	14	13	unknown type Queue; add: from "@std/queue.ms" import Queuedef f(queue: Queue[Int]) -> Unit:
     queue.capacity = 1
@@ -2632,8 +2632,7 @@ fn broken(
 type	2	18	34	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding
 type	2	18	34	<invalid> does not satisfy Error; use a type that implements itdef f() -> Unit:
     let result = error(cause: "failed")
-type	2	18	34	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
-type	2	18	34	String does not satisfy Error; use a type that implements itdef f() -> Error:
+type	2	18	34	error(...) needs a value that implements Error, not a String; to fail a test write `try fail("message")` (from @std/test.ms), otherwise wrap the message in a type that implements Errordef f() -> Error:
     return "failed"
 type	2	12	29	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
     case some(value: Int)

@@ -41,6 +41,32 @@ test "list search callbacks empty identities and folding":
     let groups = ([1, 2, 3]).group_by(parity)
     try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
 
+test "group_by keeps first-seen key order and element order across few and many buckets":
+    let values = 0..600
+    let few = values.group_by(lambda (x: Int) -> Int: x % 3)
+    try expect_equal(few.keys(), [0, 1, 2])
+
+    var total = 0
+
+    for k in 0..3:
+        let group = few.get(k).get()
+        try expect_equal(group.length(), 200)
+
+        for j in 0..200:
+            try expect_equal(group[j], j * 3 + k)
+            total += group[j]
+
+    try expect_equal(total, 599 * 600 / 2)
+
+    let words = ["b", "a", "b", "c", "a", "b"].group_by(lambda (w: String) -> String: w)
+    try expect_equal(words.keys(), ["b", "a", "c"])
+    try expect_equal(words.get("b"), some(["b", "b", "b"]))
+    try expect_equal(words.get("c"), some(["c"]))
+
+    let unique = values.group_by(lambda (x: Int) -> Int: x)
+    try expect_equal(unique.length(), 600)
+    try expect_equal(unique.get(599), some([599]))
+
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
     var copy = original.clone()

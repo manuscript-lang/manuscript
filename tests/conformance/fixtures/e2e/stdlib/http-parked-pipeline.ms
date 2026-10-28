@@ -15,7 +15,7 @@ def handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 def exchange(address: String) -> String:
-    if let conn = network().connect(address):
+    if var conn = network().connect(address):
         let _first = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         # The slow handler is parked by now; the second request arrives while it waits.
@@ -41,7 +41,7 @@ def exchange(address: String) -> String:
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
+        with var server = acquired:
             let start = control().monotonic_time()
             let text = exchange(server.address())
             let elapsed_ms = (control().monotonic_time() - start) / 1000000

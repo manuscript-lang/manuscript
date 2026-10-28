@@ -1719,6 +1719,23 @@ impl Walker<'_> {
             resolved: source.origins.clone(),
             projection: true,
         };
+        let reads_in_place = matches!(
+            &value.kind,
+            ExprKind::Call { callee, .. }
+                if matches!(&callee.kind, ExprKind::Member { name, .. }
+                    if matches!(name.as_str(), "get" | "first" | "last"))
+        );
+        if !reads_in_place {
+            self.error(
+                p.pos,
+                format!(
+                    "`if var` borrows the payload of `get` on a map or list, or `first` or `last` on a list, but `{}` is neither; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    info.text
+                ),
+            );
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            return;
+        }
         let before = self.diags.len();
         self.mutate(p.pos, &info, "borrow mutably");
         if self.diags.len() == before {
@@ -2029,6 +2046,11 @@ impl Walker<'_> {
                 e.pos,
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
                 copy_after(e),
+            );
+        } else if matches!(role, Role::With) && !self.is_last(e.id, b) {
+            self.error(
+                e.pos,
+                format!("`{name}` is moved here, but its `with` block closes it at the end of the block; a `with` resource cannot move out of its block, so use `{name}` in place, or bind it with `let` and close or move it yourself"),
             );
         } else if !self.is_last(e.id, b) {
             let later = self
@@ -2346,6 +2368,9 @@ impl Walker<'_> {
     fn operand_text(&self, o: &Operand) -> String {
         match o {
             Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Argument(e) if matches!(e.kind, ExprKind::Lambda(_)) => {
+                format!("the closure at {}", self.at(e.id))
+            }
             Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
         }
     }

@@ -114,6 +114,17 @@ fn shared_listeners() -> std::sync::MutexGuard<'static, Vec<SharedListener>> {
     SHARED_LISTENERS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// A duplicate of `socket` that accepts without blocking. Windows gives a duplicated socket the
+/// default blocking mode, so it is set again.
+fn duplicate_listener(socket: &socket2::Socket) -> Result<socket2::Socket, NetErr> {
+    let copy = socket
+        .try_clone()
+        .map_err(|e| NetErr::failed(e.to_string()))?;
+    copy.set_nonblocking(true)
+        .map_err(|e| NetErr::failed(e.to_string()))?;
+    Ok(copy)
+}
+
 /// A duplicate of the shared listener for `address`, bound by `bind` when no server holds it.
 fn shared_listener(
     address: &str,
@@ -121,17 +132,12 @@ fn shared_listener(
 ) -> Result<socket2::Socket, NetErr> {
     let mut all = shared_listeners();
     if let Some(entry) = all.iter_mut().find(|e| e.address == address) {
-        let copy = entry
-            .socket
-            .try_clone()
-            .map_err(|e| NetErr::failed(e.to_string()))?;
+        let copy = duplicate_listener(&entry.socket)?;
         entry.users += 1;
         return Ok(copy);
     }
     let socket = bind()?;
-    let copy = socket
-        .try_clone()
-        .map_err(|e| NetErr::failed(e.to_string()))?;
+    let copy = duplicate_listener(&socket)?;
     all.push(SharedListener {
         address: address.to_string(),
         socket,

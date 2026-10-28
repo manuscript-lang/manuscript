@@ -44,3 +44,23 @@ fn multiline_parameters_remain_continuations() {
         }
     }
 }
+
+#[test]
+fn long_unfinished_lists_preserve_following_declarations() {
+    let file = Arc::from("recover.ms");
+    for ending in ["\n", "\r\n"] {
+        for entry in ["1,\n", "(1),\n", "\"x ] #\",\n"] {
+            let prefix = ("let data = [\n".to_string() + &entry.repeat(128)).replace('\n', ending);
+            let tail = "def sentinel() -> Int: return 7\n".replace('\n', ending);
+            let source = prefix.clone() + &tail;
+            let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
+            assert_eq!(module.decls.len(), 1, "{entry:?}: {diagnostics:?}");
+            assert_eq!(module.decls[0].pos.offset as usize, prefix.len());
+            assert_eq!(module.decls[0].pos.line, 130);
+            assert_eq!(diagnostics.len(), 1);
+            assert!(diagnostics[0].message.starts_with("unterminated delimiter"));
+            assert_eq!(diagnostics[0].pos.offset as usize, prefix.len());
+            assert_eq!(module.source.as_ref(), source);
+        }
+    }
+}

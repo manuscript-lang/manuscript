@@ -1,3 +1,4 @@
+from "@std/core.ms" import Closeable
 from "@std/bytes.ms" import Bytes, join
 from "@std/time.ms" import Duration
 from "@std/io.ms" import IoError
@@ -158,12 +159,54 @@ impl HttpMethod:
             case Trace: return "TRACE"
             case Custom(value): return value.clone()
 
+# The runtime handle behind a `HttpClient`.
+export extern type NativeHttpClient
+
+extern def msrt_http_client_close(handle: NativeHttpClient) -> Unit
+
+extern def msrt_http_client_request(
+    handle: NativeHttpClient,
+    method: HttpMethod,
+    url: String,
+    headers: HttpHeaders,
+    body: String,
+    max_response_bytes: Optional[Int],
+    timeout: Optional[Duration]
+) -> Result[ResponseBody, HttpError]
+
+extern def msrt_http_client_request_bytes(
+    handle: NativeHttpClient,
+    method: HttpMethod,
+    url: String,
+    headers: HttpHeaders,
+    body: Bytes,
+    max_response_bytes: Optional[Int],
+    timeout: Optional[Duration]
+) -> Result[ResponseBody, HttpError]
+
+extern def msrt_http_client_request_stream(
+    handle: NativeHttpClient,
+    method: HttpMethod,
+    url: String,
+    headers: HttpHeaders,
+    body: ReadStream,
+    max_response_bytes: Optional[Int],
+    timeout: Optional[Duration]
+) -> Result[ResponseBody, HttpError]
+
 # Reusable HTTP client with connection pooling and explicit response limits.
 # Outbound headers retain separate values in their stored order.
-export interface HttpClient:
+export type HttpClient:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeHttpClient
+
+impl Closeable for HttpClient:
     # Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
     # Safe to call repeatedly; later requests return Closed.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_http_client_close(self.native)
+
+impl HttpClient:
     # Sends the UTF-8 text body and returns a scoped streaming response body.
     def request(
         method: HttpMethod,
@@ -172,7 +215,11 @@ export interface HttpClient:
         body: String = "",
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ResponseBody, HttpError]
+    ) -> Result[ResponseBody, HttpError]:
+        return msrt_http_client_request(
+            self.native, method, url, headers, body, max_response_bytes, timeout
+        )
+
     # Sends immutable Bytes and returns a scoped streaming response body.
     def request_bytes(
         method: HttpMethod,
@@ -181,7 +228,11 @@ export interface HttpClient:
         body: Bytes = "".to_bytes(),
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ResponseBody, HttpError]
+    ) -> Result[ResponseBody, HttpError]:
+        return msrt_http_client_request_bytes(
+            self.native, method, url, headers, body, max_response_bytes, timeout
+        )
+
     # Borrows ReadStream upload data through the scoped response lifetime.
     def request_stream(
         method: HttpMethod,
@@ -190,7 +241,10 @@ export interface HttpClient:
         body: ReadStream,
         max_response_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[ResponseBody, HttpError]
+    ) -> Result[ResponseBody, HttpError]:
+        return msrt_http_client_request_stream(
+            self.native, method, url, headers, body, max_response_bytes, timeout
+        )
 
 # Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -276,17 +330,36 @@ export type HttpResponse:
     # The response body bytes, which must not exceed `max_response_bytes`; the server sets the content length.
     body: Bytes
 
+# The runtime handle behind a `HttpServer`.
+export extern type NativeHttpServer
+
+extern def msrt_http_server_address(handle: NativeHttpServer) -> String
+
+extern def msrt_http_server_close(handle: NativeHttpServer) -> Unit
+
+extern def msrt_http_server_wait(handle: NativeHttpServer) -> Result[Unit, IoError]
+
 # A running HTTP server. Close it to stop accepting new requests.
-export interface HttpServer:
-    # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    def address() -> String
+export type HttpServer:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeHttpServer
+
+impl Closeable for HttpServer:
     # Stops accepting connections, waits up to the grace period for in-flight requests, then cancels the rest and waits for them.
     # SIGINT/SIGTERM drains the same way when grace is nonzero: in-flight requests finish within the grace period before the program exits 130/143.
     # Safe to call repeatedly. A request handler calling close on its own server faults, and a shutdown error is raised as a fault.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_http_server_close(self.native)
+
+impl HttpServer:
+    # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
+    def address() -> String:
+        return msrt_http_server_address(self.native)
+
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
-    def wait() -> Result[Unit, IoError]
+    def wait() -> Result[Unit, IoError]:
+        return msrt_http_server_wait(self.native)
 
 # Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
@@ -307,20 +380,46 @@ export type HttpServerOptions:
     # True shares the listening socket with every other server of the process that serves the same address text with `shared` set, so workers on several threads each run `serve` and accept from one port. The first server binds; the port closes with the last. It works the same on Linux, macOS and Windows.
     shared: Bool = False
 
+# The runtime handle behind a `ResponseBody`.
+export extern type NativeResponseBody
+
+extern def msrt_http_body_close(handle: NativeResponseBody) -> Unit
+
+extern def msrt_http_body_metadata(handle: NativeResponseBody) -> HttpResponseMetadata
+
+extern def msrt_http_body_read(
+    handle: NativeResponseBody,
+    max_bytes: Optional[Int]
+) -> Result[Optional[Bytes], IoError]
+
+extern def msrt_http_body_read_all(handle: NativeResponseBody) -> Result[Bytes, IoError]
+
 # Streaming response body returned by reusable HTTP client operations.
 # Metadata remains available after close and shares one mutable header object.
-export interface ResponseBody:
+export type ResponseBody:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeResponseBody
+
+impl Closeable for ResponseBody:
     # Cancels the rest of the response and releases its connection.
     # Safe to call repeatedly; reads afterwards return Closed. A fully read body lets the connection be reused.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_http_body_close(self.native)
+
+impl ResponseBody:
     # Returns the response head (status and headers) without copying; it stays available after close.
-    def metadata() -> HttpResponseMetadata
+    def metadata() -> HttpResponseMetadata:
+        return msrt_http_body_metadata(self.native)
+
     # Returns the next chunk of the response body, at most `max_bytes` and never more than 65536, or none at the end of the body.
     # Reading past the request's `max_response_bytes` returns IoError.Failed, and a non-positive `max_bytes` returns InvalidInput.
-    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]
+    def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+        return msrt_http_body_read(self.native, max_bytes)
+
     # Reads the rest of the body into one value, with `read`'s limit and error rules.
     # A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
-    def read_all() -> Result[Bytes, IoError]
+    def read_all() -> Result[Bytes, IoError]:
+        return msrt_http_body_read_all(self.native)
 
 # Maps a stream failure to the HTTP error with the same meaning, so exchange handlers need one error type.
 export def from_io(error: IoError) -> HttpError:

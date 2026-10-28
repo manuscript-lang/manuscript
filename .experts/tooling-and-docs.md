@@ -26,6 +26,8 @@ Decision: remove redundant argument labels from ordinary test assertions. The la
 
 Correction: a single explicit-return callback should not keep an unnecessary indented body when its call fits, e.g. `queue.enqueue(lambda: return 7)`. Preserve comments and nested suites; never compact a bare call body into an implicit return. Verify LF/CRLF and idempotence with [the callback fixture](../crates/ms-syntax/tests/data/format/041.in.src).
 
+Verified: applying formatter edits from the end preserves source offsets but still copies the suffix for every edit. The formatter emits sorted, nonoverlapping source spans into one buffer instead. Keep the caller's equal-offset ordering and byte boundaries; the [edit regressions](../crates/ms-syntax/tests/format_edits.rs) pin adjacent unwraps, callback compaction, Unicode and CRLF. See [#1795](https://github.com/manuscript-lang/manuscript/issues/1795) for the measured scaling failure.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery that splits their column-zero closing delimiters into separate chunks whenever any declaration is malformed discards valid functions and their parameter scopes in the language server. Recovery must consult the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
@@ -34,13 +36,15 @@ Apply when: changing partial parsing, declaration synchronization, or completion
 Evidence: [layout rules](../documentation/core-language/basics/grammar.md#layout-tokens); [partial parsing](../crates/ms-syntax/src/partial.rs); [completion](../crates/ms-lsp/src/completion.rs); [partial parse corpus](../crates/ms-syntax/tests/data/partial).
 Verify: multiline function parameters retain their original LF/CRLF positions, navigation, and completion when a different declaration is incomplete; an unfinished match does not erase completion in the enclosing function.
 
+Verified: a completion marker can change argument binding or join an operand at a cursor boundary. Signature help selects the argument from the original source, including explicit labels and positional slots, before querying a repaired snapshot. Lambda parameter commas and nested delimiters belong to their expressions. Evidence: [signature help](../crates/ms-lsp/src/completion.rs), [boundary regressions](../crates/ms-lsp/tests/signature_help.rs). Verify operand/comma/closing boundaries, reordered labels, bare identifiers matching other parameter names, and unfinished LF/CRLF calls; the private query must preserve the live document.
+
 ### Shared editor analysis must preserve selected roots and overlays
 
-Verified: resolve the nearest manifest before sharing analysis. A standalone file symlink can select a different source root and confinement error from its destination; a symlinked manifest retains its containing directory. Distinct URIs can decode to one filename with different requested text, so those overlays cannot share a checked result. Keep default and selected-module recovery separate, private completion repair uncached, and strict workspace graphs transient. Apply queued incremental ranges in order and publish the newest errors before request, close, and EOF barriers.
+Verified: resolve the nearest manifest before sharing analysis. A standalone file symlink can select a different source root and confinement error from its destination; a symlinked manifest retains its containing directory. Distinct URIs can decode to one filename with different requested text, so those overlays cannot share a checked result. Keep default and selected-module recovery separate, private completion repair uncached, and strict workspace graphs transient. Apply queued incremental ranges in order and publish the newest errors before request, close, and EOF barriers. Successful cached graphs can survive edits outside their transitive module set; failed graphs may have missing dependencies and must refresh conservatively. Conflicting canonical overlay aliases affect even unrelated graphs.
 
 Apply when: changing language-server analysis caching, workspaces, or scheduling.
 Evidence: [analysis](../crates/ms-lsp/src/analysis.rs), [workspace](../crates/ms-lsp/src/workspace.rs), [overlays](../crates/ms-driver/src/project/overlay.rs), [snapshot tests](../crates/ms-lsp/tests/snapshots.rs).
-Verify: compare cached results with uncached analysis in both query orders.
+Verify: compare cached results with uncached analysis in both query orders; [invalidation regressions](../crates/ms-lsp/tests/analysis_invalidation.rs) cover transitive imports, missing files, changing import edges, close/watch barriers, and divergent URI aliases.
 
 ### Standard declarations are source that tools must navigate
 

@@ -8,7 +8,7 @@ const TAB_WIDTH: usize = 4;
 /// Reads each source file once for the snippets of one report.
 #[derive(Default)]
 pub struct Sources {
-    files: HashMap<String, Option<String>>,
+    files: HashMap<String, Option<Source>>,
 }
 
 impl Sources {
@@ -25,21 +25,43 @@ impl Sources {
         let text = self
             .files
             .entry(file.to_string())
-            .or_insert_with(|| std::fs::read_to_string(file).ok());
+            .or_insert_with(|| std::fs::read_to_string(file).ok().map(Source::new));
         match text {
-            Some(text) => render(text, line, column, end),
+            Some(text) => text.excerpt(line, column, end),
             None => String::new(),
         }
     }
 }
 
-fn render(text: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
-    if line == 0 {
-        return String::new();
+/// Original text and line boundaries retained for one report.
+struct Source {
+    text: String,
+    starts: Vec<usize>,
+}
+
+impl Source {
+    fn new(text: String) -> Self {
+        let mut starts = vec![0];
+        starts.extend(text.match_indices('\n').map(|(at, _)| at + 1));
+        Self { text, starts }
     }
-    let Some(raw) = text.split('\n').nth(line - 1) else {
-        return String::new();
-    };
+
+    fn excerpt(&self, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
+        let Some(index) = line.checked_sub(1) else {
+            return String::new();
+        };
+        let Some(&start) = self.starts.get(index) else {
+            return String::new();
+        };
+        let stop = self
+            .starts
+            .get(index + 1)
+            .map_or(self.text.len(), |at| at - 1);
+        render(&self.text[start..stop], line, column, end)
+    }
+}
+
+fn render(raw: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
     let source = raw.strip_suffix('\r').unwrap_or(raw);
     let start = clamp(source, column.saturating_sub(1));
     let stop = match end {
@@ -99,7 +121,48 @@ fn cell_width(c: char) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::render;
+    use super::Source;
+
+    fn render(text: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
+        Source::new(text.to_string()).excerpt(line, column, end)
+    }
+
+    #[test]
+    fn indexed_lines_preserve_original_excerpts_in_any_order() {
+        for text in ["", "a", "a\n", "\n\r\n\t日本😀e\u{301}\r\nlast"] {
+            let source = Source::new(text.to_string());
+            for line in (0..=text.split('\n').count() + 1).rev() {
+                for column in 0..=text.len() + 2 {
+                    let expected = line
+                        .checked_sub(1)
+                        .and_then(|i| text.split('\n').nth(i))
+                        .map_or_else(String::new, |raw| {
+                            super::render(raw, line, column, Some((line, column + 3)))
+                        });
+                    assert_eq!(
+                        source.excerpt(line, column, Some((line, column + 3))),
+                        expected
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn many_lines_share_one_index() {
+        let text: String = (0..8000).map(|i| format!("line {i}\r\n")).collect();
+        let source = Source::new(text);
+        assert_eq!(source.starts.len(), 8001);
+        for line in (1..=8000).rev() {
+            assert!(
+                source
+                    .excerpt(line, 1, None)
+                    .contains(&format!("line {}", line - 1))
+            );
+        }
+        assert_eq!(source.starts.len(), 8001);
+        assert!(source.excerpt(usize::MAX, 1, None).is_empty());
+    }
 
     #[test]
     fn underlines_the_span() {

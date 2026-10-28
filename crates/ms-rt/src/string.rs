@@ -96,10 +96,7 @@ pub unsafe fn release(s: &StrVal) {
 unsafe fn free_owned(ptr: *mut u8) {
     // SAFETY: `ptr` came from `alloc_str`; the hint may name its bytes.
     unsafe {
-        let h = HINT.ptr();
-        if core::ptr::eq((*h).s, ptr) {
-            (*h).s = core::ptr::null();
-        }
+        forget_hint(ptr);
         alloc::free(ptr);
     }
 }
@@ -245,7 +242,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
         if b.len() < HINT_MIN || !(*s).owns() {
             return utf8::count(b);
         }
-        let h = HINT.ptr();
+        let h = hint_for((*s).ptr_word);
         if core::ptr::eq((*h).s, (*s).ptr_word) && (*h).len == b.len() && (*h).count != usize::MAX {
             return (*h).count;
         }
@@ -261,6 +258,7 @@ pub unsafe fn scalar_count(s: *const StrVal) -> usize {
     }
 }
 
+#[derive(Clone, Copy)]
 struct Hint {
     /// Bytes of the string the figures belong to.
     s: *const u8,
@@ -280,7 +278,57 @@ crate::isolate_static! {
     offset: 0,
 };
 }
+// The figures of the string measured before `HINT`'s, so two strings read in turn each keep
+// their remembered position instead of evicting the other's.
+crate::isolate_static! {
+    static HINT_PREV: Hint = Hint {
+    s: core::ptr::null(),
+    len: 0,
+    count: usize::MAX,
+    scalar: 0,
+    offset: 0,
+};
+}
 const HINT_MIN: usize = 24;
+
+/// The hint to use for the string at `ptr`: [`HINT`] itself when it names the string; otherwise the
+/// two entries swap, or the current one moves aside, so [`HINT`] is free to describe `ptr`.
+///
+/// # Safety
+/// Hints are only touched through these functions, on the isolate's thread.
+#[inline]
+unsafe fn hint_for(ptr: *const u8) -> *mut Hint {
+    // SAFETY: per the contract.
+    unsafe {
+        let h = HINT.ptr();
+        if core::ptr::eq((*h).s, ptr) {
+            return h;
+        }
+        let prev = HINT_PREV.ptr();
+        if core::ptr::eq((*prev).s, ptr) {
+            core::ptr::swap(h, prev);
+        } else {
+            *prev = *h;
+        }
+        h
+    }
+}
+
+/// Forgets the figures of the string at `ptr`, whose bytes are about to change or be freed.
+///
+/// # Safety
+/// As [`hint_for`].
+#[inline]
+unsafe fn forget_hint(ptr: *const u8) {
+    // SAFETY: per the contract.
+    unsafe {
+        for h in [HINT.ptr(), HINT_PREV.ptr()] {
+            if core::ptr::eq((*h).s, ptr) {
+                (*h).s = core::ptr::null();
+            }
+        }
+    }
+}
 
 /// Byte offset of scalar `n` (0..=count) with a remembered position for sequential access.
 unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
@@ -290,7 +338,7 @@ unsafe fn scalar_offset(s: *const StrVal, n: usize) -> usize {
         if b.len() < HINT_MIN || !(*s).owns() {
             return utf8::offset_of(b, n);
         }
-        let h = HINT.ptr();
+        let h = hint_for((*s).ptr_word);
         let (mut sc, mut off) = (0usize, 0usize);
         if std::ptr::eq((*h).s, (*s).ptr_word) && (*h).scalar.abs_diff(n) < n {
             sc = (*h).scalar;
@@ -656,10 +704,7 @@ pub unsafe extern "C-unwind" fn msrt_string_append(
         if la + lb > MAX_BYTES {
             fault::fault(b"string: limit exceeded");
         }
-        let h = HINT.ptr();
-        if core::ptr::eq((*h).s, sa.ptr_word) {
-            (*h).s = core::ptr::null();
-        }
+        forget_hint(sa.ptr_word);
         // Room left in the block is used as is; otherwise the string moves to a block with
         // slack, so a run of appends reallocates a logarithmic number of times.
         let need = la + lb + 1;
@@ -1149,13 +1194,36 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
         if count as usize > limit / text.len() {
             return STATUS_LIMIT_EXCEEDED;
         }
-        let r = alloc_str(text.len() * count as usize);
-        let d = r.ptr_word;
-        for i in 0..count as usize {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), d.add(i * text.len()), text.len());
-        }
+        let total = text.len() * count as usize;
+        let r = alloc_str(total);
+        fill_repeated(r.ptr_word, text, total);
         *out = r;
         STATUS_OK
+    }
+}
+
+/// Fill an uninitialized destination with a whole number of pattern copies.
+///
+/// # Safety
+/// `dst` has `len` writable bytes, `pattern` is nonempty and independent of the
+/// destination, and `len` is a multiple of `pattern.len()`.
+unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
+    // SAFETY: each copy reads only initialized bytes strictly before its destination.
+    unsafe {
+        if len == 0 {
+            return;
+        }
+        if pattern.len() == 1 {
+            core::ptr::write_bytes(dst, pattern[0], len);
+            return;
+        }
+        core::ptr::copy_nonoverlapping(pattern.as_ptr(), dst, pattern.len());
+        let mut filled = pattern.len();
+        while filled < len {
+            let n = filled.min(len - filled);
+            core::ptr::copy_nonoverlapping(dst, dst.add(filled), n);
+            filled += n;
+        }
     }
 }
 
@@ -1273,50 +1341,6 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     out
 }
 
-unsafe fn replace_limited(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    n: i64,
-) -> StrVal {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let (text, o) = (bytes(s), bytes(old));
-        let bound = if o.is_empty() {
-            utf8::count(text) as i64 + 1
-        } else {
-            text.len() as i64
-        };
-        let n = n.min(bound);
-        if o.is_empty() {
-            return from_buf(replace_n_bytes(text, o, bytes(new), n));
-        }
-        if n == 0 || find(text, o).is_none() {
-            // Nothing to replace: share the unchanged input.
-            return cloned(&*s);
-        }
-        replace_into_str(text, o, bytes(new), n)
-    }
-}
-
-/// `replace_n_bytes` for a non-empty `old`, written straight into the result string: one allocation,
-/// and an unchanged text is a plain copy.
-fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> StrVal {
-    let mut matches = 0usize;
-    let mut i = 0;
-    let f = Needle::new(old);
-    while (matches as i64) < n {
-        match f.find(&text[i..]) {
-            None => break,
-            Some(p) => {
-                i += p + old.len();
-                matches += 1;
-            }
-        }
-    }
-    fill_replaced(text, old, new, matches)
-}
-
 /// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
 /// `matches` is the full count), written straight into one new string.
 fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal {
@@ -1355,7 +1379,38 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { replace_limited(s, old, new, 1).write_to(out) }
+    unsafe {
+        let (text, old, new) = (bytes(s), bytes(old), bytes(new));
+        // The empty pattern matches at the first scalar boundary, before any input bytes.
+        let at = if old.is_empty() {
+            Some(0)
+        } else {
+            find(text, old)
+        };
+        let Some(at) = at else {
+            return cloned(&*s).write_to(out);
+        };
+        let Some(total) = (text.len() - old.len()).checked_add(new.len()) else {
+            fault::fault(b"string: limit exceeded");
+        };
+        let mut small = [0u8; STR_INLINE_MAX];
+        let heap = (total > STR_INLINE_MAX).then(|| alloc_str(total));
+        let start = heap
+            .as_ref()
+            .map_or(small.as_mut_ptr(), |value| value.ptr_word);
+        copy_bytes(start, text.as_ptr(), at);
+        copy_bytes(start.add(at), new.as_ptr(), new.len());
+        copy_bytes(
+            start.add(at + new.len()),
+            text[at + old.len()..].as_ptr(),
+            text.len() - at - old.len(),
+        );
+        match heap {
+            Some(value) => value,
+            None => from_bytes(&small[..total]),
+        }
+        .write_to(out)
+    }
 }
 
 /// Replaces every occurrence of a non-empty `old` by a `new` no longer than it, in one search pass: the
@@ -1466,17 +1521,19 @@ unsafe fn pad(
         if total > MAX_BYTES as u128 {
             fault::fault(b"string: limit exceeded");
         }
-        let mut b = Vec::with_capacity(total as usize);
-        if !atstart {
-            b.extend_from_slice(text);
-        }
-        for _ in 0..cycles {
-            b.extend_from_slice(padb);
-        }
-        b.extend_from_slice(&padb[..prefix_end]);
+        let total = total as usize;
+        let pad_len = total - text.len();
+        let mut b = Vec::<u8>::with_capacity(total);
+        let dst = b.as_mut_ptr();
+        let pad_dst = if atstart { dst } else { dst.add(text.len()) };
         if atstart {
-            b.extend_from_slice(text);
+            core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
+        } else {
+            core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
         }
+        fill_repeated(pad_dst, padb, cycles * padb.len());
+        core::ptr::copy_nonoverlapping(padb.as_ptr(), pad_dst.add(cycles * padb.len()), prefix_end);
+        b.set_len(total);
         from_buf(b).write_to(out)
     }
 }
@@ -1955,10 +2012,7 @@ unsafe fn set_piece(st: &mut SplitIter, piece: &[u8]) {
         }
         if st.cap >= piece.len() && !st.cur.ptr_word.is_null() && st.cur.owns() {
             // The loop only borrows the piece: rewrite it in place.
-            let h = HINT.ptr();
-            if core::ptr::eq((*h).s, st.cur.ptr_word) {
-                (*h).s = core::ptr::null();
-            }
+            forget_hint(st.cur.ptr_word);
             st.cur.tagged = piece.len();
             copy_short(piece.as_ptr(), st.cur.ptr_word, piece.len());
             *st.cur.ptr_word.add(piece.len()) = 0;
@@ -2688,6 +2742,36 @@ mod tests {
     }
 
     #[test]
+    fn replace_first_matches_standard_string_model() {
+        let _g = testutil::lock();
+        let long = format!("{}b", "a".repeat(8192));
+        let texts = [
+            "",
+            "a",
+            "aaaa",
+            "abababa",
+            "é🙂é",
+            "e\u{301}é",
+            "abcdefghijklmno",
+            "abcdefghijklmnop",
+            "abcdefghijklmnopq",
+            long.as_str(),
+        ];
+        for text in texts {
+            for old in ["", "a", "aa", "aba", "aaaaab", "é", "🙂", "missing"] {
+                for new in ["", "b", "AAAAAB", "LONGER", "世界"] {
+                    let expected = text.replacen(old, new, 1);
+                    // SAFETY: `st` creates live strings and `ret` supplies a writable result.
+                    let actual = unsafe {
+                        ret(|out| msrt_string_replace_first(st(text), st(old), st(new), out))
+                    };
+                    assert_eq!(actual, expected, "text={text:?} old={old:?} new={new:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn lowercase_sigma_ignores_unicode_marks_and_format_characters() {
         let _g = testutil::lock();
         for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"] {
@@ -2724,6 +2808,47 @@ mod tests {
                 STATUS_OUT_OF_RANGE
             );
             assert_eq!(ret(|o| msrt_string_reverse(st("aé"), o)), "éa");
+        }
+    }
+
+    #[test]
+    fn repeat_and_pad_fill_patterns_across_doubling_boundaries() {
+        let _g = testutil::lock();
+        unsafe {
+            for pattern in ["x", "ab", "é🙂", "abcd123"] {
+                for count in [0, 1, 2, 3, 5, 9, 17, 257] {
+                    let mut out = NO_STR;
+                    assert_eq!(
+                        msrt_string_repeat(st(pattern), count, 0, 0, &mut out),
+                        STATUS_OK
+                    );
+                    assert_eq!(txt(&out), pattern.repeat(count as usize));
+                    let target = count * pattern.chars().count() as i64 + 1;
+                    assert_eq!(
+                        ret(|o| msrt_string_pad_start(st("!"), target, st(pattern), o)),
+                        std::format!("{}!", pattern.repeat(count as usize))
+                    );
+                    assert_eq!(
+                        ret(|o| msrt_string_pad_end(st("!"), target, st(pattern), o)),
+                        std::format!("!{}", pattern.repeat(count as usize))
+                    );
+                }
+            }
+            assert_eq!(
+                ret(|o| msrt_string_pad_start(st("!"), 6, st("é🙂"), o)),
+                "é🙂é🙂é!"
+            );
+            let mut out = NO_STR;
+            assert_eq!(
+                msrt_string_repeat(st("ab"), -1, 0, 0, &mut out),
+                STATUS_INVALID_INPUT
+            );
+            assert_eq!(
+                msrt_string_repeat(st("ab"), 3, 1, 5, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(msrt_string_repeat(st(""), 3, 1, 0, &mut out), STATUS_OK);
+            assert_eq!(txt(&out), "");
         }
     }
 

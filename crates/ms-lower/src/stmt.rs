@@ -734,6 +734,7 @@ impl<'a> FnLower<'a> {
                 };
                 let lend = closing.is_none()
                     && !o.own
+                    && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
                     && self.ownership_checked()
                     && !self.slotted.contains(&bnd.uid)

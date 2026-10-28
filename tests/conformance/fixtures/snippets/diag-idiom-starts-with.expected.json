@@ -15,6 +15,21 @@
           "line": 5,
           "column": 17,
           "offset": 154
+        },
+        "fix": {
+          "position": {
+            "file": "diag-idiom-starts-with.ms",
+            "line": 5,
+            "column": 17,
+            "offset": 154
+          },
+          "end": {
+            "file": "diag-idiom-starts-with.ms",
+            "line": 5,
+            "column": 27,
+            "offset": 164
+          },
+          "replacement": "starts_with"
         }
       }
     ],

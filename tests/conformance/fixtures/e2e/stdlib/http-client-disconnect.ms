@@ -26,8 +26,8 @@ def handle(request: HttpRequest) -> HttpResponse:
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
-            if let conn = network().connect(server.address()):
+        with var server = acquired:
+            if var conn = network().connect(server.address()):
                 let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
                 # Let the handler start, then leave without waiting for the response.

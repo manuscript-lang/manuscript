@@ -61,6 +61,17 @@ struct Def {
     avx2: Option<(String, String)>,
 }
 
+/// Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the
+/// SLP vectorizer and the code generator grow faster than linearly with one function's size, so
+/// a generated function of thousands of statements took minutes. Hand-written functions are far
+/// below this; a function above it is run-once straight-line code in practice.
+const HUGE_FUNCTION_LINES: usize = 100_000;
+
+/// Whether a function body is long enough to skip optimization.
+fn is_huge(body: &str) -> bool {
+    body.bytes().filter(|&b| b == b'\n').count() > HUGE_FUNCTION_LINES
+}
+
 /// Symbol suffix of a function's x86-64-v3 (AVX2, FMA) copy.
 pub(crate) const AVX2_SUFFIX: &str = ".avx2";
 /// Symbol suffix of a dispatched function's baseline copy.
@@ -1324,6 +1335,8 @@ impl LlvmModule {
             }
             let header = if deep.contains(&d.name) {
                 d.header.replacen(" #0 ", " #1 ", 1)
+            } else if is_huge(&d.body) {
+                d.header.replacen(" #0 ", " #4 ", 1)
             } else {
                 d.header.clone()
             };
@@ -1369,6 +1382,7 @@ impl LlvmModule {
         }
         s.push_str("attributes #0 = { \"frame-pointer\"=\"all\" nounwind }\n");
         s.push_str("attributes #1 = { \"frame-pointer\"=\"all\" nounwind noinline }\n");
+        s.push_str("attributes #4 = { \"frame-pointer\"=\"all\" nounwind noinline optnone }\n");
         s.push_str("attributes #2 = { \"frame-pointer\"=\"all\" nounwind noimplicitfloat }\n");
         s.push_str("attributes #3 = { \"frame-pointer\"=\"all\" nounwind noinline \"target-features\"=\"+avx,+avx2,+fma,+f16c,+bmi,+bmi2\" }\n");
         if uses_level {
@@ -1444,6 +1458,12 @@ mod tests {
             .map(|n| format!("ms.glue.{n}.drop"))
             .collect();
         assert_eq!(glue_module(&edges).deep_glue(), expected);
+    }
+
+    #[test]
+    fn only_a_huge_body_skips_optimization() {
+        assert!(!is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES)));
+        assert!(is_huge(&"  ret void\n".repeat(HUGE_FUNCTION_LINES + 1)));
     }
 
     #[test]

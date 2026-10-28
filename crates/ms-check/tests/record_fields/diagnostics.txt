@@ -1,0 +1,3 @@
+record_fields.ms:13:5: type: duplicate parameter or field value; each name may appear once, so rename one
+record_fields.ms:6:16: type: expected Int, found String (in the return value)
+record_fields.ms:9:16: resolution: unknown or ambiguous member frist on Row[String]; did you mean 'first'?; available: first, second

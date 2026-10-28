@@ -1,9 +1,12 @@
 //! Classifies what changed between a base and a head program and ranks it.
 
+mod reach;
+
 use crate::facts::{Fact, Facts};
 use crate::json::Json;
 use crate::views::{effect_list, or_none};
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, VecDeque};
 
 pub const TIER_CONTRACT: &str = "CONTRACT";
 pub const TIER_EFFECT: &str = "EFFECT+";
@@ -85,13 +88,22 @@ pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Findi
     let keys: BTreeSet<&String> = head.entities.keys().chain(base.entities.keys()).collect();
     let touched = touched_keys(head, &input.touched);
     let mut findings = Vec::new();
+    let mut scored_keys = Vec::new();
     for key in keys {
         let h = head.entities.get(key);
         let mut b = base.entities.get(key);
         if b.is_some_and(|b| input.added.contains(&b.file)) {
             b = None;
         }
-        let mut f = classify(key, h, b, input.base_checked, &callers, head);
+        let (mut f, scored) = classify(key, h, b, input.base_checked, head);
+        if scored && callers.contains_key(key.as_str()) {
+            scored_keys.push(key.as_str());
+        } else if scored && h.is_some_and(|h| h.exported) {
+            // A target without incoming edges has exact reach zero. Finish its
+            // score here instead of allocating a deferred count entry.
+            f.terms.push("exported +3".to_string());
+            f.score += 3;
+        }
         if f.changes.is_empty() && touched.contains(key) {
             f.changes = vec!["body changed".to_string()];
         }
@@ -99,6 +111,22 @@ pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Findi
             continue;
         }
         findings.push(f);
+    }
+    let reaches = reach::counts(&scored_keys, &callers, head);
+    for f in &mut findings {
+        let Some(&r) = reaches.get(f.id.as_str()) else {
+            continue;
+        };
+        f.reach = r;
+        if r > 0 {
+            let weight = 2 * (usize::BITS - r.leading_zeros()) as i64;
+            f.terms.push(format!("reach({r}) +{weight}"));
+            f.score += weight;
+        }
+        if head.entities[&f.id].exported {
+            f.terms.push("exported +3".to_string());
+            f.score += 3;
+        }
     }
     findings.sort_by(|a, b| {
         b.score
@@ -138,9 +166,8 @@ fn classify(
     h: Option<&Fact>,
     b: Option<&Fact>,
     base_checked: bool,
-    callers: &HashMap<&str, Vec<&str>>,
     head: &Facts,
-) -> Finding {
+) -> (Finding, bool) {
     let subject = h.or(b).expect("a key comes from base or head");
     let mut s = Scorer {
         finding: Finding {
@@ -179,7 +206,7 @@ fn classify(
     }
     let Some(h) = h else {
         s.finding.tier = s.tier().to_string();
-        return s.finding;
+        return (s.finding, false);
     };
     if let Some(b) = b {
         let gained = gained_effects(h, Some(b));
@@ -187,21 +214,9 @@ fn classify(
             s.finding.evidence.push(effect_path(h, &gained, head));
         }
     }
-    if !s.finding.changes.is_empty() && s.finding.score > 1 {
-        let r = reach_count(key, callers);
-        s.finding.reach = r;
-        if r > 0 {
-            let weight = 2 * (usize::BITS - r.leading_zeros()) as i64;
-            s.finding.terms.push(format!("reach({r}) +{weight}"));
-            s.finding.score += weight;
-        }
-        if h.exported {
-            s.finding.terms.push("exported +3".to_string());
-            s.finding.score += 3;
-        }
-    }
+    let scored = !s.finding.changes.is_empty() && s.finding.score > 1;
     s.finding.tier = s.tier().to_string();
-    s.finding
+    (s.finding, scored)
 }
 
 fn compare(h: &Fact, b: &Fact, s: &mut Scorer) {
@@ -330,26 +345,140 @@ fn reach_count(key: &str, callers: &HashMap<&str, Vec<&str>>) -> usize {
 
 /// Maps changed head lines to the most specific entity containing them.
 pub fn touched_keys(head: &Facts, touched: &BTreeMap<String, Vec<i64>>) -> BTreeSet<String> {
-    let mut by_file: HashMap<&str, Vec<&Fact>> = HashMap::new();
+    let mut by_file: BTreeMap<&str, Vec<&Fact>> = BTreeMap::new();
     for fact in head.entities.values().filter(|f| f.first > 0) {
         by_file.entry(&fact.file).or_default().push(fact);
     }
     let mut result = BTreeSet::new();
     for (file, lines) in touched {
-        let facts = by_file.get(file.as_str()).map(Vec::as_slice).unwrap_or(&[]);
-        for &line in lines {
-            let best = facts
-                .iter()
-                .filter(|f| line >= f.first as i64 && line <= f.last as i64)
-                .min_by(|a, b| {
-                    (a.last as i64 - a.first as i64)
-                        .cmp(&(b.last as i64 - b.first as i64))
-                        .then_with(|| a.key.cmp(&b.key))
-                });
-            if let Some(best) = best {
-                result.insert(best.key.clone());
+        let Some(facts) = by_file.get_mut(file.as_str()) else {
+            continue;
+        };
+        facts.sort_by_key(|f| f.first);
+        let mut lines = lines.clone();
+        lines.sort_unstable();
+        lines.dedup();
+        let mut active = BinaryHeap::new();
+        let mut cursor = 0;
+        for line in lines {
+            while cursor < facts.len() && facts[cursor].first as i64 <= line {
+                let f = facts[cursor];
+                active.push(Reverse((
+                    f.last as i64 - f.first as i64,
+                    f.key.as_str(),
+                    f.last as i64,
+                )));
+                cursor += 1;
+            }
+            while active
+                .peek()
+                .is_some_and(|Reverse((_, _, last))| *last < line)
+            {
+                active.pop();
+            }
+            if let Some(Reverse((_, key, _))) = active.peek() {
+                result.insert((*key).to_string());
             }
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn touched_sweep_matches_reference_for_overlapping_ranges() {
+        let mut seed = 123456789u64;
+        let mut next = || {
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            seed >> 32
+        };
+        for _ in 0..500 {
+            let mut head = Facts::default();
+            for i in 0..80 {
+                let first = next() as usize % 80;
+                let fact = Fact {
+                    key: format!("f{i:03}"),
+                    file: format!("{}.ms", next() % 3),
+                    first,
+                    last: first + next() as usize % 80,
+                    ..Fact::default()
+                };
+                head.entities.insert(fact.key.clone(), fact);
+            }
+            let touched: BTreeMap<_, _> = (0..4)
+                .map(|i| {
+                    (
+                        format!("{i}.ms"),
+                        (0..160)
+                            .map(|_| next() as i64 % 200 - 20)
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect();
+            let mut expected = BTreeSet::new();
+            for (file, lines) in &touched {
+                for &line in lines {
+                    let best = head
+                        .entities
+                        .values()
+                        .filter(|f| {
+                            f.first > 0
+                                && &f.file == file
+                                && line >= f.first as i64
+                                && line <= f.last as i64
+                        })
+                        .min_by_key(|f| (f.last as i64 - f.first as i64, &f.key));
+                    if let Some(best) = best {
+                        expected.insert(best.key.clone());
+                    }
+                }
+            }
+            assert_eq!(touched_keys(&head, &touched), expected);
+        }
+    }
+
+    #[test]
+    fn touched_ranges_keep_inclusive_boundaries_and_stable_ties() {
+        let mut head = Facts::default();
+        for (key, first, last) in [
+            ("outer", 1, 10),
+            ("b", 3, 5),
+            ("a", 3, 5),
+            ("ignored", 0, 20),
+            ("invalid", 8, 7),
+        ] {
+            head.entities.insert(
+                key.into(),
+                Fact {
+                    key: key.into(),
+                    file: "a.ms".into(),
+                    first,
+                    last,
+                    ..Fact::default()
+                },
+            );
+        }
+        for (line, expected) in [
+            (-1, None),
+            (0, None),
+            (1, Some("outer")),
+            (3, Some("a")),
+            (5, Some("a")),
+            (6, Some("outer")),
+            (10, Some("outer")),
+            (11, None),
+        ] {
+            let lines = BTreeMap::from([
+                ("a.ms".into(), vec![line, line]),
+                ("absent.ms".into(), vec![1]),
+            ]);
+            assert_eq!(
+                touched_keys(&head, &lines),
+                expected.into_iter().map(String::from).collect()
+            );
+        }
+    }
 }

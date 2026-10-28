@@ -1,5 +1,4 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "./src/harness.ms" import words
 from "@std/string.ms" import compile
 
@@ -19,7 +18,7 @@ bench "regex.matches":
     if let re = compile("word[0-9]+"):
         def work() -> Result[Unit, Error]:
             var n = 0
-            for i in range(0, 10000):
+            for i in 0..10000:
                 if re.matches("xx word123 yy"): n += 1
             return keep(n)
 

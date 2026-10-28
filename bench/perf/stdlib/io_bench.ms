@@ -1,6 +1,5 @@
 from "@std/bench.ms" import keep, measure
 from "@std/bytes.ms" import Bytes
-from "@std/collections.ms" import range
 from "@std/io.ms" import IoError, ReadStream, lines, read_line
 
 type MemoryStream:
@@ -25,7 +24,7 @@ impl ReadStream for MemoryStream:
 
 def source_text() -> String:
     var parts: List[String] = []
-    for i in range(0, 100000):
+    for i in 0..100000:
         parts.append(f"line number {i} with some padding text\n")
     return parts.join("")
 

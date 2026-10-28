@@ -16,6 +16,30 @@ pub struct Lexed<'a> {
     pub source: Cow<'a, str>,
     /// Tokens, ending with `Eof`.
     pub tokens: Vec<Token>,
+    pub(crate) boundaries: ScanBoundaries,
+}
+
+/// Offsets in the normalized source, discovered while validating text once.
+#[derive(Default)]
+pub(crate) struct ScanBoundaries {
+    strings: Vec<(usize, usize)>,
+    interpolations: Vec<(usize, usize)>,
+}
+
+impl ScanBoundaries {
+    fn string_end(&self, start: usize) -> Option<usize> {
+        self.strings
+            .binary_search_by_key(&start, |&(at, _)| at)
+            .ok()
+            .map(|i| self.strings[i].1)
+    }
+
+    pub(crate) fn interpolation_end(&self, start: usize) -> Option<usize> {
+        self.interpolations
+            .binary_search_by_key(&start, |&(at, _)| at)
+            .ok()
+            .map(|i| self.interpolations[i].1)
+    }
 }
 
 fn letter(b: u8) -> bool {
@@ -48,6 +72,10 @@ struct Scanner<'a> {
     /// CR bytes removed before each normalised line; empty when source had no CRLF.
     line_offsets: Vec<u32>,
     interpolations: Vec<Pos>,
+    boundaries: ScanBoundaries,
+    cached: Option<&'a ScanBoundaries>,
+    boundary_origin: usize,
+    virtual_paren: bool,
 }
 
 const BRACE_HINT: &str = "'{' starts an interpolation; write \\{ and \\} for literal braces";
@@ -74,24 +102,56 @@ pub(crate) fn lex_at<'a>(
         )));
     }
     let (normalized, offsets) = normalize_source(source);
-    let tokens = {
+    let (tokens, mut boundaries) = {
         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
         s.tokens.reserve(source.len() / 4 + 16);
-        s.run()?;
-        s.tokens
+        s.run(None)?;
+        (s.tokens, s.boundaries)
     };
+    boundaries.strings.sort_unstable_by_key(|&(start, _)| start);
+    boundaries
+        .interpolations
+        .sort_unstable_by_key(|&(start, _)| start);
     Ok(Lexed {
         source: normalized,
         tokens,
+        boundaries,
     })
 }
 
-/// Scans an already validated interpolation from just after its opening brace
-/// through its closing brace, including nested strings and interpolations.
-pub(crate) fn interpolation_length(file: &Arc<str>, source: &str) -> PResult<usize> {
-    let mut scanner = Scanner::new(file, source, 0, 0, Vec::new());
-    scanner.interpolation_body(Pos::new(0, 1, 1))?;
-    Ok(scanner.offset)
+/// Lex one already validated interpolation in its original source slice. A
+/// virtual parenthesis gives it the same layout rules as the old wrapper.
+pub(crate) fn lex_interpolation(
+    file: &Arc<str>,
+    source: &str,
+    origin: usize,
+    boundaries: &ScanBoundaries,
+) -> PResult<Vec<Token>> {
+    let mut s = Scanner::new(file, source, 0, 0, Vec::new());
+    s.cached = Some(boundaries);
+    s.boundary_origin = origin;
+    s.virtual_paren = true;
+    s.delimiters.push(b'(');
+    s.opened.push(Pos::new(0, 1, 1));
+    s.run(None)?;
+    let closing = s.tokens.len() - 3;
+    s.tokens.remove(closing);
+    Ok(s.tokens)
+}
+
+/// For each physical line start (including the empty line after a final newline),
+/// reports whether lexing the prefix ending there has an unterminated delimiter.
+/// A different lexical error on a line makes all later prefixes false.
+pub(crate) fn unterminated_prefixes(file: &Arc<str>, source: &str, stop_at: &[bool]) -> Vec<bool> {
+    if source.starts_with('\u{feff}') {
+        return vec![false; source.bytes().filter(|b| *b == b'\n').count() + 1];
+    }
+    let (normalized, offsets) = normalize_source(source);
+    let mut scanner = Scanner::new(file, &normalized, 0, 0, offsets);
+    let mut prefixes = Vec::with_capacity(source.bytes().filter(|b| *b == b'\n').count() + 1);
+    let _ = scanner.run(Some((&mut prefixes, stop_at)));
+    prefixes.resize(source.bytes().filter(|b| *b == b'\n').count() + 1, false);
+    prefixes
 }
 
 impl<'a> Scanner<'a> {
@@ -122,6 +182,10 @@ impl<'a> Scanner<'a> {
             function_depths: Vec::new(),
             line_offsets,
             interpolations: Vec::new(),
+            boundaries: ScanBoundaries::default(),
+            cached: None,
+            boundary_origin: 0,
+            virtual_paren: false,
         }
     }
 }
@@ -242,13 +306,20 @@ impl Scanner<'_> {
         self.src.get(i).copied()
     }
 
-    fn run(&mut self) -> PResult<()> {
+    fn run(&mut self, mut prefixes: Option<(&mut Vec<bool>, &[bool])>) -> PResult<()> {
         let n = self.src.len();
         let (mut pending, mut header_indent, mut pending_depth) = (false, 0usize, 0usize);
         // A line that starts with '.' or '|' continues the previous statement,
         // which began at statement_indent; it opens no block and ends no statement.
         let (mut continuing, mut statement_indent) = (false, 0usize);
         while self.offset < n {
+            if let Some((prefixes, stop_at)) = prefixes.as_mut() {
+                let open = !self.delimiters.is_empty();
+                prefixes.push(open);
+                if stop_at.get(prefixes.len() - 1) == Some(&true) && !open {
+                    return Ok(());
+                }
+            }
             let mut leading = 0usize;
             while self.offset < n && self.src[self.offset] == b' ' {
                 self.advance();
@@ -273,7 +344,7 @@ impl Scanner<'_> {
                 self.advance();
                 continue;
             }
-            if !leading.is_multiple_of(4) {
+            if !self.virtual_paren && !leading.is_multiple_of(4) {
                 return self.fail(format!(
                     "indentation must be a multiple of four spaces, found {}; use {} or {}",
                     leading,
@@ -490,6 +561,11 @@ impl Scanner<'_> {
                     }
                 }
                 if matches!(b, b')' | b']' | b'}') {
+                    if self.virtual_paren && self.delimiters == *b"(" && b == b')' {
+                        // The physical wrapper would leave its own closing
+                        // parenthesis unmatched; use that path for its exact error.
+                        return self.fail("interpolation closes the virtual parenthesis");
+                    }
                     if self.delimiters.is_empty() {
                         return self.fail(format!(
                             "unmatched closing delimiter '{}'; remove it or add the matching opener before it",
@@ -532,6 +608,17 @@ impl Scanner<'_> {
                 self.advance();
                 self.emit(kind, start, start + 1, p);
             }
+            if self.virtual_paren && self.offset == n {
+                if self.delimiters != *b"(" {
+                    // The wrapper's closing parenthesis reports this error.
+                    return self.fail("interpolation leaves a delimiter open");
+                }
+                self.delimiters.pop();
+                self.opened.pop();
+                self.groups.clear();
+                self.function_depths.clear();
+                self.emit_layout(Tok::RParen);
+            }
             if self.tokens.len() > line_start {
                 let last_kind = self.tokens.last().unwrap().kind;
                 let has_function = self.function_depths.contains(&self.delimiters.len());
@@ -561,6 +648,9 @@ impl Scanner<'_> {
         if pending {
             self.emit_layout(Tok::Indent);
             self.emit_layout(Tok::Dedent);
+        }
+        if let Some((prefixes, _)) = prefixes {
+            prefixes.push(!self.delimiters.is_empty());
         }
         if let Some(&open) = self.delimiters.last() {
             let where_ = *self.opened.last().unwrap();
@@ -733,12 +823,27 @@ impl Scanner<'_> {
     }
 
     fn scan_string(&mut self, fstring: bool) -> PResult<()> {
+        let start = self.offset;
+        if let Some(end) = self
+            .cached
+            .and_then(|cache| cache.string_end(self.boundary_origin + start))
+        {
+            self.column += (end - self.boundary_origin - start) as u32;
+            self.offset = end - self.boundary_origin;
+            return Ok(());
+        }
         let n = self.src.len();
         let opened = self.pos();
         self.advance();
         while self.offset < n {
             let b = self.advance();
             if b == b'"' {
+                if !self.interpolations.is_empty() {
+                    self.boundaries.strings.push((
+                        self.boundary_origin + start,
+                        self.boundary_origin + self.offset,
+                    ));
+                }
                 return Ok(());
             }
             if b == b'\n' {
@@ -808,6 +913,7 @@ impl Scanner<'_> {
     }
 
     fn scan_interpolation(&mut self) -> PResult<()> {
+        let start = self.boundary_origin + self.offset - 1;
         let mut open = self.pos();
         open.column -= 1;
         open.offset -= 1;
@@ -817,6 +923,11 @@ impl Scanner<'_> {
         self.interpolations.push(open);
         let result = self.interpolation_body(open);
         self.interpolations.pop();
+        if result.is_ok() {
+            self.boundaries
+                .interpolations
+                .push((start, self.boundary_origin + self.offset));
+        }
         result
     }
 

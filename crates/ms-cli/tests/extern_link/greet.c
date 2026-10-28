@@ -1,5 +1,10 @@
 #include "ms_abi.h"
 
+#if defined(_WIN32) && defined(__clang__)
+/* clang for MSVC references this symbol from any object that uses floating point. */
+int _fltused = 0;
+#endif
+
 int64_t greet_double(int64_t value) { return value * 2; }
 
 double greet_scale(double value, double factor) { return value * factor; }

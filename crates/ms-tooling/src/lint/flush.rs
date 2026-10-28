@@ -23,7 +23,7 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
     walk_module(module, &mut scan);
     let file = module_file(module);
     for (uid, name, pos, ty) in scan.owned {
-        if scan.finished.contains(&uid) {
+        if scan.finished.contains(&uid) || !program.implicit_closes.contains(&uid) {
             continue;
         }
         let Some(method) = finisher(program, module, &ty) else {
@@ -55,7 +55,7 @@ fn finisher(program: &Program, module: &ModuleData, ty: &Ty) -> Option<Name> {
 
 struct Scan<'a> {
     module: &'a ModuleData,
-    /// Bindings closed implicitly: identity, name, position, type.
+    /// Bindings with an implicit-close cleanup: identity, name, position, type.
     owned: Vec<(usize, Name, ms_syntax::Pos, Ty)>,
     /// Bindings a finisher is called on.
     finished: HashSet<usize>,

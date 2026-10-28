@@ -305,7 +305,7 @@ test "workers fetch from the starter's server at the same time":
     let handler = buffered(page)
     let acquired = network().serve(address: "127.0.0.1:0", handler: handler).get(none)
 
-    with let server = acquired:
+    with var server = acquired:
         with let group = WorkerGroup[String, Int]():
             var workers: List[Worker[String, Int]] = []
 
@@ -356,7 +356,7 @@ def serves_shared() -> Unit:
         if let acquired = network().serve(
             address: address, handler: buffered(page), options: options
         ):
-            with let server = acquired:
+            with var server = acquired:
                 let _ = ch.send(server.address())
 
                 let _stopped = ch.receive()

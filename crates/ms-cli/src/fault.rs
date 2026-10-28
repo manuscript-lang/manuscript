@@ -144,12 +144,12 @@ mod tests {
 
     #[test]
     fn parses_message_trace_and_cleanup_faults() {
-        let report = "Int./: division by zero; right must be nonzero, found 0\n  at /w/main.ms:7 in divide\n  at /w/main.ms:3 in main\n  ... previous frame repeated 4 more times\n  ... outer frames omitted\ncleanup fault: close failed\ndetail";
+        let report = "division by zero; right must be nonzero, found 0\n  at /w/main.ms:7 in divide\n  at /w/main.ms:3 in main\n  ... previous frame repeated 4 more times\n  ... outer frames omitted\ncleanup fault: close failed\ndetail";
         let fault = Fault::parse(report).unwrap();
         assert_eq!(fault.kind, "division_by_zero");
         assert_eq!(
             fault.message,
-            "Int./: division by zero; right must be nonzero, found 0"
+            "division by zero; right must be nonzero, found 0"
         );
         assert_eq!(fault.trace.len(), 2);
         assert_eq!(fault.trace[0].file, "/w/main.ms");

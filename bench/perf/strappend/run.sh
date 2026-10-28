@@ -5,6 +5,7 @@ set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
 MS=${MS:-$ROOT/ms}; RUSTC=${RUSTC:-rustc}; N=${1:-5}
+case "$N" in ''|*[!0-9]*|0) echo 'repeats must be a positive integer' >&2; exit 2;; esac
 EXE=
 case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) EXE=.exe ;; esac
 W=$(mktemp -d)
@@ -21,11 +22,9 @@ fi
 i=0
 while [ "$i" -lt "$N" ]; do
   for v in ms rust; do
-    if [ "$v" = ms ]; then "$W/ms/bench$EXE"; else "$W/rust$EXE"; fi | awk -v v="$v" -F'\t' '{print $1 "\t" v "\t" $2}' >> "$W/raw.txt"
+    if [ "$v" = ms ]; then "$W/ms/bench$EXE" > "$W/sample.txt"; else "$W/rust$EXE" > "$W/sample.txt"; fi
+    awk -v i="$i" -v v="$v" '{print i "\t" v "\t" $0}' "$W/sample.txt" >> "$W/raw.txt"
   done
   i=$((i + 1))
 done
-sort -t'	' -k1,1 -k2,2 -k3,3n "$W/raw.txt" | awk -F'\t' '
-  { key=$1 SUBSEP $2; if (!(key in best)) { best[key]=$3; if (!($1 in seen)) { seen[$1]=1; order[++n]=$1 } } }
-  END { printf "%-12s %10s %10s %8s\n", "size", "ms_us", "rust_us", "ratio";
-        for (i=1;i<=n;i++) { k=order[i]; m=best[k SUBSEP "ms"]; r=best[k SUBSEP "rust"]; printf "%-12s %10d %10d %7.2fx\n", k, m, r, (r>0? m/r : 0) } }'
+python3 "$HERE/table.py" "$W/raw.txt" "$N"

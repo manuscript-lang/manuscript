@@ -1,3 +1,4 @@
+from "@std/core.ms" import Closeable
 from "@std/bytes.ms" import Bytes
 from "@std/http.ms" import ClientResponse
 from "@std/time.ms" import Duration
@@ -80,34 +81,89 @@ export type NetworkError:
         message: String
     )
 
+# The runtime handle behind a `Connection`.
+export extern type NativeConnection
+
+extern def msrt_net_connection_close(handle: NativeConnection) -> Unit
+
+extern def msrt_net_connection_local_address(handle: NativeConnection) -> String
+
+extern def msrt_net_connection_peer_address(handle: NativeConnection) -> String
+
+extern def msrt_net_connection_read(
+    handle: NativeConnection,
+    max_bytes: Optional[Int],
+    timeout: Optional[Duration]
+) -> Result[Optional[Bytes], IoError]
+
+extern def msrt_net_connection_shutdown_write(
+    handle: NativeConnection
+) -> Result[Unit, NetworkError]
+
+extern def msrt_net_connection_tls_info(
+    handle: NativeConnection
+) -> Result[TlsInfo, TlsError]
+
+extern def msrt_net_connection_write(
+    handle: NativeConnection,
+    data: String,
+    timeout: Optional[Duration]
+) -> Result[Unit, IoError]
+
+extern def msrt_net_connection_write_bytes(
+    handle: NativeConnection,
+    data: Bytes,
+    timeout: Optional[Duration]
+) -> Result[Unit, IoError]
+
 # A connected stream socket, optionally protected by TLS.
 # Several tasks may wait on one connection: each `read` parks until data arrives, and tasks are woken together, so the one that finds data proceeds and the rest wait again. Writers sharing a connection should serialize whole messages themselves.
-export interface Connection:
+export type Connection:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeConnection
+
+impl Closeable for Connection:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later calls wait for the first. Reads and writes afterwards return Closed.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_net_connection_close(self.native)
+
+impl Connection:
     # Returns this end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
-    def local_address() -> String
+    def local_address() -> String:
+        return msrt_net_connection_local_address(self.native)
+
     # Returns the remote end's address as `host:port` text, with IPv6 hosts in brackets.
-    def peer_address() -> String
+    def peer_address() -> String:
+        return msrt_net_connection_peer_address(self.native)
+
     # Returns a positive chunk or none at EOF; local timeout uses IoError.Failed, not NetworkError.Timeout.
     def read(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[Optional[Bytes], IoError]
+    ) -> Result[Optional[Bytes], IoError]:
+        return msrt_net_connection_read(self.native, max_bytes, timeout)
+
     # Half-closes the connection so the peer sees end of stream, while this side can keep reading.
     # Returns Unsupported for stream kinds that cannot half-close, and Closed on a closed connection.
-    def shutdown_write() -> Result[Unit, NetworkError]
+    def shutdown_write() -> Result[Unit, NetworkError]:
+        return msrt_net_connection_shutdown_write(self.native)
+
     # Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     # A connection that is not TLS returns InvalidInput.
-    def tls_info() -> Result[TlsInfo, TlsError]
+    def tls_info() -> Result[TlsInfo, TlsError]:
+        return msrt_net_connection_tls_info(self.native)
+
     # Writes all bytes on success; failure can leave a prefix. Local timeout uses IoError.Failed.
-    def write(data: String, timeout: Optional[Duration] = none) -> Result[Unit, IoError]
+    def write(data: String, timeout: Optional[Duration] = none) -> Result[Unit, IoError]:
+        return msrt_net_connection_write(self.native, data, timeout)
+
     # Writes raw bytes with the same rules as write.
     def write_bytes(
         data: Bytes,
         timeout: Optional[Duration] = none
-    ) -> Result[Unit, IoError]
+    ) -> Result[Unit, IoError]:
+        return msrt_net_connection_write_bytes(self.native, data, timeout)
 
 # One datagram and the address from which it was received.
 export type Datagram:
@@ -116,32 +172,73 @@ export type Datagram:
     # Native host:port text, with bracketed IPv6 addresses.
     sender: String
 
+# The runtime handle behind a `DatagramSocket`.
+export extern type NativeDatagramSocket
+
+extern def msrt_net_datagram_address(handle: NativeDatagramSocket) -> String
+
+extern def msrt_net_datagram_close(handle: NativeDatagramSocket) -> Unit
+
+extern def msrt_net_datagram_receive(
+    handle: NativeDatagramSocket,
+    max_bytes: Optional[Int],
+    timeout: Optional[Duration]
+) -> Result[Datagram, NetworkError]
+
+extern def msrt_net_datagram_send(
+    handle: NativeDatagramSocket,
+    data: String,
+    address: String,
+    timeout: Optional[Duration]
+) -> Result[Unit, NetworkError]
+
+extern def msrt_net_datagram_send_bytes(
+    handle: NativeDatagramSocket,
+    data: Bytes,
+    address: String,
+    timeout: Optional[Duration]
+) -> Result[Unit, NetworkError]
+
 # A connectionless socket for sending and receiving datagrams.
-export interface DatagramSocket:
-    # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
-    def address() -> String
+export type DatagramSocket:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeDatagramSocket
+
+impl Closeable for DatagramSocket:
     # Closes the socket, interrupting calls in progress, and waits for them to stop.
     # Safe to call repeatedly.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_net_datagram_close(self.native)
+
+impl DatagramSocket:
+    # Returns the bound local address as `host:port` text, which reveals the port chosen when binding port 0.
+    def address() -> String:
+        return msrt_net_datagram_address(self.native)
+
     # Waits for one datagram and returns its bytes with the sender's address. `max_bytes` is 1 through 65535 and defaults to 65535.
     # A larger datagram returns LimitExceeded and is discarded. A timeout returns Timeout and a closed socket returns Closed.
     def receive(
         max_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
-    ) -> Result[Datagram, NetworkError]
+    ) -> Result[Datagram, NetworkError]:
+        return msrt_net_datagram_receive(self.native, max_bytes, timeout)
+
     # Sends `data` as a single datagram to `address` (`host:port`), resolving a host name with the network's resolver.
     # The network's restrictions apply to both the name and the resolved address. A short send returns Failed; a timeout returns Timeout.
     def send(
         data: String,
         address: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Unit, NetworkError]
+    ) -> Result[Unit, NetworkError]:
+        return msrt_net_datagram_send(self.native, data, address, timeout)
+
     # Sends raw bytes as a single datagram with the same rules as send.
     def send_bytes(
         data: Bytes,
         address: String,
         timeout: Optional[Duration] = none
-    ) -> Result[Unit, NetworkError]
+    ) -> Result[Unit, NetworkError]:
+        return msrt_net_datagram_send_bytes(self.native, data, address, timeout)
 
 # Supported DNS query categories; unknown spellings are rejected by checking.
 export type DnsKind:
@@ -225,17 +322,39 @@ export type DnsRecord:
     # The service port of an SRV record; 0 for other kinds.
     port: Int
 
+# The runtime handle behind a `Listener`.
+export extern type NativeListener
+
+extern def msrt_net_listener_accept(
+    handle: NativeListener,
+    timeout: Optional[Duration]
+) -> Result[Connection, NetworkError]
+
+extern def msrt_net_listener_address(handle: NativeListener) -> String
+
+extern def msrt_net_listener_close(handle: NativeListener) -> Unit
+
 # A listening socket that accepts incoming connections.
 # Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
-export interface Listener:
-    # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
-    # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
-    def accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]
-    # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-    def address() -> String
+export type Listener:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeListener
+
+impl Closeable for Listener:
     # Stops accepting, interrupts a pending `accept`, and waits for it to stop.
     # Safe to call repeatedly; connections already accepted stay open.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_net_listener_close(self.native)
+
+impl Listener:
+    # Waits for the next incoming connection and returns it. A timeout returns Timeout and a closed listener returns Closed.
+    # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
+    def accept(timeout: Optional[Duration] = none) -> Result[Connection, NetworkError]:
+        return msrt_net_listener_accept(self.native, timeout)
+
+    # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
+    def address() -> String:
+        return msrt_net_listener_address(self.native)
 
 # Reports whether an IP address belongs to a CIDR range.
 export def contains_ip(cidr: Cidr, address: IpAddress) -> Result[Bool, NetworkError]:
@@ -550,26 +669,76 @@ export type WebSocketError:
         message: String
     )
 
+# The runtime handle behind a `WebSocket`.
+export extern type NativeWebSocket
+
+extern def msrt_websocket_close(handle: NativeWebSocket) -> Unit
+
+extern def msrt_websocket_ping(
+    handle: NativeWebSocket,
+    data: String
+) -> Result[Unit, WebSocketError]
+
+extern def msrt_websocket_ping_bytes(
+    handle: NativeWebSocket,
+    data: Bytes
+) -> Result[Unit, WebSocketError]
+
+extern def msrt_websocket_receive(
+    handle: NativeWebSocket
+) -> Result[Optional[WebSocketMessage], WebSocketError]
+
+extern def msrt_websocket_send(
+    handle: NativeWebSocket,
+    data: String
+) -> Result[Unit, WebSocketError]
+
+extern def msrt_websocket_send_bytes(
+    handle: NativeWebSocket,
+    data: Bytes,
+    text: Bool
+) -> Result[Unit, WebSocketError]
+
+extern def msrt_websocket_subprotocol(handle: NativeWebSocket) -> String
+
 # A WebSocket connection. Send and receive byte messages with an explicit text flag.
-export interface WebSocket:
+export type WebSocket:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeWebSocket
+
+impl Closeable for WebSocket:
     # Sends a normal-closure frame, waiting at most about 100 ms to write it, then closes the connection and waits for in-flight calls to stop.
     # Safe to call repeatedly; later calls wait for the first.
-    def close() -> Unit
+    var def close() -> Unit:
+        msrt_websocket_close(self.native)
+
+impl WebSocket:
     # Sends a ping frame carrying `data`, which must be at most 125 bytes, with a one-second write deadline.
     # It does not wait for the pong. Returns Closed on a closed socket.
-    def ping(data: String) -> Result[Unit, WebSocketError]
+    def ping(data: String) -> Result[Unit, WebSocketError]:
+        return msrt_websocket_ping(self.native, data)
+
     # Sends a ping frame carrying raw bytes, with the same limits and deadline as ping.
-    def ping_bytes(data: Bytes) -> Result[Unit, WebSocketError]
+    def ping_bytes(data: Bytes) -> Result[Unit, WebSocketError]:
+        return msrt_websocket_ping_bytes(self.native, data)
+
     # Waits for the next complete message and returns it, or none once the peer closes normally.
     # A larger message returns LimitExceeded and a malformed text message InvalidData; after any receive failure the connection is closed. One receive runs at a time, and others wait their turn.
-    def receive() -> Result[Optional[WebSocketMessage], WebSocketError]
+    def receive() -> Result[Optional[WebSocketMessage], WebSocketError]:
+        return msrt_websocket_receive(self.native)
+
     # Sends `data` as one text message; a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    def send(data: String) -> Result[Unit, WebSocketError]
+    def send(data: String) -> Result[Unit, WebSocketError]:
+        return msrt_websocket_send(self.native, data)
+
     # Sends `data` as one message, a text frame when `text` is True and a binary frame (the default) otherwise.
     # Text must be valid UTF-8 or the call returns InvalidData, and a payload over `max_message_bytes` returns LimitExceeded. One send runs at a time.
-    def send_bytes(data: Bytes, text: Bool = False) -> Result[Unit, WebSocketError]
+    def send_bytes(data: Bytes, text: Bool = False) -> Result[Unit, WebSocketError]:
+        return msrt_websocket_send_bytes(self.native, data, text)
+
     # Returns the subprotocol the server selected during the handshake, or an empty string when none was negotiated.
-    def subprotocol() -> String
+    def subprotocol() -> String:
+        return msrt_websocket_subprotocol(self.native)
 
 # A received message and whether its payload is UTF-8 text.
 export type WebSocketMessage:

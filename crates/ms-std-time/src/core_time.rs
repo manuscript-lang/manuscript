@@ -209,7 +209,7 @@ pub fn format(ts: Ts, pattern: &[u8], zone: &str) -> Result<Vec<u8>, u8> {
     Ok(out)
 }
 
-/// `time.from_calendar(...)`: strictly validated fields, resolved like Go's `time.Date`.
+/// `time.from_calendar(...)`: strictly validated fields; DST gaps and overlaps resolve to the earlier offset.
 #[allow(clippy::too_many_arguments)]
 pub fn from_calendar(
     year: i64,
@@ -235,11 +235,19 @@ pub fn from_calendar(
         return Err(out_of_range);
     }
     let local = local_seconds(year, month, day, hour, minute, second);
-    // Go's `Date`: guess the offset at the local time read as UTC, then correct it once.
-    let offset = z.offset_at(local);
-    let unix = local - z.offset_at(local - offset);
-    let seen = civil_of(unix + z.offset_at(unix), 0);
-    if seen.day != day || seen.month != month || !in_range(unix) {
+    // A repeated local time resolves to the earlier instant; a skipped one takes the offset in
+    // force before the transition. Candidate offsets come from a day on either side.
+    let before = z.offset_at(local - 86_400);
+    let after = z.offset_at(local + 86_400);
+    let valid = |offset: i64| z.offset_at(local - offset) == offset;
+    let offset = match (valid(before), valid(after)) {
+        (true, true) => before.max(after),
+        (true, false) => before,
+        (false, true) => after,
+        (false, false) => before,
+    };
+    let unix = local - offset;
+    if !in_range(unix) {
         return Err(out_of_range);
     }
     Ok(Ts {
@@ -376,12 +384,24 @@ mod tests {
             f(2024, 7, 4, 12, "America/New_York").unwrap(),
             "2024-07-04T16:30:00Z"
         );
-        // Spring forward: 02:30 does not exist; Go resolves it with the offset in force after the gap.
+        // Spring forward: 02:30 does not exist; the offset in force before the gap (EST) applies.
         assert_eq!(
             f(2024, 3, 10, 2, "America/New_York").unwrap(),
-            "2024-03-10T06:30:00Z"
+            "2024-03-10T07:30:00Z"
         );
-        // Fall back: 01:30 occurs twice; Go picks the first (EDT).
+        // Midnight gap (Santiago skips 00:00-01:00): resolves instead of failing.
+        assert_eq!(
+            from_calendar(2024, 9, 8, 0, 30, 0, 0, "America/Santiago")
+                .map(to_string)
+                .unwrap(),
+            "2024-09-08T04:30:00Z"
+        );
+        // Repeated hour east of UTC: the earlier instant (BST).
+        assert_eq!(
+            f(2024, 10, 27, 1, "Europe/London").unwrap(),
+            "2024-10-27T00:30:00Z"
+        );
+        // Fall back: 01:30 occurs twice; the first (EDT) wins.
         assert_eq!(
             f(2024, 11, 3, 1, "America/New_York").unwrap(),
             "2024-11-03T05:30:00Z"

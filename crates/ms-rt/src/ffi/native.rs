@@ -1318,6 +1318,11 @@ impl<R: AbiRecord> IntoAbi for R {
 /// Declares a record type shared with generated code: a `repr(C)` struct whose fields are all
 /// [`AbiSlot`](crate::ffi::AbiSlot)s, usable as `&Rec` arguments and `-> Rec` / `-> out Rec` results of
 /// [`native!`](crate::native).
+///
+/// The compiler flattens a record into its fields' leaves with no padding of its own, so a field
+/// declared after a nested record sits right behind the nested record's last leaf, not at its
+/// padded `repr(C)` size. Where a field follows a nested record, list the nested fields inline
+/// and test the offset of the field after them with `offset_of!`.
 #[macro_export]
 macro_rules! abi_record {
     (

@@ -2994,26 +2994,42 @@ impl<'a> FnLower<'a> {
                     let TyKind::List(group_elem) = s.b.m.types.kind(group_ty).clone() else {
                         return Err(Error::new("group_by without list groups"));
                     };
-                    let group = s.two_ways(
-                        missing,
-                        group_ty,
-                        &mut |s| Ok(Some(s.b.list_lit(group_elem, &[]))),
-                        &mut |s| {
-                            let at =
-                                s.b.emit(
-                                    ms_mir::ir::Op::Load,
-                                    &[found],
-                                    ms_mir::ir::Imm::Ty(group_ty),
-                                    Some(group_ty),
-                                )
-                                .expect("load");
-                            Ok(Some(s.owned(Val { v: at, own: false })))
-                        },
-                    )?;
-                    let xo = s.owned(Val { v: x, own: false });
-                    let grown = s.b.list_push(group.v, xo);
+                    // A present group is taken out of its entry, grown and put back where it
+                    // lies, so a bucket is never copied; an absent one starts as `[x]`.
                     let cur = s.b.use_var(acc);
-                    let next = s.map_insert(cur, k, grown)?;
+                    let next = s
+                        .two_ways(
+                            missing,
+                            out,
+                            &mut |s| {
+                                let empty = s.b.list_lit(group_elem, &[]);
+                                let xo = s.owned(Val { v: x, own: false });
+                                let grown = s.b.list_push(empty, xo);
+                                let next = s.map_insert(cur, k, grown)?;
+                                Ok(Some(next))
+                            },
+                            &mut |s| {
+                                let taken =
+                                    s.b.emit(
+                                        ms_mir::ir::Op::Take,
+                                        &[found],
+                                        ms_mir::ir::Imm::Ty(group_ty),
+                                        Some(group_ty),
+                                    )
+                                    .expect("take");
+                                let xo = s.owned(Val { v: x, own: false });
+                                let grown = s.b.list_push(taken, xo);
+                                s.b.emit(
+                                    ms_mir::ir::Op::Put,
+                                    &[found, grown],
+                                    ms_mir::ir::Imm::None,
+                                    None,
+                                );
+                                s.drop_value(k);
+                                Ok(Some(cur))
+                            },
+                        )?
+                        .v;
                     s.b.def_var(acc, next);
                     Ok(None)
                 })?;

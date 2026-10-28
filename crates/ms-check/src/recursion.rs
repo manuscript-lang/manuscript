@@ -58,6 +58,68 @@ fn recursive_paths(edges: &HashMap<Name, Vec<Edge>>) -> HashSet<Name> {
         .collect()
 }
 
+/// Strongly connected declaration components, computed without expanding type arguments.
+fn components(edges: &HashMap<Name, Vec<Edge>>) -> HashMap<Name, usize> {
+    let mut reverse: HashMap<Name, Vec<Name>> = HashMap::new();
+    for (&id, outgoing) in edges {
+        reverse.entry(id).or_default();
+        for edge in outgoing {
+            reverse.entry(edge.target).or_default().push(id);
+        }
+    }
+    let mut seen = HashSet::new();
+    let mut finish = Vec::new();
+    for &root in reverse.keys() {
+        let mut stack = vec![(root, false)];
+        while let Some((id, exiting)) = stack.pop() {
+            if exiting {
+                finish.push(id);
+                continue;
+            }
+            if !seen.insert(id) {
+                continue;
+            }
+            stack.push((id, true));
+            for edge in edges.get(&id).into_iter().flatten() {
+                stack.push((edge.target, false));
+            }
+        }
+    }
+    let mut result = HashMap::new();
+    for root in finish.into_iter().rev() {
+        if result.contains_key(&root) {
+            continue;
+        }
+        let component = result.len();
+        let mut stack = vec![root];
+        while let Some(id) = stack.pop() {
+            if result.contains_key(&id) {
+                continue;
+            }
+            result.insert(id, component);
+            stack.extend(&reverse[&id]);
+        }
+    }
+    result
+}
+
+type ApplicationKey = (Name, Vec<String>, Vec<(Name, Vec<String>)>);
+
+fn application_key(
+    id: Name,
+    args: &[Ty],
+    active: &HashMap<Name, Vec<Ty>>,
+    components: &HashMap<Name, usize>,
+) -> ApplicationKey {
+    let mut ancestors: Vec<_> = active
+        .iter()
+        .filter(|(ancestor, _)| components[ancestor] == components[&id])
+        .map(|(&ancestor, args)| (ancestor, args.iter().map(type_key).collect()))
+        .collect();
+    ancestors.sort_unstable_by_key(|(id, _)| *id);
+    (id, args.iter().map(type_key).collect(), ancestors)
+}
+
 struct EdgeScan<'a> {
     module: &'a ModRef,
     nodes: &'a HashMap<Name, Node>,
@@ -215,6 +277,8 @@ impl Checker {
         for outgoing in edges.values_mut() {
             outgoing.retain(|edge| recursive.contains(&edge.target));
         }
+        let components = components(&edges);
+        let mut completed = HashSet::new();
         for root in &order {
             if !recursive.contains(root) {
                 continue;
@@ -226,10 +290,13 @@ impl Checker {
                 &variables,
                 &edges,
                 &mut active,
+                &components,
+                &mut completed,
             );
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn visit_application(
         &mut self,
         id: Name,
@@ -237,10 +304,20 @@ impl Checker {
         variables: &HashMap<Name, Vec<Ty>>,
         edges: &HashMap<Name, Vec<Edge>>,
         active: &mut HashMap<Name, Vec<Ty>>,
-    ) {
+        components: &HashMap<Name, usize>,
+        completed: &mut HashSet<ApplicationKey>,
+    ) -> bool {
         if active.contains_key(&id) {
-            return;
+            return true;
         }
+        // Every active ancestor reaches this declaration. It can be reached back only
+        // within the same SCC, so other ancestors cannot affect any cycle comparison.
+        // Keep the complete SCC-local context: specialization alone is not sufficient.
+        let key = application_key(id, &args, active, components);
+        if completed.contains(&key) {
+            return true;
+        }
+        let mut valid = true;
         active.insert(id, args.clone());
         let mut s = Subst::new();
         for (i, v) in variables[&id].iter().enumerate() {
@@ -254,6 +331,7 @@ impl Checker {
                 let equal = previous.len() == next.len()
                     && previous.iter().zip(&next).all(|(a, b)| same(a, b));
                 if !equal {
+                    valid = false;
                     self.error_in(
                         edge.file,
                         edge.pos,
@@ -263,9 +341,22 @@ impl Checker {
                 }
                 continue;
             }
-            self.visit_application(edge.target, next, variables, edges, active);
+            valid &= self.visit_application(
+                edge.target,
+                next,
+                variables,
+                edges,
+                active,
+                components,
+                completed,
+            );
         }
         active.remove(&id);
+        // Reusing failures would suppress or reorder diagnostics at their original sites.
+        if valid {
+            completed.insert(key);
+        }
+        valid
     }
 
     /// Follows declaration dependencies, not expanded field layouts. For
@@ -445,3 +536,7 @@ impl Checker {
         active.remove(&id);
     }
 }
+
+#[cfg(test)]
+#[path = "recursion/tests.rs"]
+mod tests;
