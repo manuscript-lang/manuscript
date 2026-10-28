@@ -605,11 +605,12 @@ impl Checker {
         if rt.id == "<invalid>" {
             return i;
         }
-        for f in fields(&rt) {
-            if rt.kind == Kind::Record && f.name == name && name != "to_string" {
-                i.ty = Some(f.ty);
-                return i;
-            }
+        if rt.kind == Kind::Record
+            && name != "to_string"
+            && let Some(f) = field_of(&rt, name)
+        {
+            i.ty = Some(f.ty);
+            return i;
         }
         if rt.id == "Int" && matches!(name.as_str(), "seconds" | "milliseconds" | "minutes") {
             i.ty = Some(standard("Duration", vec![]));
