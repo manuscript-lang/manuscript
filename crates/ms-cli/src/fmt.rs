@@ -350,6 +350,7 @@ fn format_error(cwd: &str, target: &str, error: FmtError) -> (CommandDiagnostic,
         FmtError::Plain(text) => message = text,
     }
     let diagnostic = CommandDiagnostic {
+        severity: String::new(),
         code: code.to_string(),
         phase: "format".to_string(),
         message: message.clone(),

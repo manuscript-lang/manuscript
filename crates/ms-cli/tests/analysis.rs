@@ -76,11 +76,22 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
         .unwrap();
     }
     let output = ms(&dir, &["lint", "a.ms", "b.ms"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(0), "an unused import only warns");
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr.matches("MSL102").count(), 1, "{stderr}");
+    assert!(stderr.contains("1 warning;"), "{stderr}");
     assert!(!stderr.contains("fix them and re-run"), "{stderr}");
+    let output = ms(&dir, &["lint", "a.ms", "b.ms", "--deny-warnings"]);
+    assert_eq!(output.status.code(), Some(1));
+    let output = ms(&dir, &["lint", "a.ms", "b.ms", "--json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let document = ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+    let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+    assert_eq!(
+        diagnostics[0].get("severity").unwrap().as_str().unwrap(),
+        "warning"
+    );
 
     std::fs::write(
         dir.join("bad.ms"),

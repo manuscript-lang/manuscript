@@ -110,6 +110,7 @@ fn report_error(
         return 1;
     }
     let diagnostic = CommandDiagnostic {
+        severity: String::new(),
         code: "MSN001".into(),
         phase: phase.into(),
         message: message.into(),
