@@ -30,7 +30,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## What Manuscript offers
 
-- **Cleanup on every exit:** `with` closes a resource on `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Cleanup on every exit:** a resource closes automatically at scope end, whether it ends by `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Inferred closures:** a closure that stays local borrows what it captures; one that escapes owns it. No capture lists. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
 - **Exact numbers:** checked `Int8` to `Int64`, `UInt8` to `UInt64`, `Float32`, and `Decimal` literals such as `12.50d`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
 - **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import; sharing across owners is the explicit `Shared[T]`.
