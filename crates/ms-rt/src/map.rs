@@ -288,8 +288,23 @@ unsafe fn compact(m: &mut MapVal, l: &Layout) {
             }
         }
         m.used = out;
-        let size = m.mask + 1;
+        // Leave room for regrowth without rebuilding the peak-sized index for a tiny map.
+        let size = m
+            .len
+            .checked_mul(4)
+            .and_then(usize::checked_next_power_of_two)
+            .unwrap_or_else(|| fault::fault(b"map size overflow"))
+            .max(16);
         rebuild_index(m, l, size);
+    }
+}
+
+/// Slot capacity can outlive a compacted index, so grow the index independently.
+unsafe fn make_index_room(m: &mut MapVal, l: &Layout) {
+    // `used` also counts removed slots; keep an empty probe bucket after churn.
+    if m.used * 2 > m.mask {
+        // SAFETY: existing live slots are unchanged and are reindexed in place.
+        unsafe { rebuild_index(m, l, (m.mask + 1) * 2) };
     }
 }
 
@@ -392,6 +407,7 @@ unsafe fn upsert_k<K: KeyOps>(
         if m.used == m.cap {
             grow(m, &l);
         }
+        make_index_room(m, &l);
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
         copy_slot(key, p.add(l.koff), l.ksize);
@@ -726,10 +742,16 @@ pub unsafe extern "C-unwind" fn msrt_map_reserve(
     unsafe {
         let m = &mut *m;
         let n = usize::try_from(n).unwrap_or(0);
-        if n <= m.cap || n > u32::MAX as usize / 2 {
+        if n > u32::MAX as usize / 2 {
             return;
         }
         let l = layout(&*kd, opt(vd));
+        if n <= m.cap {
+            if n * 2 > m.mask + 1 {
+                rebuild_index(m, &l, n.next_power_of_two() * 2);
+            }
+            return;
+        }
         // Exact room: small objects dominate parsed documents, and `grow` doubles from here.
         let cap = n.next_power_of_two().max(2);
         m.slots = if m.slots.is_null() {
@@ -785,6 +807,7 @@ unsafe fn insert_word<K: KeyOps>(m: &mut MapVal, key: *mut u8, val: *mut u8, ksi
         if m.used == m.cap {
             grow(m, &l);
         }
+        make_index_room(m, &l);
         let p = slot(m, &l, m.used);
         *(p as *mut u64) = h;
         copy_slot(key, p.add(8), ksize);
@@ -1457,6 +1480,29 @@ mod tests {
         hash: Some(modulo_hash),
     };
 
+    unsafe extern "C" fn identity_hash(a: *const u8) -> i64 {
+        // SAFETY: the test descriptor describes an i64 slot.
+        unsafe { *(a as *const i64) }
+    }
+
+    unsafe extern "C" fn identity_eq(a: *const u8, b: *const u8) -> u8 {
+        // SAFETY: the test descriptor describes i64 slots.
+        unsafe { (*(a as *const i64) == *(b as *const i64)) as u8 }
+    }
+
+    static IDENTITY_KEY: TypeDesc = TypeDesc {
+        size: 8,
+        align: 8,
+        kind: KIND_CUSTOM,
+        reserved: 0,
+        inner0: core::ptr::null(),
+        inner1: core::ptr::null(),
+        drop: None,
+        copy: None,
+        eq: Some(identity_eq),
+        hash: Some(identity_hash),
+    };
+
     #[test]
     fn creator_evidence_survives_foreign_operations_copy_and_clear() {
         let _g = testutil::lock();
@@ -1765,6 +1811,129 @@ mod tests {
             assert_eq!(*(p as *const i64), 950);
             drop_map(&mut m, kd, Some(vd));
             crate::vec::drop_list(&mut keys, kd);
+        }
+    }
+
+    #[test]
+    fn compact_index_tracks_live_entries_and_regrows() {
+        let _g = testutil::lock();
+        // SAFETY: all map slots hold live i64 keys and values.
+        unsafe {
+            let d = &msrt_desc_int;
+            let mut m = empty();
+            for i in 0..4096i64 {
+                let (mut k, mut v) = (i, i * 10);
+                msrt_map_add_w8(
+                    &mut m,
+                    d,
+                    d,
+                    (&mut k as *mut i64).cast(),
+                    (&mut v as *mut i64).cast(),
+                );
+            }
+            for i in 0..4066i64 {
+                assert!(remove(&mut m, d, Some(d), (&i as *const i64).cast()));
+            }
+            assert_eq!(m.len, 30);
+            assert_eq!(m.used, 30);
+            assert_eq!(m.mask + 1, 128);
+            assert_eq!(m.cap, 4096);
+
+            for i in 4096..4596i64 {
+                let (mut k, mut v) = (i, i * 10);
+                msrt_map_add_w8(
+                    &mut m,
+                    d,
+                    d,
+                    (&mut k as *mut i64).cast(),
+                    (&mut v as *mut i64).cast(),
+                );
+            }
+            assert_eq!(m.len, 530);
+            assert!(m.mask + 1 >= m.len * 2);
+            msrt_map_reserve(&mut m, d, d, 2000);
+            assert_eq!(m.cap, 4096);
+            assert!(m.mask + 1 >= 4000);
+            let mut keys = VecVal {
+                ptr: core::ptr::null_mut(),
+                len: 0,
+                cap: 0,
+            };
+            msrt_map_keys(&m, d, d, &mut keys);
+            let expected = (4066..4096)
+                .chain(4096..4596)
+                .collect::<std::vec::Vec<i64>>();
+            let actual = (0..keys.len)
+                .map(|i| *(keys.ptr as *const i64).add(i))
+                .collect::<std::vec::Vec<_>>();
+            assert_eq!(actual, expected);
+            for k in expected {
+                let p = msrt_map_get_ptr(&m, d, d, (&k as *const i64).cast());
+                assert_eq!(*(p as *const i64), k * 10);
+            }
+            crate::vec::drop_list(&mut keys, d);
+            drop_map(&mut m, d, Some(d));
+        }
+    }
+
+    #[test]
+    fn compacted_index_keeps_empty_probe_buckets_during_churn() {
+        let _g = testutil::lock();
+        // SAFETY: all map slots hold live i64 keys and values.
+        unsafe {
+            let d = &IDENTITY_KEY;
+            let mut m = empty();
+            msrt_map_reserve(&mut m, d, d, 256);
+            for i in 0..64i64 {
+                let (mut k, mut v) = (i, i);
+                insert(
+                    &mut m,
+                    d,
+                    Some(d),
+                    (&mut k as *mut i64).cast(),
+                    (&mut v as *mut i64).cast(),
+                );
+            }
+            for i in 0..33i64 {
+                assert!(remove(&mut m, d, Some(d), (&i as *const i64).cast()));
+            }
+            assert_eq!(m.mask + 1, 128);
+            for i in 64..97i64 {
+                let (mut k, mut v) = (i, i);
+                insert(
+                    &mut m,
+                    d,
+                    Some(d),
+                    (&mut k as *mut i64).cast(),
+                    (&mut v as *mut i64).cast(),
+                );
+            }
+            assert_eq!(m.len, 64);
+            assert_eq!(m.used, 64);
+            for i in 0..64i64 {
+                let old = 33 + i;
+                assert!(remove(&mut m, d, Some(d), (&old as *const i64).cast()));
+                let (mut k, mut v) = (97 + i, 97 + i);
+                insert(
+                    &mut m,
+                    d,
+                    Some(d),
+                    (&mut k as *mut i64).cast(),
+                    (&mut v as *mut i64).cast(),
+                );
+                // A missing lookup needs an empty bucket to terminate even after tombstones.
+                assert!(m.used * 2 <= m.mask + 1);
+                assert!((0..=m.mask).any(|bucket| *index_of(&m).add(bucket) == 0));
+                let missing = -1i64;
+                assert!(!contains_key(
+                    &m,
+                    d,
+                    Some(d),
+                    (&missing as *const i64).cast()
+                ));
+            }
+            assert_eq!(m.len, 64);
+            drop_map(&mut m, d, Some(d));
         }
     }
 
