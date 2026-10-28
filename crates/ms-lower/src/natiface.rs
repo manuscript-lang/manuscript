@@ -55,7 +55,6 @@ const UNIT_DATA: &[(&str, &str)] = &[
 #[derive(Clone, Copy)]
 enum Extra {
     Bool(bool),
-    Int(i64),
 }
 
 /// One row of `METHODS`: module, interface, operation, runtime symbol, constant extras.
@@ -408,41 +407,6 @@ const METHODS: &[MethodRow] = &[
     ),
     (
         "process",
-        "Subprocess",
-        "stdin",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(0))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "stdout",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(1))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "stderr",
-        "msstd_process_subprocess_stream",
-        &[("which", Extra::Int(2))],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "wait",
-        "msstd_process_subprocess_wait",
-        &[],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "terminate",
-        "msstd_process_subprocess_terminate",
-        &[],
-    ),
-    (
-        "process",
         "ProcessControl",
         "monotonic_time",
         "msstd_process_monotonic_time",
@@ -727,20 +691,6 @@ const METHODS: &[MethodRow] = &[
     ),
     (
         "process",
-        "Subprocess",
-        "kill",
-        "msstd_process_subprocess_kill",
-        &[],
-    ),
-    (
-        "process",
-        "Subprocess",
-        "close",
-        "msstd_process_subprocess_close",
-        &[],
-    ),
-    (
-        "process",
         "ProcessControl",
         "watch_signals",
         "msstd_process_watch_signals",
@@ -975,7 +925,6 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         let name = ct::n(name);
         let (ty, v) = match *extra {
             Extra::Bool(b) => (ct::bool_(), fl.b.bconst(b)),
-            Extra::Int(i) => (ct::int(), fl.b.iconst(i)),
         };
         // The rules flag leads a path entry point's arguments.
         let lead = sym.starts_with("msrt_path_");

@@ -704,6 +704,7 @@ msstd_process_info(out: *mut InfoOut) -> u8
 msstd_process_replace( program: *const StrVal, arguments: *const VecVal, env_names: *const VecVal, env_values: *const VecVal, ) -> u8
 msstd_process_command_run( program: *const StrVal, arguments: *const VecVal, input: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout_ns: i64, out: *mut CommandOut, ) -> u8
 msstd_process_command_spawn( program: *const StrVal, arguments: *const VecVal, stdin: i64, stdout: i64, stderr: i64, out: *mut *mut ChildHandle, ) -> u8
+msstd_process_subprocess_stdin(h: *mut ChildHandle) -> *mut Handle<Stream>
 msstd_process_subprocess_stream( h: *mut ChildHandle, which: i64, ) -> *mut Handle<Stream>
 msstd_process_subprocess_wait( h: *mut ChildHandle, has_timeout: u8, timeout_ns: i64, out: *mut i64, ) -> u8
 msstd_process_subprocess_terminate(h: *mut ChildHandle)
