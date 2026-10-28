@@ -31,7 +31,7 @@
 
 ### Predicate language (shared)
 
-- A predicate is an ordinary `Bool` expression restricted to: `Int`/`Float`/`String`/`Bool` literals, parameter and field reads, `== != < <= > >=`, `and or not`, `len`, `in` a range, `is_empty`, and `all`/`any` over a collection with a lambda whose body is a predicate. No calls to user functions, no mutation, no loops.
+- A predicate is an ordinary `Bool` expression restricted to: `Int`/`Float`/`String`/`Bool` literals, parameter and field reads, `== != < <= > >=`, `and or not`, `len`, `in` a range, `is_empty`, and `all`/`any` over a collection with a lambda whose body is a predicate. Calls only to `pure` functions (stage 4 rule), no mutation, no loops.
 - It lowers to ordinary Manuscript, so the runtime evaluator is the language itself. Rust adds no evaluator.
 - `old(expr)` is allowed only in `ensures` and reads the pre-call value of a parameter.
 
