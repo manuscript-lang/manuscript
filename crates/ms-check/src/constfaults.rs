@@ -106,10 +106,10 @@ fn place_text(e: &Expr) -> Option<String> {
 }
 
 impl Checker {
-    /// Tracks `with ... lock(box):` for the duration of its block and rejects locking the same
-    /// written place again inside it, which waits on itself forever. Returns whether a lock was
-    /// pushed; the caller pops it when the block ends.
-    pub(crate) fn begin_lock(&mut self, s: &Stmt, value: &Expr, ty: &Ty) -> bool {
+    /// Tracks `let guard = lock(box)` until its scope ends or `guard.close()` runs, and rejects
+    /// locking the same written place again meanwhile, which waits on itself forever. Returns
+    /// whether a lock was pushed; `block` pops it when the scope ends.
+    pub(crate) fn begin_lock(&mut self, s: &Stmt, guard: Name, value: &Expr, ty: &Ty) -> bool {
         let ExprKind::Call { args, .. } = &value.kind else {
             return false;
         };
@@ -123,17 +123,17 @@ impl Checker {
         if self
             .held_locks
             .iter()
-            .any(|(f, p)| *f == function && *p == place)
+            .any(|(f, p, _)| *f == function && *p == place)
         {
             self.type_error(
                 s.pos,
                 format!(
-                    "{place} is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first"
+                    "{place} is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first"
                 ),
             );
             return false;
         }
-        self.held_locks.push((function, place));
+        self.held_locks.push((function, place, guard));
         true
     }
 }

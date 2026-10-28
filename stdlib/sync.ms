@@ -56,8 +56,8 @@ export def lock[T](box: Shared[T]) -> SharedGuard[T]:
         let token = msrt_channel_token()
         msrt_waitq_push(key, token)
 
-        with var ticket = Ticket(key: key, token: token, parked: True):
-            msrt_channel_park(token)
-            ticket.parked = False
+        var ticket = Ticket(key: key, token: token, parked: True)
+        msrt_channel_park(token)
+        ticket.parked = False
 
     return SharedGuard[T](box: box, value: box.take(), held: True)

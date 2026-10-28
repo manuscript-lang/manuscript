@@ -204,8 +204,8 @@ impl StdLogger:
     def send(text: String) -> Result[Unit, LogError]:
         if text == "": return ok(())
 
-        with var transport = lock(self.transport):
-            return transport.value.write(text)
+        var transport = lock(self.transport)
+        return transport.value.write(text)
 
 impl Logger for StdLogger:
     def log(level: LogLevel, message: String) -> Result[Unit, LogError]:
@@ -252,12 +252,12 @@ impl Logger for StdLogger:
         self.state.set_level(level_index(level))
 
     def flush() -> Result[Unit, LogError]:
-        with var transport = lock(self.transport):
-            return transport.value.flush()
+        var transport = lock(self.transport)
+        return transport.value.flush()
 
     var def close() -> Unit:
-        with var transport = lock(self.transport):
-            transport.value.close()
+        var transport = lock(self.transport)
+        transport.value.close()
 
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
 #

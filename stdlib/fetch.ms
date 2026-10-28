@@ -164,17 +164,17 @@ def drain(
     options: FetchOptions,
     started: Instant
 ) -> Result[FetchResponse, FetchError]:
-    with let open = body:
-        let metadata = open.metadata()
-        let whole = (
-            try open
-            .read_all()
-            .map_error(lambda cause: read_failure(cause, options, started))
-        )
-        if limit_exceeded(options.max_response_bytes, whole.length()):
-            return error(FetchError.Http(HttpError.LimitExceeded))
+    let open = body
+    let metadata = open.metadata()
+    let whole = (
+        try open
+        .read_all()
+        .map_error(lambda cause: read_failure(cause, options, started))
+    )
+    if limit_exceeded(options.max_response_bytes, whole.length()):
+        return error(FetchError.Http(HttpError.LimitExceeded))
 
-        return ok(FetchResponse(head: metadata, body: whole))
+    return ok(FetchResponse(head: metadata, body: whole))
 
 # Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
 def read_failure(cause: IoError, options: FetchOptions, started: Instant) -> FetchError:
@@ -251,5 +251,5 @@ export def fetch(
     url: String,
     options: FetchOptions = FetchOptions()
 ) -> Result[FetchResponse, FetchError]:
-    with let client = try fetcher():
-        return client.fetch(url, options)
+    let client = try fetcher()
+    return client.fetch(url, options)
