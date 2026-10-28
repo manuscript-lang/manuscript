@@ -2,11 +2,11 @@
 
 **The language for the agentic era.**
 
-Agents will write most of the code, and people have to understand, check and run it. An agent has a limited context, cannot hold a whole program in its head, and learns from the compiler one round trip at a time. Every design choice below follows from that.
+Manuscript starts from one premise: agents will write most of the code, and people have to understand, check and run it. An agent has a limited context, cannot hold a whole program in its head, and learns from the compiler one round trip at a time. Every design choice below exists because of that.
 
 [Try Manuscript](documentation/learn/getting-started.md) · [Why Manuscript](documentation/learn/why-manuscript.md) · [Language tour](documentation/learn/tour.md) · [Performance](bench/perf/README.md)
 
-## Diagnostics that name the repair
+## Compiler feedback an agent can act on
 
 Every diagnostic reads `cause; fix`, and a habit from another language is answered with the Manuscript spelling:
 
@@ -16,7 +16,7 @@ count.ms:2:12: resolution: unknown binding len; there is no len() function: call
 
 When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` is the whole language in 4 KB, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
-## Mistakes caught before they run
+## Agent mistakes caught before they run
 
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
 - **Compile errors:** a dropped `Result`, a `match` missing a case, an unclosed `Closeable`, literal overflow.
@@ -24,13 +24,22 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Concurrency:** any function can wait, and tasks live in a `with` block that cancels what is still running, so generated code cannot leak one. [Concurrency](documentation/core-language/concurrency/_index.md)
 - **Tests:** property tests draw inputs the agent did not think of and shrink failures; `ms test --fuzz 30s` turns them into a fuzzer. [Testing](documentation/learn/testing.md)
 
-## Review without trusting the author
+## Review agent-written changes
 
 `ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and `with` scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
-## Fast and self-hosted
+## What Manuscript offers
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. Against Rust with overflow checks on, 32 cases span 0.30× to 4.51× Rust's time, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
+- **Cleanup on every exit:** a resource closes automatically at scope end, whether it ends by `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Inferred closures:** a closure that stays local borrows what it captures; one that escapes owns it. No capture lists. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
+- **Exact numbers:** checked `Int8` to `Int64`, `UInt8` to `UInt64`, `Float32`, and `Decimal` literals such as `12.50d`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
+- **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import; sharing across owners is the explicit `Shared[T]`.
+- **Benchmarks beside tests:** `bench` blocks live next to `test` blocks and `ms bench` times them. [Testing](documentation/learn/testing.md)
+- **A cheat sheet that is tested:** the mistakes in `ms guide` are verified against the compiler.
+
+## Fast code from the straightforward loop
+
+Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized, with an AVX2 copy chosen at run time on x86-64. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
 
 The standard library is about 14,000 lines of Manuscript across 40+ modules (HTTP, JSON, TOML, YAML, CSV, crypto, processes, and more), with Rust only for small primitives. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 
@@ -38,7 +47,7 @@ We build Manuscript with coding agents and measure them in the [agent benchmark]
 
 *Alpha. Syntax and APIs can change.*
 
-## Try it
+## Put an agent to work
 
 [Get the compiler](documentation/learn/getting-started.md), save this as `config.ms`, run `ms test config.ms`:
 

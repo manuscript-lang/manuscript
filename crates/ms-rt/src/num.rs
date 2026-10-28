@@ -320,8 +320,24 @@ pub fn float_precision(v: f64, format: u8, digits: i64, minimum: i64) -> Option<
     let epos = t.iter().position(|&c| c == b'e').unwrap_or(t.len());
     let e = parse_int_decimal(&t[epos + 1..]).unwrap_or(0);
     if format == b'g' && e >= -6 && e < digits as i64 {
-        let frac = (digits as i64 - e - 1) as usize;
-        let _ = write!(out, "{v:.frac$}");
+        // Scientific formatting has already rounded all significant digits.
+        // Move its decimal point without formatting the binary value again.
+        let negative = t[0] == b'-';
+        if negative {
+            out.push(b'-');
+        }
+        let mantissa = &t[usize::from(negative)..epos];
+        let point = e + 1;
+        if point <= 0 {
+            out.extend_from_slice(b"0.");
+            out.resize(out.len() + (-point) as usize, b'0');
+        }
+        for (index, digit) in mantissa.iter().filter(|&&c| c != b'.').enumerate() {
+            if point > 0 && index == point as usize {
+                out.push(b'.');
+            }
+            out.push(*digit);
+        }
         return Some(out);
     }
     out.extend_from_slice(&t[..epos]);
@@ -697,6 +713,73 @@ mod tests {
         assert_eq!(f(1.0, b'g', 0, 1), None);
         assert_eq!(f(1.0, b'f', 101, 0), None);
         let _ = 1.to_string();
+    }
+
+    #[test]
+    fn float_precision_matches_previous_formatting() {
+        let _g = crate::testutil::lock();
+        // Independent oracle: the old path formats the original binary value
+        // again, using the exponent of its rounded scientific representation.
+        let previous = |value: f64, digits: usize| {
+            if !value.is_finite() {
+                return float_to_string(value);
+            }
+            let scientific = format!("{:.*e}", digits - 1, value);
+            let (mantissa, exponent) = scientific.split_once('e').unwrap();
+            let exponent: i64 = exponent.parse().unwrap();
+            if exponent >= -6 && exponent < digits as i64 {
+                return format!("{:.*}", (digits as i64 - exponent - 1) as usize, value)
+                    .into_bytes();
+            }
+            format!("{mantissa}e{exponent:+}").into_bytes()
+        };
+        let check = |value| {
+            for digits in 1..=100 {
+                assert_eq!(
+                    float_precision(value, b'g', digits, 1).unwrap(),
+                    previous(value, digits as usize),
+                    "bits={:016x} digits={digits}",
+                    value.to_bits()
+                );
+            }
+        };
+        for value in [
+            0.0,
+            -0.0,
+            1.0,
+            -1.0,
+            9.5,
+            9.95,
+            99.5,
+            999.5,
+            1e-6,
+            1e-7,
+            1e20,
+            1e21,
+            f64::MIN_POSITIVE,
+            f64::MAX,
+            f64::from_bits(1),
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            check(value);
+            if value.is_finite() && value > 0.0 {
+                check(f64::from_bits(value.to_bits() - 1));
+                check(f64::from_bits(value.to_bits() + 1));
+                check(-value);
+            }
+        }
+        let mut bits = 0x32e5_81ac_092f_8bd7u64;
+        for _ in 0..2048 {
+            bits = bits.wrapping_mul(6364136223846793005).wrapping_add(1);
+            check(f64::from_bits(bits));
+        }
+        for value in [0.0, -0.0, 1.25, f64::NAN, f64::INFINITY] {
+            for digits in [i64::MIN, 0, 101, i64::MAX] {
+                assert_eq!(float_precision(value, b'g', digits, 1), None);
+            }
+        }
     }
 
     #[test]

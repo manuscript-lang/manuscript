@@ -134,7 +134,7 @@ test "file handles positional I/O stream adapters and closed errors":
         let _written = fs.write_file(
             path: path, data: "abcdef", replace: False
         ) | try expect_ok
-        let handle = fs.open(path: path, flags: "r+", mode: 384) | try expect_ok
+        var handle = fs.open(path: path, flags: "r+", mode: 384) | try expect_ok
         handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
             "cd".to_bytes()
         )

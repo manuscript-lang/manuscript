@@ -182,6 +182,9 @@ pub struct Gen<'m> {
 pub struct LlvmFn {
     pub id: FuncId,
     pub symbol: String,
+    /// A per-CPU copy: it shares `id` with its dispatcher, so it needs a symbol of its own where
+    /// the tables address functions by symbol.
+    pub copy: bool,
     pub name: String,
     pub file: u32,
     pub line: u32,
@@ -272,6 +275,10 @@ pub struct FuncDbg {
     /// Offset of the function from [`crate::llvm_ir::TEXT_ANCHOR`]; zero when Cranelift built it
     /// (its own symbol is the table's target).
     pub text: u64,
+    /// The symbol of a per-CPU copy, and the import declared for it, which the tables address
+    /// where there is no anchor.
+    pub copy_symbol: Option<String>,
+    pub reloc: Option<FuncId>,
 }
 
 impl<'m> Gen<'m> {
@@ -786,6 +793,20 @@ fn compile_with_isa(
         let t = crate::llvm_tables::read(obj.path(), &g.llvm_funcs, &m.files, anchored)?;
         g.dbg = t.dbg;
         g.scopes = t.scopes;
+        if !anchored {
+            // The copies share their dispatcher's id; the tables name each by its own symbol.
+            for i in 0..g.dbg.len() {
+                let Some(symbol) = g.dbg[i].copy_symbol.clone() else {
+                    continue;
+                };
+                let sig = g.module.make_signature();
+                let imported = g
+                    .module
+                    .declare_function(&symbol, Linkage::Import, &sig)
+                    .map_err(|e| Error(format!("{symbol}: {e}")))?;
+                g.dbg[i].reloc = Some(imported);
+            }
+        }
         llvm_object = Some(obj);
     }
     let tables = if g.m.entry.is_some() {
@@ -958,7 +979,10 @@ fn relocate_tables(
         .iter()
         .map(|p| match anchor {
             Some(a) => (product.function_symbol(a), dbg[p.1].text as i64),
-            None => (product.function_symbol(dbg[p.1].id), 0),
+            None => (
+                product.function_symbol(dbg[p.1].reloc.unwrap_or(dbg[p.1].id)),
+                0,
+            ),
         })
         .collect();
     let obj = &mut product.object;
@@ -1051,6 +1075,7 @@ fn define_with(
         for symbol in symbols {
             g.llvm_funcs.push(LlvmFn {
                 id,
+                copy: copies,
                 symbol,
                 name: source.map_or_else(|| name.to_string(), |f| f.name.clone()),
                 file: source.map_or(u32::MAX, |f| f.loc.file),
@@ -1113,6 +1138,8 @@ fn define_with(
             ranges,
             dwarf_ranges,
             text: 0,
+            copy_symbol: None,
+            reloc: None,
         });
     }
     g.module.clear_context(ctx);

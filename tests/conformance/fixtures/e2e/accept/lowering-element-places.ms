@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=bug bash: lowering and codegen
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 type Pt:
     x: Int
@@ -27,14 +26,14 @@ test "a var argument rooted at an element with a variable index writes back":
     shift_at(var pts, 1, 5)
     try expect_equal(pts[1].x, 6)
     try expect_equal(pts[0].x, 0)
-    for i in range(0, 2):
+    for i in 0..2:
         shift(var pts[i], 10)
     try expect_equal(pts[0].x, 10)
     try expect_equal(pts[1].x, 16)
 
 test "field assignment and mutators through a variable element index":
     var rows = [Row([1], Pt(0, 0)), Row([], Pt(5, 5))]
-    for i in range(0, 2):
+    for i in 0..2:
         grow(var rows, i, i + 10)
     try expect_equal(rows[0].cells, [1, 10])
     try expect_equal(rows[1].cells, [11])

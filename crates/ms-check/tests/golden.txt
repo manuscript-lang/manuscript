@@ -1997,18 +1997,18 @@ def standard() -> CollectionError: CollectionError.OutOfRange
 def recognize(value: Other) -> Int:
     match value:
         case OutOfRange: return 1
-from "@std/collections.ms" import ListBuilder, MapBuilder, SetBuilder, range, filled, map_from_entries
+from "@std/collections.ms" import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries
 from "@std/errors.ms" import ErrorCategory, TextError, category
 from "@std/bytes.ms" import Bytes
 def bytes() -> Bytes: Bytes([1])
 def build() -> List[Int]: ListBuilder[Int]().freeze()
 def text_error(message: String) -> TextError: TextError(message)
-resolution	2	30	132	unknown standard module @std/errors.ms
-resolution	2	45	147	unknown standard module @std/errors.ms
-resolution	2	56	158	unknown standard module @std/errors.ms
-resolution	6	36	323	unknown type TextError; add: from "@std/core.ms" import TextError
-resolution	5	46	279	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
-resolution	6	47	334	unknown binding TextError; did you mean 'text_error'?type Other:
+resolution	2	30	125	unknown standard module @std/errors.ms
+resolution	2	45	140	unknown standard module @std/errors.ms
+resolution	2	56	151	unknown standard module @std/errors.ms
+resolution	6	36	316	unknown type TextError; add: from "@std/core.ms" import TextError
+resolution	5	46	272	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
+resolution	6	47	327	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 def get() -> Other: OutOfRange
 resolution	3	21	52	ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRangetype ListEntry[T]:
@@ -2632,8 +2632,7 @@ fn broken(
 type	2	18	34	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the binding
 type	2	18	34	<invalid> does not satisfy Error; use a type that implements itdef f() -> Unit:
     let result = error(cause: "failed")
-type	2	18	34	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
-type	2	18	34	String does not satisfy Error; use a type that implements itdef f() -> Error:
+type	2	18	34	error(...) needs a value that implements Error, not a String; to fail a test write `try fail("message")` (from @std/test.ms), otherwise wrap the message in a type that implements Errordef f() -> Error:
     return "failed"
 type	2	12	29	expected Error, found String (in the return value); use a concrete value implementing Errortype Other:
     case some(value: Int)

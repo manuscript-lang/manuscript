@@ -4,6 +4,7 @@ from "@std/time.ms" import Duration
 from "@std/io.ms" import ReadStream
 from "@std/time.ms" import Timestamp
 from "@std/io.ms" import WriteStream
+from "@std/core.ms" import Closeable
 
 extern def msstd_fs_constants() -> Map[String, Int]
 
@@ -295,105 +296,304 @@ export interface FileSystem:
     # Changes the link itself without following it; Unsupported on hosts lacking this operation.
     def chmod_link(path: String, mode: Int) -> Result[Unit, FileSystemError]
 
-# An open file supporting sequential and positional I/O.
-export interface FileHandle:
-    # Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
-    def reader() -> ReadStream
-    # Adapts complete writes to IoError/Unit; flush synchronizes the file.
-    def writer() -> WriteStream
+# The runtime handle behind a `FileHandle`.
+export extern type NativeFile
+
+extern def msstd_fs_file_reader(file: NativeFile) -> ReadStream
+
+extern def msstd_fs_file_writer(file: NativeFile) -> WriteStream
+
+extern def msstd_io_close(file: NativeFile) -> Unit
+
+extern def msstd_io_read(
+    file: NativeFile,
+    max_bytes: Optional[Int]
+) -> Result[Optional[Bytes], FileSystemError]
+
+extern def msstd_io_write(
+    file: NativeFile,
+    data: String
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_io_write_bytes(
+    file: NativeFile,
+    data: Bytes
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_read_at(
+    file: NativeFile,
+    offset: Int,
+    max_bytes: Optional[Int]
+) -> Result[Bytes, FileSystemError]
+
+extern def msstd_fs_file_write_at(
+    file: NativeFile,
+    offset: Int,
+    data: Bytes
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_read_file(
+    file: NativeFile,
+    max_bytes: Optional[Int]
+) -> Result[Bytes, FileSystemError]
+
+extern def msstd_fs_file_read_vectors(
+    file: NativeFile,
+    sizes: List[Int],
+    offset: Int
+) -> Result[List[Bytes], FileSystemError]
+
+extern def msstd_fs_file_write_vectors(
+    file: NativeFile,
+    buffers: List[Bytes],
+    offset: Int
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_seek(
+    file: NativeFile,
+    offset: Int,
+    origin: Int
+) -> Result[Int, FileSystemError]
+
+extern def msstd_fs_file_stat(file: NativeFile) -> Result[FileInfo, FileSystemError]
+
+extern def msstd_fs_file_truncate(
+    file: NativeFile,
+    size: Int
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_sync(file: NativeFile) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_data_sync(file: NativeFile) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_chmod(
+    file: NativeFile,
+    mode: Int
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_chown(
+    file: NativeFile,
+    uid: Int,
+    gid: Int
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_set_times(
+    file: NativeFile,
+    accessed: Timestamp,
+    modified: Timestamp
+) -> Result[Unit, FileSystemError]
+
+extern def msstd_fs_file_read_lines(
+    file: NativeFile,
+    max_bytes: Optional[Int],
+    max_lines: Optional[Int]
+) -> Result[List[String], FileSystemError]
+
+# An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
+# its binding go out of scope.
+export type FileHandle:
+    # The runtime handle for the open file; it is released by `close` and owned by this value.
+    native: NativeFile
+
+impl Closeable for FileHandle:
     # Closes the file, interrupts calls in progress, and waits for them to stop.
     # Safe to call repeatedly; later operations return Closed.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_io_close(self.native)
+
+impl FileHandle:
+    # Adapts this handle to IoError/Optional chunk reads; closing either view closes all aliases.
+    def reader() -> ReadStream:
+        return msstd_fs_file_reader(self.native)
+
+    # Adapts complete writes to IoError/Unit; flush synchronizes the file.
+    def writer() -> WriteStream:
+        return msstd_fs_file_writer(self.native)
+
     # Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
     def read(
         max_bytes: Optional[Int] = none
-    ) -> Result[Optional[Bytes], FileSystemError]
+    ) -> Result[Optional[Bytes], FileSystemError]:
+        return msstd_io_read(self.native, max_bytes)
+
     # Writes the UTF-8 text at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
-    def write(data: String) -> Result[Unit, FileSystemError]
+    def write(data: String) -> Result[Unit, FileSystemError]:
+        return msstd_io_write(self.native, data)
+
     # Writes all bytes at the current position, with the same rules as write.
-    def write_bytes(data: Bytes) -> Result[Unit, FileSystemError]
+    def write_bytes(data: Bytes) -> Result[Unit, FileSystemError]:
+        return msstd_io_write_bytes(self.native, data)
+
     # Writes text at the current position; appends only when the handle was opened in append mode.
-    def append_file(data: String) -> Result[Unit, FileSystemError]
+    def append_file(data: String) -> Result[Unit, FileSystemError]:
+        return msstd_io_write(self.native, data)
+
     # Writes bytes at the current position; appends only when the handle was opened in append mode.
-    def append_file_bytes(data: Bytes) -> Result[Unit, FileSystemError]
+    def append_file_bytes(data: Bytes) -> Result[Unit, FileSystemError]:
+        return msstd_io_write_bytes(self.native, data)
+
     # Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
     def read_at(
         offset: Int,
         max_bytes: Optional[Int] = none
-    ) -> Result[Bytes, FileSystemError]
+    ) -> Result[Bytes, FileSystemError]:
+        return msstd_fs_file_read_at(self.native, offset, max_bytes)
+
     # Writes the UTF-8 text at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
-    def write_at(offset: Int, data: String) -> Result[Unit, FileSystemError]
+    def write_at(offset: Int, data: String) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_write_at(self.native, offset, data.to_bytes())
+
     # Writes all bytes at a nonnegative offset without moving the position; a handle opened for append returns InvalidInput because the host would ignore the offset; errors can leave a prefix.
-    def write_at_bytes(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]
+    def write_at_bytes(offset: Int, data: Bytes) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_write_at(self.native, offset, data)
+
     # Reads remaining bytes from the current position; EOF returns empty Bytes.
-    def read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]
+    def read_file(max_bytes: Optional[Int] = none) -> Result[Bytes, FileSystemError]:
+        return msstd_fs_file_read_file(self.native, max_bytes)
+
     # Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
     # `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns InvalidInput.
     def read_vectors(
         sizes: List[Int],
         offset: Int
-    ) -> Result[List[Bytes], FileSystemError]
+    ) -> Result[List[Bytes], FileSystemError]:
+        return msstd_fs_file_read_vectors(self.native, sizes, offset)
+
     # Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns InvalidInput.
     def write_vectors(
         buffers: List[Bytes],
         offset: Int
-    ) -> Result[Unit, FileSystemError]
+    ) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_write_vectors(self.native, buffers, offset)
+
     # Seeks in bytes with origin exactly 0 (start), 1 (current), or 2 (end).
     # Other origins return InvalidInput; the OS validates the resulting offset.
-    def seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]
+    def seek(offset: Int, origin: Int) -> Result[Int, FileSystemError]:
+        return msstd_fs_file_seek(self.native, offset, origin)
+
     # Returns metadata for the open file.
-    def stat() -> Result[FileInfo, FileSystemError]
+    def stat() -> Result[FileInfo, FileSystemError]:
+        return msstd_fs_file_stat(self.native)
+
     # Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
     # A negative size returns InvalidInput.
-    def truncate(size: Int) -> Result[Unit, FileSystemError]
+    def truncate(size: Int) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_truncate(self.native, size)
+
     # Flushes the file's data and metadata to stable storage.
-    def sync() -> Result[Unit, FileSystemError]
+    def sync() -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_sync(self.native)
+
     # Flushes the file's data to stable storage, skipping metadata that is not needed to read it back where the host allows.
     # Hosts without a separate data sync perform a full sync.
-    def data_sync() -> Result[Unit, FileSystemError]
+    def data_sync() -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_data_sync(self.native)
+
     # Sets the permission bits of the open file to `mode` (0 through 4095).
-    def chmod(mode: Int) -> Result[Unit, FileSystemError]
+    def chmod(mode: Int) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_chmod(self.native, mode)
+
     # Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
-    def chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]
+    def chown(uid: Int, gid: Int) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_chown(self.native, uid, gid)
+
     # Sets the access and modification times of the open file. Returns Unsupported on hosts without descriptor timestamps.
     def set_times(
         accessed: Timestamp,
         modified: Timestamp
-    ) -> Result[Unit, FileSystemError]
+    ) -> Result[Unit, FileSystemError]:
+        return msstd_fs_file_set_times(self.native, accessed, modified)
+
     # Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
     # Invalid UTF-8 returns InvalidData, and more bytes than `max_bytes` or lines than `max_lines` returns LimitExceeded. A negative `max_bytes` or `max_lines` returns InvalidInput.
     def read_lines(
         max_bytes: Optional[Int] = none,
         max_lines: Optional[Int] = none
-    ) -> Result[List[String], FileSystemError]
+    ) -> Result[List[String], FileSystemError]:
+        return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
+
+# The runtime handle behind a `Directory`.
+export extern type NativeDirectory
+
+extern def msstd_fs_directory_read(
+    dir: NativeDirectory
+) -> Result[Optional[DirectoryEntry], FileSystemError]
+
+extern def msstd_fs_directory_path(dir: NativeDirectory) -> String
+
+extern def msstd_fs_directory_close(dir: NativeDirectory) -> Unit
 
 # An open directory that yields one child per read and must be closed.
-export interface Directory:
-    # Returns the path this cursor was opened with.
-    def path() -> String
+export type Directory:
+    # The runtime handle for the open directory; it is released by `close` and owned by this value.
+    native: NativeDirectory
+
+impl Closeable for Directory:
     # Releases the directory handle.
     # Safe to call repeatedly; later reads return Closed.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_fs_directory_close(self.native)
+
+impl Directory:
+    # Returns the path this cursor was opened with.
+    def path() -> String:
+        return msstd_fs_directory_path(self.native)
+
     # Returns the next child in native directory order, or none after the last one.
     # The order is not sorted.
-    def read() -> Result[Optional[DirectoryEntry], FileSystemError]
+    def read() -> Result[Optional[DirectoryEntry], FileSystemError]:
+        return msstd_fs_directory_read(self.native)
+
+# The runtime handle behind a `FileWatcher`.
+export extern type NativeWatcher
+
+extern def msstd_fs_watch_next(
+    watcher: NativeWatcher
+) -> Result[List[FileEvent], FileSystemError]
+
+extern def msstd_fs_watch_close(watcher: NativeWatcher) -> Unit
 
 # A change stream returned by a filesystem watch operation.
-export interface FileWatcher:
+export type FileWatcher:
+    # The runtime handle for the watch; it is released by `close` and owned by this value.
+    native: NativeWatcher
+
+impl Closeable for FileWatcher:
     # Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
     # Safe to call repeatedly.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_fs_watch_close(self.native)
+
+impl FileWatcher:
     # Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
     # Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
-    def next() -> Result[List[FileEvent], FileSystemError]
+    def next() -> Result[List[FileEvent], FileSystemError]:
+        return msstd_fs_watch_next(self.native)
+
+# The runtime handle behind a `TemporaryDirectory`.
+export extern type NativeTemporary
+
+extern def msstd_fs_temporary_path(temporary: NativeTemporary) -> String
+
+extern def msstd_fs_temporary_close(
+    temporary: NativeTemporary
+) -> Result[Unit, FileSystemError]
 
 # A temporary directory whose contents are removed when it is closed.
-export interface TemporaryDirectory:
+export type TemporaryDirectory:
+    # The runtime handle for the directory; it is released by `close` and owned by this value.
+    native: NativeTemporary
+
+impl Closeable for TemporaryDirectory:
     # Removes the directory and everything inside it.
     # Safe to call repeatedly.
-    def close() -> Unit
+    var def close() -> Unit:
+        let _ = msstd_fs_temporary_close(self.native)
+
+impl TemporaryDirectory:
     # Returns the absolute path of the directory, created under the host's temporary root.
-    def path() -> String
+    def path() -> String:
+        return msstd_fs_temporary_path(self.native)
 
 # One filesystem change and the affected path.
 export type FileEvent:

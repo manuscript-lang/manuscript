@@ -78,6 +78,21 @@ pub unsafe extern "C-unwind" fn msrt_test_site(message: *const StrVal, site: *co
         )
     };
     if let Ok(mut slot) = TEST_SITE.lock() {
+        // A failure the standard library builds around an earlier assertion's message (a
+        // property check reporting its counterexample) keeps the assertion's own position.
+        if entry.1.starts_with(b"@std/")
+            && let Some((earlier, site)) = slot.as_ref()
+            && !earlier.is_empty()
+            && !site.starts_with(b"@std/")
+            && entry
+                .0
+                .windows(earlier.len())
+                .any(|w| w == earlier.as_slice())
+        {
+            let site = site.clone();
+            *slot = Some((entry.0, site));
+            return;
+        }
         *slot = Some(entry);
     }
 }

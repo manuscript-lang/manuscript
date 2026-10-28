@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
-from "@std/collections.ms" import range
 from "@std/json.ms" import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode
 from "@std/time.ms" import timestamp, nanoseconds, clock, Timestamp, Duration, Instant
 from "@std/net.ms" import Url
@@ -43,7 +42,7 @@ test "JSON untyped parse keeps document shape and releases partial trees on fail
     try expect_equal(try stringify(parsed), text.replace("\\u00e9", "é"))
 
     var wide = "{"
-    for i in range(0, 40):
+    for i in 0..40:
         wide += (
             "\"k"
             + i.to_string()
@@ -71,7 +70,7 @@ test "JSON parse bounds nesting even without a depth limit":
     var text = ""
     var closing = ""
 
-    for i in range(0, 150000):
+    for i in 0..150000:
         text += "["
         closing += "]"
 
@@ -565,7 +564,7 @@ type Wrap:
 
 test "JSON stringify fails on nesting deeper than parse accepts":
     var head = Link(none, 0)
-    for i in range(1, 300000):
+    for i in 1..300000:
         head = Link(some(head), i)
 
     let r = stringify(head)

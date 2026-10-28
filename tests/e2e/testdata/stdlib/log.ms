@@ -173,7 +173,7 @@ test "limits and unencodable values reject before writing":
 
 test "transport closure and stream errors preserve identity":
     with let directory = try filesystem().temporary("manuscript-log-"):
-        let file = try filesystem().open(
+        var file = try filesystem().open(
             path: f"{directory.path()}/out.ndjson", flags: "w", mode: 420
         )
         var logger = try create(stream_transport(file.writer()))

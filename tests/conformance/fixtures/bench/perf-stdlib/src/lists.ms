@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench, ints, Point
 
 export def bench_list() -> Unit:
@@ -9,7 +8,7 @@ export def bench_list() -> Unit:
         200000,
         lambda () -> Int:
             var xs: List[Int] = []
-            for i in range(0, 200000):
+            for i in 0..200000:
                 xs.append(i)
             return xs.length()
     )
@@ -19,7 +18,7 @@ export def bench_list() -> Unit:
         200000,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 200000):
+            for i in 0..200000:
                 n += data.get(i % 100000, default: 0)
             return n
     )
@@ -70,7 +69,7 @@ export def bench_list() -> Unit:
         100,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 100):
+            for i in 0..100:
                 if data.contains(-1): n += 1
             return n
     )

@@ -523,31 +523,12 @@ pub fn find_func(t: &Tables, pc: usize) -> Option<&'static FuncEntry> {
 
 /// Source line of a return address inside `func`, with the inlining scope of that line.
 pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
-    find_line_from(t, func, pc, false)
-}
-
-/// [`find_line`], and with `skip_unpositioned` the nearest earlier range of the function that
-/// has a line. The call that raises a fault sits in generated code with no position of its own
-/// and belongs to the statement before it.
-fn find_line_from(
-    t: &Tables,
-    func: &FuncEntry,
-    pc: usize,
-    skip_unpositioned: bool,
-) -> (u32, u32, u32) {
     if !t.lines.is_null() && t.line_count > 0 {
         // SAFETY: sorted `line_count` read-only entries.
         let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
         // `pc` is a return address; the call instruction lies in the range ending just before it.
         let probe = pc.wrapping_sub(1);
-        let mut idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
-        while skip_unpositioned
-            && idx > 1
-            && lines[idx - 1].line == 0
-            && lines[idx - 2].pc >= func.addr
-        {
-            idx -= 1;
-        }
+        let idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
         if idx > 0 {
             let e = &lines[idx - 1];
             if e.pc >= func.addr {
@@ -597,28 +578,15 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record, by an amount that
-    // differs per function, and the CONTEXT register can be a caller's: find each frame's own
-    // record by its contents instead of following the register.
-    #[cfg(target_arch = "x86_64")]
+    // Generated code does not keep its frame register pointing at its own frame record: Cranelift
+    // points `rbp` into a frame by an amount that differs per function, a capture unwinds through
+    // the scope runtime, and a cleanup run by cancellation sits on top of the frames it unwound,
+    // where the register chain is discontinuous. Find each frame's own record by its contents
+    // instead of following the register.
     // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
     unsafe {
         let _ = fp;
         walk_scanned_frames(pc, sp, t, lo, hi, remaining, f)
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
-        // register pointing at a caller's record, so it finds the generated frame's own record.
-        let fp = if anchor == capture_frames as *const () as usize {
-            // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
-            unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
-        } else {
-            fp
-        };
-        // SAFETY: source_frame recovered the current generated frame and stack_limits
-        // bounds the live thread stack.
-        unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
     }
 }
 
@@ -627,7 +595,7 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
-#[cfg(all(windows, target_arch = "x86_64"))]
+#[cfg(windows)]
 unsafe fn walk_scanned_frames(
     mut pc: usize,
     mut sp: usize,
@@ -682,7 +650,7 @@ unsafe fn frame_record(
     None
 }
 
-#[cfg(any(all(windows, target_arch = "aarch64"), test))]
+#[cfg(test)]
 unsafe fn walk_source_frames(
     mut pc: usize,
     mut fp: usize,
@@ -834,14 +802,12 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
-    let mut innermost = true;
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
-            let (mut line, mut file, mut scope) =
-                find_line_from(t, func, ret, std::mem::take(&mut innermost));
+            let (mut line, mut file, mut scope) = find_line(t, func, ret);
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
                 return true;
@@ -1202,18 +1168,18 @@ pub extern "C-unwind" fn msrt_fault_int_range() -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_div_zero() -> ! {
-    fault(b"Int./: division by zero; right must be nonzero, found 0")
+    fault(b"division by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_rem_zero() -> ! {
-    fault(b"Int.%: remainder by zero; right must be nonzero, found 0")
+    fault(b"remainder by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
     fault_fmt(format_args!(
-        "Int./: overflow; found left {a} and right {b}; result must be between {} and {}",
+        "division overflow; found left {a} and right {b}; result must be between {} and {}",
         i64::MIN,
         i64::MAX
     ))

@@ -2,7 +2,6 @@
 # here once shared an identity with a plain `let` in `@std/deque.ms` and failed to lower there.
 from "@std/io.ms" import stdout
 from "@std/deque.ms" import Deque
-from "@std/collections.ms" import range
 
 def say(s: String) -> Unit:
     stdout().write(f"{s}\n").get()
@@ -20,7 +19,7 @@ export def main() -> Int:
             cnt.add(w, 1)
 
     var d = Deque[String]()
-    for i in range(0, 50):
+    for i in 0..50:
         if i % 2 == 0:
             d.push_back(f"b{i}")
     b += "!"

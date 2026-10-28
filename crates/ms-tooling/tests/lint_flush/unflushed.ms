@@ -19,3 +19,17 @@ export def flushes() -> Result[Int, TextError]:
     var journal = Journal(2)
     try journal.flush()
     return ok(journal.lines)
+
+type Holder:
+    journal: Journal
+
+def returns() -> Journal:
+    let journal = Journal(3)
+    return journal
+
+def stores() -> Holder:
+    let journal = Journal(4)
+    return Holder(journal)
+
+export def uses_moves() -> Int:
+    return returns().lines + stores().journal.lines

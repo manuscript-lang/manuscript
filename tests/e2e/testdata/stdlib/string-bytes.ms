@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal, expect_false
-from "@std/collections.ms" import range
 from "@std/string.ms" import from_scalars, StringError, StringBuilder
 from "@std/bytes.ms" import Bytes, BytesBuilder, values
 
@@ -120,11 +119,11 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 
     # Forward, backward and jumping reads of the same long text.
     var forward = 0
-    for step in range(0, 2400):
+    for step in 0..2400:
         forward += text.scalar_at(step)
 
     var backward = 0
-    for step in range(0, 2400):
+    for step in 0..2400:
         backward += text.scalar_at(2399 - step)
     try expect_false(forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward)
     try expect_false(
@@ -143,7 +142,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 test "builder appends literals of every short length across growth":
     var sb = StringBuilder()
 
-    for i in range(0, 40):
+    for i in 0..40:
         sb.append("a")
         sb.append("bc")
         sb.append("def")
@@ -157,7 +156,7 @@ test "builder appends literals of every short length across growth":
 
     let one = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
     var want = StringBuilder()
-    for i in range(0, 40):
+    for i in 0..40:
         want.append(one)
     try expect_equal(sb.build(), want.build())
 
@@ -166,8 +165,8 @@ test "builder appends variable text of every length across growth":
     var sb = StringBuilder()
     var want = 0
 
-    for round in range(0, 3):
-        for n in range(0, 70):
+    for round in 0..3:
+        for n in 0..70:
             let piece = try unit.slice(0, n)
             sb.append(piece)
             want += n

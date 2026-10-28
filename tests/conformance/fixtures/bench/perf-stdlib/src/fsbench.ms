@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench
 from "@std/fs.ms" import filesystem, FileSystem
 from "@std/log.ms" import create, file_transport, Transport, Logger
@@ -11,7 +10,7 @@ def run(fs: FileSystem, root: String) -> Unit:
         200,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if (
                     fs
                     .write_file_bytes(
@@ -28,7 +27,7 @@ def run(fs: FileSystem, root: String) -> Unit:
         200,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if let b = fs.read_file(f"{root}/f{i}.bin"):
                     n += b.length()
             return n
@@ -39,7 +38,7 @@ def run(fs: FileSystem, root: String) -> Unit:
         200,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if fs.stat(f"{root}/f{i}.bin", follow_links: True).is_ok():
                     n += 1
             return n
@@ -69,7 +68,7 @@ def log_many(logger: Logger) -> Unit:
         20000,
         lambda () -> Int:
             var n = 0
-            for i in range(0, 20000):
+            for i in 0..20000:
                 if logger.info(f"request {i} handled").is_ok():
                     n += 1
             return n
@@ -78,7 +77,7 @@ def log_many(logger: Logger) -> Unit:
 export def bench_fs() -> Unit:
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         run(fs, dir.path())
         log_run(f"{dir.path()}/log.txt")
         dir.close()

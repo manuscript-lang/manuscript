@@ -1,6 +1,5 @@
 from "@std/core.ms" import TextError
 from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/collections.ms" import range
 
 type Shape:
     case Circle(radius: Float)
@@ -23,7 +22,7 @@ test "issue 187 programs need no collection imports":
 
     var rolls: List[Int] = []
 
-    for i in range(0, 5):
+    for i in 0..5:
         if let n = roll(i):
             rolls.append(n)
         else:

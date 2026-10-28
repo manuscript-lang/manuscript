@@ -39,6 +39,87 @@ fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos:
     }
 }
 
+/// A lint rule's code with the same family and repair text `ms guide` prints for check codes.
+pub struct Rule {
+    pub code: &'static str,
+    pub family: &'static str,
+    pub repair: &'static str,
+}
+
+/// Every rule `lint_source` and `lint_program` can report, in code order.
+pub const RULES: &[Rule] = &[
+    Rule {
+        code: "MSL001",
+        family: "Trailing whitespace",
+        repair: "delete the spaces or tabs at the end of the line; `ms lint --fix` does it",
+    },
+    Rule {
+        code: "MSL002",
+        family: "Missing final newline",
+        repair: "end the file with a newline; `ms lint --fix` does it",
+    },
+    Rule {
+        code: "MSL102",
+        family: "Unused import",
+        repair: "remove the import or use the name; `ms lint --fix` removes it",
+    },
+    Rule {
+        code: "MSL103",
+        family: "Unreachable statement",
+        repair: "delete the statement or the `return`, `break` or `continue` before it",
+    },
+    Rule {
+        code: "MSL106",
+        family: "Match arm binding shadows a type or case",
+        repair: "rename the binding to a lowercase name, or write the case with its payload in a helper",
+    },
+    Rule {
+        code: "MSL107",
+        family: "Nested match",
+        repair: "bind the outer payload with an early exit, use compatible `try`, or call a small helper",
+    },
+    Rule {
+        code: "MSL108",
+        family: "Optional matched with only some and none",
+        repair: "use `if let value = ...:` with `else:`, or an Optional method such as `get(default)` or `map`",
+    },
+    Rule {
+        code: "MSL109",
+        family: "Result matched with only ok and error",
+        repair: "use `try`, `if let value = ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
+    },
+    Rule {
+        code: "MSL110",
+        family: "Optional.get() without a default",
+        repair: "use `if let value = ...:`, or pass a default to `get(default)`",
+    },
+    Rule {
+        code: "MSL111",
+        family: "Loop that never waits or exits",
+        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is True",
+    },
+    Rule {
+        code: "MSL112",
+        family: "Unconditional recursion",
+        repair: "add a base case that returns before the recursive call",
+    },
+    Rule {
+        code: "MSL113",
+        family: "Redundant some(...)",
+        repair: "pass the plain value where an Optional is expected; `ms lint --fix` removes the wrapper",
+    },
+    Rule {
+        code: "MSL114",
+        family: "Resource closed at scope end with an uncalled flush",
+        repair: "call `try name.flush()` (or `sync`, `commit`) before the scope ends, or close the resource explicitly",
+    },
+];
+
+/// The rule for `code`, matched case-insensitively.
+pub fn explain(code: &str) -> Option<&'static Rule> {
+    RULES.iter().find(|r| r.code.eq_ignore_ascii_case(code))
+}
+
 /// Lexical findings: trailing whitespace (`MSL001`) and a missing final
 /// newline (`MSL002`).
 pub fn lint_source(file: &Arc<str>, source: &str) -> Vec<Finding> {

@@ -13,27 +13,27 @@
         "position": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms",
           "line": 4,
-          "column": 42,
-          "offset": 238
+          "column": 35,
+          "offset": 231
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms",
           "line": 4,
-          "column": 46,
-          "offset": 242
+          "column": 39,
+          "offset": 235
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms",
             "line": 4,
-            "column": 40,
-            "offset": 236
+            "column": 1,
+            "offset": 197
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms",
             "line": 4,
-            "column": 46,
-            "offset": 242
+            "column": 27,
+            "offset": 223
           },
           "replacement": ""
         }
@@ -42,7 +42,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms:4:42: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import range, List\n   |                                          ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testredundantpreludeimportdiagnosticsandfixes-3.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import List\n   |                                   ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

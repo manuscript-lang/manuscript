@@ -2,7 +2,6 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse.ms
 from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/collections.ms" import range
 from "@std/sse.ms" import decoder, reader, next_event, SseError, SseEvent, SseLimits
 from "@std/bytes.ms" import Bytes, BytesBuilder
 from "@std/io.ms" import IoError, ReadStream
@@ -35,13 +34,13 @@ def splits(source: Bytes) -> List[List[Bytes]]:
     var all = List[List[Bytes]]()
     let size = source.length()
 
-    for cut in range(0, size + 1):
+    for cut in 0..size + 1:
         let head = source.slice(0, cut).get()
         let tail = source.slice(cut, size).get()
         all.append([head, tail])
 
     var single = List[Bytes]()
-    for index in range(0, size):
+    for index in 0..size:
         single.append(source.slice(index, index + 1).get())
     all.append(single)
     return all

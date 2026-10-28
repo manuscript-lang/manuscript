@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "./harness.ms" import bench, words
 
 export def bench_map_set() -> Unit:
@@ -7,11 +6,11 @@ export def bench_map_set() -> Unit:
         200000,
         lambda () -> Int:
             var m = Map[Int, Int]()
-            for i in range(0, 100000):
+            for i in 0..100000:
                 m.add(i, i * 2)
 
             var n = 0
-            for i in range(0, 100000):
+            for i in 0..100000:
                 n += m.get(i).get(0)
             return n
     )
@@ -36,7 +35,7 @@ export def bench_map_set() -> Unit:
         100000,
         lambda () -> Int:
             var m = Map[Int, Int]()
-            for i in range(0, 100000):
+            for i in 0..100000:
                 m.add(i, i)
 
             var n = 0
@@ -50,11 +49,11 @@ export def bench_map_set() -> Unit:
         200000,
         lambda () -> Int:
             var s = Set[Int]()
-            for i in range(0, 100000):
+            for i in 0..100000:
                 s.add(i)
 
             var n = 0
-            for i in range(0, 100000):
+            for i in 0..100000:
                 if s.contains(i): n += 1
             return n
     )

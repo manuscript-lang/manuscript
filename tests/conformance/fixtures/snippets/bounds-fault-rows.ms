@@ -2,11 +2,10 @@
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 def rows(g: List[List[Int]]) -> Int:
     var t = 0
-    for j in range(0, g[0].length()):
+    for j in 0..g[0].length():
         t = t + g[1][j]
     return t
 

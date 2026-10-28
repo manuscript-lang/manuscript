@@ -1,7 +1,6 @@
 # conform: tags=closures,with-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 from "@std/channels.ms" import Channel, ChannelError
-from "@std/collections.ms" import range
 from "@std/tasks.ms" import TaskError, TaskGroup
 from "@std/test.ms" import expect_equal, expect_error, expect_ok
 from "@std/time.ms" import nanoseconds, sleep
@@ -21,7 +20,7 @@ def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
 
 def produce(ch: Channel[Int, Unit]) -> Int:
     var c = ch
-    for n in range(0, 40):
+    for n in 0..40:
         if c.send(n).is_error():
             return -1
     return 40
@@ -35,7 +34,7 @@ def wait_for_one(ch: Channel[Int, Unit]) -> Int:
 
 def send_all(ch: Channel[Int, Unit], base: Int) -> Int:
     var c = ch
-    for n in range(0, 50):
+    for n in 0..50:
         if c.send(base + n).is_error():
             return -1
     return 50
@@ -80,10 +79,10 @@ test "a task answers each message in order":
         var task = group.spawn(square_all)
         var replies = List[Int]()
 
-        for n in range(1, 41):
+        for n in 1..41:
             task.channel.send(n) | try expect_ok
             if n % 4 == 0:
-                for k in range(0, 4):
+                for k in 0..4:
                     if let reply = task.channel.receive() | try expect_ok:
                         replies.append(reply)
 

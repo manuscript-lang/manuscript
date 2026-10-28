@@ -2,12 +2,11 @@
 # conform: phase=run
 # conform: origin=m.add(w.clone(), m.get(w).get(0) + 1) borrows w and copies the key only when it is absent
 from "@std/io.ms" import stdout
-from "@std/collections.ms" import range
 
 def tally(words: List[String]) -> Map[String, Int]:
     var m = Map[String, Int]()
 
-    for i in range(0, words.length()):
+    for i in 0..words.length():
         let w = words.get(i)
         m.add(w.clone(), m.get(w).get(0) + 1)
 

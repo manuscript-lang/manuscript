@@ -1,5 +1,4 @@
 from "@std/test.ms" import expect_equal
-from "@std/collections.ms" import range
 
 # A closure that does not outlive its maker reads what it captures in place; one that is
 # returned or stored owns a copy and keeps the value it was made with.
@@ -115,7 +114,7 @@ test "closure made in a loop sees each iteration":
 
     for i in [1, 2, 3]:
         var names: List[String] = []
-        for unused in range(0, i):
+        for unused in 0..i:
             names.append("n")
 
         let count = lambda: names.length()

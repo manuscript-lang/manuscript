@@ -37,7 +37,7 @@ test "native line reads reject buffered lines after the shared file is closed":
         let path = f"{directory.path()}/lines.txt"
         try fs.write_file(path, "first\nsecond\nlast")
 
-        let handle = try fs.open(path, "r", 384)
+        var handle = try fs.open(path, "r", 384)
         let input = handle.reader()
         try expect_equal((try read_line(input)), some("first"))
         handle.close()

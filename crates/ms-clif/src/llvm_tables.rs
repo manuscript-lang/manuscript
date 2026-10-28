@@ -287,6 +287,15 @@ pub fn read(
                             file = path_of(i);
                         }
                     }
+                    // The call's file is the file of the callee it sits in, which LLVM leaves unsaid.
+                    if parent != 0
+                        && let Some(gimli::AttributeValue::FileIndex(i)) =
+                            entry.attr_value(gimli::DW_AT_call_file)
+                        && let Some(caller) = scopes.get_mut(parent as usize - 1)
+                        && caller.file == u32::MAX
+                    {
+                        caller.file = path_of(i);
+                    }
                     let call_line = match entry.attr_value(gimli::DW_AT_call_line) {
                         Some(gimli::AttributeValue::Udata(l)) => l as u32,
                         _ => 0,
@@ -370,6 +379,8 @@ pub fn read(
                 } else {
                     0
                 },
+                copy_symbol: f.copy.then(|| f.symbol.clone()),
+                reloc: None,
             })
         })
         .collect();
@@ -423,6 +434,7 @@ pub fn read(
             continue;
         };
         let mut scope = scope_at(addr);
+        let inlined_code = scope != 0;
         // Code without a position inside an inlined callee (a thunk, glue) belongs to the
         // call site that gave it a position.
         while line == 0 && scope != 0 {
@@ -430,18 +442,14 @@ pub fn read(
             line = sc.call_line;
             scope = sc.parent;
         }
-        let ranges = &mut dbg[d].ranges;
-        let off = (addr - start) as u32;
-        if line == 0 {
-            // Code with no position (generated glue, the call into a test) must not inherit the
-            // line of the range before it: a zero-line range makes a frame there anonymous.
-            if let Some(&(_, last_file, last_line, _)) = ranges.last()
-                && last_line != 0
-            {
-                ranges.push((off, last_file, 0, 0));
-            }
+        // Inlined code with no position at all gets a range of its own, so the lines of the code
+        // before it do not extend over it (a return address into it would name a stale line and
+        // scope).
+        if line == 0 && !inlined_code {
             continue;
         }
+        let ranges = &mut dbg[d].ranges;
+        let off = (addr - start) as u32;
         if file == u32::MAX {
             file = ranges.last().map_or(u32::MAX, |l| l.1);
         }
@@ -505,6 +513,7 @@ mod tests {
             .map(|(i, symbol)| LlvmFn {
                 id: FuncId::from_u32(i as u32),
                 symbol: (*symbol).into(),
+                copy: false,
                 name: (*symbol).into(),
                 file: 0,
                 line: 0,

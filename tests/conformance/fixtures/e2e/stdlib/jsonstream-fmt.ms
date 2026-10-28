@@ -5,7 +5,6 @@ from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
 from "@std/jsonstream.ms" import decoder
 from "@std/json.ms" import stringify, JsonValue, JsonLimits, JsonError
 from "@std/bytes.ms" import Bytes
-from "@std/collections.ms" import range
 
 def texts(values: List[JsonValue]) -> Result[List[String], Error]:
     var result: List[String] = []
@@ -37,7 +36,7 @@ test "JSON decoder preserves values split at every chunk size":
         "[1]", "{\"b\":2}", "42"
     ]
     let input = source.to_bytes()
-    for size in range(1, input.length() + 1):
+    for size in 1..input.length() + 1:
         if (try decode(input, size)) != expected: return fail(f"chunk size {size}")
 
 test "JSON decoder reports truncated and malformed input":

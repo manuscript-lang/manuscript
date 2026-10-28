@@ -2,7 +2,6 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
 from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/collections.ms" import range
 
 def append_value[T](var values: List[T], value: T) -> List[T]:
     values.append(value)
@@ -18,7 +17,7 @@ test "primitive storage retains generic record Optional and independent copies":
     var values = [9223372036854775807, -9223372036854775808]
     var record = Lists(values.clone())
     let wrapped: Optional[List[Int]] = some(values.clone())
-    for i in range(0, 4096):
+    for i in 0..4096:
         append_value(var record.values, i)
     values.append(17)
     try expect_equal(values.length(), 3)
