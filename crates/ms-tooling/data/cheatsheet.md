@@ -23,15 +23,19 @@ test "addition":
 - Regex: `compile` in `@std/string.ms`; `captures`, `named_captures`, `split`, `replace_template`; pattern braces need `\{`.
 - Workflow: `ms search_symbol <name or words>` finds a symbol (`<module>` lists one); `ms verify` (check, fmt, lint, test); `ms review`.
 - `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `try fail("why")` (`@std/test.ms`) fails.
+- A block opener's `:` followed by a newline needs an indented body. Bytes: `from "@std/bytes.ms" import Bytes`, `Bytes(values: [1, 2])`.
 - Imports: `from "@std/x.ms" import a, b` or `from "./local.ms" import a`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
-- `let` binds once, `var` reassigns; `n += 1` (`-=` etc.); `for i in 0..n:` counts up, excluding `n`; steps use `range_by` from `@std/collections.ms`. Types `Int Float Bool String Unit`; `f"{expr}"` interpolates (plain `"..."` keeps braces literally); `True`/`False`; `()` is the Unit value; `a if c else b`. Function types are `Callable[[Int], Int]`; closures `lambda x: x + 1`. No implicit casts.
+- `let` binds once, `var` reassigns; `n += 1` (`-=` etc.); `for i in 0..n:` counts up, excluding `n`; steps use `range_by` from `@std/collections.ms`. Types `Int Float Bool String Unit`; `f"{expr}"` interpolates (plain `"..."` keeps braces literally); `True`/`False`; `()` is the Unit value; `if` is a statement; the expression is `a if c else b`. Function types are `Callable[[Int], Int]`; closures `lambda x: x + 1`. No implicit casts.
 - `[1, 2]` List; `List[T](reserve: n)` preallocates; `Map[K, V]()`, `Set[T]()` or `Set([1, 2])` mutate in place; `for e in m.entries():` and `if var n = m.get(k): n += 1` work in place; `.clone()` is deep; storing a borrowed String needs it.
 - `type T:` with fields, built `T(a: 1)` (labels optional: `T(1)`); alternatives use `case A` and `case B(x: Int)`; types are nominal.
 - `Optional`: `some(x)` / `none`; unwrap with `if let x = value:` and optional `else:`, or `.get(d)`.
-- `match v:` on your own types: arms `case Case(x):`, `case _:`; exhaustive. Never match `Result`/`Optional` or nest `match`; use `try`/`if let`. There are no exceptions, classes, `async`, `null`, `pass`, or `elif`-less chains: use `elif`.
+- `match v:` on your own types: arms `case Case(x):`, `case _:`; exhaustive. Never match `Result`/`Optional` or nest `match`; use `try`/`if let`. There are no exceptions, classes, `async`, `null`, `pass`, or `else if`: use `elif`.
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `.message()` reads any `Error`. Faults (`panic`, failed `get()`) abort.
 - Methods: `impl T:` or `impl I for T:`, never in `type`; else `f(x)`. A `T` with `impl I for T` passes wherever `I` is expected.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
-- A def returning part of a parameter or the receiver writes `ref` before its result type (`def name() -> ref String`); `let x = a.b` borrows a place (shared; `var x = a.b` exclusive) without a marker.
+- Moves: a value moves at its last use. Moving out of an index, field, loop variable or borrow is rejected (`cannot move ... out`): write `.clone()` (`Int`, `Float`, `Bool` copy and have no `.clone()`).
+- Borrows: `let x = a.b` or `xs[i]` borrows a place (`var x = a.b` exclusively) with no marker; `a` cannot change (`self.xs.append(..)`, `n += 1` on it) until `x`'s last use: use `x` first or `.clone()` it. A def returning part of a parameter or receiver writes `ref` before its result type (`-> ref String`), and its caller's binding borrows from all its arguments; elsewhere return `.clone()`.
+- A `var` parameter needs `var` in the signature and at each call: `def f(var xs: List[Int])`, `f(var xs)`. A closure that changes `xs` cannot also be passed to a method on `xs`.
+- `ms lint` and `ms verify` reject `some(x)` where the value is expected as `Optional`, `Optional.get()` with no default, and unread bindings (prefix `_`).
 - Closures may change captures. `with let f = try open(path):` closes `f` at block end.
 - Concurrency has no async/await: `with let g = TaskGroup[T]():` (`@std/tasks.ms`), `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` or `g.results()` waits; leaving the block cancels unfinished tasks. Timeouts opt-in.
