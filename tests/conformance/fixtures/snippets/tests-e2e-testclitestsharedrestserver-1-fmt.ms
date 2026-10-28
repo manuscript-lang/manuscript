@@ -19,7 +19,7 @@ def make_fixture() -> ApiFixture:
     )
 
 impl TestHooks for ApiFixture:
-    def after_all() -> Unit:
+    var def after_all() -> Unit:
         self.server.close()
 
 test "first request":

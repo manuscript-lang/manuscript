@@ -40,7 +40,7 @@ def run(label: String, grace_ms: Int) -> Bool:
     if let acquired = network().serve(
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
-        with let server = acquired:
+        with var server = acquired:
             let start = control().monotonic_time()
             let slow = fetch(server.address(), "/slow")
             let elapsed_ms = (control().monotonic_time() - start) / 1000000

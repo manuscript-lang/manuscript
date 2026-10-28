@@ -41,7 +41,7 @@ def exchange(address: String) -> String:
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
+        with var server = acquired:
             let start = control().monotonic_time()
             let text = exchange(server.address())
             let elapsed_ms = (control().monotonic_time() - start) / 1000000
