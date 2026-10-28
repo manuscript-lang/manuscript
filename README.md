@@ -16,7 +16,7 @@ count.ms:2:12: resolution: unknown binding len; there is no len() function: call
 
 When the repair is mechanical, `ms check --fix` applies it. A runtime fault comes back from `ms test --json` as data with kind, values, position and trace. The agent does not need the manual in its context: `ms guide` is the whole language in 4 KB, `ms search_symbol` answers one API question in bounded output, and `ms verify` is check, format, lint and test in one exit code. [Commands for agents](documentation/developer-tooling/implementation.md#commands-for-agents)
 
-## Agent mistakes caught before they run
+## Agent mistakes the toolchain catches
 
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
 - **Compile errors:** a dropped `Result`, a `match` missing a case, an unclosed `Closeable`, literal overflow.
@@ -30,20 +30,24 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## What Manuscript offers
 
-- **Cleanup on every exit:** a resource closes automatically at scope end, whether it ends by `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
-- **Inferred closures:** a closure that stays local borrows what it captures; one that escapes owns it. No capture lists. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
-- **Exact numbers:** checked `Int8` to `Int64`, `UInt8` to `UInt64`, `Float32`, and `Decimal` literals such as `12.50d`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
-- **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import; sharing across owners is the explicit `Shared[T]`.
-- **Benchmarks beside tests:** `bench` blocks live next to `test` blocks and `ms bench` times them. [Testing](documentation/learn/testing.md)
-- **A cheat sheet that is tested:** the mistakes in `ms guide` are verified against the compiler.
+- **Automatic cleanup:** a resource closes when its scope ends, whether by `return`, `try`, fault or cancellation. Lint `MSL114` flags a close that would hide a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Closures without capture lists:** a local closure borrows what it uses; one that escapes owns it. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
+- **Exact numbers:** sized `Int8`-`Int64` and `UInt8`-`UInt64`, `Float32`, and `Decimal` literals like `12.50d`. Conversions are explicit. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
+- **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import. Sharing between owners is an explicit `Shared[T]`.
+- **A tested cheat sheet:** every mistake listed in `ms guide` is checked against the compiler.
+
+## Shaped by measured agent use
+
+- **Agent benchmark:** the same challenges, from small programs to multi-thousand-line apps, in TypeScript, Go, Rust and Manuscript, graded on hidden tests. Tokens, turns, time and cost are recorded. [Agent benchmark](bench/agent/README.md)
+- **Failures drive the design:** diagnostics, `ms guide` and `ms search_symbol` exist because of where agents got stuck, and results are published even where Manuscript trails.
+- **Performance benchmark:** compiler and runtime against hand-written Go and Rust on kernels, data structures, JSON, CSV, workers and an HTTP server, with reproduction commands. [Performance benchmark](bench/perf/README.md)
+- **Kept apart:** agent and perf results never mix.
 
 ## Fast code from the straightforward loop
 
 Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized, with an AVX2 copy chosen at run time on x86-64. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
 
 The standard library is about 14,000 lines of Manuscript across 40+ modules (HTTP, JSON, TOML, YAML, CSV, crypto, processes, and more), with Rust only for small primitives. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
-
-We build Manuscript with coding agents and measure them in the [agent benchmark](bench/agent/README.md).
 
 *Alpha. Syntax and APIs can change.*
 
