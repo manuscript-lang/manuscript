@@ -1,4 +1,5 @@
 from "@std/core.ms" import panic
+
 extern def msstd_math_acos(value: Float) -> Float
 
 extern def msstd_math_asin(value: Float) -> Float

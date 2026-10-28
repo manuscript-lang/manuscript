@@ -1,4 +1,5 @@
 from "@std/core.ms" import panic
+
 extern def msstd_time_duration_to_nanoseconds(value: Duration) -> Int
 
 extern def msstd_time_timestamp_unix_seconds(value: Timestamp) -> Int
