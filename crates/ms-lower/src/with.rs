@@ -156,6 +156,26 @@ fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
 }
 
 impl FnLower<'_> {
+    /// Closes an owned temporary that is a resource (`open().id()`) before it is dropped at the
+    /// end of its statement.
+    pub(crate) fn close_temp(&mut self, v: Value) {
+        let mt = self.b.ty(v);
+        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+            return;
+        };
+        // Only a value that is itself a resource: a wrapper (`Result`, `Optional`) may have had
+        // its payload moved out already.
+        if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
+            || self.closeable_impl(&ty).is_none()
+        {
+            return;
+        }
+        let Ok(Some(kind)) = self.part_closer(&ty) else {
+            return;
+        };
+        close_call(&mut self.b, &kind, v, mt);
+    }
+
     pub(crate) fn with_stmt(&mut self, s: &Stmt, value: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let info = self.hir.stmt(s);
         let binding = info
@@ -331,7 +351,7 @@ impl FnLower<'_> {
 
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
-    fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+    pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
         if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
         }
@@ -514,6 +534,26 @@ impl FnLower<'_> {
         self.b.br(join, &[]);
         self.b.seal_block(join);
         self.b.switch_to(join);
+    }
+
+    /// Closes `v`, a value of the place `place` that the program is about to overwrite or
+    /// discard, when it holds a resource: shielded like any other close. A value with nothing to
+    /// close adds no code.
+    pub(crate) fn close_discarded(&mut self, place: &Expr, v: Value) -> Result<(), Error> {
+        let ty = ct::sub(&self.hir.ty(place), &self.subst);
+        self.close_discarded_ty(&ty, v)
+    }
+
+    /// [`Self::close_discarded`] for a value of checked type `ty`.
+    pub(crate) fn close_discarded_ty(&mut self, ty: &ct::Ty, v: Value) -> Result<(), Error> {
+        let Some(kind) = self.part_closer(ty)? else {
+            return Ok(());
+        };
+        let mt = self.ty_of(v);
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        close_call(&mut self.b, &kind, v, mt);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        Ok(())
     }
 
     /// Leaves the `with` binding `uid`: the cleanup entry goes away and its close runs on the

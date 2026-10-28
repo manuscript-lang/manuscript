@@ -552,6 +552,7 @@ impl<'a> FnLower<'a> {
         while self.temps.len() > mark {
             let v = self.temps.pop().expect("temp");
             if !self.dead {
+                self.close_temp(v);
                 self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
             }
         }
@@ -565,6 +566,7 @@ impl<'a> FnLower<'a> {
         }
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
+            self.close_temp(v);
             self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
         }
     }
@@ -888,6 +890,7 @@ impl<'a> FnLower<'a> {
         }
         // The temporaries stay registered: a conditional return leaves the others running.
         for t in self.temps.clone().into_iter().rev() {
+            self.close_temp(t);
             self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
         }
         self.end_fixture();

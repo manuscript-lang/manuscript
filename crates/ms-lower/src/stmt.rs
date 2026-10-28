@@ -615,6 +615,9 @@ impl<'a> FnLower<'a> {
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
         let mut moved = false;
         let inner = if rest.is_empty() {
+            // The field's old value dies here: a resource in it closes first.
+            let cur = self.b.rec_get(rid, idx, obj);
+            self.close_discarded(first, cur)?;
             new
         } else {
             let cur = self.b.rec_get(rid, idx, obj);
