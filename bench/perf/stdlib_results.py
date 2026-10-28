@@ -46,4 +46,8 @@ def read_cases(output):
 def case_labels(names):
     short_names = {name: name.split("::", 1)[-1] for name in names}
     counts = Counter(short_names.values())
-    return {name: short if counts[short] == 1 else name for name, short in short_names.items()}
+    labels = {name: short if counts[short] == 1 else name for name, short in short_names.items()}
+    # A user label may itself contain a module-qualified name.
+    if len(set(labels.values())) != len(labels):
+        return {name: name for name in short_names}
+    return labels

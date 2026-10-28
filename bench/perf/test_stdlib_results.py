@@ -37,3 +37,7 @@ class ResultValidation(unittest.TestCase):
     def test_labels_disambiguate_only_collisions(self):
         self.assertEqual(case_labels(["a.ms::x", "b.ms::x", "b.ms::y"]),
                          {"a.ms::x": "a.ms::x", "b.ms::x": "b.ms::x", "b.ms::y": "y"})
+
+    def test_user_label_cannot_collide_with_qualified_display_name(self):
+        names = ["a.ms::x", "b.ms::x", "c.ms::a.ms::x"]
+        self.assertEqual(case_labels(names), {name: name for name in names})

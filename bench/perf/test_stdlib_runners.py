@@ -36,3 +36,19 @@ class Producers(unittest.TestCase):
                     if not succeeds:
                         self.assertEqual(result.stdout, "")
                         self.assertFalse((root / "report").exists())
+
+    def test_qualified_display_collisions_preserve_every_summary_entry(self):
+        names = ["a.ms::x", "b.ms::x", "c.ms::a.ms::x"]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            producer = root / "producer"
+            cases = [{"name": name, "status": "passed",
+                      "stats": {"operations": 10, "median_ns": 2}} for name in names]
+            producer.write_text(f"#!{sys.executable}\nprint(" + repr(json.dumps({"benches": cases})) + ")\n")
+            producer.chmod(0o755)
+            result = subprocess.run([sys.executable, str(HERE / "compare_stdlib.py"),
+                "--before", str(producer), "--after", str(producer), "--output", str(root / "report"),
+                "--repeats", "1"], capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = json.loads((root / "report" / "summary.json").read_text())
+            self.assertEqual(set(summary), set(names))
