@@ -11,18 +11,19 @@
 
 - Proposal, 2026-10-28, checked against main `3cbaceb0`.
 - Direction: issue #1767 ("Compile time grows steeply with statement count"); AGENTS.md asks for a proposal before restructuring.
-- Skeptical review: pending.
+- Skeptical review (separate thread, 2026-10-28): optparam evidence solid; the original repro was not self-contained and the lastuse profile did not reproduce at N=800 on the reviewer's machine; "cubic" unsupported (~N^1.8); "O(|F| + uses)" false while pending drops are scanned per block; empty-MIR-diff gate too strict (value ids differ); go/no-go too weak.
+- Outcome: landed optparam first. After it, lastuse became the top MIR hotspot on this machine (6 of 8 samples at N=800), so the region restriction proceeds, with `Index::apply` and the per-value pending-block index included. Gates revised below. Long-lived values and `builder::read_var` are out of scope (separate issue).
 
 ## Problem
 
-- Repro (measured, Linux, release `ms`): one `main` with N lines `check(i, "idx", show("abe{i}".index_of("b")), "none")`; `ms build` Release: N=400 5.9s, N=800 19.4s (3.3x for 2x). `--build-type Debug` 0.4s at N=800.
+- Repro (measured, Linux, release `ms` at `3cbaceb0`): the generator in the appendix; `ms build` Release: N=400 5.9s, N=800 19.4s (3.3x for 2x). `--build-type Debug` 0.4s at N=800.
 - Profile on #1767 (gdb sampling, N=800): about 12s of 17.8s is in MIR passes: `lastuse::candidate` 6/14 samples, `optparam::split_one`/`apply` 7/14, one each `simplify::branches`, `copyelim::borrow_str_phis`.
 - Generated tests and tables are plausible agent output; one function with thousands of statements must not take minutes.
 - Non-goals: changing what either pass optimizes; touching LLVM/Cranelift stages (`opt` 3.5s and `llc` 2.4s at N=800 are linear in IR size).
 
 ### Causes (verified in source)
 
-- `optparam::split_one` (`opt/optparam.rs:53`) scans the whole function for defs and use counts, then for each eligible-looking block parameter scans every block's terminator (`:82`), and returns after splitting one parameter; `run` loops until none remain. `apply` rebuilds the defs map and rewrites every block per split. Cost: splits x (params x blocks + insts) = cubic when each call site adds a merge parameter.
+- `optparam::split_one` (`opt/optparam.rs:53`) scans the whole function for defs and use counts, then for each eligible-looking block parameter scans every block's terminator (`:82`), and returns after splitting one parameter; `run` loops until none remain. `apply` rebuilds the defs map and rewrites every block per split. Cost: splits x (params x blocks + insts); measured growth ~N^1.8 (reviewer), so not cubic in practice.
 - `lastuse::candidate` (`opt/lastuse.rs`) allocates about ten vectors of `nb` blocks per candidate and iterates liveness and ownership dataflow over all blocks, though only blocks forward-reachable from the definition up to its original drop matter. It also recomputes `succs` for all blocks, rescans `ix.uses[v]` once per block in `consume_at`, and loops all `nb` blocks per family member in the `pending_drops` setup. Cost: candidates x blocks, with extra factors.
 
 ## Design
@@ -41,11 +42,12 @@
 - `consume_at`: one pass over `ix.uses[v]` builds block -> earliest owning consumption.
 - Pending drops: keep a per-value list of blocks that hold a pending drop of it (`Index.pending_blocks`), replacing the loop over all blocks per family member.
 - Results must be identical: same drops moved to the same positions; the existing `crates/ms-mir/tests/opt_lastuse.rs` stays unchanged and passes.
-- Cost: O(|F| + family uses) per candidate. A candidate whose drop is near its definition is O(1)-ish.
+- `Index::apply` groups pending drops by anchor once per block (was insts x pending).
+- Cost: O(|F| + family uses) per candidate, plus the pending drops of its own block. A candidate whose drop is near its definition is small.
 
 ### Residual risk: long-lived candidates
 
-- A value defined early and dropped at the function end has F = the rest of the function, so a function with many such values stays quadratic. Not seen in the repro (temporaries drop locally). If measurement shows it, a follow-up is a single backward sweep shared across candidates; out of scope until measured.
+- A value defined early and used at the function end has F = the rest of the function, so many such values stay quadratic (reviewer: N lets up front, N ifs, use at end: Release 6.2s at N=800, 24s at 1600; part is `builder::read_var`/`add_phi_operands`, which also hits Debug). Out of scope here; separate issue.
 
 ## Components touched
 
@@ -65,11 +67,32 @@
 
 ## Staging and verification
 
-1. Add a scaling test: time-independent proxy, e.g. a MIR-level unit test asserting the pass makes work-counter bounds (or a perf-stage example run in `bench/perf`) at N=200/400/800; record before/after numbers in this file.
-2. `optparam` batching. Check: `cargo nextest run -p ms-mir`, `make conform`, re-measure.
-3. `lastuse` region restriction. Check: as above, plus an equivalence run: print optimized MIR for the conformance corpus before and after and diff (must be identical).
-4. Go/no-go: stop and revisit if the MIR diff is non-empty or N=800 does not drop below 2x the N=400 time.
-5. `make verify` on each stage; Linux, macOS, Windows CI at parity, no test gated.
+1. optparam batching (landed first). Check: `cargo test -p ms-mir`, `make conform`, re-measure.
+2. lastuse region restriction. Same checks. Equivalence: the existing `tests/opt_lastuse.rs` unchanged, plus the conformance corpus; MIR text may differ only by renumbering, so no byte diff gate.
+3. Gates: MIR optimizer time at N=1600 under 2s (measured 1.3s after both); `make verify` and CI on Linux, macOS, Windows; no test gated.
+4. Residual: end-to-end Release still grows superlinearly after the MIR fixes (N=800 8.8s, 1600 25s, 3200 95s) because LLVM `opt`/`llc` dominate (`llvm_obj::run`); a separate follow-up.
+
+## Appendix: repro generator
+
+```python
+import sys
+n = int(sys.argv[1])
+print('''from "@std/io.ms" import stdout
+
+def show(o: Optional[Int]) -> String:
+    if let v = o:
+        return f"{v}"
+    return "none"
+
+def check(i: Int, name: String, got: String, want: String) -> Unit:
+    if got != want:
+        stdout().write(f"FAIL {i} {name}\\n").get()
+
+export def main() -> Int:''')
+for i in range(n):
+    print(f'    check({i}, "idx", show("abe{i}".index_of("b")), "none")')
+print('    return 0')
+```
 
 ## Open questions
 

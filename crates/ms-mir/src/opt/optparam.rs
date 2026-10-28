@@ -79,8 +79,8 @@ fn split_all(m: &mut Module, fi: usize) -> bool {
     }
     // (block, parameter index, scalar type), per block in increasing index.
     let mut splits: Vec<(usize, usize, Ty)> = Vec::new();
-    for bi in 1..f.blocks.len() {
-        if incoming[bi].is_empty() {
+    for (bi, edges) in incoming.iter().enumerate().skip(1) {
+        if edges.is_empty() {
             continue;
         }
         for (k, p) in f.blocks[bi].params.iter().enumerate() {
@@ -90,7 +90,7 @@ fn split_all(m: &mut Module, fi: usize) -> bool {
             if other_uses.contains(&p.value) {
                 continue;
             }
-            if incoming[bi]
+            if edges
                 .iter()
                 .all(|args| matches!(defs.get(&args[k]), Some(Op::OptNone | Op::OptSome)))
             {
