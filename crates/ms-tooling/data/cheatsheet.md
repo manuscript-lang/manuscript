@@ -48,10 +48,12 @@ export def main() -> Int:
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
-- Moves: a value moves at its last use. Moving out of an index, field, loop variable or borrow fails: use `.clone()` (deep; not on `Int`, `Float`, `Bool`, which copy).
-- Borrows: `let x = a.b` / `xs[i]` borrows with no marker (`var x = a.b` exclusively); don't change `a` (`self.xs.append(..)`) before `x`'s last use: use `x` first or `.clone()`.
+- Ownership: `String`, lists, maps and records have one owner; `Int`, `Float`, `Bool` copy (no `.clone()`). `let` is immutable including contents; `var` to change.
+- A value moves into a consuming position: a record field, a collection element, `return`, a `let`/`var` initializer that isn't a place, a parameter the callee stores or returns, an escaping closure. Only at its last use: `keep(a)` then `a` fails, so pass `a.clone()`. Read-only uses never move.
+- Fields, indexes, loop variables and match payloads are borrows; moving or storing one fails (`cannot move ... out`): `out.append(r.word.clone())`.
+- `let x = a.b` / `xs[i]` borrows (`var x = a.b` exclusively). Until `x`'s last use `a` can't change, nor the list a `for` iterates: use `x` first or `.clone()`.
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
-- Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
+- Lints (`ms lint`, `ms verify`): `Optional.get()` without default, unread bindings (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
 - No exceptions, classes, `async`, `null`, `pass`.
