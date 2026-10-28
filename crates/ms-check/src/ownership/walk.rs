@@ -2010,6 +2010,11 @@ impl Walker<'_> {
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
                 copy_after(e),
             );
+        } else if matches!(role, Role::With) && !self.is_last(e.id, b) {
+            self.error(
+                e.pos,
+                format!("`{name}` is moved here, but its `with` block closes it at the end of the block; a `with` resource cannot move out of its block, so use `{name}` in place, or bind it with `let` and close or move it yourself"),
+            );
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)
@@ -2326,6 +2331,9 @@ impl Walker<'_> {
     fn operand_text(&self, o: &Operand) -> String {
         match o {
             Operand::Receiver(e) => format!("the receiver `{}`", self.expr_text(e)),
+            Operand::Argument(e) if matches!(e.kind, ExprKind::Lambda(_)) => {
+                format!("the closure at {}", self.at(e.id))
+            }
             Operand::Argument(e) => format!("argument `{}`", self.expr_text(e)),
         }
     }

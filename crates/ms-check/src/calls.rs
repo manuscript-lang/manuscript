@@ -32,6 +32,7 @@ pub(crate) fn function_arguments<'a>(args: &'a [Argument], params: &[Param]) -> 
             pos: a.pos,
             name,
             value: &a.value,
+            mutable: a.mutable,
         });
     }
     resolved
@@ -613,6 +614,20 @@ impl Checker {
             }
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
+            if let (Some(want), Some(have)) = (&expected, &v.error_source)
+                && arg.mutable
+                && want.kind == Kind::Contract
+                && have.kind != Kind::Contract
+                && !want.is_std("Error")
+            {
+                self.type_error(
+                    arg.value.pos,
+                    format!(
+                        "parameter {} is a var {want}, but this {have} would be converted to a temporary {want} and the callee's changes would be lost; declare the variable as `var x: {want} = ...` or make the parameter take {have}",
+                        arg.name
+                    ),
+                );
+            }
             no_return = no_return || v.no_return;
             seen.insert(arg.name);
         }
