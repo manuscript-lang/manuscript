@@ -1942,11 +1942,13 @@ impl<'a> FnLower<'a> {
     /// Whether `name` on the place `recv_expr` discards a resource entry of a list or map:
     /// `set` and `remove` on a list of resources, `add`, `remove` and `clear` on a map of them.
     fn discards_resource(&mut self, recv_expr: &Expr, name: &str) -> Result<bool, Error> {
-        if !matches!(name, "set" | "add" | "remove" | "clear") || !self.is_place(recv_expr) {
+        if !matches!(name, "set" | "add" | "remove" | "clear" | "splice")
+            || !self.is_place(recv_expr)
+        {
             return Ok(false);
         }
         let ty = self.ety(recv_expr);
-        let held = if ty.is_std("List") && matches!(name, "set" | "remove") {
+        let held = if ty.is_std("List") && matches!(name, "set" | "remove" | "splice") {
             ty.args.first()
         } else if ty.is_std("Map") && matches!(name, "add" | "remove" | "clear") {
             ty.args.get(1)
@@ -1967,6 +1969,9 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
     ) -> Result<(), Error> {
         let ty = self.ety(recv_expr);
+        if name == "splice" {
+            return self.close_list_range(recv_expr, &args[0], &args[1]);
+        }
         if ty.is_std("List") {
             return self.close_list_entry(recv_expr, &args[0]);
         }
@@ -2019,6 +2024,65 @@ impl<'a> FnLower<'a> {
         self.b.br(absent, &[]);
         self.b.seal_block(absent);
         self.b.switch_to(absent);
+        self.finish(x);
+        Ok(())
+    }
+
+    /// `xs.splice(start, count, ..)` deletes `count` elements from `start`: the resources in
+    /// them close, last first. Bounds the mutator rejects close nothing and fault there.
+    fn close_list_range(
+        &mut self,
+        recv_expr: &Expr,
+        start: &NArg,
+        count: &NArg,
+    ) -> Result<(), Error> {
+        use ms_mir::ir::{Cc, Mode, Op};
+        let list_ty = self.ety(recv_expr);
+        let Some(elem) = list_ty.args.first().cloned() else {
+            return Ok(());
+        };
+        let x = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(());
+        }
+        let list = self.borrow(x);
+        let from = self.borrow(start.val);
+        let n = self.borrow(count.val);
+        let len = self.b.list_len(list);
+        let zero = self.b.iconst(0);
+        let end = self.b.binop(Op::IAdd, from, n);
+        let c1 = self.b.icmp(Cc::Ge, from, zero);
+        let c2 = self.b.icmp(Cc::Ge, n, zero);
+        let c3 = self.b.icmp(Cc::Le, end, len);
+        let c12 = self.b.binop(Op::And, c1, c2);
+        let valid = self.b.binop(Op::And, c12, c3);
+        let (enter, exit) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(valid, enter, &[], exit, &[]);
+        self.b.seal_block(enter);
+        self.b.switch_to(enter);
+        let idx = self.b.declare_var(MTy::INT, Mode::Borrow);
+        self.b.def_var(idx, end);
+        let (header, body, done) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(header, &[]);
+        self.b.switch_to(header);
+        let i = self.b.use_var(idx);
+        let more = self.b.icmp(Cc::Gt, i, from);
+        self.b.br_if(more, body, &[], done, &[]);
+        self.b.seal_block(body);
+        self.b.switch_to(body);
+        let i = self.b.use_var(idx);
+        let one = self.b.iconst(1);
+        let j = self.b.binop(Op::ISub, i, one);
+        self.b.def_var(idx, j);
+        let e = self.b.list_get(list, j);
+        self.close_discarded_ty(&elem, e)?;
+        self.b.br(header, &[]);
+        self.b.seal_block(header);
+        self.b.seal_block(done);
+        self.b.switch_to(done);
+        self.b.br(exit, &[]);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
         self.finish(x);
         Ok(())
     }
