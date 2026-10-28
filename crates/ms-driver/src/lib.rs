@@ -10,6 +10,7 @@
 //! exit statuses.
 
 pub mod compile;
+pub mod imports;
 pub mod load;
 pub mod project;
 
