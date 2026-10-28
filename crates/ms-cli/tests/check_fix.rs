@@ -183,3 +183,16 @@ fn fix_renames_a_misspelled_member() {
     assert!(fixed.contains("xs.length() + xs.length()"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn error_with_a_string_gives_one_diagnostic_naming_fail() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-error-string-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.ms"), "test \"x\":\n    error(\"boom\")\n").unwrap();
+    let (status, text) = ms(&["check", "a.ms"], &dir);
+    assert_eq!(status, Some(1), "{text}");
+    assert!(text.contains("try fail("), "{text}");
+    assert!(text.contains("1 error;"), "{text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
