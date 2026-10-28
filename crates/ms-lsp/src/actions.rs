@@ -96,6 +96,49 @@ pub fn format_actions(d: &Document) -> Vec<Json> {
     ])]
 }
 
+/// Where `statement` goes: after the leading run of imports, else at the top.
+fn import_insertion(source: &str, statement: &str) -> (Position, String) {
+    let newline = if source.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let mut at = 0;
+    let mut last = None;
+    while at < lines.len() {
+        let line = lines[at].trim();
+        if line.starts_with("from \"") {
+            let mut open = line.contains('(') && !line.contains(')');
+            at += 1;
+            while open && at < lines.len() {
+                open = !lines[at].contains(')');
+                at += 1;
+            }
+            last = Some(at - 1);
+        } else if line.is_empty() || line.starts_with('#') {
+            at += 1;
+        } else {
+            break;
+        }
+    }
+    match last {
+        Some(line) => {
+            let end = line_range(source, line).end;
+            let missing = !lines[line].ends_with('\n');
+            let prefix = if missing { newline } else { "" };
+            (end, format!("{prefix}{statement}{newline}"))
+        }
+        None => (
+            Position {
+                line: 0,
+                character: 0,
+            },
+            format!("{statement}{newline}"),
+        ),
+    }
+}
+
 /// Code actions for `requested`, restricted to the kinds in `only` when given.
 pub fn editor_actions(
     d: &Document,
@@ -139,6 +182,38 @@ pub fn editor_actions(
                 vec![diagnostic],
             ));
         }
+    }
+    for issue in &checked.diagnostics {
+        let Some(m) = &module else { break };
+        let Some(fix) = &issue.fix else { continue };
+        if issue.file.as_ref() != m.file.as_str() || !issue.message.contains("; add: from ") {
+            continue;
+        }
+        // The diagnostic covers the unresolved name, which the hint repeats last.
+        let name = issue.message.rsplit(' ').next().unwrap_or("");
+        let start = issue.pos.offset as usize;
+        let r = Range {
+            start: text::position(&d.text, start),
+            end: text::position(&d.text, start + name.len()),
+        };
+        if !eligible(r) {
+            continue;
+        }
+        let statement = fix.replacement.trim_end();
+        let (at, text) = import_insertion(&d.text, statement);
+        let diagnostic = obj([
+            ("range", r.json()),
+            ("message", issue.message.clone().into()),
+            ("code", issue.code().into()),
+            ("source", "manuscript".into()),
+        ]);
+        result.push(action_for(
+            d,
+            &format!("Add `{statement}`"),
+            "quickfix",
+            vec![edit(Range::at(at), &text)],
+            vec![diagnostic],
+        ));
     }
     for issue in lint.source(&uri::filename(&d.uri), &d.text) {
         let p = text::position(&d.text, issue.offset);

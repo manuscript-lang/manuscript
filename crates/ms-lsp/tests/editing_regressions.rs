@@ -368,3 +368,24 @@ fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
         }
     }
 }
+
+#[test]
+fn unresolved_standard_name_offers_an_add_import_fix() {
+    for (source, expected) in [
+        (
+            "def size(b: Bytes) -> Int:\n    return 0\n",
+            "from \"@std/bytes.ms\" import Bytes\ndef size(b: Bytes) -> Int:\n    return 0\n",
+        ),
+        (
+            "from \"@std/math.ms\" import sqrt\n\ndef size(b: Bytes) -> Int:\n    return 0\n",
+            "from \"@std/math.ms\" import sqrt\nfrom \"@std/bytes.ms\" import Bytes\n\ndef size(b: Bytes) -> Int:\n    return 0\n",
+        ),
+    ] {
+        let (_, found) = actions(source, "quickfix");
+        let action = found
+            .iter()
+            .find(|a| title(a) == "Add `from \"@std/bytes.ms\" import Bytes`")
+            .expect("add import fix");
+        assert_eq!(apply(source, action), expected);
+    }
+}
