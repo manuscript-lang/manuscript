@@ -327,8 +327,16 @@ impl Walker<'_> {
                 let result = self.cx.m.ty(e);
                 // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
                 // value of it (`result.get()`) hands the value over: the binding owns it.
+                // An owned `Optional` or `Result` of a part the source holds (`pop()`) hands the part
+                // over too; a `ref` result (`first()`) only lends it.
+                let lends = !call_modes(self.cx.m, e, args, self.cx.summaries)
+                    .origin
+                    .slots
+                    .is_empty();
                 let wraps = |src: &Expr| {
-                    self.class_of(src) == Class::Resource && !ty_holds(&self.cx.m.ty(src), &result)
+                    self.class_of(src) == Class::Resource
+                        && !ty_holds(&self.cx.m.ty(src), &result)
+                        && (lends || !wraps_part(&self.cx.m.ty(src), &result))
                 };
                 let receiver = match &callee.kind {
                     ExprKind::Member { left, .. } => wraps(left),
@@ -2211,6 +2219,24 @@ impl Walker<'_> {
                     format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
                 );
             }
+            let rty = self.cx.m.ty(r);
+            let copies = match &e.kind {
+                ExprKind::Call { callee, .. } => match &callee.kind {
+                    ExprKind::Member { name, .. } => name.as_str().to_string(),
+                    _ => String::new(),
+                },
+                _ => String::new(),
+            };
+            if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
+                && (rty.is_std("List") || rty.is_std("Map"))
+                && self.class_of(r) == Class::Resource
+            {
+                let text = self.expr_text(r);
+                self.error(
+                    e.pos,
+                    format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; `set` or `add` each one instead"),
+                );
+            }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
             // receiver's one owner handing it over, not a copy.
@@ -2656,6 +2682,16 @@ fn ty_contains(src: &Ty, part: &Ty) -> bool {
     src.args
         .iter()
         .any(|a| crate::types::same(a, part) || ty_contains(a, part))
+}
+
+/// Whether `result` is an `Optional` or `Result` around a type `src` holds (or around another
+/// such wrapper).
+fn wraps_part(src: &Ty, result: &Ty) -> bool {
+    (result.is_std("Optional") || result.is_std("Result"))
+        && result
+            .args
+            .first()
+            .is_some_and(|a| ty_holds(src, a) || wraps_part(src, a))
 }
 
 /// Whether `src` is `part` or has it among its type arguments, at any depth.

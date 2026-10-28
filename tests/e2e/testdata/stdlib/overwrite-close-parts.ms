@@ -119,3 +119,28 @@ test "clear closes every value, last inserted first":
         let log = f"{temporary.path()}/log"
         try expect_equal(clears_map(log.clone()), 0)
         try expect_equal(closed(log), "2,1,")
+
+def splices_elements(log: String) -> Int:
+    var xs = [
+        track(log.clone(), 1), track(log.clone(), 2), track(log.clone(), 3),
+        track(log.clone(), 4)
+    ]
+    xs.splice(1, 2, [track(log, 5)])
+    return xs.length()
+
+def pops_into_ignored(log: String) -> Int:
+    var xs = [track(log.clone(), 1), track(log, 2)]
+    let _last = xs.pop()
+    return xs.length()
+
+test "splice closes the deleted elements, last first":
+    with let temporary = filesystem().temporary("manuscript-overwrite-") | try expect_ok:
+        let log = f"{temporary.path()}/log"
+        try expect_equal(splices_elements(log.clone()), 3)
+        try expect_equal(closed(log), "3,2,4,5,1,")
+
+test "a popped value bound to an ignored name closes at scope end":
+    with let temporary = filesystem().temporary("manuscript-overwrite-") | try expect_ok:
+        let log = f"{temporary.path()}/log"
+        try expect_equal(pops_into_ignored(log.clone()), 1)
+        try expect_equal(closed(log), "2,1,")
