@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "closed var-unmoved\n--var_moved true\nclosed var-moved\n--var_moved false\nclosed var-moved\n--var_reassign\nclosed var-old\nclosed var-new\n--var_move_reassign true\nclosed var-first\nclosed var-second\n--var_move_reassign false\nclosed var-first\n--captured false\nclosed captured\n--end\n",
+    "stderr": ""
+  }
+}
