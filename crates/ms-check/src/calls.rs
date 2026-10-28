@@ -18,19 +18,43 @@ use std::collections::{HashMap, HashSet};
 /// including a bare identifier, fills the first parameter not supplied by an
 /// earlier argument.
 pub(crate) fn function_arguments<'a>(args: &'a [Argument], params: &[Param]) -> Vec<Arg<'a>> {
-    let mut seen: HashSet<Name> = HashSet::with_capacity(params.len());
+    bind_arguments(args, params, true)
+}
+
+fn parameter_indices(params: &[Param]) -> HashMap<Name, usize> {
+    // Keep the first declaration for malformed signatures, just as the old lookup did.
+    let mut indices = HashMap::with_capacity(params.len());
+    for (index, param) in params.iter().enumerate() {
+        indices.entry(param.name).or_insert(index);
+    }
+    indices
+}
+
+fn bind_arguments<'a>(args: &'a [Argument], params: &[Param], positional: bool) -> Vec<Arg<'a>> {
+    let by_name = parameter_indices(params);
+    let mut seen = vec![false; params.len()];
+    let mut next = 0;
     let mut resolved = Vec::with_capacity(args.len());
     for a in args {
         let mut name = a.name.unwrap_or_else(|| n(""));
-        if name.as_str().is_empty()
-            && let Some(p) = params.iter().find(|p| !seen.contains(&p.name))
-        {
-            name = p.name;
+        let parameter = if name.as_str().is_empty() && positional {
+            while next < params.len() && seen[by_name[&params[next].name]] {
+                next += 1;
+            }
+            params.get(next).map(|p| {
+                name = p.name;
+                by_name[&name]
+            })
+        } else {
+            by_name.get(&name).copied()
+        };
+        if let Some(index) = parameter {
+            seen[index] = true;
         }
-        seen.insert(name);
         resolved.push(Arg {
             pos: a.pos,
             name,
+            parameter,
             value: &a.value,
             mutable: a.mutable,
         });
@@ -177,10 +201,23 @@ impl Checker {
             }
             // `reserve` is named-only: `List[T](n)` stays an error.
             let named_only = typ.is_std("List") && args.iter().any(|a| a.name.is_none());
-            let resolved = constructor_arguments(args, if named_only { &[] } else { &fields });
+            let mut resolved = bind_arguments(args, &fields, !named_only);
             i.arguments = slots(&resolved);
             typ = self.instantiate(&typ, &fields, &resolved, expected, e.pos);
             let signature = constructor_signature(&typ);
+            // Invalid type arity can recover to a different constructor signature.
+            // Retain the original labels/positional errors and written slots, but
+            // check those names against the recovered signature as before.
+            if fields
+                .iter()
+                .map(|p| p.name)
+                .ne(signature.params.iter().map(|p| p.name))
+            {
+                let indices = parameter_indices(&signature.params);
+                for arg in &mut resolved {
+                    arg.parameter = indices.get(&arg.name).copied();
+                }
+            }
             fields = signature.params.clone();
             if typ.is_std("Set") && args.is_empty() {
                 fields.clear();
@@ -597,10 +634,7 @@ impl Checker {
                     format!("duplicate argument {}; pass each argument once", arg.name),
                 );
             }
-            let expected = params
-                .iter()
-                .find(|p| p.name == arg.name)
-                .map(|p| p.ty.clone());
+            let expected = arg.parameter.map(|index| params[index].ty.clone());
             if expected.is_none() {
                 let hint = unknown_argument_hint(arg.name.as_str(), &call_name, params);
                 self.type_error_name(
@@ -992,4 +1026,191 @@ fn is_written_some(e: &Expr) -> bool {
     };
     matches!(&callee.kind, ExprKind::Name(n) if n.as_str() == "some")
         && matches!(args.as_slice(), [a] if a.name.is_none_or(|n| n.as_str() == "value"))
+}
+
+#[cfg(test)]
+mod argument_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    fn check(source: &str) -> crate::Program {
+        crate::stdlib::ensure_standard();
+        let file: Arc<str> = Arc::from("arguments.ms");
+        let ast = ms_syntax::parser::parse(&file, source).expect("valid syntax");
+        Checker::new(&crate::CheckOptions::default())
+            .check_modules(vec![crate::load_module(&ast)], None)
+    }
+
+    #[test]
+    fn resolved_slots_match_left_to_right_binding() {
+        let labels = [
+            None,
+            Some(n("a")),
+            Some(n("b")),
+            Some(n("c")),
+            Some(n("unknown")),
+        ];
+        // Exhaust mixed, duplicate, unknown and excess arguments, including malformed
+        // duplicate parameter declarations and the named-only constructor path.
+        for names in [vec![], vec!["a", "b", "c"], vec!["a", "a", "b"]] {
+            let params: Vec<_> = names
+                .iter()
+                .map(|name| Param {
+                    name: n(name),
+                    ty: invalid(),
+                })
+                .collect();
+            for positional in [false, true] {
+                for mut code in 0..5usize.pow(5) {
+                    let args: Vec<_> = (0..5)
+                        .map(|index| {
+                            let name = labels[code % 5];
+                            code /= 5;
+                            Argument {
+                                pos: Pos::new(index, 1, index + 1),
+                                name,
+                                mutable: false,
+                                value: Expr {
+                                    id: NodeId(index),
+                                    pos: Pos::default(),
+                                    end: Pos::default(),
+                                    kind: ExprKind::Unit,
+                                },
+                            }
+                        })
+                        .collect();
+                    let resolved = bind_arguments(&args, &params, positional);
+                    let mut seen = HashSet::new();
+                    for (index, (arg, actual)) in args.iter().zip(&resolved).enumerate() {
+                        let mut expected = arg.name.unwrap_or_else(|| n(""));
+                        if expected.as_str().is_empty()
+                            && positional
+                            && let Some(p) = params.iter().find(|p| !seen.contains(&p.name))
+                        {
+                            expected = p.name;
+                        }
+                        seen.insert(expected);
+                        assert_eq!(actual.name, expected);
+                        assert_eq!(
+                            actual.parameter,
+                            params.iter().position(|p| p.name == expected)
+                        );
+                        assert!(std::ptr::eq(actual.value, &arg.value));
+                        assert_eq!(actual.pos, arg.pos);
+                        let slot = slots(&resolved).unwrap()[index];
+                        assert_eq!(
+                            (slot.name, slot.index, slot.pos),
+                            (expected, index, arg.pos)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn mixed_calls_keep_inference_defaults_and_callback_context() {
+        let p = check(include_str!("../tests/call_arguments/accepted.ms"));
+        assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
+    }
+
+    #[test]
+    fn invalid_calls_keep_diagnostic_order() {
+        let p = check(include_str!("../tests/call_arguments/rejected.ms"));
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 5, "{messages:?}");
+        for (message, prefix) in messages.iter().zip([
+            "duplicate argument second",
+            "unknown argument mystery",
+            "duplicate argument mystery",
+            "unknown argument mystery",
+            "too many positional arguments",
+        ]) {
+            assert!(message.starts_with(prefix), "{messages:?}");
+        }
+        let p = check(include_str!("../tests/call_arguments/missing.ms"));
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 2, "{messages:?}");
+        assert!(messages[0].starts_with("missing argument second"));
+        assert!(messages[1].starts_with("missing argument third"));
+    }
+
+    #[test]
+    fn named_only_constructor_keeps_labels_and_rejects_positional_arguments() {
+        let p = check(include_str!("../tests/call_arguments/named_only.ms"));
+        let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages.len(), 4, "{messages:?}");
+        for (message, prefix) in messages.iter().zip([
+            "too many positional arguments",
+            "too many positional arguments",
+            "unknown argument extra",
+            "duplicate argument reserve",
+        ]) {
+            assert!(message.starts_with(prefix), "{messages:?}");
+        }
+    }
+
+    #[test]
+    fn duplicate_parameter_declaration_does_not_change_call_diagnostics() {
+        let p = check(include_str!(
+            "../tests/call_arguments/duplicate_parameters.ms"
+        ));
+        assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
+        assert!(
+            p.diagnostics[0]
+                .message
+                .starts_with("duplicate parameter or field first")
+        );
+    }
+
+    #[test]
+    fn recovered_constructor_signature_keeps_original_argument_names() {
+        let p = check(include_str!(
+            "../tests/call_arguments/malformed_constructors.ms"
+        ));
+        let prefixes = [
+            "generic type arity mismatch",
+            "generic type arity mismatch",
+            "too many positional arguments",
+            "missing argument values",
+            "generic type arity mismatch",
+            "unknown argument extra",
+            "missing argument values",
+            "generic type arity mismatch",
+            "duplicate argument values",
+            "generic type arity mismatch",
+            "generic type arity mismatch",
+            "too many positional arguments",
+        ];
+        assert_eq!(p.diagnostics.len(), prefixes.len(), "{:?}", p.diagnostics);
+        for (diagnostic, prefix) in p.diagnostics.iter().zip(prefixes) {
+            assert!(diagnostic.message.starts_with(prefix), "{diagnostic:?}");
+        }
+    }
+
+    #[test]
+    fn wide_calls_infer_each_resolved_slot() {
+        let width = 2048;
+        let params = (0..width)
+            .map(|i| format!("_a{i}: T"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        for labeled in [false, true] {
+            let args = (0..width)
+                .map(|i| {
+                    if labeled {
+                        format!("_a{}: 0", width - i - 1)
+                    } else {
+                        "0".to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            let source = include_str!("../tests/call_arguments/wide.ms")
+                .replace("_parameters: T", &params)
+                .replace("_arguments", &args);
+            let p = check(&source);
+            assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
+        }
+    }
 }
