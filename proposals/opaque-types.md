@@ -2,6 +2,7 @@
 
 ## Summary
 
+- Principle (Chinmay, 2026-10-28): hide the details of an operation and route all access through one point where checks are enforced. Two rules apply it at two levels: `opaque type` makes a module the only way to build or read a value, and `[imports]` makes a module the only way to reach another module. The same shape covers data today, raw modules next, and a narrowed capability (`Network.restrict`) later without a new mechanism.
 - Problem: a value a human-owned module hands out (a secret, a validated input, an approval) can be re-minted or read by agent code outside that module: construction, field access, `json.parse`, `f"{value}"`, and `to_string()` all work on any exported record (`forge.ms` below checks clean on main `23129640`).
 - Change: `opaque type` hides every field outside the declaring module (no construction, access, or pattern); rendering an opaque value prints only its type name; `parse` and the other decoders cannot build one. Copy, clone, equality, and hashing follow the fields as today. An `[imports]` allow list in `ms.toml` says which files may import which modules, so agent files cannot reach the raw modules the opaque types wrap.
 - Cost: one keyword in the parser and formatter, an opaque check in `ms-check`, the name-only text and JSON forms in `ms-lower`, one manifest table and one check at import resolution.
