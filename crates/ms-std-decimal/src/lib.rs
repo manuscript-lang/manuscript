@@ -390,6 +390,10 @@ impl Dec {
         if !(-6144..=6176).contains(&places) {
             return Err(RoundFail::InvalidInput);
         }
+        // A normalized value is already an exact multiple of this quantum.
+        if self.is_zero() || self.exp + places >= 0 {
+            return Ok(*self);
+        }
         let coefficient = self.scaled_coefficient(places, mode);
         let (coef, exp) = normalize(coefficient, -places);
         if !coef.is_zero() {
@@ -534,6 +538,37 @@ mod tests {
         }
         assert_eq!(d("1e6144").compare(&d("1e-6176")), 1);
         assert_eq!(d("-1e6144").compare(&d("-1e-6176")), -1);
+    }
+
+    #[test]
+    fn rounding_exact_values_preserves_normalized_representation() {
+        for mode in [
+            Mode::HalfEven,
+            Mode::HalfAwayFromZero,
+            Mode::TowardZero,
+            Mode::Floor,
+            Mode::Ceil,
+        ] {
+            for text in [
+                "0", "1.25", "-1.25", "1e6144", "-1e6144", "1e-6176", "-1e-6176",
+            ] {
+                let value = d(text);
+                for places in [(-value.exp).max(-6144), 6176] {
+                    assert_eq!(value.round(places, mode), Ok(value));
+                }
+                for places in [i64::MIN, -6145, 6177, i64::MAX] {
+                    assert_eq!(value.round(places, mode), Err(RoundFail::InvalidInput));
+                }
+            }
+            assert_eq!(
+                d("9.999999999999999999999999999999999e6144").round(-6144, mode),
+                if mode == Mode::TowardZero || mode == Mode::Floor {
+                    Ok(d("9e6144"))
+                } else {
+                    Err(RoundFail::OutOfRange)
+                }
+            );
+        }
     }
 
     #[test]

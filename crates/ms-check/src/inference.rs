@@ -11,11 +11,13 @@ use ms_syntax::Pos;
 use ms_syntax::ast::*;
 
 /// A call argument with its label resolved (after
-/// `functionArguments`). An empty `name` means no parameter was left for it.
+/// `function_arguments`). An empty `name` means no parameter was left for it.
 #[derive(Clone, Copy)]
 pub(crate) struct Arg<'a> {
     pub pos: Pos,
     pub name: Name,
+    /// Index in the callable signature; substitution preserves parameter order.
+    pub parameter: Option<usize>,
     pub value: &'a Expr,
     /// Written `var value`.
     pub mutable: bool,
@@ -167,13 +169,12 @@ impl Checker {
         for arg in args {
             if matches!(arg.value.kind, ExprKind::Lambda(_)) {
                 pending.push(*arg);
-            } else if is_plain_literal(arg.value) && sized_number(parameter_type(params, arg.name))
-            {
+            } else if is_plain_literal(arg.value) && sized_number(parameter_type(params, arg)) {
                 // The literal takes the parameter's own sized type when it is checked.
-            } else if sized_literal_list(arg.value, parameter_type(params, arg.name)) {
+            } else if sized_literal_list(arg.value, parameter_type(params, arg)) {
                 // The elements take the parameter's sized element type when it is checked.
             } else if is_plain_literal(arg.value)
-                && parameter_type(params, arg.name).is_some_and(|p| vars.contains(&p.id))
+                && parameter_type(params, arg).is_some_and(|p| vars.contains(&p.id))
             {
                 literals.push(*arg);
             } else if !self.contextual(arg.value)
@@ -183,7 +184,7 @@ impl Checker {
             }
         }
         for arg in literals {
-            let bound = parameter_type(params, arg.name).map(|p| sub(&p, s));
+            let bound = parameter_type(params, &arg).map(|p| sub(&p, s));
             let adopts = bound
                 .as_ref()
                 .is_some_and(|t| literal_hint(arg.value, t).is_some());
@@ -201,7 +202,7 @@ impl Checker {
             let mut progress = false;
             let mut next: Vec<Arg> = Vec::new();
             for arg in &pending {
-                let pattern = parameter_type(params, arg.name).map(|p| sub(&p, s));
+                let pattern = parameter_type(params, arg).map(|p| sub(&p, s));
                 let callback = callback_context(pattern.as_ref());
                 let ExprKind::Lambda(lambda) = &arg.value.kind else {
                     continue;
@@ -271,7 +272,7 @@ impl Checker {
         vars: &VarSet,
         s: &mut Subst,
     ) {
-        let Some(mut pattern) = parameter_type(params, arg.name) else {
+        let Some(mut pattern) = parameter_type(params, arg) else {
             return;
         };
         let actual_ty = actual.t();
@@ -462,8 +463,8 @@ impl Checker {
     }
 }
 
-fn parameter_type(params: &[Param], name: Name) -> Option<Ty> {
-    params.iter().find(|p| p.name == name).map(|p| p.ty.clone())
+fn parameter_type(params: &[Param], arg: &Arg) -> Option<Ty> {
+    arg.parameter.map(|index| params[index].ty.clone())
 }
 
 /// Whether `e` is a list of plain number literals passed for a `List` of a sized number type.

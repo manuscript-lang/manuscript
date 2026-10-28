@@ -36,7 +36,9 @@ pub struct Member {
 pub fn members(program: &crate::Program, receiver: &Ty, module: Option<Name>) -> Vec<Member> {
     stdlib::ensure_standard();
     let mut checker = Checker::new(&CheckOptions::default());
-    checker.p.methods = program.methods.clone();
+    for method in &program.methods {
+        checker.add_method(method.clone());
+    }
     if let Some(file) = module {
         checker.module = Some(Rc::new(ModuleData::empty(file)));
     }

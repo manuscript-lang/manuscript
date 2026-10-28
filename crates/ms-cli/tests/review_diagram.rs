@@ -250,3 +250,24 @@ fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     assert!(!mermaid.contains("HttpClient"));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn project_review_counts_discovered_test_files() {
+    let dir = scratch("tests");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("ms.toml"),
+        "[project]\nname = \"p\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ms"),
+        "export def main() -> Int:\n    return 0\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return ()\n").unwrap();
+    let output = ms(&dir, &["review", "ms.toml"]);
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("tests                 1"), "{text}");
+}

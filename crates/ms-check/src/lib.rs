@@ -31,6 +31,9 @@ pub mod syntax;
 pub mod types;
 mod unused;
 
+#[cfg(test)]
+mod record_fields_tests;
+
 pub use checker::{CheckOptions, ImportMap, Program, TestFixture, self_variable};
 pub use syntax::{ModRef, ModuleData};
 

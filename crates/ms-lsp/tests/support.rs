@@ -181,8 +181,12 @@ impl Script {
     }
 
     pub fn rust(&self) -> Vec<Json> {
+        self.rust_with(&ms_lsp::lint::Tooling)
+    }
+
+    pub fn rust_with(&self, lint: &dyn ms_lsp::lint::Lint) -> Vec<Json> {
         let mut out = Vec::new();
-        let _ = ms_lsp::serve(Cursor::new(self.frames()), &mut out);
+        let _ = ms_lsp::server::serve_with(Cursor::new(self.frames()), &mut out, lint);
         decode(&out)
     }
 }
