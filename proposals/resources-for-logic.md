@@ -426,6 +426,13 @@ With `[imports]` keeping the raw modules out of agent code, agent code only ever
 | `bench/agent/` | resource-typed arm with a dated result section | bench-check |
 | platform parity | compiler and `.ms` only | CI matrix, nothing gated |
 
+## Prior art
+
+Chinmay, 2026-10-28: "is there prior art on this? this feels like it's handled historically by libraries". It is, and the split matters.
+
+- Import restriction has always lived in tooling: ESLint `no-restricted-imports`, Python `import-linter`, `dependency-cruiser`, Go `depguard`, `cargo-deny`, ArchUnit, Bazel `visibility`. Language-level forms are Java modules (`exports`/`requires`), Deno permissions (process-wide, runtime), and Safe Haskell trust levels. Capability languages (E, Pony, Wyvern) go furthest: no ambient imports, every authority is a parameter. The `[imports]` table is the Bazel form. Putting it in `ms check` instead of a lint buys one toolchain, a table in a frozen file the agent cannot edit, and the same data for `ms review`; if that is not worth a checker rule, the fallback is an `ms lint` rule over the same table with the `[imports]` section otherwise unchanged.
+- Opaque types and typestate have library precedent too (newtypes, builders, the Rust typestate pattern, Java's `Closeable`), and every library version leaks the same way: a value can be copied, decoded from JSON, rendered, or dropped without the library seeing it. The checker rules here (move-only, consuming destructure, the `structural` tag, use-after-move) are the part no library can provide, which is why they are the core of the proposal and the import list is a supporting rule. Move and Austral are the language precedents (`logic-enforcement-research.md` in the project files has the survey).
+
 ## Alternatives
 
 - Do nothing: the four holes in Problem stay; use after close stays a runtime error; policies stay prose. The agent-bench arm in Staging is the measurement that must beat this.
