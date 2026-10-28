@@ -32,7 +32,15 @@ pub(crate) fn parse_chunk(
     first_id: u32,
 ) -> PResult<Module> {
     let lexed = crate::lexer::lex_at(file, source, base_offset, base_line)?;
-    let mut p = Parser::new(file, &lexed.source, lexed.tokens, 0, first_id);
+    let mut p = Parser::new(
+        file,
+        &lexed.source,
+        lexed.tokens,
+        &lexed.boundaries,
+        0,
+        0,
+        first_id,
+    );
     let mut module = Module::default();
     p.module(&mut module)?;
     module.node_count = p.next_id;
@@ -43,6 +51,9 @@ struct Parser<'a> {
     file: &'a Arc<str>,
     src: &'a str,
     tokens: Vec<Token>,
+    boundaries: &'a crate::lexer::ScanBoundaries,
+    /// Start of `src` in the normalized source scanned by the outer lexer.
+    source_origin: usize,
     at: usize,
     inline_statement: bool,
     inline_return: bool,
@@ -204,6 +215,8 @@ impl<'a> Parser<'a> {
         file: &'a Arc<str>,
         src: &'a str,
         tokens: Vec<Token>,
+        boundaries: &'a crate::lexer::ScanBoundaries,
+        source_origin: usize,
         depth: usize,
         next_id: u32,
     ) -> Parser<'a> {
@@ -211,6 +224,8 @@ impl<'a> Parser<'a> {
             file,
             src,
             tokens,
+            boundaries,
+            source_origin,
             at: 0,
             inline_statement: false,
             inline_return: false,
@@ -2392,7 +2407,12 @@ impl<'a> Parser<'a> {
             }
             flush(&mut literal, &mut parts);
             let start = i;
-            i += crate::lexer::interpolation_length(self.file, &raw[start..])?;
+            let brace = self.source_origin + token.lo as usize + prefix + start;
+            i = self
+                .boundaries
+                .interpolation_end(brace)
+                .expect("validated interpolation")
+                - (self.source_origin + token.lo as usize + 1 + prefix);
             let source = &raw[start..i - 1];
             let value = self.interpolation(token, start + prefix, source)?;
             parts.push(TextPart::Interp(value));
@@ -2411,40 +2431,30 @@ impl<'a> Parser<'a> {
             " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
             token.pos.column as usize + start
         );
-        let wrapped = format!("({source})");
+        let origin = self.source_origin + token.lo as usize + start + 1;
         let shift = |p: Pos| -> Pos {
-            let offset = (p.offset as usize).min(source.len() + 1);
+            let offset = (p.offset as usize + 1).min(source.len() + 1);
             Pos {
                 line: token.pos.line,
                 column: (token.pos.column as usize + start + offset) as u32,
                 offset: (token.pos.offset as usize + start + offset) as u32,
             }
         };
-        let mut lexed = match lex(self.file, &wrapped) {
-            Ok(l) => l,
-            Err(mut d) => {
-                d.pos = shift(d.pos);
-                d.end = d.end.map(shift);
-                if let Some(fix) = &mut d.fix {
-                    fix.pos = shift(fix.pos);
-                    fix.end = shift(fix.end);
-                }
-                d.message.push_str(&suffix);
-                return Err(d);
-            }
-        };
-        // The wrapper disables statement layout while preserving spaces inside braces.
-        let closing = lexed.tokens.len() - 3;
-        lexed.tokens.remove(closing);
-        lexed.tokens.remove(0);
-        for t in &mut lexed.tokens {
+        let mut tokens =
+            match crate::lexer::lex_interpolation(self.file, source, origin, self.boundaries) {
+                Ok(tokens) => tokens,
+                Err(_) => return self.interpolation_wrapped(token, start, source),
+            };
+        for t in &mut tokens {
             t.pos = shift(t.pos);
             t.end = shift(t.end);
         }
         let mut nested = Parser::new(
             self.file,
-            &lexed.source,
-            lexed.tokens,
+            source,
+            tokens,
+            self.boundaries,
+            origin,
             self.depth,
             self.next_id,
         );
@@ -2738,6 +2748,68 @@ impl<'a> Parser<'a> {
             id,
             pos: t.pos,
             kind,
+        }
+    }
+
+    /// Preserve the historical wrapper path for expressions whose lexical
+    /// error depends on its physical closing parenthesis.
+    fn interpolation_wrapped(&mut self, token: Token, start: usize, source: &str) -> PResult<Expr> {
+        let suffix = format!(
+            " ('{{' at column {} starts an interpolation; write \\{{ and \\}} for literal braces)",
+            token.pos.column as usize + start
+        );
+        let wrapped = format!("({source})");
+        let shift = |p: Pos| -> Pos {
+            let offset = (p.offset as usize).min(source.len() + 1);
+            Pos {
+                line: token.pos.line,
+                column: (token.pos.column as usize + start + offset) as u32,
+                offset: (token.pos.offset as usize + start + offset) as u32,
+            }
+        };
+        let mut lexed = match lex(self.file, &wrapped) {
+            Ok(l) => l,
+            Err(mut d) => {
+                d.pos = shift(d.pos);
+                d.end = d.end.map(shift);
+                if let Some(fix) = &mut d.fix {
+                    fix.pos = shift(fix.pos);
+                    fix.end = shift(fix.end);
+                }
+                d.message.push_str(&suffix);
+                return Err(d);
+            }
+        };
+        let closing = lexed.tokens.len() - 3;
+        lexed.tokens.remove(closing);
+        lexed.tokens.remove(0);
+        for t in &mut lexed.tokens {
+            t.pos = shift(t.pos);
+            t.end = shift(t.end);
+        }
+        let origin = self.source_origin + token.lo as usize + start;
+        let mut nested = Parser::new(
+            self.file,
+            &lexed.source,
+            lexed.tokens,
+            self.boundaries,
+            origin,
+            self.depth,
+            self.next_id,
+        );
+        let result: PResult<Expr> = (|| {
+            let value = nested.expression(0)?;
+            nested.newlines();
+            nested.need(Tok::Eof)?;
+            Ok(value)
+        })();
+        self.next_id = nested.next_id;
+        match result {
+            Ok(v) => Ok(v),
+            Err(mut d) => {
+                d.message.push_str(&suffix);
+                Err(d)
+            }
         }
     }
 }
