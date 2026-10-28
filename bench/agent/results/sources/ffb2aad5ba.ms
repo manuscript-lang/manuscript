@@ -16,6 +16,7 @@ type Ledger:
 def digits(text: String) -> Optional[Int]:
     if text.is_empty() or text.starts_with("+") or text.starts_with("-"):
         return none
+
     return text.parse_int()
 
 def amount_of(text: String) -> Optional[Int]:
@@ -28,17 +29,21 @@ def amount_of(text: String) -> Optional[Int]:
 def overdraft_fee(balance: Int, amount: Int) -> Int:
     if balance >= 0 and balance - amount < 0:
         return 5
+
     return 0
 
 def fee_suffix(fee: Int) -> String:
     if fee > 0:
         return f" fee={fee}"
+
     return ""
 
 impl Ledger:
     # Callers check existence first; this only supplies a value for the lookup.
     def account(id: String) -> Account:
-        return self.accounts.get(id).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False))
+        return self.accounts.get(
+            id
+        ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False))
 
     var def blame(id: String) -> Unit:
         var acc = self.account(id)
@@ -51,12 +56,19 @@ impl Ledger:
             return "error: invalid limit"
         if self.accounts.contains(id):
             return f"error: account exists {id}"
-        self.accounts.add(id, Account(balance: 0, limit: cap.get(0), ops: 0, rejected: 0, frozen: False))
+
+        self.accounts.add(
+            id,
+            Account(
+                balance: 0, limit: cap.get(0), ops: 0, rejected: 0, frozen: False
+            )
+        )
         return "ok"
 
     var def set_frozen(id: String, frozen: Bool) -> String:
         if not self.accounts.contains(id):
             return f"error: unknown account {id}"
+
         var acc = self.account(id)
         acc.frozen = frozen
         self.accounts.add(id, acc)
@@ -65,14 +77,19 @@ impl Ledger:
     var def deposit(id: String, text: String) -> String:
         if not self.accounts.contains(id):
             return f"error: unknown account {id}"
+
         let amount = amount_of(text)
+
         if amount.is_none():
             self.blame(id.clone())
             return "error: invalid amount"
+
         var acc = self.account(id)
+
         if acc.frozen:
             self.blame(id.clone())
             return f"error: account frozen {id}"
+
         acc.balance += amount.get(0)
         acc.ops += 1
         self.accounts.add(id, acc)
@@ -81,19 +98,26 @@ impl Ledger:
     var def withdraw(id: String, text: String) -> String:
         if not self.accounts.contains(id):
             return f"error: unknown account {id}"
+
         let amount = amount_of(text)
+
         if amount.is_none():
             self.blame(id.clone())
             return "error: invalid amount"
+
         var acc = self.account(id)
+
         if acc.frozen:
             self.blame(id.clone())
             return f"error: account frozen {id}"
+
         let fee = overdraft_fee(acc.balance, amount.get(0))
         let next = acc.balance - amount.get(0) - fee
+
         if next < -acc.limit:
             self.blame(id.clone())
             return f"error: overdraft limit exceeded {id}"
+
         acc.balance = next
         acc.ops += 1
         self.accounts.add(id, acc)
@@ -105,26 +129,36 @@ impl Ledger:
             return f"error: unknown account {from}"
         if not self.accounts.contains(to):
             return f"error: unknown account {to}"
+
         if from == to:
             self.blame(from.clone())
             return "error: same account"
+
         let amount = amount_of(text)
+
         if amount.is_none():
             self.blame(from.clone())
             return "error: invalid amount"
+
         var src = self.account(from)
+
         if src.frozen:
             self.blame(from.clone())
             return f"error: account frozen {from}"
+
         var dst = self.account(to)
+
         if dst.frozen:
             self.blame(to.clone())
             return f"error: account frozen {to}"
+
         let fee = overdraft_fee(src.balance, amount.get(0))
         let next = src.balance - amount.get(0) - fee
+
         if next < -src.limit:
             self.blame(from.clone())
             return f"error: overdraft limit exceeded {from}"
+
         src.balance = next
         src.ops += 1
         dst.balance += amount.get(0)
@@ -137,11 +171,17 @@ impl Ledger:
     def report() -> String:
         var lines = List[String]()
         var total = 0
+
         for id in self.accounts.keys().sorted():
             let acc = self.account(id)
             total += acc.balance
+
             let frozen = "yes" if acc.frozen else "no"
-            lines.append(f"{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}")
+
+            lines.append(
+                f"{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}"
+            )
+
         lines.append(f"total balance={total} fees={self.fees}")
         return lines.join("\n")
 
@@ -159,18 +199,26 @@ impl Ledger:
         if cmd == "withdraw" and n == 3:
             return self.withdraw(tokens[1].clone(), tokens[2].clone())
         if cmd == "transfer" and n == 4:
-            return self.transfer(tokens[1].clone(), tokens[2].clone(), tokens[3].clone())
+            return self.transfer(
+                tokens[1].clone(), tokens[2].clone(), tokens[3].clone()
+            )
+
         return "error: bad command"
 
 export def main() -> Int:
     var out = stdout()
     var ledger = Ledger(accounts: Map[String, Account](), fees: 0)
+
     for line in read_lines(stdin()).get():
-        let tokens = line.replace("\t", " ").replace("\r", " ").split(" ").filter(lambda t: not t.is_empty())
+        let tokens = line.replace("\t", " ").replace("\r", " ").split(" ").filter(
+            lambda t: not t.is_empty()
+        )
         if tokens.is_empty():
             continue
+
         if tokens.length() == 1 and tokens[0] == "report":
             out.write(f"{ledger.report()}\n").get()
         else:
             out.write(f"{ledger.run(tokens)}\n").get()
+
     return 0
