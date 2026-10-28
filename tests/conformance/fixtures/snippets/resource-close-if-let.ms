@@ -54,6 +54,11 @@ def with_else_err() -> Unit:
     if let r = make("ok-result"):
         say(f"body {r.name}")
 
+def var_payload() -> Unit:
+    if var r = maybe("var", True):
+        r = Res("var-reassigned")
+        say(f"body {r.name}")
+
 export def main() -> Int:
     early_return()
     local_optional()
@@ -62,5 +67,6 @@ export def main() -> Int:
     let m = moved_on()
     say(f"moved_on got {m.name}")
     with_else_err()
+    var_payload()
     say("end")
     return 0

@@ -1106,6 +1106,7 @@ impl Walker<'_> {
                 let scrutinee = self.scrutinee(s.id, cond);
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
+                    self.payload_resource(s, p, cond, &scrutinee);
                 } else {
                     self.pattern_bindings(p, &scrutinee, Role::Pattern);
                     self.payload_resource(s, p, cond, &scrutinee);

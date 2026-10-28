@@ -175,8 +175,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("break outside loop"))?;
                 ctx.brk_used = true;
-                let (brk, depth) = (ctx.brk, ctx.depth);
+                let (brk, depth, outer) = (ctx.brk, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(brk, &[]);
                 self.terminated();
@@ -188,8 +189,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("continue outside loop"))?;
                 ctx.cont_used = true;
-                let (cont, depth) = (ctx.cont, ctx.depth);
+                let (cont, depth, outer) = (ctx.cont, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(cont, &[]);
                 self.terminated();
@@ -840,6 +842,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -968,6 +971,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1060,6 +1064,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1181,6 +1186,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1329,6 +1335,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
