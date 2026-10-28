@@ -26,6 +26,8 @@ Decision: remove redundant argument labels from ordinary test assertions. The la
 
 Correction: a single explicit-return callback should not keep an unnecessary indented body when its call fits, e.g. `queue.enqueue(lambda: return 7)`. Preserve comments and nested suites; never compact a bare call body into an implicit return. Verify LF/CRLF and idempotence with [the callback fixture](../crates/ms-syntax/tests/data/format/041.in.src).
 
+Verified: applying formatter edits from the end preserves source offsets but still copies the suffix for every edit. The formatter emits sorted, nonoverlapping source spans into one buffer instead. Keep the caller's equal-offset ordering and byte boundaries; the [edit regressions](../crates/ms-syntax/tests/format_edits.rs) pin adjacent unwraps, callback compaction, Unicode and CRLF. See [#1795](https://github.com/manuscript-lang/manuscript/issues/1795) for the measured scaling failure.
+
 ### Editor recovery must preserve delimiter continuations
 
 Verified: strict parsing accepts multiline parameters, but declaration recovery that splits their column-zero closing delimiters into separate chunks whenever any declaration is malformed discards valid functions and their parameter scopes in the language server. Recovery must consult the lexer for continuation boundaries while fresh declarations still synchronize after an unmatched opener. Completion snapshots also need a match arm, rather than an ordinary statement, to repair an unfinished `match` suite.
