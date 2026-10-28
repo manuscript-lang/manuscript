@@ -19,7 +19,8 @@ test "addition":
     try expect_equal(add(1, 2), 3)
 ```
 
-- Workflow: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`. Be terse: infer closure types, one-line bodies (`def f(x: Int) -> Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
+- Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
+- Be terse: infer closure types, one-line bodies (`def f(x: Int) -> Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
 - `main() -> Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`); `bench "name":` under `ms bench`. stdout flushes at exit.
 - Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`; braces need `\{`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
 - Imports: `from "@std/x.ms" import a, b`, `from "./local.ms" import a`; `export` shares. `List Map Set Optional Result Error` need none.
