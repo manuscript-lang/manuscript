@@ -18,38 +18,61 @@
 
 ## Problem
 
-The checker already refuses to duplicate a value with one owner. A gate module that takes an approval apart gets single use today:
+The checker already refuses to duplicate a value with one owner. A gate module that mints an approval only from evidence the agent cannot produce, binds it to the entity, and takes it apart once gets single use today:
 
 ```manuscript
+# gate.ms is human-owned and frozen; approve and spend are its only entry points.
 type Delete:
 
 type Approved[T]:
-    token: String
+    entity: String
+    nonce: String
 
-def approve(token: String) -> Approved[Delete]: Approved[Delete](token: token)
+type GateError:
+    case BadSignature
+    case WrongEntity
 
-# The only way to use an approval: it is taken apart here, once.
-def spend(approval: Approved[Delete]) -> String:
-    let {token} = approval
-    return token
+impl Error for GateError:
+    def message() -> String: "approval rejected"
 
-def delete_account(id: String, approval: Approved[Delete]) -> String:
-    return f"deleted {id} with {spend(approval)}"
+# A request the caller received from outside; the agent cannot make a valid one.
+type SignedRequest:
+    entity: String
+    nonce: String
+    signature: String
 
-export def main() -> Int:
-    let approval = approve("a1")
-    let one = delete_account("u1", approval)
-    let two = delete_account("u2", approval)
-    return one.length() + two.length()
+# Minting consumes evidence: the signature must verify for this entity and nonce.
+def approve(request: SignedRequest) -> Result[Approved[Delete], GateError]:
+    let {entity, nonce, signature} = request
+    if signature != f"sig({entity},{nonce})": return error(BadSignature)
+    return ok(Approved[Delete](entity: entity, nonce: nonce))
+
+# Spending takes the approval apart, once, and checks it names this entity.
+def spend(approval: Approved[Delete], entity: String) -> Result[String, GateError]:
+    let {entity: approved, nonce} = approval
+    if approved != entity: return error(WrongEntity)
+    return ok(nonce)
+
+def delete_account(id: String, approval: Approved[Delete]) -> Result[String, GateError]:
+    let nonce = try spend(approval, id)
+    return ok(f"deleted {id} under {nonce}")
+
+def run() -> Result[Int, GateError]:
+    let approval = try approve(SignedRequest(entity: "u1", nonce: "n1", signature: "sig(u1,n1)"))
+    let one = try delete_account("u1", approval)
+    let two = try delete_account("u2", approval)
+    return ok(one.length() + two.length())
+
+export def main() -> Int: run().get(1)
 ```
 
 ```text
-gate.ms:18:36: type: `approval` is moved here but used again at 19:36; a value has one owner, so pass `approval.clone()` to keep the original, or move it only at its last use
+gate.ms:39:40: type: `approval` is moved here but used again at 40:40; a value has one owner, so pass `approval.clone()` to keep the original, or move it only at its last use
 ```
 
 What the checker cannot stop today, each verified on main:
 
-- Any module builds `Approved[Delete](token: "x")`, reads `.token`, writes it, or clones it, so the gate is advisory.
+- Any module builds `Approved[Delete](entity: "u2", nonce: "x")`, reads its fields, writes them, or clones it, so the gate is advisory. (Chinmay, 2026-10-28: "agent can just call approve again": a constructor that takes only agent-supplied values is a label, not a gate; `approve` must consume external evidence, and the token must name the entity.)
 - `json.parse[Secret]("{\"value\":\"forged\",\"seal\":{}}")` builds any record structurally; so do `cli.decode[T]`, `processes.decode[T]`, `json.stringify`, and `f"{record}"` (a `Secret` interpolates into a log line).
 - A record of scalars copies implicitly, so `Money(cents: Int)` has no owner at all, and a value that was read can be dropped at scope end: a forgotten `deposit` is silent.
 - Use after `close` is a runtime `Closed` error (#1537); the stdlib has 29 such cases in `http`, `net`, `fs`, `process`, plus "a second `send_headers` returns InvalidInput". Two proposals to fix it were parked because "only the straight-line case is catchable without typestate".
@@ -70,6 +93,8 @@ A record with a **hidden field** (a field whose type is not exported, extending 
 - **move-only**: an opaque value never copies implicitly, even when every field is a scalar, and destructuring it (inside its module) consumes it. So a token with one `Int` field, or a destructor that only reads a part, still gives single use; the review showed both leak when opacity is construction-only.
 
 The module exports the only constructors and accessors. This is what "sealing" meant in the first draft; the review showed construction-only sealing leaks through fields and decoders.
+
+A **gate** is an opaque type whose constructor consumes evidence the agent cannot produce (a verified signature, a human confirmation, a capability only `main` holds) and records what it authorizes, so single use composes with "for this entity only". A constructor that takes only agent-supplied values makes a label, not a gate.
 
 ```manuscript
 # proposed: checks once private-field-types lands with hidden fields opaque
@@ -234,7 +259,7 @@ What the checker proves versus what the module is trusted for:
 | --- | --- | --- |
 | No double spend, no lost money | one owner, no copy, no drop, no outside construction | nothing beyond the types |
 | Amounts are positive | nothing | `mint` and `withdraw` validate once |
-| An approval serves one action | moved once, taken apart once | `spend` is the only destructor |
+| An approval serves one action, for the entity it names | moved once, taken apart once, built only in the gate | `approve` verifies external evidence (signature, prompt, capability) and binds the entity; `spend` checks the id |
 | Authenticate before query | `query` exists only on `Connection[Authed]` | `authenticate` checks the token |
 | Secrets never reach logs | no field read, no structural render outside the module | `declassify` is the only exit |
 | Untrusted input never reaches SQL | `Sql` is opaque; only validators build it | the validator |
