@@ -21,6 +21,7 @@ def is_digits(text: String) -> Bool:
 def parse(line: String) -> Optional[Record]:
     let fields = line.split(" ")
     if fields.length() != 6: return none
+
     let timestamp = fields[0]
     let level = fields[1]
     let method = fields[2]
@@ -33,18 +34,28 @@ def parse(line: String) -> Optional[Record]:
     if not path.starts_with("/"): return none
     if status.length() != 3 or not is_digits(status): return none
     if latency.length() > 9 or not is_digits(latency): return none
-    return some(Record(timestamp: timestamp.clone(), level: level.clone(), method: method.clone(), path: path.clone(), status: status.parse_int().get(0), latency_text: latency.clone(), latency: latency.parse_int().get(0)))
+
+    return some(
+        Record(
+            timestamp: timestamp.clone(), level: level.clone(), method: method.clone(),
+            path: path.clone(), status: status.parse_int().get(0),
+            latency_text: latency.clone(), latency: latency.parse_int().get(0)
+        )
+    )
 
 def rank(a: PathStat, b: PathStat) -> Int:
     if a.count != b.count: return b.count - a.count
+
     return a.path.compare(b.path)
 
 export def main() -> Int:
     var records = List[Record]()
     var malformed = 0
     var levels = Map[String, Int]()
+
     for line in read_lines(stdin()).get():
         if line.trim().is_empty(): continue
+
         if let record = parse(line):
             levels.update(record.level.clone(), 0, lambda n: n + 1)
             records.append(record)
@@ -56,8 +67,10 @@ export def main() -> Int:
     var s4 = 0
     var s5 = 0
     var s_other = 0
+
     for r in records:
         let bucket = r.status / 100
+
         if bucket == 2: s2 += 1
         elif bucket == 3: s3 += 1
         elif bucket == 4: s4 += 1
@@ -84,21 +97,32 @@ export def main() -> Int:
         var slowest = 0
         for i in 0..records.length():
             if records[i].latency > records[slowest].latency: slowest = i
+
         let s = records[slowest]
         lines.append(f"slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
 
     lines.append("top:")
+
     if records.length() > 0:
         var counts = Map[String, Int]()
         var totals = Map[String, Int]()
+
         for r in records:
             counts.update(r.path, 0, lambda n: n + 1)
             totals.update(r.path, 0, lambda t: t + r.latency)
+
         var stats = List[PathStat]()
         for p in counts.keys():
-            stats.append(PathStat(path: p.clone(), count: counts.get_or(p, 0), total: totals.get_or(p, 0)))
+            stats.append(
+                PathStat(
+                    path: p.clone(), count: counts.get_or(p, 0),
+                    total: totals.get_or(p, 0)
+                )
+            )
         stats.sort(rank)
+
         let shown = stats.length() if stats.length() < 3 else 3
+
         for i in 0..shown:
             let s = stats[i]
             lines.append(f"{s.path} {s.count} avg={s.total / s.count}")

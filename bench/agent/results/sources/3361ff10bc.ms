@@ -43,6 +43,7 @@ def blame(var ledger: Ledger, id: String, message: String) -> String:
         var copy = acct
         copy.rejected += 1
         ledger.accounts.add(id, copy)
+
     return message
 
 def is_frozen(ledger: Ledger, id: String) -> Bool:
@@ -52,6 +53,7 @@ def is_frozen(ledger: Ledger, id: String) -> Bool:
 def fee_due(balance: Int, debit: Int) -> Int:
     if balance >= 0 and balance < debit:
         return FEE
+
     return 0
 
 def open_account(var ledger: Ledger, id: String, limit_text: String) -> String:
@@ -60,7 +62,10 @@ def open_account(var ledger: Ledger, id: String, limit_text: String) -> String:
         return "error: invalid limit"
     if ledger.accounts.contains(id):
         return "error: account exists " + id
-    ledger.accounts.add(id, Account(balance: 0, limit: limit, ops: 0, rejected: 0, frozen: False))
+
+    ledger.accounts.add(
+        id, Account(balance: 0, limit: limit, ops: 0, rejected: 0, frozen: False)
+    )
     return "ok"
 
 def set_frozen(var ledger: Ledger, id: String, frozen: Bool) -> String:
@@ -69,16 +74,19 @@ def set_frozen(var ledger: Ledger, id: String, frozen: Bool) -> String:
         copy.frozen = frozen
         ledger.accounts.add(id, copy)
         return "ok"
+
     return unknown(id)
 
 def deposit(var ledger: Ledger, id: String, text: String) -> String:
     if not ledger.accounts.contains(id):
         return unknown(id)
+
     let x = amount(text)
     if x <= 0:
         return blame(var ledger, id.clone(), "error: invalid amount")
     if is_frozen(ledger, id):
         return blame(var ledger, id.clone(), "error: account frozen " + id)
+
     var acct = ledger.accounts.get(id).get(empty_account())
     acct.balance += x
     acct.ops += 1
@@ -88,22 +96,26 @@ def deposit(var ledger: Ledger, id: String, text: String) -> String:
 def withdraw(var ledger: Ledger, id: String, text: String) -> String:
     if not ledger.accounts.contains(id):
         return unknown(id)
+
     let x = amount(text)
     if x <= 0:
         return blame(var ledger, id.clone(), "error: invalid amount")
     if is_frozen(ledger, id):
         return blame(var ledger, id.clone(), "error: account frozen " + id)
+
     var acct = ledger.accounts.get(id).get(empty_account())
     let fee = fee_due(acct.balance, x)
     let new = acct.balance - x - fee
     if new < -acct.limit:
         return blame(var ledger, id.clone(), "error: overdraft limit exceeded " + id)
+
     acct.balance = new
     acct.ops += 1
     ledger.accounts.add(id.clone(), acct.clone())
     ledger.fees += fee
     if fee > 0:
         return "ok " + new.to_string() + " fee=5"
+
     return "ok " + new.to_string()
 
 def transfer(var ledger: Ledger, from: String, to: String, text: String) -> String:
@@ -113,6 +125,7 @@ def transfer(var ledger: Ledger, from: String, to: String, text: String) -> Stri
         return unknown(to)
     if from == to:
         return blame(var ledger, from.clone(), "error: same account")
+
     let x = amount(text)
     if x <= 0:
         return blame(var ledger, from.clone(), "error: invalid amount")
@@ -120,12 +133,16 @@ def transfer(var ledger: Ledger, from: String, to: String, text: String) -> Stri
         return blame(var ledger, from.clone(), "error: account frozen " + from)
     if is_frozen(ledger, to):
         return blame(var ledger, to.clone(), "error: account frozen " + to)
+
     var src = ledger.accounts.get(from).get(empty_account())
     var dst = ledger.accounts.get(to).get(empty_account())
     let fee = fee_due(src.balance, x)
     let new = src.balance - x - fee
     if new < -src.limit:
-        return blame(var ledger, from.clone(), "error: overdraft limit exceeded " + from)
+        return blame(
+            var ledger, from.clone(), "error: overdraft limit exceeded " + from
+        )
+
     src.balance = new
     src.ops += 1
     dst.balance += x
@@ -133,9 +150,11 @@ def transfer(var ledger: Ledger, from: String, to: String, text: String) -> Stri
     ledger.accounts.add(from.clone(), src.clone())
     ledger.accounts.add(to.clone(), dst.clone())
     ledger.fees += fee
+
     let line = "ok " + new.to_string() + " " + dst.balance.to_string()
     if fee > 0:
         return line + " fee=5"
+
     return line
 
 def handle(var ledger: Ledger, t: List[String]) -> String:
@@ -153,26 +172,45 @@ def handle(var ledger: Ledger, t: List[String]) -> String:
         return set_frozen(var ledger, t[1].clone(), True)
     if cmd == "unfreeze" and n == 2:
         return set_frozen(var ledger, t[1].clone(), False)
+
     return "error: bad command"
 
 def report(ledger: Ledger) -> Unit:
     var total = 0
+
     for id in ledger.accounts.keys().sorted():
         let acct = ledger.accounts.get(id).get(empty_account())
         total += acct.balance
+
         var frozen = "no"
         if acct.frozen:
             frozen = "yes"
-        emit(id + " balance=" + acct.balance.to_string() + " limit=" + acct.limit.to_string() + " ops=" + acct.ops.to_string() + " rejected=" + acct.rejected.to_string() + " frozen=" + frozen)
+        emit(
+            id
+            + " balance="
+            + acct.balance.to_string()
+            + " limit="
+            + acct.limit.to_string()
+            + " ops="
+            + acct.ops.to_string()
+            + " rejected="
+            + acct.rejected.to_string()
+            + " frozen="
+            + frozen
+        )
+
     emit("total balance=" + total.to_string() + " fees=" + ledger.fees.to_string())
 
 export def main() -> Int:
     var ledger = Ledger(accounts: Map[String, Account](), fees: 0)
+
     if let lines = read_lines(stdin()):
         for line in lines:
             let t = tokenize(line)
+
             if t.length() == 1 and t[0] == "report":
                 report(ledger)
             elif t.length() > 0:
                 emit(handle(var ledger, t))
+
     return 0
