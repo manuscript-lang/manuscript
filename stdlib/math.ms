@@ -1,3 +1,4 @@
+from "@std/core.ms" import panic
 extern def msstd_math_acos(value: Float) -> Float
 
 extern def msstd_math_asin(value: Float) -> Float
@@ -515,6 +516,31 @@ impl BigInt:
     # Returns -1 when this value is less than `other`, 0 when equal, and 1 when greater.
     def compare(other: BigInt) -> Int:
         return msstd_bigint_compare(self, other)
+
+    # Returns the lesser of this value and `other`, or this value when they compare equal.
+    def min(other: BigInt) -> BigInt:
+        if other.compare(self) < 0:
+            return other
+
+        return self
+
+    # Returns the greater of this value and `other`, or this value when they compare equal.
+    def max(other: BigInt) -> BigInt:
+        if other.compare(self) > 0:
+            return other
+
+        return self
+
+    # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+    def clamp(low: BigInt, high: BigInt) -> BigInt:
+        if low.compare(high) > 0:
+            panic("clamp: low must not be greater than high")
+        if self.compare(low) < 0:
+            return low
+        if self.compare(high) > 0:
+            return high
+
+        return self
 
     # Returns the bitwise AND using infinite-width two's-complement semantics, so negative operands behave as if sign-extended.
     def bit_and(other: BigInt) -> BigInt:
