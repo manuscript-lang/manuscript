@@ -1273,50 +1273,6 @@ fn replace_n_bytes(text: &[u8], old: &[u8], new: &[u8], n: i64) -> Vec<u8> {
     out
 }
 
-unsafe fn replace_limited(
-    s: *const StrVal,
-    old: *const StrVal,
-    new: *const StrVal,
-    n: i64,
-) -> StrVal {
-    // SAFETY: caller passes live strings.
-    unsafe {
-        let (text, o) = (bytes(s), bytes(old));
-        let bound = if o.is_empty() {
-            utf8::count(text) as i64 + 1
-        } else {
-            text.len() as i64
-        };
-        let n = n.min(bound);
-        if o.is_empty() {
-            return from_buf(replace_n_bytes(text, o, bytes(new), n));
-        }
-        if n == 0 || find(text, o).is_none() {
-            // Nothing to replace: share the unchanged input.
-            return cloned(&*s);
-        }
-        replace_into_str(text, o, bytes(new), n)
-    }
-}
-
-/// `replace_n_bytes` for a non-empty `old`, written straight into the result string: one allocation,
-/// and an unchanged text is a plain copy.
-fn replace_into_str(text: &[u8], old: &[u8], new: &[u8], n: i64) -> StrVal {
-    let mut matches = 0usize;
-    let mut i = 0;
-    let f = Needle::new(old);
-    while (matches as i64) < n {
-        match f.find(&text[i..]) {
-            None => break,
-            Some(p) => {
-                i += p + old.len();
-                matches += 1;
-            }
-        }
-    }
-    fill_replaced(text, old, new, matches)
-}
-
 /// The result of replacing the first `matches` occurrences of a non-empty `old` (all of them if
 /// `matches` is the full count), written straight into one new string.
 fn fill_replaced(text: &[u8], old: &[u8], new: &[u8], matches: usize) -> StrVal {
@@ -1355,7 +1311,38 @@ pub unsafe extern "C-unwind" fn msrt_string_replace_first(
     out: *mut StrVal,
 ) {
     // SAFETY: caller passes a writable `out` and live arguments.
-    unsafe { replace_limited(s, old, new, 1).write_to(out) }
+    unsafe {
+        let (text, old, new) = (bytes(s), bytes(old), bytes(new));
+        // The empty pattern matches at the first scalar boundary, before any input bytes.
+        let at = if old.is_empty() {
+            Some(0)
+        } else {
+            find(text, old)
+        };
+        let Some(at) = at else {
+            return cloned(&*s).write_to(out);
+        };
+        let Some(total) = (text.len() - old.len()).checked_add(new.len()) else {
+            fault::fault(b"string: limit exceeded");
+        };
+        let mut small = [0u8; STR_INLINE_MAX];
+        let heap = (total > STR_INLINE_MAX).then(|| alloc_str(total));
+        let start = heap
+            .as_ref()
+            .map_or(small.as_mut_ptr(), |value| value.ptr_word);
+        copy_bytes(start, text.as_ptr(), at);
+        copy_bytes(start.add(at), new.as_ptr(), new.len());
+        copy_bytes(
+            start.add(at + new.len()),
+            text[at + old.len()..].as_ptr(),
+            text.len() - at - old.len(),
+        );
+        match heap {
+            Some(value) => value,
+            None => from_bytes(&small[..total]),
+        }
+        .write_to(out)
+    }
 }
 
 /// Replaces every occurrence of a non-empty `old` by a `new` no longer than it, in one search pass: the
@@ -2684,6 +2671,36 @@ mod tests {
                 ret(|o| msrt_string_replace(st("aaa"), st("aa"), st("b"), o)),
                 "ba"
             );
+        }
+    }
+
+    #[test]
+    fn replace_first_matches_standard_string_model() {
+        let _g = testutil::lock();
+        let long = format!("{}b", "a".repeat(8192));
+        let texts = [
+            "",
+            "a",
+            "aaaa",
+            "abababa",
+            "é🙂é",
+            "e\u{301}é",
+            "abcdefghijklmno",
+            "abcdefghijklmnop",
+            "abcdefghijklmnopq",
+            long.as_str(),
+        ];
+        for text in texts {
+            for old in ["", "a", "aa", "aba", "aaaaab", "é", "🙂", "missing"] {
+                for new in ["", "b", "AAAAAB", "LONGER", "世界"] {
+                    let expected = text.replacen(old, new, 1);
+                    // SAFETY: `st` creates live strings and `ret` supplies a writable result.
+                    let actual = unsafe {
+                        ret(|out| msrt_string_replace_first(st(text), st(old), st(new), out))
+                    };
+                    assert_eq!(actual, expected, "text={text:?} old={old:?} new={new:?}");
+                }
+            }
         }
     }
 
