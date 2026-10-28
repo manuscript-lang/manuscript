@@ -13,7 +13,7 @@
           "index": 0,
           "name": "tests-e2e-testruntimefaults-4.ms::fault",
           "status": "failed",
-          "failure": "Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testruntimefaults-4.ms:5 in divide\n  at tests-e2e-testruntimefaults-4.ms:8 in test fault"
+          "failure": "division by zero; right must be nonzero, found 0\n  at tests-e2e-testruntimefaults-4.ms:5 in divide\n  at tests-e2e-testruntimefaults-4.ms:8 in test fault"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testruntimefaults-4.ms::fault\nFAIL tests-e2e-testruntimefaults-4.ms::fault: Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testruntimefaults-4.ms:5 in divide\n  at tests-e2e-testruntimefaults-4.ms:8 in test fault\n1 tests, 1 failed\n",
+      "stdout": "RUN tests-e2e-testruntimefaults-4.ms::fault\nFAIL tests-e2e-testruntimefaults-4.ms::fault: division by zero; right must be nonzero, found 0\n  at tests-e2e-testruntimefaults-4.ms:5 in divide\n  at tests-e2e-testruntimefaults-4.ms:8 in test fault\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [
