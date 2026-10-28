@@ -6,7 +6,7 @@
 - Change: three additive features that put intent in signatures: `requires`/`ensures`/`invariant` clauses, `uses` effect sets, and `where`-refined types.
 - One shared predicate language (decidable: comparisons, boolean logic, `len`, field access, bounded quantifiers) and one small checker-side prover serve all three; unproven obligations become runtime checks and generated property tests, never silent passes.
 - Cost: new syntax in three places, a prover in `ms-check`, lowering of checks; every feature is opt-in and zero-cost for programs that do not use it.
-- Decision requested: approve the staging below and the syntax in [Open questions](#open-questions). Implementation does not start until a skeptical review passes.
+- Decision requested: approve stages 1 and 2 (effects). Contracts and refinements (stages 3 to 6) are gated on a spike report; no syntax for them lands before it. Skeptical review of 2026-10-28 is recorded in [Review outcome](#review-outcome).
 
 ## Status
 
@@ -72,8 +72,8 @@ def fetch_title(net: Network, url: String) -> Result[String, HttpError] uses net
 
 ```text
 # Language change; does not check today.
-type Port = Int where self >= 1 and self <= 65535
-type NonEmpty[T] = List[T] where len(self) > 0
+type Port = Int where value >= 1 and value <= 65535
+type NonEmpty[T] = List[T] where len(value) > 0
 
 def listen(port: Port) -> Unit:
     ...
@@ -82,10 +82,10 @@ listen(8080)         # proven from the literal
 listen(read_port())  # error: Int is not Port; use Port.check(value)
 ```
 
-- A refined type is a distinct nominal type with an underlying type and a predicate over `self`. It converts to the underlying type implicitly; the other direction needs proof or an explicit check.
+- A refined type is a distinct nominal type with an underlying type and a predicate over `value`. It converts to the underlying type implicitly; the other direction needs proof or an explicit check.
 - Introduction: (a) a literal or constant the prover evaluates; (b) `Port.check(value) -> Optional[Port]`, generated, the single runtime conversion; (c) flow narrowing inside `if value >= 1 and value <= 65535:` where the prover derives the predicate.
 - Elimination is free: a `Port` is an `Int` wherever an `Int` is expected, and contributes its predicate as a fact (so `at(items, i)` with `i: Index` proves `requires 0 <= i`).
-- Refined results can name relations to inputs: `-> Int where self < len(items)`.
+- Refined results can name relations to inputs: `-> Int where value < len(items)`.
 - Mutation: refinements on `var` places hold only until the next assignment; assignment must re-establish the predicate or is a compile error.
 
 ### Prover (stage 1 shape)
@@ -123,18 +123,32 @@ listen(read_port())  # error: Int is not Port; use Port.check(value)
 Each stage lands green on all platforms and is independently useful.
 
 1. Effects, read-only: `authority` in `bindings.json`, inference, `ms inspect --effects`, `ms review` diff. Gate: audit finds no untagged host-reaching binding; inference over `stdlib/` and `tests/` agrees with hand-checked samples.
-2. `uses` clause: syntax, subset check, interface operations, manifest `require`. Gate: reject fixtures; no change to unannotated programs (full conformance corpus unchanged).
-3. Refinement types, literal and `check` introduction only, no flow narrowing. Gate: fixtures for accept, reject, and `check` round-trip.
-4. `requires` with runtime checks, then the prover and call-site proof, then flow narrowing for refinements. Gate: measured proof rate on `stdlib/*.ms` and `tests/e2e` call sites reported in the PR; release builds with proven obligations emit no check code (inspect MIR).
-5. `ensures`, `invariant`, and `ms test` generated property tests. Gate: a seeded real bug (off-by-one) is found by generated tests on a fixture.
-6. Optional: SMT backend, `[permissions]` enforcement, OS layer, per the capabilities proposals.
+2. `uses` clause: syntax, subset check, interface operations, manifest `require`. Gate: reject fixtures; unannotated programs unchanged (full conformance corpus).
+3. Spike, no syntax (gates everything below). Deliverables, in a report under `bench/` or `proposals/`:
+   - Proof rate: hand-annotate about 30 real call sites from `stdlib/*.ms` and `tests/e2e` (loop indices, `len(x) - 1`, call results, field paths) and count obligations a linear-arithmetic prover discharges versus falls to runtime.
+   - Do-nothing evidence: list failures in `bench/agent/` runs that a `requires` or refinement would have caught at compile time.
+   - Seeded-bug test: an off-by-one in a fixture, found by a prototype generated test.
+   - Comparison: a stdlib validating type (`Port.check`) written in plain `.ms` versus the `where` form, to show what syntax adds.
+   Go/no-go: stop contracts and refinements if proof rate is low or plain stdlib types give the same checks.
+4. Only if the spike passes: `requires` with runtime checks, then call-site proof, then refinements, then `ensures`/`invariant` and `ms test` generation, each as its own proposal-reviewed PR.
+5. Optional: SMT backend, `[permissions]` enforcement, OS layer, per the capabilities proposals.
 
-Go/no-go: after stage 1, report how many functions have non-empty inferred effects and whether the sets are useful to a reviewer; after stage 4, report proof rate. Stop if proof rate on real call sites is too low to justify the prover.
+## Review outcome
+
+Skeptical review, 2026-10-28. Accepted: effects stand; stages 3 to 5 lacked evidence, now the spike above. Rules adopted for stage 4, to be specified in its own proposal before syntax:
+
+- Soundness: `ensures` also runs on `try`/`?` exits; on a fault no `ensures` is claimed. `old()` is allowed only on parameters copied by value, not on moved or mutated owned parameters.
+- Refinements apply to immutable `let` bindings and parameters first. A refined `var` place, a captured mutable binding, a lent view, or a collection element (`List[NonEmpty]`) carries no fact once any mutation is possible, so the prover drops it rather than trusting it.
+- A failed `requires` faults before the call; owned arguments and resources are dropped by the normal fault-site cleanup (`proposals/fault-site-drops.md`). Fault messages print the predicate text and only arguments with a `Display`-style rendering.
+- Modes: checks that are not proven run in every build mode unless the manifest explicitly turns them off, so behavior does not silently differ between debug and release.
+- Effects: an interface operation without `uses` is inferred as unknown and requires an explicit clause under `[effects] require`; generic callables take the union of their instantiated argument effects; a `Network` parameter and `uses net.connect` are checked against each other (a `uses` category with no matching capability parameter or accessor is an error).
+- Syntax: clause order is `uses`, `requires`, `ensures`; refined `self` is spelled `value` in `where`; `result` is contextual inside `ensures` only; predicates may call functions marked `pure` (empty `uses`, no mutation) so `is_valid(x)` is reusable.
+- Predicate lowering shares the checker's type rules instead of a separate evaluator.
 
 ## Open questions
 
 - Keyword spelling: `uses` for effects versus reusing `with` (taken by cleanup scopes). Recommendation: `uses`.
-- Refinement syntax `type Port = Int where ...`: Manuscript's `type` declares records today (`type Pair[A, B]:`), so `=` aliases-with-predicate is a new form. Alternative: `type Port: Int where self >= 1`. Recommendation: the `=` form.
+- Refinement syntax `type Port = Int where ...`: Manuscript's `type` declares records today (`type Pair[A, B]:`), so `=` aliases-with-predicate is a new form. Alternative: `type Port: Int where value >= 1`. Recommendation: the `=` form.
 - Should `fault` be an effect? Nearly every function can fault (indexing), so a binary tag carries little; a narrower `may_fault` fed by unproven `requires` is possible later. Recommendation: defer.
 - Checks in release by default off versus on. Recommendation: off, with `[checks] contracts = "always"`.
 - Strict-by-default for new projects (`ms new` writes `[effects] require = "exported"`). Recommendation: yes, after stage 2.
