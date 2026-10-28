@@ -773,6 +773,23 @@ impl Checker {
             })
             .collect();
         self.infer_arguments(args, &inferred_fields, &vars, &mut subst, None);
+        if t.is_std("Result")
+            && vars.len() == 2
+            && !subst.contains_key(&vars[0].id)
+            && subst
+                .get(&vars[1].id)
+                .is_some_and(|e| e.to_string() == "String")
+        {
+            self.type_error(
+                pos,
+                "error(...) needs a value that implements Error, not a String; to fail a test write `try fail(\"message\")` (from @std/test.ms), otherwise wrap the message in a type that implements Error"
+                    .to_string(),
+            );
+            self.unresolved_constructors.insert(pos);
+            self.unknown_type = true;
+            subst.insert(vars[0].id, invalid());
+            subst.insert(vars[1].id, invalid());
+        }
         let mut actual: Vec<Ty> = Vec::new();
         for v in &vars {
             let mut a = subst.get(&v.id).cloned();

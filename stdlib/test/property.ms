@@ -14,6 +14,7 @@ from "@std/time.ms" import clock, milliseconds
 # composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
 # Example: `try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))`.
 # `ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
+
 # The recorded stream of draws a generator reads. Create one with `source`; generators call `draw`.
 export type Source:
     # Every draw so far, in order, each within its bound.
