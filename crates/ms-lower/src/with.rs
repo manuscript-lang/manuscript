@@ -321,7 +321,7 @@ impl FnLower<'_> {
 
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
-    fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+    pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
         if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
         }
@@ -465,6 +465,26 @@ impl FnLower<'_> {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
         close_call(&mut self.b, &closer.kind, old, ty);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+    }
+
+    /// Closes `v`, a value of the place `place` that the program is about to overwrite or
+    /// discard, when it holds a resource: shielded like any other close. A value with nothing to
+    /// close adds no code.
+    pub(crate) fn close_discarded(&mut self, place: &Expr, v: Value) -> Result<(), Error> {
+        let ty = ct::sub(&self.hir.ty(place), &self.subst);
+        self.close_discarded_ty(&ty, v)
+    }
+
+    /// [`Self::close_discarded`] for a value of checked type `ty`.
+    pub(crate) fn close_discarded_ty(&mut self, ty: &ct::Ty, v: Value) -> Result<(), Error> {
+        let Some(kind) = self.part_closer(ty)? else {
+            return Ok(());
+        };
+        let mt = self.ty_of(v);
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        close_call(&mut self.b, &kind, v, mt);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        Ok(())
     }
 
     /// Leaves the `with` binding `uid`: the cleanup entry goes away and its close runs on the
