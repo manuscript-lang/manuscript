@@ -23,14 +23,38 @@ abi_record! {
 impl TlsOptionsWire {
     /// The options as the TLS module takes them.
     pub fn to_options(&self) -> TlsOptions {
-        TlsOptions {
-            server_name: self.server_name.as_str().to_string(),
-            roots_pem: self.roots_pem.as_str().to_string(),
-            certificate_pem: self.certificate_pem.as_str().to_string(),
-            private_key_pem: self.private_key_pem.as_str().to_string(),
-            alpn: self.alpn.to_vec().into_iter().map(str::to_string).collect(),
-            require_client_certificate: self.require_client_certificate != 0,
-        }
+        tls_options(
+            &self.server_name,
+            &self.roots_pem,
+            &self.certificate_pem,
+            &self.private_key_pem,
+            &self.alpn,
+            self.require_client_certificate,
+        )
+    }
+}
+
+/// The options from the fields of `TlsOptions`.
+///
+/// A record that holds options and has a field after them lists these fields inline instead of
+/// nesting [`TlsOptionsWire`]: the compiler packs a nested record's leaves with no tail padding,
+/// so the next field sits right behind `require_client_certificate`, where a nested `repr(C)`
+/// struct would pad to its alignment first.
+pub fn tls_options(
+    server_name: &Str,
+    roots_pem: &Str,
+    certificate_pem: &Str,
+    private_key_pem: &Str,
+    alpn: &StringList,
+    require_client_certificate: u8,
+) -> TlsOptions {
+    TlsOptions {
+        server_name: server_name.as_str().to_string(),
+        roots_pem: roots_pem.as_str().to_string(),
+        certificate_pem: certificate_pem.as_str().to_string(),
+        private_key_pem: private_key_pem.as_str().to_string(),
+        alpn: alpn.to_vec().into_iter().map(str::to_string).collect(),
+        require_client_certificate: require_client_certificate != 0,
     }
 }
 

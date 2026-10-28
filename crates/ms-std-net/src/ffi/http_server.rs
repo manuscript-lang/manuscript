@@ -2,13 +2,14 @@
 
 use super::handler::Program;
 use super::http_client::{chunk, limit};
-use super::tls::TlsOptionsWire;
+use super::tls::tls_options;
 use super::{ExchH, HeadersH, NetH, ServerH, opt, report};
 use crate::error::HttpErr;
 use crate::http::server::{CloseError, Limits, Options, Server};
 use crate::tls;
 use ms_rt::ffi::{
-    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, abi_record, fault, native,
+    ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, fault,
+    native,
 };
 use std::time::Duration;
 
@@ -23,7 +24,13 @@ abi_record! {
         pub timeout: OptInt,
         pub grace: OptInt,
         pub tls_present: u8,
-        pub tls: TlsOptionsWire,
+        // `tls` inline, then `shared` right behind it (see `tls_options`).
+        pub tls_server_name: Str,
+        pub tls_roots_pem: Str,
+        pub tls_certificate_pem: Str,
+        pub tls_private_key_pem: Str,
+        pub tls_alpn: StringList,
+        pub tls_require_client_certificate: u8,
         pub shared: u8,
     }
 }
@@ -87,7 +94,14 @@ native! {
                 return Err(HttpErr::PermissionDenied);
             }
             let tls = if opts.tls_present != 0 {
-                let mut options = opts.tls.to_options();
+                let mut options = tls_options(
+                    &opts.tls_server_name,
+                    &opts.tls_roots_pem,
+                    &opts.tls_certificate_pem,
+                    &opts.tls_private_key_pem,
+                    &opts.tls_alpn,
+                    opts.tls_require_client_certificate,
+                );
                 if options.alpn.is_empty() {
                     options.alpn = vec!["http/1.1".to_string()];
                 }
@@ -203,5 +217,26 @@ native! {
     /// `HttpExchange.write(data: Bytes)`.
     fn msrt_http_exchange_write_bytes(x: ObjRef<ExchH>, data: &[u8], err: ErrOut) -> Result<(), StatusCode> {
         report(x.write(data), &err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::mem::offset_of;
+
+    /// The compiler packs a record's leaves in declaration order, a nested record's included and
+    /// with no tail padding: after six `Optional[Int]` (16 bytes each), the `tls` presence byte,
+    /// four strings, the ALPN list (24 bytes) and one byte for `require_client_certificate`,
+    /// `shared` is the next byte.
+    #[test]
+    fn shared_follows_the_inline_tls_options_byte() {
+        assert_eq!(offset_of!(HttpServerOptionsWire, tls_present), 96);
+        assert_eq!(offset_of!(HttpServerOptionsWire, tls_server_name), 104);
+        assert_eq!(
+            offset_of!(HttpServerOptionsWire, tls_require_client_certificate),
+            192
+        );
+        assert_eq!(offset_of!(HttpServerOptionsWire, shared), 193);
     }
 }
