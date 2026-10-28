@@ -48,10 +48,11 @@ export fn main() Int:
 - Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
 - Faults (`panic`, failed `get()`) abort the program, not a `Result`.
 - Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
-- Moves: a value moves at its last use. Moving out of an index, field, loop variable or borrow fails: use `.clone()` (deep; not on `Int`, `Float`, `Bool`, which copy).
-- Borrows: `let x = a.b` / `xs[i]` borrows with no marker (`var x = a.b` exclusively); don't change `a` (`self.xs.append(..)`) before `x`'s last use: use `x` first or `.clone()`.
+- Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` (and records of them) are copied freely and have no `.clone()`. `let` owners are immutable including contents; `var` can change.
+- Move: giving a value to a new owner (a field, a collection, `return`, a parameter the callee keeps, an escaping closure) hands over ownership. The old name is dead after that, so move at the last use or `.clone()` (a deep copy) first.
+- Borrow: using a value without owning it. Read-only parameters, `let x = a.b`, `xs[i]`, loop variables and match payloads borrow their owner. A borrow cannot be moved or stored, so `.clone()` it to own a copy; and while it lives the owner cannot change (many readers, or one `var` writer).
 - A fn returning part of a parameter or receiver writes `ref` before the result type (`fn f() ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `fn f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
-- Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
+- Lints (`ms lint`, `ms verify`): `Optional.get()` without default, unread bindings (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

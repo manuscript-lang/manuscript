@@ -143,6 +143,8 @@ impl<'a> FnLower<'a> {
                 self.discard = Some(e as *const Expr as usize);
                 let x = self.expr(e)?;
                 if x.own {
+                    let ty = self.ety(e);
+                    self.close_unused(x.v, &ty);
                     self.drop_value(x.v);
                 }
             }
@@ -393,7 +395,7 @@ impl<'a> FnLower<'a> {
                 let old = self.local_take(&l);
                 // A registered resource closes the value it replaces; the scope closes the new one.
                 if let Some(closer) = self.closers.get(&b.uid).cloned() {
-                    self.close_replaced(&closer, old, l.ty);
+                    self.assign_closing(b.uid, &closer, old, l.ty)?;
                 }
                 self.local_put(&l, new);
                 if self.cx_needs_drop_ty(l.ty) {

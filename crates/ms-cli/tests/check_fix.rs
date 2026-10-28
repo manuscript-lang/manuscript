@@ -141,24 +141,23 @@ fn fix_wraps_expressions_to_convert_types() {
 }
 
 #[test]
-fn lint_json_carries_the_fix_that_fix_applies() {
-    let dir = std::env::temp_dir().join(format!("ms-cli-lint-json-fix-{}", std::process::id()));
+fn check_json_carries_the_fix_that_fix_applies() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-check-json-fix-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "fn present(value: Int) Optional[Int]:\n    return some(value)\n";
+    let source = include_str!("check_fix/float_fix.ms");
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
-    let (status, text) = ms(&["lint", "a.ms", "--json"], &dir);
+    let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
     assert_eq!(status, Some(1), "{text}");
-    assert!(text.contains("\"code\": \"MSL113\""), "{text}");
     assert!(text.contains("\"fix\""), "{text}");
-    assert!(text.contains("\"replacement\": \"value\""), "{text}");
+    assert!(text.contains("\"replacement\": \"n.to_float()\""), "{text}");
     assert_eq!(std::fs::read_to_string(dir.join("a.ms")).unwrap(), source);
 
-    let (status, text) = ms(&["lint", "a.ms", "--fix"], &dir);
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
-    assert!(fixed.contains("return value\n"), "{fixed}");
+    assert!(fixed.contains("let _a: Float = n.to_float()"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

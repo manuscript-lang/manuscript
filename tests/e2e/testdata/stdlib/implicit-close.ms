@@ -9,10 +9,10 @@ type Resource:
 # Close records itself by writing a marker file named after the resource.
 impl Closeable for Resource:
     var fn close() Unit:
-        let _ = filesystem().write_file("{self.dir}/{self.id}", "closed", true)
+        let _ = filesystem().write_file("\{self.dir\}/\{self.id\}", "closed", true)
 
 fn closed(dir: String, id: Int) Bool:
-    return filesystem().read_file("{dir}/{id}").is_ok()
+    return filesystem().read_file("\{dir\}/\{id\}").is_ok()
 
 fn falls_off_the_end(dir: String) Int:
     let r = Resource(dir, 1)
@@ -100,3 +100,14 @@ test "an unbound resource temporary is closed at the end of its statement":
         let dir = temporary.path()
         try expect_equal(temporary_id(dir.clone()), 40)
         try expect_true(closed(dir, 40))
+
+fn pops_and_discards(dir: String) Int:
+    var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
+    rs.pop()
+    return rs.length()
+
+test "a discarded resource result is closed":
+    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
+        let dir = temporary.path()
+        try expect_equal(pops_and_discards(dir.clone()), 1)
+        try expect_true(closed(dir, 51))
