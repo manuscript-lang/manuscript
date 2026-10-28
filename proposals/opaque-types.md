@@ -2,22 +2,22 @@
 
 ## Summary
 
-- Problem: a value that a human-owned module hands out (an approval, a secret, a validated path) can be re-minted or duplicated by agent code outside that module. Construction, implicit copy, `.clone()`, `json.parse`, and `f"{value}"` all work on any exported record, so a "use once, for this entity" policy is advisory.
-- Change: one rule. A record with a hidden field (a field of a private type) is **opaque** outside its module: no construction, no field access, no destructuring, no clone, no implicit copy, and no structural conversion. Inside the module, destructuring consumes it.
-- Cost: a checker rule family in `crates/ms-check` and a `structural` tag on five `bindings.json` entries. No syntax, no keyword, no runtime change.
-- Benefit: the existing use-after-move check becomes a policy tool. Single use, "for this entity only", and "never logged" are then enforced by `ms check` for any type a human writes this way.
-- Decision requested: approve the rule and the consuming-destructure semantics.
+- Problem: a value that a human-owned module hands out (an approval, a secret, a validated input) can be re-minted or duplicated by agent code outside that module. Construction, implicit copy, `.clone()`, collection copies, `json.parse`, and `f"{value}"` all work on any exported record, so "use once, for this entity" is advisory.
+- Change: one rule. An exported record with a hidden field that has no default is **opaque**: outside its module it cannot be built, read, written, destructured, or cloned; everywhere it is a move-only, non-`Clonable` value, the class `Closeable` records already have. Generic builders and renderers require `T: Clonable`, so an opaque value cannot be decoded, encoded, or rendered, and a generic wrapper cannot do it either.
+- Prerequisite: collection methods that copy elements (`take`, `slice`, `reversed`, `concat`, `filter`, `find`) accept non-`Clonable` elements today; `xs.concat(xs)` on a list of one `Closeable` closes it three times. They move under `T: Clonable` interfaces first.
+- Cost: hidden-field derivation and an opaque check in `crates/ms-check`, one line in the ownership classifier, `Clonable` bounds on four stdlib declarations and interpolation. No syntax, no runtime change.
+- Decision requested: approve the rule, the `Clonable` bound on interpolation (a `Closeable` record can no longer be rendered by default), and the prerequisite PR.
 
 ## Status
 
-- Proposal, 2026-10-28, checked against main `bb57ea58` (examples ran on the `5664578e` build). Accepted examples are pasted output; rejected examples under the new rule are marked proposed.
-- Direction (Chinmay, 2026-10-28): "is there prior art on this? this feels like it's handled historically by libraries"; "what's the real benefit here"; "let's find the crux of the problem and propose point solution for that".
-- Supersedes `resources-for-logic.md` (removed, history in git): `Linear`, typestate tooling, frozen modules, and the `[imports]` allow list are dropped from this proposal; see Alternatives. Extends the project-file proposal `private-field-types.md`, which asked for hidden fields and whose "opaque export" comparison this resolves without a modifier.
-- Related: issue #1868 (`structural` tag), #1422 and #1537 (both need a partial move out of a record).
+- Proposal, 2026-10-28, checked against main `b7b349e5`. Accepted and leaking examples are pasted `ms check` output; rejections under the new rule are marked proposed.
+- Direction (Chinmay, 2026-10-28): "let's find the crux of the problem and propose point solution for that"; "iterate a few times to simplify and ensure it truly increases confidence in agent generated code, do 3 consecutive runs with skeptic review".
+- Skeptic review round 1 (`architecture/opaque-types-review-1.md`, project files): REVISE. Resolved here: collection copies are a prerequisite; opacity reuses the `Resource` class and the computed `Clonable` property instead of a tag and an `impl Clonable` opt-in; generics are closed by bounds at definition; `RelPath`/`HttpUrl`, #1537, factory functions, and the stdlib adoption PR are dropped; trust boundary and do-nothing restated.
+- Supersedes `resources-for-logic.md` (removed). Extends the project-file proposal `private-field-types.md`: its derived hiding stands for defaulted hidden fields; a hidden field without a default is what makes a type opaque.
 
 ## Problem
 
-`gate.ms` mints an approval only from a signed request and takes it apart once in `spend`. `forge.ms` is agent-written and defeats every part of that, with no diagnostic (`ms check forge.ms`: `Checked forge.ms`):
+`gate.ms` mints `Approved[Delete]` only from a signed request and takes it apart once in `spend`. Agent-written `forge.ms` defeats every part of that with no diagnostic (`Checked forge.ms`):
 
 ```manuscript
 from "./gate.ms" import Approved, Delete, spend
@@ -40,25 +40,28 @@ export def main() -> Int:
     return twice(copy) + twice(decode()) + line.length() + a.nonce.length()
 ```
 
-- Without `.clone()` on line 10 the checker already rejects the second `spend`: "`a` is moved here but used again at 11:24; a value has one owner". The ownership rule is the right one; the four escapes around it are the problem.
-- A record whose fields are all scalars copies implicitly (`Money(cents: 5)` passed twice checks clean), so it has no owner at all.
-- A library cannot close any of these: it does not see copies, decoders, or interpolation. Linters (`no-restricted-imports`, ArchUnit) restrict names, not values. Move and Austral close them in the language; so does this.
-- Non-goals: must-consume (a dropped approval is allowed), typestate tooling, import restriction, proving value facts, OS sandboxing.
+- Without `.clone()` on line 10 the checker rejects the second `spend` ("`a` is moved here but used again at 11:24; a value has one owner"). Ownership is the right mechanism; the escapes around it are the problem.
+- Two more escapes, verified: a generic `def show[T](v: T) -> String: f"{v}"` renders anything; `[h].concat([h])`, `take`, `reversed`, `filter`, `find`, and `List.clone()` duplicate elements of any class, including `Closeable` (review round 1 ran one `close` three times).
+- A record of scalars copies implicitly (`Money(cents: 5)` passed twice checks clean), so it has no owner.
+- The stdlib has the same problem with itself: `Entry`, `Inbox`, `Open` (`stdlib/tasks.ms:287`, `processes.ms:106`, `:307`) are exported only because a public record holds them, and are documented "Internal state".
+- Non-goals: must-consume (dropping an approval is allowed), typestate tooling, import restriction, who may edit a module, proving value facts.
 
 ## Design
 
-Rule: an exported record with at least one hidden field is opaque outside its declaring module. A hidden field is one whose type is private to that module (the `private-field-types` derivation). Outside the module:
+Rule: an exported record with a hidden field that has no default is opaque. A hidden field is one whose type is private to the declaring module (`private-field-types`: the closure check in `contracts.rs` `fn public`, line 1001, skips record fields; the field is inaccessible elsewhere). A hidden field with a default keeps that proposal's behavior (constructible, field hidden), which is what `TaskGroup` and `ProcessGroup` need and what their 39 call sites use.
 
-- Construction of the record is an error, with or without defaults. (`private-field-types` filled defaulted hidden fields; this rule does not, since a default would be a public constructor again.)
-- Reading, writing, or destructuring any field is an error, including public-typed fields.
-- `.clone()` is an error unless the module implements `Clonable` for the type. No equality or hashing is derived.
-- The value is move-only: it never copies implicitly, even when every field is a scalar.
-- A `structural` tag in `stdlib/bindings.json` marks generic builders and renderers: `json.parse[T]`, `json.stringify`, `cli.decode[T]`, `processes.decode[T]`, string interpolation, and the `@std/test.ms` renderers. A tagged call with an opaque type argument, or whose argument type contains one, is an error. The module opts in by implementing the explicit interface (`Display`, a codec).
+Outside the declaring file an opaque type:
 
-Inside the module:
+- cannot be constructed, and no field can be read, written, or named in a pattern, including public-typed fields. `impl` blocks elsewhere follow the same rule.
+- has no `.clone()`, `equals`, or `hash`: the computed properties `Clonable`, `Equal`, `Hashable` (`contracts.rs:613`, `:725`) are false for it. The module may `impl Equal`/`Hashable`; there is nothing to implement for `Clonable`, so the module exports a copy function if it wants one.
 
-- Everything is accessible as today, with one change: destructuring moves the named parts out and consumes the record. This is a partial move out of a record, the primitive that #1422 (`SharedGuard` glue in `crates/ms-clif/src/lower.rs`) and #1537 both special-case; both retire onto it.
-- Ownership, drop, cancellation, and codegen are unchanged: an opaque value is an ordinary record that the checker refuses to copy.
+Everywhere, including inside the module:
+
+- the value is classed `Resource` in `crates/ms-check/src/ownership/classify.rs` (`nominal`, line 74), as a `Closeable` record is: it moves at its last use and never copies implicitly, even when every other field is a scalar. Scope-end close applies only to types with `close`; an opaque value without one is dropped.
+- generic builders and renderers require `T: Clonable`: `parse[T]` (`stdlib/json.ms:174`), `stringify[T]` (`:258`), `cli.decode[T]` (`cli.ms:298`), `processes.decode[T]` (`processes.ms:131`), and the operand of string interpolation. A generic `show[T](v: T)` that interpolates `v` fails at its definition ("add the bound `T: Clonable`"), as `v.clone()` on an unbounded `T` does today, so instantiation needs no separate rule. A module renders its type by implementing an explicit interface.
+- inside the module, destructuring an opaque value moves the named parts out and consumes it (a partial move out of a record; #1422 keeps a special case for `SharedGuard` in `crates/ms-clif/src/lower.rs:583` that retires onto this).
+
+Prerequisite, independent of this proposal: `List`, `Map`, and `Set` methods that return copies of elements (`clone`, `take`, `slice`, `reversed`, `concat`, `filter`, `find`, `find_last`, `min`-style) move into `interface ...[T: Clonable]` blocks like `ListExtremes` (`stdlib/collections.ms:568`). Methods that borrow (`get`, `first`, iteration) are unchanged. This is a `.ms`-only fix for an existing soundness bug with `Closeable` elements.
 
 ```manuscript
 # gate.ms: proposed; today line 5 fails "public signature exposes private type Seal"
@@ -82,51 +85,49 @@ export def spend(approval: Approved[Delete], entity: String) -> Result[String, G
     return ok(nonce)
 ```
 
-Proposed diagnostics for `forge.ms` under the rule:
+Proposed diagnostics for `forge.ms`:
 
 ```text
 forge.ms:4:34: type: Approved[Delete] is opaque outside gate.ms; build it with approve
-forge.ms:7:12: type: parse builds its result structurally, which Approved[Delete] does not allow; build it with approve
-forge.ms:10:23: type: Approved[Delete] is opaque outside gate.ms and cannot be cloned
-forge.ms:17:16: type: Approved[Delete] is opaque outside gate.ms and cannot be rendered
+forge.ms:7:12: type: parse requires T: Clonable, and Approved[Delete] is opaque
+forge.ms:10:23: type: unknown member clone on Approved[Delete]; it is opaque outside gate.ms
+forge.ms:17:16: type: interpolation requires a Clonable value, and Approved[Delete] is opaque
 forge.ms:18:60: type: field nonce of Approved[Delete] is hidden outside gate.ms
 ```
 
-What the rule then guarantees, by the existing move checker: one `Approved[Delete]` per `approve`, spent at most once, only for the entity the signature named, never printed. The gate module's own code is the trust boundary, as it is for memory today.
+What holds afterwards, by the existing move checker: every `Approved[Delete]` came from `approve`, is spent at most once, names the entity the signature named, and is never rendered or encoded. The guarantee is relative to `gate.ms` as written; who may change `gate.ms` is a repository question (CODEOWNERS), not a checker one, and `ms review` already ranks signature changes to it.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-check/src/contracts.rs` (`fn public`) | record fields skip the closure check; derive hidden fields | accept: exported record with a private-typed field |
-| `crates/ms-check` records, members, patterns | opaque rule: construction, access, destructuring, clone outside the module | one reject fixture per operation, one accept inside the module |
-| `crates/ms-check` ownership | opaque types never copy; in-module destructuring is a partial move | reject: scalar-only token used twice; accept: `spend` consumes |
-| `crates/ms-check` calls | `structural` tag rejects opaque type arguments | reject: `parse[T]`, `stringify`, `decode[T]`, `f"{v}"`, `expect_equal` |
-| `stdlib/bindings.json` | `structural` on the five entries | audit test: every generic builder or renderer is tagged |
-| `stdlib/tasks.ms`, `processes.ms`, `queue.ms` | un-export `Entry`, `TaskChannels`, `Open`, `Inbox`, `PriorityEntry`; `TaskGroup()`/`ProcessGroup()` become factory functions | existing fixtures |
-| `stdlib/fs.ms`, `net.ms` | `RelPath`, `HttpUrl` gain a hidden field so `relative_path`/`http_url` are the only constructors | reject: `RelPath("../x")` |
-| `crates/ms-clif/src/lower.rs` | retire the `SharedGuard` glue special case onto partial move | e2e |
-| parser, lowering, MIR, codegen, `ms-rt`, ABI, formatter | unchanged | existing |
-| lint, LSP, VS Code | hover shows "opaque outside <module>" | LSP test |
+| `stdlib/collections.ms` (prerequisite) | element-copying methods under `T: Clonable` interfaces | reject: `concat` on a list of `Closeable`; accept on `Int` |
+| `crates/ms-check/src/contracts.rs` | fields skip `public`; hidden-field derivation; opaque types fail `Clonable`/`Equal`/`Hashable` | accept: exported record with private-typed field |
+| `crates/ms-check` records, members, patterns | opaque check by declaring file | one reject fixture per operation; accept inside the module |
+| `crates/ms-check/src/ownership/classify.rs` | opaque record is `Resource` | reject: scalar-only token used twice; accept: `spend` consumes |
+| `crates/ms-check` interpolation | operand must be `Clonable` or implement the display interface | reject: `f"{approval}"`, generic `show[T]` |
+| `stdlib/json.ms`, `cli.ms`, `processes.ms` | `T: Clonable` on `parse`, `stringify`, `decode` | reject fixtures |
+| `stdlib/tasks.ms`, `processes.ms` | un-export `Entry`, `Inbox`, `Open` | existing fixtures |
+| lowering, MIR, codegen, `ms-rt`, ABI, parser, formatter, lint, LSP | unchanged (scope-end close already keyed on `close`; verify in lowering) | existing |
 | `documentation/core-language/types/records.md`, `modules/boundaries.md`, `glossary.md` | hidden field, opaque, consuming destructure | `make docs`, repo-check |
 | platform parity | checker and `.ms` only | CI matrix, nothing gated |
 
 ## Alternatives
 
-- Do nothing: `RelPath("../x")`, forged approvals, and logged secrets stay accepted; #1422 and #1537 keep their special cases.
-- `private-field-types` as written (derived hiding, defaults fill hidden fields, copy and render unchanged): closes field access only; the forge program still checks clean through defaults, `parse`, `.clone()`, and interpolation.
-- An `opaque` modifier on `export type`: same semantics, new grammar, formatter, LSP, and docs surface. A private field already says it and needs no syntax.
-- `Linear` (must-consume), typestate tooling, `[imports]` allow list, frozen modules (the superseded proposal): each is a separate benefit without a hard guarantee behind it; they can return as their own proposals once this rule has evidence.
-- Library-only: newtypes and builders in other languages leak through exactly the four escapes above; see Problem.
-- Drawbacks: opaque types need accessor functions; `TaskGroup()` and `ProcessGroup()` become factory functions (a breaking stdlib change); a module that wants `==` or JSON writes the interface itself.
+- Do nothing: `forge.ms` and the collection bug stay accepted; the stdlib keeps exporting internal state.
+- A lint ("construct, parse, clone, or interpolate a record declared in another module"): catches `forge.ms` as written and is the honest baseline. It cannot see through generics, collection methods, or implicit copies, which is exactly where the review found the leaks; the rule's marginal value is that the ownership checker tracks those already. No measurement shows agents forge approvals; the stdlib's own "Internal state" exports show the discipline fails without the compiler.
+- `private-field-types` alone: closes field access; defaults, `parse`, `.clone()`, copies, and interpolation stay open.
+- A `structural` tag in `bindings.json` (previous draft): a second mechanism beside bounds, with no rule for generic instantiation. `T: Clonable` is the existing one.
+- An `opaque` modifier: same semantics, new grammar, formatter, LSP, docs. "No default on a private field" already says only the module can supply it.
+- Drawbacks: a dummy field like `seal: Seal` is the marker, which is not self-explaining and needs a glossary entry; `f"{handle}"` on a `Closeable` record stops working by default (verified accepted today); collection methods gain a bound that may break code holding resources in lists, which is the bug.
 
 ## Staging and verification
 
-- One PR: checker rules and fixtures, `structural` tags, docs. Gate: `make verify`, every reject fixture quoting its diagnostic, `forge.ms` as a conformance reject case, `gate.ms` as an accept case.
-- Second PR: stdlib adoption (un-exports, `RelPath`/`HttpUrl`, factory functions) and the #1422 cleanup. Gate: `make verify-full`.
-- Measurement: the forge program and the stdlib validators are the evidence; no benchmark is claimed.
+- PR 1, prerequisite: collection bounds and fixtures. Gate: `make verify-full`, since stdlib and e2e code may hold resources in lists.
+- PR 2: hidden fields, opaque check, classifier line, bounds on the four declarations and interpolation, docs, `forge.ms` and `gate.ms` as conformance reject and accept cases, the un-exports. Gate: `make verify`.
+- Evidence: the two fixtures and the stdlib un-exports; no benchmark claimed.
 
 ## Open questions
 
-- `TaskGroup()` and `ProcessGroup()`: factory functions `task_group()`/`process_group()` (recommended, matches `relative_path`), or keep defaults filling hidden fields for those two types only.
-- Whether opaque values may live in `List`, `Map`, `Channel`, and `Shared`: recommended yes, since they are ordinary moved values; only copy and structural conversion are refused.
+- Interpolation bound: require `Clonable` (recommended; closes the generic wrapper leak with the existing mechanism) or exempt `Closeable` records to keep `f"{handle}"` working.
+- `Equal` for opaque types: never derived (recommended) or derived from the non-hidden fields.
