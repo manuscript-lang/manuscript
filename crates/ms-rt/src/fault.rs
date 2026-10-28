@@ -578,28 +578,15 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
         return;
     };
     let (lo, hi) = sys::stack_limits();
-    // Cranelift points `rbp` into a frame rather than at its saved-`rbp` record, by an amount that
-    // differs per function, and the CONTEXT register can be a caller's: find each frame's own
-    // record by its contents instead of following the register.
-    #[cfg(target_arch = "x86_64")]
+    // Generated code does not keep its frame register pointing at its own frame record: Cranelift
+    // points `rbp` into a frame by an amount that differs per function, a capture unwinds through
+    // the scope runtime, and a cleanup run by cancellation sits on top of the frames it unwound,
+    // where the register chain is discontinuous. Find each frame's own record by its contents
+    // instead of following the register.
     // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
     unsafe {
         let _ = fp;
         walk_scanned_frames(pc, sp, t, lo, hi, remaining, f)
-    }
-    #[cfg(not(target_arch = "x86_64"))]
-    {
-        // A capture unwinds through the scope runtime, whose frames can leave the CONTEXT frame
-        // register pointing at a caller's record, so it finds the generated frame's own record.
-        let fp = if anchor == capture_frames as *const () as usize {
-            // SAFETY: `sp` is the live stack pointer of the recovered frame, below `hi`.
-            unsafe { frame_record(sp, lo, hi, |pc| find_func(t, pc).is_some()) }.unwrap_or(fp)
-        } else {
-            fp
-        };
-        // SAFETY: source_frame recovered the current generated frame and stack_limits
-        // bounds the live thread stack.
-        unsafe { walk_source_frames(pc, fp, t, lo, hi, remaining, f) }
     }
 }
 
@@ -608,7 +595,7 @@ unsafe fn walk_fault_frames(_fp: usize, anchor: usize, t: &Tables, f: impl FnMut
 ///
 /// # Safety
 /// `sp..hi` is live stack memory.
-#[cfg(all(windows, target_arch = "x86_64"))]
+#[cfg(windows)]
 unsafe fn walk_scanned_frames(
     mut pc: usize,
     mut sp: usize,
@@ -663,7 +650,7 @@ unsafe fn frame_record(
     None
 }
 
-#[cfg(any(all(windows, target_arch = "aarch64"), test))]
+#[cfg(test)]
 unsafe fn walk_source_frames(
     mut pc: usize,
     mut fp: usize,
