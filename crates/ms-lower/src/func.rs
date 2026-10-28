@@ -99,6 +99,9 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
+    /// Immutable bindings whose local is stored to again (a `with` binding is replaced by what its
+    /// close leaves behind), so they cannot be single-definition builder variables.
+    pub redefined: HashSet<usize>,
     /// Values that are views into another string: no drop, and an immutable `let` may hold one.
     pub views: HashSet<Value>,
     /// Parameters the body only reads: the caller keeps them alive and unchanged for the whole
@@ -451,6 +454,7 @@ impl<'a> FnLower<'a> {
             lent_violation: false,
             var_slots: Vec::new(),
             slotted: HashSet::new(),
+            redefined: HashSet::new(),
             views: HashSet::new(),
             borrowed_params: HashSet::new(),
             stable_reads: HashSet::new(),
@@ -599,7 +603,11 @@ impl<'a> FnLower<'a> {
     /// Declares `binding` as a borrow of `v`: no copy, and nothing to drop at scope exit.
     pub fn bind_lent(&mut self, binding: &BindingRef, v: Value) {
         let ty = self.ty_of(v);
-        let var = self.b.declare_var(ty, Mode::Borrow);
+        let var = if binding.mutable || self.redefined.contains(&binding.uid) {
+            self.b.declare_var(ty, Mode::Borrow)
+        } else {
+            self.b.declare_single(ty, Mode::Borrow)
+        };
         self.b.def_var(var, v);
         self.locals.insert(
             binding.uid,
@@ -660,9 +668,12 @@ impl<'a> FnLower<'a> {
             return;
         }
         let owned = self.needs_drop(ty);
-        let var = self
-            .b
-            .declare_var(ty, if owned { Mode::Own } else { Mode::Borrow });
+        let mode = if owned { Mode::Own } else { Mode::Borrow };
+        let var = if binding.mutable || self.redefined.contains(&binding.uid) {
+            self.b.declare_var(ty, mode)
+        } else {
+            self.b.declare_single(ty, mode)
+        };
         let v = self.owned(x);
         self.b.def_var(var, v);
         self.locals.insert(

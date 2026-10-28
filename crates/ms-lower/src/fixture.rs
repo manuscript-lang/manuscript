@@ -50,6 +50,8 @@ impl FnLower<'_> {
         if after_each.is_some() || after_all.is_some() {
             self.slotted.insert(binding.uid);
         }
+        // Tests change the fixture's fields in place, which stores the local again.
+        self.redefined.insert(binding.uid);
         self.bind_local(binding, crate::func::Val { v: made, own: true });
         self.fixture = Some(Hooks {
             binding: binding.clone(),

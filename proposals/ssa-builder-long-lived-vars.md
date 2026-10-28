@@ -1,54 +1,52 @@
-# SSA builder: long-lived variables across many joins
+# SSA builder: immutable lets skip the reaching-definition search
 
 ## Summary
 
-- Problem: `ms_mir::builder::read_var` is quadratic when many variables stay live across many join blocks; it also hits Debug (`ms build --build-type Debug`: N=400 0.75s, N=800 2.8s, N=1600 12.7s).
-- Change: a fast path in `read_var` for variables with a single definition whose region is fully built, so a read does not walk and phi-test every join back to the definition.
-- Cost: bookkeeping per block and per variable inside `builder.rs`; no IR, language, or pass change.
-- Decision requested: approve the design (or the do-nothing alternative) after skeptical review.
+- Problem: `ms_mir::builder::read_var` is quadratic when many variables stay live across many join blocks; it hits Debug too (`--build-type Debug` N=400 0.75s, N=800 2.8s, N=1600 12.7s).
+- Change: a builder variable kind `declare_single` for immutable `let` bindings, defined once and read directly. Lowering uses it in `bind_local` and `bind_lent` when `!binding.mutable`.
+- Cost: about 30 lines in `builder.rs` and two call sites in `ms-lower/src/func.rs`. No IR, language, or pass change.
+- Decision requested: approve after review. The first draft (a "closed block" fast path inside `read_var`) was dropped on review: its closedness is defeated by loops and it needs an SCC pass.
 
 ## Status
 
 - Proposal, 2026-10-28, checked against main after #1854.
 - Direction: issue #1856; AGENTS.md requires a proposal before restructuring.
-- Skeptical review: pending.
+- Skeptical review (separate thread): the draft fast path was not ready; the reviewer's first suggestion, bypassing `def_var`/`use_var` for never-reassigned lets, is what this version does.
 
 ## Problem
 
-- Repro (`mir-scaling-review/gen-longlived-repro.sh N long`): N `let k_i = "key{i}".upper()`, then N `if "abe{i}".upper() != "ABE{i}": bad += 1`, then N `bad += k_i.length()`. Measured Debug 0.75s, 2.8s, 12.7s at N=400, 800, 1600 (about 4.5x per doubling).
-- Samples: hash operations on `defs: HashMap<(Var, Block), Value>` and `forward` inside `read_var`.
-- Cause (verified, `builder.rs` `read_var`): the lazy algorithm materializes one `(var, block)` entry per variable per join between the definition and a read, adds a block parameter, then removes it as trivial. N variables x N joins = N² entries (2.5M at N=1600).
-- Non-goals: the Release-only costs (fixed in #1854, #1858 for the optimizer and LLVM).
+- Repro (`gen-longlived-repro.sh N long`, in project files `architecture/mir-scaling-review/`): N `let k_i = "key{i}".upper()`, then N `if` checks updating `bad`, then N `bad += k_i.length()`. Measured Debug 0.75s, 2.8s, 12.7s at N=400, 800, 1600 (about 4.5x per doubling); a `while` loop before the checks changes nothing (reviewer: 0.84, 3.6, 15.9).
+- Cause (verified, `builder.rs` `read_var`): the lazy construction adds a `(var, block)` entry per variable per join between its definition and a read, with a block parameter that is then removed as trivial. N variables x N joins = N² entries.
+- Non-goals: reassigned variables (`bad`) keep the existing algorithm, which costs one walk per variable.
 
 ## Design
 
-- Per variable, count `def_var` calls and remember the single defining value while the count is 1.
-- A block is *closed* when it is sealed and every predecessor is closed (computed once when it is sealed, with loop back edges handled by treating blocks of the same unsealed cycle as open). Closed means no definition can still appear on any path into it.
-- `read_var(v, b)`: if `b` is closed and `v` has exactly one definition, return it without creating parameters. Otherwise the existing algorithm runs unchanged.
-- Soundness argument: lowering only reads a variable where it is defined on every path (the existing `panic!("used before it is defined on every path")` guards this); with one definition in total, that definition is the value on every path.
-- A variable reassigned later (`bad += 1`) has two definitions and takes the existing path, whose cost is one walk per variable.
-- Result must be identical to the existing algorithm's output for the programs it handles; the fast path may only remove parameters the slow path would also have removed as trivial.
+- `declare_single(ty, mode)` returns a `Var` whose value is set by its single `def_var` and returned by every `use_var`/`read_var` (through `resolve`, since the stored value may later be forwarded). A second `def_var` panics.
+- Validity: an immutable `let` is defined once and lexically dominates all its uses, so the slow path would also return exactly this value after removing the trivial parameters it adds; no join can carry a different value. Loops do not matter: a `let` inside a loop body is defined on each iteration in the block that dominates its uses.
+- Use sites: `bind_local` and `bind_lent` (`crates/ms-lower/src/func.rs`) use it when `!binding.mutable`; `slotify`/closure capture only applies to mutable bindings. Hidden, temporary and loop variables keep `declare_var`.
+- Safety net: reading before the definition panics (as the slow path does with "used before it is defined"); defining twice panics, so a lowering path that reassigns an immutable binding fails loudly in `make conform`/`make e2e`.
+- Ownership: `Mode::Own` variables carry owned block parameters only at joins; with no parameters the same `Value` flows on, and drops are placed by scopes and the optimizer as before.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-mir/src/builder.rs` | def counts, closed-block tracking, fast path in `read_var` | builder unit tests; MIR text equal to before on the conformance corpus |
-| lowering, passes, codegen, runtime, tooling, docs | unchanged | `make conform`, `make e2e` |
+| `crates/ms-mir/src/builder.rs` | `declare_single`, direct read | unit test: reads across 1000 joins create no block parameters |
+| `crates/ms-lower/src/func.rs` | `bind_local`, `bind_lent` use it for immutable bindings | `make conform`, `make e2e` |
+| passes, codegen, runtime, tooling, docs | unchanged | none |
 
 ## Alternatives
 
-- Do nothing: Debug N=1600 takes 12.7s; generated functions with thousands of long-lived locals are rare but plausible agent output. Smallest cost: nothing changes.
-- Constant-factor work (cheaper maps, avoiding `preds.clone()`): measured hash cost dominates; still N², gains below 2x.
-- Compute dominators and place phis at dominance frontiers (classic Cytron SSA) after building: asymptotically better but rewrites the builder and every lowering call site's use of `use_var`/`def_var`; much larger.
-- Incrementally maintained immediate dominators and "jump to the nearest dominating definition" in `read_var`: handles reassigned variables too; complicated by loops (back edges change dominance until sealed). Held as the follow-up if single-definition variables turn out not to be the common case.
+- Do nothing: Debug N=1600 takes 12.7s; rare but plausible in generated code.
+- Fast path in `read_var` keyed on "closed" blocks and a single definition count (first draft): needs closedness over loops (SCC or re-propagation) and loses the "used before defined" check; rejected by review.
+- Dominator-based placement (classic SSA) or incremental dominators: asymptotically general, but rewrites the builder; held as a follow-up if reassigned variables turn out to dominate.
 
 ## Staging and verification
 
-1. Add a builder-level scaling test (N long-lived variables across N joins) that counts `defs` entries, not time, so it is stable on every platform.
-2. Implement the fast path; check MIR text equality over the conformance corpus before and after (any difference must be only renumbering), `make conform`, `make e2e`.
-3. Gate: Debug N=1600 under 3x the N=800 time; stop and use the dominator alternative if reads of reassigned variables dominate instead.
+1. Implement; check `cargo test -p ms-mir`, `make conform`, `make e2e`.
+2. Measure Debug N=400/1600 on the repro (6.0s at 1600 after; the remainder is Cranelift register allocation of one huge function, not the builder).
+3. Gate: MIR output of the corpus unchanged except renumbering; all fixtures pass; no test gated on any platform.
 
 ## Open questions
 
-- None; no language or user-visible behavior change.
+- None.
