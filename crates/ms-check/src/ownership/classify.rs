@@ -62,16 +62,8 @@ impl Classifier {
         if self.closeable.contains(&t.id) {
             Class::Resource
         } else if t.is_std("Shared") {
-            // Sharing copies the handle, so a payload that must be closed once stays move-only.
-            let resource = t
-                .args
-                .first()
-                .is_some_and(|a| self.class_in(a, visiting) == Class::Resource);
-            if resource {
-                Class::Resource
-            } else {
-                Class::Copy
-            }
+            // Copying shares the box; the payload is closed once the last holder releases it.
+            Class::Copy
         } else if t.is_std("List") || t.is_std("Map") || t.is_std("Set") || t.is_std("Bytes") {
             Class::Move
         } else {
