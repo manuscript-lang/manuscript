@@ -189,6 +189,22 @@ fn operation_names(ops: &[Operation]) -> Vec<String> {
 }
 
 impl Checker {
+    /// Register every source, synthetic and cached standard method in the same order.
+    pub(crate) fn add_method(&mut self, method: MethodRef) {
+        let at = self.p.methods.len();
+        self.methods_by_receiver
+            .entry(method.receiver.id)
+            .or_default()
+            .push(at);
+        if let Some(name) = method.name() {
+            self.methods_by_name
+                .entry((method.receiver.id, name))
+                .or_default()
+                .push(at);
+        }
+        self.p.methods.push(method);
+    }
+
     /// Declares the methods of one `impl` block.
     pub(crate) fn implementation(&mut self, d: &DeclRef) {
         let DeclKind::Impl(imp) = &d.decl().kind else {
@@ -310,17 +326,25 @@ impl Checker {
         // Resolution copies variable types, so refresh applications after adding bounds.
         receiver = self.resolve(Some(&imp.receiver));
         contract = self.resolve(imp.contract.as_ref());
-        let overlapping = self.p.methods.iter().any(|m| {
-            if !self.method_visible(m) {
-                return false;
-            }
-            let Some(mc) = &m.contract else {
-                return false;
-            };
-            let mut all = vars.clone();
-            all.extend(m.variables.iter().cloned());
-            overlap(&receiver, &contract, &m.receiver, mc, &all)
-        });
+        // Valid implementation receivers are nominal: generic applications share
+        // their declaration id. Keep argument unification and visibility below.
+        let overlapping = self
+            .methods_by_receiver
+            .get(&receiver.id)
+            .into_iter()
+            .flatten()
+            .any(|&at| {
+                let m = &self.p.methods[at];
+                if !self.method_visible(m) {
+                    return false;
+                }
+                let Some(mc) = &m.contract else {
+                    return false;
+                };
+                let mut all = vars.clone();
+                all.extend(m.variables.iter().cloned());
+                overlap(&receiver, &contract, &m.receiver, mc, &all)
+            });
         if overlapping {
             self.type_error(
                 d.pos(),
@@ -466,7 +490,7 @@ impl Checker {
             for v in &own {
                 self.scope.types.borrow_mut().remove(&v.name);
             }
-            self.p.methods.push(Rc::new(m));
+            self.add_method(Rc::new(m));
         }
         self.scope.types.borrow_mut().remove(&n("Self"));
         for op in &ops {
@@ -511,7 +535,7 @@ impl Checker {
                     decl: Some(FuncRef::of_decl(decl)),
                     native: n(""),
                 };
-                self.p.methods.push(Rc::new(m));
+                self.add_method(Rc::new(m));
             } else {
                 self.type_error(
                     d.pos(),
@@ -776,8 +800,14 @@ impl Checker {
     /// Implemented methods named `name` that apply to `receiver` and are visible here.
     pub(crate) fn implemented_methods(&self, receiver: &Ty, name: Name) -> Vec<MethodRef> {
         let mut result: Vec<MethodRef> = Vec::new();
-        for m in &self.p.methods {
-            if !self.method_visible(m) || m.name() != Some(name) {
+        for &at in self
+            .methods_by_name
+            .get(&(receiver.id, name))
+            .into_iter()
+            .flatten()
+        {
+            let m = &self.p.methods[at];
+            if !self.method_visible(m) {
                 continue;
             }
             let mut s = Subst::new();
@@ -1154,3 +1184,7 @@ pub(crate) fn native_method(t: &Ty, name: Name) -> Option<Method> {
     }
     None
 }
+
+#[cfg(test)]
+#[path = "method_candidates_tests.rs"]
+mod method_candidates_tests;
