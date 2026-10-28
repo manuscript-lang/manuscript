@@ -731,17 +731,17 @@
 {"id":730,"jsonrpc":"2.0","result":[{"detail":"Point","documentation":{"kind":"markdown","value":"A point in the plane."},"filterText":"Point","insertTextFormat":1,"kind":7,"label":"Point","sortText":"02_Point","textEdit":{"newText":"Point","range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}}}},{"detail":"Point$methods","filterText":"Point$methods","insertTextFormat":1,"kind":7,"label":"Point$methods","sortText":"02_Point$methods","textEdit":{"newText":"Point$methods","range":{"end":{"character":18,"line":53},"start":{"character":13,"line":53}}}}]}
 {"id":731,"jsonrpc":"2.0","result":null}
 {"id":732,"jsonrpc":"2.0","result":[]}
-{"id":733,"jsonrpc":"2.0","result":null}
+{"id":733,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 {"id":734,"jsonrpc":"2.0","result":[]}
-{"id":735,"jsonrpc":"2.0","result":null}
+{"id":735,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 #large
-{"id":737,"jsonrpc":"2.0","result":null}
+{"id":737,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 {"id":738,"jsonrpc":"2.0","result":[]}
-{"id":739,"jsonrpc":"2.0","result":null}
+{"id":739,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 {"id":740,"jsonrpc":"2.0","result":[]}
-{"id":741,"jsonrpc":"2.0","result":null}
+{"id":741,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 #large
-{"id":743,"jsonrpc":"2.0","result":null}
+{"id":743,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"A point in the plane."},"label":"Point(x: Int, y: Int = ...) -> Point","parameters":[{"label":"x: Int"},{"label":"y: Int = ..."}]}]}}
 #large
 {"id":745,"jsonrpc":"2.0","result":null}
 #large
@@ -787,15 +787,15 @@
 {"id":786,"jsonrpc":"2.0","result":[{"detail":"Callable[[String], Result[Unit, Error]]","filterText":"say","insertTextFormat":1,"kind":3,"label":"say","sortText":"02_say","textEdit":{"newText":"say","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import ecdsa_verify\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return False."},"filterText":"ecdsa_verify","insertTextFormat":1,"kind":3,"label":"ecdsa_verify","sortText":"04_ecdsa_verify","textEdit":{"newText":"ecdsa_verify","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_decrypt\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes], Result[Bytes, CryptoError]] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected."},"filterText":"rsa_decrypt","insertTextFormat":1,"kind":3,"label":"rsa_decrypt","sortText":"04_rsa_decrypt","textEdit":{"newText":"rsa_decrypt","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_encrypt\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes], Result[Bytes, CryptoError]] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key."},"filterText":"rsa_encrypt","insertTextFormat":1,"kind":3,"label":"rsa_encrypt","sortText":"04_rsa_encrypt","textEdit":{"newText":"rsa_encrypt","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_verify\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PKCS1-v1_5 signature with a PKIX DER RSA public key."},"filterText":"rsa_verify","insertTextFormat":1,"kind":3,"label":"rsa_verify","sortText":"04_rsa_verify","textEdit":{"newText":"rsa_verify","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_verify_pss\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PSS signature produced with a digest-sized salt."},"filterText":"rsa_verify_pss","insertTextFormat":1,"kind":3,"label":"rsa_verify_pss","sortText":"04_rsa_verify_pss","textEdit":{"newText":"rsa_verify_pss","range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}}]}
 {"id":787,"jsonrpc":"2.0","result":null}
 {"id":788,"jsonrpc":"2.0","result":[]}
-{"id":789,"jsonrpc":"2.0","result":null}
+{"id":789,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":790,"jsonrpc":"2.0","result":[]}
-{"id":791,"jsonrpc":"2.0","result":null}
+{"id":791,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":792,"jsonrpc":"2.0","result":[]}
 {"id":793,"jsonrpc":"2.0","result":null}
 #large
 {"id":795,"jsonrpc":"2.0","result":null}
 {"id":796,"jsonrpc":"2.0","result":[]}
-{"id":797,"jsonrpc":"2.0","result":null}
+{"id":797,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 #large
 {"id":799,"jsonrpc":"2.0","result":null}
 #large
@@ -815,11 +815,11 @@
 {"id":814,"jsonrpc":"2.0","result":[{"detail":"Counter","filterText":"Counter","insertTextFormat":1,"kind":7,"label":"Counter","sortText":"02_Counter","textEdit":{"newText":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}]}
 {"id":815,"jsonrpc":"2.0","result":null}
 {"id":816,"jsonrpc":"2.0","result":[]}
-{"id":817,"jsonrpc":"2.0","result":null}
+{"id":817,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"for tick in Counter(n: Int) -> Counter","parameters":[{"label":"n: Int"}]}]}}
 {"id":818,"jsonrpc":"2.0","result":[]}
-{"id":819,"jsonrpc":"2.0","result":null}
+{"id":819,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"for tick in Counter(n: Int) -> Counter","parameters":[{"label":"n: Int"}]}]}}
 #large
-{"id":821,"jsonrpc":"2.0","result":null}
+{"id":821,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"for tick in Counter(n: Int) -> Counter","parameters":[{"label":"n: Int"}]}]}}
 #large
 {"id":823,"jsonrpc":"2.0","result":null}
 #large
@@ -833,9 +833,9 @@
 {"id":832,"jsonrpc":"2.0","result":[{"detail":"Callable[[String], Result[Unit, Error]]","filterText":"say","insertTextFormat":1,"kind":3,"label":"say","sortText":"02_say","textEdit":{"newText":"say","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import ecdsa_verify\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return False."},"filterText":"ecdsa_verify","insertTextFormat":1,"kind":3,"label":"ecdsa_verify","sortText":"04_ecdsa_verify","textEdit":{"newText":"ecdsa_verify","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_decrypt\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes], Result[Bytes, CryptoError]] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with AuthenticationFailed when decryption is rejected."},"filterText":"rsa_decrypt","insertTextFormat":1,"kind":3,"label":"rsa_decrypt","sortText":"04_rsa_decrypt","textEdit":{"newText":"rsa_decrypt","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_encrypt\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes], Result[Bytes, CryptoError]] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key."},"filterText":"rsa_encrypt","insertTextFormat":1,"kind":3,"label":"rsa_encrypt","sortText":"04_rsa_encrypt","textEdit":{"newText":"rsa_encrypt","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_verify\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PKCS1-v1_5 signature with a PKIX DER RSA public key."},"filterText":"rsa_verify","insertTextFormat":1,"kind":3,"label":"rsa_verify","sortText":"04_rsa_verify","textEdit":{"newText":"rsa_verify","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}},{"additionalTextEdits":[{"newText":"from \"@std/crypto.ms\" import rsa_verify_pss\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[Bytes, HashAlgorithm, Bytes, Bytes], Bool] — @std/crypto.ms","documentation":{"kind":"markdown","value":"Verifies an RSASSA-PSS signature produced with a digest-sized salt."},"filterText":"rsa_verify_pss","insertTextFormat":1,"kind":3,"label":"rsa_verify_pss","sortText":"04_rsa_verify_pss","textEdit":{"newText":"rsa_verify_pss","range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}}]}
 {"id":833,"jsonrpc":"2.0","result":null}
 {"id":834,"jsonrpc":"2.0","result":[]}
-{"id":835,"jsonrpc":"2.0","result":null}
+{"id":835,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":836,"jsonrpc":"2.0","result":[]}
-{"id":837,"jsonrpc":"2.0","result":null}
+{"id":837,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 {"id":838,"jsonrpc":"2.0","result":[]}
 {"id":839,"jsonrpc":"2.0","result":null}
 #large
@@ -843,7 +843,7 @@
 {"id":842,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"tick","insertTextFormat":1,"kind":6,"label":"tick","sortText":"00_tick","textEdit":{"newText":"tick","range":{"end":{"character":27,"line":58},"start":{"character":23,"line":58}}}}]}
 {"id":843,"jsonrpc":"2.0","result":null}
 {"id":844,"jsonrpc":"2.0","result":[]}
-{"id":845,"jsonrpc":"2.0","result":null}
+{"id":845,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"say(text: String) -> Result[Unit, Error]","parameters":[{"label":"text: String"}]}]}}
 #large
 {"id":847,"jsonrpc":"2.0","result":null}
 #large
@@ -861,9 +861,9 @@
 #large
 {"id":861,"jsonrpc":"2.0","result":null}
 {"id":862,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":1,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ","range":{"end":{"character":22,"line":60},"start":{"character":21,"line":60}}}}]}
-{"id":863,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
+{"id":863,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
 {"id":864,"jsonrpc":"2.0","result":[]}
-{"id":865,"jsonrpc":"2.0","result":null}
+{"id":865,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
 #large
 {"id":867,"jsonrpc":"2.0","result":null}
 #large
@@ -931,9 +931,9 @@
 {"id":930,"jsonrpc":"2.0","result":[{"detail":"Callable[[String], Result[Unit, IoError]]","documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"filterText":"write","insertTextFormat":1,"kind":2,"label":"write","sortText":"00_write","textEdit":{"newText":"write","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}},{"detail":"Callable[[Bytes], Result[Unit, IoError]]","documentation":{"kind":"markdown","value":"Accepts the complete bytes on success, with the buffering rules of write."},"filterText":"write_bytes","insertTextFormat":1,"kind":2,"label":"write_bytes","sortText":"00_write_bytes","textEdit":{"newText":"write_bytes","range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}]}
 {"id":931,"jsonrpc":"2.0","result":null}
 {"id":932,"jsonrpc":"2.0","result":[]}
-{"id":933,"jsonrpc":"2.0","result":null}
+{"id":933,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"label":"try stdout().write(data: String) -> Result[Unit, IoError]","parameters":[{"label":"data: String"}]}]}}
 {"id":934,"jsonrpc":"2.0","result":[]}
-{"id":935,"jsonrpc":"2.0","result":null}
+{"id":935,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"label":"try stdout().write(data: String) -> Result[Unit, IoError]","parameters":[{"label":"data: String"}]}]}}
 {"id":936,"jsonrpc":"2.0","result":[]}
 {"id":937,"jsonrpc":"2.0","result":null}
 #large
@@ -943,7 +943,7 @@
 {"id":942,"jsonrpc":"2.0","result":[]}
 {"id":943,"jsonrpc":"2.0","result":null}
 {"id":944,"jsonrpc":"2.0","result":[]}
-{"id":945,"jsonrpc":"2.0","result":null}
+{"id":945,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Accepts the complete input on success; a source implementation may buffer until flush."},"label":"try stdout().write(data: String) -> Result[Unit, IoError]","parameters":[{"label":"data: String"}]}]}}
 #large
 {"id":947,"jsonrpc":"2.0","result":null}
 #large
@@ -991,17 +991,17 @@
 {"id":990,"jsonrpc":"2.0","result":[{"detail":"Callable[[T, T], Result[Unit, Error]]","documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"filterText":"expect_equal","insertTextFormat":1,"kind":3,"label":"expect_equal","sortText":"02_expect_equal","textEdit":{"newText":"expect_equal","range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}},{"additionalTextEdits":[{"newText":"from \"@std/test.ms\" import expect_not_equal\n","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}}}],"detail":"Callable[[T, T], Result[Unit, Error]] — @std/test.ms","documentation":{"kind":"markdown","value":"Fails when values are equal under ordinary Equal semantics."},"filterText":"expect_not_equal","insertTextFormat":1,"kind":3,"label":"expect_not_equal","sortText":"04_expect_not_equal","textEdit":{"newText":"expect_not_equal","range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}]}
 {"id":991,"jsonrpc":"2.0","result":null}
 {"id":992,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"expected","insertTextFormat":1,"kind":6,"label":"expected","sortText":"00_expected","textEdit":{"newText":"expected: ","range":{"end":{"character":24,"line":68},"start":{"character":21,"line":68}}}}]}
-{"id":993,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) -> Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
+{"id":993,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) -> Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
 {"id":994,"jsonrpc":"2.0","result":[]}
 {"id":995,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) -> Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
 {"id":996,"jsonrpc":"2.0","result":[]}
 {"id":997,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) -> Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
 {"id":998,"jsonrpc":"2.0","result":[{"detail":"Int","filterText":"b","insertTextFormat":1,"kind":6,"label":"b","sortText":"00_b","textEdit":{"newText":"b: ","range":{"end":{"character":26,"line":68},"start":{"character":25,"line":68}}}}]}
-{"id":999,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
+{"id":999,"jsonrpc":"2.0","result":{"activeParameter":0,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
 {"id":1000,"jsonrpc":"2.0","result":[]}
-{"id":1001,"jsonrpc":"2.0","result":null}
+{"id":1001,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":null,"label":"add(a: Int, b: Int) -> Int","parameters":[{"label":"a: Int"},{"label":"b: Int"}]}]}}
 {"id":1002,"jsonrpc":"2.0","result":[]}
-{"id":1003,"jsonrpc":"2.0","result":null}
+{"id":1003,"jsonrpc":"2.0","result":{"activeParameter":1,"activeSignature":0,"signatures":[{"documentation":{"kind":"markdown","value":"Compares using ordinary Equal semantics; reports expected and actual values on failure."},"label":"try expect_equal(actual: Int, expected: Int) -> Result[Unit, Error]","parameters":[{"label":"actual: Int"},{"label":"expected: Int"}]}]}}
 #large
 {"id":1005,"jsonrpc":"2.0","result":null}
 #large
