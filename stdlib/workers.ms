@@ -176,17 +176,17 @@ impl Worker[In, Out]:
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
     var def wait() -> Result[Unit, WorkerError]:
-        with var held = lock(self.ended):
-            if held.value.length() > 0:
-                return held.value[0].clone()
+        var held = lock(self.ended)
+        if held.value.length() > 0:
+            return held.value[0].clone()
 
-            # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
-            self.channel.close()
+        # A stop request unwinds the wait and the guard puts the payload back, so the cleanup joins again.
+        self.channel.close()
 
-            let report = msrt_worker_wait(self.handle)
-            let outcome = outcome_of(report)
-            held.value.append(outcome.clone())
-            return outcome
+        let report = msrt_worker_wait(self.handle)
+        let outcome = outcome_of(report)
+        held.value.append(outcome.clone())
+        return outcome
 
     # Returns the group's end of the pipe as a `Channel[Bytes, Bytes]`, to move large payloads
     # without JSON. It shares the pipe with `channel`, as `worker_bytes` describes.
@@ -234,15 +234,17 @@ impl WorkerGroup[In, Out]:
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
         let ended: Shared[List[Result[Unit, WorkerError]]] = share([])
         let worker = Worker(handle, channel, near, ended)
-        with var started = lock(self.workers):
-            started.value.append(worker.clone())
+        var started = lock(self.workers)
+        started.value.append(worker.clone())
+        started.close()
         return ok(worker)
 
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var def close() -> Unit:
-        with var started = lock(self.workers):
-            for index in 0..started.value.length():
-                started.value[index].cancel()
+        var started = lock(self.workers)
 
-                let _ = started.value[index].wait()
+        for index in 0..started.value.length():
+            started.value[index].cancel()
+
+            let _ = started.value[index].wait()
