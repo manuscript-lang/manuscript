@@ -274,3 +274,32 @@ fn an_unoptimized_build_moves_drops_only_in_a_long_function() {
     assert!(!drop_before_second_list(0));
     assert!(drop_before_second_list(opt::LONG_FUNCTION_INSTS));
 }
+
+const JOINED_DROP: &str = r#"module "t"
+file 0 "t.ms"
+extern @msrt_fill(str, ptr) -> int
+entry @main
+
+fn @main() -> int export {
+b0:
+  %lit: str = str "a"
+  %k: str = copy %lit
+  %out: ptr = slot str
+  %c: int = call.rt @msrt_fill (%k, %out)
+  %t: str = take str %out
+  br b1(%t)
+b1(%p: own str):
+  drop %p
+  drop %k
+  ret %c
+}
+"#;
+
+/// The drop of a family member (`%p`, fed from an out-slot of a call that took `%k`) moves to the
+/// start of its block; `%k` then lives until that drop and must still be dropped after it.
+#[test]
+fn a_drop_at_the_start_of_a_join_block_counts_as_a_use() {
+    let m = optimized(JOINED_DROP);
+    let all = ops(&m, "main");
+    assert_eq!(all[1], [Op::Drop, Op::Drop]);
+}

@@ -15,7 +15,7 @@ def handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), f"ok {request.path}\n".to_bytes())
 
 def fetch(address: String, path: String) -> String:
-    if let conn = network().connect(address):
+    if var conn = network().connect(address):
         let _sent = conn.write(f"GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
         var text = ""
 

@@ -520,10 +520,11 @@ fn candidate(
         if !in_region || consumed[bi] {
             continue;
         }
+        // Another candidate's drop may already sit at the start of a block, ahead of instruction 0.
         let lo = if bi == db {
             Pos::at(di.map(|d| d + 1).unwrap_or(0))
         } else {
-            Pos::at(0)
+            Pos::START
         };
         let last = uses_in(bi).filter(|p| *p >= lo).max();
         let out = live_out[bi];
