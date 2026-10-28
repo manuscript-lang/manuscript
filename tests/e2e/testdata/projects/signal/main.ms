@@ -12,11 +12,10 @@ impl Closeable for Resource:
 
 export def main() -> Int:
     var output = stdout()
-
-    with let resource = Resource("parent", stdout()):
-        with let child = Resource("child", stdout()):
-            let _ignored = output.write("ready\n")
-            while True:
-                continue
-
+    var _resource = Resource("parent", stdout())
+    let _child = Resource("child", stdout())
+    let _ignored = output.write("ready\n")
+    while True:
+        continue
+    _resource.close()
     return 0

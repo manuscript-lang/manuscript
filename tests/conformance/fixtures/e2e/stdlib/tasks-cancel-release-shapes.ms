@@ -92,18 +92,19 @@ def t_nested(depth: Int) -> Int:
     return t_nested(depth - 1) + s.length()
 
 def run_one(which: Int) -> Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        if which == 0: group.spawn(lambda ch: t_record())
-        elif which == 1: group.spawn(lambda ch: t_field_move())
-        elif which == 2: group.spawn(lambda ch: t_map_loop())
-        elif which == 3: group.spawn(lambda ch: t_consume_in_loop())
-        elif which == 4: group.spawn(lambda ch: t_optional())
-        elif which == 5: group.spawn(lambda ch: t_closure())
-        elif which == 6: group.spawn(lambda ch: t_match())
-        elif which == 7: group.spawn(lambda ch: t_chan(ch))
-        else: group.spawn(lambda ch: t_nested(5))
+    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
 
-        let _ = group.wait()
+    if which == 0: group.spawn(lambda ch: t_record())
+    elif which == 1: group.spawn(lambda ch: t_field_move())
+    elif which == 2: group.spawn(lambda ch: t_map_loop())
+    elif which == 3: group.spawn(lambda ch: t_consume_in_loop())
+    elif which == 4: group.spawn(lambda ch: t_optional())
+    elif which == 5: group.spawn(lambda ch: t_closure())
+    elif which == 6: group.spawn(lambda ch: t_match())
+    elif which == 7: group.spawn(lambda ch: t_chan(ch))
+    else: group.spawn(lambda ch: t_nested(5))
+
+    let _ = group.wait()
 
 export def main() -> Int:
     for which in 0..9:

@@ -14,33 +14,43 @@ def marker() -> String:
 
 def leaf(ch: Channel[Unit, Unit]) -> Int:
     sleep(nanoseconds(2000000000))
+
     let _ = filesystem().write_file(marker(), "outlived\n")
     return 0
 
 def middle(ch: Channel[Unit, Unit]) -> Int:
-    with let group = ProcessGroup[Int]():
-        var _g = group.spawn(leaf).get()
-        var _spin = 0
-        while True:
-            _spin += 1
+    var group = ProcessGroup[Int]()
+    var _g = group.spawn(leaf).get()
+    var _spin = 0
+    while True:
+        _spin += 1
+    group.close()
     return 0
 
 def top(ch: Channel[Unit, Unit]) -> Int:
-    with let group = ProcessGroup[Int]():
-        var _m = group.spawn(middle).get()
-        var c = ch
-        let _ = c.send(())
-        sleep(nanoseconds(300000000))
+    var group = ProcessGroup[Int]()
+    var _m = group.spawn(middle).get()
+    var c = ch
+    let _ = c.send(())
+    sleep(nanoseconds(300000000))
+    group.close()
+
     # Leaving the block closed the middle process; the leaf must be gone with it.
     sleep(nanoseconds(3000000000))
     return 0
 
 export def main() -> Int:
     let _ = filesystem().remove(marker())
-    with let group = ProcessGroup[Int, Unit, Unit]():
-        var c = group.spawn(top).get()
-        let _ = c.channel.receive()
-        c.result().get()
-    stdout().write("leaf survived: " + filesystem().read_file(marker()).is_ok().to_string() + "\n").get()
+    var group = ProcessGroup[Int, Unit, Unit]()
+    var c = group.spawn(top).get()
+    let _ = c.channel.receive()
+    c.result().get()
+    group.close()
+    stdout().write(
+        "leaf survived: " + filesystem().read_file(
+            marker()
+        ).is_ok().to_string() + "\n"
+    ).get()
+
     let _ = filesystem().remove(marker())
     return 0

@@ -30,33 +30,33 @@ def fetch_thread() -> Unit:
         let conns = parts.get(1).parse_int().get(1)
         let nanos = parts.get(2).parse_int().get(1) * 1000000000
         var total = 0
+        var group = TaskGroup[Int]()
 
-        with let group = TaskGroup[Int]():
-            for i in 0..conns:
-                let u = parts.get(0).clone()
-                group.spawn(lambda task: worker(u, nanos))
+        for i in 0..conns:
+            let u = parts.get(0).clone()
+            group.spawn(lambda task: worker(u, nanos))
 
-            for r in group.results().get():
-                total += r
+        for r in group.results().get():
+            total += r
+        group.close()
 
         let _ = ch.send(total)
 
 # Spreads `conns` connections over `threads` worker threads and sums their requests.
 def run_threads(url: String, conns: Int, secs: Int, threads: Int) -> Int:
     var total = 0
+    var group = WorkerGroup[String, Int]()
+    var workers: List[Worker[String, Int]] = []
 
-    with let group = WorkerGroup[String, Int]():
-        var workers: List[Worker[String, Int]] = []
+    for i in 0..threads:
+        var worker = group.spawn(fetch_thread).get(none)
+        let _ = worker.channel.send(f"{url} {conns / threads} {secs}")
+        workers.append(worker)
 
-        for i in 0..threads:
-            var worker = group.spawn(fetch_thread).get(none)
-            let _ = worker.channel.send(f"{url} {conns / threads} {secs}")
-            workers.append(worker)
-
-        for i in 0..threads:
-            if let n = workers[i].channel.receive().get(none):
-                total += n
-
+    for i in 0..threads:
+        if let n = workers[i].channel.receive().get(none):
+            total += n
+    group.close()
     return total
 
 export def main() -> Int:
@@ -79,13 +79,15 @@ export def main() -> Int:
             )
             return 0
 
-    with let group = TaskGroup[Int]():
-        for i in 0..conns:
-            let u = url.clone()
-            group.spawn(lambda ch: worker(u, secs * 1000000000))
+    var group = TaskGroup[Int]()
 
-        for r in group.results().get():
-            total += r
+    for i in 0..conns:
+        let u = url.clone()
+        group.spawn(lambda ch: worker(u, secs * 1000000000))
+
+    for r in group.results().get():
+        total += r
+    group.close()
 
     let _ = stdout().write(f"req/s {total / secs}\n")
     return 0

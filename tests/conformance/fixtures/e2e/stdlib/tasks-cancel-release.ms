@@ -18,28 +18,33 @@ def hold_in_callee() -> Int:
     var words = List[String]()
     for i in 0..1000:
         words.append(f"word number {i}")
+
     let total = hold_and_sleep()
     return total + words.length()
 
 def group_timeout() -> Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        group.spawn(lambda ch: hold_in_callee())
-        let _ = group.wait()
+    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
+    group.spawn(lambda ch: hold_in_callee())
+
+    let _ = group.wait()
 
 def task_timeout() -> Unit:
-    with let group = TaskGroup[Int]():
-        let held = group.spawn(lambda ch: hold_in_callee(), timeout: some(nanoseconds(1000000)))
-        let _ = held.result()
+    let group = TaskGroup[Int]()
+    let held = group.spawn(
+        lambda ch: hold_in_callee(), timeout: some(nanoseconds(1000000))
+    )
+    let _ = held.result()
 
 def leave_group() -> Unit:
-    with let group = TaskGroup[Int]():
-        group.spawn(lambda ch: hold_in_callee())
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int]()
+    group.spawn(lambda ch: hold_in_callee())
+    sleep(nanoseconds(1000000))
 
 export def main() -> Int:
     for round in 0..5:
         group_timeout()
         task_timeout()
         leave_group()
+
     stdout().write("cancelled tasks released their values\n").get()
     return 0

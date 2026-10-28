@@ -10,9 +10,11 @@ def handle(request: HttpRequest) -> HttpResponse:
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
-            stdout().write(f"{server.address()}\n").get()
-            stdout().flush().get()
-            let _ignored = server.wait()
-            return 0
+        let server = acquired
+        stdout().write(f"{server.address()}\n").get()
+        stdout().flush().get()
+
+        let _ignored = server.wait()
+        return 0
+
     return 1

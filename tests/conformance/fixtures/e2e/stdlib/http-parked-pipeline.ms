@@ -41,18 +41,18 @@ def exchange(address: String) -> String:
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with var server = acquired:
-            let start = control().monotonic_time()
-            let text = exchange(server.address())
-            let elapsed_ms = (control().monotonic_time() - start) / 1000000
-            let _count = stdout().write(
-                f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
-            )
-            let _order = stdout().write(
-                f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
-            )
-            let _prompt = stdout().write(f"prompt: {elapsed_ms < 2000}\n")
-            server.close()
-            return 0
+        var server = acquired
+        let start = control().monotonic_time()
+        let text = exchange(server.address())
+        let elapsed_ms = (control().monotonic_time() - start) / 1000000
+        let _count = stdout().write(
+            f"responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
+        )
+        let _order = stdout().write(
+            f"slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
+        )
+        let _prompt = stdout().write(f"prompt: {elapsed_ms < 2000}\n")
+        server.close()
+        return 0
 
     return 1

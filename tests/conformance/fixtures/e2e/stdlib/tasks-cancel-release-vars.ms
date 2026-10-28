@@ -157,16 +157,17 @@ def t_while_sleep() -> Int:
     return n
 
 def run_one(which: Int) -> Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        if which == 0: group.spawn(lambda ch: t_var_reassign())
-        elif which == 1: group.spawn(lambda ch: t_var_list_swap())
-        elif which == 2: group.spawn(lambda ch: t_partial())
-        elif which == 3: group.spawn(lambda ch: t_conditional(True))
-        elif which == 4: group.spawn(lambda ch: t_conditional(False))
-        elif which == 5: group.spawn(lambda ch: t_loop_break())
-        else: group.spawn(lambda ch: t_while_sleep())
+    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
 
-        let _ = group.wait()
+    if which == 0: group.spawn(lambda ch: t_var_reassign())
+    elif which == 1: group.spawn(lambda ch: t_var_list_swap())
+    elif which == 2: group.spawn(lambda ch: t_partial())
+    elif which == 3: group.spawn(lambda ch: t_conditional(True))
+    elif which == 4: group.spawn(lambda ch: t_conditional(False))
+    elif which == 5: group.spawn(lambda ch: t_loop_break())
+    else: group.spawn(lambda ch: t_while_sleep())
+
+    let _ = group.wait()
 
 export def main() -> Int:
     for which in 0..7:

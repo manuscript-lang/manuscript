@@ -15,16 +15,17 @@ def pure() -> Int:
     return 1
 
 def direct(resource: Resource) -> Unit:
-    with let item = resource:
-        return
+    let _item = resource
+    return
 
 def transitive(resource: Resource) -> Unit:
     direct(resource: resource)
 
 def nested(resource: Resource) -> Unit:
     let callback = lambda (item: Resource) -> Unit:
-        with let held = item:
-            return
+        let _held = item
+        return
+
     callback(resource)
 
 def indirect(callback: Callable[[], Unit]) -> Unit:

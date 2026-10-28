@@ -12,42 +12,40 @@ def upper(chunk: Bytes) -> Bytes:
 
 test "flows compose stream transforms":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-streams-") | try expect_ok:
-        let path = f"{temporary.path()}/pipeline.bin"
-        var output = fs.open(path: path, flags: "w", mode: 420) | try expect_ok
-        let source = from_bytes("hello world".to_bytes(), 4)
-        let copied = source | map(upper) | take(8) | try copy(output.writer())
-        output.close()
-        if copied != 8: return panic("byte count")
-        if (fs.read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
-            "pipeline output"
-        )
+    let temporary = fs.temporary("manuscript-streams-") | try expect_ok
+    let path = f"{temporary.path()}/pipeline.bin"
+    var output = fs.open(path: path, flags: "w", mode: 420) | try expect_ok
+    let source = from_bytes("hello world".to_bytes(), 4)
+    let copied = source | map(upper) | take(8) | try copy(output.writer())
+    output.close()
+    if copied != 8: return panic("byte count")
+    if (fs.read_file(path: path) | try expect_ok) != "HELLO WO".to_bytes(): return panic(
+        "pipeline output"
+    )
 
 test "concat tee and writer helpers":
     let fs = filesystem()
+    let temporary = fs.temporary("manuscript-streams-") | try expect_ok
+    let log_path = f"{temporary.path()}/tee.bin"
+    var log = fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok
+    let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
+    let seen = tee(joined, log.writer())
+    if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
 
-    with let temporary = fs.temporary("manuscript-streams-") | try expect_ok:
-        let log_path = f"{temporary.path()}/tee.bin"
-        var log = fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok
-        let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
-        let seen = tee(joined, log.writer())
-        if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
+    log.close()
+    if (fs.read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
+        "tee"
+    )
 
-        log.close()
-        if (fs.read_file(path: log_path) | try expect_ok) != "abcd".to_bytes(): return panic(
-            "tee"
-        )
-
-        let sink_path = f"{temporary.path()}/writer.bin"
-        var sink = fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok
-        var writer = map_writer(sink.writer(), upper)
-        try writer.write("quiet")
-        try writer.write_bytes("!".to_bytes())
-        sink.close()
-        if (fs.read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
-            "map_writer"
-        )
+    let sink_path = f"{temporary.path()}/writer.bin"
+    var sink = fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok
+    var writer = map_writer(sink.writer(), upper)
+    try writer.write("quiet")
+    try writer.write_bytes("!".to_bytes())
+    sink.close()
+    if (fs.read_file(path: sink_path) | try expect_ok) != "QUIET!".to_bytes(): return panic(
+        "map_writer"
+    )
 
 test "digest hashes a stream incrementally":
     let data = "stream me, please".to_bytes()

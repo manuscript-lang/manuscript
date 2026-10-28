@@ -13,6 +13,7 @@ def receiver(ch: Channel[Int, Int]) -> Int:
     var c = ch
     if let _got = c.receive():
         return 1
+
     return 0
 
 def sender(ch: Channel[Int, Int]) -> Int:
@@ -22,31 +23,34 @@ def sender(ch: Channel[Int, Int]) -> Int:
     return 0
 
 def cancel_receiver() -> Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        group.spawn(receiver)
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int, Int, Int]()
+    group.spawn(receiver)
+    sleep(nanoseconds(1000000))
 
 def cancel_sender() -> Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        group.spawn(sender)
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int, Int, Int]()
+    group.spawn(sender)
+    sleep(nanoseconds(1000000))
 
 def timeout_receiver() -> Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
-        let _ = task.result()
+    let group = TaskGroup[Int, Int, Int]()
+    let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
+    let _ = task.result()
 
 def churn() -> Int:
     var total = 0
+
     for round in 0..20:
-        with let group = TaskGroup[String]():
-            for i in 0..5:
-                group.spawn(lambda ch: f"task {i}")
-            total += group.results().get([]).length()
+        let group = TaskGroup[String]()
+        for i in 0..5:
+            group.spawn(lambda ch: f"task {i}")
+        total += group.results().get([]).length()
+
     return total
 
 export def main() -> Int:
     var total = 0
+
     for round in 0..3:
         cancel_receiver()
         total += churn()
@@ -54,5 +58,6 @@ export def main() -> Int:
         total += churn()
         timeout_receiver()
         total += churn()
+
     stdout().write(f"survived {total}\n").get()
     return 0

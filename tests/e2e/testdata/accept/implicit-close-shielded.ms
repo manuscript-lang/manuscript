@@ -47,52 +47,51 @@ def hold_fault_and_break(dir: String, id: Int) -> Unit:
     let _ = holder.id
 
 def cancel_a_holder(dir: String, id: Int, pause: Bool) -> Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
-        group.spawn(lambda ch: hold_and_wait(dir.clone(), id, pause))
+    let group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    group.spawn(lambda ch: hold_and_wait(dir.clone(), id, pause))
 
-        let _ignored = group.wait()
+    let _ignored = group.wait()
 
 test "cancellation closes the binding":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        cancel_a_holder(dir.clone(), 1, False)
-        try expect_true(closed(dir, 1))
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    cancel_a_holder(dir.clone(), 1, False)
+    try expect_true(closed(dir, 1))
 
 test "cancellation does not interrupt a close that suspends":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        cancel_a_holder(dir.clone(), 2, True)
-        try expect_true(closed(dir, 2))
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    cancel_a_holder(dir.clone(), 2, True)
+    try expect_true(closed(dir, 2))
 
 test "a fault unwinding the scope closes the binding":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        let message = try expect_fault(lambda: hold_and_fault(dir.clone(), 3))
-        try expect_equal(message, "body fault")
-        try expect_true(closed(dir, 3))
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    let message = try expect_fault(lambda: hold_and_fault(dir.clone(), 3))
+    try expect_equal(message, "body fault")
+    try expect_true(closed(dir, 3))
 
 test "a faulted task closes its binding before the group reports":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        let mine = dir.clone()
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    let mine = dir.clone()
+    var group = TaskGroup[Unit](contain_faults: True)
+    group.spawn(lambda ch: hold_and_fault(mine.clone(), 4))
 
-        with let group = TaskGroup[Unit](contain_faults: True):
-            group.spawn(lambda ch: hold_and_fault(mine.clone(), 4))
-
-            let _reason = group.wait() | try expect_error
-
-        try expect_true(closed(dir, 4))
+    let _reason = group.wait() | try expect_error
+    group.close()
+    try expect_true(closed(dir, 4))
 
 test "a fault in close on a normal return is the fault":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        let message = try expect_fault(lambda: hold_then_break(dir.clone(), 5))
-        try expect_equal(message, "close fault")
-        try expect_true(closed(dir, 5))
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    let message = try expect_fault(lambda: hold_then_break(dir.clone(), 5))
+    try expect_equal(message, "close fault")
+    try expect_true(closed(dir, 5))
 
 test "a fault in close does not replace a pending fault":
-    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
-        let dir = temporary.path()
-        let message = try expect_fault(lambda: hold_fault_and_break(dir.clone(), 6))
-        try expect_equal(message, "body fault")
-        try expect_true(closed(dir, 6))
+    let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok
+    let dir = temporary.path()
+    let message = try expect_fault(lambda: hold_fault_and_break(dir.clone(), 6))
+    try expect_equal(message, "body fault")
+    try expect_true(closed(dir, 6))

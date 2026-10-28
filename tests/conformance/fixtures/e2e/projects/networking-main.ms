@@ -39,21 +39,23 @@ def socket_result[T](result: Result[T, WebSocketError]) -> Result[T, HttpError]:
 
 def echo(exchange: HttpExchange) -> Result[Unit, HttpError]:
     if exchange.path() == "/ws":
-        with let socket = try socket_result(
+        var socket = try socket_result(
             result: exchange.upgrade(
                 allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
             )
-        ):
-            match try socket_result(result: socket.receive()):
-                case some(message):
-                    let _sent = try socket_result(
-                        result: socket.send_bytes(
-                            data: message.data, text: message.text
-                        )
-                    )
-                case none:
-                    return ok(())
+        )
 
+        match try socket_result(result: socket.receive()):
+            case some(message):
+                let _sent = try socket_result(
+                    result: socket.send_bytes(
+                        data: message.data, text: message.text
+                    )
+                )
+            case none:
+                return ok(())
+
+        socket.close()
         return ok(())
 
     let fields = headers()
@@ -75,61 +77,60 @@ def exercise() -> Result[Unit, Error]:
         max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
         max_header_bytes: 65536, timeout: 3.seconds, grace: 0.milliseconds, tls: none
     )
-
-    with let server = try network().serve(
+    var server = try network().serve(
         address: "127.0.0.1:0", handler: echo, options: server_options
-    ):
-        let client_options = HttpClientOptions(
-            max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
-            idle_timeout: 10.seconds, decompress: True, cookies: True, tls: tls.clone()
-        )
+    )
+    let client_options = HttpClientOptions(
+        max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
+        idle_timeout: 10.seconds, decompress: True, cookies: True, tls: tls.clone()
+    )
+    var client = try network().http_client(options: client_options)
+    let response = try client.request(
+        method: HttpMethod.Get, url: f"http://{server.address()}/", headers: headers(),
+        body: "", max_response_bytes: 1024, timeout: 2.seconds
+    )
+    response.metadata().status | try expect_equal(200)
 
-        with let client = try network().http_client(options: client_options):
-            with let response = try client.request(
-                method: HttpMethod.Get, url: f"http://{server.address()}/",
-                headers: headers(), body: "", max_response_bytes: 1024,
-                timeout: 2.seconds
-            ):
-                response.metadata().status | try expect_equal(200)
+    let part = match response.read(max_bytes: 1024):
+        case ok(part): part
+        case error(_):
+            return fail(message: "Unexpected case")
 
-                let part = match response.read(max_bytes: 1024):
-                    case ok(part): part
-                    case error(_):
-                        return fail(message: "Unexpected case")
-
-                match part:
-                    case some(data):
-                        try expect_false(
-                            not (
-                                data.decode_utf8() == some(
-                                    "hello from streaming Manuscript"
-                                )
-                            )
-                        )
-                    case none:
-                        return fail(message: "Unexpected case")
-
-        let websocket_options = WebSocketOptions(
-            max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: False
-        )
-
-        with let socket = try socket_result(
-            result: network().web_socket(
-                url: f"ws://{server.address()}/ws", headers: headers(),
-                subprotocols: ["echo"], options: websocket_options
+    match part:
+        case some(data):
+            try expect_false(
+                not (
+                    data.decode_utf8() == some(
+                        "hello from streaming Manuscript"
+                    )
+                )
             )
-        ):
-            socket.subprotocol() | try expect_equal("echo")
+        case none:
+            return fail(message: "Unexpected case")
 
-            let _sent = try socket_result(result: socket.send(data: "echo me"))
+    client.close()
 
-            match try socket_result(result: socket.receive()):
-                case some(message):
-                    (message.text) | try expect_true
-                    try expect_equal(message.data.decode_utf8(), some("echo me"))
-                case none:
-                    return fail(message: "Unexpected case")
+    let websocket_options = WebSocketOptions(
+        max_message_bytes: 1024, timeout: 2.seconds, tls: tls, compression: False
+    )
+    let socket = try socket_result(
+        result: network().web_socket(
+            url: f"ws://{server.address()}/ws", headers: headers(),
+            subprotocols: ["echo"], options: websocket_options
+        )
+    )
+    socket.subprotocol() | try expect_equal("echo")
 
+    let _sent = try socket_result(result: socket.send(data: "echo me"))
+
+    match try socket_result(result: socket.receive()):
+        case some(message):
+            (message.text) | try expect_true
+            try expect_equal(message.data.decode_utf8(), some("echo me"))
+        case none:
+            return fail(message: "Unexpected case")
+
+    server.close()
     return ok(())
 
 export def main() -> Int:
