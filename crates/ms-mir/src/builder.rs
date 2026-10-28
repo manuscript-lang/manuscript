@@ -24,6 +24,10 @@ impl Var {
 struct VarInfo {
     ty: Ty,
     mode: Mode,
+    /// Defined exactly once, where every use it has is dominated by the definition: reads need no
+    /// search for the reaching definition or block parameters.
+    single: Option<Value>,
+    is_single: bool,
 }
 
 /// Builds one function inside a module.
@@ -492,7 +496,24 @@ impl<'m> FuncBuilder<'m> {
 
     /// Declares a mutable variable. `mode` is the ownership its block parameters carry.
     pub fn declare_var(&mut self, ty: Ty, mode: Mode) -> Var {
-        self.vars.push(VarInfo { ty, mode });
+        self.vars.push(VarInfo {
+            ty,
+            mode,
+            single: None,
+            is_single: false,
+        });
+        Var(self.vars.len() as u32 - 1)
+    }
+
+    /// Declares a variable that is defined once and only read where that definition dominates
+    /// (an immutable `let`). Reading it never creates block parameters; defining it twice panics.
+    pub fn declare_single(&mut self, ty: Ty, mode: Mode) -> Var {
+        self.vars.push(VarInfo {
+            ty,
+            mode,
+            single: None,
+            is_single: true,
+        });
         Var(self.vars.len() as u32 - 1)
     }
 
@@ -508,6 +529,15 @@ impl<'m> FuncBuilder<'m> {
 
     /// Defines the variable's value at the end of the current block.
     pub fn def_var(&mut self, v: Var, val: Value) {
+        let info = &mut self.vars[v.index()];
+        if info.is_single {
+            assert!(
+                info.single.is_none(),
+                "single-definition variable {v:?} defined twice"
+            );
+            info.single = Some(val);
+            return;
+        }
         self.defs.insert((v, self.cur), val);
     }
 
@@ -529,6 +559,12 @@ impl<'m> FuncBuilder<'m> {
     }
 
     fn read_var(&mut self, v: Var, b: Block) -> Value {
+        if self.vars[v.index()].is_single {
+            let x = self.vars[v.index()]
+                .single
+                .unwrap_or_else(|| panic!("variable {v:?} used before it is defined in b{}", b.0));
+            return self.resolve(x);
+        }
         if let Some(x) = self.defs.get(&(v, b)).copied() {
             return self.resolve(x);
         }
@@ -674,5 +710,49 @@ impl<'m> FuncBuilder<'m> {
             }
         }
         (self.m, self.f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A chain of `n` two-predecessor joins: every variable read after it crosses all of them.
+    fn chain(n: usize, single: bool) -> usize {
+        let mut m = Module::new("t");
+        let mut b = FuncBuilder::new(&mut m, "f", Vec::new(), Ty::INT);
+        let vars: Vec<Var> = (0..n)
+            .map(|k| {
+                let v = if single {
+                    b.declare_single(Ty::INT, Mode::Borrow)
+                } else {
+                    b.declare_var(Ty::INT, Mode::Borrow)
+                };
+                let c = b.iconst(k as i64);
+                b.def_var(v, c);
+                v
+            })
+            .collect();
+        for _ in 0..n {
+            let (then, join) = (b.new_block(), b.new_block());
+            let c = b.bconst(true);
+            b.br_if(c, then, &[], join, &[]);
+            b.seal_block(then);
+            b.switch_to(then);
+            b.br(join, &[]);
+            b.seal_block(join);
+            b.switch_to(join);
+        }
+        for v in vars {
+            b.use_var(v);
+        }
+        b.defs.len()
+    }
+
+    #[test]
+    fn a_single_definition_variable_is_read_without_visiting_joins() {
+        // Each reassignable variable leaves an entry per join; a single-definition one none.
+        assert!(chain(20, false) >= 20 * 20);
+        assert_eq!(chain(20, true), 0);
     }
 }

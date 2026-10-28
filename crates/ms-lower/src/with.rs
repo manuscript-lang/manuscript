@@ -103,6 +103,7 @@ impl FnLower<'_> {
         if binding.mutable {
             self.slotted.insert(binding.uid);
         }
+        self.redefined.insert(binding.uid);
         self.bind_local(binding, x);
         let ty = self.locals[&binding.uid].ty;
         let slot = self.locals[&binding.uid].slot;
