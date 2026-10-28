@@ -1108,6 +1108,7 @@ impl Walker<'_> {
                     self.mutable_payload(p, cond, &scrutinee);
                 } else {
                     self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                    self.payload_resource(s, p, cond, &scrutinee);
                 }
             }
             None => self.expr(cond, Demand::Read),
@@ -1128,6 +1129,21 @@ impl Walker<'_> {
             .filter(|a| !ended.contains(&a.holder))
             .collect();
         self.active = Self::join_active(then_state, else_state);
+    }
+
+    /// An `if let name = value` that owns a resource payload closes it when the branch ends,
+    /// unless the branch moves it on.
+    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, value: &Expr, source: &Scrutinee) {
+        if !source.owned || !matches!(p.kind, PatternKind::Name(_)) {
+            return;
+        }
+        let Some(b) = self.cx.m.pattern_binding(p) else {
+            return;
+        };
+        if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
+            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            self.resources.push((b.uid, b.name, p.pos, closable));
+        }
     }
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {

@@ -202,7 +202,7 @@ impl<'a> FnLower<'a> {
                 body,
                 else_body,
             } => {
-                self.if_stmt(binding.as_ref(), cond, body, else_body)?;
+                self.if_stmt(s, binding.as_ref(), cond, body, else_body)?;
                 self.flush_temps(mark);
                 return Ok(());
             }
@@ -641,6 +641,7 @@ impl<'a> FnLower<'a> {
 
     fn if_stmt(
         &mut self,
+        s: &Stmt,
         binding: Option<&Pattern>,
         cond: &Expr,
         body: &[Stmt],
@@ -724,13 +725,25 @@ impl<'a> FnLower<'a> {
                 // The payload of a scrutinee that is itself a borrow is a lexical borrow for
                 // the branch (the checker rejects changing its origin meanwhile): no copy. An
                 // owned scrutinee is dropped here, so its payload is copied out first.
-                let lend = !o.own
+                let closing = if self.cx.implicit_closes.contains(&bnd.uid) {
+                    self.hir.stmt(s).cleanup
+                } else {
+                    None
+                };
+                let lend = closing.is_none()
+                    && !o.own
                     && matches!(p.kind, PatternKind::Name(_))
                     && self.ownership_checked()
                     && !self.slotted.contains(&bnd.uid)
                     && self.needs_drop(self.ty_of(payload));
                 if lend {
                     self.bind_lent(&bnd, payload);
+                } else if let Some(cleanup) = closing {
+                    let held = Val {
+                        v: payload,
+                        own: false,
+                    };
+                    self.bind_closing(&bnd, held, &cleanup)?;
                 } else {
                     self.bind_local(
                         &bnd,
