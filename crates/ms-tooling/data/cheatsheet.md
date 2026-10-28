@@ -33,7 +33,7 @@ export def main() -> Int:
 
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Be terse: infer closure types, one-line bodies (`def f(x: Int) -> Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
-- `main() -> Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`); `bench "name":` under `ms bench`. stdout flushes at exit.
+- `main() -> Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`; braces need `\{`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
 - Imports: `from "@std/x.ms" import a, b`, `from "./local.ms" import a`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `elif`, not `else if`; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
@@ -51,5 +51,5 @@ export def main() -> Int:
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
-- Resources (files, task groups) close when their `let`/`var` goes out of scope, unless moved on (returned, stored). Concurrency: `let g = TaskGroup[T]()` (`@std/tasks.ms`), `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` / `g.results()` waits; dropping `g` cancels the rest.
+- Resources (files) close when their `let`/`var` goes out of scope, unless moved on (returned, stored).
 - No exceptions, classes, `async`, `null`, `pass`.
