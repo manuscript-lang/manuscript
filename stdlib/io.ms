@@ -1,4 +1,4 @@
-from "@std/core.ms" import Iterator
+from "@std/core.ms" import Closeable, Iterator
 from "@std/bytes.ms" import Bytes
 from "@std/time.ms" import Duration
 
@@ -263,25 +263,121 @@ export interface Terminal:
     # Acquires raw input with an optional alternate screen; returns `Busy` while another raw terminal is open and `NotTerminal` when streams are redirected.
     def raw_mode(alternate_screen: Bool) -> Result[RawTerminal, TerminalError]
 
+# The runtime handle behind a `RawTerminal`.
+export extern type NativeRawTerminal
+
+extern def msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) -> Unit
+
+extern def msstd_terminal_raw_terminal_next_event(
+    handle: NativeRawTerminal,
+    timeout: Optional[Duration]
+) -> Result[Optional[Unit], TerminalError]
+
+extern def msstd_terminal_event_kind() -> Int
+
+extern def msstd_terminal_event_text() -> String
+
+extern def msstd_terminal_event_ctrl() -> Bool
+
+extern def msstd_terminal_event_alt() -> Bool
+
+extern def msstd_terminal_event_shift() -> Bool
+
+extern def msstd_terminal_event_columns() -> Int
+
+extern def msstd_terminal_event_rows() -> Int
+
+extern def msstd_terminal_raw_terminal_size_status(
+    handle: NativeRawTerminal
+) -> Result[Unit, TerminalError]
+
+extern def msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) -> Int
+
+extern def msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal) -> Int
+
+extern def msstd_terminal_raw_terminal_move_cursor(
+    handle: NativeRawTerminal,
+    row: Int,
+    column: Int
+) -> Result[Unit, TerminalError]
+
+extern def msstd_terminal_raw_terminal_show_cursor(
+    handle: NativeRawTerminal,
+    visible: Bool
+) -> Result[Unit, TerminalError]
+
+extern def msstd_terminal_raw_terminal_erase(
+    handle: NativeRawTerminal,
+    region: Int
+) -> Result[Unit, TerminalError]
+
 # Raw terminal input and cursor control. Closing it, or leaving the `with`
 # scope that acquired it by return, error, fault, or cancellation, restores the
 # original terminal settings, shows the cursor, and leaves the alternate screen.
 # In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
-export interface RawTerminal:
+export type RawTerminal:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeRawTerminal
+
+impl Closeable for RawTerminal:
     # Restores the terminal; closing again does nothing.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_terminal_raw_terminal_close(self.native)
+
+impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
     def next_event(
         timeout: Optional[Duration] = none
-    ) -> Result[Optional[TerminalEvent], TerminalError]
+    ) -> Result[Optional[TerminalEvent], TerminalError]:
+        let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
+        if ready.is_none(): return ok(none)
+
+        let kind = msstd_terminal_event_kind()
+        if kind == 0: return ok(some(TerminalEvent.Text(msstd_terminal_event_text())))
+        if kind == 1: return ok(
+            some(
+                TerminalEvent.Key(
+                    msstd_terminal_event_text(), msstd_terminal_event_ctrl(),
+                    msstd_terminal_event_alt(), msstd_terminal_event_shift()
+                )
+            )
+        )
+
+        return ok(
+            some(
+                TerminalEvent.Resize(
+                    msstd_terminal_event_columns(), msstd_terminal_event_rows()
+                )
+            )
+        )
+
     # Returns the current terminal size, or `Closed` after close.
-    def size() -> Result[TerminalSize, TerminalError]
+    def size() -> Result[TerminalSize, TerminalError]:
+        try msstd_terminal_raw_terminal_size_status(self.native)
+        return ok(
+            TerminalSize(
+                columns: msstd_terminal_raw_terminal_size_columns(
+                    self.native
+                ),
+                rows: msstd_terminal_raw_terminal_size_rows(self.native)
+            )
+        )
+
     # Moves the cursor to a zero-based row and column; negative or very large values return `InvalidInput`.
-    def move_cursor(row: Int, column: Int) -> Result[Unit, TerminalError]
+    def move_cursor(row: Int, column: Int) -> Result[Unit, TerminalError]:
+        return msstd_terminal_raw_terminal_move_cursor(self.native, row, column)
+
     # Shows or hides the cursor until the terminal is restored on close.
-    def show_cursor(visible: Bool) -> Result[Unit, TerminalError]
+    def show_cursor(visible: Bool) -> Result[Unit, TerminalError]:
+        return msstd_terminal_raw_terminal_show_cursor(self.native, visible)
+
     # Erases the selected screen region without moving the cursor.
-    def erase(region: EraseRegion) -> Result[Unit, TerminalError]
+    def erase(region: EraseRegion) -> Result[Unit, TerminalError]:
+        match region:
+            case Screen: return msstd_terminal_raw_terminal_erase(self.native, 0)
+            case Line: return msstd_terminal_raw_terminal_erase(self.native, 1)
+            case LineEnd: return msstd_terminal_raw_terminal_erase(self.native, 2)
+            case LineStart: return msstd_terminal_raw_terminal_erase(self.native, 3)
 
 impl Error for TerminalError:
     # Returns a fixed diagnostic, or the host message for `Failed`.
