@@ -41,7 +41,6 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Agent benchmark:** the same challenges, from small programs to multi-thousand-line apps, in TypeScript, Go, Rust and Manuscript, graded on hidden tests. Tokens, turns, time and cost are recorded. [Agent benchmark](bench/agent/README.md)
 - **Failures drive the design:** diagnostics, `ms guide` and `ms search_symbol` exist because of where agents got stuck, and results are published even where Manuscript trails.
 - **Performance benchmark:** compiler and runtime against hand-written Go and Rust on kernels, data structures, JSON, CSV, workers and an HTTP server, with reproduction commands. [Performance benchmark](bench/perf/README.md)
-- **Kept apart:** agent and perf results never mix.
 
 ## Fast code from the straightforward loop
 
