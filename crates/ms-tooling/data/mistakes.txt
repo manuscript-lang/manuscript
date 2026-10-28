@@ -86,3 +86,24 @@ right: let v = f().get(0)
 setup: fn f() Result[Int, Error]: ok(1)
 body: {}
 diag: try requires an enclosing Result
+
+wrong: names.append(u.name)
+right: names.append(u.name.clone())
+setup: type User:;;    name: String
+body: let u = User(name: "a");;var names = ["b"];;{}
+diag: cannot move
+
+wrong: xs.append(s);;xs.append(s)
+right: xs.append(s.clone());;xs.append(s)
+body: let s = "a";;var xs = ["b"];;{}
+diag: is moved here but used again
+
+wrong: out.append(first)
+right: out.append(first.clone())
+body: let xs = ["a"];;var out = ["b"];;let first = xs[0];;{}
+diag: cannot move
+
+wrong: let xs = [1]
+right: var xs = [1]
+body: {};;xs.append(2)
+diag: immutable including its contents
