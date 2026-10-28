@@ -192,6 +192,9 @@ pub struct Checker {
     /// Mutually importing bundled source modules checked together.
     pub(crate) group: Vec<ModRef>,
     pub(crate) p: Program,
+    /// Candidate positions in declaration order; type arguments are matched at use.
+    pub(crate) methods_by_receiver: HashMap<Name, Vec<usize>>,
+    pub(crate) methods_by_name: HashMap<(Name, Name), Vec<usize>>,
     pub(crate) module: Option<ModRef>,
     pub(crate) names: Names,
     pub(crate) scope: Rc<Scope>,
@@ -237,6 +240,8 @@ impl Checker {
             id_scope: String::new(),
             group: Vec::new(),
             p: Program::default(),
+            methods_by_receiver: HashMap::new(),
+            methods_by_name: HashMap::new(),
             module: None,
             names: Rc::new(RefCell::new(HashMap::new())),
             scope: Scope::new(None),
@@ -496,7 +501,9 @@ impl Checker {
             self.p.modules = modules;
             return self.p;
         }
-        self.p.methods.extend(stdlib::standard_implementations());
+        for method in stdlib::standard_implementations() {
+            self.add_method(method);
+        }
         let mut checked: Vec<ModRef> = Vec::new();
         for module in &modules {
             if !self.group.is_empty() && self.group.iter().any(|g| g.file == module.file) {
@@ -533,7 +540,9 @@ impl Checker {
             stdlib::ensure_source(module)
         };
         self.p.symbols.insert(module.file, r.symbols.clone());
-        self.p.methods.extend(r.methods.iter().cloned());
+        for method in &r.methods {
+            self.add_method(method.clone());
+        }
     }
 
     /// Declaration passes for one module, in order.

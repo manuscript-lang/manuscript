@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "hélloalpha\nf1 = 0\ns2 = [MiXeD CaSe42]\nf3 = Infinity\ni4 = -46\ni5 = -28\nb6 = false\ns7 = [24esac dexim]\ni8 = -28\n46 -33 false sum 13\nf9 = 0\ni10 = 1\nb11 = false\nfact(19) = 121645100408832000\nf12 = NaN\nb13 = false\n-490071133126 242151 true sum -490070890975\n",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0175.ms:70 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at seed-0175.ms:70 in main\n"
   }
 }

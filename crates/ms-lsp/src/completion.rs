@@ -2,7 +2,7 @@
 
 use crate::analysis::{Document, Documents, workspace_analysis};
 use crate::editor::{
-    self, CursorContext, EditorAnalysis, call_arguments, context_at, query_call, query_editor,
+    CursorContext, EditorAnalysis, call_arguments, context_at, query_call, query_editor,
     type_expression,
 };
 use crate::index::DeclFiles;
@@ -896,10 +896,11 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
 
 /// Signature help for the call around the cursor.
 pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Json, &'static str> {
-    let c = context_at(d, p)?;
+    let mut c = context_at(d, p)?;
     if c.call_open.is_none() || c.literal || c.comment {
         return Ok(Json::Null);
     }
+    let arguments = signature_arguments(d, &mut c);
     let a = query_editor(d, docs, &c);
     let Some((call, t)) = query_call(&a) else {
         return Ok(Json::Null);
@@ -916,28 +917,16 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         parameters.push(obj([("label", label.into())]));
     }
     let mut active = 0;
-    let mut used: HashSet<String> = HashSet::new();
-    let mut current = String::new();
-    for (arg, value) in call_arguments(&a, &call) {
-        if arg == a.marker {
-            continue;
-        }
-        if editor::contains_marker(&value, &a.marker) {
-            current = arg;
-        } else {
-            used.insert(arg);
-        }
-    }
-    if !current.is_empty() {
-        if let Some(index) = t.params.iter().position(|p| p.name.as_str() == current) {
+    let mut used = HashSet::new();
+    for label in arguments {
+        let slot = match label {
+            Some(name) => t.params.iter().position(|p| p.name.as_str() == name),
+            None => (0..t.params.len()).find(|index| !used.contains(index)),
+        };
+        if let Some(index) = slot {
             active = index;
+            used.insert(index);
         }
-    } else if let Some(index) = t
-        .params
-        .iter()
-        .position(|p| !used.contains(p.name.as_str()) && p.name.as_str().starts_with(&c.prefix))
-    {
-        active = index;
     }
     let result = t.result.as_ref().map(|r| r.to_string()).unwrap_or_default();
     let label = format!("{name}({}) -> {result}", labels.join(", "));
@@ -972,4 +961,74 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         ("activeSignature", 0usize.into()),
         ("activeParameter", active.into()),
     ]))
+}
+
+/// Select argument boundaries in the original source. A completion marker can
+/// change binding (or join a neighboring operand), so it cannot select the active
+/// parameter. Only explicit labels affect slots; bare identifiers are positional.
+fn signature_arguments(d: &Document, c: &mut CursorContext) -> Vec<Option<String>> {
+    let open = c.call_open.expect("signature call");
+    let tokens = text::editor_tokens(&d.text[open + 1..]);
+    let mut start = open + 1;
+    let mut depth = 0;
+    let mut arguments = Vec::new();
+    let mut segment = Vec::new();
+    let mut end = None;
+    let mut lambda_parameters = false;
+    for token in &tokens {
+        let at = open + 1 + token.start;
+        if at > c.offset
+            && d.text.as_bytes().get(at - 1) == Some(&b'\n')
+            && matches!(token.text, "def" | "export" | "type" | "test" | "from")
+        {
+            break;
+        }
+        let boundary = depth == 0 && (token.is(b')') || (token.is(b',') && !lambda_parameters));
+        if boundary {
+            arguments.push(argument_label(&segment));
+            if at >= c.offset || token.is(b')') {
+                end = Some(at);
+                break;
+            }
+            start = open + 1 + token.end;
+            segment.clear();
+            continue;
+        }
+        if token.is(b'(') || token.is(b'[') || token.is(b'{') {
+            depth += 1;
+        } else if token.is(b')') || token.is(b']') || token.is(b'}') {
+            depth = (depth - 1).max(0);
+        } else if depth == 0 && token.is_name("lambda") {
+            lambda_parameters = true;
+        } else if depth == 0 && token.is(b':') {
+            lambda_parameters = false;
+        }
+        if !matches!(token.kind, EditorKind::Comment | EditorKind::Char(b'\n')) {
+            segment.push(*token);
+        }
+    }
+    c.end = if let Some(end) = end {
+        end
+    } else {
+        // An unfinished call has no closing boundary yet. Keep later lines for
+        // declaration recovery rather than replacing the rest of the document.
+        arguments.push(argument_label(&segment));
+        d.text[c.offset..]
+            .find('\n')
+            .map_or(d.text.len(), |end| c.offset + end)
+    };
+    c.start = start;
+    c.offset = c.start;
+    c.argument = false;
+    c.member = false;
+    c.type_context = false;
+    arguments
+}
+
+fn argument_label(tokens: &[text::EditorToken<'_>]) -> Option<String> {
+    (tokens.len() >= 2
+        && tokens[0].kind == EditorKind::Name
+        && !tokens[0].is_name("lambda")
+        && tokens[1].is(b':'))
+    .then(|| tokens[0].text.to_string())
 }
