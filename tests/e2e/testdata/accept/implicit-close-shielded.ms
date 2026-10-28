@@ -1,7 +1,7 @@
 from "@std/core.ms" import Closeable, panic
 from "@std/fs.ms" import filesystem
 from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal, expect_error, expect_fault, expect_ok, expect_true
+from "@std/test.ms" import fail, expect_equal, expect_error, expect_fault, expect_ok, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 
 # The scope-end close of a binding runs on every exit and is shielded like `with`: cancellation and a
@@ -18,12 +18,18 @@ impl Closeable for Holder:
         if self.pause:
             sleep(nanoseconds(5000000))
 
-        let _ = filesystem().write_file(f"{self.dir}/{self.id}", "closed", True)
+        let _ = filesystem().write_file(f"{self.dir}/enter-{self.id}", "x", True)
+        let r = filesystem().write_file(f"{self.dir}/{self.id}", "closed", True)
+        if r.is_ok():
+            let _ = filesystem().write_file(f"{self.dir}/ok-{self.id}", "x", True)
         if self.breaks:
             panic("close fault")
 
 def closed(dir: String, id: Int) -> Bool:
     return filesystem().read_file(f"{dir}/{id}").is_ok()
+
+def named(dir: String, name: String) -> Bool:
+    return filesystem().read_file(f"{dir}/{name}").is_ok()
 
 def hold_and_wait(dir: String, id: Int, pause: Bool) -> Int:
     let holder = Holder(dir, id, pause, False)
@@ -51,6 +57,15 @@ def cancel_a_holder(dir: String, id: Int, pause: Bool) -> Unit:
         group.spawn(lambda ch: hold_and_wait(dir.clone(), id, pause))
 
         let _ignored = group.wait()
+
+test "diag":
+    with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
+        let dir = temporary.path()
+        let message = try expect_fault(lambda: hold_and_fault(dir.clone(), 3))
+        let enter = named(dir.clone(), "enter-3")
+        let ok = named(dir.clone(), "ok-3")
+        let done = named(dir.clone(), "3")
+        try fail(f"DIAG message={message} enter={enter} write_ok={ok} marker={done}")
 
 test "cancellation closes the binding":
     with let temporary = filesystem().temporary("manuscript-shield-") | try expect_ok:
