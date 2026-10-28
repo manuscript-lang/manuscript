@@ -112,6 +112,25 @@ test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("İ".lower(), f"i\u{307}")
     try expect_equal("Maße".upper(), "MASSE")
 
+test "scalar reads alternating between long strings match grouped reads":
+    let a = try "aé€🙂".repeat(300)
+    let b = try "日é".repeat(450)
+    let c = try "🙂x".repeat(450)
+    var alternating = 0
+    for step in 0..900:
+        alternating += a.scalar_at(step) + b.scalar_at(step) + c.scalar_at(899 - step)
+
+    var grouped = 0
+    for step in 0..900:
+        grouped += a.scalar_at(step)
+    for step in 0..900:
+        grouped += b.scalar_at(step)
+    for step in 0..900:
+        grouped += c.scalar_at(899 - step)
+    try expect_equal(alternating, grouped)
+    try expect_equal(a.scalar_at(-1), 128578)
+    try expect_equal(b.scalar_at(-1), 233)
+
 test "indexing and slicing long mixed-width text matches scalar positions":
     let block = "aé€🙂"
     let text = try block.repeat(600)
