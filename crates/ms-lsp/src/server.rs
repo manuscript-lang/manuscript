@@ -380,6 +380,56 @@ impl Server<'_> {
         self.share_overlays = false;
     }
 
+    /// Keep successful graphs that did not read the changed source. Failed
+    /// loads may have missing imports, so their dependency set is incomplete.
+    fn invalidate_document(&mut self, changed: &Document) {
+        let resolve = |path: String| {
+            use ms_driver::project::{Overlay, pathops, source_path};
+            pathops::eval_symlinks(&path)
+                .or_else(|_| {
+                    // A new editor file has no final directory entry yet.
+                    // Reuse the loader's existing-parent identity rules.
+                    let root = pathops::eval_symlinks(&pathops::dir(&path))?;
+                    source_path(
+                        &root,
+                        &path,
+                        &Overlay::from([(path.clone(), String::new())]),
+                    )
+                })
+                .unwrap_or(path)
+        };
+        // Overlay validation observes conflicting aliases even in modules that
+        // do not import that file. A new conflict must invalidate those too.
+        let mut seen = HashMap::new();
+        for d in self.docs.values() {
+            if uri::is_standard_library(&d.uri) {
+                continue;
+            }
+            let path = resolve(d.path());
+            if let Some(previous) = seen.insert(path, &d.text)
+                && previous != &d.text
+            {
+                self.invalidate();
+                return;
+            }
+        }
+        let changed_path = resolve(changed.path());
+        let independent = |a: &Analysis| {
+            a.success()
+                && a.program.as_ref().is_some_and(|program| {
+                    program.modules.iter().all(|module| {
+                        module.file.as_str().starts_with("@std/")
+                            || resolve(a.module_path(module.file.as_str())) != changed_path
+                    })
+                })
+        };
+        self.cache
+            .retain(|uri, a| uri != &changed.uri && independent(a));
+        self.analyses.retain(|_, a| independent(a));
+        self.overlay_checked = false;
+        self.share_overlays = false;
+    }
+
     fn publish_diagnostics(
         &mut self,
         uri: &str,
@@ -398,10 +448,15 @@ impl Server<'_> {
         ]))
     }
 
-    /// Sends diagnostics for every open document, in URI order.
+    /// Sends diagnostics for invalidated open documents, in URI order.
     fn publish(&mut self) -> Flow {
         self.diagnostics_dirty = false;
-        let mut uris: Vec<String> = self.docs.keys().cloned().collect();
+        let mut uris: Vec<String> = self
+            .docs
+            .keys()
+            .filter(|uri| !self.cache.contains_key(*uri))
+            .cloned()
+            .collect();
         uris.sort();
         for uri in uris {
             let Some(d) = self.docs.get(&uri).cloned() else {
@@ -730,8 +785,8 @@ impl Server<'_> {
                 d.text = format!("{}{}{}", &d.text[..start], text, &d.text[end..]);
             }
         }
-        self.docs.insert(d.uri.clone(), d);
-        self.invalidate();
+        self.docs.insert(d.uri.clone(), d.clone());
+        self.invalidate_document(&d);
         if self.defer_diagnostics {
             self.diagnostics_dirty = true;
             return Ok(());

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "fact(8) = 40320\ni1 = 994705843615\ncollatz(652) = 25\nl2 = [20, 6, -17, 9] len 4\nDELTA\ns3 = [x  padded  ]\ni4 = 158\nb5 = false\nf6 = 133738.814\nfact(10) = 3628800\ns7 = [11:alphax  padded  ]\ns8 = [316:TAB\tHERE]\nl9 = [20, 6, 9] len 3\ni10 = 203\nb11 = true\n-30:\ni12 = 203\ns13 = [11:alphadelta  padded  hello world]\nb14 = true\n",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0278.ms:89 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at seed-0278.ms:89 in main\n"
   }
 }

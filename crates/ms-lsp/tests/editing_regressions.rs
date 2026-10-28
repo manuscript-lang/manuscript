@@ -259,3 +259,112 @@ fn rename_through_a_symlink_keeps_the_open_uri_and_version() {
     let edit = rename_edit(&uri);
     assert_versioned(&edit, &uri);
 }
+
+#[test]
+fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
+    let ws = Workspace::new("prepare-local");
+    let source = include_str!("editing_regressions/prepare-local.ms");
+    let d = Document::new(ws.uri("project/main.ms"), source);
+    let docs = Documents::from([(d.uri.clone(), d.clone())]);
+    let checked = analyze(&d, &docs);
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+    let polls = std::cell::Cell::new(0);
+    let cancel = || {
+        polls.set(polls.get() + 1);
+        polls.get() > 1
+    };
+    let answer = ms_lsp::rename::rename(
+        &checked,
+        checked.index(),
+        &d,
+        Position {
+            line: 0,
+            character: 5,
+        },
+        "",
+        Some(&cancel),
+        Some(&docs),
+    )
+    .expect("preparing a checked source declaration needs no workspace scan");
+    assert_eq!(
+        answer.get("placeholder").and_then(|v| v.as_str()),
+        Some("focus")
+    );
+    assert_eq!(
+        answer.get("range"),
+        Some(
+            &text::Range {
+                start: Position {
+                    line: 0,
+                    character: 4
+                },
+                end: Position {
+                    line: 0,
+                    character: 9
+                },
+            }
+            .json()
+        )
+    );
+
+    let external: Vec<_> = checked
+        .index()
+        .iter()
+        .filter(|o| !o.declaration)
+        .cloned()
+        .collect();
+    assert!(
+        ms_lsp::rename::rename(
+            &checked,
+            &external,
+            &d,
+            Position {
+                line: 1,
+                character: 12
+            },
+            "",
+            None,
+            Some(&docs),
+        )
+        .unwrap_err()
+        .contains("external")
+    );
+}
+
+#[test]
+fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
+    let ws = Workspace::new("prepare-identities");
+    for (relative, name) in [
+        ("project/main.ms", "double"),
+        ("project/main.ms", "value"),
+        ("main.ms", "expect_equal"),
+    ] {
+        let d = Document::new(ws.uri(relative), ws.read(relative));
+        let docs = Documents::from([(d.uri.clone(), d.clone())]);
+        let checked = analyze(&d, &docs);
+        assert!(checked.success(), "{:?}", checked.diagnostics);
+        let file = checked.module_file(&d);
+        let entry = checked
+            .index()
+            .iter()
+            .find(|entry| entry.file.as_str() == file && entry.name == name)
+            .expect("checked occurrence");
+        let answer = ms_lsp::rename::rename(
+            &checked,
+            checked.index(),
+            &d,
+            text::position(&d.text, entry.offset),
+            "",
+            None,
+            Some(&docs),
+        );
+        if entry.key.contains(":@std/") {
+            assert!(answer.unwrap_err().contains("read-only"));
+        } else {
+            assert_eq!(
+                answer.unwrap().get("placeholder").and_then(|v| v.as_str()),
+                Some(name)
+            );
+        }
+    }
+}

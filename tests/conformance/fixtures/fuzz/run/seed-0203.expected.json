@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "s1 = [a]\nl2 = [-19] len 1\ni3 = 1\nhsals\\kcab\ni4 = 916344\ni5 = -130923822418\n-464805:a\ns6 = [22957937:Tab\thereaa]\ni7 = 1\n",
-    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0203.ms:47 in main\n"
+    "stderr": "remainder by zero; right must be nonzero, found 0\n  at seed-0203.ms:47 in main\n"
   }
 }

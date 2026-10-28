@@ -246,6 +246,8 @@ pub struct Operation {
 /// A nominal type definition.
 pub struct Definition {
     symbol: RefCell<Weak<Sym>>,
+    // Signature resolution preserves these immutable source field positions.
+    field_indices: HashMap<Name, usize>,
     /// Definition kind (record, alternative, contract, native).
     pub kind: Kind,
     /// Declared type variables.
@@ -261,8 +263,16 @@ pub struct Definition {
 impl Definition {
     /// A new definition owned by `symbol`.
     pub fn new(symbol: &SymRef, kind: Kind) -> Rc<Definition> {
+        let mut field_indices = HashMap::new();
+        if let Some(decl) = &symbol.decl {
+            for (index, field) in decl.record_fields().iter().enumerate() {
+                // Invalid duplicate declarations still resolve to the first field.
+                field_indices.entry(field.name).or_insert(index);
+            }
+        }
         Rc::new(Definition {
             symbol: RefCell::new(Rc::downgrade(symbol)),
+            field_indices,
             kind,
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
@@ -810,6 +820,18 @@ pub fn fields(t: &Ty) -> Vec<Param> {
             ty: sub(&p.ty, &s),
         })
         .collect()
+}
+
+/// One declared record field, freshly substituted with the receiver's type arguments.
+pub fn field_of(t: &Ty, name: Name) -> Option<Param> {
+    let def = t.def.as_ref()?;
+    let index = *def.field_indices.get(&name)?;
+    let fs = def.fields.borrow();
+    let field = fs.get(index)?;
+    Some(Param {
+        name: field.name,
+        ty: sub(&field.ty, &substitution(t)),
+    })
 }
 
 /// Alternative cases with the type arguments substituted.

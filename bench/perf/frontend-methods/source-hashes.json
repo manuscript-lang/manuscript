@@ -1,0 +1,12 @@
+{
+  "baseline": {
+    "crates/ms-check/src/checker.rs": "5b7f64cb57ce995cb2d28dcf3d207720a81ce00afb61c2236d75a8bb36596fca",
+    "crates/ms-check/src/contracts.rs": "8ad5ad51a6d1a05e6f619f10b8fb304e51c3e9b6d70ef9d126d3247779ccaaad",
+    "crates/ms-check/src/editor.rs": "42b4eaf07254aaee6de2ed4ced74d7b36b4e347c30e8688d39aa7c1010a6e2e7"
+  },
+  "candidate": {
+    "crates/ms-check/src/checker.rs": "26f8d2f0cd7a361b0162c6d31e24c2efc3a2fa2b060533b4099a192c0abf7560",
+    "crates/ms-check/src/contracts.rs": "8771e019c23113e8e3a3cee82f0193a55dae266240b6d95af4d6d214cf2ec25f",
+    "crates/ms-check/src/editor.rs": "ff26b34ac0d3629970ee62b86eb3c05aa804ab711e3c24272b262f5f77b99936"
+  }
+}

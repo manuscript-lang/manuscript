@@ -1,0 +1,3002 @@
+[
+  {
+    "file": "unique-2048.ms",
+    "trial": 4,
+    "wall_s": 1.2338354799994704,
+    "init": "stdlib_init_ms=17.901313\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "298531",
+        "parse_ms": "11.408378",
+        "load_ms": "9.523309",
+        "check_ms": "165.355869"
+      },
+      {
+        "iteration": "1",
+        "bytes": "298531",
+        "parse_ms": "8.828132",
+        "load_ms": "8.095730",
+        "check_ms": "176.647030"
+      },
+      {
+        "iteration": "2",
+        "bytes": "298531",
+        "parse_ms": "8.173606",
+        "load_ms": "6.904707",
+        "check_ms": "174.064852"
+      },
+      {
+        "iteration": "3",
+        "bytes": "298531",
+        "parse_ms": "6.362620",
+        "load_ms": "6.002878",
+        "check_ms": "167.884616"
+      },
+      {
+        "iteration": "4",
+        "bytes": "298531",
+        "parse_ms": "7.622977",
+        "load_ms": "6.833650",
+        "check_ms": "172.010729"
+      },
+      {
+        "iteration": "5",
+        "bytes": "298531",
+        "parse_ms": "6.592145",
+        "load_ms": "5.654454",
+        "check_ms": "179.947889"
+      }
+    ]
+  },
+  {
+    "file": "unique-2048.ms",
+    "trial": 0,
+    "wall_s": 1.2140750469998238,
+    "init": "stdlib_init_ms=15.448270\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "298531",
+        "parse_ms": "9.614706",
+        "load_ms": "7.338599",
+        "check_ms": "144.167938"
+      },
+      {
+        "iteration": "1",
+        "bytes": "298531",
+        "parse_ms": "9.174764",
+        "load_ms": "7.989810",
+        "check_ms": "165.406375"
+      },
+      {
+        "iteration": "2",
+        "bytes": "298531",
+        "parse_ms": "6.577934",
+        "load_ms": "7.797431",
+        "check_ms": "178.485177"
+      },
+      {
+        "iteration": "3",
+        "bytes": "298531",
+        "parse_ms": "8.395360",
+        "load_ms": "7.247011",
+        "check_ms": "175.337489"
+      },
+      {
+        "iteration": "4",
+        "bytes": "298531",
+        "parse_ms": "7.633072",
+        "load_ms": "8.353368",
+        "check_ms": "175.058327"
+      },
+      {
+        "iteration": "5",
+        "bytes": "298531",
+        "parse_ms": "6.296971",
+        "load_ms": "6.310161",
+        "check_ms": "173.797959"
+      }
+    ]
+  },
+  {
+    "file": "same-512.ms",
+    "trial": 2,
+    "wall_s": 0.17263741199985816,
+    "init": "stdlib_init_ms=15.451955\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69743",
+        "parse_ms": "2.019992",
+        "load_ms": "1.647130",
+        "check_ms": "24.063592"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69743",
+        "parse_ms": "1.490063",
+        "load_ms": "0.881798",
+        "check_ms": "19.890358"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69743",
+        "parse_ms": "1.114258",
+        "load_ms": "1.092275",
+        "check_ms": "20.014895"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69743",
+        "parse_ms": "1.352096",
+        "load_ms": "1.020116",
+        "check_ms": "19.287260"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69743",
+        "parse_ms": "1.239546",
+        "load_ms": "0.711371",
+        "check_ms": "20.143249"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69743",
+        "parse_ms": "1.504936",
+        "load_ms": "1.072425",
+        "check_ms": "21.381122"
+      }
+    ]
+  },
+  {
+    "file": "field-512.ms",
+    "trial": 4,
+    "wall_s": 0.050855185999353125,
+    "init": "stdlib_init_ms=16.330599\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "38109",
+        "parse_ms": "1.344004",
+        "load_ms": "0.676439",
+        "check_ms": "5.204446"
+      },
+      {
+        "iteration": "1",
+        "bytes": "38109",
+        "parse_ms": "0.666314",
+        "load_ms": "0.281443",
+        "check_ms": "2.553165"
+      },
+      {
+        "iteration": "2",
+        "bytes": "38109",
+        "parse_ms": "0.571451",
+        "load_ms": "0.358950",
+        "check_ms": "2.684552"
+      },
+      {
+        "iteration": "3",
+        "bytes": "38109",
+        "parse_ms": "0.583628",
+        "load_ms": "0.205800",
+        "check_ms": "2.711943"
+      },
+      {
+        "iteration": "4",
+        "bytes": "38109",
+        "parse_ms": "0.669258",
+        "load_ms": "0.250057",
+        "check_ms": "2.547025"
+      },
+      {
+        "iteration": "5",
+        "bytes": "38109",
+        "parse_ms": "0.645512",
+        "load_ms": "0.232550",
+        "check_ms": "2.728799"
+      }
+    ]
+  },
+  {
+    "file": "unique-512.ms",
+    "trial": 2,
+    "wall_s": 0.17467202199986787,
+    "init": "stdlib_init_ms=25.625038\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "72595",
+        "parse_ms": "2.790952",
+        "load_ms": "1.622813",
+        "check_ms": "19.234210"
+      },
+      {
+        "iteration": "1",
+        "bytes": "72595",
+        "parse_ms": "1.376733",
+        "load_ms": "0.830331",
+        "check_ms": "14.653503"
+      },
+      {
+        "iteration": "2",
+        "bytes": "72595",
+        "parse_ms": "1.536514",
+        "load_ms": "1.155350",
+        "check_ms": "21.165858"
+      },
+      {
+        "iteration": "3",
+        "bytes": "72595",
+        "parse_ms": "2.376108",
+        "load_ms": "1.666920",
+        "check_ms": "18.506935"
+      },
+      {
+        "iteration": "4",
+        "bytes": "72595",
+        "parse_ms": "1.324614",
+        "load_ms": "0.890080",
+        "check_ms": "19.943928"
+      },
+      {
+        "iteration": "5",
+        "bytes": "72595",
+        "parse_ms": "1.317383",
+        "load_ms": "1.176271",
+        "check_ms": "18.621137"
+      }
+    ]
+  },
+  {
+    "file": "nocall-2048.ms",
+    "trial": 0,
+    "wall_s": 0.9146407730004285,
+    "init": "stdlib_init_ms=17.428471\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "282319",
+        "parse_ms": "12.522284",
+        "load_ms": "11.814309",
+        "check_ms": "137.774932"
+      },
+      {
+        "iteration": "1",
+        "bytes": "282319",
+        "parse_ms": "7.401224",
+        "load_ms": "6.494158",
+        "check_ms": "99.782848"
+      },
+      {
+        "iteration": "2",
+        "bytes": "282319",
+        "parse_ms": "6.023288",
+        "load_ms": "4.756071",
+        "check_ms": "92.756448"
+      },
+      {
+        "iteration": "3",
+        "bytes": "282319",
+        "parse_ms": "6.449681",
+        "load_ms": "5.854155",
+        "check_ms": "138.164027"
+      },
+      {
+        "iteration": "4",
+        "bytes": "282319",
+        "parse_ms": "9.152952",
+        "load_ms": "10.543495",
+        "check_ms": "125.210524"
+      },
+      {
+        "iteration": "5",
+        "bytes": "282319",
+        "parse_ms": "6.870484",
+        "load_ms": "7.502807",
+        "check_ms": "109.409212"
+      }
+    ]
+  },
+  {
+    "file": "field-512.ms",
+    "trial": 3,
+    "wall_s": 0.07247697000002518,
+    "init": "stdlib_init_ms=22.443202\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "38109",
+        "parse_ms": "1.786971",
+        "load_ms": "0.830030",
+        "check_ms": "8.502331"
+      },
+      {
+        "iteration": "1",
+        "bytes": "38109",
+        "parse_ms": "1.221979",
+        "load_ms": "0.518341",
+        "check_ms": "4.620327"
+      },
+      {
+        "iteration": "2",
+        "bytes": "38109",
+        "parse_ms": "1.145034",
+        "load_ms": "0.338650",
+        "check_ms": "4.397772"
+      },
+      {
+        "iteration": "3",
+        "bytes": "38109",
+        "parse_ms": "1.017993",
+        "load_ms": "0.550659",
+        "check_ms": "4.246503"
+      },
+      {
+        "iteration": "4",
+        "bytes": "38109",
+        "parse_ms": "1.046927",
+        "load_ms": "0.304428",
+        "check_ms": "4.301111"
+      },
+      {
+        "iteration": "5",
+        "bytes": "38109",
+        "parse_ms": "0.635837",
+        "load_ms": "0.215364",
+        "check_ms": "2.617101"
+      }
+    ]
+  },
+  {
+    "file": "unique-1024.ms",
+    "trial": 3,
+    "wall_s": 0.4463541539998914,
+    "init": "stdlib_init_ms=17.111404\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "145955",
+        "parse_ms": "4.449680",
+        "load_ms": "4.020383",
+        "check_ms": "49.382183"
+      },
+      {
+        "iteration": "1",
+        "bytes": "145955",
+        "parse_ms": "3.542905",
+        "load_ms": "2.708008",
+        "check_ms": "51.127219"
+      },
+      {
+        "iteration": "2",
+        "bytes": "145955",
+        "parse_ms": "3.183424",
+        "load_ms": "2.722600",
+        "check_ms": "51.593216"
+      },
+      {
+        "iteration": "3",
+        "bytes": "145955",
+        "parse_ms": "4.781579",
+        "load_ms": "4.296810",
+        "check_ms": "67.644109"
+      },
+      {
+        "iteration": "4",
+        "bytes": "145955",
+        "parse_ms": "4.502119",
+        "load_ms": "2.826826",
+        "check_ms": "73.371843"
+      },
+      {
+        "iteration": "5",
+        "bytes": "145955",
+        "parse_ms": "2.822580",
+        "load_ms": "2.051299",
+        "check_ms": "47.446948"
+      }
+    ]
+  },
+  {
+    "file": "same-2048.ms",
+    "trial": 3,
+    "wall_s": 1.7953992599996127,
+    "init": "stdlib_init_ms=14.918933\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "284367",
+        "parse_ms": "9.142886",
+        "load_ms": "7.366292",
+        "check_ms": "244.063285"
+      },
+      {
+        "iteration": "1",
+        "bytes": "284367",
+        "parse_ms": "7.077376",
+        "load_ms": "5.528294",
+        "check_ms": "277.215211"
+      },
+      {
+        "iteration": "2",
+        "bytes": "284367",
+        "parse_ms": "5.424537",
+        "load_ms": "6.107847",
+        "check_ms": "273.664344"
+      },
+      {
+        "iteration": "3",
+        "bytes": "284367",
+        "parse_ms": "5.795866",
+        "load_ms": "4.888821",
+        "check_ms": "278.845735"
+      },
+      {
+        "iteration": "4",
+        "bytes": "284367",
+        "parse_ms": "5.440091",
+        "load_ms": "4.525765",
+        "check_ms": "272.019467"
+      },
+      {
+        "iteration": "5",
+        "bytes": "284367",
+        "parse_ms": "5.294331",
+        "load_ms": "6.031531",
+        "check_ms": "286.529263"
+      }
+    ]
+  },
+  {
+    "file": "unique-1024.ms",
+    "trial": 0,
+    "wall_s": 0.3427911649996531,
+    "init": "stdlib_init_ms=15.789313\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "145955",
+        "parse_ms": "4.474327",
+        "load_ms": "4.161927",
+        "check_ms": "49.532298"
+      },
+      {
+        "iteration": "1",
+        "bytes": "145955",
+        "parse_ms": "2.958695",
+        "load_ms": "2.137819",
+        "check_ms": "41.999446"
+      },
+      {
+        "iteration": "2",
+        "bytes": "145955",
+        "parse_ms": "2.570441",
+        "load_ms": "2.364941",
+        "check_ms": "44.406961"
+      },
+      {
+        "iteration": "3",
+        "bytes": "145955",
+        "parse_ms": "2.971434",
+        "load_ms": "2.383839",
+        "check_ms": "40.928294"
+      },
+      {
+        "iteration": "4",
+        "bytes": "145955",
+        "parse_ms": "2.790542",
+        "load_ms": "1.652809",
+        "check_ms": "41.842440"
+      },
+      {
+        "iteration": "5",
+        "bytes": "145955",
+        "parse_ms": "3.655684",
+        "load_ms": "2.377499",
+        "check_ms": "44.372440"
+      }
+    ]
+  },
+  {
+    "file": "field-512.ms",
+    "trial": 1,
+    "wall_s": 0.048182326000642206,
+    "init": "stdlib_init_ms=15.907331\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "38109",
+        "parse_ms": "1.206136",
+        "load_ms": "0.673414",
+        "check_ms": "4.812686"
+      },
+      {
+        "iteration": "1",
+        "bytes": "38109",
+        "parse_ms": "0.755597",
+        "load_ms": "0.255965",
+        "check_ms": "2.527105"
+      },
+      {
+        "iteration": "2",
+        "bytes": "38109",
+        "parse_ms": "0.555847",
+        "load_ms": "0.256066",
+        "check_ms": "2.425892"
+      },
+      {
+        "iteration": "3",
+        "bytes": "38109",
+        "parse_ms": "0.535917",
+        "load_ms": "0.183166",
+        "check_ms": "2.471141"
+      },
+      {
+        "iteration": "4",
+        "bytes": "38109",
+        "parse_ms": "0.587094",
+        "load_ms": "0.182545",
+        "check_ms": "2.571923"
+      },
+      {
+        "iteration": "5",
+        "bytes": "38109",
+        "parse_ms": "0.632773",
+        "load_ms": "0.272641",
+        "check_ms": "2.522277"
+      }
+    ]
+  },
+  {
+    "file": "nocall-1024.ms",
+    "trial": 4,
+    "wall_s": 0.2465747869991901,
+    "init": "stdlib_init_ms=15.459086\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "138959",
+        "parse_ms": "4.483621",
+        "load_ms": "5.944480",
+        "check_ms": "30.657500"
+      },
+      {
+        "iteration": "1",
+        "bytes": "138959",
+        "parse_ms": "2.849841",
+        "load_ms": "1.925038",
+        "check_ms": "28.142153"
+      },
+      {
+        "iteration": "2",
+        "bytes": "138959",
+        "parse_ms": "2.287534",
+        "load_ms": "2.730531",
+        "check_ms": "25.788489"
+      },
+      {
+        "iteration": "3",
+        "bytes": "138959",
+        "parse_ms": "2.711502",
+        "load_ms": "2.056235",
+        "check_ms": "28.650337"
+      },
+      {
+        "iteration": "4",
+        "bytes": "138959",
+        "parse_ms": "2.233493",
+        "load_ms": "1.405756",
+        "check_ms": "31.914652"
+      },
+      {
+        "iteration": "5",
+        "bytes": "138959",
+        "parse_ms": "2.328787",
+        "load_ms": "1.679038",
+        "check_ms": "26.366068"
+      }
+    ]
+  },
+  {
+    "file": "unique-1024.ms",
+    "trial": 1,
+    "wall_s": 0.3365006869998979,
+    "init": "stdlib_init_ms=17.400739\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "145955",
+        "parse_ms": "4.530572",
+        "load_ms": "3.718208",
+        "check_ms": "41.214445"
+      },
+      {
+        "iteration": "1",
+        "bytes": "145955",
+        "parse_ms": "3.310876",
+        "load_ms": "3.262612",
+        "check_ms": "47.973870"
+      },
+      {
+        "iteration": "2",
+        "bytes": "145955",
+        "parse_ms": "2.725623",
+        "load_ms": "2.485933",
+        "check_ms": "49.167884"
+      },
+      {
+        "iteration": "3",
+        "bytes": "145955",
+        "parse_ms": "2.988069",
+        "load_ms": "2.037678",
+        "check_ms": "38.406826"
+      },
+      {
+        "iteration": "4",
+        "bytes": "145955",
+        "parse_ms": "2.739585",
+        "load_ms": "1.792669",
+        "check_ms": "39.513332"
+      },
+      {
+        "iteration": "5",
+        "bytes": "145955",
+        "parse_ms": "2.568267",
+        "load_ms": "1.429362",
+        "check_ms": "39.982719"
+      }
+    ]
+  },
+  {
+    "file": "nocall-1024.ms",
+    "trial": 0,
+    "wall_s": 0.24396578799951385,
+    "init": "stdlib_init_ms=15.585476\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "138959",
+        "parse_ms": "4.342829",
+        "load_ms": "3.205567",
+        "check_ms": "30.138156"
+      },
+      {
+        "iteration": "1",
+        "bytes": "138959",
+        "parse_ms": "2.991734",
+        "load_ms": "1.866019",
+        "check_ms": "27.776130"
+      },
+      {
+        "iteration": "2",
+        "bytes": "138959",
+        "parse_ms": "2.506434",
+        "load_ms": "2.253973",
+        "check_ms": "27.284100"
+      },
+      {
+        "iteration": "3",
+        "bytes": "138959",
+        "parse_ms": "2.790852",
+        "load_ms": "2.045219",
+        "check_ms": "26.887873"
+      },
+      {
+        "iteration": "4",
+        "bytes": "138959",
+        "parse_ms": "2.548998",
+        "load_ms": "1.455271",
+        "check_ms": "30.768506"
+      },
+      {
+        "iteration": "5",
+        "bytes": "138959",
+        "parse_ms": "2.421045",
+        "load_ms": "1.407559",
+        "check_ms": "27.652424"
+      }
+    ]
+  },
+  {
+    "file": "nocall-512.ms",
+    "trial": 0,
+    "wall_s": 0.10129275700001017,
+    "init": "stdlib_init_ms=17.415631\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69231",
+        "parse_ms": "2.008184",
+        "load_ms": "1.412907",
+        "check_ms": "12.165616"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69231",
+        "parse_ms": "1.191524",
+        "load_ms": "0.745453",
+        "check_ms": "9.019089"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69231",
+        "parse_ms": "1.149791",
+        "load_ms": "0.746344",
+        "check_ms": "9.685062"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69231",
+        "parse_ms": "1.027367",
+        "load_ms": "0.586173",
+        "check_ms": "9.576037"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69231",
+        "parse_ms": "0.961357",
+        "load_ms": "0.517129",
+        "check_ms": "9.745052"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69231",
+        "parse_ms": "0.998013",
+        "load_ms": "0.555486",
+        "check_ms": "9.248093"
+      }
+    ]
+  },
+  {
+    "file": "unique-512.ms",
+    "trial": 1,
+    "wall_s": 0.1265965350003171,
+    "init": "stdlib_init_ms=15.940580\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "72595",
+        "parse_ms": "2.253933",
+        "load_ms": "1.620761",
+        "check_ms": "15.871446"
+      },
+      {
+        "iteration": "1",
+        "bytes": "72595",
+        "parse_ms": "1.364555",
+        "load_ms": "0.779984",
+        "check_ms": "13.513867"
+      },
+      {
+        "iteration": "2",
+        "bytes": "72595",
+        "parse_ms": "1.050061",
+        "load_ms": "1.105634",
+        "check_ms": "13.328036"
+      },
+      {
+        "iteration": "3",
+        "bytes": "72595",
+        "parse_ms": "1.461471",
+        "load_ms": "0.940747",
+        "check_ms": "13.449469"
+      },
+      {
+        "iteration": "4",
+        "bytes": "72595",
+        "parse_ms": "1.265435",
+        "load_ms": "0.690009",
+        "check_ms": "13.130669"
+      },
+      {
+        "iteration": "5",
+        "bytes": "72595",
+        "parse_ms": "1.187988",
+        "load_ms": "0.622808",
+        "check_ms": "13.244592"
+      }
+    ]
+  },
+  {
+    "file": "same-512.ms",
+    "trial": 4,
+    "wall_s": 0.1609817769995061,
+    "init": "stdlib_init_ms=14.630257\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69743",
+        "parse_ms": "2.223798",
+        "load_ms": "1.656174",
+        "check_ms": "21.743157"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69743",
+        "parse_ms": "1.531056",
+        "load_ms": "0.842438",
+        "check_ms": "17.926370"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69743",
+        "parse_ms": "1.024222",
+        "load_ms": "1.002129",
+        "check_ms": "18.233693"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69743",
+        "parse_ms": "1.297463",
+        "load_ms": "1.095981",
+        "check_ms": "20.117259"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69743",
+        "parse_ms": "1.186586",
+        "load_ms": "0.741917",
+        "check_ms": "20.242127"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69743",
+        "parse_ms": "1.174158",
+        "load_ms": "0.651150",
+        "check_ms": "18.534116"
+      }
+    ]
+  },
+  {
+    "file": "nocall-2048.ms",
+    "trial": 1,
+    "wall_s": 0.6617170890003763,
+    "init": "stdlib_init_ms=15.780749\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "282319",
+        "parse_ms": "9.774207",
+        "load_ms": "7.344618",
+        "check_ms": "89.559572"
+      },
+      {
+        "iteration": "1",
+        "bytes": "282319",
+        "parse_ms": "6.704865",
+        "load_ms": "5.380400",
+        "check_ms": "82.435857"
+      },
+      {
+        "iteration": "2",
+        "bytes": "282319",
+        "parse_ms": "5.185718",
+        "load_ms": "4.066432",
+        "check_ms": "83.384053"
+      },
+      {
+        "iteration": "3",
+        "bytes": "282319",
+        "parse_ms": "5.416254",
+        "load_ms": "4.921120",
+        "check_ms": "83.711727"
+      },
+      {
+        "iteration": "4",
+        "bytes": "282319",
+        "parse_ms": "5.828575",
+        "load_ms": "4.536180",
+        "check_ms": "85.383525"
+      },
+      {
+        "iteration": "5",
+        "bytes": "282319",
+        "parse_ms": "5.710559",
+        "load_ms": "4.737192",
+        "check_ms": "84.388166"
+      }
+    ]
+  },
+  {
+    "file": "field-2048.ms",
+    "trial": 4,
+    "wall_s": 0.14739722299964342,
+    "init": "stdlib_init_ms=15.581569\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "156453",
+        "parse_ms": "5.300471",
+        "load_ms": "2.997043",
+        "check_ms": "15.285874"
+      },
+      {
+        "iteration": "1",
+        "bytes": "156453",
+        "parse_ms": "3.343654",
+        "load_ms": "2.679935",
+        "check_ms": "11.815599"
+      },
+      {
+        "iteration": "2",
+        "bytes": "156453",
+        "parse_ms": "3.860443",
+        "load_ms": "2.126242",
+        "check_ms": "11.762890"
+      },
+      {
+        "iteration": "3",
+        "bytes": "156453",
+        "parse_ms": "3.214460",
+        "load_ms": "1.612678",
+        "check_ms": "11.014353"
+      },
+      {
+        "iteration": "4",
+        "bytes": "156453",
+        "parse_ms": "3.808134",
+        "load_ms": "1.254088",
+        "check_ms": "11.325442"
+      },
+      {
+        "iteration": "5",
+        "bytes": "156453",
+        "parse_ms": "3.048490",
+        "load_ms": "1.231524",
+        "check_ms": "10.861603"
+      }
+    ]
+  },
+  {
+    "file": "same-2048.ms",
+    "trial": 4,
+    "wall_s": 1.8695882600004552,
+    "init": "stdlib_init_ms=15.558836\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "284367",
+        "parse_ms": "9.318230",
+        "load_ms": "6.988242",
+        "check_ms": "257.441872"
+      },
+      {
+        "iteration": "1",
+        "bytes": "284367",
+        "parse_ms": "7.604409",
+        "load_ms": "6.878858",
+        "check_ms": "300.384733"
+      },
+      {
+        "iteration": "2",
+        "bytes": "284367",
+        "parse_ms": "5.936949",
+        "load_ms": "7.325859",
+        "check_ms": "283.010514"
+      },
+      {
+        "iteration": "3",
+        "bytes": "284367",
+        "parse_ms": "7.296666",
+        "load_ms": "5.798851",
+        "check_ms": "281.900883"
+      },
+      {
+        "iteration": "4",
+        "bytes": "284367",
+        "parse_ms": "6.984657",
+        "load_ms": "6.515840",
+        "check_ms": "281.615684"
+      },
+      {
+        "iteration": "5",
+        "bytes": "284367",
+        "parse_ms": "7.060651",
+        "load_ms": "6.465704",
+        "check_ms": "286.698247"
+      }
+    ]
+  },
+  {
+    "file": "nocall-2048.ms",
+    "trial": 3,
+    "wall_s": 0.6815441509997981,
+    "init": "stdlib_init_ms=15.914411\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "282319",
+        "parse_ms": "9.792723",
+        "load_ms": "7.197967",
+        "check_ms": "91.162206"
+      },
+      {
+        "iteration": "1",
+        "bytes": "282319",
+        "parse_ms": "6.416641",
+        "load_ms": "5.485439",
+        "check_ms": "85.239458"
+      },
+      {
+        "iteration": "2",
+        "bytes": "282319",
+        "parse_ms": "5.048891",
+        "load_ms": "3.809756",
+        "check_ms": "82.053181"
+      },
+      {
+        "iteration": "3",
+        "bytes": "282319",
+        "parse_ms": "5.328312",
+        "load_ms": "3.919251",
+        "check_ms": "89.398269"
+      },
+      {
+        "iteration": "4",
+        "bytes": "282319",
+        "parse_ms": "6.084011",
+        "load_ms": "5.424127",
+        "check_ms": "85.686310"
+      },
+      {
+        "iteration": "5",
+        "bytes": "282319",
+        "parse_ms": "5.592480",
+        "load_ms": "4.608849",
+        "check_ms": "95.538144"
+      }
+    ]
+  },
+  {
+    "file": "nocall-512.ms",
+    "trial": 2,
+    "wall_s": 0.10479111400036345,
+    "init": "stdlib_init_ms=16.259871\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69231",
+        "parse_ms": "2.443238",
+        "load_ms": "1.406707",
+        "check_ms": "13.306955"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69231",
+        "parse_ms": "1.300558",
+        "load_ms": "0.699393",
+        "check_ms": "9.510179"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69231",
+        "parse_ms": "1.303893",
+        "load_ms": "0.713624",
+        "check_ms": "10.392727"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69231",
+        "parse_ms": "1.158264",
+        "load_ms": "0.706924",
+        "check_ms": "9.997662"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69231",
+        "parse_ms": "1.144544",
+        "load_ms": "0.549156",
+        "check_ms": "10.026857"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69231",
+        "parse_ms": "0.993876",
+        "load_ms": "0.585902",
+        "check_ms": "8.832648"
+      }
+    ]
+  },
+  {
+    "file": "unique-1024.ms",
+    "trial": 2,
+    "wall_s": 0.3576140929999383,
+    "init": "stdlib_init_ms=15.124842\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "145955",
+        "parse_ms": "4.673767",
+        "load_ms": "3.892020",
+        "check_ms": "42.558887"
+      },
+      {
+        "iteration": "1",
+        "bytes": "145955",
+        "parse_ms": "3.119917",
+        "load_ms": "2.052591",
+        "check_ms": "42.066736"
+      },
+      {
+        "iteration": "2",
+        "bytes": "145955",
+        "parse_ms": "2.846034",
+        "load_ms": "2.642238",
+        "check_ms": "50.093758"
+      },
+      {
+        "iteration": "3",
+        "bytes": "145955",
+        "parse_ms": "3.912521",
+        "load_ms": "2.405152",
+        "check_ms": "44.414370"
+      },
+      {
+        "iteration": "4",
+        "bytes": "145955",
+        "parse_ms": "3.418968",
+        "load_ms": "2.321856",
+        "check_ms": "50.098609"
+      },
+      {
+        "iteration": "5",
+        "bytes": "145955",
+        "parse_ms": "2.926396",
+        "load_ms": "1.790546",
+        "check_ms": "45.887269"
+      }
+    ]
+  },
+  {
+    "file": "same-512.ms",
+    "trial": 1,
+    "wall_s": 0.17675453399988328,
+    "init": "stdlib_init_ms=16.018217\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69743",
+        "parse_ms": "2.085310",
+        "load_ms": "2.494906",
+        "check_ms": "23.189965"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69743",
+        "parse_ms": "1.581130",
+        "load_ms": "0.763289",
+        "check_ms": "21.609475"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69743",
+        "parse_ms": "1.146877",
+        "load_ms": "1.097832",
+        "check_ms": "19.373360"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69743",
+        "parse_ms": "1.222390",
+        "load_ms": "0.923030",
+        "check_ms": "20.326974"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69743",
+        "parse_ms": "1.302280",
+        "load_ms": "0.668467",
+        "check_ms": "23.770419"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69743",
+        "parse_ms": "1.480039",
+        "load_ms": "0.779654",
+        "check_ms": "20.568708"
+      }
+    ]
+  },
+  {
+    "file": "unique-2048.ms",
+    "trial": 1,
+    "wall_s": 1.2133053670004301,
+    "init": "stdlib_init_ms=17.291014\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "298531",
+        "parse_ms": "10.126286",
+        "load_ms": "8.972409",
+        "check_ms": "189.418141"
+      },
+      {
+        "iteration": "1",
+        "bytes": "298531",
+        "parse_ms": "7.621976",
+        "load_ms": "6.627078",
+        "check_ms": "163.767120"
+      },
+      {
+        "iteration": "2",
+        "bytes": "298531",
+        "parse_ms": "6.323611",
+        "load_ms": "8.418606",
+        "check_ms": "158.334630"
+      },
+      {
+        "iteration": "3",
+        "bytes": "298531",
+        "parse_ms": "8.034566",
+        "load_ms": "7.486933",
+        "check_ms": "175.320415"
+      },
+      {
+        "iteration": "4",
+        "bytes": "298531",
+        "parse_ms": "6.553568",
+        "load_ms": "5.310766",
+        "check_ms": "174.119296"
+      },
+      {
+        "iteration": "5",
+        "bytes": "298531",
+        "parse_ms": "6.305725",
+        "load_ms": "5.437356",
+        "check_ms": "172.292826"
+      }
+    ]
+  },
+  {
+    "file": "unique-1024.ms",
+    "trial": 4,
+    "wall_s": 0.3677646910000476,
+    "init": "stdlib_init_ms=16.087482\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "145955",
+        "parse_ms": "5.358288",
+        "load_ms": "5.458308",
+        "check_ms": "43.158721"
+      },
+      {
+        "iteration": "1",
+        "bytes": "145955",
+        "parse_ms": "2.961099",
+        "load_ms": "2.304029",
+        "check_ms": "45.276249"
+      },
+      {
+        "iteration": "2",
+        "bytes": "145955",
+        "parse_ms": "6.094175",
+        "load_ms": "3.597847",
+        "check_ms": "50.257748"
+      },
+      {
+        "iteration": "3",
+        "bytes": "145955",
+        "parse_ms": "3.417215",
+        "load_ms": "2.726715",
+        "check_ms": "46.330546"
+      },
+      {
+        "iteration": "4",
+        "bytes": "145955",
+        "parse_ms": "3.036001",
+        "load_ms": "2.075996",
+        "check_ms": "45.024299"
+      },
+      {
+        "iteration": "5",
+        "bytes": "145955",
+        "parse_ms": "2.665913",
+        "load_ms": "1.945129",
+        "check_ms": "46.023203"
+      }
+    ]
+  },
+  {
+    "file": "nocall-1024.ms",
+    "trial": 1,
+    "wall_s": 0.2719325350008148,
+    "init": "stdlib_init_ms=15.682732\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "138959",
+        "parse_ms": "4.807007",
+        "load_ms": "3.523625",
+        "check_ms": "34.673024"
+      },
+      {
+        "iteration": "1",
+        "bytes": "138959",
+        "parse_ms": "2.958404",
+        "load_ms": "2.125580",
+        "check_ms": "35.278065"
+      },
+      {
+        "iteration": "2",
+        "bytes": "138959",
+        "parse_ms": "2.643840",
+        "load_ms": "2.600795",
+        "check_ms": "33.801282"
+      },
+      {
+        "iteration": "3",
+        "bytes": "138959",
+        "parse_ms": "3.141840",
+        "load_ms": "4.109798",
+        "check_ms": "29.327175"
+      },
+      {
+        "iteration": "4",
+        "bytes": "138959",
+        "parse_ms": "2.595839",
+        "load_ms": "1.592608",
+        "check_ms": "26.467399"
+      },
+      {
+        "iteration": "5",
+        "bytes": "138959",
+        "parse_ms": "2.423879",
+        "load_ms": "1.800080",
+        "check_ms": "30.601804"
+      }
+    ]
+  },
+  {
+    "file": "field-1024.ms",
+    "trial": 2,
+    "wall_s": 0.07852386600006867,
+    "init": "stdlib_init_ms=15.519837\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "76581",
+        "parse_ms": "2.492443",
+        "load_ms": "1.207067",
+        "check_ms": "8.398004"
+      },
+      {
+        "iteration": "1",
+        "bytes": "76581",
+        "parse_ms": "1.447359",
+        "load_ms": "0.816789",
+        "check_ms": "4.953537"
+      },
+      {
+        "iteration": "2",
+        "bytes": "76581",
+        "parse_ms": "1.393358",
+        "load_ms": "0.777821",
+        "check_ms": "4.958456"
+      },
+      {
+        "iteration": "3",
+        "bytes": "76581",
+        "parse_ms": "1.419206",
+        "load_ms": "0.654726",
+        "check_ms": "4.847749"
+      },
+      {
+        "iteration": "4",
+        "bytes": "76581",
+        "parse_ms": "1.605688",
+        "load_ms": "0.826694",
+        "check_ms": "5.322304"
+      },
+      {
+        "iteration": "5",
+        "bytes": "76581",
+        "parse_ms": "2.361326",
+        "load_ms": "0.924262",
+        "check_ms": "5.492439"
+      }
+    ]
+  },
+  {
+    "file": "nocall-1024.ms",
+    "trial": 3,
+    "wall_s": 0.29524291699999594,
+    "init": "stdlib_init_ms=15.312545\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "138959",
+        "parse_ms": "5.138788",
+        "load_ms": "3.982496",
+        "check_ms": "40.400558"
+      },
+      {
+        "iteration": "1",
+        "bytes": "138959",
+        "parse_ms": "3.389995",
+        "load_ms": "2.821248",
+        "check_ms": "40.046849"
+      },
+      {
+        "iteration": "2",
+        "bytes": "138959",
+        "parse_ms": "2.577911",
+        "load_ms": "1.800991",
+        "check_ms": "36.582679"
+      },
+      {
+        "iteration": "3",
+        "bytes": "138959",
+        "parse_ms": "2.775319",
+        "load_ms": "1.986271",
+        "check_ms": "31.096589"
+      },
+      {
+        "iteration": "4",
+        "bytes": "138959",
+        "parse_ms": "3.589855",
+        "load_ms": "2.382718",
+        "check_ms": "32.308894"
+      },
+      {
+        "iteration": "5",
+        "bytes": "138959",
+        "parse_ms": "2.565162",
+        "load_ms": "1.859049",
+        "check_ms": "30.624679"
+      }
+    ]
+  },
+  {
+    "file": "same-1024.ms",
+    "trial": 0,
+    "wall_s": 0.5236115799998515,
+    "init": "stdlib_init_ms=22.669627\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "139983",
+        "parse_ms": "4.530591",
+        "load_ms": "3.929546",
+        "check_ms": "75.951424"
+      },
+      {
+        "iteration": "1",
+        "bytes": "139983",
+        "parse_ms": "4.028375",
+        "load_ms": "6.291633",
+        "check_ms": "74.009971"
+      },
+      {
+        "iteration": "2",
+        "bytes": "139983",
+        "parse_ms": "2.844192",
+        "load_ms": "2.339432",
+        "check_ms": "66.584110"
+      },
+      {
+        "iteration": "3",
+        "bytes": "139983",
+        "parse_ms": "3.209603",
+        "load_ms": "2.571512",
+        "check_ms": "69.006878"
+      },
+      {
+        "iteration": "4",
+        "bytes": "139983",
+        "parse_ms": "2.837312",
+        "load_ms": "1.782925",
+        "check_ms": "72.319194"
+      },
+      {
+        "iteration": "5",
+        "bytes": "139983",
+        "parse_ms": "2.641247",
+        "load_ms": "1.671877",
+        "check_ms": "67.466889"
+      }
+    ]
+  },
+  {
+    "file": "field-1024.ms",
+    "trial": 3,
+    "wall_s": 0.08091119099935895,
+    "init": "stdlib_init_ms=15.350602\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "76581",
+        "parse_ms": "2.468327",
+        "load_ms": "1.415932",
+        "check_ms": "8.856875"
+      },
+      {
+        "iteration": "1",
+        "bytes": "76581",
+        "parse_ms": "1.487619",
+        "load_ms": "1.051393",
+        "check_ms": "5.311086"
+      },
+      {
+        "iteration": "2",
+        "bytes": "76581",
+        "parse_ms": "1.485366",
+        "load_ms": "0.890961",
+        "check_ms": "5.273991"
+      },
+      {
+        "iteration": "3",
+        "bytes": "76581",
+        "parse_ms": "1.477204",
+        "load_ms": "0.968218",
+        "check_ms": "5.481383"
+      },
+      {
+        "iteration": "4",
+        "bytes": "76581",
+        "parse_ms": "1.735994",
+        "load_ms": "1.073116",
+        "check_ms": "5.410616"
+      },
+      {
+        "iteration": "5",
+        "bytes": "76581",
+        "parse_ms": "1.395401",
+        "load_ms": "0.814957",
+        "check_ms": "4.816132"
+      }
+    ]
+  },
+  {
+    "file": "unique-512.ms",
+    "trial": 4,
+    "wall_s": 0.13082389999999577,
+    "init": "stdlib_init_ms=15.366586\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "72595",
+        "parse_ms": "2.222707",
+        "load_ms": "1.471385",
+        "check_ms": "15.739979"
+      },
+      {
+        "iteration": "1",
+        "bytes": "72595",
+        "parse_ms": "1.358155",
+        "load_ms": "0.758442",
+        "check_ms": "13.508999"
+      },
+      {
+        "iteration": "2",
+        "bytes": "72595",
+        "parse_ms": "1.300829",
+        "load_ms": "1.084603",
+        "check_ms": "12.675504"
+      },
+      {
+        "iteration": "3",
+        "bytes": "72595",
+        "parse_ms": "1.307048",
+        "load_ms": "0.997231",
+        "check_ms": "14.065517"
+      },
+      {
+        "iteration": "4",
+        "bytes": "72595",
+        "parse_ms": "1.452777",
+        "load_ms": "0.637349",
+        "check_ms": "14.588325"
+      },
+      {
+        "iteration": "5",
+        "bytes": "72595",
+        "parse_ms": "1.255169",
+        "load_ms": "0.691721",
+        "check_ms": "14.500483"
+      }
+    ]
+  },
+  {
+    "file": "same-1024.ms",
+    "trial": 3,
+    "wall_s": 0.5309795180000947,
+    "init": "stdlib_init_ms=15.959079\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "139983",
+        "parse_ms": "4.389839",
+        "load_ms": "3.523565",
+        "check_ms": "74.267589"
+      },
+      {
+        "iteration": "1",
+        "bytes": "139983",
+        "parse_ms": "5.337706",
+        "load_ms": "3.733200",
+        "check_ms": "75.546394"
+      },
+      {
+        "iteration": "2",
+        "bytes": "139983",
+        "parse_ms": "2.688138",
+        "load_ms": "2.541186",
+        "check_ms": "73.140661"
+      },
+      {
+        "iteration": "3",
+        "bytes": "139983",
+        "parse_ms": "3.347000",
+        "load_ms": "2.480725",
+        "check_ms": "70.787658"
+      },
+      {
+        "iteration": "4",
+        "bytes": "139983",
+        "parse_ms": "2.681728",
+        "load_ms": "1.754993",
+        "check_ms": "77.023597"
+      },
+      {
+        "iteration": "5",
+        "bytes": "139983",
+        "parse_ms": "2.945225",
+        "load_ms": "1.554851",
+        "check_ms": "72.285354"
+      }
+    ]
+  },
+  {
+    "file": "same-2048.ms",
+    "trial": 1,
+    "wall_s": 1.9606025969997063,
+    "init": "stdlib_init_ms=17.455851\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "284367",
+        "parse_ms": "10.348181",
+        "load_ms": "7.755897",
+        "check_ms": "254.689101"
+      },
+      {
+        "iteration": "1",
+        "bytes": "284367",
+        "parse_ms": "7.775036",
+        "load_ms": "7.026909",
+        "check_ms": "292.564888"
+      },
+      {
+        "iteration": "2",
+        "bytes": "284367",
+        "parse_ms": "6.169689",
+        "load_ms": "7.208643",
+        "check_ms": "283.157804"
+      },
+      {
+        "iteration": "3",
+        "bytes": "284367",
+        "parse_ms": "8.063410",
+        "load_ms": "8.000957",
+        "check_ms": "298.777781"
+      },
+      {
+        "iteration": "4",
+        "bytes": "284367",
+        "parse_ms": "5.395142",
+        "load_ms": "4.287916",
+        "check_ms": "323.715759"
+      },
+      {
+        "iteration": "5",
+        "bytes": "284367",
+        "parse_ms": "8.851568",
+        "load_ms": "10.297463",
+        "check_ms": "317.867013"
+      }
+    ]
+  },
+  {
+    "file": "same-512.ms",
+    "trial": 3,
+    "wall_s": 0.16821976299979724,
+    "init": "stdlib_init_ms=15.496102\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69743",
+        "parse_ms": "2.082996",
+        "load_ms": "1.699438",
+        "check_ms": "23.190435"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69743",
+        "parse_ms": "1.509183",
+        "load_ms": "0.903009",
+        "check_ms": "20.127674"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69743",
+        "parse_ms": "1.093065",
+        "load_ms": "0.624290",
+        "check_ms": "19.687431"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69743",
+        "parse_ms": "1.184443",
+        "load_ms": "1.381029",
+        "check_ms": "19.554421"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69743",
+        "parse_ms": "1.426408",
+        "load_ms": "1.049651",
+        "check_ms": "20.086092"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69743",
+        "parse_ms": "1.494740",
+        "load_ms": "0.701897",
+        "check_ms": "19.358697"
+      }
+    ]
+  },
+  {
+    "file": "field-1024.ms",
+    "trial": 4,
+    "wall_s": 0.08323207400007959,
+    "init": "stdlib_init_ms=15.655741\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "76581",
+        "parse_ms": "2.474586",
+        "load_ms": "1.250733",
+        "check_ms": "9.877471"
+      },
+      {
+        "iteration": "1",
+        "bytes": "76581",
+        "parse_ms": "1.568722",
+        "load_ms": "1.010992",
+        "check_ms": "5.484137"
+      },
+      {
+        "iteration": "2",
+        "bytes": "76581",
+        "parse_ms": "1.629113",
+        "load_ms": "0.792173",
+        "check_ms": "5.097174"
+      },
+      {
+        "iteration": "3",
+        "bytes": "76581",
+        "parse_ms": "1.717946",
+        "load_ms": "0.849208",
+        "check_ms": "5.504858"
+      },
+      {
+        "iteration": "4",
+        "bytes": "76581",
+        "parse_ms": "1.319517",
+        "load_ms": "0.631811",
+        "check_ms": "5.069313"
+      },
+      {
+        "iteration": "5",
+        "bytes": "76581",
+        "parse_ms": "1.841223",
+        "load_ms": "1.144603",
+        "check_ms": "5.356555"
+      }
+    ]
+  },
+  {
+    "file": "field-1024.ms",
+    "trial": 1,
+    "wall_s": 0.08040603000063129,
+    "init": "stdlib_init_ms=16.249676\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "76581",
+        "parse_ms": "2.625914",
+        "load_ms": "1.300828",
+        "check_ms": "8.125524"
+      },
+      {
+        "iteration": "1",
+        "bytes": "76581",
+        "parse_ms": "1.337634",
+        "load_ms": "0.795979",
+        "check_ms": "4.863563"
+      },
+      {
+        "iteration": "2",
+        "bytes": "76581",
+        "parse_ms": "1.596033",
+        "load_ms": "0.885773",
+        "check_ms": "5.029982"
+      },
+      {
+        "iteration": "3",
+        "bytes": "76581",
+        "parse_ms": "1.255139",
+        "load_ms": "0.718833",
+        "check_ms": "5.218517"
+      },
+      {
+        "iteration": "4",
+        "bytes": "76581",
+        "parse_ms": "1.696113",
+        "load_ms": "0.853294",
+        "check_ms": "5.192308"
+      },
+      {
+        "iteration": "5",
+        "bytes": "76581",
+        "parse_ms": "1.597876",
+        "load_ms": "1.165024",
+        "check_ms": "5.477237"
+      }
+    ]
+  },
+  {
+    "file": "same-1024.ms",
+    "trial": 2,
+    "wall_s": 0.4979951049999727,
+    "init": "stdlib_init_ms=15.473037\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "139983",
+        "parse_ms": "4.614187",
+        "load_ms": "3.299478",
+        "check_ms": "65.561920"
+      },
+      {
+        "iteration": "1",
+        "bytes": "139983",
+        "parse_ms": "3.489825",
+        "load_ms": "2.087043",
+        "check_ms": "78.594713"
+      },
+      {
+        "iteration": "2",
+        "bytes": "139983",
+        "parse_ms": "2.671722",
+        "load_ms": "2.286292",
+        "check_ms": "65.808011"
+      },
+      {
+        "iteration": "3",
+        "bytes": "139983",
+        "parse_ms": "2.981860",
+        "load_ms": "2.737231",
+        "check_ms": "69.899300"
+      },
+      {
+        "iteration": "4",
+        "bytes": "139983",
+        "parse_ms": "3.261371",
+        "load_ms": "2.236257",
+        "check_ms": "68.585422"
+      },
+      {
+        "iteration": "5",
+        "bytes": "139983",
+        "parse_ms": "2.687937",
+        "load_ms": "1.666129",
+        "check_ms": "67.295090"
+      }
+    ]
+  },
+  {
+    "file": "field-2048.ms",
+    "trial": 3,
+    "wall_s": 0.16420550899965747,
+    "init": "stdlib_init_ms=15.068127\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "156453",
+        "parse_ms": "5.610087",
+        "load_ms": "3.048990",
+        "check_ms": "15.688551"
+      },
+      {
+        "iteration": "1",
+        "bytes": "156453",
+        "parse_ms": "3.503485",
+        "load_ms": "2.143537",
+        "check_ms": "11.917714"
+      },
+      {
+        "iteration": "2",
+        "bytes": "156453",
+        "parse_ms": "4.222918",
+        "load_ms": "1.996085",
+        "check_ms": "14.139389"
+      },
+      {
+        "iteration": "3",
+        "bytes": "156453",
+        "parse_ms": "4.026052",
+        "load_ms": "2.334024",
+        "check_ms": "14.021711"
+      },
+      {
+        "iteration": "4",
+        "bytes": "156453",
+        "parse_ms": "3.866271",
+        "load_ms": "2.224890",
+        "check_ms": "12.113628"
+      },
+      {
+        "iteration": "5",
+        "bytes": "156453",
+        "parse_ms": "3.317876",
+        "load_ms": "1.821562",
+        "check_ms": "11.842510"
+      }
+    ]
+  },
+  {
+    "file": "nocall-512.ms",
+    "trial": 4,
+    "wall_s": 0.10878000000047905,
+    "init": "stdlib_init_ms=15.836243\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69231",
+        "parse_ms": "1.997287",
+        "load_ms": "1.452256",
+        "check_ms": "13.097761"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69231",
+        "parse_ms": "1.216632",
+        "load_ms": "0.765542",
+        "check_ms": "9.216676"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69231",
+        "parse_ms": "1.078113",
+        "load_ms": "0.959114",
+        "check_ms": "10.331315"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69231",
+        "parse_ms": "1.203362",
+        "load_ms": "1.024002",
+        "check_ms": "9.821037"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69231",
+        "parse_ms": "1.100988",
+        "load_ms": "0.657230",
+        "check_ms": "12.184124"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69231",
+        "parse_ms": "1.100597",
+        "load_ms": "0.593393",
+        "check_ms": "10.652860"
+      }
+    ]
+  },
+  {
+    "file": "unique-512.ms",
+    "trial": 3,
+    "wall_s": 0.1249745429995528,
+    "init": "stdlib_init_ms=15.372265\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "72595",
+        "parse_ms": "2.041634",
+        "load_ms": "1.395882",
+        "check_ms": "16.269916"
+      },
+      {
+        "iteration": "1",
+        "bytes": "72595",
+        "parse_ms": "1.262331",
+        "load_ms": "0.750540",
+        "check_ms": "14.767694"
+      },
+      {
+        "iteration": "2",
+        "bytes": "72595",
+        "parse_ms": "1.105064",
+        "load_ms": "1.042991",
+        "check_ms": "13.156027"
+      },
+      {
+        "iteration": "3",
+        "bytes": "72595",
+        "parse_ms": "1.144113",
+        "load_ms": "0.612572",
+        "check_ms": "12.971940"
+      },
+      {
+        "iteration": "4",
+        "bytes": "72595",
+        "parse_ms": "1.353108",
+        "load_ms": "0.817280",
+        "check_ms": "12.676576"
+      },
+      {
+        "iteration": "5",
+        "bytes": "72595",
+        "parse_ms": "1.033546",
+        "load_ms": "0.549347",
+        "check_ms": "13.225913"
+      }
+    ]
+  },
+  {
+    "file": "same-512.ms",
+    "trial": 0,
+    "wall_s": 0.15578104500036716,
+    "init": "stdlib_init_ms=15.819518\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69743",
+        "parse_ms": "2.040592",
+        "load_ms": "1.457484",
+        "check_ms": "22.762401"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69743",
+        "parse_ms": "1.344294",
+        "load_ms": "0.818693",
+        "check_ms": "18.720826"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69743",
+        "parse_ms": "1.194789",
+        "load_ms": "0.630860",
+        "check_ms": "17.220858"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69743",
+        "parse_ms": "1.058604",
+        "load_ms": "0.778662",
+        "check_ms": "18.744161"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69743",
+        "parse_ms": "1.041428",
+        "load_ms": "0.543749",
+        "check_ms": "17.908944"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69743",
+        "parse_ms": "1.076802",
+        "load_ms": "0.623939",
+        "check_ms": "17.686930"
+      }
+    ]
+  },
+  {
+    "file": "nocall-1024.ms",
+    "trial": 2,
+    "wall_s": 0.2668017440000767,
+    "init": "stdlib_init_ms=14.721695\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "138959",
+        "parse_ms": "4.043969",
+        "load_ms": "3.350184",
+        "check_ms": "34.490329"
+      },
+      {
+        "iteration": "1",
+        "bytes": "138959",
+        "parse_ms": "3.189863",
+        "load_ms": "1.959200",
+        "check_ms": "38.357536"
+      },
+      {
+        "iteration": "2",
+        "bytes": "138959",
+        "parse_ms": "2.482448",
+        "load_ms": "1.748783",
+        "check_ms": "31.897646"
+      },
+      {
+        "iteration": "3",
+        "bytes": "138959",
+        "parse_ms": "2.540615",
+        "load_ms": "1.497865",
+        "check_ms": "27.191219"
+      },
+      {
+        "iteration": "4",
+        "bytes": "138959",
+        "parse_ms": "2.767136",
+        "load_ms": "2.956612",
+        "check_ms": "28.147610"
+      },
+      {
+        "iteration": "5",
+        "bytes": "138959",
+        "parse_ms": "2.674617",
+        "load_ms": "1.743325",
+        "check_ms": "30.793312"
+      }
+    ]
+  },
+  {
+    "file": "field-2048.ms",
+    "trial": 2,
+    "wall_s": 0.15769282299970655,
+    "init": "stdlib_init_ms=15.525014\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "156453",
+        "parse_ms": "6.338633",
+        "load_ms": "3.223333",
+        "check_ms": "15.917316"
+      },
+      {
+        "iteration": "1",
+        "bytes": "156453",
+        "parse_ms": "4.021415",
+        "load_ms": "1.888203",
+        "check_ms": "11.924844"
+      },
+      {
+        "iteration": "2",
+        "bytes": "156453",
+        "parse_ms": "4.382929",
+        "load_ms": "2.056287",
+        "check_ms": "12.028219"
+      },
+      {
+        "iteration": "3",
+        "bytes": "156453",
+        "parse_ms": "3.047929",
+        "load_ms": "1.658678",
+        "check_ms": "12.923718"
+      },
+      {
+        "iteration": "4",
+        "bytes": "156453",
+        "parse_ms": "3.537666",
+        "load_ms": "1.077793",
+        "check_ms": "12.374652"
+      },
+      {
+        "iteration": "5",
+        "bytes": "156453",
+        "parse_ms": "2.906166",
+        "load_ms": "1.112715",
+        "check_ms": "13.502529"
+      }
+    ]
+  },
+  {
+    "file": "field-512.ms",
+    "trial": 0,
+    "wall_s": 0.05522358500002156,
+    "init": "stdlib_init_ms=16.649387\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "38109",
+        "parse_ms": "1.532107",
+        "load_ms": "0.663309",
+        "check_ms": "5.516576"
+      },
+      {
+        "iteration": "1",
+        "bytes": "38109",
+        "parse_ms": "0.680574",
+        "load_ms": "0.260703",
+        "check_ms": "2.914488"
+      },
+      {
+        "iteration": "2",
+        "bytes": "38109",
+        "parse_ms": "0.676609",
+        "load_ms": "0.288835",
+        "check_ms": "4.832956"
+      },
+      {
+        "iteration": "3",
+        "bytes": "38109",
+        "parse_ms": "0.616298",
+        "load_ms": "0.649468",
+        "check_ms": "2.820396"
+      },
+      {
+        "iteration": "4",
+        "bytes": "38109",
+        "parse_ms": "0.586884",
+        "load_ms": "0.182765",
+        "check_ms": "2.603800"
+      },
+      {
+        "iteration": "5",
+        "bytes": "38109",
+        "parse_ms": "0.591911",
+        "load_ms": "0.287713",
+        "check_ms": "2.581577"
+      }
+    ]
+  },
+  {
+    "file": "same-1024.ms",
+    "trial": 1,
+    "wall_s": 0.5017516210000394,
+    "init": "stdlib_init_ms=17.186516\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "139983",
+        "parse_ms": "4.695800",
+        "load_ms": "3.902365",
+        "check_ms": "68.188125"
+      },
+      {
+        "iteration": "1",
+        "bytes": "139983",
+        "parse_ms": "3.076041",
+        "load_ms": "2.408677",
+        "check_ms": "67.232335"
+      },
+      {
+        "iteration": "2",
+        "bytes": "139983",
+        "parse_ms": "2.471110",
+        "load_ms": "2.618022",
+        "check_ms": "69.678188"
+      },
+      {
+        "iteration": "3",
+        "bytes": "139983",
+        "parse_ms": "2.876862",
+        "load_ms": "2.360604",
+        "check_ms": "68.888349"
+      },
+      {
+        "iteration": "4",
+        "bytes": "139983",
+        "parse_ms": "2.676630",
+        "load_ms": "1.798698",
+        "check_ms": "66.409146"
+      },
+      {
+        "iteration": "5",
+        "bytes": "139983",
+        "parse_ms": "2.762710",
+        "load_ms": "1.568191",
+        "check_ms": "79.081746"
+      }
+    ]
+  },
+  {
+    "file": "same-1024.ms",
+    "trial": 4,
+    "wall_s": 0.4733865039997909,
+    "init": "stdlib_init_ms=15.590984\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "139983",
+        "parse_ms": "4.025100",
+        "load_ms": "3.464666",
+        "check_ms": "63.332124"
+      },
+      {
+        "iteration": "1",
+        "bytes": "139983",
+        "parse_ms": "3.440540",
+        "load_ms": "2.545112",
+        "check_ms": "69.918610"
+      },
+      {
+        "iteration": "2",
+        "bytes": "139983",
+        "parse_ms": "2.554897",
+        "load_ms": "2.288206",
+        "check_ms": "66.542356"
+      },
+      {
+        "iteration": "3",
+        "bytes": "139983",
+        "parse_ms": "3.031044",
+        "load_ms": "2.391000",
+        "check_ms": "64.607454"
+      },
+      {
+        "iteration": "4",
+        "bytes": "139983",
+        "parse_ms": "2.469598",
+        "load_ms": "1.880030",
+        "check_ms": "63.745115"
+      },
+      {
+        "iteration": "5",
+        "bytes": "139983",
+        "parse_ms": "2.836060",
+        "load_ms": "1.789384",
+        "check_ms": "67.344534"
+      }
+    ]
+  },
+  {
+    "file": "field-2048.ms",
+    "trial": 1,
+    "wall_s": 0.15471771400007128,
+    "init": "stdlib_init_ms=15.667068\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "156453",
+        "parse_ms": "6.996064",
+        "load_ms": "3.094209",
+        "check_ms": "15.713569"
+      },
+      {
+        "iteration": "1",
+        "bytes": "156453",
+        "parse_ms": "3.681223",
+        "load_ms": "1.960262",
+        "check_ms": "12.360410"
+      },
+      {
+        "iteration": "2",
+        "bytes": "156453",
+        "parse_ms": "3.607923",
+        "load_ms": "1.838578",
+        "check_ms": "11.478542"
+      },
+      {
+        "iteration": "3",
+        "bytes": "156453",
+        "parse_ms": "3.643736",
+        "load_ms": "2.098519",
+        "check_ms": "12.128100"
+      },
+      {
+        "iteration": "4",
+        "bytes": "156453",
+        "parse_ms": "3.755895",
+        "load_ms": "2.159161",
+        "check_ms": "12.194320"
+      },
+      {
+        "iteration": "5",
+        "bytes": "156453",
+        "parse_ms": "3.343474",
+        "load_ms": "1.134668",
+        "check_ms": "11.398542"
+      }
+    ]
+  },
+  {
+    "file": "field-512.ms",
+    "trial": 2,
+    "wall_s": 0.04960815999947954,
+    "init": "stdlib_init_ms=16.081883\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "38109",
+        "parse_ms": "1.155901",
+        "load_ms": "0.698381",
+        "check_ms": "5.784239"
+      },
+      {
+        "iteration": "1",
+        "bytes": "38109",
+        "parse_ms": "0.712563",
+        "load_ms": "0.271779",
+        "check_ms": "2.739395"
+      },
+      {
+        "iteration": "2",
+        "bytes": "38109",
+        "parse_ms": "0.588566",
+        "load_ms": "0.276626",
+        "check_ms": "2.504040"
+      },
+      {
+        "iteration": "3",
+        "bytes": "38109",
+        "parse_ms": "0.568737",
+        "load_ms": "0.200461",
+        "check_ms": "2.394465"
+      },
+      {
+        "iteration": "4",
+        "bytes": "38109",
+        "parse_ms": "0.551881",
+        "load_ms": "0.213041",
+        "check_ms": "2.434044"
+      },
+      {
+        "iteration": "5",
+        "bytes": "38109",
+        "parse_ms": "0.530899",
+        "load_ms": "0.196055",
+        "check_ms": "2.367846"
+      }
+    ]
+  },
+  {
+    "file": "nocall-512.ms",
+    "trial": 1,
+    "wall_s": 0.10328559800018411,
+    "init": "stdlib_init_ms=15.143239\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69231",
+        "parse_ms": "2.142276",
+        "load_ms": "1.419367",
+        "check_ms": "13.877925"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69231",
+        "parse_ms": "1.472116",
+        "load_ms": "0.804862",
+        "check_ms": "10.248761"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69231",
+        "parse_ms": "1.106036",
+        "load_ms": "0.780625",
+        "check_ms": "10.282912"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69231",
+        "parse_ms": "1.142250",
+        "load_ms": "0.799574",
+        "check_ms": "9.806094"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69231",
+        "parse_ms": "0.994427",
+        "load_ms": "0.587675",
+        "check_ms": "8.945459"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69231",
+        "parse_ms": "1.079004",
+        "load_ms": "0.573143",
+        "check_ms": "9.351670"
+      }
+    ]
+  },
+  {
+    "file": "field-2048.ms",
+    "trial": 0,
+    "wall_s": 0.1554737019996537,
+    "init": "stdlib_init_ms=15.495069\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "156453",
+        "parse_ms": "5.315032",
+        "load_ms": "3.564528",
+        "check_ms": "16.382014"
+      },
+      {
+        "iteration": "1",
+        "bytes": "156453",
+        "parse_ms": "4.716401",
+        "load_ms": "2.379372",
+        "check_ms": "12.123143"
+      },
+      {
+        "iteration": "2",
+        "bytes": "156453",
+        "parse_ms": "3.023743",
+        "load_ms": "1.526959",
+        "check_ms": "10.989977"
+      },
+      {
+        "iteration": "3",
+        "bytes": "156453",
+        "parse_ms": "3.491837",
+        "load_ms": "2.212410",
+        "check_ms": "12.302153"
+      },
+      {
+        "iteration": "4",
+        "bytes": "156453",
+        "parse_ms": "3.441182",
+        "load_ms": "2.146812",
+        "check_ms": "11.745915"
+      },
+      {
+        "iteration": "5",
+        "bytes": "156453",
+        "parse_ms": "3.934293",
+        "load_ms": "2.082395",
+        "check_ms": "11.817373"
+      }
+    ]
+  },
+  {
+    "file": "unique-512.ms",
+    "trial": 0,
+    "wall_s": 0.122790915999758,
+    "init": "stdlib_init_ms=15.024491\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "72595",
+        "parse_ms": "1.968363",
+        "load_ms": "1.502002",
+        "check_ms": "16.415425"
+      },
+      {
+        "iteration": "1",
+        "bytes": "72595",
+        "parse_ms": "1.533850",
+        "load_ms": "0.839884",
+        "check_ms": "13.040563"
+      },
+      {
+        "iteration": "2",
+        "bytes": "72595",
+        "parse_ms": "1.275931",
+        "load_ms": "0.790681",
+        "check_ms": "12.794914"
+      },
+      {
+        "iteration": "3",
+        "bytes": "72595",
+        "parse_ms": "1.074748",
+        "load_ms": "0.744441",
+        "check_ms": "13.061285"
+      },
+      {
+        "iteration": "4",
+        "bytes": "72595",
+        "parse_ms": "1.131394",
+        "load_ms": "0.649678",
+        "check_ms": "12.821144"
+      },
+      {
+        "iteration": "5",
+        "bytes": "72595",
+        "parse_ms": "1.159666",
+        "load_ms": "0.652212",
+        "check_ms": "12.813142"
+      }
+    ]
+  },
+  {
+    "file": "nocall-512.ms",
+    "trial": 3,
+    "wall_s": 0.11758731000008993,
+    "init": "stdlib_init_ms=15.278063\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "69231",
+        "parse_ms": "2.077147",
+        "load_ms": "1.523604",
+        "check_ms": "14.988607"
+      },
+      {
+        "iteration": "1",
+        "bytes": "69231",
+        "parse_ms": "1.226657",
+        "load_ms": "0.742779",
+        "check_ms": "9.499232"
+      },
+      {
+        "iteration": "2",
+        "bytes": "69231",
+        "parse_ms": "1.227999",
+        "load_ms": "0.693535",
+        "check_ms": "9.389326"
+      },
+      {
+        "iteration": "3",
+        "bytes": "69231",
+        "parse_ms": "1.120768",
+        "load_ms": "0.701696",
+        "check_ms": "9.753444"
+      },
+      {
+        "iteration": "4",
+        "bytes": "69231",
+        "parse_ms": "1.177663",
+        "load_ms": "1.240588",
+        "check_ms": "16.193882"
+      },
+      {
+        "iteration": "5",
+        "bytes": "69231",
+        "parse_ms": "1.582122",
+        "load_ms": "0.701446",
+        "check_ms": "11.720656"
+      }
+    ]
+  },
+  {
+    "file": "field-1024.ms",
+    "trial": 0,
+    "wall_s": 0.07795584999985294,
+    "init": "stdlib_init_ms=15.852367\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "76581",
+        "parse_ms": "2.520204",
+        "load_ms": "1.485957",
+        "check_ms": "8.270572"
+      },
+      {
+        "iteration": "1",
+        "bytes": "76581",
+        "parse_ms": "1.421009",
+        "load_ms": "0.832774",
+        "check_ms": "5.172858"
+      },
+      {
+        "iteration": "2",
+        "bytes": "76581",
+        "parse_ms": "1.265275",
+        "load_ms": "0.570879",
+        "check_ms": "5.343806"
+      },
+      {
+        "iteration": "3",
+        "bytes": "76581",
+        "parse_ms": "1.452777",
+        "load_ms": "0.796439",
+        "check_ms": "5.127980"
+      },
+      {
+        "iteration": "4",
+        "bytes": "76581",
+        "parse_ms": "1.148529",
+        "load_ms": "0.546953",
+        "check_ms": "5.176774"
+      },
+      {
+        "iteration": "5",
+        "bytes": "76581",
+        "parse_ms": "1.579228",
+        "load_ms": "0.848677",
+        "check_ms": "5.629255"
+      }
+    ]
+  },
+  {
+    "file": "unique-2048.ms",
+    "trial": 2,
+    "wall_s": 1.2032557269994868,
+    "init": "stdlib_init_ms=15.489712\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "298531",
+        "parse_ms": "9.531761",
+        "load_ms": "8.286867",
+        "check_ms": "147.806168"
+      },
+      {
+        "iteration": "1",
+        "bytes": "298531",
+        "parse_ms": "7.501474",
+        "load_ms": "5.844140",
+        "check_ms": "161.417110"
+      },
+      {
+        "iteration": "2",
+        "bytes": "298531",
+        "parse_ms": "7.493382",
+        "load_ms": "7.803069",
+        "check_ms": "178.722145"
+      },
+      {
+        "iteration": "3",
+        "bytes": "298531",
+        "parse_ms": "6.859007",
+        "load_ms": "5.848164",
+        "check_ms": "156.322690"
+      },
+      {
+        "iteration": "4",
+        "bytes": "298531",
+        "parse_ms": "6.203190",
+        "load_ms": "6.053304",
+        "check_ms": "159.055135"
+      },
+      {
+        "iteration": "5",
+        "bytes": "298531",
+        "parse_ms": "5.811519",
+        "load_ms": "4.407126",
+        "check_ms": "224.669589"
+      }
+    ]
+  },
+  {
+    "file": "nocall-2048.ms",
+    "trial": 2,
+    "wall_s": 0.7255426929996247,
+    "init": "stdlib_init_ms=16.884181\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "282319",
+        "parse_ms": "11.947589",
+        "load_ms": "8.335941",
+        "check_ms": "91.889049"
+      },
+      {
+        "iteration": "1",
+        "bytes": "282319",
+        "parse_ms": "7.243646",
+        "load_ms": "6.521869",
+        "check_ms": "94.127800"
+      },
+      {
+        "iteration": "2",
+        "bytes": "282319",
+        "parse_ms": "5.717419",
+        "load_ms": "4.705144",
+        "check_ms": "94.946603"
+      },
+      {
+        "iteration": "3",
+        "bytes": "282319",
+        "parse_ms": "6.854891",
+        "load_ms": "4.400786",
+        "check_ms": "94.712419"
+      },
+      {
+        "iteration": "4",
+        "bytes": "282319",
+        "parse_ms": "5.571689",
+        "load_ms": "5.357427",
+        "check_ms": "89.490107"
+      },
+      {
+        "iteration": "5",
+        "bytes": "282319",
+        "parse_ms": "5.211677",
+        "load_ms": "4.783663",
+        "check_ms": "93.727847"
+      }
+    ]
+  },
+  {
+    "file": "same-2048.ms",
+    "trial": 2,
+    "wall_s": 1.9547339030004878,
+    "init": "stdlib_init_ms=20.619656\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "284367",
+        "parse_ms": "11.227764",
+        "load_ms": "9.460694",
+        "check_ms": "267.581371"
+      },
+      {
+        "iteration": "1",
+        "bytes": "284367",
+        "parse_ms": "8.260017",
+        "load_ms": "7.710528",
+        "check_ms": "335.674937"
+      },
+      {
+        "iteration": "2",
+        "bytes": "284367",
+        "parse_ms": "10.135290",
+        "load_ms": "10.076221",
+        "check_ms": "299.402754"
+      },
+      {
+        "iteration": "3",
+        "bytes": "284367",
+        "parse_ms": "7.207002",
+        "load_ms": "7.203325",
+        "check_ms": "285.847566"
+      },
+      {
+        "iteration": "4",
+        "bytes": "284367",
+        "parse_ms": "6.130331",
+        "load_ms": "5.466741",
+        "check_ms": "280.562077"
+      },
+      {
+        "iteration": "5",
+        "bytes": "284367",
+        "parse_ms": "6.080515",
+        "load_ms": "5.132368",
+        "check_ms": "287.365691"
+      }
+    ]
+  },
+  {
+    "file": "same-2048.ms",
+    "trial": 0,
+    "wall_s": 1.7763934920003521,
+    "init": "stdlib_init_ms=15.322790\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "284367",
+        "parse_ms": "9.685563",
+        "load_ms": "8.041287",
+        "check_ms": "243.126943"
+      },
+      {
+        "iteration": "1",
+        "bytes": "284367",
+        "parse_ms": "7.713393",
+        "load_ms": "7.945593",
+        "check_ms": "285.664715"
+      },
+      {
+        "iteration": "2",
+        "bytes": "284367",
+        "parse_ms": "7.686142",
+        "load_ms": "6.402050",
+        "check_ms": "275.752696"
+      },
+      {
+        "iteration": "3",
+        "bytes": "284367",
+        "parse_ms": "5.754203",
+        "load_ms": "5.504237",
+        "check_ms": "265.286967"
+      },
+      {
+        "iteration": "4",
+        "bytes": "284367",
+        "parse_ms": "5.801244",
+        "load_ms": "5.067630",
+        "check_ms": "261.752596"
+      },
+      {
+        "iteration": "5",
+        "bytes": "284367",
+        "parse_ms": "5.727244",
+        "load_ms": "4.728038",
+        "check_ms": "272.622644"
+      }
+    ]
+  },
+  {
+    "file": "nocall-2048.ms",
+    "trial": 4,
+    "wall_s": 0.7113609119996909,
+    "init": "stdlib_init_ms=15.702392\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "282319",
+        "parse_ms": "9.765494",
+        "load_ms": "7.084196",
+        "check_ms": "88.343273"
+      },
+      {
+        "iteration": "1",
+        "bytes": "282319",
+        "parse_ms": "6.588240",
+        "load_ms": "5.190485",
+        "check_ms": "103.290249"
+      },
+      {
+        "iteration": "2",
+        "bytes": "282319",
+        "parse_ms": "7.984461",
+        "load_ms": "7.159780",
+        "check_ms": "92.336732"
+      },
+      {
+        "iteration": "3",
+        "bytes": "282319",
+        "parse_ms": "6.117871",
+        "load_ms": "4.661878",
+        "check_ms": "86.481951"
+      },
+      {
+        "iteration": "4",
+        "bytes": "282319",
+        "parse_ms": "5.478740",
+        "load_ms": "4.097580",
+        "check_ms": "90.460181"
+      },
+      {
+        "iteration": "5",
+        "bytes": "282319",
+        "parse_ms": "6.286816",
+        "load_ms": "5.436395",
+        "check_ms": "85.823630"
+      }
+    ]
+  },
+  {
+    "file": "unique-2048.ms",
+    "trial": 3,
+    "wall_s": 1.5226157090000925,
+    "init": "stdlib_init_ms=15.746648\n",
+    "rows": [
+      {
+        "iteration": "0",
+        "bytes": "298531",
+        "parse_ms": "11.522890",
+        "load_ms": "8.834722",
+        "check_ms": "149.089366"
+      },
+      {
+        "iteration": "1",
+        "bytes": "298531",
+        "parse_ms": "8.752859",
+        "load_ms": "7.309906",
+        "check_ms": "211.573089"
+      },
+      {
+        "iteration": "2",
+        "bytes": "298531",
+        "parse_ms": "8.421169",
+        "load_ms": "8.717034",
+        "check_ms": "236.413656"
+      },
+      {
+        "iteration": "3",
+        "bytes": "298531",
+        "parse_ms": "8.468461",
+        "load_ms": "8.624405",
+        "check_ms": "216.789784"
+      },
+      {
+        "iteration": "4",
+        "bytes": "298531",
+        "parse_ms": "6.363031",
+        "load_ms": "6.719197",
+        "check_ms": "275.677563"
+      },
+      {
+        "iteration": "5",
+        "bytes": "298531",
+        "parse_ms": "9.276617",
+        "load_ms": "8.838748",
+        "check_ms": "214.848655"
+      }
+    ]
+  }
+]

@@ -46,6 +46,24 @@ pub fn rename(
     if selected.key.contains(":@std/") {
         return Err("standard-library declarations are read-only".to_string());
     }
+    // Preparing only needs proof of an editable declaration in the checked
+    // graph. Discovering references and validating edits belongs to rename.
+    if name.is_empty() {
+        if !index
+            .iter()
+            .any(|entry| entry.key == selected.key && entry.declaration)
+        {
+            return Err("declaration is external or has no editable source".to_string());
+        }
+        let range = Range {
+            start: text::position(&d.text, selected.offset),
+            end: text::position(&d.text, selected.end),
+        };
+        return Ok(obj([
+            ("range", range.json()),
+            ("placeholder", selected.name.clone().into()),
+        ]));
+    }
     let mut docs: Documents = match open {
         Some(open) => open.clone(),
         None => Documents::new(),
@@ -104,16 +122,6 @@ pub fn rename(
     }
     if !has_declaration {
         return Err("declaration is external or has no editable source".to_string());
-    }
-    if name.is_empty() {
-        let range = Range {
-            start: text::position(&d.text, selected.offset),
-            end: text::position(&d.text, selected.end),
-        };
-        return Ok(obj([
-            ("range", range.json()),
-            ("placeholder", selected.name.clone().into()),
-        ]));
     }
     if !is_identifier(name) {
         return Err("new name must be a Manuscript identifier".to_string());

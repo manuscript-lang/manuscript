@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "i1 = 2502269\ni2 = -298159530877\ni3 = 297712160371\nf4 = 4478670000\n297712160371 -648250858101 false sum -350538697730\nbeta\n",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at seed-0016.ms:33 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at seed-0016.ms:33 in main\n"
   }
 }

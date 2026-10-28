@@ -75,17 +75,40 @@ pub struct Inspection {
     pub statements: Vec<Span>,
 }
 
-fn source_span(module: &ModuleData, pos: Pos) -> Span {
-    let bytes = module.source.as_bytes();
-    let start = pos.offset as usize;
-    let mut end = start;
-    while end < bytes.len() && bytes[end] != b'\n' && bytes[end] != b'\r' {
-        end += 1;
+/// Delimiter offsets are indexed once per module, shared by every span.
+struct LineEnds {
+    offsets: Vec<usize>,
+    len: usize,
+}
+
+impl LineEnds {
+    fn new(source: &str) -> Self {
+        Self {
+            offsets: source
+                .bytes()
+                .enumerate()
+                .filter_map(|(i, b)| matches!(b, b'\n' | b'\r').then_some(i))
+                .collect(),
+            len: source.len(),
+        }
     }
+
+    fn end(&self, start: usize) -> usize {
+        let index = self.offsets.partition_point(|&offset| offset < start);
+        self.offsets
+            .get(index)
+            .copied()
+            .unwrap_or(self.len)
+            .max(start)
+    }
+}
+
+fn source_span(module: &ModuleData, pos: Pos, ends: &LineEnds) -> Span {
+    let start = pos.offset as usize;
     Span {
         file: module.file.as_str().to_string(),
         start,
-        end,
+        end: ends.end(start),
         line: pos.line as usize,
         column: pos.column as usize,
     }
@@ -116,15 +139,19 @@ fn decl_name(decl: &DeclRef) -> String {
 /// modules included.
 pub fn inspect(program: &Program) -> Inspection {
     let mut result = Inspection::default();
-    let modules: Vec<&ModuleData> = program.modules.iter().map(|m| &**m).collect();
+    let modules: Vec<_> = program
+        .modules
+        .iter()
+        .map(|m| (&**m, LineEnds::new(&m.source)))
+        .collect();
 
-    for module in &modules {
-        locals(module, &mut result);
+    for (module, ends) in &modules {
+        locals(module, ends, &mut result);
     }
     result.locals.sort_by(|a, b| a.go_id.cmp(&b.go_id));
 
     let mut symbol_ids: HashMap<usize, String> = HashMap::new();
-    for module in &modules {
+    for (module, _) in &modules {
         for decl in &module.decls {
             if matches!(decl.decl().kind, DeclKind::Test(_) | DeclKind::Impl(_)) {
                 continue;
@@ -158,7 +185,7 @@ pub fn inspect(program: &Program) -> Inspection {
         );
     }
 
-    for module in &modules {
+    for (module, ends) in &modules {
         result.sources.push(Source {
             file: module.file.as_str().to_string(),
             sha256: sha256::hex(module.source.as_bytes()),
@@ -176,7 +203,7 @@ pub fn inspect(program: &Program) -> Inspection {
                 kind: kind.to_string(),
                 name: name.clone(),
                 ty: String::new(),
-                span: source_span(module, decl.pos()),
+                span: source_span(module, decl.pos(), ends),
                 exported: decl.decl().export,
                 effects: Vec::new(),
             };
@@ -198,6 +225,7 @@ pub fn inspect(program: &Program) -> Inspection {
             result.entities.push(entity.clone());
             let mut sites = Sites {
                 module,
+                ends,
                 owner: entity.id.clone(),
                 symbol_ids: &symbol_ids,
                 method_ids: &method_ids,
@@ -223,12 +251,13 @@ pub fn inspect(program: &Program) -> Inspection {
                     kind: "method".to_string(),
                     name: format!("{name}.{}", method.func.name.as_str()),
                     ty: checked.ty.to_string(),
-                    span: source_span(module, method.pos),
+                    span: source_span(module, method.pos, ends),
                     exported: false,
                     effects: effects_of(program, checked.id.as_str()),
                 });
                 let mut sites = Sites {
                     module,
+                    ends,
                     owner,
                     symbol_ids: &symbol_ids,
                     method_ids: &method_ids,
@@ -283,6 +312,7 @@ impl DeclSymbolName for DeclRef {
 
 struct Sites<'a> {
     module: &'a ModuleData,
+    ends: &'a LineEnds,
     owner: String,
     symbol_ids: &'a HashMap<usize, String>,
     method_ids: &'a HashMap<&'a str, String>,
@@ -298,7 +328,8 @@ impl Sites<'_> {
             DeclKind::Fn(f) => walk_callable(self, &f.params, &f.body),
             DeclKind::Test(t) => walk_callable(self, &[], &t.body),
             DeclKind::Const(c) => {
-                self.statements.push(source_span(self.module, c.init_pos));
+                self.statements
+                    .push(source_span(self.module, c.init_pos, self.ends));
                 ms_syntax::visit::walk_expr(self, &c.value);
             }
             _ => {}
@@ -323,7 +354,7 @@ impl Sites<'_> {
             owner: self.owner.clone(),
             target: "indirect".to_string(),
             kind: "function".to_string(),
-            span: source_span(self.module, e.pos),
+            span: source_span(self.module, e.pos, self.ends),
         };
         if self.module.facts().const_use.contains(&e.id) {
             site.kind = "constant".to_string();
@@ -373,7 +404,8 @@ impl Visitor for Sites<'_> {
     }
 
     fn stmt(&mut self, s: &Stmt) {
-        self.statements.push(source_span(self.module, s.pos));
+        self.statements
+            .push(source_span(self.module, s.pos, self.ends));
         if let StmtKind::With { .. } = s.kind {
             let cleanup = self
                 .module
@@ -393,7 +425,7 @@ impl Visitor for Sites<'_> {
                 owner: self.owner.clone(),
                 target,
                 kind: "cleanup".to_string(),
-                span: source_span(self.module, s.pos),
+                span: source_span(self.module, s.pos, self.ends),
             });
         }
     }
@@ -401,13 +433,13 @@ impl Visitor for Sites<'_> {
 
 // -------------------------------------------------------------------- locals
 
-fn locals(module: &ModuleData, out: &mut Inspection) {
+fn locals(module: &ModuleData, ends: &LineEnds, out: &mut Inspection) {
     let mut add = |binding: &BindingRef, pos: Pos| {
         out.locals.push(Local {
             go_id: binding.id.as_str().to_string(),
             name: binding.name.as_str().to_string(),
             ty: binding.ty.to_string(),
-            span: source_span(module, pos),
+            span: source_span(module, pos, ends),
         });
     };
     let facts = module.facts();
@@ -644,5 +676,31 @@ impl Inspection {
             out.push_str(&format!("    {owner} -->|{}| {target}\n", c.kind));
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod span_tests {
+    use super::LineEnds;
+
+    #[test]
+    fn indexed_ends_match_byte_scan_for_every_offset() {
+        for text in [
+            "",
+            "no newline",
+            "αβ\n🙂\r\nlast",
+            "\r\n\r\n",
+            "a\rb\nc\r\nd\n",
+            "é",
+        ] {
+            let ends = LineEnds::new(text);
+            for start in 0..=text.len() + 2 {
+                let mut expected = start;
+                while expected < text.len() && !matches!(text.as_bytes()[expected], b'\r' | b'\n') {
+                    expected += 1;
+                }
+                assert_eq!(ends.end(start), expected, "{text:?} offset {start}");
+            }
+        }
     }
 }
