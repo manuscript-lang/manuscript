@@ -30,11 +30,12 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## What Manuscript offers
 
-- **Automatic cleanup:** a resource closes when its scope ends, whether by `return`, `try`, fault or cancellation. Lint `MSL114` flags a close that would hide a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
-- **Closures without capture lists:** a local closure borrows what it uses; one that escapes owns it. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
-- **Exact numbers:** sized `Int8`-`Int64` and `UInt8`-`UInt64`, `Float32`, and `Decimal` literals like `12.50d`. Conversions are explicit. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
-- **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import. Sharing between owners is an explicit `Shared[T]`.
-- **A tested cheat sheet:** every mistake listed in `ms guide` is checked against the compiler.
+- **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. Habits from other languages get a pointed diagnostic, not a new feature. [Tour](documentation/learn/tour.md)
+- **Deterministic memory:** one owner per value, dropped at its last use, borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
+- **Static types, native code:** checked ahead of time and compiled to a native executable, with a fast debug loop and optimized release builds.
+- **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, written in Manuscript. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
+- **Cleanup you cannot forget:** resources close at scope end on every exit, including faults and cancellation. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Explicit where it matters:** `Optional` and `Result` instead of null and exceptions, sized and `Decimal` numbers, and `Shared[T]` for shared ownership. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
 
 ## Shaped by measured agent use
 
