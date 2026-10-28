@@ -7,7 +7,7 @@
 
 use crate::ast::*;
 use crate::diag::Diagnostic;
-use crate::lexer::lex;
+use crate::lexer::{lex, unterminated_prefixes};
 use crate::parser::{parse, parse_chunk};
 use crate::pos::Span;
 use std::collections::HashMap;
@@ -32,38 +32,34 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     let (mut attempted_start, mut continuation_end) = (usize::MAX, 0usize);
     let mut offset = 0usize;
     let lines: Vec<&str> = source.split_inclusive('\n').collect();
+    let mut boundaries: Option<(Vec<usize>, Vec<usize>)> = None;
+    let mut last_start_index = 0usize;
+    // A lexer pass records the continuation answer for the current root's
+    // later column-zero lines. It stops when that root would split, and the
+    // next declaration bounds the pass even when a delimiter stays open.
+    let mut prefix_index: Option<(usize, Vec<bool>)> = None;
     for (index, line) in lines.iter().enumerate() {
         if offset < continuation_end {
             offset += line.len();
             continue;
         }
-        let trimmed = line.trim();
-        let first = line.as_bytes().first().copied();
-        if first.is_some_and(|b| b != b' ' && b != b'\t')
-            && !trimmed.is_empty()
-            && !trimmed.starts_with('#')
-        {
-            let declaration = [
-                "import ",
-                "export ",
-                "def ",
-                "extern ",
-                "let ",
-                "let(",
-                "type ",
-                "interface ",
-                "impl ",
-                "test ",
-            ]
-            .iter()
-            .any(|k| trimmed.starts_with(k))
-                || is_from_import(trimmed);
+        if is_candidate_line(line) {
+            let declaration = is_declaration_line(line);
             // A fresh declaration synchronizes even after an unmatched opener.
             // Other column-zero lines can still belong to a continued header,
             // import, or expression. Let the lexer handle strings and comments
             // rather than counting delimiter characters in source text.
             if !declaration && let Some(&last) = starts.last() {
-                let unterminated = matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter"));
+                let unterminated = if let Some((cached_start, prefixes)) = &prefix_index
+                    && *cached_start == last
+                {
+                    prefixes
+                        .get(index - last_start_index)
+                        .copied()
+                        .unwrap_or(false)
+                } else {
+                    matches!(lex(file, &source[last..offset]), Err(d) if d.message.starts_with("unterminated delimiter"))
+                };
                 if unterminated {
                     let mut start = last;
                     if attempted_start != start {
@@ -97,11 +93,34 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                             }
                         }
                     }
+                    if continuation_end <= offset
+                        && prefix_index
+                            .as_ref()
+                            .is_none_or(|(cached_start, _)| *cached_start != last)
+                    {
+                        let (line_offsets, next_declaration) =
+                            boundaries.get_or_insert_with(|| line_boundaries(&lines));
+                        let end_index = next_declaration[index + 1];
+                        let stop_at: Vec<bool> = lines[last_start_index..end_index]
+                            .iter()
+                            .enumerate()
+                            .map(|(i, line)| {
+                                i > 0 && is_candidate_line(line) && !is_declaration_line(line)
+                            })
+                            .collect();
+                        let prefixes = unterminated_prefixes(
+                            file,
+                            &source[last..line_offsets[end_index]],
+                            &stop_at,
+                        );
+                        prefix_index = Some((last, prefixes));
+                    }
                     offset += line.len();
                     continue;
                 }
             }
             starts.push(offset);
+            last_start_index = index;
         }
         offset += line.len();
     }
@@ -174,6 +193,53 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
     (module, diagnostics)
 }
 
+fn line_boundaries(lines: &[&str]) -> (Vec<usize>, Vec<usize>) {
+    let mut offsets = Vec::with_capacity(lines.len() + 1);
+    offsets.push(0);
+    for line in lines {
+        offsets.push(offsets.last().unwrap() + line.len());
+    }
+    let mut next_declaration = vec![lines.len(); lines.len() + 1];
+    for index in (0..lines.len()).rev() {
+        next_declaration[index] = if is_declaration_line(lines[index]) {
+            index
+        } else {
+            next_declaration[index + 1]
+        };
+    }
+    (offsets, next_declaration)
+}
+
+fn is_candidate_line(line: &str) -> bool {
+    let first = line.as_bytes().first().copied();
+    let trimmed = line.trim();
+    first.is_some_and(|b| b != b' ' && b != b'\t')
+        && !trimmed.is_empty()
+        && !trimmed.starts_with('#')
+}
+
+fn is_declaration_line(line: &str) -> bool {
+    if !is_candidate_line(line) {
+        return false;
+    }
+    let trimmed = line.trim();
+    [
+        "import ",
+        "export ",
+        "def ",
+        "extern ",
+        "let ",
+        "let(",
+        "type ",
+        "interface ",
+        "impl ",
+        "test ",
+    ]
+    .iter()
+    .any(|k| trimmed.starts_with(k))
+        || is_from_import(trimmed)
+}
+
 /// Only a bound for optimistic parsing, never a recovery boundary. Includes
 /// constants and token boundaries such as `import{` and `let(`; malformed input
 /// still synchronizes using the original rules.
@@ -230,6 +296,49 @@ fn single_partial_root(module: &Module) -> bool {
         root = Some(pos.offset);
     }
     root.is_some()
+}
+
+#[cfg(test)]
+mod continuation_tests {
+    use super::*;
+
+    #[test]
+    fn indexed_prefixes_match_lexing_each_candidate_prefix() {
+        let file: Arc<str> = Arc::from("recovery.ms");
+        let bodies = [
+            "1,\n2,\n3,\n",
+            "(1),\n[2],\n{3},\n",
+            "\"a ] # b\",\n# ignored )\n2,\n",
+            "(\nfrom: Int,\n)\nnext(\n",
+            "    1,\n2,\n    [3],\n",
+            "1,\n]\n[\n2,\n",
+            "1,\n@\n2,\n",
+            "f\"{value}\",\n2,\n",
+        ];
+        for ending in ["\n", "\r\n"] {
+            for body in bodies {
+                let source = ("let data = [\n".to_string() + body).replace('\n', ending);
+                let lines: Vec<&str> = source.split_inclusive('\n').collect();
+                let stop_at: Vec<bool> = lines
+                    .iter()
+                    .enumerate()
+                    .map(|(index, line)| index > 0 && is_candidate_line(line))
+                    .collect();
+                let indexed = unterminated_prefixes(&file, &source, &stop_at);
+                let mut offset = 0;
+                for (index, line) in lines.iter().enumerate() {
+                    if stop_at[index] {
+                        let expected = matches!(lex(&file, &source[..offset]), Err(d) if d.message.starts_with("unterminated delimiter"));
+                        assert_eq!(indexed[index], expected, "{source:?} at {offset}");
+                        if !expected {
+                            break;
+                        }
+                    }
+                    offset += line.len();
+                }
+            }
+        }
+    }
 }
 
 /// Retries a failed declaration chunk with each offending statement (and the

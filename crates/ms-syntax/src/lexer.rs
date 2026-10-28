@@ -105,7 +105,7 @@ pub(crate) fn lex_at<'a>(
     let (tokens, mut boundaries) = {
         let mut s = Scanner::new(file, &normalized, base_offset, base_line, offsets);
         s.tokens.reserve(source.len() / 4 + 16);
-        s.run()?;
+        s.run(None)?;
         (s.tokens, s.boundaries)
     };
     boundaries.strings.sort_unstable_by_key(|&(start, _)| start);
@@ -133,10 +133,25 @@ pub(crate) fn lex_interpolation(
     s.virtual_paren = true;
     s.delimiters.push(b'(');
     s.opened.push(Pos::new(0, 1, 1));
-    s.run()?;
+    s.run(None)?;
     let closing = s.tokens.len() - 3;
     s.tokens.remove(closing);
     Ok(s.tokens)
+}
+
+/// For each physical line start (including the empty line after a final newline),
+/// reports whether lexing the prefix ending there has an unterminated delimiter.
+/// A different lexical error on a line makes all later prefixes false.
+pub(crate) fn unterminated_prefixes(file: &Arc<str>, source: &str, stop_at: &[bool]) -> Vec<bool> {
+    if source.starts_with('\u{feff}') {
+        return vec![false; source.bytes().filter(|b| *b == b'\n').count() + 1];
+    }
+    let (normalized, offsets) = normalize_source(source);
+    let mut scanner = Scanner::new(file, &normalized, 0, 0, offsets);
+    let mut prefixes = Vec::with_capacity(source.bytes().filter(|b| *b == b'\n').count() + 1);
+    let _ = scanner.run(Some((&mut prefixes, stop_at)));
+    prefixes.resize(source.bytes().filter(|b| *b == b'\n').count() + 1, false);
+    prefixes
 }
 
 impl<'a> Scanner<'a> {
@@ -291,13 +306,20 @@ impl Scanner<'_> {
         self.src.get(i).copied()
     }
 
-    fn run(&mut self) -> PResult<()> {
+    fn run(&mut self, mut prefixes: Option<(&mut Vec<bool>, &[bool])>) -> PResult<()> {
         let n = self.src.len();
         let (mut pending, mut header_indent, mut pending_depth) = (false, 0usize, 0usize);
         // A line that starts with '.' or '|' continues the previous statement,
         // which began at statement_indent; it opens no block and ends no statement.
         let (mut continuing, mut statement_indent) = (false, 0usize);
         while self.offset < n {
+            if let Some((prefixes, stop_at)) = prefixes.as_mut() {
+                let open = !self.delimiters.is_empty();
+                prefixes.push(open);
+                if stop_at.get(prefixes.len() - 1) == Some(&true) && !open {
+                    return Ok(());
+                }
+            }
             let mut leading = 0usize;
             while self.offset < n && self.src[self.offset] == b' ' {
                 self.advance();
@@ -626,6 +648,9 @@ impl Scanner<'_> {
         if pending {
             self.emit_layout(Tok::Indent);
             self.emit_layout(Tok::Dedent);
+        }
+        if let Some((prefixes, _)) = prefixes {
+            prefixes.push(!self.delimiters.is_empty());
         }
         if let Some(&open) = self.delimiters.last() {
             let where_ = *self.opened.last().unwrap();
