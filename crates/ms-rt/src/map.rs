@@ -288,8 +288,17 @@ unsafe fn compact(m: &mut MapVal, l: &Layout) {
             }
         }
         m.used = out;
-        let size = m.mask + 1;
-        rebuild_index(m, l, size);
+        // After a large drop (capacity at least four times what the live entries need) slots and
+        // index shrink together, so the cost of the next compaction follows the working size
+        // rather than the historical peak. The factor keeps a map that churns near its size from
+        // shrinking and regrowing; only this path changes capacity, and the insert checks are
+        // untouched.
+        let cap = (m.len * 2).next_power_of_two().max(8);
+        if cap <= m.cap / 4 {
+            m.slots = alloc::realloc(m.slots, cap * l.stride);
+            m.cap = cap;
+        }
+        rebuild_index(m, l, m.cap * 2);
     }
 }
 
@@ -1491,6 +1500,49 @@ mod tests {
         eq: Some(counted_eq),
         hash: Some(counted_hash),
     };
+
+    #[test]
+    fn compaction_after_a_large_drop_shrinks_to_the_live_size() {
+        let _g = testutil::lock();
+        // SAFETY: all set slots hold live i64 values of the static descriptor.
+        unsafe {
+            let kd = &COUNTED_KEY;
+            let mut m = empty();
+            let put = |m: &mut MapVal, i: i64| {
+                let mut k = i;
+                insert(
+                    m,
+                    kd,
+                    None,
+                    (&mut k as *mut i64).cast(),
+                    core::ptr::null_mut(),
+                );
+            };
+            let has = |m: &MapVal, i: i64| contains_key(m, kd, None, (&i as *const i64).cast());
+            for i in 0..4096 {
+                put(&mut m, i);
+            }
+            assert_eq!(m.cap, 4096);
+            for i in 0..4096i64 - 62 {
+                let k = i;
+                assert!(remove(&mut m, kd, None, (&k as *const i64).cast()));
+            }
+            assert_eq!(m.len, 62);
+            assert!(m.cap <= 256, "capacity {} kept the peak", m.cap);
+            assert_eq!(m.mask + 1, m.cap * 2);
+            for i in 4096 - 62..4096 {
+                assert!(has(&m, i));
+            }
+            assert!(!has(&m, 0));
+            // Growing again after the shrink keeps every entry reachable.
+            for i in 4096..8192 {
+                put(&mut m, i);
+            }
+            assert_eq!(m.len, 62 + 4096);
+            assert!((4096 - 62..8192).all(|i| has(&m, i)));
+            drop_map(&mut m, kd, None);
+        }
+    }
 
     #[test]
     fn set_relations_stop_at_first_decisive_key() {
