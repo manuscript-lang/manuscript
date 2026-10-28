@@ -294,17 +294,37 @@ fn token(source: &str, kind: EditorKind, start: usize, end: usize) -> EditorToke
     }
 }
 
-/// The range of the token containing `offset`, or an empty range at it.
-pub fn diagnostic_range(source: &str, offset: usize) -> Range {
-    let start = position(source, offset);
-    let mut end = start;
-    if let Some(t) = editor_tokens(source)
-        .into_iter()
-        .find(|t| offset >= t.start && offset < t.end)
-    {
-        end = position(source, t.end);
+/// Token and line indexes built on first use and shared by every diagnostic
+/// of one document.
+pub struct DiagnosticRanges<'a> {
+    source: &'a str,
+    index: std::cell::OnceCell<(SourcePositions<'a>, Vec<EditorToken<'a>>)>,
+}
+
+impl<'a> DiagnosticRanges<'a> {
+    pub fn new(source: &'a str) -> DiagnosticRanges<'a> {
+        DiagnosticRanges {
+            source,
+            index: std::cell::OnceCell::new(),
+        }
     }
-    Range { start, end }
+
+    /// The range of the token containing `offset`, or an empty range at it.
+    pub fn range(&self, offset: usize) -> Range {
+        let (positions, tokens) = self.index.get_or_init(|| {
+            (
+                SourcePositions::new(self.source),
+                editor_tokens(self.source),
+            )
+        });
+        let start = positions.position(offset);
+        let at = tokens.partition_point(|t| t.end <= offset);
+        let end = tokens
+            .get(at)
+            .filter(|t| t.start <= offset)
+            .map_or(start, |t| positions.position(t.end));
+        Range { start, end }
+    }
 }
 
 /// The byte range of 0-based `line`, including its newline.

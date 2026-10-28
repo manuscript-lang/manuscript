@@ -8,7 +8,33 @@ const TAB_WIDTH: usize = 4;
 /// Reads each source file once for the snippets of one report.
 #[derive(Default)]
 pub struct Sources {
-    files: HashMap<String, Option<String>>,
+    files: HashMap<String, Option<Source>>,
+}
+
+/// A cached file with the byte offset where each line starts, so a line is
+/// found without rescanning the lines before it.
+struct Source {
+    text: String,
+    starts: Vec<usize>,
+}
+
+impl Source {
+    fn new(text: String) -> Source {
+        let starts = std::iter::once(0)
+            .chain(text.match_indices('\n').map(|(i, _)| i + 1))
+            .collect();
+        Source { text, starts }
+    }
+
+    /// The 1-based `line` without its `\n`, or `None` past the last line.
+    fn line(&self, line: usize) -> Option<&str> {
+        let start = *self.starts.get(line.checked_sub(1)?)?;
+        let stop = self
+            .starts
+            .get(line)
+            .map_or(self.text.len(), |next| next - 1);
+        Some(&self.text[start..stop])
+    }
 }
 
 impl Sources {
@@ -25,19 +51,26 @@ impl Sources {
         let text = self
             .files
             .entry(file.to_string())
-            .or_insert_with(|| std::fs::read_to_string(file).ok());
+            .or_insert_with(|| std::fs::read_to_string(file).ok().map(Source::new));
         match text {
-            Some(text) => render(text, line, column, end),
+            Some(source) => render_line(source.line(line), line, column, end),
             None => String::new(),
         }
     }
 }
 
+#[cfg(test)]
 fn render(text: &str, line: usize, column: usize, end: Option<(usize, usize)>) -> String {
-    if line == 0 {
-        return String::new();
-    }
-    let Some(raw) = text.split('\n').nth(line - 1) else {
+    render_line(Source::new(text.to_string()).line(line), line, column, end)
+}
+
+fn render_line(
+    raw: Option<&str>,
+    line: usize,
+    column: usize,
+    end: Option<(usize, usize)>,
+) -> String {
+    let Some(raw) = raw else {
         return String::new();
     };
     let source = raw.strip_suffix('\r').unwrap_or(raw);
