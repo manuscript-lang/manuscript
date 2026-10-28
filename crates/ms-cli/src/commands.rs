@@ -96,7 +96,10 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
     let mut status = 0;
     let mut entries = Vec::new();
     for code in codes.iter().copied() {
-        let Some(info) = ms_syntax::diag::explain(code) else {
+        let found = ms_syntax::diag::explain(code)
+            .map(|c| (c.code, c.family, c.repair))
+            .or_else(|| ms_tooling::lint::explain(code).map(|r| (r.code, r.family, r.repair)));
+        let Some((code, family, repair)) = found else {
             let _ = writeln!(io.stderr, "ms guide: unknown diagnostic code {code}");
             status = 1;
             continue;
@@ -104,16 +107,12 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
         if json {
             entries.push(
                 crate::json::Json::object()
-                    .with("code", crate::json::Json::str(info.code))
-                    .with("family", crate::json::Json::str(info.family))
-                    .with("repair", crate::json::Json::str(info.repair)),
+                    .with("code", crate::json::Json::str(code))
+                    .with("family", crate::json::Json::str(family))
+                    .with("repair", crate::json::Json::str(repair)),
             );
         } else {
-            let _ = writeln!(
-                io.stdout,
-                "{}: {}\n  repair: {}",
-                info.code, info.family, info.repair
-            );
+            let _ = writeln!(io.stdout, "{code}: {family}\n  repair: {repair}");
         }
     }
     if json {
