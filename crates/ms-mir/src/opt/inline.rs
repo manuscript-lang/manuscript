@@ -628,6 +628,7 @@ fn known_closures(m: &Module, fi: usize) -> HashMap<Value, (FuncId, Vec<Value>)>
     for inst in f.blocks.iter().flat_map(|b| b.insts.iter()) {
         if let (Op::ClosureNew, Imm::Func(g), Some(r)) = (inst.op, inst.imm, inst.res)
             && inst.args.iter().all(|a| !m.needs_drop(f.ty(*a)))
+            && m.funcs[g.index()].capture_closers.is_empty()
         {
             known.insert(r, (g, inst.args.clone()));
         }
@@ -1025,6 +1026,7 @@ fn remove_dead(m: &mut Module) -> bool {
                 stack.push(g.index());
             }
         }
+        stack.extend(m.funcs[i].capture_closers.iter().map(|(_, g)| g.index()));
     }
     if live.iter().all(|l| *l) {
         return false;
@@ -1053,6 +1055,13 @@ fn remove_dead(m: &mut Module) -> bool {
         if let Imm::Func(g) = inst.imm {
             inst.imm = Imm::Func(FuncId(map[g.index()]));
         }
+    }
+    for (_, g) in m
+        .funcs
+        .iter_mut()
+        .flat_map(|f| f.capture_closers.iter_mut())
+    {
+        *g = FuncId(map[g.index()]);
     }
     for g in m.vtables.iter_mut().flat_map(|v| v.methods.iter_mut()) {
         *g = FuncId(map[g.index()]);

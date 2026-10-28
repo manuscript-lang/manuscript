@@ -62,6 +62,7 @@ pub fn check_graph_at(graph: Graph, request: CheckRequest, scope_marker: Option<
     checked
         .diagnostics
         .extend(program.diagnostics.iter().cloned());
+    crate::imports::suggest_project_imports(&mut checked.diagnostics, &graph.source_root);
     if checked.success()
         && request.entry
         && let Some(issue) = check_entry(&program, &graph.entry)

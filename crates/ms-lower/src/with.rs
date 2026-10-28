@@ -108,6 +108,12 @@ fn emit_parts(b: &mut FuncBuilder<'_>, v: Value, shape: Shape) {
 pub(crate) struct Closer {
     kind: CloseKind,
     handle: ms_mir::ir::Value,
+    /// Set while the binding still holds the resource; a move clears it. Present only for a
+    /// binding some path moves.
+    flag: Option<ms_mir::builder::Var>,
+    /// The current cleanup entry of a binding that can be reassigned after a move, which pushes
+    /// a new one.
+    entry: Option<ms_mir::builder::Var>,
 }
 
 /// Calls the close operation on `v` of type `ty`.
@@ -153,6 +159,36 @@ fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
 }
 
 impl FnLower<'_> {
+    /// Closes an owned temporary that is a resource (`open().id()`) before it is dropped at the
+    /// end of its statement.
+    pub(crate) fn close_temp(&mut self, v: Value) {
+        let mt = self.b.ty(v);
+        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+            return;
+        };
+        // Only a value that is itself a resource: a wrapper (`Result`, `Optional`) may have had
+        // its payload moved out already.
+        if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
+            || self.closeable_impl(&ty).is_none()
+        {
+            return;
+        }
+        let Ok(Some(kind)) = self.part_closer(&ty) else {
+            return;
+        };
+        close_call(&mut self.b, &kind, v, mt);
+    }
+
+    /// Closes a discarded statement result, which nothing took from: unlike a pending temporary
+    /// it may be a wrapper (`xs.pop()` is an `Optional`).
+    pub(crate) fn close_unused(&mut self, v: Value, ty: &ct::Ty) {
+        let mt = self.b.ty(v);
+        let Ok(Some(kind)) = self.part_closer(ty) else {
+            return;
+        };
+        close_call(&mut self.b, &kind, v, mt);
+    }
+
     pub(crate) fn with_stmt(&mut self, s: &Stmt, value: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let info = self.hir.stmt(s);
         let binding = info
@@ -206,7 +242,26 @@ impl FnLower<'_> {
                 Some(MTy::INT),
             )
             .expect("handle");
-        self.closers.insert(binding.uid, Closer { kind, handle });
+        let flag = self.cx.close_moves.contains_key(&binding.uid).then(|| {
+            let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+            let held = self.b.bconst(true);
+            self.b.def_var(flag, held);
+            flag
+        });
+        let entry = (flag.is_some() && binding.mutable).then(|| {
+            let entry = self.b.declare_var(MTy::INT, Mode::Borrow);
+            self.b.def_var(entry, handle);
+            entry
+        });
+        self.closers.insert(
+            binding.uid,
+            Closer {
+                kind,
+                handle,
+                flag,
+                entry,
+            },
+        );
         // A binding that needs no drop is not registered by `bind_local`; closing still runs.
         let scope = self.scopes.last_mut().expect("scope");
         if !scope.contains(&binding.uid) {
@@ -321,7 +376,7 @@ impl FnLower<'_> {
 
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
-    fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+    pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
         if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
         }
@@ -533,12 +588,132 @@ impl FnLower<'_> {
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
+    /// The cleanup entry the binding's scope end discards.
+    fn entry_of(&mut self, closer: &Closer) -> Value {
+        match closer.entry {
+            Some(v) => self.b.use_var(v),
+            None => closer.handle,
+        }
+    }
+
+    /// Stores `new` over the closing binding `uid`, whose value is `old`: the old value is
+    /// closed when the binding still holds one, and a binding a move emptied registers a new
+    /// cleanup entry for `new`.
+    pub(crate) fn assign_closing(
+        &mut self,
+        uid: usize,
+        closer: &Closer,
+        old: Value,
+        ty: MTy,
+    ) -> Result<(), Error> {
+        let Some(flag) = closer.flag else {
+            self.close_replaced(closer, old, ty);
+            return Ok(());
+        };
+        let held = self.b.use_var(flag);
+        let (close, empty, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(held, close, &[], empty, &[]);
+        self.b.seal_block(close);
+        self.b.seal_block(empty);
+        self.b.switch_to(close);
+        self.close_replaced(closer, old, ty);
+        self.b.br(join, &[]);
+        self.b.switch_to(empty);
+        if let (Some(entry), Some(ptr)) = (closer.entry, self.locals[&uid].slot) {
+            let thunk = self.close_thunk(&closer.kind, ty, true);
+            let handle = self
+                .b
+                .emit(Op::CleanupPush, &[ptr], Imm::Func(thunk), Some(MTy::INT))
+                .expect("handle");
+            self.b.def_var(entry, handle);
+        }
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        let held = self.b.bconst(true);
+        self.b.def_var(flag, held);
+        Ok(())
+    }
+
+    /// The function that closes a value of the closing binding `uid` held by a closure built at
+    /// `e`, when `e` moves the binding into its environment.
+    pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
+        let closer = self.closers.get(&uid).cloned()?;
+        closer.flag?;
+        let moves = self.cx.close_moves.get(&uid)?;
+        if self.dead || !moves.contains(&e.id) {
+            return None;
+        }
+        Some(self.close_thunk(&closer.kind, ty, false))
+    }
+
+    /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
+    /// value, so neither the cleanup entry nor the scope end does.
+    pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {
+        let Some(closer) = self.closers.get(&uid).cloned() else {
+            return;
+        };
+        let Some(flag) = closer.flag else {
+            return;
+        };
+        if self.dead
+            || !self
+                .cx
+                .close_moves
+                .get(&uid)
+                .is_some_and(|n| n.contains(&e.id))
+        {
+            return;
+        }
+        let handle = self.entry_of(&closer);
+        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
+        let gone = self.b.bconst(false);
+        self.b.def_var(flag, gone);
+    }
+
+    /// Leaves the binding `uid` at the end of its scope, closing it unless a move took it.
+    pub(crate) fn close_at_scope_end(&mut self, uid: usize, closer: &Closer) {
+        let Some(flag) = closer.flag else {
+            return self.emit_close(uid, closer);
+        };
+        let held = self.b.use_var(flag);
+        let (close, join) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(held, close, &[], join, &[]);
+        self.b.seal_block(close);
+        self.b.switch_to(close);
+        self.emit_close(uid, closer);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+    }
+
+    /// Closes `v`, a value of the place `place` that the program is about to overwrite or
+    /// discard, when it holds a resource: shielded like any other close. A value with nothing to
+    /// close adds no code.
+    pub(crate) fn close_discarded(&mut self, place: &Expr, v: Value) -> Result<(), Error> {
+        let ty = ct::sub(&self.hir.ty(place), &self.subst);
+        self.close_discarded_ty(&ty, v)
+    }
+
+    /// [`Self::close_discarded`] for a value of checked type `ty`.
+    pub(crate) fn close_discarded_ty(&mut self, ty: &ct::Ty, v: Value) -> Result<(), Error> {
+        let Some(kind) = self.part_closer(ty)? else {
+            return Ok(());
+        };
+        let mt = self.ty_of(v);
+        let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
+        close_call(&mut self.b, &kind, v, mt);
+        let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+        Ok(())
+    }
+
     /// Leaves the `with` binding `uid`: the cleanup entry goes away and its close runs on the
     /// current value.
     pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {
         let l = self.locals[&uid];
         let v = self.local_get(&l);
-        let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
+        let handle = self.entry_of(closer);
+        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
         // Like the cleanup stack on a fault, a stop request that arrives while the close runs
         // must not interrupt it.
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);

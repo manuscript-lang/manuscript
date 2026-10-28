@@ -149,6 +149,9 @@ pub struct CallableOwnership {
     pub drops_old: HashSet<NodeId>,
     /// Resource bindings that nothing takes: lowering closes them when their scope ends.
     pub implicit_closes: HashSet<usize>,
+    /// For a closed resource binding that is also moved on some paths: the name expressions
+    /// that move it. The close at scope end runs only on the paths with no move.
+    pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Parameter modes in declaration order.
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
@@ -172,6 +175,8 @@ pub struct Ownership {
     pub borrows: HashMap<usize, BorrowKind>,
     /// Resource bindings closed implicitly when their scope ends.
     pub closes: HashSet<usize>,
+    /// Name expressions that move a closed resource binding, by binding.
+    pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
@@ -388,6 +393,7 @@ impl Hir<'_> {
         let mut diagnostics = self.ref_results(&modules, &callables, &summaries);
         let mut borrows = HashMap::new();
         let mut closes = HashSet::new();
+        let mut close_moves = HashMap::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
         let mut borrowed_captures = HashSet::new();
@@ -411,6 +417,7 @@ impl Hir<'_> {
                 borrows.insert(f.binding.uid, kind);
             }
             closes.extend(out.facts.implicit_closes.iter().copied());
+            close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
@@ -435,6 +442,7 @@ impl Hir<'_> {
             diagnostics,
             borrows,
             closes,
+            close_moves,
             getters,
             lenders,
             borrowed_captures,

@@ -76,6 +76,7 @@ pub fn check(modules: Vec<ModRef>, imports: ImportMap, options: CheckOptions) ->
         let own = program.hir().ownership();
         program.borrows = Rc::new(own.borrows);
         program.implicit_closes = Rc::new(own.closes);
+        program.close_moves = Rc::new(own.close_moves);
         program.getter_borrows = Rc::new(own.getters);
         program.lenders = Rc::new(own.lenders);
         program.borrowed_captures = Rc::new(own.borrowed_captures);

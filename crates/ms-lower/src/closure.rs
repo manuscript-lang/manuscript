@@ -44,6 +44,7 @@ impl FnLower<'_> {
         let mut cap_tys = Vec::new();
         let mut cap_vals = Vec::new();
         let mut saved = Vec::new();
+        let mut closers = Vec::new();
         let changed = lambda_changes(self, lam, &captures);
         // Whether the closure's environment points into this frame.
         let mut scoped = false;
@@ -99,8 +100,15 @@ impl FnLower<'_> {
                 continue;
             }
             let x = self.read_local(b)?;
-            cap_tys.push(self.ty_of(x.v));
+            let cap_ty = self.ty_of(x.v);
+            // A resource the closure takes over is closed when the closure is dropped, no
+            // longer by this scope.
+            if let Some(close) = self.capture_closer(b.uid, e, cap_ty) {
+                closers.push((cap_vals.len() as u32, close));
+            }
+            cap_tys.push(cap_ty);
             cap_vals.push(self.owned(x));
+            self.moved_closer(b.uid, e);
         }
         let mut ps = vec![Param {
             ty: MTy::PTR,
@@ -113,6 +121,7 @@ impl FnLower<'_> {
         let mut f = ms_mir::ir::Func::new("<anonymous>", ps, ret);
         f.kind = FuncKind::Closure { captures: cap_tys };
         f.scoped = scoped;
+        f.capture_closers = closers;
         let id = self.b.m.add_func(f);
         let _ = lam;
         self.cx.queue.push(Job {
@@ -1363,6 +1372,7 @@ pub(crate) fn build_lambda(
     let mut b = FuncBuilder::new(m, "<anonymous>", proto.params.clone(), proto.ret);
     b.func_mut().kind = proto.kind.clone();
     b.func_mut().scoped = proto.scoped;
+    b.func_mut().capture_closers = proto.capture_closers.clone();
     let mut fl = FnLower::new(cx, b, job.hir.clone(), job.subst.clone(), file, proto.ret);
     let result = lower_lambda_body(&mut fl, job, &captures);
     let mut f = fl.b.into_func();

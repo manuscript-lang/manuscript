@@ -484,11 +484,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                     ms_mir::ir::FuncKind::Closure { captures } => captures.clone(),
                     _ => Vec::new(),
                 };
+                let closers = self.g.m.funcs[f as usize].capture_closers.clone();
                 let mut off = CLOSURE_CAPTURES as i64;
-                for c in caps {
+                for (k, c) in caps.into_iter().enumerate() {
                     let leaves = self.g.lay.leaves(c);
                     let lay = mem_layout(&leaves);
                     off = (off + lay.align as i64 - 1) / lay.align as i64 * lay.align as i64;
+                    if let Some((_, close)) = closers.iter().find(|(i, _)| *i as usize == k) {
+                        // A resource the environment owns is closed before it is released.
+                        let vs = self.load_leaves(obj, off, &leaves);
+                        let fid = self.g.funcs[close.index()];
+                        self.call_id(fid, &vs);
+                    }
                     if self.g.m.needs_drop(c) {
                         let vs = self.load_leaves(obj, off, &leaves);
                         self.drop_value(c, &vs);

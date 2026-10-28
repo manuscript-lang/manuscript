@@ -236,7 +236,7 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos, bool)>,
+    resources: Vec<(usize, Name, Pos, bool, bool)>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -327,8 +327,16 @@ impl Walker<'_> {
                 let result = self.cx.m.ty(e);
                 // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
                 // value of it (`result.get()`) hands the value over: the binding owns it.
+                // An owned `Optional` or `Result` of a part the source holds (`pop()`) hands the part
+                // over too; a `ref` result (`first()`) only lends it.
+                let lends = !call_modes(self.cx.m, e, args, self.cx.summaries)
+                    .origin
+                    .slots
+                    .is_empty();
                 let wraps = |src: &Expr| {
-                    self.class_of(src) == Class::Resource && !ty_holds(&self.cx.m.ty(src), &result)
+                    self.class_of(src) == Class::Resource
+                        && !ty_holds(&self.cx.m.ty(src), &result)
+                        && (lends || !wraps_part(&self.cx.m.ty(src), &result))
                 };
                 let receiver = match &callee.kind {
                     ExprKind::Member { left, .. } => wraps(left),
@@ -352,13 +360,24 @@ impl Walker<'_> {
     /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos, closable) in resources {
-            let moved = self
+        for (uid, name, pos, closable, trackable) in resources {
+            let moves: Vec<NodeId> = self
                 .facts
                 .uses
                 .values()
-                .any(|u| u.binding == uid && u.access == Access::Move);
-            if moved {
+                .filter(|u| u.binding == uid && u.access == Access::Move)
+                .map(|u| u.node)
+                .collect();
+            if !moves.is_empty() {
+                // Moved on some path: the scope closes it on the paths that keep it. Lowering
+                // tracks that with a flag cleared at each move, which needs a binding with
+                // its own close operation.
+                if closable && trackable {
+                    self.facts.implicit_closes.insert(uid);
+                    self.facts
+                        .close_moves
+                        .insert(uid, moves.into_iter().collect());
+                }
                 continue;
             }
             if closable {
@@ -1154,7 +1173,13 @@ impl Walker<'_> {
         };
         if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((b.uid, b.name, p.pos, closable));
+            self.resources.push((
+                b.uid,
+                b.name,
+                p.pos,
+                closable,
+                self.cx.m.stmt(s).cleanup.is_some(),
+            ));
         }
     }
 
@@ -1322,7 +1347,13 @@ impl Walker<'_> {
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((b.uid, b.name, pattern.pos, closable));
+            self.resources.push((
+                b.uid,
+                b.name,
+                pattern.pos,
+                closable,
+                self.cx.m.stmt(s).cleanup.is_some(),
+            ));
         }
     }
 
@@ -2211,6 +2242,24 @@ impl Walker<'_> {
                     format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
                 );
             }
+            let rty = self.cx.m.ty(r);
+            let copies = match &e.kind {
+                ExprKind::Call { callee, .. } => match &callee.kind {
+                    ExprKind::Member { name, .. } => name.as_str().to_string(),
+                    _ => String::new(),
+                },
+                _ => String::new(),
+            };
+            if matches!(copies.as_str(), "fill" | "copy_within" | "merge")
+                && (rty.is_std("List") || rty.is_std("Map"))
+                && self.class_of(r) == Class::Resource
+            {
+                let text = self.expr_text(r);
+                self.error(
+                    e.pos,
+                    format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; `set` or `add` each one instead"),
+                );
+            }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
             // receiver's one owner handing it over, not a copy.
@@ -2656,6 +2705,16 @@ fn ty_contains(src: &Ty, part: &Ty) -> bool {
     src.args
         .iter()
         .any(|a| crate::types::same(a, part) || ty_contains(a, part))
+}
+
+/// Whether `result` is an `Optional` or `Result` around a type `src` holds (or around another
+/// such wrapper).
+fn wraps_part(src: &Ty, result: &Ty) -> bool {
+    (result.is_std("Optional") || result.is_std("Result"))
+        && result
+            .args
+            .first()
+            .is_some_and(|a| ty_holds(src, a) || wraps_part(src, a))
 }
 
 /// Whether `src` is `part` or has it among its type arguments, at any depth.

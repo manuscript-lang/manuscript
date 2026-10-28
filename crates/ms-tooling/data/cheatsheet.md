@@ -4,34 +4,55 @@ Statically typed; native code. Four-space indentation, `#` comments. No `print`:
 
 <!-- complete -->
 ```manuscript
+from "@std/fs.ms" import filesystem # import
 from "@std/io.ms" import stdout
-from "@std/test.ms" import expect_equal
 
-def add(a: Int, b: Int) -> Int: a + b
+type Doc:
+    lines: List[String]
+
+impl Doc:
+    def longest() -> ref String: # lends part of self
+        var best = 0
+        for i in 0..self.lines.length():
+            if self.lines[i].length() > self.lines[best].length(): best = i
+        return self.lines[best]
+
+def load(path: String) -> Result[Doc, Error]:
+    let f = try filesystem().open(path, flags: "r", mode: 0) # f closed at scope end
+    let lines = try f.read_lines(max_lines: 1000) # Int passes as Optional[Int]
+    return ok(Doc(lines)) # moves lines
 
 export def main() -> Int:
-    let xs = [1, 2, 3]
-    let big = xs.filter(lambda x: x > 1).map(lambda x: f"{x * 2}")
-    stdout().write(f"sum {add(xs[0], 2)} {big.join(",")}\n").get()
+    if let doc = load("notes.txt"):
+        let top = doc.longest() # borrows doc
+        let keep = top.clone() # owned copy
+        let long = doc.lines.filter(lambda l: l.length() > 3) # lambda
+        stdout().write(f"{keep} {long.length()}\n").get()
     return 0
-
-test "addition":
-    try expect_equal(add(1, 2), 3)
 ```
 
-- Be terse: omit types a closure can infer, use one-line bodies (`if n < 0: return 0`; `def f(x: Int) -> Int: x * 2` returns implicitly), `xs[i]`, `xs[i] = v`, `read_lines(stdin())` (`@std/streams.ms`), and `map`/`filter`/`fold`/`join`/`get(d)` over loops. stdout flushes at exit.
-- Regex: `compile` in `@std/string.ms`; `captures`, `named_captures`, `split`, `replace_template`; pattern braces need `\{`.
-- Workflow: `ms search_symbol <name or words>` finds a symbol (`<module>` lists one); `ms verify` (check, fmt, lint, test); `ms review`.
-- `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `try fail("why")` (`@std/test.ms`) fails.
-- Imports: `from "@std/x.ms" import a, b` or `from "./local.ms" import a`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
-- `let` binds once, `var` reassigns; `n += 1` (`-=` etc.); `for i in 0..n:` counts up, excluding `n`; steps use `range_by` from `@std/collections.ms`. Types `Int Float Bool String Unit`; `f"{expr}"` interpolates (plain `"..."` keeps braces literally); `True`/`False`; `()` is the Unit value; `a if c else b`. Function types are `Callable[[Int], Int]`; closures `lambda x: x + 1`. No implicit casts.
-- `[1, 2]` List; `List[T](reserve: n)` preallocates; `Map[K, V]()`, `Set[T]()` or `Set([1, 2])` mutate in place; `for e in m.entries():` and `if var n = m.get(k): n += 1` work in place; `.clone()` is deep; storing a borrowed String needs it.
-- `type T:` with fields, built `T(a: 1)` (labels optional: `T(1)`); alternatives use `case A` and `case B(x: Int)`; types are nominal.
-- `Optional`: `some(x)` / `none`; unwrap with `if let x = value:` and optional `else:`, or `.get(d)`.
-- `match v:` on your own types: arms `case Case(x):`, `case _:`; exhaustive. Never match `Result`/`Optional` or nest `match`; use `try`/`if let`. There are no exceptions, classes, `async`, `null`, `pass`, or `elif`-less chains: use `elif`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` must implement `Error`; `try e` unwraps or returns the error; `if let x = result:` handles success when the error can be discarded. `.message()` reads any `Error`. Faults (`panic`, failed `get()`) abort.
-- Methods: `impl T:` or `impl I for T:`, never in `type`; else `f(x)`. A `T` with `impl I for T` passes wherever `I` is expected.
-- Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`; `| try` unwraps. Lines starting `|` or `.` continue.
-- A def returning part of a parameter or the receiver writes `ref` before its result type (`def name() -> ref String`); `let x = a.b` borrows a place (shared; `var x = a.b` exclusive) without a marker.
-- Closures may change captures. `with let f = try open(path):` closes `f` at block end.
-- Concurrency has no async/await: `with let g = TaskGroup[T]():` (`@std/tasks.ms`), `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` or `g.results()` waits; leaving the block cancels unfinished tasks. Timeouts opt-in.
+- Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
+- Be terse: infer closure types, one-line bodies (`def f(x: Int) -> Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
+- `main() -> Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
+- Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`; braces need `\{`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
+- Imports: `from "@std/x.ms" import a, b`, `from "./local.ms" import a`; `export` shares. `List Map Set Optional Result Error` need none.
+- Lines: a `:` ending a line needs an indented body; `elif`, not `else if`; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
+- Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. Operators `and or not`.
+- Types: `Int Float Bool String Unit`, no implicit casts. `f"{expr}"` interpolates; `"..."` keeps braces. `True`/`False`, `()`.
+- Control: `if`/`elif`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `a if c else b`.
+- Functions: `def f(a: Int, b: Int = 1) -> Int:`, called `f(1, b: 2)`; generics `def f[T](x: T)`; closures `lambda x: x + 1`; types `Callable[[Int], Int]`.
+- Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()`, `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.
+- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var def` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
+- `Optional`: `some(x)` / `none`; unwrap with `if let x = v:` (+ `else:`) or `.get(d)`.
+- `match v:` only on your own types: `case Case(x):`, `case _:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
+- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
+- Faults (`panic`, failed `get()`) abort the program, not a `Result`.
+- Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
+- Ownership: every `String`, list, map, record and alternative has one owner: a variable, field or element. `Int`, `Float`, `Bool` (and records of them) are copied freely and have no `.clone()`. `let` owners are immutable including contents; `var` can change.
+- Move: giving a value to a new owner (a field, a collection, `return`, a parameter the callee keeps, an escaping closure) hands over ownership. The old name is dead after that, so move at the last use or `.clone()` (a deep copy) first.
+- Borrow: using a value without owning it. Read-only parameters, `let x = a.b`, `xs[i]`, loop variables and match payloads borrow their owner. A borrow cannot be moved or stored, so `.clone()` it to own a copy; and while it lives the owner cannot change (many readers, or one `var` writer).
+- A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
+- `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
+- Lints (`ms lint`, `ms verify`): `Optional.get()` without default, unread bindings (prefix `_`).
+- Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
+- No exceptions, classes, `async`, `null`, `pass`.
