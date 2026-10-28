@@ -748,6 +748,11 @@ impl FnLower<'_> {
                 // A bare status: `Result[Unit, E]`.
                 self.push_err_slot(sig, &mut vals);
                 let code = self.status_code(sym, &vals)?;
+                if self.ok_payload_is_optional_unit(result) {
+                    // `Result[Optional[Unit], E]`: `STATUS_NONE` is none, a zero status is some.
+                    let take = &mut |s: &mut Self| Ok(s.b.unit());
+                    return self.status_optional_result(sym, code, take, result);
+                }
                 return self.status_result(sym, code, None, None, result);
             }
             if let (MTy::STR, TyKind::Alt(a)) = (ret, self.b.m.types.kind(result).clone())
@@ -1048,6 +1053,18 @@ impl FnLower<'_> {
         let failure = failure_symbol(sym);
         let e = self.status_error(ea, code, &cases, failure.as_deref())?;
         Ok(self.b.alt_new(a, err as u32, &[e]))
+    }
+
+    /// Whether the `ok` payload of `result` is `Optional[Unit]`.
+    fn ok_payload_is_optional_unit(&self, result: MTy) -> bool {
+        let TyKind::Alt(a) = self.b.m.types.kind(result) else {
+            return false;
+        };
+        let Ok(ok) = self.ok_case_index(*a) else {
+            return false;
+        };
+        let payload = self.b.m.alts[a.index()].cases[ok].fields[0].1;
+        matches!(self.b.m.types.kind(payload), TyKind::Opt(t) if *t == MTy::UNIT)
     }
 
     /// `ok(value)` when the status is zero, else the error case the status names.
