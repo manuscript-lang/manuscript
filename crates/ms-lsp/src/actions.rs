@@ -1,12 +1,14 @@
 //! `textDocument/codeAction`: quick fixes, import organization and the
 //! format-all action.
 
-use crate::analysis::{Analysis, Document};
+use crate::analysis::{Analysis, Document, Documents};
 use crate::json::{Json, obj};
 use crate::lint::Lint;
 use crate::text::{self, Position, Range};
 use crate::uri;
+use crate::workspace;
 use ms_check::syntax::ModRef;
+use ms_driver::project::pathops;
 use ms_syntax::token::Tok;
 use std::sync::Arc;
 
@@ -96,6 +98,64 @@ pub fn format_actions(d: &Document) -> Vec<Json> {
     ])]
 }
 
+/// The name an `unknown binding`/`unknown type` diagnostic is about.
+fn unresolved_name(message: &str) -> Option<&str> {
+    let rest = message
+        .strip_prefix("unknown binding ")
+        .or_else(|| message.strip_prefix("unknown type "))?;
+    let name = rest.split(';').next()?.trim();
+    (!name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'))
+        .then_some(name)
+}
+
+/// `(name, "./relative/path.ms")` for each top-level `export` declaration in
+/// the other `.ms` files of `d`'s project, found without running the checker.
+fn project_exports(d: &Document, docs: &Documents) -> Vec<(String, String)> {
+    let Ok(files) = workspace::workspace_documents(d, docs, true, None) else {
+        return Vec::new();
+    };
+    let here = d.path();
+    let dir = pathops::dir(&here);
+    let mut found = Vec::new();
+    for file in files {
+        let path = file.path();
+        if path == here {
+            continue;
+        }
+        let Ok(relative) = pathops::rel(&dir, &path) else {
+            continue;
+        };
+        let relative = relative.replace('\\', "/");
+        let import = if relative.starts_with("../") {
+            relative
+        } else {
+            format!("./{relative}")
+        };
+        for line in file.text.lines() {
+            let Some(rest) = line.strip_prefix("export ") else {
+                continue;
+            };
+            let rest = rest.strip_prefix("extern ").unwrap_or(rest);
+            let Some((keyword, rest)) = rest.split_once(' ') else {
+                continue;
+            };
+            if !matches!(keyword, "def" | "type" | "interface" | "let") {
+                continue;
+            }
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !name.is_empty() {
+                found.push((name, import.clone()));
+            }
+        }
+    }
+    found.sort();
+    found.dedup();
+    found
+}
+
 /// Where `statement` goes: after the leading run of imports, else at the top.
 fn import_insertion(source: &str, statement: &str) -> (Position, String) {
     let newline = if source.contains("\r\n") {
@@ -144,6 +204,7 @@ pub fn editor_actions(
     d: &Document,
     checked: &Analysis,
     lint: &dyn Lint,
+    docs: &Documents,
     requested: Range,
     only: &[String],
 ) -> Vec<Json> {
@@ -183,14 +244,16 @@ pub fn editor_actions(
             ));
         }
     }
+    let mut project: Option<Vec<(String, String)>> = None;
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };
-        let Some(fix) = &issue.fix else { continue };
-        if issue.file.as_ref() != m.file.as_str() || !issue.message.contains("; add: from ") {
+        if issue.file.as_ref() != m.file.as_str() {
             continue;
         }
-        // The diagnostic covers the unresolved name, which the hint repeats last.
-        let name = issue.message.rsplit(' ').next().unwrap_or("");
+        let Some(name) = unresolved_name(&issue.message) else {
+            continue;
+        };
+        // The diagnostic covers the unresolved name.
         let start = issue.pos.offset as usize;
         let r = Range {
             start: text::position(&d.text, start),
@@ -199,21 +262,38 @@ pub fn editor_actions(
         if !eligible(r) {
             continue;
         }
-        let statement = fix.replacement.trim_end();
-        let (at, text) = import_insertion(&d.text, statement);
-        let diagnostic = obj([
-            ("range", r.json()),
-            ("message", issue.message.clone().into()),
-            ("code", issue.code().into()),
-            ("source", "manuscript".into()),
-        ]);
-        result.push(action_for(
-            d,
-            &format!("Add `{statement}`"),
-            "quickfix",
-            vec![edit(Range::at(at), &text)],
-            vec![diagnostic],
-        ));
+        let exports = project.get_or_insert_with(|| project_exports(d, docs));
+        let mut statements: Vec<String> = exports
+            .iter()
+            .filter(|(exported, _)| exported == name)
+            .map(|(_, path)| format!("from \"{path}\" import {name}"))
+            .collect();
+        // A project declaration is preferred over a standard-library one.
+        if let Some(fix) = &issue.fix
+            && issue.message.contains("; add: from ")
+        {
+            statements.push(fix.replacement.trim_end().to_string());
+        }
+        for (i, statement) in statements.iter().enumerate() {
+            let (at, text) = import_insertion(&d.text, statement);
+            let diagnostic = obj([
+                ("range", r.json()),
+                ("message", issue.message.clone().into()),
+                ("code", issue.code().into()),
+                ("source", "manuscript".into()),
+            ]);
+            let mut action = action_for(
+                d,
+                &format!("Add `{statement}`"),
+                "quickfix",
+                vec![edit(Range::at(at), &text)],
+                vec![diagnostic],
+            );
+            if i > 0 {
+                action.set("isPreferred", false.into());
+            }
+            result.push(action);
+        }
     }
     for issue in lint.source(&uri::filename(&d.uri), &d.text) {
         let p = text::position(&d.text, issue.offset);

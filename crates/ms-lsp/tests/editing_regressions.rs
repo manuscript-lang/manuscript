@@ -125,7 +125,14 @@ fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
         start: Position::default(),
         end: text::position(source, source.len()),
     };
-    let found = editor_actions(&d, &checked, &Tooling, whole, &[only.to_string()]);
+    let found = editor_actions(
+        &d,
+        &checked,
+        &Tooling,
+        &Documents::new(),
+        whole,
+        &[only.to_string()],
+    );
     (d, found)
 }
 
@@ -388,4 +395,37 @@ fn unresolved_standard_name_offers_an_add_import_fix() {
             .expect("add import fix");
         assert_eq!(apply(source, action), expected);
     }
+}
+
+#[test]
+fn project_exports_are_offered_before_standard_ones() {
+    let ws = Workspace::new("project-import");
+    std::fs::create_dir_all(ws.path("lib")).unwrap();
+    std::fs::write(
+        ws.path("lib/blobs.ms"),
+        "export type Bytes:\n    size: Int\n",
+    )
+    .unwrap();
+    let source = "def size(b: Bytes) -> Int:\n    return 0\n";
+    let d = Document::new(ws.uri("main.ms"), source);
+    let checked = analyze(&d, &Documents::new());
+    let whole = Range {
+        start: Position::default(),
+        end: text::position(source, source.len()),
+    };
+    let found = editor_actions(&d, &checked, &Tooling, &Documents::new(), whole, &[]);
+    let titles: Vec<&str> = found
+        .iter()
+        .map(title)
+        .filter(|t| t.starts_with("Add `"))
+        .collect();
+    assert_eq!(
+        titles,
+        [
+            "Add `from \"./lib/blobs.ms\" import Bytes`",
+            "Add `from \"@std/bytes.ms\" import Bytes`"
+        ]
+    );
+    let first = found.iter().find(|a| title(a) == titles[0]).unwrap();
+    assert!(apply(source, first).starts_with("from \"./lib/blobs.ms\" import Bytes\n"));
 }
