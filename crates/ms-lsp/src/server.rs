@@ -821,7 +821,7 @@ impl Server<'_> {
                     return ok(Json::Null);
                 }
                 ok(Json::Arr(editor_actions(
-                    &d, &checked, self.lint, p.range, &p.only,
+                    &d, &checked, self.lint, &self.docs, p.range, &p.only,
                 )))
             }
             "textDocument/formatting" => {
