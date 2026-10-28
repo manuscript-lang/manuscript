@@ -320,14 +320,17 @@ impl Walker<'_> {
         match &e.kind {
             ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
             ExprKind::Call { callee, args, .. } => {
+                let result = self.cx.m.ty(e);
+                // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
+                // value of it (`result.get()`) hands the value over: the binding owns it.
+                let wraps = |src: &Expr| {
+                    self.class_of(src) == Class::Resource && !ty_holds(&self.cx.m.ty(src), &result)
+                };
                 let receiver = match &callee.kind {
-                    ExprKind::Member { left, .. } => self.class_of(left) == Class::Resource,
+                    ExprKind::Member { left, .. } => wraps(left),
                     _ => false,
                 };
-                receiver
-                    || args
-                        .iter()
-                        .any(|a| self.class_of(&a.value) == Class::Resource)
+                receiver || args.iter().any(|a| wraps(&a.value))
             }
             _ => false,
         }
@@ -2576,4 +2579,9 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
         Role::Pattern => "a pattern variable",
         _ => "a borrow",
     }
+}
+
+/// Whether `src` is `part` or has it among its type arguments, at any depth.
+fn ty_holds(src: &Ty, part: &Ty) -> bool {
+    src.id == part.id || src.args.iter().any(|a| ty_holds(a, part))
 }
