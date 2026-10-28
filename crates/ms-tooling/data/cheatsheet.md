@@ -45,7 +45,9 @@ export def main() -> Int:
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; alternatives `case A`, `case B(x: Int)`. Methods in `impl T:` (`var def` mutates `self`), never in `type`; `interface I:` with `impl I for T:`, and a `T` passes where `I` is expected.
 - `Optional`: `some(x)` / `none`; unwrap with `if let x = v:` (+ `else:`) or `.get(d)`.
 - `match v:` only on your own types: `case Case(x):`, `case _:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
-- Errors: `Result[T, E]` is `ok(v)` / `error(e)`, `E` implements `Error`; `try e` unwraps or returns the error; `if let x = r:` drops the error; `.message()`. Faults (`panic`, failed `get()`) abort. Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
+- Errors: `Result[T, E]` is `ok(v)` / `error(e)`; `E` implements `Error`, which has `.message()`. `try r` gives the `ok` value or returns the error from the current function. `if let x = r:` runs only on success and ignores the error.
+- Faults (`panic`, failed `get()`) abort the program, not a `Result`.
+- Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
 - Moves: a value moves at its last use. Moving out of an index, field, loop variable or borrow fails: use `.clone()` (deep; not on `Int`, `Float`, `Bool`, which copy).
 - Borrows: `let x = a.b` / `xs[i]` borrows with no marker (`var x = a.b` exclusively); don't change `a` (`self.xs.append(..)`) before `x`'s last use: use `x` first or `.clone()`.
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
