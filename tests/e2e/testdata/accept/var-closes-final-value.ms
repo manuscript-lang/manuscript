@@ -21,14 +21,14 @@ def count_then_wait(log: Shared[List[Int]]) -> Int:
     counter.close()
     return 0
 
-test "a with var block closes the value it ended with":
+test "a var binding closes the value it ended with":
     let log: Shared[List[Int]] = share([])
     var counter = Counter(value: 0, log: log)
     counter.value = 5
     counter.close()
     log.get().clone() | try expect_equal([5])
 
-test "a cancelled with var block closes the value it had reached":
+test "a cancelled var binding closes the value it had reached":
     let log: Shared[List[Int]] = share([])
     let mine = log
     var group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))

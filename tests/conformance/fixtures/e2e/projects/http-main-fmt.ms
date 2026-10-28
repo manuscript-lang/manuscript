@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-http,stdlib-io,stdlib-net,tier-io,with-cleanup
+# conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-http,stdlib-io,stdlib-net,tier-io,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/http/main.ms
 from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse, HttpServerOptions

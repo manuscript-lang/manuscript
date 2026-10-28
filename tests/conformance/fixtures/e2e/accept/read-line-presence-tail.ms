@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-bytes,stdlib-cleanup,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-bytes,stdlib-cleanup,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/read-line-presence-tail.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true

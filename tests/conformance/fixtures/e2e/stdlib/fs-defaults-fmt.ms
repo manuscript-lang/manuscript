@@ -1,4 +1,4 @@
-# conform: tags=aliasing,faults,formatter,generics,interpolation,lists,match,modules,parser,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,faults,formatter,generics,interpolation,lists,match,modules,parser,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/fs-defaults.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true

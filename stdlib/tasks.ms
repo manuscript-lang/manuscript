@@ -73,7 +73,7 @@ impl Error for TaskError:
 
 # Whether the running task was cancelled: its group was closed, its timeout passed, or the program was asked to stop.
 # A plain query: it neither waits nor unwinds, so a task can poll it between steps and finish early.
-# It stays true inside cleanups (`with` blocks), where a cancelled task should do minimal work.
+# It stays true inside cleanups (scope-end closes), where a cancelled task should do minimal work.
 export def cancelled() -> Bool:
     return msrt_task_cancel_requested() != 0
 
@@ -358,7 +358,7 @@ impl Task[T, In, Out]:
 
 # A scope that owns the tasks started in it. Every task returns a `T` (use `Unit` for effect-only work).
 # Each task has a two-way channel to the group: it sends `Out` values and receives `In` values, both `Unit` unless given.
-# Open a group with `with`: leaving the block cancels tasks that are still running and waits for all of them.
+# Bind a group to a local: when its scope ends it cancels tasks that are still running and waits for all of them.
 # Call `results`, `wait` or a task's `result` before the block ends to keep the work.
 # Collecting a task (`result`, or `results`) makes the group forget it, so a long-lived group holds only
 # tasks that are running or uncollected.
@@ -374,7 +374,7 @@ export type TaskGroup[T, In = Unit, Out = Unit]:
     contain_faults: Bool = False
     # Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
     scope: Int = new_scope(contain_faults)
-    # Internal state: the uncollected tasks in start order, changed through the shared handle so the group works as a `with` binding.
+    # Internal state: the uncollected tasks in start order, changed through the shared handle so the group closes when its scope ends.
     tasks: Shared[Map[Int, Entry[T, In, Out]]] = share(Map[Int, Entry[T, In, Out]]())
     # Internal state: weak tracking of handed-out channels, including collected tasks.
     channels: TaskChannels = msrt_channel_group_new()

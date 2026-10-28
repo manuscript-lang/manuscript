@@ -301,6 +301,6 @@ ms run get.ms -- http://127.0.0.1:8000/notes.txt
 
 The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures, non-success statuses and invalid UTF-8 exit 1; the body is capped at one mebibyte (1,048,576 bytes). Other `FetchOptions` fields keep their defaults, including the 30-second deadline.
 
-For a JSON response, `try response.json[Config]()` decodes into a type such as the `Config` above. Call `check_status()` first when an error status should fail the operation: `fetch` itself returns error statuses as ordinary responses. For repeated requests, open a pooled `Fetcher` with `with let client = try fetcher():`; see the [fetch API](../standard-library/reference/fetch.md).
+For a JSON response, `try response.json[Config]()` decodes into a type such as the `Config` above. Call `check_status()` first when an error status should fail the operation: `fetch` itself returns error statuses as ordinary responses. For repeated requests, bind a pooled `Fetcher` with `let client = try fetcher()`; see the [fetch API](../standard-library/reference/fetch.md).
 
 Next: [testing](testing.md) and [counting loops](../core-language/control-flow/loops.md#counting-loops).

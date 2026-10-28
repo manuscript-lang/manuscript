@@ -122,7 +122,7 @@ struct Cx {
     discard: ExtId,
     /// The cleanup that drops a value of a type while a cancellation unwinds.
     closers: HashMap<Ty, FuncId>,
-    /// A `with` close followed by the drop of the value it closed, per close function.
+    /// A scope close followed by the drop of the value it closed, per close function.
     with_closers: HashMap<FuncId, FuncId>,
 }
 
@@ -256,7 +256,7 @@ fn closer(m: &mut Module, cx: &mut Cx, ty: Ty) -> FuncId {
     id
 }
 
-/// The cleanup that runs `close` on a `with` value and then drops it while a cancellation
+/// The cleanup that runs `close` on a scope-closed value and then drops it while a cancellation
 /// unwinds. A cancelled task never reaches the drop after the block, and the per-call drops
 /// leave this value to its close so that nothing closes a freed value.
 fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
@@ -305,7 +305,7 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     Some(id)
 }
 
-/// Points every `with` close registered in `f` at its closing-then-dropping variant.
+/// Points every scope close registered in `f` at its closing-then-dropping variant.
 fn wrap_with_closers(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
     let mut changed = false;
     for bi in 0..f.blocks.len() {
@@ -386,7 +386,7 @@ fn analyze(
             }
             if open > 0 || matches!(inst.op, Op::CleanupPush | Op::CleanupRun) {
                 // A window across a hole would drop a half-emptied owner, and one across a
-                // `with` open or close would discard an entry that is not its own.
+                // scope open or close would discard an entry that is not its own.
                 reach = None;
             } else if !live.is_empty() && exits_at(m, cx, inst) {
                 let drops = coverable(&live, closed_by_with, &hoisted[bi]);
@@ -707,7 +707,7 @@ fn function(m: &mut Module, cx: &mut Cx, f: &mut Func) -> bool {
         return false;
     }
     let wrapped = wrap_with_closers(m, cx, f);
-    // Values an existing cleanup entry (a `with` close) uses: it must see them undropped.
+    // Values an existing cleanup entry (a scope close) uses: it must see them undropped.
     let closed_by_with: BTreeSet<u32> = f
         .blocks
         .iter()
@@ -774,7 +774,7 @@ struct Window {
     values: Vec<Value>,
 }
 
-/// The live values a registration may cover: a `with` close sees its own values undropped, and a
+/// The live values a registration may cover: a scope close sees its own values undropped, and a
 /// loop registration already covers its hoisted values.
 fn coverable(
     live: &BTreeSet<u32>,

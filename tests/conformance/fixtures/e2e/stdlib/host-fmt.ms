@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_not_equal

@@ -10,13 +10,13 @@ def say(text: String) -> Unit:
 
 export def main() -> Int:
     if let watched = control().watch_signals([2, 15]):
-        with let signals = watched:
-            say("waiting\n")
+        let signals = watched
+        say("waiting\n")
 
-            let _observed = signals.next()
-            say("got signal\n")
-            sleep(100.milliseconds)
-            say("after sleep\n")
-            return 0
+        let _observed = signals.next()
+        say("got signal\n")
+        sleep(100.milliseconds)
+        say("after sleep\n")
+        return 0
     else:
         return 1

@@ -140,7 +140,7 @@ def count_down(start: Int) -> Int:
 
 `break` and `continue` target the nearest enclosing loop in the same function body, take no labels or arguments, and are rejected outside a loop; an anonymous function cannot break its enclosing loop. `return` exits the function.
 
-Each of the three runs cleanup for the scopes it exits. Each iteration is its own scope, so `with` resources close when the iteration ends; a plain `let` registers no cleanup. See [lexical cleanup](../cleanup/_index.md).
+Each of the three runs cleanup for the scopes it exits. Each iteration is its own scope, so a resource bound in the body closes when the iteration ends; a binding that is not a resource registers no cleanup. See [lexical cleanup](../cleanup/_index.md).
 
 ## Cancellation
 

@@ -454,7 +454,7 @@ pub const KINDS: &[Kind] = &[
         "MS3000.10",
         "is a resource that is never closed",
         "Unclosed resource",
-        "open it with `with let`, call `.close()`, or return it"
+        "call `.close()`, or return it"
     ),
     kind!(
         "MS3000",
@@ -469,13 +469,6 @@ pub const KINDS: &[Kind] = &[
         "requires a record field",
         "Assignment target",
         "assign to a record field or a variable"
-    ),
-    kind!(
-        "MS3000",
-        "MS3000.13",
-        "with needs a Closeable",
-        "With needs a resource",
-        "bind a value with `close() -> Unit`"
     ),
     kind!(
         "MS3001",

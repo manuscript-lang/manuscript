@@ -6,6 +6,7 @@ def work(count: Int) -> Unit:
     return
 
 def start(count: Int) -> Int:
-    with let group = WorkerGroup[Int, Int]():
-        let _ = group.spawn(lambda: work(count))
+    var group = WorkerGroup[Int, Int]()
+    let _ = group.spawn(lambda: work(count))
+    group.close()
     return 0

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,faults,interpolation,match,modules,optional,records,stdlib-bytes,stdlib-http,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,control-flow,faults,interpolation,match,modules,optional,records,stdlib-bytes,stdlib-http,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail

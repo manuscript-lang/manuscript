@@ -1433,21 +1433,7 @@ def f(s: S) -> Int:
             return 1
         case other:
             return 2
-resolution	8	14	113	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bfrom "@std/cleanup.ms" import Closeable
-type R:
-    n: Int
-impl Closeable for R:
-    def close() -> Unit:
-        return ()
-def mk() -> Result[R, Error]:
-    return ok(R(n: 1))
-def f() -> Int:
-    with let x = mk():
-        return 1
-    return 0
-resolution	1	31	30	unknown standard module @std/cleanup.ms
-resolution	4	6	64	unknown type Closeable; add: from "@std/core.ms" import Closeable
-type	10	5	197	with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'export type MoneyError:
+resolution	8	14	113	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bexport type MoneyError:
     case Invalid
 export def parse_cents() -> Int: 0
 export def format_cents() -> String: "0"
@@ -2353,10 +2339,7 @@ export def invoke[T: Read[Int]](value: T) -> Int:
     return Read[Int](value: value)
 resolution	1	16	15	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import it
 resolution	1	29	28	unknown type Read; declare it with 'type Read:' / 'interface Read:', declare it as a type parameter, or import it
-resolution	2	12	50	unknown binding Read; declare it with 'let Read = ...' before use, define 'def Read(...) -> T:', or import it from a moduledef use(value: Box[Int]) -> Unit:
-    with let resource = value:
-        return
-resolution	1	16	15	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itfrom "@std/cleanup.ms" import Closeable
+resolution	2	12	50	unknown binding Read; declare it with 'let Read = ...' before use, define 'def Read(...) -> T:', or import it from a modulefrom "@std/cleanup.ms" import Closeable
 impl Closeable for Box[T]:
     def close() -> Unit:
         return
@@ -3573,14 +3556,7 @@ def g() -> Unit: return
     use(lambda (x: Int) -> Int: return x, other: 1)
     let gs = [lambda () -> Unit: return, lambda () -> Int: return 2]
 resolution	3	5	66	unknown binding use; declare it with 'let use = ...' before use, define 'def use(...) -> T:', or import it from a module
-type	4	42	155	expected Callable[[], Unit], found Callable[[], Int] (in entry 2 of the literal, whose entries share one type)def f() -> Unit:
-    while True: break
-    for x in values: consume(x)
-    with let x = resource(): consume(x)
-resolution	3	14	52	unknown binding values; add: from "@std/bytes.ms" import values
-resolution	3	22	60	unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a module
-resolution	4	18	88	unknown binding resource; declare it with 'let resource = ...' before use, define 'def resource(...) -> T:', or import it from a module
-resolution	4	30	100	unknown binding consume; declare it with 'let consume = ...' before use, define 'def consume(...) -> T:', or import it from a modulefn f(x: Int) Int:
+type	4	42	155	expected Callable[[], Unit], found Callable[[], Int] (in entry 2 of the literal, whose entries share one type)fn f(x: Int) Int:
     if x > 0: return x else: return 0
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'fn f() Unit:
     if true: return else: return
@@ -3947,39 +3923,7 @@ def two() -> Int:
 parse	1	1	0	'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'
 type parameters: ...type Data:
     value: Int
-from "@std/cleanup.ms" import Closeable
-from "@std/queues.ms" import Queue
-
-type Resource:
-    state: Queue[Int]
-
-impl Closeable for Resource:
-    def close() -> Unit:
-        self.state.dequeue()
-
-def pure() -> Int:
-    return 1
-
-def direct(resource: Resource) -> Unit:
-    with let item = resource:
-        return
-
-def transitive(resource: Resource) -> Unit:
-    direct(resource: resource)
-
-def nested(resource: Resource) -> Unit:
-    let callback = lambda () -> Unit:
-        with let item = resource:
-            return
-
-def indirect(callback: Callable[[], Unit]) -> Unit:
-    callback()
-resolution	1	31	30	unknown standard module @std/cleanup.ms
-resolution	2	30	69	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	5	12	102	unknown type Queue; add: from "@std/queue.ms" import Queue
-resolution	7	6	119	unknown type Closeable; add: from "@std/core.ms" import Closeable
-type	15	5	275	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
-type	23	9	479	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unittype State:
+type State:
     count: Int
 def increment(state: State) -> Int:
     state.count = state.count + 1
@@ -4385,19 +4329,7 @@ resolution	2	34	50	unknown binding remaining; declare it with 'let remaining = .
             doubled
         case none: return 0
     return result
-def work(enabled: Bool) -> Int:
-    let count = 2
-    if enabled:
-        run(count)
-    for item in [1, 2]:
-        run(item)
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	4	9	74	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	6	9	117	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	7	25	151	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	8	9	170	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef process(input: String) -> Int:
+def process(input: String) -> Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -4427,59 +4359,7 @@ resolution	7	11	224	unknown binding save; declare it with 'let save = ...' befor
 resolution	2	19	53	unknown binding parse; add: from "@std/csv.ms" import parse
 resolution	6	18	163	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'def summarize(...) -> T:', or import it from a module
 resolution	7	19	200	unknown binding encode; declare it with 'let encode = ...' before use, define 'def encode(...) -> T:', or import it from a module
-resolution	9	11	226	unknown binding save; declare it with 'let save = ...' before use, define 'def save(...) -> T:', or import it from a moduledef work(enabled: Bool) -> Int:
-    let count = 2
-    if enabled:
-        run(count)
-    elif count > 0: run(1)
-    else:
-        run(0)
-    while enabled:
-        if count == 0: break
-        run(count)
-        break
-    for item in [1, 2]:
-        if item == 1: continue
-        run(item)
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	4	9	74	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	5	21	105	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	7	9	130	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	10	9	193	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	14	9	281	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	15	25	315	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	16	9	334	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef work(enabled: Bool) -> Int:
-    let count = 2
-
-    if enabled:
-        run(count)
-    elif count > 0: run(1)
-    else:
-        run(0)
-
-    while enabled:
-        if count == 0: break
-
-        run(count)
-        break
-
-    for item in [1, 2]:
-        if item == 1: continue
-
-        run(item)
-
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	5	9	75	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	6	21	106	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	8	9	131	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	13	9	196	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	19	9	286	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module
-resolution	21	25	321	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module
-resolution	22	9	340	unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a moduledef choose(value: Choice) -> Int:
+resolution	9	11	226	unknown binding save; declare it with 'let save = ...' before use, define 'def save(...) -> T:', or import it from a moduledef choose(value: Choice) -> Int:
     match value:
         case first: return 1
         case second: return 2
@@ -5634,24 +5514,6 @@ def two() -> Int:
 
 def b(n: Int) -> Int:
     return a(n)
-from "@std/io.ms" import stdout
-
-def load(n: Int) -> Result[Int, Error]:
-    if n > 3:
-        return ok(0)
-    return ok(n)
-
-def guarded(n: Int) -> Result[Int, Error]:
-    with let out = stdout():
-        let v = try load(n)
-        if v > 1:
-            return ok(2)
-    return ok(0)
-
-export def main() -> Int:
-    match guarded(1):
-        case ok(_): return 0
-        case error(_): return 1
 export def main() -> Int:
     return 0   
 export def main() -> Int:
@@ -6485,46 +6347,7 @@ def run() -> Int:
 test "fault":
     run()
 resolution	1	30	29	unknown standard module @std/faults.ms
-resolution	4	44	97	unknown binding panic; add: from "@std/core.ms" import panicfrom "@std/cleanup.ms" import Closeable
-type Count:
-    total: Int
-type Watch:
-    count: Count
-impl Closeable for Watch:
-    def close() -> Unit:
-        self.count.total += 10
-def next(count: Count) -> Int:
-    with let watch = Watch(count):
-        count.total += 1
-        return 0
-def unknown(s: Shape) -> Int: return area(s)
-export def main() -> Int:
-    let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
-    let count = Count(0)
-    if area(shapes.get(next(count) * 0)) != 6: return 1
-    if count.total != 11: return 2
-    if area(shapes.get(next(count))) != 6: return 5
-    if count.total != 22: return 6
-    if unknown(Shape.Tri(4)) != 4: return 3
-    var sum = 0
-    var i = 0
-    while i < 321:
-        sum += area(shapes.get(i % 3))
-        i += 1
-    if sum != 2033: return 4
-    return 0
-resolution	1	31	30	unknown standard module @std/cleanup.ms
-resolution	13	16	301	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
-resolution	6	6	101	unknown type Closeable; add: from "@std/core.ms" import Closeable
-type	10	5	213	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Watch has none, so add 'impl Closeable for Watch:' with var def close() -> Unit
-resolution	13	38	323	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	15	19	375	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	15	36	392	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	15	53	409	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module
-resolution	17	8	455	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	19	8	546	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module
-resolution	21	16	641	unknown binding Shape; did you mean 'shapes'?
-resolution	25	16	734	unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a moduledef probe() -> Int:
+resolution	4	44	97	unknown binding panic; add: from "@std/core.ms" import panicdef probe() -> Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(2))
 export def main() -> Int:
@@ -6760,63 +6583,7 @@ test "continues":
 resolution	4	9	88	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	6	23	157	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	9	8	223	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
-resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?from "@std/faults.ms" import panic
-from "@std/cleanup.ms" import Closeable
-from "@std/collections.ms" import ListBuilder
-from "@std/queues.ms" import Queue
-from "@std/io.ms" import stdout, WriteStream
-from "@std/bytes.ms" import Bytes
-
-def emit(message: String) -> Unit:
-    let written = stdout().write(message).get()
-
-type Resource:
-    output: WriteStream
-
-impl Closeable for Resource:
-    def close() -> Unit:
-        let written = self.output.write("fault cleanup completed\n").get()
-
-test "panic unwinds Closeable":
-    with let resource = Resource(stdout()):
-        return panic("intentional stdlib panic")
-
-test "absent Optional unwrap faults":
-    let absent: Optional[Int] = none
-    let impossible = absent.get()
-
-test "sealed builder mutation faults":
-    let builder = ListBuilder[Int]()
-    let sealed = builder.freeze()
-    builder.append(1)
-
-test "zero queue capacity faults":
-    let queue = Queue[Int](0)
-
-test "negative queue capacity faults":
-    let queue = Queue[Int](-1)
-
-test "unwrapping an out of range slice faults":
-    let impossible = ([1, 2]).slice(start: 0, end: 3).get()
-
-test "negative split limit faults":
-    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
-
-test "negative replace limit faults":
-    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
-
-test "runner continues with fresh roots after faults":
-    emit("fresh root after stdlib faults\n")
-resolution	1	30	29	unknown standard module @std/faults.ms
-resolution	2	31	65	unknown standard module @std/cleanup.ms
-resolution	4	30	150	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	14	6	365	unknown type Closeable; add: from "@std/core.ms" import Closeable
-type	19	5	526	with requires an explicit Closeable implementation or a contract declaring close() -> Unit; Resource has none, so add 'impl Closeable for Resource:' with var def close() -> Unit
-resolution	20	16	581	unknown binding panic; add: from "@std/core.ms" import panic
-resolution	28	26	827	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
-resolution	32	17	910	unknown binding Queue; add: from "@std/queue.ms" import Queue
-resolution	35	17	980	unknown binding Queue; add: from "@std/queue.ms" import Queue
-type	44	56	1301	unknown argument max_replacements; parameters of replace: new, oldfrom "@std/fs.ms" import filesystem
+resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?from "@std/fs.ms" import filesystem
 from "@std/test.ms" import expect_true, fail
 
 test "fixture next to the manifest":

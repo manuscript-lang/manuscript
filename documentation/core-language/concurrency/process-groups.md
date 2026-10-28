@@ -5,7 +5,7 @@ weight = 2
 
 # Process groups
 
-A `ProcessGroup[T, In, Out]` runs functions of your program in child processes and owns them until its `with` block ends. Import it from `@std/processes.ms`. It has the same shape as a [task group](task-groups.md): `spawn(entry)` gives the child its end of a two-way channel, a `Channel[Out, In]`, and the `Process[T, In, Out]` it returns holds the parent's end in its `channel` field. Use a process when the work should run on another core or must not take the parent down when it faults.
+A `ProcessGroup[T, In, Out]` runs functions of your program in child processes and owns them until its scope ends. Import it from `@std/processes.ms`. It has the same shape as a [task group](task-groups.md): `spawn(entry)` gives the child its end of a two-way channel, a `Channel[Out, In]`, and the `Process[T, In, Out]` it returns holds the parent's end in its `channel` field. Use a process when the work should run on another core or must not take the parent down when it faults.
 
 <!-- manuscript-example: test -->
 ```manuscript
@@ -43,7 +43,7 @@ test "a child process answers messages on its channel":
 - `child.wait()` gives the exit status; `terminate()` and `kill()` signal the child's process group.
 - A parent and child that each wait to receive from the other hang: the deadlock fault covers tasks and workers inside one process, and cannot see into another process. Close the channel from the side that finishes first.
 - `group.results()` waits for every open child's result in start order, or gives the first error. Closing a process makes the group forget it and releases its descriptors once the `Process` value is dropped.
-- Leaving the `with` block closes every child: its channel closes, then the child is stopped and joined. Call `result()` first to keep the work.
+- Leaving the scope of the group binding closes every child: its channel closes, then the child is stopped and joined. Call `result()` first to keep the work.
 - `stdin`, `stdout` and `stderr` default to the parent's own streams, so a child's output goes where the parent's goes. `Stdio.Null` discards a stream. `Stdio.Pipe` connects it to the parent: `child.stdin()` is a `WriteStream` (close it to end the child's input), and `child.stdout()` and `child.stderr()` are `ReadStream`s. Read a piped output while the child runs, since a child whose pipe is full waits. A stream that is not piped is already closed.
 
 The child talks to the parent over its own pipe, not its standard streams: a socket pair on Linux and macOS and an owner-only named pipe on Windows. Waiting on it parks the task, as any I/O does.

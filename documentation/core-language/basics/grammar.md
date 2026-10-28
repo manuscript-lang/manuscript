@@ -17,10 +17,10 @@ The reserved words are:
 ```manuscript
 and break case continue def elif else export False fixture for if
 impl in interface lambda let match not or ref return self test True try type
-var while with
+var while
 ```
 
-- `from` starts an import at a module item, `as` appears only in a `with` header, and `bench` starts a benchmark only before a string literal at a module item; all three are contextual, so `let from = 2`, `let as = 1` and `let bench = 3` are valid.
+- `from` starts an import at a module item, and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`fn`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) are not syntax and get a targeted diagnostic naming the Manuscript form (`def`, `()`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
@@ -178,8 +178,7 @@ FunctionType  = "Callable", "[", "[", [ Type, { ",", Type } ], "]", ",", Type, "
 ```ebnf
 Suite         = ":", (SimpleStatement | NEWLINE, INDENT, Statement, { Statement }, DEDENT) ;
 Statement     = SimpleStatement, NEWLINE
-              | IfStatement | WhileStatement | ForStatement
-              | WithStatement ;
+              | IfStatement | WhileStatement | ForStatement ;
 SimpleStatement = Binding | Assignment | CompoundAssignment | ReturnStatement | "break" | "continue"
                 | CallStatement ;
 Binding       = ("let" | "var"), ( BindingEntry
@@ -194,7 +193,6 @@ IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
-WithStatement = "with", Expression, "as", Name, Suite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
 MatchArm      = "case", (CasePattern | LiteralPattern | "_"), ArmSuite ;
@@ -214,7 +212,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - `CallStatement` accepts a call or match and discards the result, or `try call()` when the success type is `Unit` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
 - Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is a name or field path (`box.inner.count += 1`) with no call or index in the receiver. `+=` appends text; `-=` on text is an error.
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` is a wildcard and match payload placeholder only.
-- Inline suites (functions, methods, tests, branches, loops, `with`) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
+- Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
 ```manuscript
 def double(value: Int) -> Int: value * 2
@@ -226,9 +224,9 @@ def positive(value: Int) -> Bool:
 - `elif` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; loops and `with` are statements, and `if` is a statement. The conditional expression is `a if c else b` (a required `else`; chains nest in the final `else`).
+- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `a if c else b` (a required `else`; chains nest in the final `else`).
 - Local type, implementation, import, test, and bench declarations are rejected; a local function is a `def` statement, sugar for binding a `lambda` (it cannot call itself).
-- `with` follows the [cleanup scopes](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
+- Resources follow the [scope-end cleanup](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
 
 ## Rejected forms
 

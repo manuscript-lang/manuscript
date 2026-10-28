@@ -28,7 +28,7 @@ Values have one owner and are dropped deterministically; records, lists, maps, s
 
 Cleanup waits for work to end. The runtime cannot terminate work that ignores cancellation, so such work can block cleanup forever. Escalation is the host's last resort: it ends the process and never reports stuck work as joined.
 
-Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers `with` cleanup and resource close.
+Each host runs one watchdog, started when the host begins shutdown or gets a stop request (SIGINT, SIGTERM, server shutdown), not by ordinary timeouts. It covers scope-end cleanup and resource close.
 
 | Setting | Default |
 | --- | --- |

@@ -4,7 +4,7 @@ from "@std/tasks.ms" import TaskGroup
 from "@std/test.ms" import expect_equal, expect_error, expect_fault, expect_ok, expect_true
 from "@std/time.ms" import nanoseconds, sleep
 
-# The scope-end close of a binding runs on every exit and is shielded like `with`: cancellation and a
+# The scope-end close of a binding runs on every exit and is shielded like any other close: cancellation and a
 # pending fault do not interrupt it, and a fault inside it follows the cleanup-failure table.
 type Holder:
     dir: String

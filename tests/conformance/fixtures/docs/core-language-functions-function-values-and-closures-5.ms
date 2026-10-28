@@ -1,4 +1,4 @@
-# conform: tags=closures,diagnostics,modules,stdlib-bytes,stdlib-fs,strings,tier-io,try-result,with-cleanup
+# conform: tags=closures,diagnostics,modules,stdlib-bytes,stdlib-fs,strings,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=documentation/core-language/functions/function-values-and-closures.md:83
 from "@std/fs.ms" import filesystem, FileSystemError

@@ -31,25 +31,26 @@ def other_holder_lives(log: String) -> Shared[Tracked]:
 
 def locked_then_dropped(log: String) -> Int:
     let box = share(Tracked(log, 1))
-    with var guard = lock(box):
-        guard.value.id += 0
+    var guard = lock(box)
+    guard.value.id += 0
+    guard.close()
     return 0
 
 test "the last holder closes the payload":
-    with let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok:
-        let log = f"{temporary.path()}/log"
-        try expect_equal(last_holder(log.clone()), 1)
-        try expect_equal(closed(log), "1,")
+    let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok
+    let log = f"{temporary.path()}/log"
+    try expect_equal(last_holder(log.clone()), 1)
+    try expect_equal(closed(log), "1,")
 
 test "a holder handed to the caller keeps the payload open":
-    with let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok:
-        let log = f"{temporary.path()}/log"
-        let kept = other_holder_lives(log.clone())
-        try expect_equal(closed(log.clone()), "")
-        try expect_equal(kept.get().id, 1)
+    let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok
+    let log = f"{temporary.path()}/log"
+    let kept = other_holder_lives(log.clone())
+    try expect_equal(closed(log.clone()), "")
+    try expect_equal(kept.get().id, 1)
 
 test "a payload locked and released is closed once":
-    with let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok:
-        let log = f"{temporary.path()}/log"
-        try expect_equal(locked_then_dropped(log.clone()), 0)
-        try expect_equal(closed(log), "1,")
+    let temporary = filesystem().temporary("manuscript-shared-") | try expect_ok
+    let log = f"{temporary.path()}/log"
+    try expect_equal(locked_then_dropped(log.clone()), 0)
+    try expect_equal(closed(log), "1,")

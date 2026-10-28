@@ -5,9 +5,9 @@ weight = 7
 
 # Managing resources
 
-Use `with` to close files, sockets, and response bodies at the end of a block, including early returns and errors.
+A file, socket, or response body closes when the binding that holds it goes out of scope, including on early returns and errors.
 
-1. [Using `with`](scopes.md)
+1. [Scope-end cleanup](scopes.md)
 2. [Closing a resource](resource-release.md)
 3. [Implementing `Closeable`](closeable.md)
 4. [Cleanup order](exit-order.md)

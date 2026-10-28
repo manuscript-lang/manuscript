@@ -1,4 +1,4 @@
-# conform: tags=closures,with-cleanup,stdlib-tasks,tier-io
+# conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 from "@std/core.ms" import Closeable
 from "@std/io.ms" import stdout

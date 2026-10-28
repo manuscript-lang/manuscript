@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,interpolation,lists,maps,match,modules,optional,parser,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,interpolation,lists,maps,match,modules,optional,parser,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/http-websocket.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail

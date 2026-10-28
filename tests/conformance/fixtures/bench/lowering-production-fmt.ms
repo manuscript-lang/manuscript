@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interfaces,modules,mutation,numbers,parser,records,stdlib-cleanup,stdlib-collections,strings,tier-stdlib,with-cleanup
+# conform: tags=control-flow,formatter,interfaces,modules,mutation,numbers,parser,records,stdlib-cleanup,stdlib-collections,strings,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=bench/lowering/production.ms
 from "@std/core.ms" import Closeable

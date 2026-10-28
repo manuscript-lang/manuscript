@@ -388,7 +388,7 @@ impl Walker<'_> {
                 self.error(
                     pos,
                     format!(
-                        "`{name}` is a resource that is never closed: open it with `with let {name} = ...`, call `{name}.close()`, or return it so the caller owns it"
+                        "`{name}` is a resource that is never closed: call `{name}.close()`, or return it so the caller owns it"
                     ),
                 );
             }
@@ -1096,27 +1096,6 @@ impl Walker<'_> {
                 Some(expansion) => self.block(&expansion),
                 None => self.for_stmt(s, iter, body),
             },
-            StmtKind::With {
-                mutable,
-                value,
-                body,
-                ..
-            } => {
-                self.expr(value, Demand::Consume);
-                self.release_pending();
-                let mark = self.declared.len();
-                if let Some(b) = self.cx.m.stmt(s).loop_binding {
-                    let perm = if *mutable {
-                        Perm::Mutable
-                    } else {
-                        Perm::Immutable
-                    };
-                    self.declare(&b, Role::With, perm, None, false);
-                }
-                self.block(body);
-                let ended: Vec<usize> = self.declared.drain(mark..).collect();
-                self.active.retain(|a| !ended.contains(&a.holder));
-            }
         }
     }
 
@@ -2088,11 +2067,6 @@ impl Walker<'_> {
                 e.pos,
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
                 copy_after(e),
-            );
-        } else if matches!(role, Role::With) && !self.is_last(e.id, b) {
-            self.error(
-                e.pos,
-                format!("`{name}` is moved here, but its `with` block closes it at the end of the block; a `with` resource cannot move out of its block, so use `{name}` in place, or bind it with `let` and close or move it yourself"),
             );
         } else if !self.is_last(e.id, b) {
             let later = self

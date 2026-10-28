@@ -44,5 +44,5 @@ See the [testing guide](testing.md) for more.
 
 ## Keep ownership visible
 
-- `with` keeps a file or connection open for its block; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
+- A file or connection stays open until the end of the scope that owns it; cleanup runs on early returns and errors. Acquire resources inside the operation that needs them. See [managing resources](../core-language/cleanup/_index.md).
 - Parameters can borrow values; consuming a value moves it at its last use. `.clone()` makes an explicit copy. Mutate through `var` bindings and `var` parameters. See [values and references](../core-language/types/references.md) for the exact rules.

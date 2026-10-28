@@ -14,6 +14,7 @@ mod alias;
 mod bound_alias;
 mod call;
 mod category;
+mod close;
 mod closure;
 mod codecstream;
 mod cx;
@@ -46,7 +47,6 @@ mod stmt;
 mod streamloop;
 mod testing;
 mod text;
-mod with;
 
 use ms_check::Program;
 use ms_mir::ir::Module;

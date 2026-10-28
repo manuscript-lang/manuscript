@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,interpolation,lists,modules,optional,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-fs,stdlib-io,stdlib-process,stdlib-string,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,interpolation,lists,modules,optional,stdlib-archive,stdlib-bytes,stdlib-compress,stdlib-fs,stdlib-io,stdlib-process,stdlib-string,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/host-contracts.ms
 from "@std/test.ms" import expect_equal, expect_error, expect_false

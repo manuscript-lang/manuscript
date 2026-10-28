@@ -14,7 +14,7 @@
           "file": "pkg-tooling-format-testformatparagraphs-1.ms",
           "line": 7,
           "column": 9,
-          "offset": 248
+          "offset": 249
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "pkg-tooling-format-testformatparagraphs-1.ms",
           "line": 9,
           "column": 9,
-          "offset": 291
+          "offset": 292
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-1.ms",
           "line": 10,
-          "column": 25,
-          "offset": 325
+          "column": 20,
+          "offset": 321
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "pkg-tooling-format-testformatparagraphs-1.ms",
           "line": 11,
-          "column": 9,
-          "offset": 344
+          "column": 5,
+          "offset": 335
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:10:25: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module\n    |\n 10 |     with let resource = acquire():\n    |                         ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:11:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n    |\n 11 |         run(resource)\n    |         ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:10:20: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'def acquire(...) -> T:', or import it from a module\n    |\n 10 |     var resource = acquire()\n    |                    ^\n<DIR>/pkg-tooling-format-testformatparagraphs-1.ms:11:5: resolution: unknown binding run; declare it with 'let run = ...' before use, define 'def run(...) -> T:', or import it from a module\n    |\n 11 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,interfaces,modules,records,stdlib-http,stdlib-io,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,interfaces,modules,records,stdlib-http,stdlib-io,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
 from "@std/test.ms" import expect_equal

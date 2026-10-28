@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'async' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'",
+        "message": "'async' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" bound to a local",
         "position": {
           "file": "foreign-async.ms",
           "line": 5,

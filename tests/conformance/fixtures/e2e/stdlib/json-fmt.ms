@@ -1,4 +1,4 @@
-# conform: tags=aliasing,alternatives,closures,control-flow,decimal,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,numbers,optional,parser,records,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-decimal,stdlib-errors,stdlib-json,stdlib-testing,stdlib-time,stdlib-url,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,alternatives,closures,control-flow,decimal,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,numbers,optional,parser,records,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-decimal,stdlib-errors,stdlib-json,stdlib-testing,stdlib-time,stdlib-url,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail

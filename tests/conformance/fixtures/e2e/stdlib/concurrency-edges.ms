@@ -1,4 +1,4 @@
-# conform: tags=closures,with-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
+# conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 from "@std/channels.ms" import Channel, ChannelError
 from "@std/tasks.ms" import Task, TaskGroup

@@ -27,7 +27,7 @@ Paths under the work directory print as `<DIR>`.
 
 ## Tags
 
-Feature: `lexer layout parser formatter types generics interfaces closures match destructuring try-result optional with-cleanup faults strings lists maps sets numbers decimal interpolation records alternatives control-flow functions modules projects diagnostics mutation json-protocol docs examples testing cli`; standard library: `stdlib-<module>`; kind: `perf fuzz bench`.
+Feature: `lexer layout parser formatter types generics interfaces closures match destructuring try-result optional scope-cleanup faults strings lists maps sets numbers decimal interpolation records alternatives control-flow functions modules projects diagnostics mutation json-protocol docs examples testing cli`; standard library: `stdlib-<module>`; kind: `perf fuzz bench`.
 
 Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` imports only pure modules, `tier-io` touches files, network, processes, time or randomness. Phase 1 of the plan runs `--tag tier-core`.
 

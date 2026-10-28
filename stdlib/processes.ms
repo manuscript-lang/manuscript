@@ -384,12 +384,12 @@ impl Closeable for Process[T, In, Out]:
 
 # A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
 # two-way channel to the group: the child sends `Out` values and receives `In` values, both
-# `Unit` unless given. Open a group with `with`: leaving the block stops every child still running.
+# `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
 # `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
 # strings and numbers.
 export type ProcessGroup[T, In = Unit, Out = Unit]:
     # Internal state: the open processes in start order, changed through the shared handle so the
-    # group works as a `with` binding.
+    # group closes when its scope ends.
     processes: Shared[List[Open]] = share([])
     # Internal state: the number of the next process.
     started: Shared[Int] = share(0)

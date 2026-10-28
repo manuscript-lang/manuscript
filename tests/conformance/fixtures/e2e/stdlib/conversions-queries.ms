@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/conversions-queries.ms
 from "@std/core.ms" import TextError

@@ -375,9 +375,7 @@ fn guard_statement(s: &Stmt) -> bool {
 /// The statement's value expression.
 fn statement_value(s: &Stmt) -> Option<&Expr> {
     match &s.kind {
-        StmtKind::Bind { value, .. }
-        | StmtKind::Assign { value, .. }
-        | StmtKind::With { value, .. } => Some(value),
+        StmtKind::Bind { value, .. } | StmtKind::Assign { value, .. } => Some(value),
         StmtKind::Call(e) => Some(e),
         StmtKind::Return(e) => e.as_ref(),
         StmtKind::If { cond, .. } | StmtKind::While { cond, .. } => Some(cond),
@@ -410,7 +408,7 @@ fn paragraph_block(s: &Stmt) -> bool {
                     || !else_body.is_empty()
                     || (body.len() == 1 && paragraph_block(&body[0])))
         }
-        StmtKind::While { body, .. } | StmtKind::For { body, .. } | StmtKind::With { body, .. } => {
+        StmtKind::While { body, .. } | StmtKind::For { body, .. } => {
             body.len() > 1 || (body.len() == 1 && paragraph_block(&body[0]))
         }
         _ => false,
@@ -1491,10 +1489,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                         start += 1;
                     }
                 }
-                StmtKind::Bind { .. }
-                | StmtKind::Assign { .. }
-                | StmtKind::For { .. }
-                | StmtKind::With { .. } => {
+                StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
                     let target = if matches!(s.kind, StmtKind::For { .. }) {
                         Tok::In
                     } else {

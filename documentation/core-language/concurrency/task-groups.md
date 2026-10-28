@@ -5,7 +5,7 @@ weight = 1
 
 # Task groups
 
-A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `with` block ends. Import it from `@std/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
+A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its scope ends. Import it from `@std/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
 
 <!-- manuscript-example: test -->
 ```manuscript
@@ -28,9 +28,9 @@ test "a group collects its results in start order":
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
-- Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
+- Leaving the scope of the group binding cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
-- Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
+- Files, connections and other resources bound inside a task close when the task leaves their scope. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
 - A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
 - A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `worker.wait()`. This does not isolate native crashes from the rest of the process.
@@ -56,7 +56,7 @@ test "a task that passes its timeout is cancelled":
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
-`cancelled()` from `@std/tasks.ms` returns `True` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `True` inside `with` cleanups.
+`cancelled()` from `@std/tasks.ms` returns `True` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `True` inside scope-end cleanups.
 
 ## What a task may use
 

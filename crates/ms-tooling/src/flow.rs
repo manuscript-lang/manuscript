@@ -25,6 +25,8 @@ pub struct FlowBuilder<'a> {
     pub keys: &'a HashMap<String, String>,
     /// Name expressions that stand for a module-level constant's initializer call.
     pub const_use: &'a HashSet<NodeId>,
+    /// Patterns of the bindings the scope closes: the rest of their block runs inside the resource's scope.
+    pub scoped: &'a HashSet<NodeId>,
 }
 
 /// What `statement` needs of a statement; a module-level constant's initializer
@@ -41,7 +43,6 @@ pub struct StmtView<'a> {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
     Branch,
-    With,
     Exit,
     Return,
     Plain,
@@ -87,10 +88,6 @@ impl<'a> StmtView<'a> {
             StmtKind::For { iter, body, .. } => {
                 view.shape = Shape::Branch;
                 (view.value, view.body) = (Some(iter), body);
-            }
-            StmtKind::With { value, body, .. } => {
-                view.shape = Shape::With;
-                (view.value, view.body) = (Some(value), body);
             }
         }
         view
@@ -145,10 +142,28 @@ impl FlowBuilder<'_> {
     }
 
     pub fn body(&self, statements: &[Stmt]) -> Vec<Node> {
-        statements
-            .iter()
-            .flat_map(|s| self.statement(&StmtView::of(s), Some(s)))
-            .collect()
+        let mut out = Vec::new();
+        for (i, s) in statements.iter().enumerate() {
+            let StmtKind::Bind { pattern, value, .. } = &s.kind else {
+                out.extend(self.statement(&StmtView::of(s), Some(s)));
+                continue;
+            };
+            if !self.scoped.contains(&pattern.id) {
+                out.extend(self.statement(&StmtView::of(s), Some(s)));
+                continue;
+            }
+            // The rest of the block runs inside the resource's scope.
+            let mut node = self.node(
+                "scope",
+                format!("{}  [closed on exit]", self.source(s.pos)),
+                s.pos,
+            );
+            node.children = self.events(Some(value));
+            node.children.extend(self.body(&statements[i + 1..]));
+            out.push(node);
+            break;
+        }
+        out
     }
 
     pub fn statement(&self, s: &StmtView, original: Option<&Stmt>) -> Vec<Node> {
@@ -165,16 +180,6 @@ impl FlowBuilder<'_> {
                         ..Node::default()
                     });
                 }
-                return vec![node];
-            }
-            Shape::With => {
-                let mut node = self.node(
-                    "with",
-                    format!("{}  [closed on exit]", self.source(s.pos)),
-                    s.pos,
-                );
-                node.children = self.events(s.value);
-                node.children.extend(self.body(s.body));
                 return vec![node];
             }
             Shape::Exit => {

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import Closeable\n\ntype R:\n    n: Int\n\nimpl Closeable for R:\n    def close() -> Unit:\n        return ()\n\ndef mk() -> Result[R, Error]:\n    return ok(R(n: 1))\n\ndef f() -> Int:\n    with mk() as x:\n        return 1\n    return 0\n"
-  }
-}

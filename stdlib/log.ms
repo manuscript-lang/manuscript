@@ -97,7 +97,7 @@ export interface Logger:
     # Flushes the logger's transport.
     def flush() -> Result[Unit, LogError]
     # Closes the transport this logger shares with its children, so every one of them reports `Closed`
-    # afterwards. A `with` binding calls it on every exit.
+    # afterwards. A scope that owns the logger calls it on every exit.
     var def close() -> Unit
 
 # Level indexes shared with the encoder: Trace is 0 and Silent is 6.
@@ -280,7 +280,7 @@ export def record[T](
     return logger.log_json(level, message, object_text(text.get()))
 
 # Creates a logger that owns `transport`. Defaults to `Info`, timestamps enabled, and no record-size limit.
-# Child loggers from `child_json` share the transport; closing any of them (`with logger = create(...)`
+# Child loggers from `child_json` share the transport; closing any of them (a `logger` binding
 # closes on every exit) closes it for all.
 export def create(
     transport: Transport,

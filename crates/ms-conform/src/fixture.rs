@@ -52,7 +52,7 @@ pub const TAGS: &[&str] = &[
     "destructuring",
     "try-result",
     "optional",
-    "with-cleanup",
+    "scope-cleanup",
     "faults",
     "strings",
     "lists",

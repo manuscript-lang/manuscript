@@ -1,4 +1,4 @@
-# conform: tags=alternatives,formatter,parser,records,tier-core,with-cleanup
+# conform: tags=alternatives,formatter,parser,records,tier-core,scope-cleanup
 # conform: phase=parse
 # conform: origin=documentation/core-language/types/alternatives.md:38
 type LeftState:

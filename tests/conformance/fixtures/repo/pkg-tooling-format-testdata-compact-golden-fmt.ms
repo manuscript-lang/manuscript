@@ -1,4 +1,4 @@
-# conform: tags=alternatives,closures,formatter,interpolation,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
+# conform: tags=alternatives,closures,formatter,interpolation,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/testdata/compact.golden.ms
 from "@std/test.ms" import expect_equal

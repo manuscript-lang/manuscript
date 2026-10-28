@@ -481,7 +481,7 @@ impl Checker {
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" inside 'with', e.g. group.spawn(lambda ch: work(), timeout: some(nanoseconds(...)))"
+                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(lambda ch: work(), timeout: some(nanoseconds(...)))"
                 );
             }
             "print" | "println" | "printf" | "puts" | "echo" => {

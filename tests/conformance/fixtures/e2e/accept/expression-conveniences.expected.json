@@ -24,25 +24,25 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`items` is moved here but used again at 60:19; a value has one owner, so pass `items.clone()` to keep the original, or move it only at its last use",
+          "message": "`items` is moved here but used again at 61:19; a value has one owner, so pass `items.clone()` to keep the original, or move it only at its last use",
           "position": {
             "file": "expression-conveniences.ms",
-            "line": 58,
+            "line": 59,
             "column": 37,
-            "offset": 1950
+            "offset": 1923
           },
           "fix": {
             "position": {
               "file": "expression-conveniences.ms",
-              "line": 58,
+              "line": 59,
               "column": 42,
-              "offset": 1955
+              "offset": 1928
             },
             "end": {
               "file": "expression-conveniences.ms",
-              "line": 58,
+              "line": 59,
               "column": 42,
-              "offset": 1955
+              "offset": 1928
             },
             "replacement": ".clone()"
           }

@@ -44,7 +44,7 @@ test "a worker answers over its channel":
 - Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: True` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
 - `worker.wait()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
 - Manuscript faults caught by the worker runtime are reported through `wait()` as `WorkerError.Faulted(report)`, with the fault's message and stack. Worker threads are not a process-crash isolation boundary. A cancelled worker gives `WorkerError.Cancelled`.
-- Leaving the `with` block cancels workers that are still running, closes their channels and waits for them.
+- Leaving the scope of the group binding cancels workers that are still running, closes their channels and waits for them.
 - At most 256 workers run at once; past that `spawn` returns `WorkerError.NotStarted`.
 
 ## What a worker may use

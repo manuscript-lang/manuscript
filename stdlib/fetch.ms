@@ -126,7 +126,7 @@ impl FetchResponse:
 
         return error(FetchError.Status(self.head.status))
 
-# A reusable client with connection pooling. Open it with `with`, or close it when done.
+# A reusable client with connection pooling. Bind it to a local and its scope closes it, or close it when done.
 export type Fetcher:
     # Internal state: the pooled HTTP client every request goes through.
     client: HttpClient

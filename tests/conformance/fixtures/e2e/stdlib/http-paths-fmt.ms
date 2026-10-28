@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,generics,interpolation,lists,maps,match,modules,optional,parser,stdlib-bytes,stdlib-errors,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,formatter,generics,interpolation,lists,maps,match,modules,optional,parser,stdlib-bytes,stdlib-errors,stdlib-http,stdlib-net,stdlib-testing,stdlib-tls,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/http-paths.ms
 from "@std/test.ms" import expect_ok

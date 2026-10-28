@@ -69,7 +69,7 @@ export interface Commands:
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration] = none
     ) -> Result[CommandOutput, CommandError]
-    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess for use with `with`. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+    # Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `stdin`, `stdout`, and `stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns InvalidInput, Unavailable, or Failed when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
     def spawn(
         program: String,
         arguments: List[String],
@@ -107,7 +107,7 @@ export type Subprocess:
     native: NativeSubprocess
 
 impl Closeable for Subprocess:
-    # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; `with` calls it on scope exit.
+    # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; scope exit calls it.
     var def close() -> Unit:
         msstd_process_subprocess_close(self.native)
 
@@ -138,7 +138,7 @@ impl Subprocess:
 
 # Process and operating-system controls for the current process.
 # `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
-# `next()` and code following it have no shutdown guarantee. Register `with`/`Closeable` cleanup
+# `next()` and code following it have no shutdown guarantee. Register `Closeable` cleanup
 # and finish shutdown work directly in the shielded close call after joining cancelled workers.
 export interface ProcessControl:
     # Elapsed nanoseconds since native runtime initialization, sharing the uptime() origin.
@@ -288,7 +288,7 @@ export type ResourceUsage:
 
 # A cancellable observer of operating-system signals selected by `watch_signals`.
 # SIGINT/SIGTERM still cancel the native application; `close()` unregisters this observer.
-# `next()` and following code have no shutdown guarantee; use registered `with`/`Closeable` cleanup.
+# `next()` and following code have no shutdown guarantee; use registered `Closeable` cleanup.
 export interface SignalStream:
     # Stops observing signals, wakes a pending `next` with Closed, and waits for it.
     # Safe to call repeatedly.

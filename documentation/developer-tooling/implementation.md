@@ -69,9 +69,9 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `effects` | Callees that carry an effect, down to the native operation |
 | `errors` | Functions with a `Result` error type or `try` sites |
 | `modules` | Imports per module |
-| `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, `with` scopes, exits (needs `--entity`) |
-| `scope` | `flow` pruned to `with` scopes and the exits inside them (needs `--entity`) |
-| `tasks` | `flow` pruned to `with` scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
+| `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
+| `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
+| `tasks` | `flow` pruned to resource scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
 
 - `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
@@ -89,7 +89,7 @@ ms review ms.toml --diff change.patch --explain 1
 
 `ms review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `none`.
 
-- Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, `with` scopes, and imports.
+- Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, resource scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
 - `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; a full id or unambiguous entity name also works. Removed entities and declarations without a callable body have no current flow.
 - `--format ascii|markdown` picks the rendering. Text tables show five rows per section unless `--all`; `--json` includes every row and finding. Report format 2 includes `base_checked` (`null` for a project map) and a `number` on each finding (`null` for INTERNAL).
@@ -103,7 +103,7 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 | `CONTRACT` | Exported signature or visibility change, exported entity added or removed |
 | `EFFECT+` | New conservative effect, with the call path to where it enters |
 | `ERROR` | Different `Result` error type or number of `try` sites |
-| `RESOURCE` | Different number of `with` scopes |
+| `RESOURCE` | Different number of resource scopes |
 | `INTERNAL` | Body changed without affecting any tier |
 
 Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. `unknown` effects appear for indirect calls and most native operations, so only newly introduced effects rank.
