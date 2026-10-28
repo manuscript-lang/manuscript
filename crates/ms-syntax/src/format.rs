@@ -604,11 +604,10 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
     }
     compact.cuts.sort_unstable_by(|a, b| b.cmp(a));
     compact.cuts.dedup();
-    let mut result = source.to_string();
-    for (from, to) in compact.cuts {
-        result.replace_range(from..to, " ");
-    }
-    Some(result)
+    Some(apply_edits(
+        source,
+        compact.cuts.iter().rev().map(|&(from, to)| (from, to, " ")),
+    ))
 }
 
 /// A lambda whose body is a suite of several statements; a one-expression
@@ -1540,18 +1539,63 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
         visit::walk_decl(&mut g, d);
     }
     if strip {
-        let mut result = source.to_string();
-        g.remove.sort_unstable_by(|a, b| b.cmp(a));
-        for (from, to, flat) in &g.remove {
-            result.replace_range(*from..*to, flat);
-        }
-        return Ok(result);
+        g.remove.sort_unstable();
+        return Ok(apply_edits(
+            source,
+            g.remove
+                .iter()
+                .map(|(from, to, flat)| (*from, *to, flat.as_str())),
+        ));
     }
     let mut offsets: Vec<usize> = g.insert.keys().copied().collect();
-    offsets.sort_unstable_by(|a, b| b.cmp(a));
-    let mut result = source.to_string();
-    for offset in offsets {
-        result.insert_str(offset, &g.insert[&offset]);
+    offsets.sort_unstable();
+    Ok(apply_edits(
+        source,
+        offsets
+            .into_iter()
+            .map(|offset| (offset, offset, g.insert[&offset].as_str())),
+    ))
+}
+
+/// Applies nonoverlapping, source-ordered edits without shifting each suffix.
+fn apply_edits<'a>(
+    source: &str,
+    edits: impl IntoIterator<Item = (usize, usize, &'a str)>,
+) -> String {
+    let mut result = String::with_capacity(source.len());
+    let mut cursor = 0;
+    for (from, to, text) in edits {
+        result.push_str(&source[cursor..from]);
+        result.push_str(text);
+        cursor = to;
     }
-    Ok(result)
+    result.push_str(&source[cursor..]);
+    result
+}
+
+#[cfg(test)]
+mod edit_tests {
+    use super::apply_edits;
+
+    #[test]
+    fn source_edits_preserve_utf8_and_adjacent_boundaries() {
+        let source = "α\r\nhello λ!";
+        let edits = [(0, 0, "("), (4, 9, "world"), (9, 10, ""), (12, 12, ")")];
+        let mut expected = source.to_string();
+        for &(from, to, text) in edits.iter().rev() {
+            expected.replace_range(from..to, text);
+        }
+        assert_eq!(apply_edits(source, edits), expected);
+        assert_eq!(apply_edits(source, []), source);
+    }
+
+    #[test]
+    fn many_edits_keep_the_original_coordinate_space() {
+        let source = "abcd".repeat(4096);
+        let edits: Vec<_> = (0..source.len())
+            .step_by(4)
+            .map(|at| (at + 1, at + 3, "λ"))
+            .collect();
+        assert_eq!(apply_edits(&source, edits), "aλd".repeat(4096));
+    }
 }
