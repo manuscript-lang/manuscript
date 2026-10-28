@@ -81,6 +81,7 @@ export type NetworkError:
         message: String
     )
 
+# The runtime handle behind a `Connection`.
 export extern type NativeConnection
 
 extern def msrt_net_connection_close(handle: NativeConnection) -> Unit
@@ -171,6 +172,7 @@ export type Datagram:
     # Native host:port text, with bracketed IPv6 addresses.
     sender: String
 
+# The runtime handle behind a `DatagramSocket`.
 export extern type NativeDatagramSocket
 
 extern def msrt_net_datagram_address(handle: NativeDatagramSocket) -> String
@@ -320,6 +322,7 @@ export type DnsRecord:
     # The service port of an SRV record; 0 for other kinds.
     port: Int
 
+# The runtime handle behind a `Listener`.
 export extern type NativeListener
 
 extern def msrt_net_listener_accept(
@@ -666,6 +669,7 @@ export type WebSocketError:
         message: String
     )
 
+# The runtime handle behind a `WebSocket`.
 export extern type NativeWebSocket
 
 extern def msrt_websocket_close(handle: NativeWebSocket) -> Unit
