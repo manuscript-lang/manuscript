@@ -12,16 +12,16 @@
         "message": "Door does not satisfy Hashable; it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead",
         "position": {
           "file": "diag-resource-set-element.ms",
-          "line": 9,
+          "line": 12,
           "column": 13,
-          "offset": 230
+          "offset": 225
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-resource-set-element.ms:9:13: type: Door does not satisfy Hashable; it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead\n   |\n 9 |     let s = Set[Door]()\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-resource-set-element.ms:12:13: type: Door does not satisfy Hashable; it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead\n    |\n 12 |     let s = Set[Door]()\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
