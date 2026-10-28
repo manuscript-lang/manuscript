@@ -58,10 +58,13 @@ jobs:
           mv "$W/opt" "$W/opt.real"
           printf '#!/bin/sh\nexec "%s/opt.real" -opt-bisect-limit=5489 "$@" 2>/dev/null\n' "$W" > "$W/opt"
           chmod +x "$W/opt"
-          touch "$RUNNER_TEMP/stamp"; sleep 1
-          MS_KEEP_LL="$RUNNER_TEMP/keep.ll" MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "quoted folding trims" 2>&1 | tail -5
-          echo "--- candidates"
-          find / -xdev -type f -perm -u+x -newer "$RUNNER_TEMP/stamp" -size +1M 2>/dev/null | grep -v -e '^/proc' -e target/debug | head
-          exe=$(find / -xdev -type f -perm -u+x -newer "$RUNNER_TEMP/stamp" -size +1M 2>/dev/null | grep -v target/debug | head -1)
+          export TMPDIR="$RUNNER_TEMP/tmp"; mkdir -p "$TMPDIR" "$RUNNER_TEMP/keep"
+          ( while :; do for f in "$TMPDIR"/*/*; do [ -f "$f" ] && [ -x "$f" ] && cp -n "$f" "$RUNNER_TEMP/keep/" 2>/dev/null; done; sleep 0.1; done ) &
+          cp_pid=$!
+          MS_LLVM_TOOLS="$W" "$ms" test "$y" --build-type Release --filter "quoted folding trims" 2>&1 | tail -5
+          sleep 1; kill $cp_pid
+          ls -la "$RUNNER_TEMP/keep"
+          exe=$(ls -S "$RUNNER_TEMP/keep"/* | head -1)
           echo "exe=$exe"
-          [ -n "$exe" ] && lldb -b -o run -o "bt 8" -o "register read" -o "disassemble -p -c 24" -o "image lookup -a \$pc" -- "$exe" --filter "quoted folding trims" 2>&1 | tail -90
+          "$exe" --help 2>&1 | head -5
+          [ -n "$exe" ] && lldb -b -o run -o "bt 8" -o "register read" -o "disassemble -p -c 24" -o "image lookup -a \$pc" -- "$exe" 2>&1 | tail -90
