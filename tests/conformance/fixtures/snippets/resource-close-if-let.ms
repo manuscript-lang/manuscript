@@ -27,7 +27,9 @@ def early_return() -> Int:
     if let r = maybe("early", True):
         if r.name.length() > 1:
             return 1
+
         say("not here")
+
     return 0
 
 def local_optional() -> Unit:
@@ -45,6 +47,7 @@ def absent() -> Unit:
 def moved_on() -> Res:
     if let r = maybe("moved", True):
         return keep(r)
+
     return Res("fallback")
 
 def with_else_err() -> Unit:
@@ -55,6 +58,7 @@ export def main() -> Int:
     early_return()
     local_optional()
     absent()
+
     let m = moved_on()
     say(f"moved_on got {m.name}")
     with_else_err()
