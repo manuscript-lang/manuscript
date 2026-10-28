@@ -176,6 +176,16 @@ impl FnLower<'_> {
         close_call(&mut self.b, &kind, v, mt);
     }
 
+    /// Closes a discarded statement result, which nothing took from: unlike a pending temporary
+    /// it may be a wrapper (`xs.pop()` is an `Optional`).
+    pub(crate) fn close_unused(&mut self, v: Value, ty: &ct::Ty) {
+        let mt = self.b.ty(v);
+        let Ok(Some(kind)) = self.part_closer(ty) else {
+            return;
+        };
+        close_call(&mut self.b, &kind, v, mt);
+    }
+
     pub(crate) fn with_stmt(&mut self, s: &Stmt, value: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let info = self.hir.stmt(s);
         let binding = info

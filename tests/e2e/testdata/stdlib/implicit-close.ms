@@ -100,3 +100,14 @@ test "an unbound resource temporary is closed at the end of its statement":
         let dir = temporary.path()
         try expect_equal(temporary_id(dir.clone()), 40)
         try expect_true(closed(dir, 40))
+
+def pops_and_discards(dir: String) -> Int:
+    var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
+    rs.pop()
+    return rs.length()
+
+test "a discarded resource result is closed":
+    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
+        let dir = temporary.path()
+        try expect_equal(pops_and_discards(dir.clone()), 1)
+        try expect_true(closed(dir, 51))
