@@ -662,7 +662,7 @@ impl Checker {
         }
         if methods.len() != 1 {
             let msg = self.unknown_member(&rt, name);
-            self.res_error(e.pos, msg);
+            self.res_error_name(e.pos, name.as_str().len(), msg);
             // Later diagnostics that only restate the missing member are noise.
             i.ty = Some(invalid());
             return i;
