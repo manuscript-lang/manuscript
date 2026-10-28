@@ -43,7 +43,7 @@ pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
 }
 
 impl<'a> FnLower<'a> {
-    fn builder_rec(&self, handle: MTy) -> Result<RecId, Error> {
+    pub(crate) fn builder_rec(&self, handle: MTy) -> Result<RecId, Error> {
         if let TyKind::Obj(n, a) = self.b.m.types.kind(handle)
             && n == "Shared"
             && let Some(&r) = a.first()
