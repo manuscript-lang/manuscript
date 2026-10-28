@@ -278,9 +278,23 @@ impl Dec {
             (Sign::Plus, Sign::NoSign | Sign::Minus) | (Sign::NoSign, Sign::Minus) => return 1,
             _ => {}
         }
-        let exp = self.exp.min(other.exp);
-        let (x, y) = (a * pow10(self.exp - exp), b * pow10(other.exp - exp));
-        match x.cmp(&y) {
+        let ordering = if self.exp == other.exp {
+            a.cmp(&b)
+        } else if (self.exp - other.exp).abs() >= DIGITS {
+            // Nonzero coefficients have 1..=34 digits. Beyond that gap,
+            // the higher quantum has the greater magnitude, regardless of digits.
+            let magnitude = self.exp.cmp(&other.exp);
+            if a.is_negative() {
+                magnitude.reverse()
+            } else {
+                magnitude
+            }
+        } else {
+            let exp = self.exp.min(other.exp);
+            let (x, y) = (a * pow10(self.exp - exp), b * pow10(other.exp - exp));
+            x.cmp(&y)
+        };
+        match ordering {
             core::cmp::Ordering::Less => -1,
             core::cmp::Ordering::Equal => 0,
             core::cmp::Ordering::Greater => 1,
@@ -501,6 +515,35 @@ mod tests {
         assert_eq!(d("-0.001d").to_fixed(2, Mode::HalfEven).unwrap(), "0.00");
         assert_eq!(d("5d").to_fixed(0, Mode::HalfEven).unwrap(), "5");
         assert_eq!(d("0.5d").to_fixed(3, Mode::HalfEven).unwrap(), "0.500");
+    }
+
+    #[test]
+    fn comparison_matches_exact_alignment_at_precision_boundaries() {
+        let texts = [
+            "0",
+            "1",
+            "-1",
+            "9",
+            "11",
+            "9999999999999999999999999999999999",
+        ];
+        for gap in [0, 1, 32, 33, 34, 35, 6144] {
+            for left in texts {
+                for right in texts {
+                    let a = d(&format!("{left}e{}", gap - 6176));
+                    let b = d(&format!("{right}e-6176"));
+                    let exp = a.exp.min(b.exp);
+                    let expected = (a.coefficient() * pow10(a.exp - exp))
+                        .cmp(&(b.coefficient() * pow10(b.exp - exp)))
+                        as i64;
+                    assert_eq!(a.compare(&b), expected, "{left} {right} {gap}");
+                    assert_eq!(b.compare(&a), -expected);
+                    assert_eq!(a.negate().compare(&b.negate()), -expected);
+                }
+            }
+        }
+        assert_eq!(d("1e6144").compare(&d("1e-6176")), 1);
+        assert_eq!(d("-1e6144").compare(&d("-1e-6176")), -1);
     }
 
     #[test]
