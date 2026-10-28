@@ -422,23 +422,8 @@ def fold_plain(text: String) -> String:
 
     return result
 
-def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
-    flow_space(var flow)
-    if not key:
-        try count(var flow.context, depth)
-
-    let c = cur(flow)
-
-    if c == 38:
-        advance(var flow)
-
-        let name = try anchor_name(var flow)
-        flow.context.values -= 1
-
-        let value = try flow_value(var flow, depth, key: False)
-        define_anchor(var flow.context, name, value.clone())
-        return ok(value)
-
+# A scalar, alias or quoted string at the cursor, whose first code is `c`.
+def flow_leaf(var flow: Flow, c: Int, key: Bool) -> Result[YamlValue, YamlError]:
     if c == 42:
         advance(var flow)
 
@@ -456,106 +441,6 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
         )
     )
     if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
-
-    if c == 91:
-        flow.delimited = True
-        if key: return error(
-            YamlError.UnsupportedFeature(
-                line: flow.line, reason: "complex mapping keys are unsupported"
-            )
-        )
-
-        advance(var flow)
-
-        var values: List[YamlValue] = []
-        flow_space(var flow)
-
-        while cur(flow) != 93:
-            if cur(flow) == 0 or cur(flow) == 44: return error(
-                flow_invalid(flow, "expected flow sequence value")
-            )
-
-            values.append(try flow_value(var flow, depth + 1, key: False))
-            flow_space(var flow)
-            if cur(flow) == 93: break
-            if step(var flow) != 44: return error(
-                flow_invalid(flow, "expected sequence comma")
-            )
-
-            flow_space(var flow)
-
-        advance(var flow)
-        return ok(YamlValue.ArrayValue(values))
-
-    if c == 123:
-        flow.delimited = True
-        if key: return error(
-            YamlError.UnsupportedFeature(
-                line: flow.line, reason: "complex mapping keys are unsupported"
-            )
-        )
-
-        advance(var flow)
-
-        var values = Map[String, YamlValue]()
-        var explicit = Set[String]()
-        flow_space(var flow)
-
-        while cur(flow) != 125:
-            if cur(flow) == 0: return error(
-                flow_invalid(flow, "unterminated flow mapping")
-            )
-
-            let quoted_key = cur(flow) == 34 or cur(flow) == 39
-            let parsed_key = try flow_value(var flow, depth, key: True)
-            var name = ""
-
-            match parsed_key:
-                case StringValue(value): name = value
-                case _: return error(
-                    YamlError.UnsupportedFeature(
-                        line: flow.line, reason: "mapping keys must be strings"
-                    )
-                )
-
-            flow_space(var flow)
-
-            var value = YamlValue.Null
-
-            # A key with no colon, as in `{a, b: 1}`, maps to null.
-            if cur(flow) == 44 or cur(flow) == 125:
-                try count(var flow.context, depth + 1)
-            else:
-                if step(var flow) != 58: return error(
-                    flow_invalid(flow, "expected mapping colon")
-                )
-
-                value = try flow_value(var flow, depth + 1, key: False)
-
-            if explicit.contains(name): return error(
-                flow_invalid(flow, "duplicate mapping key")
-            )
-
-            explicit.add(name.clone())
-
-            if name == "<<" and not quoted_key:
-                try merge(
-                    line: flow.line, column: flow.pos + 1, target: var values,
-                    value: value
-                )
-            else:
-                values.add(name, value)
-
-            flow_space(var flow)
-            if cur(flow) == 125: break
-            if step(var flow) != 44: return error(
-                flow_invalid(flow, "expected mapping comma")
-            )
-
-            flow_space(var flow)
-
-        advance(var flow)
-        return ok(YamlValue.ObjectValue(values))
 
     let start = flow.pos
 
@@ -596,6 +481,216 @@ def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlE
     if key: return ok(YamlValue.StringValue(text))
 
     return ok(plain(text))
+
+# Stores a finished mapping value under `name`.
+def flow_entry(
+    var flow: Flow, name: String, quoted_key: Bool, var entries: Map[String, YamlValue],
+    var explicit: Set[String], value: YamlValue
+) -> Result[Unit, YamlError]:
+    if explicit.contains(name): return error(
+        flow_invalid(flow, "duplicate mapping key")
+    )
+
+    explicit.add(name.clone())
+
+    if name == "<<" and not quoted_key:
+        try merge(
+            line: flow.line, column: flow.pos + 1, target: var entries, value: value
+        )
+    else:
+        entries.add(name.clone(), value)
+
+    return ok(())
+
+# Parses a flow value. Nested sequences and mappings are parsed with explicit stacks, not by
+# recursion, so the nesting depth is bounded by the depth limit and not by the call stack. Only
+# a mapping key recurses, and a key cannot be a container.
+def flow_value(var flow: Flow, depth: Int, key: Bool) -> Result[YamlValue, YamlError]:
+    # The open containers, innermost last: kind (1 sequence, 2 mapping), depth, anchors, and
+    # the entries so far. The innermost one is held in the variables below `parents`.
+    var kinds: List[Int] = []
+    var depths: List[Int] = []
+    var anchor_stack: List[List[String]] = []
+    var item_stack: List[List[YamlValue]] = []
+    var entry_stack: List[Map[String, YamlValue]] = []
+    var explicit_stack: List[Set[String]] = []
+    var name_stack: List[String] = []
+    var quoted_stack: List[Bool] = []
+
+    # kind 0 is the request itself, before any container opens.
+    var kind = 0
+    var level = depth
+    var anchors: List[String] = []
+    var items: List[YamlValue] = []
+    var entries = Map[String, YamlValue]()
+    var explicit = Set[String]()
+    var name = ""
+    var quoted_key = False
+    var phase = 0
+    var done = YamlValue.Null
+    var child_key = key
+
+    # Phase 0 begins a value inside the innermost container, phase 1 hands it a finished value,
+    # and phase 2 reads what follows the opening bracket or a comma.
+    while True:
+        if phase == 0:
+            let child_depth = depth if kind == 0 else level + 1
+
+            var written: List[String] = []
+            var is_key = child_key
+            child_key = False
+
+            while True:
+                flow_space(var flow)
+                if not is_key:
+                    try count(var flow.context, child_depth)
+                if cur(flow) != 38: break
+
+                advance(var flow)
+
+                let anchor = try anchor_name(var flow)
+                flow.context.values -= 1
+                written.append(anchor)
+                is_key = False
+
+            let c = cur(flow)
+
+            if c == 91 or c == 123:
+                flow.delimited = True
+                if is_key: return error(
+                    YamlError.UnsupportedFeature(
+                        line: flow.line, reason: "complex mapping keys are unsupported"
+                    )
+                )
+
+                advance(var flow)
+                flow_space(var flow)
+                kinds.append(kind)
+                depths.append(level)
+                anchor_stack.append(anchors)
+                item_stack.append(items)
+                entry_stack.append(entries)
+                explicit_stack.append(explicit)
+                name_stack.append(name)
+                quoted_stack.append(quoted_key)
+
+                kind = 1 if c == 91 else 2
+
+                level = child_depth
+                anchors = written
+                items = []
+                entries = Map[String, YamlValue]()
+                explicit = Set[String]()
+                name = ""
+                quoted_key = False
+                phase = 2
+                continue
+
+            let leaf = try flow_leaf(var flow, c, is_key)
+            for anchor in written.reversed():
+                define_anchor(var flow.context, anchor, leaf.clone())
+            done = leaf
+            phase = 1
+            continue
+
+        if phase == 1:
+            if kind == 0: return ok(done)
+
+            if kind == 1:
+                items.append(done)
+                done = YamlValue.Null
+                flow_space(var flow)
+
+                if cur(flow) != 93:
+                    if step(var flow) != 44: return error(
+                        flow_invalid(
+                            flow, "expected sequence comma"
+                        )
+                    )
+
+                    flow_space(var flow)
+                    phase = 2
+                    continue
+            else:
+                try flow_entry(
+                    var flow, name, quoted_key, var entries, var explicit, done
+                )
+                done = YamlValue.Null
+                flow_space(var flow)
+
+                if cur(flow) != 125:
+                    if step(var flow) != 44: return error(
+                        flow_invalid(
+                            flow, "expected mapping comma"
+                        )
+                    )
+
+                    flow_space(var flow)
+                    phase = 2
+                    continue
+
+        # Phase 2 may close the container too; both end here with the closing bracket at the cursor.
+        if phase == 2:
+            if kind == 1:
+                if cur(flow) != 93:
+                    if cur(flow) == 0 or cur(flow) == 44: return error(
+                        flow_invalid(
+                            flow, "expected flow sequence value"
+                        )
+                    )
+
+                    phase = 0
+                    continue
+            elif cur(flow) != 125:
+                if cur(flow) == 0: return error(
+                    flow_invalid(flow, "unterminated flow mapping")
+                )
+
+                quoted_key = cur(flow) == 34 or cur(flow) == 39
+
+                let parsed_key = try flow_value(var flow, level, key: True)
+
+                match parsed_key:
+                    case StringValue(text): name = text
+                    case _: return error(
+                        YamlError.UnsupportedFeature(
+                            line: flow.line, reason: "mapping keys must be strings"
+                        )
+                    )
+
+                flow_space(var flow)
+
+                # A key with no colon, as in `{a, b: 1}`, maps to null.
+                if cur(flow) == 44 or cur(flow) == 125:
+                    try count(var flow.context, level + 1)
+                    done = YamlValue.Null
+                    phase = 1
+                    continue
+
+                if step(var flow) != 58: return error(
+                    flow_invalid(flow, "expected mapping colon")
+                )
+
+                phase = 0
+                continue
+
+        # The closing bracket is at the cursor: the innermost container is complete.
+        advance(var flow)
+
+        if kind == 1: done = YamlValue.ArrayValue(items)
+        else: done = YamlValue.ObjectValue(entries)
+
+        for anchor in anchors.reversed():
+            define_anchor(var flow.context, anchor, done.clone())
+        kind = kinds.pop().get(0)
+        level = depths.pop().get(0)
+        anchors = anchor_stack.pop().get([])
+        items = item_stack.pop().get([])
+        entries = entry_stack.pop().get(Map[String, YamlValue]())
+        explicit = explicit_stack.pop().get(Set[String]())
+        name = name_stack.pop().get("")
+        quoted_key = quoted_stack.pop().get(False)
+        phase = 1
 
 # A plain scalar cannot start with a reserved indicator, nor with `-` or `?` followed by a space or the end.
 def plain_may_start(text: String) -> Bool:
