@@ -2260,6 +2260,29 @@ impl Walker<'_> {
                     format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; `set` or `add` each one instead"),
                 );
             }
+            // A collection method that reads the receiver and returns an owned value holding the
+            // very resources it holds (`xs.take(1)`, `xs.concat(xs)`, `xs.find(..)`) makes a second
+            // owner of each one, and every owner closes it.
+            if modes.receiver != Some(ParamMode::Mutate)
+                && !modes.accessor
+                && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
+                && self.class_of(r) == Class::Resource
+                && self.class_of(e) == Class::Resource
+                && self.cx.m.info(e).native_str() != "clone"
+            {
+                let ety = self.cx.m.ty(e);
+                let copied = rty.args.iter().any(|a| {
+                    self.cx.classes.class(a) == Class::Resource
+                        && (crate::types::same(a, &ety) || ty_contains(&ety, a))
+                });
+                if copied {
+                    let text = self.expr_text(r);
+                    self.error(
+                        e.pos,
+                        format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; move them out with `remove` or `pop`, or `set` or `add` each one instead"),
+                    );
+                }
+            }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
             // receiver's one owner handing it over, not a copy.
