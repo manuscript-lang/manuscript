@@ -28,9 +28,18 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 `ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and `with` scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
+## What Manuscript offers
+
+- **Cleanup on every exit:** a resource closes automatically at scope end, whether it ends by `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
+- **Inferred closures:** a closure that stays local borrows what it captures; one that escapes owns it. No capture lists. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
+- **Exact numbers:** checked `Int8` to `Int64`, `UInt8` to `UInt64`, `Float32`, and `Decimal` literals such as `12.50d`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
+- **Small prelude:** `Optional`, `Result`, `List`, `Map`, `Set` and `0..n` need no import; sharing across owners is the explicit `Shared[T]`.
+- **Benchmarks beside tests:** `bench` blocks live next to `test` blocks and `ms bench` times them. [Testing](documentation/learn/testing.md)
+- **A cheat sheet that is tested:** the mistakes in `ms guide` are verified against the compiler.
+
 ## Fast code from the straightforward loop
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
+Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized, with an AVX2 copy chosen at run time on x86-64. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
 
 The standard library is about 14,000 lines of Manuscript across 40+ modules (HTTP, JSON, TOML, YAML, CSV, crypto, processes, and more), with Rust only for small primitives. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 
