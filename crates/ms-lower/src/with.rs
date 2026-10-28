@@ -111,6 +111,9 @@ pub(crate) struct Closer {
     /// Set while the binding still holds the resource; a move clears it. Present only for a
     /// binding some path moves.
     flag: Option<ms_mir::builder::Var>,
+    /// The current cleanup entry of a binding that can be reassigned after a move, which pushes
+    /// a new one.
+    entry: Option<ms_mir::builder::Var>,
 }
 
 /// Calls the close operation on `v` of type `ty`.
@@ -245,8 +248,20 @@ impl FnLower<'_> {
             self.b.def_var(flag, held);
             flag
         });
-        self.closers
-            .insert(binding.uid, Closer { kind, handle, flag });
+        let entry = (flag.is_some() && binding.mutable).then(|| {
+            let entry = self.b.declare_var(MTy::INT, Mode::Borrow);
+            self.b.def_var(entry, handle);
+            entry
+        });
+        self.closers.insert(
+            binding.uid,
+            Closer {
+                kind,
+                handle,
+                flag,
+                entry,
+            },
+        );
         // A binding that needs no drop is not registered by `bind_local`; closing still runs.
         let scope = self.scopes.last_mut().expect("scope");
         if !scope.contains(&binding.uid) {
@@ -507,6 +522,53 @@ impl FnLower<'_> {
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
     }
 
+    /// The cleanup entry the binding's scope end discards.
+    fn entry_of(&mut self, closer: &Closer) -> Value {
+        match closer.entry {
+            Some(v) => self.b.use_var(v),
+            None => closer.handle,
+        }
+    }
+
+    /// Stores `new` over the closing binding `uid`, whose value is `old`: the old value is
+    /// closed when the binding still holds one, and a binding a move emptied registers a new
+    /// cleanup entry for `new`.
+    pub(crate) fn assign_closing(
+        &mut self,
+        uid: usize,
+        closer: &Closer,
+        old: Value,
+        ty: MTy,
+    ) -> Result<(), Error> {
+        let Some(flag) = closer.flag else {
+            self.close_replaced(closer, old, ty);
+            return Ok(());
+        };
+        let held = self.b.use_var(flag);
+        let (close, empty, join) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br_if(held, close, &[], empty, &[]);
+        self.b.seal_block(close);
+        self.b.seal_block(empty);
+        self.b.switch_to(close);
+        self.close_replaced(closer, old, ty);
+        self.b.br(join, &[]);
+        self.b.switch_to(empty);
+        if let (Some(entry), Some(ptr)) = (closer.entry, self.locals[&uid].slot) {
+            let thunk = self.close_thunk(&closer.kind, ty, true);
+            let handle = self
+                .b
+                .emit(Op::CleanupPush, &[ptr], Imm::Func(thunk), Some(MTy::INT))
+                .expect("handle");
+            self.b.def_var(entry, handle);
+        }
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
+        let held = self.b.bconst(true);
+        self.b.def_var(flag, held);
+        Ok(())
+    }
+
     /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
     /// value, so neither the cleanup entry nor the scope end does.
     pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {
@@ -525,7 +587,8 @@ impl FnLower<'_> {
         {
             return;
         }
-        let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
+        let handle = self.entry_of(&closer);
+        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
         let gone = self.b.bconst(false);
         self.b.def_var(flag, gone);
     }
@@ -571,7 +634,8 @@ impl FnLower<'_> {
     pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {
         let l = self.locals[&uid];
         let v = self.local_get(&l);
-        let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
+        let handle = self.entry_of(closer);
+        let _ = self.call_runtime("msrt_cleanup_discard", &[handle], MTy::UNIT);
         // Like the cleanup stack on a fault, a stop request that arrives while the close runs
         // must not interrupt it.
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);

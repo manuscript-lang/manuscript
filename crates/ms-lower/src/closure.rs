@@ -101,6 +101,8 @@ impl FnLower<'_> {
             let x = self.read_local(b)?;
             cap_tys.push(self.ty_of(x.v));
             cap_vals.push(self.owned(x));
+            // A resource the closure takes over is no longer closed by this scope.
+            self.moved_closer(b.uid, e);
         }
         let mut ps = vec![Param {
             ty: MTy::PTR,

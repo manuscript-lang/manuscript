@@ -148,7 +148,6 @@ pub fn analyze(cx: &Context) -> Outcome {
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         resources: Vec::new(),
-        capture_moved: HashSet::new(),
         closed: HashSet::new(),
     };
     w.run();
@@ -238,8 +237,6 @@ struct Walker<'a> {
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
     resources: Vec<(usize, Name, Pos, bool, bool)>,
-    /// Bindings a closure captures by move: their close is not tracked per path.
-    capture_moved: HashSet<usize>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -374,8 +371,8 @@ impl Walker<'_> {
             if !moves.is_empty() {
                 // Moved on some path: the scope closes it on the paths that keep it. Lowering
                 // tracks that with a flag cleared at each move, which needs a binding with
-                // its own close operation that is not reassigned or moved into a closure.
-                if closable && trackable && !self.capture_moved.contains(&uid) {
+                // its own close operation.
+                if closable && trackable {
                     self.facts.implicit_closes.insert(uid);
                     self.facts
                         .close_moves
@@ -1181,7 +1178,7 @@ impl Walker<'_> {
                 b.name,
                 p.pos,
                 closable,
-                !b.mutable && self.cx.m.stmt(s).cleanup.is_some(),
+                self.cx.m.stmt(s).cleanup.is_some(),
             ));
         }
     }
@@ -1355,7 +1352,7 @@ impl Walker<'_> {
                 b.name,
                 pattern.pos,
                 closable,
-                !mutable && self.cx.m.stmt(s).cleanup.is_some(),
+                self.cx.m.stmt(s).cleanup.is_some(),
             ));
         }
     }
@@ -2070,7 +2067,6 @@ impl Walker<'_> {
                     copy_after(e),
                 );
             }
-            self.capture_moved.insert(b.uid);
             self.record(e.id, b, Access::Move);
             return;
         }
@@ -2641,7 +2637,6 @@ impl Walker<'_> {
     }
 
     fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
-        self.capture_moved.insert(b.uid);
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
