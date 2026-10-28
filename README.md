@@ -31,6 +31,8 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 ## What Manuscript offers
 
 - **A small, regular language:** indentation blocks, one way to do most things, and a few forms that compose. Habits from other languages get a pointed diagnostic, not a new feature. [Tour](documentation/learn/tour.md)
+- **Plain types:** records with defaults, alternatives (`case Draft`, `case Published(url)`) that `match` must cover, nominal types, and methods in `impl` blocks that satisfy an `interface`. [Types](documentation/learn/tour.md#types-for-application-data)
+- **Plain functions:** typed parameters and returns, labeled arguments and defaults, functions as values, and `|` pipes that read top to bottom. [Functions](documentation/learn/tour.md#functions)
 - **Deterministic memory:** one owner per value, dropped at its last use, borrows inferred. No collector, no lifetime annotations. [References](documentation/core-language/types/references.md)
 - **Static types, native code:** checked ahead of time and compiled to a native executable, with a fast debug loop and optimized release builds.
 - **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, written in Manuscript. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
