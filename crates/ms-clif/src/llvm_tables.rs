@@ -434,7 +434,6 @@ pub fn read(
             continue;
         };
         let mut scope = scope_at(addr);
-        let inlined_code = scope != 0;
         // Code without a position inside an inlined callee (a thunk, glue) belongs to the
         // call site that gave it a position.
         while line == 0 && scope != 0 {
@@ -442,12 +441,9 @@ pub fn read(
             line = sc.call_line;
             scope = sc.parent;
         }
-        // Inlined code with no position at all gets a range of its own, so the lines of the code
-        // before it do not extend over it (a return address into it would name a stale line and
-        // scope).
-        if line == 0 && !inlined_code {
-            continue;
-        }
+        // Code with no position at all (glue, a call LLVM merged across tests) gets a zero-line
+        // range of its own, so the lines of the code before it do not extend over it: a return
+        // address into it would name a stale line and scope.
         let ranges = &mut dbg[d].ranges;
         let off = (addr - start) as u32;
         if file == u32::MAX {

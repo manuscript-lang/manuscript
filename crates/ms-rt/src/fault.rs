@@ -550,6 +550,39 @@ pub fn find_line(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
     (func.line, func.file_off, 0)
 }
 
+/// Like [`find_line`], but skips back over ranges with no position to the nearest earlier one.
+fn find_line_before(t: &Tables, func: &FuncEntry, pc: usize) -> (u32, u32, u32) {
+    if t.lines.is_null() || t.line_count == 0 {
+        return (func.line, func.file_off, 0);
+    }
+    // SAFETY: sorted `line_count` read-only entries.
+    let lines = unsafe { core::slice::from_raw_parts(t.lines, t.line_count) };
+    let probe = pc.wrapping_sub(1);
+    let mut idx = lines.partition_point(|e: &LineEntry| e.pc <= probe);
+    while idx > 0 {
+        let e = &lines[idx - 1];
+        if e.pc < func.addr {
+            break;
+        }
+        if e.line != 0 {
+            let file = if e.file_off == u32::MAX {
+                func.file_off
+            } else {
+                e.file_off
+            };
+            let scope = if t.abi_version >= TABLES_WITH_SCOPES && !t.line_scopes.is_null() {
+                // SAFETY: `line_scopes` parallels `lines`.
+                unsafe { *t.line_scopes.add(idx - 1) }
+            } else {
+                0
+            };
+            return (e.line, file, scope);
+        }
+        idx -= 1;
+    }
+    (func.line, func.file_off, 0)
+}
+
 /// The inlined-callee scope `id` (1-based), if the table has it.
 fn scope_entry(t: &Tables, id: u32) -> Option<ScopeEntry> {
     if t.abi_version < TABLES_WITH_SCOPES
@@ -802,12 +835,19 @@ fn describe_with(out: &mut Vec<u8>, drive: impl FnOnce(&Tables, &mut dyn FnMut(u
     // Identical consecutive frames (deep recursion) collapse into one line and a count.
     let mut last = (u32::MAX, 0u32, u32::MAX);
     let mut repeated = 0usize;
+    let mut innermost = true;
     {
         drive(t, &mut |ret| {
             let Some(func) = find_func(t, ret) else {
                 return true;
             };
             let (mut line, mut file, mut scope) = find_line(t, func, ret);
+            // The frame that raised the fault may sit in a call without a position of its own;
+            // it takes the nearest earlier line.
+            if line == 0 && innermost {
+                (line, file, scope) = find_line_before(t, func, ret);
+            }
+            innermost = false;
             // Compiler-generated glue (function-value thunks) has no source position.
             if line == 0 {
                 return true;
