@@ -66,7 +66,7 @@ impl Classifier {
             Class::Copy
         } else if t.is_std("List") {
             // An owning collection of resources is itself a resource, closed with its elements.
-            // A `Set` does not own its elements yet, so it stays `Move`.
+            // A `Set` stays `Move`: a resource is not `Hashable`, so it is never an element.
             self.holds(t.args.first(), visiting)
         } else if t.is_std("Map") {
             self.holds(t.args.get(1), visiting)

@@ -668,6 +668,33 @@ impl Checker {
                     .any(|c| c.fields.iter().any(|f| self.shares_state(&f.ty, seen))))
     }
 
+    /// Whether `t` is, or holds, a `Closeable` value. Such a value is an identity to close once,
+    /// not a key to file by hash, and a set or map would drop a duplicate without closing it.
+    fn holds_resource(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
+        let key = type_key(t);
+        if seen.contains(&key) {
+            return false;
+        }
+        seen.push(key);
+        let closeable = self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Closeable"))
+                && unify(
+                    &m.receiver,
+                    t,
+                    &variable_set(&m.variables),
+                    &mut Subst::new(),
+                )
+        });
+        closeable
+            || t.args.iter().any(|a| self.holds_resource(a, seen))
+            || (t.def.is_some()
+                && (fields(t).iter().any(|f| self.holds_resource(&f.ty, seen))
+                    || cases(t)
+                        .iter()
+                        .any(|c| c.fields.iter().any(|f| self.holds_resource(&f.ty, seen)))))
+    }
+
     fn bounds_satisfied(&self, vars: &[Ty], s: &Subst) -> bool {
         for v in vars {
             let Some(a) = s.get(&v.id) else {
@@ -707,6 +734,9 @@ impl Checker {
         if t.id == "<invalid>" {
             return true;
         }
+        if property == "Hashable" && self.holds_resource(t, &mut Vec::new()) {
+            return false;
+        }
         let key = format!("{}{}", type_key(t), property);
         if let Some(&r) = state.completed.get(&key) {
             return r;
@@ -744,7 +774,10 @@ impl Checker {
             if unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
                 && self.bounds_satisfied(&m.variables, &s)
             {
-                if property == "Hashable" && self.shares_state(t, &mut Vec::new()) {
+                if property == "Hashable"
+                    && (self.shares_state(t, &mut Vec::new())
+                        || self.holds_resource(t, &mut Vec::new()))
+                {
                     return false;
                 }
                 return property != "Hashable" || self.property(t, "Equal", None);
@@ -1043,6 +1076,11 @@ impl Checker {
         if bound.is_std("Hashable") && self.shares_state(t, &mut Vec::new()) {
             return format!(
                 "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
+            );
+        }
+        if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {
+            return format!(
+                "{prefix}it is or holds a Closeable resource, which is closed once by its owner and cannot be a set element or map key; key on a plain value such as an Int id instead"
             );
         }
         if matches!(t.kind, Kind::Record | Kind::Alternative)
