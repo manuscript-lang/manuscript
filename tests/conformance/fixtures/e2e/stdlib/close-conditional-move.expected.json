@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "closed ret-or-fall\n--ret_or_fall false\nclosed ret-or-fall\n--arg_in_branch true\nclosed arg-branch\n--arg_in_branch false\nclosed arg-branch\n--into_record true\nclosed into-record\n--into_record false\nclosed into-record\n--in_loop\nclosed loop-0\nclosed loop-1\nclosed loop-2\nclosed loop-3\n--moved_always\nclosed always\n--returned true\n--returned false\nclosed returned\n--else true\nclosed else\n--else false\nclosed else\n--end\nclosed other\nclosed returned\n",
+    "stderr": ""
+  }
+}

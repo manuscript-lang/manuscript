@@ -148,6 +148,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         resources: Vec::new(),
+        capture_moved: HashSet::new(),
         closed: HashSet::new(),
     };
     w.run();
@@ -236,7 +237,9 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos, bool)>,
+    resources: Vec<(usize, Name, Pos, bool, bool)>,
+    /// Bindings a closure captures by move: their close is not tracked per path.
+    capture_moved: HashSet<usize>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -352,13 +355,24 @@ impl Walker<'_> {
     /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos, closable) in resources {
-            let moved = self
+        for (uid, name, pos, closable, trackable) in resources {
+            let moves: Vec<NodeId> = self
                 .facts
                 .uses
                 .values()
-                .any(|u| u.binding == uid && u.access == Access::Move);
-            if moved {
+                .filter(|u| u.binding == uid && u.access == Access::Move)
+                .map(|u| u.node)
+                .collect();
+            if !moves.is_empty() {
+                // Moved on some path: the scope closes it on the paths that keep it. Lowering
+                // tracks that with a flag cleared at each move, which needs a binding with
+                // its own close operation that is not reassigned or moved into a closure.
+                if closable && trackable && !self.capture_moved.contains(&uid) {
+                    self.facts.implicit_closes.insert(uid);
+                    self.facts
+                        .close_moves
+                        .insert(uid, moves.into_iter().collect());
+                }
                 continue;
             }
             if closable {
@@ -1154,7 +1168,13 @@ impl Walker<'_> {
         };
         if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((b.uid, b.name, p.pos, closable));
+            self.resources.push((
+                b.uid,
+                b.name,
+                p.pos,
+                closable,
+                !b.mutable && self.cx.m.stmt(s).cleanup.is_some(),
+            ));
         }
     }
 
@@ -1322,7 +1342,13 @@ impl Walker<'_> {
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((b.uid, b.name, pattern.pos, closable));
+            self.resources.push((
+                b.uid,
+                b.name,
+                pattern.pos,
+                closable,
+                !mutable && self.cx.m.stmt(s).cleanup.is_some(),
+            ));
         }
     }
 
@@ -2036,6 +2062,7 @@ impl Walker<'_> {
                     copy_after(e),
                 );
             }
+            self.capture_moved.insert(b.uid);
             self.record(e.id, b, Access::Move);
             return;
         }
@@ -2588,6 +2615,7 @@ impl Walker<'_> {
     }
 
     fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
+        self.capture_moved.insert(b.uid);
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
