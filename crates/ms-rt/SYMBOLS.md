@@ -502,6 +502,8 @@ msrt_json_w_null(w: *mut WriterObj)
 msrt_json_w_bool(w: *mut WriterObj, v: u8)
 msrt_json_w_int(w: *mut WriterObj, v: i64)
 msrt_json_w_float(w: *mut WriterObj, v: f64)
+msrt_json_w_float32(w: *mut WriterObj, v: f64)
+msrt_json_w_uint(w: *mut WriterObj, v: i64)
 msrt_json_w_number(w: *mut WriterObj, text: *const StrVal)
 msrt_json_w_string(w: *mut WriterObj, text: *const StrVal)
 msrt_json_w_finish(w: *mut WriterObj, out: *mut StrVal) -> u8
@@ -509,6 +511,9 @@ msrt_json_dec_ip(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_cidr(text: *const StrVal, out: *mut *mut Obj) -> u8
 msrt_json_dec_int(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_dec_float(text: *const StrVal, out: *mut f64) -> u8
+msrt_json_dec_float32(text: *const StrVal, out: *mut f64) -> u8
+msrt_json_dec_int_in(text: *const StrVal, lo: i64, hi: i64, out: *mut i64) -> u8
+msrt_json_dec_uint(text: *const StrVal, out: *mut i64) -> u8
 msrt_json_find(d: *const DocObj, id: u32, key: *const StrVal) -> i64
 msrt_json_has_unknown( d: *const DocObj, id: u32, names: *const VecVal, ) -> u8
 msrt_json_variant( d: *const DocObj, id: u32, names: *const VecVal, payload: *mut i64, ) -> i64

@@ -561,7 +561,7 @@ impl Scanner<'_> {
                     }
                 }
                 if matches!(b, b')' | b']' | b'}') {
-                    if self.virtual_paren && self.delimiters == [b'('] && b == b')' {
+                    if self.virtual_paren && self.delimiters == *b"(" && b == b')' {
                         // The physical wrapper would leave its own closing
                         // parenthesis unmatched; use that path for its exact error.
                         return self.fail("interpolation closes the virtual parenthesis");
@@ -609,7 +609,7 @@ impl Scanner<'_> {
                 self.emit(kind, start, start + 1, p);
             }
             if self.virtual_paren && self.offset == n {
-                if self.delimiters != [b'('] {
+                if self.delimiters != *b"(" {
                     // The wrapper's closing parenthesis reports this error.
                     return self.fail("interpolation leaves a delimiter open");
                 }

@@ -251,7 +251,21 @@ impl FnLower<'_> {
 
     /// Writes a nested value: scalars inline, anything else through its encoder.
     fn jencode_nested(&mut self, t: &ct::Ty, doc: Value, value: Value) -> Result<Value, Error> {
-        if matches!(t.id.as_str(), "Int" | "Float" | "Bool" | "String") {
+        if matches!(
+            t.id.as_str(),
+            "Int"
+                | "Float"
+                | "Bool"
+                | "String"
+                | "Int8"
+                | "Int16"
+                | "Int32"
+                | "UInt8"
+                | "UInt16"
+                | "UInt32"
+                | "UInt64"
+                | "Float32"
+        ) {
             let mt = self.jmty(t)?;
             return self.jencode(t, mt, doc, value);
         }
@@ -297,6 +311,49 @@ impl FnLower<'_> {
                 let ok = self.b.icmp(Cc::Eq, st, zero);
                 self.jrequire(ok, &[], &[]);
                 let v = self.take_slot(slot, MTy::INT);
+                self.jfinish(v);
+                return Ok(());
+            }
+            "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
+                let (lo, hi) = sized_int_range(t.id.as_str());
+                self.jexpect_kind(doc, id, KIND_NUMBER)?;
+                let text = self.jtext(doc, id)?;
+                let slot = self.jslot(MTy::INT);
+                let (lo, hi) = (self.b.iconst(lo), self.b.iconst(hi));
+                let st = self.status_code("msrt_json_dec_int_in", &[text, lo, hi, slot])?;
+                self.drop_value(text);
+                let zero = self.b.iconst(0);
+                let ok = self.b.icmp(Cc::Eq, st, zero);
+                self.jrequire(ok, &[], &[]);
+                let wide = self.take_slot(slot, MTy::INT);
+                let v = self.b.conv(wide, mt);
+                self.jfinish(v);
+                return Ok(());
+            }
+            "UInt64" => {
+                self.jexpect_kind(doc, id, KIND_NUMBER)?;
+                let text = self.jtext(doc, id)?;
+                let slot = self.jslot(MTy::UINT64);
+                let st = self.status_code("msrt_json_dec_uint", &[text, slot])?;
+                self.drop_value(text);
+                let zero = self.b.iconst(0);
+                let ok = self.b.icmp(Cc::Eq, st, zero);
+                self.jrequire(ok, &[], &[]);
+                let v = self.take_slot(slot, MTy::UINT64);
+                self.jfinish(v);
+                return Ok(());
+            }
+            "Float32" => {
+                self.jexpect_kind(doc, id, KIND_NUMBER)?;
+                let text = self.jtext(doc, id)?;
+                let slot = self.jslot(MTy::FLOAT);
+                let st = self.status_code("msrt_json_dec_float32", &[text, slot])?;
+                self.drop_value(text);
+                let zero = self.b.iconst(0);
+                let ok = self.b.icmp(Cc::Eq, st, zero);
+                self.jrequire(ok, &[], &[]);
+                let wide = self.take_slot(slot, MTy::FLOAT);
+                let v = self.b.conv(wide, mt);
                 self.jfinish(v);
                 return Ok(());
             }
@@ -905,6 +962,20 @@ impl FnLower<'_> {
             }
             "Float" => {
                 self.jw("msrt_json_w_float", &[w, value])?;
+                return Ok(self.jwritten());
+            }
+            "Int8" | "Int16" | "Int32" | "UInt8" | "UInt16" | "UInt32" => {
+                let wide = self.b.conv(value, MTy::INT);
+                self.jw("msrt_json_w_int", &[w, wide])?;
+                return Ok(self.jwritten());
+            }
+            "UInt64" => {
+                self.jw("msrt_json_w_uint", &[w, value])?;
+                return Ok(self.jwritten());
+            }
+            "Float32" => {
+                let wide = self.b.conv(value, MTy::FLOAT);
+                self.jw("msrt_json_w_float32", &[w, wide])?;
                 return Ok(self.jwritten());
             }
             "Bool" => {
@@ -1755,4 +1826,16 @@ fn jplain_alt(t: &ct::Ty) -> bool {
         && !t.is_std("Optional")
         && !ct::cases(t).is_empty()
         && ct::cases(t).iter().all(|c| c.fields.is_empty())
+}
+
+/// The inclusive range of a sized integer type other than `UInt64`.
+fn sized_int_range(name: &str) -> (i64, i64) {
+    match name {
+        "Int8" => (i8::MIN.into(), i8::MAX.into()),
+        "Int16" => (i16::MIN.into(), i16::MAX.into()),
+        "Int32" => (i32::MIN.into(), i32::MAX.into()),
+        "UInt8" => (0, u8::MAX.into()),
+        "UInt16" => (0, u16::MAX.into()),
+        _ => (0, u32::MAX.into()),
+    }
 }

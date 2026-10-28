@@ -32,6 +32,7 @@ pub(crate) fn function_arguments<'a>(args: &'a [Argument], params: &[Param]) -> 
             pos: a.pos,
             name,
             value: &a.value,
+            mutable: a.mutable,
         });
     }
     resolved
@@ -613,6 +614,20 @@ impl Checker {
             }
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
+            if let (Some(want), Some(have)) = (&expected, &v.error_source)
+                && arg.mutable
+                && want.kind == Kind::Contract
+                && have.kind != Kind::Contract
+                && !want.is_std("Error")
+            {
+                self.type_error(
+                    arg.value.pos,
+                    format!(
+                        "parameter {} is a var {want}, but this {have} would be converted to a temporary {want} and the callee's changes would be lost; declare the variable as `var x: {want} = ...` or make the parameter take {have}",
+                        arg.name
+                    ),
+                );
+            }
             no_return = no_return || v.no_return;
             seen.insert(arg.name);
         }
@@ -758,6 +773,23 @@ impl Checker {
             })
             .collect();
         self.infer_arguments(args, &inferred_fields, &vars, &mut subst, None);
+        if t.is_std("Result")
+            && vars.len() == 2
+            && !subst.contains_key(&vars[0].id)
+            && subst
+                .get(&vars[1].id)
+                .is_some_and(|e| e.to_string() == "String")
+        {
+            self.type_error(
+                pos,
+                "error(...) needs a value that implements Error, not a String; to fail a test write `try fail(\"message\")` (from @std/test.ms), otherwise wrap the message in a type that implements Error"
+                    .to_string(),
+            );
+            self.unresolved_constructors.insert(pos);
+            self.unknown_type = true;
+            subst.insert(vars[0].id, invalid());
+            subst.insert(vars[1].id, invalid());
+        }
         let mut actual: Vec<Ty> = Vec::new();
         for v in &vars {
             let mut a = subst.get(&v.id).cloned();

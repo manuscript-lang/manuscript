@@ -1,3 +1,5 @@
+from "@std/core.ms" import panic
+
 extern def msstd_time_duration_to_nanoseconds(value: Duration) -> Int
 
 extern def msstd_time_timestamp_unix_seconds(value: Timestamp) -> Int
@@ -136,6 +138,31 @@ impl Duration:
     def compare(other: Duration) -> Int:
         return msstd_time_duration_compare(self, other)
 
+    # Returns the lesser of this value and `other`, or this value when they compare equal.
+    def min(other: Duration) -> Duration:
+        if other.compare(self) < 0:
+            return other
+
+        return self
+
+    # Returns the greater of this value and `other`, or this value when they compare equal.
+    def max(other: Duration) -> Duration:
+        if other.compare(self) > 0:
+            return other
+
+        return self
+
+    # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+    def clamp(low: Duration, high: Duration) -> Duration:
+        if low.compare(high) > 0:
+            panic("clamp: low must not be greater than high")
+        if self.compare(low) < 0:
+            return low
+        if self.compare(high) > 0:
+            return high
+
+        return self
+
     # Converts this duration to an integer number of nanoseconds.
     def to_nanoseconds() -> Int:
         return msstd_time_duration_to_nanoseconds(self)
@@ -206,6 +233,31 @@ impl Instant:
     def compare(other: Instant) -> Int:
         return msstd_time_instant_compare(self, other)
 
+    # Returns the lesser of this value and `other`, or this value when they compare equal.
+    def min(other: Instant) -> Instant:
+        if other.compare(self) < 0:
+            return other
+
+        return self
+
+    # Returns the greater of this value and `other`, or this value when they compare equal.
+    def max(other: Instant) -> Instant:
+        if other.compare(self) > 0:
+            return other
+
+        return self
+
+    # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+    def clamp(low: Instant, high: Instant) -> Instant:
+        if low.compare(high) > 0:
+            panic("clamp: low must not be greater than high")
+        if self.compare(low) < 0:
+            return low
+        if self.compare(high) > 0:
+            return high
+
+        return self
+
 # A wall-clock time with Unix seconds and nanoseconds.
 export extern type Timestamp
 
@@ -233,6 +285,31 @@ impl Timestamp:
     # Returns -1, 0, or 1 across the full calendar range.
     def compare(other: Timestamp) -> Int:
         return msstd_time_timestamp_compare(self, other)
+
+    # Returns the lesser of this value and `other`, or this value when they compare equal.
+    def min(other: Timestamp) -> Timestamp:
+        if other.compare(self) < 0:
+            return other
+
+        return self
+
+    # Returns the greater of this value and `other`, or this value when they compare equal.
+    def max(other: Timestamp) -> Timestamp:
+        if other.compare(self) > 0:
+            return other
+
+        return self
+
+    # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+    def clamp(low: Timestamp, high: Timestamp) -> Timestamp:
+        if low.compare(high) > 0:
+            panic("clamp: low must not be greater than high")
+        if self.compare(low) < 0:
+            return low
+        if self.compare(high) > 0:
+            return high
+
+        return self
 
     # Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
     # An unknown zone returns InvalidInput.
