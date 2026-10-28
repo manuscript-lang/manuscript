@@ -19,7 +19,7 @@ impl Doc:
 
 def load(path: String) -> Result[Doc, Error]:
     let f = try filesystem().open(path, flags: "r", mode: 0) # f closed at scope end
-    let lines = try f.read_lines()
+    let lines = try f.read_lines(max_lines: 1000) # Int passes as Optional[Int]
     return ok(Doc(lines)) # moves lines
 
 export def main() -> Int:
