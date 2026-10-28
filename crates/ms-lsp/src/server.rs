@@ -469,6 +469,7 @@ impl Server<'_> {
             let checked = self.checked_document(&d);
             let module = checked.module(&d);
             let mut diagnostics = Vec::new();
+            let mut ranges = None;
             for issue in &checked.diagnostics {
                 if let Some(m) = &module
                     && issue.file.as_ref() != m.file.as_str()
@@ -476,8 +477,9 @@ impl Server<'_> {
                     continue;
                 }
                 diagnostics.push(diagnostic(
-                    &d,
-                    issue.pos.offset as usize,
+                    ranges
+                        .get_or_insert_with(|| text::DiagnosticRanges::new(&d.text))
+                        .range(issue.pos.offset as usize),
                     1,
                     "manuscript",
                     issue.code(),
@@ -496,8 +498,9 @@ impl Server<'_> {
             }
             for issue in &advisories {
                 diagnostics.push(diagnostic(
-                    &d,
-                    issue.offset,
+                    ranges
+                        .get_or_insert_with(|| text::DiagnosticRanges::new(&d.text))
+                        .range(issue.offset),
                     2,
                     "manuscript-lint",
                     &issue.code,
@@ -979,16 +982,9 @@ impl Server<'_> {
     }
 }
 
-fn diagnostic(
-    d: &Document,
-    offset: usize,
-    severity: i64,
-    source: &str,
-    code: &str,
-    message: &str,
-) -> Json {
+fn diagnostic(range: Range, severity: i64, source: &str, code: &str, message: &str) -> Json {
     obj([
-        ("range", text::diagnostic_range(&d.text, offset).json()),
+        ("range", range.json()),
         ("severity", severity.into()),
         ("source", source.into()),
         ("code", code.into()),
