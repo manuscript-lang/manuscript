@@ -132,3 +132,41 @@ fn vectorize_off_keeps_loops_scalar() {
         "per-CPU copies with vectorization off"
     );
 }
+
+/// A search loop that returns early cannot be vectorized, so its function keeps one copy and no
+/// dispatcher; a single-exit sum loop gets both copies.
+#[test]
+fn only_vectorizable_loops_get_per_cpu_copies() {
+    if !ms_clif::llvm_available() {
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("ms-search-loop-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("search.ms"),
+        include_str!("vectorized_loops/search.ms"),
+    )
+    .unwrap();
+    let built = Command::new(env!("CARGO_BIN_EXE_ms"))
+        .current_dir(&dir)
+        .env("MS_BACKEND", "llvm")
+        .env("MS_KEEP_LL", "1")
+        .args(["build", "search.ms", "-o", "search"])
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let ir = std::fs::read_to_string(dir.join("ms-keep.ll")).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        ir.contains("@\"total#2.avx2\""),
+        "the sum loop has no AVX2 copy"
+    );
+    assert!(
+        !ir.contains("@\"find#1.avx2\"") && !ir.contains("@\"find#1.base\""),
+        "a search loop with an early return got per-CPU copies"
+    );
+}
