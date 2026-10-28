@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/string.ms" import StringBuilder
 from "@std/time.ms" import clock
@@ -6,7 +5,7 @@ from "@std/toml.ms" import parse
 
 def document(count: Int) -> String:
     var sb = StringBuilder()
-    for i in range(0, count):
+    for i in 0..count:
         sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
@@ -22,7 +21,7 @@ export def main() -> Int:
     var best = 1000000000000
     var ok = 0
 
-    for run in range(0, 200):
+    for run in 0..200:
         let started = clock().now()
         ok = parse_ok(text) + run * 0
 

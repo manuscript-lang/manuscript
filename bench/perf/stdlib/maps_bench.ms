@@ -1,5 +1,4 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "./src/harness.ms" import words
 
 type Cell:
@@ -9,11 +8,11 @@ type Cell:
 bench "map.int_put_get":
     def work() -> Result[Unit, Error]:
         var m = Map[Int, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(i, i * 2)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             n += m.get_or(i, 0)
         return keep(n)
 
@@ -22,11 +21,11 @@ bench "map.int_put_get":
 bench "map.record_key_get":
     def work() -> Result[Unit, Error]:
         var m = Map[Cell, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(Cell(x: i, y: i * 2), i)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             n += m.get_or(Cell(x: i, y: i * 2), 0)
         return keep(n)
 
@@ -110,7 +109,7 @@ bench "map.get_or":
 bench "map.iterate_entries":
     def work() -> Result[Unit, Error]:
         var m = Map[Int, Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             m.add(i, i)
 
         var n = 0
@@ -123,11 +122,11 @@ bench "map.iterate_entries":
 bench "set.add_contains":
     def work() -> Result[Unit, Error]:
         var s = Set[Int]()
-        for i in range(0, 100000):
+        for i in 0..100000:
             s.add(i)
 
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             if s.contains(i): n += 1
         return keep(n)
 

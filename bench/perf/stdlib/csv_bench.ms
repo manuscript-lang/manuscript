@@ -1,10 +1,9 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "@std/csv.ms" import parse, stringify
 
 bench "csv.stringify":
     var rows: List[List[String]] = []
-    for i in range(0, 5000):
+    for i in 0..5000:
         rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
     def work() -> Result[Unit, Error]:
@@ -17,7 +16,7 @@ bench "csv.stringify":
 
 bench "csv.parse":
     var rows: List[List[String]] = []
-    for i in range(0, 5000):
+    for i in 0..5000:
         rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
     let csv_text = stringify(rows).get("")

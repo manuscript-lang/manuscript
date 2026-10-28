@@ -1,6 +1,5 @@
 from "@std/bench.ms" import keep, measure
 from "@std/bytes.ms" import Bytes
-from "@std/collections.ms" import range
 from "@std/fs.ms" import filesystem, FileSystem
 from "@std/log.ms" import create, file_transport
 
@@ -10,7 +9,7 @@ def block() -> Bytes:
 # Writes the 200 files that the read, stat, and list cases use.
 def populate(fs: FileSystem, root: String) -> Unit:
     let data = block()
-    for i in range(0, 200):
+    for i in 0..200:
         let _written = fs.write_file_bytes(f"{root}/f{i}.bin", data, replace: True)
 
 bench "fs.write_file_64k":
@@ -22,7 +21,7 @@ bench "fs.write_file_64k":
 
         def work() -> Result[Unit, Error]:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if fs.write_file_bytes(f"{root}/f{i}.bin", data, replace: True).is_ok():
                     n += 1
             return keep(n)
@@ -39,7 +38,7 @@ bench "fs.read_file_64k":
 
         def work() -> Result[Unit, Error]:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if let b = fs.read_file(f"{root}/f{i}.bin"):
                     n += b.length()
             return keep(n)
@@ -56,7 +55,7 @@ bench "fs.stat":
 
         def work() -> Result[Unit, Error]:
             var n = 0
-            for i in range(0, 200):
+            for i in 0..200:
                 if fs.stat(f"{root}/f{i}.bin", follow_links: True).is_ok():
                     n += 1
             return keep(n)
@@ -88,7 +87,7 @@ bench "log.info":
             if let logger = create(transport, timestamp: False):
                 def work() -> Result[Unit, Error]:
                     var n = 0
-                    for i in range(0, 20000):
+                    for i in 0..20000:
                         if logger.info(f"request {i} handled").is_ok():
                             n += 1
                     return keep(n)

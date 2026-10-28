@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/fetch.ms" import fetcher, FetchOptions
 from "@std/io.ms" import stdout
 from "@std/process.ms" import arguments
@@ -33,7 +32,7 @@ def fetch_thread() -> Unit:
         var total = 0
 
         with let group = TaskGroup[Int]():
-            for i in range(0, conns):
+            for i in 0..conns:
                 let u = parts.get(0).clone()
                 group.spawn(lambda task: worker(u, nanos))
 
@@ -49,12 +48,12 @@ def run_threads(url: String, conns: Int, secs: Int, threads: Int) -> Int:
     with let group = WorkerGroup[String, Int]():
         var workers: List[Worker[String, Int]] = []
 
-        for i in range(0, threads):
+        for i in 0..threads:
             var worker = group.spawn(fetch_thread).get(none)
             let _ = worker.channel.send(f"{url} {conns / threads} {secs}")
             workers.append(worker)
 
-        for i in range(0, threads):
+        for i in 0..threads:
             if let n = workers[i].channel.receive().get(none):
                 total += n
 
@@ -81,7 +80,7 @@ export def main() -> Int:
             return 0
 
     with let group = TaskGroup[Int]():
-        for i in range(0, conns):
+        for i in 0..conns:
             let u = url.clone()
             group.spawn(lambda ch: worker(u, secs * 1000000000))
 

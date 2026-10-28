@@ -1,5 +1,4 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "./src/harness.ms" import ints, Point
 
 # Index of the greatest key; `key` is a known lambda at every call site (see proposals/specialize-closure-args.md).
@@ -7,7 +6,7 @@ def best_index(points: List[Point], key: Callable[[Point], Int]) -> Int:
     var best = 0
     var best_key = key(points.get(0, default: Point(x: 0, y: 0)))
 
-    for i in range(1, points.length()):
+    for i in 1..points.length():
         let k = key(points.get(i, default: Point(x: 0, y: 0)))
 
         if k > best_key:
@@ -20,7 +19,7 @@ def best_index_loop(points: List[Point], scale: Int) -> Int:
     var best = 0
     var best_key = points.get(0, default: Point(x: 0, y: 0)).y * scale
 
-    for i in range(1, points.length()):
+    for i in 1..points.length():
         let k = points.get(i, default: Point(x: 0, y: 0)).y * scale
 
         if k > best_key:
@@ -31,7 +30,7 @@ def best_index_loop(points: List[Point], scale: Int) -> Int:
 
 bench "list.callable_key":
     var points: List[Point] = []
-    for i in range(0, 100000):
+    for i in 0..100000:
         points.append(Point(x: i, y: (i * 7919) % 10007))
 
     let scale = 3
@@ -41,7 +40,7 @@ bench "list.callable_key":
 
 bench "list.callable_key_loop":
     var points: List[Point] = []
-    for i in range(0, 100000):
+    for i in 0..100000:
         points.append(Point(x: i, y: (i * 7919) % 10007))
 
     let scale = 3
@@ -50,7 +49,7 @@ bench "list.callable_key_loop":
 bench "list.append":
     def work() -> Result[Unit, Error]:
         var xs: List[Int] = []
-        for i in range(0, 200000):
+        for i in 0..200000:
             xs.append(i)
         return keep(xs.length())
 
@@ -61,7 +60,7 @@ bench "list.at":
 
     def work() -> Result[Unit, Error]:
         var n = 0
-        for i in range(0, 200000):
+        for i in 0..200000:
             n += data.get(i % 100000, default: 0)
         return keep(n)
 
@@ -144,7 +143,7 @@ bench "list.contains":
 
     def work() -> Result[Unit, Error]:
         var n = 0
-        for i in range(0, 100):
+        for i in 0..100:
             if data.contains(-1): n += 1
         return keep(n)
 
@@ -163,7 +162,7 @@ bench "list.any_early_exit":
 
     def work() -> Result[Unit, Error]:
         var n = 0
-        for i in range(0, 100000):
+        for i in 0..100000:
             if data.any(lambda (x: Int) -> Bool: x == 0): n += 1
         return keep(n)
 
@@ -175,7 +174,7 @@ bench "list.max_by":
 
     def work() -> Result[Unit, Error]:
         var n = 0
-        for i in range(0, 100):
+        for i in 0..100:
             if let best = small_points.max_by(lambda (p: Point) -> Int: p.y): n += best.x
         return keep(n)
 
@@ -188,7 +187,7 @@ bench "list.max_by_loop":
     def work() -> Result[Unit, Error]:
         var n = 0
 
-        for i in range(0, 100):
+        for i in 0..100:
             var best = small_points.get(0)
             for p in small_points:
                 if p.y > best.y: best = p
