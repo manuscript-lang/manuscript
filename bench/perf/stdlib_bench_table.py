@@ -5,6 +5,8 @@ import sys
 document = json.load(sys.stdin)
 if document.get("diagnostics"):
     sys.exit("\n".join(d["message"] for d in document["diagnostics"]))
+if not document["benches"]:
+    sys.exit("no cases were measured")
 rows = []
 for case in document["benches"]:
     name = case["name"].split("::", 1)[-1]

@@ -56,6 +56,8 @@ def main():
             if args.filter:
                 command += ["--filter", args.filter]
             result = subprocess.run(command, cwd=SUITE, capture_output=True, text=True, check=False)
+            if result.returncode:
+                raise SystemExit(f"{version} benchmark exited {result.returncode}: {result.stderr.strip()}")
             rows, identity = parse_sample(result.stdout, expected)
             if expected is None:
                 expected = identity

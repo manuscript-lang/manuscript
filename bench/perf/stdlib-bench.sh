@@ -8,4 +8,7 @@ MS=${MS:-$ROOT/ms}
 N=${1:-5}
 FILTER=${2:-}
 cd "$ROOT/bench/perf/stdlib"
-"$MS" bench ms.toml --json --samples "$N" --filter "$FILTER" | python3 "$ROOT/bench/perf/stdlib_bench_table.py"
+W=$(mktemp -d)
+trap 'rm -rf "$W"' EXIT HUP INT TERM
+"$MS" bench ms.toml --json --samples "$N" --filter "$FILTER" > "$W/result.json"
+python3 "$ROOT/bench/perf/stdlib_bench_table.py" < "$W/result.json"
