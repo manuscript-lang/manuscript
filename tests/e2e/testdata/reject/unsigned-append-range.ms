@@ -1,6 +1,6 @@
-from "@std/bytes.ms" import BytesBuilder
+import BytesBuilder from "@std/bytes.ms"
 
-def build() -> Unit:
+fn build() Unit:
     var out = BytesBuilder()
     out.append(256)
     out.append(-1)

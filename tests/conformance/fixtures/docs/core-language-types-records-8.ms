@@ -1,16 +1,16 @@
 # conform: tags=alternatives,control-flow,faults,match,modules,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=documentation/core-language/types/records.md:99
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-def evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
-        case Num(value): return value
-        case Add(left, right): return evaluate(left) + evaluate(right)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     let expr = Expr.Add(Expr.Num(1), Expr.Num(2))

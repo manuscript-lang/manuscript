@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Spelled:
     x_: Int
@@ -7,26 +7,26 @@ type Spelled:
     aB: Int
 
 interface Methods:
-    def foo_bar() -> Int
-    def fooBar() -> Int
+    fn foo_bar() Int
+    fn fooBar() Int
 
 impl Methods for Spelled:
-    def foo_bar() -> Int:
+    fn foo_bar() Int:
         return self.x_
 
-    def fooBar() -> Int:
+    fn fooBar() Int:
         return self.x
 
-def string(value: Int) -> Int:
+fn string(value: Int) Int:
     return value + 1
 
-def int(value: Int) -> Int:
+fn int(value: Int) Int:
     return value + 2
 
-def float64(value: Int) -> Int:
+fn float64(value: Int) Int:
     return value + 3
 
-def nil(value: Int) -> Int:
+fn nil(value: Int) Int:
     return value + 4
 
 test "field names that differ only in underscores stay distinct":
@@ -43,7 +43,7 @@ test "operation names that differ only in underscores stay distinct":
     try expect_false(methods.foo_bar() != 1 or methods.fooBar() != 2)
 
 test "functions named like Go predeclared identifiers still lower":
-    let text = f"{string(1)}{int(1)}{float64(1)}{nil(1)}"
+    let text = "{string(1)}{int(1)}{float64(1)}{nil(1)}"
     let floats = [1.5, 2.5]
     try expect_false(text != "2345" or floats.length() != 2)
 
@@ -60,10 +60,10 @@ type Shape:
 type Shape_Circle:
     radius: String
 
-def side(shape: Shape) -> Int:
+fn side(shape: Shape) Int:
     match shape:
-        case Circle(radius): return radius
-        case Square(side): return side
+        Circle(radius): return radius
+        Square(side): return side
 
 test "declared names stay apart from instantiation and case names":
     let boxed = Box[Int](1)
@@ -73,19 +73,19 @@ test "declared names stay apart from instantiation and case names":
     try expect_equal(Shape_Circle("r").radius, "r")
 
 interface Counter:
-    def count() -> Int
+    fn count() Int
 
 type Tally:
     total: Int
 
 impl Counter for Tally:
-    def count() -> Int:
+    fn count() Int:
         return self.total
 
 type Counter_Tally:
     other: Int
 
-def clone_Tally(tally: Tally) -> Int:
+fn clone_Tally(tally: Tally) Int:
     return tally.total + 1
 
 test "view and helper names stay apart from declared names":
@@ -96,15 +96,15 @@ test "view and helper names stay apart from declared names":
     try expect_false(copy.total != 1 or clone_Tally(tally) != 2)
 
 interface Reporter:
-    def describe() -> String
-    def receiver() -> String
+    fn describe() String
+    fn receiver() String
 
 impl Reporter for Tally:
-    def describe() -> String:
-        return f"describe {self.total}"
+    fn describe() String:
+        return "describe {self.total}"
 
-    def receiver() -> String:
-        return f"receiver {self.total}"
+    fn receiver() String:
+        return "receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
     let reporter: Reporter = Tally(3)

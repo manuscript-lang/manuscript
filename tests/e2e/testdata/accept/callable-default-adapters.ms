@@ -1,21 +1,21 @@
-from "@std/math.ms" import floor
-from "@std/test.ms" import expect_equal
+import floor from "@std/math.ms"
+import expect_equal from "@std/test.ms"
 
-def original(value: Int = 7) -> Int: value + 1
+fn original(value: Int = 7) Int: value + 1
 
-def replacement(value: Int) -> Int: value + 2
+fn replacement(value: Int) Int: value + 2
 
-def original_float(value: Float = 7.0) -> Float: value
+fn original_float(value: Float = 7.0) Float: value
 
-def choose[T](left: T, right: T) -> T: right
+fn choose[T](left: T, right: T) T: right
 
 type Offset:
     base: Int
 
 impl Offset:
-    def original(value: Int = 7) -> Int: self.base + value
+    fn original(value: Int = 7) Int: self.base + value
 
-    def replacement(value: Int) -> Int: self.base + value + 1
+    fn replacement(value: Int) Int: self.base + value + 1
 
 test "required source functions replace defaulted callable values":
     var callback = original
@@ -33,7 +33,7 @@ test "required source functions replace defaulted callable values":
 
 test "required lambdas replace defaulted callable values":
     var callback = original
-    callback = lambda (value: Int): value + 2
+    callback = fn(value: Int): value + 2
     try expect_equal(callback(3), 5)
 
 test "required native functions replace defaulted callable values":
@@ -47,13 +47,13 @@ test "required bound methods replace defaulted callable values":
     callback = offset.replacement
     try expect_equal(callback(3), 6)
 
-def original_text(value: String = "default") -> Int: value.length()
+fn original_text(value: String = "default") Int: value.length()
 
-def original_predicate(value: String = "default") -> Bool: False
+fn original_predicate(value: String = "default") Bool: false
 
 test "required lambda adapters retain supplied owned payloads":
     var callback = original_text
-    callback = lambda (value: String): value.length()
+    callback = fn(value: String): value.length()
 
     let text = "a sufficiently long string payload".clone()
     try expect_equal(callback(text), 34)
@@ -61,16 +61,16 @@ test "required lambda adapters retain supplied owned payloads":
 test "required bound native methods decode supplied payloads":
     var callback = original_predicate
     callback = "the borrowed needle haystack".contains
-    try expect_equal(callback("needle".clone()), True)
+    try expect_equal(callback("needle".clone()), true)
 
 interface Reader:
-    def read(value: Optional[Int] = none) -> Int
+    fn read(value: Optional[Int] = none) Int
 
 type ReaderOffset:
     base: Int
 
 impl Reader for ReaderOffset:
-    def read(value: Optional[Int]) -> Int: self.base + value.get(5)
+    fn read(value: Optional[Int]) Int: self.base + value.get(5)
 
 test "inherited defaults remain available on immutable bound callables":
     let offset = ReaderOffset(2)
@@ -79,18 +79,18 @@ test "inherited defaults remain available on immutable bound callables":
     try expect_equal(callback(3), 5)
 
 test "inferred callable returns use required arguments consistently":
-    let factory = lambda (flag: Bool):
+    let factory = fn(flag: Bool):
         if flag:
             return original
 
         return replacement
 
-    try expect_equal(factory(True)(3), 4)
-    try expect_equal(factory(False)(3), 5)
+    try expect_equal(factory(true)(3), 4)
+    try expect_equal(factory(false)(3), 5)
 
-    let callback = match True:
-        case True: original
-        case False: replacement
+    let callback = match true:
+        true: original
+        false: replacement
 
     try expect_equal(callback(3), 4)
 

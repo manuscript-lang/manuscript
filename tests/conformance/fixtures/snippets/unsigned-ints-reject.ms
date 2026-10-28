@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=unsigned integer types stage 1
-def main() -> Unit:
+fn main() Unit:
     let a: UInt8 = 256
     let b: UInt8 = -1
     let c: UInt8 = 5

@@ -1,7 +1,7 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 
-def parse(text: String) -> Result[Int, TextError]:
+fn parse(text: String) Result[Int, TextError]:
     if text == "-":
         return error(TextError("n"))
     if text == "big":
@@ -9,41 +9,41 @@ def parse(text: String) -> Result[Int, TextError]:
 
     return ok(text.length())
 
-def double(n: Int) -> Int: n * 2
+fn double(n: Int) Int: n * 2
 
-def add(n: Int, by: Int) -> Int: n + by
+fn add(n: Int, by: Int) Int: n + by
 
-def check(n: Int) -> Result[Int, TextError]:
+fn check(n: Int) Result[Int, TextError]:
     if n > 100:
         return error(TextError("big"))
 
     return ok(n)
 
-def flow(text: String) -> Result[Int, TextError]:
+fn flow(text: String) Result[Int, TextError]:
     let n = try parse(text)
         | double
         | add(3)
         | try check
     return ok(n)
 
-def bare(text: String) -> Result[Int, TextError]:
+fn bare(text: String) Result[Int, TextError]:
     return ok(try parse(text) | double | check | try)
 
-def describe(text: String) -> Result[String, TextError]:
+fn describe(text: String) Result[String, TextError]:
     let label = try parse(text)
         | try check
         | add(1)
         .to_string_radix(10)
     return ok(label)
 
-def order(var log: List[String]) -> Int:
+fn order(var log: List[String]) Int:
     return trace(var log, "a") | add(trace(var log, "b")) | double
 
-def trace(var log: List[String], name: String) -> Int:
+fn trace(var log: List[String], name: String) Int:
     log.append(name)
     return 1
 
-def code(r: Result[Int, TextError]) -> Int:
+fn code(r: Result[Int, TextError]) Int:
     if let v = r:
         return v
 
@@ -59,7 +59,7 @@ test "bare try unwraps the value so far":
     try expect_equal(code(bare("-")), -1)
 
 test "pipe passes a Result through a step without try":
-    let r = parse("abcd") | .map(lambda (value: Int) -> Int: value * 2)
+    let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
     try expect_equal(r.get(), 8)
 
 test "leading dot after a step applies to its result":

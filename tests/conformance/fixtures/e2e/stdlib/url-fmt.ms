@@ -1,19 +1,11 @@
 # conform: tags=alternatives,control-flow,faults,formatter,interpolation,lists,modules,optional,parser,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/url.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/net.ms" import (
-    parse,
-    format,
-    resolve,
-    encode_component,
-    decode_component,
-    parse_query,
-    format_query,
-    QueryEntry,
-    Url,
-    UrlError
-)
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {
+    parse, format, resolve, encode_component, decode_component, parse_query,
+    format_query, QueryEntry, Url, UrlError
+} from "@std/net.ms"
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")
@@ -49,7 +41,7 @@ test "URL format rejects queries that would not round trip":
 
     for query in ["a#b", "a b", "%zz", "a%2"]:
         let bad = Url(base.scheme, base.host, base.port, base.path, query, "")
-        if format(bad) != invalid: return fail(f"query {query}")
+        if format(bad) != invalid: return fail("query {query}")
 
     let good = Url(base.scheme, base.host, base.port, base.path, "a=%41&b", "")
     try expect_equal((try format(good)), "http://h/p?a=%41&b")
@@ -57,7 +49,7 @@ test "URL format rejects queries that would not round trip":
 test "URL parse rejects malformed hosts and queries and keeps an empty authority":
     let invalid: Result[Url, UrlError] = error(UrlError.InvalidData)
     for text in ["http://host:80:80/", "http://h/p?q=a b", "http://h/p?q=%zz"]:
-        if parse(text) != invalid: return fail(f"accepted {text}")
+        if parse(text) != invalid: return fail("accepted {text}")
 
     let empty = try parse("http://")
     try expect_equal((try format(empty)), "http://")
@@ -71,9 +63,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
         "", "1http", "http:", "http:other", "http/other", "http?query", "http#fragment"
     ]:
         let bad = Url(scheme, "host", none, "/path", "", "")
-        if format(bad) != invalid_text: return fail(
-            f"invalid scheme accepted: {scheme}"
-        )
+        if format(bad) != invalid_text: return fail("invalid scheme accepted: {scheme}")
 
         try expect_equal(resolve(bad, "/next"), invalid_url)
 
@@ -84,7 +74,7 @@ test "URL format and resolve reject invalid schemes and hostless relative paths"
     for text in ["custom:/path", "custom+v1.2://host/path", "file:///path", "http://"]:
         let original = try parse(text)
         if (original | try format | try parse) != original: return fail(
-            f"hierarchical URL round trip: {text}"
+            "hierarchical URL round trip: {text}"
         )
 
     let uppercase = Url("HTTP", "host", none, "/path", "", "")

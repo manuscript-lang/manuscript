@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal, expect_error, expect_ok
-from "@std/http.ms" import HttpError, headers, HttpRequest, HttpResponse, buffered, HttpServerOptions
-from "@std/core.ms" import TextError
-from "@std/net.ms" import network
-from "@std/bytes.ms" import Bytes
+import {expect_equal, expect_error, expect_ok} from "@std/test.ms"
+import {HttpError, headers, HttpRequest, HttpResponse, buffered, HttpServerOptions} from "@std/http.ms"
+import TextError from "@std/core.ms"
+import network from "@std/net.ms"
+import Bytes from "@std/bytes.ms"
 
-def ok_route(request: HttpRequest) -> HttpResponse:
+fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
 
 test "serve caps the request header block":
@@ -15,7 +15,7 @@ test "serve caps the request header block":
     ) | try expect_ok:
         with let client = net.connect(server.address(), 2.seconds) | try expect_ok:
             let filler = "a".repeat(2000000) | try expect_ok
-            let head = f"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
+            let head = "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {filler}\r\n\r\n"
 
             # The server may answer and close before the whole head is written.
             let _written = client.write(head, 5.seconds)
@@ -23,7 +23,7 @@ test "serve caps the request header block":
             let text = reply.get().decode_utf8().get("")
             if not text.starts_with("HTTP/1.1 431"): return error(
                 TextError(
-                    f"oversized header block was not rejected: {text}"
+                    "oversized header block was not rejected: {text}"
                 )
             )
 

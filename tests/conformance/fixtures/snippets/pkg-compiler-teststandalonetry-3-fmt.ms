@@ -1,8 +1,8 @@
 # conform: tags=formatter,parser,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/compiler/standalone_try_test.go:12 TestStandaloneTry
-def operation() -> Result[Unit, Int]: ok(())
+fn operation() Result[Unit, Int]: ok(unit)
 
-def f() -> Result[Int, Error]:
+fn f() Result[Int, Error]:
     try operation()
     return ok(1)

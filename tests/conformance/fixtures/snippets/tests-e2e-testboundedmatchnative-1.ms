@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,faults,interfaces,modules,mutation,records,stdlib-cleanup,tier-stdlib,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Count:
     total: Int
@@ -10,17 +10,17 @@ type Watch:
     count: Count
 
 impl Closeable for Watch:
-    def close() -> Unit:
+    fn close() Unit:
         self.count.total += 10
 
-def next(count: Count) -> Int:
+fn next(count: Count) Int:
     with let watch = Watch(count):
         count.total += 1
         return 0
 
-def unknown(s: Shape) -> Int: return area(s)
+fn unknown(s: Shape) Int: return area(s)
 
-export def main() -> Int:
+export fn main() Int:
     let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
     let count = Count(0)
     if area(shapes.get(next(count) * 0)) != 6: return 1

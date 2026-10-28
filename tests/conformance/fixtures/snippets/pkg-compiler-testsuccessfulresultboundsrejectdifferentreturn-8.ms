@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/result_bounds_test.go:91 TestSuccessfulResultBoundsRejectDifferentReturns
-def probe() -> Int:
+fn probe() Int:
     var sum = 0
     var i = -1
 

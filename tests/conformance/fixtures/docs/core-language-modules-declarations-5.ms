@@ -5,5 +5,5 @@ type PrivateToken:
     value: String
 
 # Rejected: callers cannot name the internal result type.
-export def issue() -> PrivateToken:
+export fn issue() PrivateToken:
     return PrivateToken("token")

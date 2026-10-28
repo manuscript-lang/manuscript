@@ -1,15 +1,16 @@
 # conform: tags=closures,stdlib-tasks,tier-core
 # conform: phase=run
 # conform: origin=foreign-syntax diagnostics
-from "@std/io.ms" import stdout
-from "@std/tasks.ms" import TaskGroup
+import stdout from "@std/io.ms"
+import TaskGroup from "@std/tasks.ms"
 
-def show(xs: List[Int]) -> Int:
+fn show(xs: List[Int]) Int:
     with let group = TaskGroup[Int]():
-        group.spawn(lambda ch: xs.length())
-        group.spawn(lambda ch: xs.length())
+        group.spawn(fn ch: xs.length())
+        group.spawn(fn ch: xs.length())
+
     return 0
 
-export def main() -> Int:
-    stdout().write(f"{show([1, 2, 3])}\n").get()
+export fn main() Int:
+    stdout().write("{show([1, 2, 3])}\n").get()
     return 0

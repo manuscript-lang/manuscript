@@ -3,7 +3,7 @@
 # conform: origin=pkg/parser/empty_declarations_test.go:49 TestEmptyDeclarationsPreserveFollowingPositions
 type Empty: ...
 
-def empty() -> Unit: ...
+fn empty() Unit: ...
 
-def kept() -> Int:
+fn kept() Int:
     return 3

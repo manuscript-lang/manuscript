@@ -9,14 +9,14 @@ A `ProcessGroup[T, In, Out]` runs functions of your program in child processes a
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/processes.ms" import ProcessGroup
-from "@std/test.ms" import expect_equal, expect_ok
+import {Channel, ChannelError} from "@std/channels.ms"
+import ProcessGroup from "@std/processes.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
 
-def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch
     var count = 0
-    while True:
+    while true:
         if let n = try c.receive():
             try c.send(n * n)
             count += 1

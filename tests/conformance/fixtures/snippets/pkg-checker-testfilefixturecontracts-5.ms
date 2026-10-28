@@ -3,7 +3,7 @@
 # conform: origin=pkg/checker/test_fixture_test.go:40 TestFileFixtureContracts
 impl TestHooks for State:
 
-def make_fixture(value: Int) -> State:
+fn make_fixture(value: Int) State:
     return State(value)
 
 test "test":

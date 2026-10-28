@@ -1,11 +1,11 @@
-from "./domain.ms" import Cause, make
-from "./helper.ms" import erase, forward
+import {Cause, make} from "./domain.ms"
+import {erase, forward} from "./helper.ms"
 
 impl Error for Cause[T]:
-    def message() -> String: f"second {self.value}"
+    fn message() String: "second {self.value}"
 
-export def second() -> Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))
+export fn second() Result[Int, Error]: erase(Result[Int, Cause[Int]].error(make()))
 
-export def second_generic() -> Result[Int, Error]: forward(
+export fn second_generic() Result[Int, Error]: forward(
     Result[Int, Cause[Int]].error(make())
 )

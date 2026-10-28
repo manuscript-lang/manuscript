@@ -2,11 +2,12 @@
 # expect-mir: "msrt_string_concat"
 # expect-mir: "iadd.chk"
 
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var total = 0
     for x in [1, 2, 3]:
         total += x
-    let _r = stdout().write(f"total {total}\n")
+
+    let _r = stdout().write("total {total}\n")
     return 0

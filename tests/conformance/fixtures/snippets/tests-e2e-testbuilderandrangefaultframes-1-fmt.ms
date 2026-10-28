@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,modules,mutation,parser,stdlib-string,strings,tier-stdlib
 # conform: phase=parse
 # conform: origin=tests/e2e/builder_range_test.go:180 TestBuilderAndRangeFaultFrames
-from "@std/string.ms" import StringBuilder
+import StringBuilder from "@std/string.ms"
 
-def probe() -> String:
+fn probe() String:
     var b = StringBuilder()
     var i = 0
 

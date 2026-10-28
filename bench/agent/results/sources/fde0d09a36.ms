@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdout, stdin, read_all
-from "@std/bytes.ms" import BytesBuilder
+import {stdout, stdin, read_all} from "@std/io.ms"
+import BytesBuilder from "@std/bytes.ms"
 
 let MAX_INT = 9223372036854775807
 let KEYWORDS = [
@@ -27,116 +27,116 @@ type Fail:
     msg: String
 
 impl Error for Fail:
-    def message() -> String: self.msg.clone()
+    fn message() String: self.msg.clone()
 
-def is_null(v: Value) -> Bool:
+fn is_null(v: Value) Bool:
     match v:
-        case VNull:
-            return True
-        case _:
-            return False
+        VNull:
+            return true
+        _:
+            return false
 
 # Type rank used for NULL < BOOL < INT < TEXT ordering and type checks.
-def rank(v: Value) -> Int:
+fn rank(v: Value) Int:
     match v:
-        case VNull:
+        VNull:
             return 0
-        case VBool(_):
+        VBool(_):
             return 1
-        case VInt(_):
+        VInt(_):
             return 2
-        case VText(_):
+        VText(_):
             return 3
 
-def int_of(v: Value) -> Int:
+fn int_of(v: Value) Int:
     match v:
-        case VInt(n):
+        VInt(n):
             return n
-        case _:
+        _:
             return 0
 
-def text_of(v: Value) -> String:
+fn text_of(v: Value) String:
     match v:
-        case VText(s):
+        VText(s):
             return s.clone()
-        case _:
+        _:
             return ""
 
-def as_int(v: Value) -> Result[Int, Fail]:
+fn as_int(v: Value) Result[Int, Fail]:
     match v:
-        case VInt(n):
+        VInt(n):
             return ok(n)
-        case _:
+        _:
             return error(Fail("type error"))
 
-def as_text(v: Value) -> Result[String, Fail]:
+fn as_text(v: Value) Result[String, Fail]:
     match v:
-        case VText(s):
+        VText(s):
             return ok(s.clone())
-        case _:
+        _:
             return error(Fail("type error"))
 
-def show(v: Value) -> String:
+fn show(v: Value) String:
     match v:
-        case VNull:
+        VNull:
             return "NULL"
-        case VInt(n):
-            return f"{n}"
-        case VText(s):
+        VInt(n):
+            return "{n}"
+        VText(s):
             return s.clone()
-        case VBool(b):
+        VBool(b):
             if b:
                 return "true"
 
             return "false"
 
 # Injective encoding of a value, used as a hash key where NULLs compare equal.
-def enc(v: Value) -> String:
+fn enc(v: Value) String:
     match v:
-        case VNull:
+        VNull:
             return "N"
-        case VInt(n):
-            return f"I{n};"
-        case VText(s):
-            return f"T{s.byte_length()}:{s}"
-        case VBool(b):
+        VInt(n):
+            return "I{n};"
+        VText(s):
+            return "T{s.byte_length()}:{s}"
+        VBool(b):
             if b:
                 return "B1"
 
             return "B0"
 
-def enc_row(vals: List[Value]) -> String:
+fn enc_row(vals: List[Value]) String:
     var acc = ""
     for v in vals:
         acc = acc + enc(v)
     return acc
 
 # Three-valued logic: 0 false, 1 true, 2 NULL. Non-boolean operands are type errors.
-def tri(v: Value) -> Result[Int, Fail]:
+fn tri(v: Value) Result[Int, Fail]:
     match v:
-        case VNull:
+        VNull:
             return ok(2)
-        case VBool(b):
+        VBool(b):
             if b:
                 return ok(1)
 
             return ok(0)
-        case _:
+        _:
             return error(Fail("type error"))
 
-def tri_value(t: Int) -> Value:
+fn tri_value(t: Int) Value:
     if t == 2:
         return VNull
 
     return VBool(t == 1)
 
-def tri_not(t: Int) -> Int:
+fn tri_not(t: Int) Int:
     if t == 2:
         return 2
 
     return 1 - t
 
-def tri_and(a: Int, b: Int) -> Int:
+fn tri_and(a: Int, b: Int) Int:
     if a == 0 or b == 0:
         return 0
     if a == 1 and b == 1:
@@ -144,7 +144,7 @@ def tri_and(a: Int, b: Int) -> Int:
 
     return 2
 
-def tri_or(a: Int, b: Int) -> Int:
+fn tri_or(a: Int, b: Int) Int:
     if a == 1 or b == 1:
         return 1
     if a == 0 and b == 0:
@@ -153,7 +153,7 @@ def tri_or(a: Int, b: Int) -> Int:
     return 2
 
 # Ordering used by ORDER BY: NULL < BOOL < INT < TEXT.
-def order_of(a: Value, b: Value) -> Int:
+fn order_of(a: Value, b: Value) Int:
     let ra = rank(a)
     let rb = rank(b)
     if ra != rb:
@@ -168,7 +168,7 @@ def order_of(a: Value, b: Value) -> Int:
     return 0
 
 # Comparison of two non-NULL values of the same INT or TEXT type.
-def compare_values(a: Value, b: Value) -> Result[Int, Fail]:
+fn compare_values(a: Value, b: Value) Result[Int, Fail]:
     let ra = rank(a)
     if ra != rank(b) or ra < 2:
         return error(Fail("type error"))
@@ -177,29 +177,29 @@ def compare_values(a: Value, b: Value) -> Result[Int, Fail]:
 
     return ok(text_of(a).compare(text_of(b)))
 
-def compare_op(op: String, a: Value, b: Value) -> Result[Value, Fail]:
+fn compare_op(op: String, a: Value, b: Value) Result[Value, Fail]:
     if is_null(a) or is_null(b):
         return ok(VNull)
 
     let c = try compare_values(a, b)
-    var res = False
+    var res = false
 
     if op == "=":
         res = c == 0
-    elif op == "<>":
+    else if op == "<>":
         res = c != 0
-    elif op == "<":
+    else if op == "<":
         res = c < 0
-    elif op == "<=":
+    else if op == "<=":
         res = c <= 0
-    elif op == ">":
+    else if op == ">":
         res = c > 0
     else:
         res = c >= 0
 
     return ok(VBool(res))
 
-def binary_op(op: String, a: Value, b: Value) -> Result[Value, Fail]:
+fn binary_op(op: String, a: Value, b: Value) Result[Value, Fail]:
     if op == "=" or op == "<>" or op == "<" or op == "<=" or op == ">" or op == ">=":
         return compare_op(op, a, b)
     if is_null(a) or is_null(b):
@@ -225,7 +225,7 @@ def binary_op(op: String, a: Value, b: Value) -> Result[Value, Fail]:
 
     return ok(VInt(x % y))
 
-def distinct_values(vals: List[Value]) -> List[Value]:
+fn distinct_values(vals: List[Value]) List[Value]:
     var seen = Set[String]()
     var out = List[Value]()
 
@@ -240,13 +240,13 @@ def distinct_values(vals: List[Value]) -> List[Value]:
 
 # ---------- byte-level text helpers ----------
 
-def bytes_of(s: String) -> List[Int]:
+fn bytes_of(s: String) List[Int]:
     var out = List[Int]()
     for b in s.to_bytes().values():
         out.append(b.to_int())
     return out
 
-def text_of_bytes(bs: List[Int]) -> String:
+fn text_of_bytes(bs: List[Int]) String:
     var builder = BytesBuilder()
     for b in bs:
         if let u = b.to_uint8():
@@ -254,7 +254,7 @@ def text_of_bytes(bs: List[Int]) -> String:
     return builder.build().decode_utf8().get("")
 
 # LIKE: '%' matches any run of bytes, '_' exactly one byte, everything else literally.
-def like_match(s: List[Int], p: List[Int]) -> Bool:
+fn like_match(s: List[Int], p: List[Int]) Bool:
     let n = s.length()
     let m = p.length()
     var i = 0
@@ -267,15 +267,15 @@ def like_match(s: List[Int], p: List[Int]) -> Bool:
             star = j
             mark = i
             j += 1
-        elif j < m and (p[j] == 95 or p[j] == s[i]):
+        else if j < m and (p[j] == 95 or p[j] == s[i]):
             i += 1
             j += 1
-        elif star >= 0:
+        else if star >= 0:
             j = star + 1
             mark += 1
             i = mark
         else:
-            return False
+            return false
 
     while j < m and p[j] == 37:
         j += 1
@@ -354,23 +354,23 @@ type Tok:
     text: String
     num: Int
 
-def is_alpha(c: String) -> Bool:
+fn is_alpha(c: String) Bool:
     if c == "_":
-        return True
+        return true
     if c >= "a" and c <= "z":
-        return True
+        return true
 
     return c >= "A" and c <= "Z"
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return c >= "0" and c <= "9"
 
-def digit_value(c: String) -> Int:
+fn digit_value(c: String) Int:
     return c.scalar_values() [0] - 48
 
 # Lexes the whole script. Bad characters and unterminated strings become "err" tokens so that
 # only the statement containing them fails.
-def lex(text: String) -> List[Tok]:
+fn lex(text: String) List[Tok]:
     let cs = text.chars()
     let n = cs.length()
     var toks = List[Tok]()
@@ -381,10 +381,10 @@ def lex(text: String) -> List[Tok]:
 
         if c == " " or c == "\t" or c == "\r" or c == "\n":
             i += 1
-        elif c == "-" and i + 1 < n and cs[i + 1] == "-":
+        else if c == "-" and i + 1 < n and cs[i + 1] == "-":
             while i < n and cs[i] != "\n":
                 i += 1
-        elif is_alpha(c):
+        else if is_alpha(c):
             var word = ""
 
             while i < n and (is_alpha(cs[i]) or is_digit(cs[i])):
@@ -397,15 +397,15 @@ def lex(text: String) -> List[Tok]:
                 toks.append(Tok("kw", up, 0))
             else:
                 toks.append(Tok("id", word, 0))
-        elif is_digit(c):
+        else if is_digit(c):
             var v = 0
-            var bad = False
+            var bad = false
 
             while i < n and is_digit(cs[i]):
                 let d = digit_value(cs[i])
 
                 if v > (MAX_INT - d) / 10:
-                    bad = True
+                    bad = true
                 else:
                     v = v * 10 + d
 
@@ -415,11 +415,11 @@ def lex(text: String) -> List[Tok]:
                 toks.append(Tok("err", "", 0))
             else:
                 toks.append(Tok("int", "", v))
-        elif c == "'":
+        else if c == "'":
             i += 1
 
             var s = ""
-            var closed = False
+            var closed = false
 
             while i < n:
                 if cs[i] == "'":
@@ -427,7 +427,7 @@ def lex(text: String) -> List[Tok]:
                         s = s + "'"
                         i += 2
                     else:
-                        closed = True
+                        closed = true
                         i += 1
                         break
                 else:
@@ -438,10 +438,10 @@ def lex(text: String) -> List[Tok]:
                 toks.append(Tok("str", s, 0))
             else:
                 toks.append(Tok("err", "", 0))
-        elif i + 1 < n and OPS2.contains(c + cs[i + 1]):
+        else if i + 1 < n and OPS2.contains(c + cs[i + 1]):
             toks.append(Tok("op", c + cs[i + 1], 0))
             i += 2
-        elif OPS1.contains(c):
+        else if OPS1.contains(c):
             toks.append(Tok("op", c, 0))
             i += 1
         else:
@@ -451,7 +451,7 @@ def lex(text: String) -> List[Tok]:
     return toks
 
 # Splits tokens at ';' operators. Empty statements are returned as empty lists.
-def statements(toks: List[Tok]) -> List[List[Tok]]:
+fn statements(toks: List[Tok]) List[List[Tok]]:
     var out = List[List[Tok]]()
     var cur = List[Tok]()
 
@@ -472,41 +472,41 @@ type Parser:
     pos: Int
 
 impl Parser:
-    def tok(i: Int) -> Tok:
+    fn tok(i: Int) Tok:
         if i >= self.toks.length():
             return Tok("end", "", 0)
 
         return self.toks[i].clone()
 
-    def kw_at(i: Int, word: String) -> Bool:
+    fn kw_at(i: Int, word: String) Bool:
         let t = self.tok(i)
         return t.kind == "kw" and t.text == word
 
-    def op_at(i: Int, op: String) -> Bool:
+    fn op_at(i: Int, op: String) Bool:
         let t = self.tok(i)
         return t.kind == "op" and t.text == op
 
-    def is_kw(word: String) -> Bool:
+    fn is_kw(word: String) Bool:
         return self.kw_at(self.pos, word)
 
-    def is_op(op: String) -> Bool:
+    fn is_op(op: String) Bool:
         return self.op_at(self.pos, op)
 
-    var def expect_kw(word: String) -> Result[Unit, Fail]:
+    var fn expect_kw(word: String) Result[Unit, Fail]:
         if not self.is_kw(word):
             return error(Fail("syntax error"))
 
         self.pos += 1
-        return ok(())
+        return ok(unit)
 
-    var def expect_op(op: String) -> Result[Unit, Fail]:
+    var fn expect_op(op: String) Result[Unit, Fail]:
         if not self.is_op(op):
             return error(Fail("syntax error"))
 
         self.pos += 1
-        return ok(())
+        return ok(unit)
 
-    var def ident() -> Result[String, Fail]:
+    var fn ident() Result[String, Fail]:
         let t = self.tok(self.pos)
         if t.kind != "id":
             return error(Fail("syntax error"))
@@ -514,7 +514,7 @@ impl Parser:
         self.pos += 1
         return ok(t.text.clone())
 
-    var def statement() -> Result[Stmt, Fail]:
+    var fn statement() Result[Stmt, Fail]:
         let t = self.tok(self.pos)
         if t.kind != "kw":
             return error(Fail("syntax error"))
@@ -535,7 +535,7 @@ impl Parser:
 
         return error(Fail("syntax error"))
 
-    var def create_stmt() -> Result[Stmt, Fail]:
+    var fn create_stmt() Result[Stmt, Fail]:
         try self.expect_kw("CREATE")
         try self.expect_kw("TABLE")
 
@@ -552,47 +552,47 @@ impl Parser:
         try self.expect_op(")")
         return ok(CreateTable(name, defs))
 
-    var def coldef() -> Result[ColDef, Fail]:
+    var fn coldef() Result[ColDef, Fail]:
         let name = try self.ident()
         let ty = try self.ident()
         let up = ty.upper()
         if up != "INT" and up != "TEXT":
             return error(Fail("syntax error"))
 
-        var pk = False
-        var notnull = False
+        var pk = false
+        var notnull = false
 
         while self.is_kw("PRIMARY") or self.is_kw("NOT"):
             if self.is_kw("PRIMARY"):
                 self.pos += 1
                 try self.expect_kw("KEY")
-                pk = True
-                notnull = True
+                pk = true
+                notnull = true
             else:
                 self.pos += 1
                 try self.expect_kw("NULL")
-                notnull = True
+                notnull = true
 
         return ok(ColDef(name, up, pk, notnull))
 
-    var def drop_stmt() -> Result[Stmt, Fail]:
+    var fn drop_stmt() Result[Stmt, Fail]:
         try self.expect_kw("DROP")
         try self.expect_kw("TABLE")
 
         let name = try self.ident()
         return ok(DropTable(name))
 
-    var def insert_stmt() -> Result[Stmt, Fail]:
+    var fn insert_stmt() Result[Stmt, Fail]:
         try self.expect_kw("INSERT")
         try self.expect_kw("INTO")
 
         let name = try self.ident()
         var cols = List[String]()
-        var has_cols = False
+        var has_cols = false
 
         if self.is_op("("):
             self.pos += 1
-            has_cols = True
+            has_cols = true
             cols.append(try self.ident())
 
             while self.is_op(","):
@@ -612,7 +612,7 @@ impl Parser:
 
         return ok(InsertRows(name, cols, has_cols, rows))
 
-    var def value_row() -> Result[List[Expr], Fail]:
+    var fn value_row() Result[List[Expr], Fail]:
         try self.expect_op("(")
 
         var vals = List[Expr]()
@@ -625,7 +625,7 @@ impl Parser:
         try self.expect_op(")")
         return ok(vals)
 
-    var def update_stmt() -> Result[Stmt, Fail]:
+    var fn update_stmt() Result[Stmt, Fail]:
         try self.expect_kw("UPDATE")
 
         let name = try self.ident()
@@ -638,7 +638,7 @@ impl Parser:
             self.pos += 1
             sets.append(try self.assignment())
 
-        var cond: Expr = Lit(VBool(True))
+        var cond: Expr = Lit(VBool(true))
 
         if self.is_kw("WHERE"):
             self.pos += 1
@@ -646,19 +646,19 @@ impl Parser:
 
         return ok(UpdateRows(name, sets, cond))
 
-    var def assignment() -> Result[Assign, Fail]:
+    var fn assignment() Result[Assign, Fail]:
         let col = try self.ident()
         try self.expect_op("=")
 
         let e = try self.expr()
         return ok(Assign(col, e))
 
-    var def delete_stmt() -> Result[Stmt, Fail]:
+    var fn delete_stmt() Result[Stmt, Fail]:
         try self.expect_kw("DELETE")
         try self.expect_kw("FROM")
 
         let name = try self.ident()
-        var cond: Expr = Lit(VBool(True))
+        var cond: Expr = Lit(VBool(true))
 
         if self.is_kw("WHERE"):
             self.pos += 1
@@ -666,14 +666,14 @@ impl Parser:
 
         return ok(DeleteRows(name, cond))
 
-    var def select_stmt() -> Result[Select, Fail]:
+    var fn select_stmt() Result[Select, Fail]:
         try self.expect_kw("SELECT")
 
-        var distinct = False
+        var distinct = false
 
         if self.is_kw("DISTINCT"):
             self.pos += 1
-            distinct = True
+            distinct = true
 
         var items = List[SelItem]()
         items.append(try self.select_item())
@@ -690,13 +690,13 @@ impl Parser:
             source.append(try self.tref())
 
             while self.is_kw("JOIN") or self.is_kw("INNER") or self.is_kw("LEFT"):
-                var left = False
+                var left = false
 
                 if self.is_kw("INNER"):
                     self.pos += 1
-                elif self.is_kw("LEFT"):
+                else if self.is_kw("LEFT"):
                     self.pos += 1
-                    left = True
+                    left = true
 
                 try self.expect_kw("JOIN")
 
@@ -706,7 +706,7 @@ impl Parser:
                 let on = try self.expr()
                 joins.append(Join(left, tr, on))
 
-        var cond: Expr = Lit(VBool(True))
+        var cond: Expr = Lit(VBool(true))
 
         if self.is_kw("WHERE"):
             self.pos += 1
@@ -723,12 +723,12 @@ impl Parser:
                 self.pos += 1
                 groups.append(try self.colref())
 
-        var has_having = False
-        var having: Expr = Lit(VBool(True))
+        var has_having = false
+        var having: Expr = Lit(VBool(true))
 
         if self.is_kw("HAVING"):
             self.pos += 1
-            has_having = True
+            has_having = true
             having = try self.expr()
 
         var order = List[OrderItem]()
@@ -760,7 +760,7 @@ impl Parser:
             )
         )
 
-    var def select_item() -> Result[SelItem, Fail]:
+    var fn select_item() Result[SelItem, Fail]:
         if self.is_op("*"):
             self.pos += 1
             return ok(AllCols(""))
@@ -784,19 +784,19 @@ impl Parser:
 
         return ok(ExprItem(e, alias))
 
-    var def tref() -> Result[TRef, Fail]:
+    var fn tref() Result[TRef, Fail]:
         let name = try self.ident()
         var alias = name.clone()
 
         if self.is_kw("AS"):
             self.pos += 1
             alias = try self.ident()
-        elif self.tok(self.pos).kind == "id":
+        else if self.tok(self.pos).kind == "id":
             alias = try self.ident()
 
         return ok(TRef(name, alias))
 
-    var def colref() -> Result[Expr, Fail]:
+    var fn colref() Result[Expr, Fail]:
         let first = try self.ident()
 
         if self.is_op("."):
@@ -807,19 +807,19 @@ impl Parser:
 
         return ok(Col("", first))
 
-    var def order_item() -> Result[OrderItem, Fail]:
+    var fn order_item() Result[OrderItem, Fail]:
         let e = try self.expr()
-        var desc = False
+        var desc = false
 
         if self.is_kw("ASC"):
             self.pos += 1
-        elif self.is_kw("DESC"):
+        else if self.is_kw("DESC"):
             self.pos += 1
-            desc = True
+            desc = true
 
         return ok(OrderItem(e, desc))
 
-    var def int_lit() -> Result[Int, Fail]:
+    var fn int_lit() Result[Int, Fail]:
         let t = self.tok(self.pos)
         if t.kind != "int":
             return error(Fail("syntax error"))
@@ -827,7 +827,7 @@ impl Parser:
         self.pos += 1
         return ok(t.num)
 
-    var def expr() -> Result[Expr, Fail]:
+    var fn expr() Result[Expr, Fail]:
         var left = try self.and_expr()
 
         while self.is_kw("OR"):
@@ -838,7 +838,7 @@ impl Parser:
 
         return ok(left)
 
-    var def and_expr() -> Result[Expr, Fail]:
+    var fn and_expr() Result[Expr, Fail]:
         var left = try self.not_expr()
 
         while self.is_kw("AND"):
@@ -849,7 +849,7 @@ impl Parser:
 
         return ok(left)
 
-    var def not_expr() -> Result[Expr, Fail]:
+    var fn not_expr() Result[Expr, Fail]:
         if self.is_kw("NOT"):
             self.pos += 1
 
@@ -858,7 +858,7 @@ impl Parser:
 
         return self.cmp_expr()
 
-    var def cmp_expr() -> Result[Expr, Fail]:
+    var fn cmp_expr() Result[Expr, Fail]:
         let left = try self.add_expr()
         let t = self.tok(self.pos)
 
@@ -885,16 +885,16 @@ impl Parser:
         if self.is_kw("IS"):
             self.pos += 1
 
-            var neg = False
+            var neg = false
 
             if self.is_kw("NOT"):
                 self.pos += 1
-                neg = True
+                neg = true
 
             try self.expect_kw("NULL")
             return ok(IsNull(left, neg))
 
-        var neg = False
+        var neg = false
 
         if (
             self.is_kw("NOT")
@@ -905,7 +905,7 @@ impl Parser:
             )
         ):
             self.pos += 1
-            neg = True
+            neg = true
 
         if self.is_kw("LIKE"):
             self.pos += 1
@@ -938,7 +938,7 @@ impl Parser:
 
         return ok(left)
 
-    var def add_expr() -> Result[Expr, Fail]:
+    var fn add_expr() Result[Expr, Fail]:
         var left = try self.mul_expr()
 
         while self.is_op("+") or self.is_op("-") or self.is_op("||"):
@@ -950,7 +950,7 @@ impl Parser:
 
         return ok(left)
 
-    var def mul_expr() -> Result[Expr, Fail]:
+    var fn mul_expr() Result[Expr, Fail]:
         var left = try self.unary_expr()
 
         while self.is_op("*") or self.is_op("/") or self.is_op("%"):
@@ -962,7 +962,7 @@ impl Parser:
 
         return ok(left)
 
-    var def unary_expr() -> Result[Expr, Fail]:
+    var fn unary_expr() Result[Expr, Fail]:
         if self.is_op("-"):
             self.pos += 1
 
@@ -971,7 +971,7 @@ impl Parser:
 
         return self.primary()
 
-    var def primary() -> Result[Expr, Fail]:
+    var fn primary() Result[Expr, Fail]:
         let t = self.tok(self.pos)
 
         if t.kind == "int":
@@ -1009,21 +1009,21 @@ impl Parser:
         return error(Fail("syntax error"))
 
     # The current token is "(" after a function name.
-    var def call_rest(name: String) -> Result[Expr, Fail]:
+    var fn call_rest(name: String) Result[Expr, Fail]:
         self.pos += 1
 
-        var distinct = False
-        var star = False
+        var distinct = false
+        var star = false
         var args = List[Expr]()
 
         if self.is_kw("DISTINCT"):
             self.pos += 1
-            distinct = True
+            distinct = true
 
         if self.is_op("*"):
             self.pos += 1
-            star = True
-        elif not self.is_op(")"):
+            star = true
+        else if not self.is_op(")"):
             args.append(try self.expr())
 
             while self.is_op(","):
@@ -1044,16 +1044,16 @@ type Check:
     grouped: Bool
     groups: List[Int]
 
-def plain_check() -> Check:
-    return Check(False, False, List[Int]())
+fn plain_check() Check:
+    return Check(false, false, List[Int]())
 
-def written(table: String, name: String) -> String:
+fn written(table: String, name: String) String:
     if table == "":
         return name.clone()
 
-    return f"{table}.{name}"
+    return "{table}.{name}"
 
-def find_col(slots: List[Slot], table: String, name: String) -> Result[Int, Fail]:
+fn find_col(slots: List[Slot], table: String, name: String) Result[Int, Fail]:
     var found = -1
     var count = 0
 
@@ -1064,76 +1064,76 @@ def find_col(slots: List[Slot], table: String, name: String) -> Result[Int, Fail
             count += 1
 
     if count == 0:
-        return error(Fail(f"no such column: {written(table, name)}"))
+        return error(Fail("no such column: {written(table, name)}"))
     if table == "" and count > 1:
-        return error(Fail(f"ambiguous column: {name}"))
+        return error(Fail("ambiguous column: {name}"))
 
     return ok(found)
 
-def find_table(db: List[Table], name: String) -> Int:
+fn find_table(db: List[Table], name: String) Int:
     for i in 0..db.length():
         if db[i].name == name:
             return i
     return -1
 
-def column_index(cols: List[ColDef], name: String) -> Int:
+fn column_index(cols: List[ColDef], name: String) Int:
     for i in 0..cols.length():
         if cols[i].name == name:
             return i
     return -1
 
-def is_agg(name: String) -> Bool:
+fn is_agg(name: String) Bool:
     return name == "COUNT" or name == "SUM" or name == "MIN" or name == "MAX"
 
-def contains_agg(e: Expr) -> Bool:
+fn contains_agg(e: Expr) Bool:
     match e:
-        case Lit(_):
-            return False
-        case Col(_, _):
-            return False
-        case Unary(_, x):
+        Lit(_):
+            return false
+        Col(_, _):
+            return false
+        Unary(_, x):
             return contains_agg(x)
-        case Binary(_, l, r):
+        Binary(_, l, r):
             return contains_agg(l) or contains_agg(r)
-        case IsNull(x, _):
+        IsNull(x, _):
             return contains_agg(x)
-        case Like(x, p, _):
+        Like(x, p, _):
             return contains_agg(x) or contains_agg(p)
-        case InList(x, items, _):
+        InList(x, items, _):
             if contains_agg(x):
-                return True
+                return true
 
             for it in items:
                 if contains_agg(it):
-                    return True
-            return False
-        case Between(x, lo, hi, _):
+                    return true
+            return false
+        Between(x, lo, hi, _):
             return contains_agg(x) or contains_agg(lo) or contains_agg(hi)
-        case Call(name, args, _, _):
+        Call(name, args, _, _):
             if is_agg(name):
-                return True
+                return true
 
             for a in args:
                 if contains_agg(a):
-                    return True
-            return False
+                    return true
+            return false
 
-def check_call_shape(
+fn check_call_shape(
     name: String,
     count: Int,
     distinct: Bool,
     star: Bool
-) -> Result[Unit, Fail]:
+) Result[Unit, Fail]:
     if not FUNCS.contains(name):
-        return error(Fail(f"no such function: {name}"))
+        return error(Fail("no such function: {name}"))
 
-    let wrong = Fail(f"wrong number of arguments to {name}")
+    let wrong = Fail("wrong number of arguments to {name}")
 
     if star:
         if name != "COUNT" or distinct:
             return error(wrong)
 
-        return ok(())
+        return ok(unit)
 
     if distinct and count != 1:
         return error(wrong)
@@ -1141,52 +1141,47 @@ def check_call_shape(
     if name == "SUBSTR":
         if count != 3:
             return error(wrong)
-    elif name == "COALESCE":
+    else if name == "COALESCE":
         if count < 1:
             return error(wrong)
-    elif count != 1:
+    else if count != 1:
         return error(wrong)
 
-    return ok(())
+    return ok(unit)
 
-def check_expr(
-    e: Expr,
-    slots: List[Slot],
-    cx: Check,
-    in_agg: Bool
-) -> Result[Unit, Fail]:
+fn check_expr(e: Expr, slots: List[Slot], cx: Check, in_agg: Bool) Result[Unit, Fail]:
     match e:
-        case Lit(_):
-            return ok(())
-        case Col(t, n):
+        Lit(_):
+            return ok(unit)
+        Col(t, n):
             let i = try find_col(slots, t, n)
             if cx.grouped and not in_agg and not cx.groups.contains(i):
-                return error(Fail(f"column {written(t, n)} must appear in GROUP BY"))
+                return error(Fail("column {written(t, n)} must appear in GROUP BY"))
 
-            return ok(())
-        case Unary(_, x):
+            return ok(unit)
+        Unary(_, x):
             return check_expr(x, slots, cx, in_agg)
-        case Binary(_, l, r):
+        Binary(_, l, r):
             try check_expr(l, slots, cx, in_agg)
             try check_expr(r, slots, cx, in_agg)
-            return ok(())
-        case IsNull(x, _):
+            return ok(unit)
+        IsNull(x, _):
             return check_expr(x, slots, cx, in_agg)
-        case Like(x, p, _):
+        Like(x, p, _):
             try check_expr(x, slots, cx, in_agg)
             try check_expr(p, slots, cx, in_agg)
-            return ok(())
-        case InList(x, items, _):
+            return ok(unit)
+        InList(x, items, _):
             try check_expr(x, slots, cx, in_agg)
             for it in items:
                 try check_expr(it, slots, cx, in_agg)
-            return ok(())
-        case Between(x, lo, hi, _):
+            return ok(unit)
+        Between(x, lo, hi, _):
             try check_expr(x, slots, cx, in_agg)
             try check_expr(lo, slots, cx, in_agg)
             try check_expr(hi, slots, cx, in_agg)
-            return ok(())
-        case Call(name, args, distinct, star):
+            return ok(unit)
+        Call(name, args, distinct, star):
             try check_call_shape(name, args.length(), distinct, star)
 
             let agg = is_agg(name)
@@ -1195,28 +1190,28 @@ def check_expr(
 
             for a in args:
                 try check_expr(a, slots, cx, in_agg or agg)
-            return ok(())
+            return ok(unit)
 
 # ---------- evaluation ----------
 
-def like_bytes(v: Value, p: Value) -> Result[Bool, Fail]:
+fn like_bytes(v: Value, p: Value) Result[Bool, Fail]:
     let s = try as_text(v)
     let q = try as_text(p)
     return ok(like_match(bytes_of(s), bytes_of(q)))
 
-def eval(
+fn eval(
     e: Expr,
     slots: List[Slot],
     row: List[Value],
     group: List[List[Value]]
-) -> Result[Value, Fail]:
+) Result[Value, Fail]:
     match e:
-        case Lit(v):
+        Lit(v):
             return ok(v.clone())
-        case Col(t, n):
+        Col(t, n):
             let i = try find_col(slots, t, n)
             return ok(row[i].clone())
-        case Unary(op, x):
+        Unary(op, x):
             let v = try eval(x, slots, row, group)
 
             if op == "NOT":
@@ -1228,10 +1223,10 @@ def eval(
 
             let n = try as_int(v)
             return ok(VInt(-n))
-        case IsNull(x, negate):
+        IsNull(x, negate):
             let v = try eval(x, slots, row, group)
             return ok(VBool(is_null(v) != negate))
-        case Like(x, p, negate):
+        Like(x, p, negate):
             let v = try eval(x, slots, row, group)
             let q = try eval(p, slots, row, group)
             if is_null(v) or is_null(q):
@@ -1239,7 +1234,7 @@ def eval(
 
             let m = try like_bytes(v, q)
             return ok(VBool(m != negate))
-        case InList(x, items, negate):
+        InList(x, items, negate):
             let v = try eval(x, slots, row, group)
             var vals = List[Value]()
 
@@ -1250,30 +1245,30 @@ def eval(
             if is_null(v):
                 return ok(VNull)
 
-            var sawnull = False
-            var found = False
+            var sawnull = false
+            var found = false
 
             for iv in vals:
                 if is_null(iv):
-                    sawnull = True
+                    sawnull = true
                 else:
                     let c = try compare_values(v, iv)
 
                     if c == 0:
-                        found = True
+                        found = true
                         break
 
             var t = 0
 
             if found:
                 t = 1
-            elif sawnull:
+            else if sawnull:
                 t = 2
 
             if negate:
                 t = tri_not(t)
             return ok(tri_value(t))
-        case Between(x, lo, hi, negate):
+        Between(x, lo, hi, negate):
             let v = try eval(x, slots, row, group)
             let a = try eval(lo, slots, row, group)
             let b = try eval(hi, slots, row, group)
@@ -1283,11 +1278,11 @@ def eval(
             if negate:
                 t = tri_not(t)
             return ok(tri_value(t))
-        case Binary(op, l, r):
+        Binary(op, l, r):
             if op == "AND":
                 let a = try tri(try eval(l, slots, row, group))
                 if a == 0:
-                    return ok(VBool(False))
+                    return ok(VBool(false))
 
                 let b = try tri(try eval(r, slots, row, group))
                 return ok(tri_value(tri_and(a, b)))
@@ -1295,7 +1290,7 @@ def eval(
             if op == "OR":
                 let a = try tri(try eval(l, slots, row, group))
                 if a == 1:
-                    return ok(VBool(True))
+                    return ok(VBool(true))
 
                 let b = try tri(try eval(r, slots, row, group))
                 return ok(tri_value(tri_or(a, b)))
@@ -1303,7 +1298,7 @@ def eval(
             let a = try eval(l, slots, row, group)
             let b = try eval(r, slots, row, group)
             return binary_op(op, a, b)
-        case Call(name, args, distinct, star):
+        Call(name, args, distinct, star):
             if is_agg(name):
                 return aggregate(name, args, distinct, star, slots, group)
 
@@ -1324,14 +1319,14 @@ def eval(
                     return ok(VNull)
             return scalar_call(name, vals)
 
-def aggregate(
+fn aggregate(
     name: String,
     args: List[Expr],
     distinct: Bool,
     star: Bool,
     slots: List[Slot],
     group: List[List[Value]]
-) -> Result[Value, Fail]:
+) Result[Value, Fail]:
     if star:
         return ok(VInt(group.length()))
 
@@ -1371,7 +1366,7 @@ def aggregate(
 
     return ok(best)
 
-def scalar_call(name: String, vals: List[Value]) -> Result[Value, Fail]:
+fn scalar_call(name: String, vals: List[Value]) Result[Value, Fail]:
     if name == "UPPER" or name == "LOWER":
         let s = try as_text(vals[0])
         var out = List[Int]()
@@ -1379,7 +1374,7 @@ def scalar_call(name: String, vals: List[Value]) -> Result[Value, Fail]:
         for b in bytes_of(s):
             if name == "UPPER" and b >= 97 and b <= 122:
                 out.append(b - 32)
-            elif name == "LOWER" and b >= 65 and b <= 90:
+            else if name == "LOWER" and b >= 65 and b <= 90:
                 out.append(b + 32)
             else:
                 out.append(b)
@@ -1406,7 +1401,7 @@ def scalar_call(name: String, vals: List[Value]) -> Result[Value, Fail]:
 
         if start < 1:
             hi = (start + len - 1).min(blen)
-        elif len - 1 < blen - start:
+        else if len - 1 < blen - start:
             hi = start + len - 1
 
         var i = 1
@@ -1435,57 +1430,57 @@ type SortRec:
     outs: List[Value]
     keys: List[Value]
 
-def column_name(e: Expr) -> String:
+fn column_name(e: Expr) String:
     match e:
-        case Col(_, n):
+        Col(_, n):
             return n.clone()
-        case _:
+        _:
             return "?column?"
 
-def prefix_slots(slots: List[Slot], n: Int) -> List[Slot]:
+fn prefix_slots(slots: List[Slot], n: Int) List[Slot]:
     var out = List[Slot]()
     for i in 0..n:
         out.append(Slot(slots[i].alias.clone(), slots[i].col.clone()))
     return out
 
-def names_index(names: List[String], name: String) -> Int:
+fn names_index(names: List[String], name: String) Int:
     for i in 0..names.length():
         if names[i] == name:
             return i
     return -1
 
-def plan_order(
+fn plan_order(
     o: OrderItem,
     names: List[String],
     slots: List[Slot],
     cx: Check
-) -> Result[SortKey, Fail]:
+) Result[SortKey, Fail]:
     match o.e:
-        case Lit(v):
+        Lit(v):
             if rank(v) == 2:
                 let pos = int_of(v)
                 if pos < 1 or pos > names.length():
                     return error(Fail("bad ORDER BY position"))
 
                 return ok(SortKey(1, pos - 1, o.e.clone(), o.desc))
-        case Col(t, n):
+        Col(t, n):
             if t == "":
                 let k = names_index(names, n)
                 if k >= 0:
                     return ok(SortKey(1, k, o.e.clone(), o.desc))
-        case _:
-            ()
+        _:
+            unit
 
-    try check_expr(o.e, slots, cx, False)
+    try check_expr(o.e, slots, cx, false)
     return ok(SortKey(0, 0, o.e.clone(), o.desc))
 
-def render_row(vals: List[Value]) -> String:
+fn render_row(vals: List[Value]) String:
     var parts = List[String]()
     for v in vals:
         parts.append(show(v))
     return parts.join("|")
 
-def compare_recs(a: SortRec, b: SortRec, descs: List[Bool]) -> Int:
+fn compare_recs(a: SortRec, b: SortRec, descs: List[Bool]) Int:
     for i in 0..a.keys.length():
         var c = order_of(a.keys[i], b.keys[i])
         if descs[i]:
@@ -1495,7 +1490,7 @@ def compare_recs(a: SortRec, b: SortRec, descs: List[Bool]) -> Int:
 
     return 0
 
-def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
+fn run_select(db: List[Table], sel: Select) Result[String, Fail]:
     var refs = List[TRef]()
     for r in sel.source:
         refs.append(r.clone())
@@ -1510,7 +1505,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
     for r in refs:
         let ti = find_table(db, r.table)
         if ti < 0:
-            return error(Fail(f"no such table: {r.table}"))
+            return error(Fail("no such table: {r.table}"))
 
         tabs.append(ti)
 
@@ -1521,7 +1516,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
     for k in 0..refs.length():
         let alias = refs[k].alias.clone()
         if aliases.contains(alias):
-            return error(Fail(f"duplicate alias: {alias}"))
+            return error(Fail("duplicate alias: {alias}"))
 
         aliases.append(alias.clone())
         for c in db[tabs[k]].cols:
@@ -1531,57 +1526,57 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
     # Step 2: name resolution, in the specified order.
     for j in 0..sel.joins.length():
         let pre = prefix_slots(slots, ends[nsrc + j])
-        try check_expr(sel.joins[j].on, pre, plain_check(), False)
+        try check_expr(sel.joins[j].on, pre, plain_check(), false)
 
     for it in sel.items:
         match it:
-            case AllCols(t):
+            AllCols(t):
                 if t != "" and not aliases.contains(t):
-                    return error(Fail(f"no such table: {t}"))
-            case ExprItem(_, _):
-                ()
+                    return error(Fail("no such table: {t}"))
+            ExprItem(_, _):
+                unit
 
     var group_idx = List[Int]()
 
     for g in sel.groups:
         match g:
-            case Col(t, n):
+            Col(t, n):
                 let gi = try find_col(slots, t, n)
                 group_idx.append(gi)
-            case _:
-                ()
+            _:
+                unit
 
-    try check_expr(sel.cond, slots, plain_check(), False)
+    try check_expr(sel.cond, slots, plain_check(), false)
 
     var aggregated = sel.groups.length() > 0 or sel.has_having
 
     for it in sel.items:
         match it:
-            case ExprItem(e, _):
+            ExprItem(e, _):
                 if contains_agg(e):
-                    aggregated = True
-            case AllCols(_):
-                ()
+                    aggregated = true
+            AllCols(_):
+                unit
 
     for o in sel.order:
         if contains_agg(o.e):
-            aggregated = True
+            aggregated = true
 
-    let cx = Check(True, aggregated, group_idx.clone())
+    let cx = Check(true, aggregated, group_idx.clone())
     var names = List[String]()
     var exprs = List[Expr]()
 
     for it in sel.items:
         match it:
-            case AllCols(t):
+            AllCols(t):
                 for si in 0..slots.length():
                     if t == "" or slots[si].alias == t:
                         let e = Col(slots[si].alias.clone(), slots[si].col.clone())
-                        try check_expr(e, slots, cx, False)
+                        try check_expr(e, slots, cx, false)
                         names.append(slots[si].col.clone())
                         exprs.append(e)
-            case ExprItem(e, alias):
-                try check_expr(e, slots, cx, False)
+            ExprItem(e, alias):
+                try check_expr(e, slots, cx, false)
 
                 var nm = column_name(e)
                 if alias != "":
@@ -1590,7 +1585,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
                 exprs.append(e.clone())
 
     if sel.has_having:
-        try check_expr(sel.having, slots, cx, False)
+        try check_expr(sel.having, slots, cx, false)
 
     var keys = List[SortKey]()
 
@@ -1615,7 +1610,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
         var nxt = List[List[Value]]()
 
         for outer in rows:
-            var matched = False
+            var matched = false
 
             for inner in db[tj].rows:
                 var combined = outer.clone()
@@ -1626,7 +1621,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
                 let t = try tri(cv)
 
                 if t == 1:
-                    matched = True
+                    matched = true
                     nxt.append(combined)
 
             if not matched and sel.joins[j].left:
@@ -1668,7 +1663,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
 
         for g in 0..members.length():
             units.append(Group(members[g][0].clone(), members[g].clone()))
-    elif aggregated:
+    else if aggregated:
         var rep = List[Value]()
 
         if filtered.length() > 0:
@@ -1736,7 +1731,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
         var descs = List[Bool]()
         for k in keys:
             descs.append(k.desc)
-        uniq = uniq.sorted(lambda a, b: compare_recs(a, b, descs))
+        uniq = uniq.sorted(fn a, b: compare_recs(a, b, descs))
 
     var lines = List[String]()
     lines.append(names.join("|"))
@@ -1752,7 +1747,7 @@ def run_select(db: List[Table], sel: Select) -> Result[String, Fail]:
         lines.append(render_row(uniq[i].outs))
         emitted += 1
 
-    lines.append(f"({emitted} rows)")
+    lines.append("({emitted} rows)")
     return ok(lines.join("\n") + "\n")
 
 # ---------- DDL and DML ----------
@@ -1763,33 +1758,33 @@ type Table:
     rows: List[List[Value]]
 
 # Column-level constraints for one full row, in declaration order.
-def check_row(cols: List[ColDef], row: List[Value]) -> Result[Unit, Fail]:
+fn check_row(cols: List[ColDef], row: List[Value]) Result[Unit, Fail]:
     for i in 0..cols.length():
         let c = cols[i]
         let v = row[i]
 
         if is_null(v):
             if c.notnull:
-                return error(Fail(f"NOT NULL constraint failed: {c.name}"))
-        elif c.ty == "INT" and rank(v) != 2:
-            return error(Fail(f"type mismatch in column {c.name}"))
-        elif c.ty == "TEXT" and rank(v) != 3:
-            return error(Fail(f"type mismatch in column {c.name}"))
+                return error(Fail("NOT NULL constraint failed: {c.name}"))
+        else if c.ty == "INT" and rank(v) != 2:
+            return error(Fail("type mismatch in column {c.name}"))
+        else if c.ty == "TEXT" and rank(v) != 3:
+            return error(Fail("type mismatch in column {c.name}"))
 
-    return ok(())
+    return ok(unit)
 
 # Duplicate primary key check over existing rows followed by added rows.
-def check_pk(
+fn check_pk(
     cols: List[ColDef],
     existing: List[List[Value]],
     added: List[List[Value]]
-) -> Result[Unit, Fail]:
+) Result[Unit, Fail]:
     var pk = -1
     for i in 0..cols.length():
         if cols[i].pk:
             pk = i
     if pk < 0:
-        return ok(())
+        return ok(unit)
 
     var seen = Set[String]()
     for r in existing:
@@ -1798,51 +1793,51 @@ def check_pk(
     for r in added:
         let k = show(r[pk])
         if seen.contains(k):
-            return error(Fail(f"duplicate primary key: {k}"))
+            return error(Fail("duplicate primary key: {k}"))
 
         seen.add(k)
 
-    return ok(())
+    return ok(unit)
 
-def create_table(var db: List[Table], name: String, defs: List[ColDef]) -> Result[
+fn create_table(var db: List[Table], name: String, defs: List[ColDef]) Result[
     String, Fail
 ]:
     if find_table(db, name) >= 0:
-        return error(Fail(f"table {name} already exists"))
+        return error(Fail("table {name} already exists"))
 
     var cols = List[ColDef]()
-    var has_pk = False
+    var has_pk = false
 
     for c in defs:
         if column_index(cols, c.name) >= 0:
-            return error(Fail(f"duplicate column: {c.name}"))
+            return error(Fail("duplicate column: {c.name}"))
 
         if c.pk:
             if has_pk:
                 return error(Fail("multiple primary keys"))
 
-            has_pk = True
+            has_pk = true
 
         cols.append(c.clone())
 
     db.append(Table(name.clone(), cols, List[List[Value]]()))
     return ok("ok\n")
 
-def drop_table(var db: List[Table], name: String) -> Result[String, Fail]:
+fn drop_table(var db: List[Table], name: String) Result[String, Fail]:
     let ti = find_table(db, name)
     if ti < 0:
-        return error(Fail(f"no such table: {name}"))
+        return error(Fail("no such table: {name}"))
 
     db.remove(ti)
     return ok("ok\n")
 
-def insert_rows(
+fn insert_rows(
     var db: List[Table], name: String, cols: List[String], has_cols: Bool,
     rows: List[List[Expr]]
-) -> Result[String, Fail]:
+) Result[String, Fail]:
     let ti = find_table(db, name)
     if ti < 0:
-        return error(Fail(f"no such table: {name}"))
+        return error(Fail("no such table: {name}"))
 
     var targets = List[Int]()
 
@@ -1850,9 +1845,9 @@ def insert_rows(
         for c in cols:
             let idx = column_index(db[ti].cols, c)
             if idx < 0:
-                return error(Fail(f"no such column: {c}"))
+                return error(Fail("no such column: {c}"))
             if targets.contains(idx):
-                return error(Fail(f"duplicate column: {c}"))
+                return error(Fail("duplicate column: {c}"))
 
             targets.append(idx)
     else:
@@ -1869,7 +1864,7 @@ def insert_rows(
             return error(Fail("wrong number of values"))
 
         for e in r:
-            try check_expr(e, no_slots, plain_check(), False)
+            try check_expr(e, no_slots, plain_check(), false)
 
         var vals = List[Value]()
 
@@ -1890,14 +1885,14 @@ def insert_rows(
     let count = new_rows.length()
     for r in new_rows:
         db[ti].rows.append(r.clone())
-    return ok(f"inserted {count}\n")
+    return ok("inserted {count}\n")
 
-def update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Expr) -> Result[
+fn update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Expr) Result[
     String, Fail
 ]:
     let ti = find_table(db, name)
     if ti < 0:
-        return error(Fail(f"no such table: {name}"))
+        return error(Fail("no such table: {name}"))
 
     let slots = prefix_slots(table_slots(db[ti], name), db[ti].cols.length())
     var idxs = List[Int]()
@@ -1905,13 +1900,13 @@ def update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Exp
     for a in sets:
         let idx = column_index(db[ti].cols, a.col)
         if idx < 0:
-            return error(Fail(f"no such column: {a.col}"))
+            return error(Fail("no such column: {a.col}"))
 
         idxs.append(idx)
 
     for a in sets:
-        try check_expr(a.e, slots, plain_check(), False)
-    try check_expr(cond, slots, plain_check(), False)
+        try check_expr(a.e, slots, plain_check(), false)
+    try check_expr(cond, slots, plain_check(), false)
 
     let none_group = List[List[Value]]()
     var new_rows = List[List[Value]]()
@@ -1935,21 +1930,21 @@ def update_rows(var db: List[Table], name: String, sets: List[Assign], cond: Exp
 
     try check_pk(db[ti].cols, List[List[Value]](), new_rows)
     db[ti].rows = new_rows
-    return ok(f"updated {count}\n")
+    return ok("updated {count}\n")
 
-def table_slots(t: Table, alias: String) -> List[Slot]:
+fn table_slots(t: Table, alias: String) List[Slot]:
     var out = List[Slot]()
     for c in t.cols:
         out.append(Slot(alias.clone(), c.name.clone()))
     return out
 
-def delete_rows(var db: List[Table], name: String, cond: Expr) -> Result[String, Fail]:
+fn delete_rows(var db: List[Table], name: String, cond: Expr) Result[String, Fail]:
     let ti = find_table(db, name)
     if ti < 0:
-        return error(Fail(f"no such table: {name}"))
+        return error(Fail("no such table: {name}"))
 
     let slots = table_slots(db[ti], name)
-    try check_expr(cond, slots, plain_check(), False)
+    try check_expr(cond, slots, plain_check(), false)
 
     let none_group = List[List[Value]]()
     var kept = List[List[Value]]()
@@ -1964,24 +1959,24 @@ def delete_rows(var db: List[Table], name: String, cond: Expr) -> Result[String,
             kept.append(r.clone())
 
     db[ti].rows = kept
-    return ok(f"deleted {count}\n")
+    return ok("deleted {count}\n")
 
-def execute(var db: List[Table], st: Stmt) -> Result[String, Fail]:
+fn execute(var db: List[Table], st: Stmt) Result[String, Fail]:
     match st:
-        case CreateTable(name, defs):
+        CreateTable(name, defs):
             return create_table(var db, name, defs)
-        case DropTable(name):
+        DropTable(name):
             return drop_table(var db, name)
-        case InsertRows(name, cols, has_cols, rows):
+        InsertRows(name, cols, has_cols, rows):
             return insert_rows(var db, name, cols, has_cols, rows)
-        case UpdateRows(name, sets, cond):
+        UpdateRows(name, sets, cond):
             return update_rows(var db, name, sets, cond)
-        case DeleteRows(name, cond):
+        DeleteRows(name, cond):
             return delete_rows(var db, name, cond)
-        case Query(sel):
+        Query(sel):
             return run_select(db, sel)
 
-def exec_tokens(var db: List[Table], toks: List[Tok]) -> Result[String, Fail]:
+fn exec_tokens(var db: List[Table], toks: List[Tok]) Result[String, Fail]:
     var p = Parser(toks.clone(), 0)
     let st = try p.statement()
     if p.pos != toks.length():
@@ -1989,14 +1984,14 @@ def exec_tokens(var db: List[Table], toks: List[Tok]) -> Result[String, Fail]:
 
     return execute(var db, st)
 
-def run_statement(var db: List[Table], toks: List[Tok]) -> String:
+fn run_statement(var db: List[Table], toks: List[Tok]) String:
     let r = exec_tokens(var db, toks)
     if r.is_error():
         return "error: " + r.err().message() + "\n"
 
     return r.get().clone()
 
-export def main() -> Int:
+export fn main() Int:
     let text = read_all(stdin()).get().decode_utf8().get("")
     var db = List[Table]()
     var out = List[String]()

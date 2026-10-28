@@ -1,7 +1,7 @@
 # conform: tags=alternatives,match,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=perf: payloadless cases of recursive alternatives share one block
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Tree:
     case Leaf
@@ -12,7 +12,7 @@ type Chain:
     case End
     case Link(value: Int, rest: Chain)
 
-def build(depth: Int) -> Tree:
+fn build(depth: Int) Tree:
     if depth == 0:
         return Leaf
     if depth == 1:
@@ -20,23 +20,23 @@ def build(depth: Int) -> Tree:
 
     return Node(build(depth - 1), build(depth - 2))
 
-def count(tree: Tree) -> Int:
+fn count(tree: Tree) Int:
     match tree:
-        case Leaf: return 1
-        case Gap: return 0
-        case Node(left, right): return count(left) + count(right)
+        Leaf: return 1
+        Gap: return 0
+        Node(left, right): return count(left) + count(right)
 
-def sum(chain: Chain) -> Int:
+fn sum(chain: Chain) Int:
     match chain:
-        case End: return 0
-        case Link(value, rest): return value + sum(rest)
+        End: return 0
+        Link(value, rest): return value + sum(rest)
 
 test "payloadless cases survive clone, equality and drop":
     let tree = build(10)
     let copy = tree.clone()
     count(copy.clone()) | try expect_equal(expected: count(tree.clone()))
-    (copy == tree) | try expect_equal(expected: True)
-    (Leaf == Gap) | try expect_equal(expected: False)
+    (copy == tree) | try expect_equal(expected: true)
+    (Leaf == Gap) | try expect_equal(expected: false)
 
 test "chains end in a shared block":
     var chain = End

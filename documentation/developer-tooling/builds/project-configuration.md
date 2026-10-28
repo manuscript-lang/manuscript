@@ -71,8 +71,8 @@ Keep the copy under version control and record the upstream URL, exact revision,
 Imports name an exported symbol and a path:
 
 ```manuscript
-from "./domain/customers.ms" import CustomerId
-from "@domain/orders.ms" import Order
+import CustomerId from "./domain/customers.ms"
+import Order from "@domain/orders.ms"
 ```
 
 For an import in `src/main.ms`, the first path resolves to `src/domain/customers.ms`. The second expands `@domain` and resolves to `src/domain/orders.ms`.

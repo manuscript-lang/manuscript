@@ -4,5 +4,5 @@
 type Set[T]:
     value: T
 
-def f(values: Set[Int]) -> Unit:
+fn f(values: Set[Int]) Unit:
     values.add(1)

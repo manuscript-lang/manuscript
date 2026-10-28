@@ -1,54 +1,54 @@
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/math.ms" import sqrt
+import {expect_equal, expect_true} from "@std/test.ms"
+import sqrt from "@std/math.ms"
 
-def increment(value: Int) -> Int:
+fn increment(value: Int) Int:
     return value + 1
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total = total + value
     return total
 
-def apply(transform: Callable[[Int], Int]) -> Int:
+fn apply(transform: fn(Int) Int) Int:
     return transform(4)
 
-def select() -> Callable[[Int], Int]:
+fn select() fn(Int) Int:
     return increment
 
-def subtract(amount: Int, deduction: Int) -> Int:
+fn subtract(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 interface Increment:
-    def apply(value: Int) -> Int
+    fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    def apply(value: Int) -> Int:
+    fn apply(value: Int) Int:
         return value + self.delta
 
 type Counter:
     value: Int
 
-def next(var state: Counter) -> Int:
+fn next(var state: Counter) Int:
     let value = state.value
     state.value = value + 1
     return value
 
-def prepare_receiver(var state: Counter) -> Result[Offset, Error]:
+fn prepare_receiver(var state: Counter) Result[Offset, Error]:
     next(var state) | try expect_equal(0)
     return ok(Offset(2))
 
-def prepare_function(var state: Counter) -> Result[Callable[[Int], Int], Error]:
+fn prepare_function(var state: Counter) Result[fn(Int) Int, Error]:
     next(var state) | try expect_equal(4)
     return ok(increment)
 
-def absent(value: Optional[Int]) -> Bool:
+fn absent(value: Optional[Int]) Bool:
     let missing: Optional[Int] = none
     return value == missing
 
@@ -59,21 +59,21 @@ test "optional labels on single-parameter functions":
     multiline | try expect_equal(4)
     identity(7) | try expect_equal(7)
     identity[Int](7) | try expect_equal(7)
-    (identity(True)) | try expect_true
-    identity(()) | try expect_equal(())
+    (identity(true)) | try expect_true
+    identity(unit) | try expect_equal(unit)
     (absent(none)) | try expect_true
-    f"{increment(3)}" | try expect_equal("4")
+    "{increment(3)}" | try expect_equal("4")
     select()(5) | try expect_equal(6)
 
     let specialized = identity[Int]
     specialized(8) | try expect_equal(8)
 
-    let closure = lambda (value: Int):
+    let closure = fn(value: Int):
         return value * 2
     closure(3) | try expect_equal(6)
     apply(closure) | try expect_equal(8)
 
-    let result = apply(lambda value: return value + 2)
+    let result = apply(fn value: return value + 2)
     result | try expect_equal(6)
     subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(7)
 

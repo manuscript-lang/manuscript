@@ -2,15 +2,15 @@
 # conform: phase=check
 # conform: origin=pkg/build/compiler_test.go:350 TestDisjointImplementations
 interface Read:
-    def get() -> Int
+    fn get() Int
 
 type Box[T]:
     value: T
 
-impl Read for Box[Callable[[Int], Int]]:
-    def get() -> Int:
+impl Read for Box[fn(Int) Int]:
+    fn get() Int:
         return 1
 
-impl Read for Box[Callable[[Int], Int]]:
-    def get() -> Int:
+impl Read for Box[fn(Int) Int]:
+    fn get() Int:
         return 2

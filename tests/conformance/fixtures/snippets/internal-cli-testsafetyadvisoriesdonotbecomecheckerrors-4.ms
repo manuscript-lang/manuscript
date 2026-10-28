@@ -1,14 +1,14 @@
 # conform: tags=closures,diagnostics,faults,maps,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
 # conform: phase=check
 # conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
-from "@std/net.ms" import network
-from "@std/http.ms" import HttpResponse, buffered
-from "@std/core.ms" import panic
+import network from "@std/net.ms"
+import {HttpResponse, buffered} from "@std/http.ms"
+import panic from "@std/core.ms"
 
-def use() -> Unit:
+fn use() Unit:
     let shared = Map[Int, Int]()
 
-    let handle = lambda (request) -> HttpResponse:
+    let handle = fn(request) HttpResponse:
         let seen = shared.length()
         return panic("unreached")
 

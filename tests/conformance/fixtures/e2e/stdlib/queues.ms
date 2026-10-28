@@ -1,8 +1,8 @@
 # conform: tags=control-flow,modules,optional,stdlib-queues,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/queues.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/queue.ms" import PriorityQueue, Queue
+import {expect_equal, expect_false} from "@std/test.ms"
+import {PriorityQueue, Queue} from "@std/queue.ms"
 
 test "FIFO capacity empty reads draining and reuse":
     var queue = Queue[Int](2)

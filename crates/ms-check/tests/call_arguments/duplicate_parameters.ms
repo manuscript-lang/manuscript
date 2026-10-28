@@ -1,5 +1,5 @@
-def choose(first: Int, first: String, second: Int) -> Int:
+fn choose(first: Int, first: String, second: Int) Int:
     return second
 
-def exercise() -> Int:
+fn exercise() Int:
     return choose(1, 2)

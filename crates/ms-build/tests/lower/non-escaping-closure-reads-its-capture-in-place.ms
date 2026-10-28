@@ -5,14 +5,14 @@
 type Matrix:
     data: List[Int]
 
-def sum_with(m: Matrix, f: Callable[[Int], Int]) -> Int:
+fn sum_with(m: Matrix, f: fn(Int) Int) Int:
     var total = 0
     for x in m.data:
         total += f(x)
     return total
 
-def run(m: Matrix) -> Int:
-    return sum_with(m, lambda x: x + m.data.length())
+fn run(m: Matrix) Int:
+    return sum_with(m, fn x: x + m.data.length())
 
-export def main() -> Int:
+export fn main() Int:
     return run(Matrix(data: [1, 2, 3]))

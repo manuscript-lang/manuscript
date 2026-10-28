@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Entry:
     key: Int
     id: Int
 
-def entries(count: Int) -> List[Entry]:
+fn entries(count: Int) List[Entry]:
     var out: List[Entry] = []
     var x = 7
 
@@ -16,36 +16,36 @@ def entries(count: Int) -> List[Entry]:
 
 test "sorting plain records by a comparator orders by key and keeps equal keys in input order":
     let sorted = entries(500).sorted(
-        compare: lambda (a: Entry, b: Entry) -> Int: (a.key - b.key)
+        compare: fn(a: Entry, b: Entry) Int: (a.key - b.key)
     )
-    var ordered = True
+    var ordered = true
 
     for i in 1..sorted.length():
         let before = sorted[i - 1]
         let after = sorted[i]
         if before.key > after.key or (before.key == after.key and before.id > after.id):
-            ordered = False
+            ordered = false
 
-    try expect_equal(ordered, True)
+    try expect_equal(ordered, true)
     try expect_equal(sorted.length(), 500)
 
 test "sorting in place by a descending comparator reverses the key order":
     var list = entries(200)
-    list.sort(compare: lambda (a: Entry, b: Entry) -> Int: b.key - a.key)
+    list.sort(compare: fn(a: Entry, b: Entry) Int: b.key - a.key)
 
-    var ordered = True
+    var ordered = true
     for i in 1..list.length():
         if list[i - 1].key < list[i].key:
-            ordered = False
-    try expect_equal(ordered, True)
+            ordered = false
+    try expect_equal(ordered, true)
 
-def shaped(count: Int, shape: Int) -> List[Entry]:
+fn shaped(count: Int, shape: Int) List[Entry]:
     var out: List[Entry] = []
 
     for i in 0..count:
         if shape == 0:
             out.append(Entry(key: i / 7, id: i))
-        elif shape == 1:
+        else if shape == 1:
             out.append(Entry(key: (count - i) / 7, id: i))
         else:
             out.append(Entry(key: (i % 2) * 3 + i / 50, id: i))
@@ -56,12 +56,9 @@ test "ascending, descending and interleaved inputs sort stably at every size":
     for shape in 0..3:
         for count in [0, 1, 2, 3, 12, 13, 24, 25, 100, 127, 128, 129, 1000]:
             let sorted = shaped(count, shape).sorted(
-                compare: lambda (a: Entry, b: Entry) -> Int: (
-                    a.key
-                    - b.key
-                )
+                compare: fn(a: Entry, b: Entry) Int: (a.key - b.key)
             )
-            var ordered = True
+            var ordered = true
             var seen = 0
 
             for i in 0..sorted.length():
@@ -77,8 +74,8 @@ test "ascending, descending and interleaved inputs sort stably at every size":
                             and before.id > after.id
                         )
                     ):
-                        ordered = False
+                        ordered = false
 
-            try expect_equal(ordered, True)
+            try expect_equal(ordered, true)
             try expect_equal(sorted.length(), count)
             try expect_equal(seen, count * (count - 1) / 2)

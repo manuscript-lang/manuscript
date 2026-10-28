@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Counter:
     count: Int
@@ -7,7 +7,7 @@ type Counter:
 type Outer:
     inner: Counter
 
-def tally(values: List[Int]) -> Int:
+fn tally(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value

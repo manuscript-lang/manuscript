@@ -38,13 +38,13 @@ Rule: a value the checker holds as a lexical borrow is lowered as a borrow, neve
 Programs do not change. Before and after is the same source with fewer runtime calls:
 
 ```manuscript
-def stock_of(w: Warehouse, sku: String) -> Int:
+fn stock_of(w: Warehouse, sku: String) Int:
     let have = w.stock.get(sku)     # a pointer into the map, not a copy of the entry
     if have.is_none():
         return 0
     return have.get()
 
-def first_sku(o: Order) -> ref String:
+fn first_sku(o: Order) ref String:
     return o.items[0].sku           # returned as a borrow of o (stage 2)
 ```
 

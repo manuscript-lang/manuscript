@@ -1,14 +1,14 @@
 # conform: tags=functions,tier-core
 # conform: phase=run
 # conform: origin=pkg/tooling/lsp/query_test.go:45 TestSearchSymbolsRanksExactBeforePrefixBeforeSubstring
-def parse_all() -> Int:
+fn parse_all() Int:
     return 1
 
-def reparse() -> Int:
+fn reparse() Int:
     return 2
 
-def parse() -> Int:
+fn parse() Int:
     return 3
 
-export def main() -> Int:
+export fn main() Int:
     return parse()

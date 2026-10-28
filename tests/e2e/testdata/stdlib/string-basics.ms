@@ -1,12 +1,12 @@
-from "@std/test.ms" import expect_equal, expect_false, fail
+import {expect_equal, expect_false, fail} from "@std/test.ms"
 
 test "Unicode lowercase sigma ignores combining marks and format characters":
-    for mark in [f"\u{1ab0}", f"\u{5bf}", f"\u{2060}", f"\u{fe0f}"]:
-        try expect_equal(f"A{mark}Σ".lower(), f"a{mark}ς")
-        try expect_equal(f"AΣ{mark}A".lower(), f"aσ{mark}a")
+    for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"]:
+        try expect_equal("A{mark}Σ".lower(), "a{mark}ς")
+        try expect_equal("AΣ{mark}A".lower(), "aσ{mark}a")
 
-        let lower = f"AΣ{mark}A".lower
-        try expect_equal(lower(), f"aσ{mark}a")
+        let lower = "AΣ{mark}A".lower
+        try expect_equal(lower(), "aσ{mark}a")
 
 test "String basic counterparts are callable":
     try expect_equal("é🙂".length(), 2)
@@ -23,36 +23,36 @@ test "String basic counterparts are callable":
     try expect_equal("a\r\nb\n".lines(), ["a", "b"])
 
 test "length and chars use scalars and preserve text boundaries":
-    let text = f"é🙂e\u{301}"
+    let text = "é🙂e\u{301}"
     try expect_false(text.length() != 4 or text.length() != text.scalar_length())
-    try expect_equal(text.chars(), ["é", "🙂", "e", f"\u{301}"])
-    try expect_equal(f"👩\u{200d}🚀".length(), 3)
-    try expect_equal(f"a\u{0}b".chars(), ["a", f"\u{0}", "b"])
+    try expect_equal(text.chars(), ["é", "🙂", "e", "\u{301}"])
+    try expect_equal("👩\u{200d}🚀".length(), 3)
+    try expect_equal("a\u{0}b".chars(), ["a", "\u{0}", "b"])
     try expect_false(not ("".chars().is_empty()) or "".length() != 0)
 
     var characters = text.chars()
     let second = text.chars()
     characters.set(0, "changed")
     characters.append("new")
-    try expect_false(second != ["é", "🙂", "e", f"\u{301}"] or text != f"é🙂e\u{301}")
+    try expect_false(second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}")
 
 test "reverse operates on scalars without normalization":
     try expect_equal("aé🙂z".reverse(), "z🙂éa")
-    try expect_equal(f"e\u{301}".reverse(), f"\u{301}e")
-    try expect_equal(f"👩\u{200d}🚀".reverse(), f"🚀\u{200d}👩")
-    try expect_equal(f"a\u{0}b".reverse(), f"b\u{0}a")
+    try expect_equal("e\u{301}".reverse(), "\u{301}e")
+    try expect_equal("👩\u{200d}🚀".reverse(), "🚀\u{200d}👩")
+    try expect_equal("a\u{0}b".reverse(), "b\u{0}a")
     try expect_false("".reverse() != "" or "🙂".reverse() != "🙂")
 
-    let original = f"é🙂e\u{301}"
+    let original = "é🙂e\u{301}"
     try expect_equal(original.reverse().reverse(), original)
 
 test "compare is normalized sign and scalar lexical order":
     try expect_false("".compare("a") != -1 or "a".compare("") != 1)
     try expect_false("ab".compare("abc") != -1 or "abc".compare("ab") != 1)
     try expect_equal("Z".compare("a"), -1)
-    try expect_equal("é".compare(f"e\u{301}"), 1)
-    try expect_equal(f"\u{e000}".compare(f"\u{10000}"), -1)
-    try expect_equal(f"a\u{0}".compare(f"a\u{1}"), -1)
+    try expect_equal("é".compare("e\u{301}"), 1)
+    try expect_equal("\u{e000}".compare("\u{10000}"), -1)
+    try expect_equal("a\u{0}".compare("a\u{1}"), -1)
 
     let equal = "é🙂"
     try expect_equal(equal.compare(equal), 0)
@@ -68,12 +68,12 @@ test "lines preserve interior empties and recognize LF and CRLF only":
         LineCase("a\n", ["a"]), LineCase("a\r\n", ["a"]), LineCase("a\n\n", ["a", ""]),
         LineCase("a\r\nb\nc", ["a", "b", "c"]), LineCase("a\r", ["a\r"]),
         LineCase("\r", ["\r"]), LineCase("\r\r\n", ["\r"]), LineCase("a\rb", ["a\rb"]),
-        LineCase("é\r\n🙂\n", ["é", "🙂"]), LineCase(f"a\u{0}\nb", [f"a\u{0}", "b"]),
-        LineCase(f"a\u{85}b\u{2028}c\u{2029}d", [f"a\u{85}b\u{2028}c\u{2029}d"])
+        LineCase("é\r\n🙂\n", ["é", "🙂"]), LineCase("a\u{0}\nb", ["a\u{0}", "b"]),
+        LineCase("a\u{85}b\u{2028}c\u{2029}d", ["a\u{85}b\u{2028}c\u{2029}d"])
     ]
     for line_case in cases:
         if line_case.text.lines() != line_case.expected: return fail(
-            f"line boundary: {line_case.text.to_string()}"
+            "line boundary: {line_case.text.to_string()}"
         )
 
 test "String basic bound methods capture immutable receiver values":

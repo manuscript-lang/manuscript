@@ -1,24 +1,22 @@
 # conform: tags=faults,formatter,interpolation,lists,maps,modules,parser,stdlib-http,stdlib-net,stdlib-testing,stdlib-time,stdlib-tls,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_ok
-from "./support/http.ms" import http_result
-from "@std/http.ms" import headers, HttpMethod, buffered
-from "./support/http.ms" import text_headers, list_headers
-from "@std/net.ms" import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions
-from "@std/http.ms" import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions
-from "@std/net.ms" import network
-from "@std/time.ms" import timestamp
-from "./support/certificates.ms" import certificate, private_key
+import {expect_equal, expect_false, expect_ok} from "@std/test.ms"
+import http_result from "./support/http.ms"
+import {headers, HttpMethod, buffered} from "@std/http.ms"
+import {text_headers, list_headers} from "./support/http.ms"
+import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions} from "@std/net.ms"
+import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
+import network from "@std/net.ms"
+import timestamp from "@std/time.ms"
+import {certificate, private_key} from "./support/certificates.ms"
 
-def hello(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = (
-        try exchange.send_headers(
-            status: 200, headers: (try list_headers(Map[String, List[String]]()))
-        )
+fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
+    let started = try exchange.send_headers(
+        status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
     let written = (try http_result(exchange.write("secure")))
-    return ok(())
+    return ok(unit)
 
 test "TLS certificate parsing verification hostname and expiration":
     let certificates = (
@@ -74,39 +72,29 @@ test "HTTPS trusts only the explicitly supplied local test root":
     let server_tls = TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: ["http/1.1"],
-        require_client_certificate: False
+        require_client_certificate: false
     )
     let server_options = HttpServerOptions(
         timeout: 3.seconds, grace: 0.seconds, tls: server_tls
     )
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: hello, options: server_options
-        ) | try expect_ok
-    ):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: hello, options: server_options
+    ) | try expect_ok:
         let client_tls = TlsOptions(
             server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-            private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: False
+            private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
         )
-        with let client = (
-            net.http_client(
-                HttpClientOptions(
-                    decompress: False, cookies: False, tls: client_tls
-                )
-            ) | try expect_ok
-        ):
-            with let response = (
-                client.request(
-                    method: HttpMethod.Get,
-                    url: f"https://{server.address()}/",
-                    headers: (
-                        try text_headers(Map[String, String]())
-                    ),
-                    body: "",
-                    timeout: 2.seconds
-                ) | try expect_ok
-            ):
+        with let client = net.http_client(
+            HttpClientOptions(
+                decompress: false, cookies: false, tls: client_tls
+            )
+        ) | try expect_ok:
+            with let response = client.request(
+                method: HttpMethod.Get, url: "https://{server.address()}/",
+                headers: (try text_headers(Map[String, String]())), body: "",
+                timeout: 2.seconds
+            ) | try expect_ok:
                 try expect_false(
                     (
                         response.metadata().status != 200
@@ -116,14 +104,12 @@ test "HTTPS trusts only the explicitly supplied local test root":
                     )
                 )
 
-def report_protocol(exchange: HttpExchange) -> Result[Unit, HttpError]:
-    let started = (
-        try exchange.send_headers(
-            status: 200, headers: (try list_headers(Map[String, List[String]]()))
-        )
+fn report_protocol(exchange: HttpExchange) Result[Unit, HttpError]:
+    let started = try exchange.send_headers(
+        status: 200, headers: (try list_headers(Map[String, List[String]]()))
     )
     let written = (try http_result(exchange.write(exchange.protocol())))
-    return ok(())
+    return ok(unit)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
     let net = network()
@@ -133,38 +119,28 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
         tls: TlsOptions(
             server_name: "", roots_pem: "", certificate_pem: certificate(),
             private_key_pem: private_key(), alpn: ["h2", "http/1.1"],
-            require_client_certificate: False
+            require_client_certificate: false
         )
     )
 
-    with let server = (
-        net.serve(
-            address: "127.0.0.1:0", handler: report_protocol, options: server_options
-        ) | try expect_ok
-    ):
+    with let server = net.serve(
+        address: "127.0.0.1:0", handler: report_protocol, options: server_options
+    ) | try expect_ok:
         let client_tls = TlsOptions(
             server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
             private_key_pem: "", alpn: ["h2", "http/1.1"],
-            require_client_certificate: False
+            require_client_certificate: false
         )
 
-        with let client = (
-            net.http_client(
-                HttpClientOptions(
-                    decompress: False, cookies: False, tls: client_tls
-                )
-            ) | try expect_ok
-        ):
-            with let response = (
-                client.request(
-                    method: HttpMethod.Get,
-                    url: f"https://{server.address()}/",
-                    headers: (
-                        try text_headers(Map[String, String]())
-                    ),
-                    body: "",
-                    timeout: 2.seconds
-                ) | try expect_ok
-            ):
+        with let client = net.http_client(
+            HttpClientOptions(
+                decompress: false, cookies: false, tls: client_tls
+            )
+        ) | try expect_ok:
+            with let response = client.request(
+                method: HttpMethod.Get, url: "https://{server.address()}/",
+                headers: (try text_headers(Map[String, String]())), body: "",
+                timeout: 2.seconds
+            ) | try expect_ok:
                 try expect_equal(response.metadata().protocol, "HTTP/2.0")
                 try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())

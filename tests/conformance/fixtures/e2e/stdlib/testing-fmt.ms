@@ -1,29 +1,19 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,match,modules,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/testing.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import (
-    assert_equal,
-    expect_close,
-    expect_contains,
-    expect_equal,
-    expect_error,
-    expect_false,
-    expect_fault,
-    expect_none,
-    expect_not_equal,
-    expect_ok,
-    expect_some,
-    expect_true,
-    fail
-)
+import TextError from "@std/core.ms"
+import {
+    assert_equal, expect_close, expect_contains, expect_equal, expect_error,
+    expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some,
+    expect_true, fail
+} from "@std/test.ms"
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
 test "testing assertions":
-    True | try expect_true
-    False | try expect_false
+    true | try expect_true
+    false | try expect_false
     identity(3) | try expect_equal(3)
     "hello" | try assert_equal("hello")
     [1, 2] | try expect_equal([1, 2])
@@ -45,7 +35,7 @@ test "testing assertions":
     let mismatch_cause = (mismatch | try expect_error)
     mismatch_cause.message() | try expect_contains("expected 2, got 1")
 
-    let quiet = expect_fault(lambda: ())
+    let quiet = expect_fault(fn: unit)
     let quiet_cause = (quiet | try expect_error)
     quiet_cause.message() | try expect_contains("returned normally")
 
@@ -59,7 +49,7 @@ type Key:
     label: String
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 test "assertions preserve domain equality":

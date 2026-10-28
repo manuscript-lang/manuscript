@@ -1,11 +1,11 @@
-from "@std/io.ms" import read_all, stdin, stdout
+import {read_all, stdin, stdout} from "@std/io.ms"
 
 # A fatal error. `text` is the complete line to print; empty means print nothing.
 type Fatal:
     text: String
 
 impl Error for Fatal:
-    def message() -> String:
+    fn message() String:
         return self.text
 
 type Var:
@@ -94,19 +94,19 @@ type Logical:
     num: Int
     text: String
 
-def fatal(line: Int, msg: String) -> Fatal:
+fn fatal(line: Int, msg: String) Fatal:
     if line > 0:
-        return Fatal(text: f"Makefile:{line}: *** {msg}.  Stop.")
+        return Fatal(text: "Makefile:{line}: *** {msg}.  Stop.")
 
-    return Fatal(text: f"make: *** {msg}.  Stop.")
+    return Fatal(text: "make: *** {msg}.  Stop.")
 
-def silent_abort() -> Fatal:
+fn silent_abort() Fatal:
     return Fatal(text: "")
 
-def is_space(c: String) -> Bool:
+fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\n" or c == "\r"
 
-def nat(s: String) -> Optional[Int]:
+fn nat(s: String) Optional[Int]:
     if s == "":
         return none
 
@@ -115,10 +115,10 @@ def nat(s: String) -> Optional[Int]:
             return none
     return s.parse_int()
 
-def int_arg(s: String) -> Optional[Int]:
+fn int_arg(s: String) Optional[Int]:
     return s.trim().parse_int()
 
-def split_words(text: String) -> List[String]:
+fn split_words(text: String) List[String]:
     var out: List[String] = []
     var cur = ""
 
@@ -135,14 +135,14 @@ def split_words(text: String) -> List[String]:
     return out
 
 # Joins words with single spaces, dropping empty items.
-def join_words(ws: List[String]) -> String:
+fn join_words(ws: List[String]) String:
     var kept: List[String] = []
     for w in ws:
         if w != "":
             kept.append(w)
     return kept.join(" ")
 
-def index_of(cs: List[String], ch: String) -> Int:
+fn index_of(cs: List[String], ch: String) Int:
     var k = 0
 
     while k < cs.length():
@@ -153,7 +153,7 @@ def index_of(cs: List[String], ch: String) -> Int:
 
     return -1
 
-def last_index(cs: List[String], ch: String) -> Int:
+fn last_index(cs: List[String], ch: String) Int:
     var k = cs.length() - 1
 
     while k >= 0:
@@ -164,14 +164,14 @@ def last_index(cs: List[String], ch: String) -> Int:
 
     return -1
 
-def strip_tabs(text: String) -> String:
+fn strip_tabs(text: String) String:
     let cs = text.chars()
     var k = 0
     while k < cs.length() and cs.get(k) == "\t":
         k += 1
     return cs.drop(k).join("")
 
-def strip_quotes(w: String) -> String:
+fn strip_quotes(w: String) String:
     var out = ""
     for c in w.chars():
         if c != "'" and c != "\"":
@@ -179,7 +179,7 @@ def strip_quotes(w: String) -> String:
     return out
 
 # Removes a comment; `\#` stands for a literal `#`.
-def strip_comment(text: String) -> String:
+fn strip_comment(text: String) String:
     let cs = text.chars()
     let n = cs.length()
     var out = ""
@@ -202,7 +202,7 @@ def strip_comment(text: String) -> String:
     return out
 
 # Index of the first ':' outside references and before any ';', or -1.
-def top_colon(cs: List[String]) -> Int:
+fn top_colon(cs: List[String]) Int:
     let n = cs.length()
     var depth = 0
     var k = 0
@@ -216,29 +216,29 @@ def top_colon(cs: List[String]) -> Int:
             k += 2
             continue
 
-        if c == "$" and k + 1 < n and (cs.get(k + 1) == "(" or cs.get(k + 1) == "{"):
+        if c == "$" and k + 1 < n and (cs.get(k + 1) == "(" or cs.get(k + 1) == "\{"):
             depth += 1
             k += 2
             continue
 
-        if depth > 0 and (c == "(" or c == "{"):
+        if depth > 0 and (c == "(" or c == "\{"):
             depth += 1
-        elif depth > 0 and (c == ")" or c == "}"):
+        else if depth > 0 and (c == ")" or c == "\}"):
             depth -= 1
-        elif depth == 0 and c == ":":
+        else if depth == 0 and c == ":":
             return k
 
         k += 1
 
     return -1
 
-def join_sep(a: String, b: String) -> String:
+fn join_sep(a: String, b: String) String:
     if a == "" or b == "":
         return a + b
 
     return a + " " + b
 
-def is_directive(w: String) -> Bool:
+fn is_directive(w: String) Bool:
     return (
         w == "ifdef"
         or w == "ifndef"
@@ -248,13 +248,13 @@ def is_directive(w: String) -> Bool:
         or w == "endif"
     )
 
-def plain(line: Int) -> Scope:
+fn plain(line: Int) Scope:
     return Scope(
-        line: line, auto_on: False, target: "", stem: "", first: "", deps: "",
+        line: line, auto_on: false, target: "", stem: "", first: "", deps: "",
         newer: "", order: "", binds: []
     )
 
-def is_auto(name: String) -> Bool:
+fn is_auto(name: String) Bool:
     return (
         name == "@"
         or name == "<"
@@ -264,7 +264,7 @@ def is_auto(name: String) -> Bool:
         or name == "*"
     )
 
-def auto_value(sc: Scope, name: String) -> String:
+fn auto_value(sc: Scope, name: String) String:
     if name == "@":
         return sc.target
     if name == "<":
@@ -279,11 +279,11 @@ def auto_value(sc: Scope, name: String) -> String:
     return sc.stem
 
 # Index of the first '%' in a pattern, or -1.
-def pct_index(cs: List[String]) -> Int:
+fn pct_index(cs: List[String]) Int:
     return index_of(cs, "%")
 
 # The stem if `word` matches `pattern` (exact match when there is no '%').
-def match_stem(pattern: String, word: String) -> Optional[String]:
+fn match_stem(pattern: String, word: String) Optional[String]:
     let pc = pattern.chars()
     let k = pct_index(pc)
 
@@ -305,7 +305,7 @@ def match_stem(pattern: String, word: String) -> Optional[String]:
 
     return some(wc.drop(k).take(wc.length() - k - suf_len).join(""))
 
-def subst_pct(repl: String, stem: String) -> String:
+fn subst_pct(repl: String, stem: String) String:
     let rc = repl.chars()
     let k = pct_index(rc)
     if k < 0:
@@ -313,19 +313,19 @@ def subst_pct(repl: String, stem: String) -> String:
 
     return rc.take(k).join("") + stem + rc.drop(k + 1).join("")
 
-def subst_all(xs: List[String], stem: String) -> List[String]:
+fn subst_all(xs: List[String], stem: String) List[String]:
     var out: List[String] = []
     for x in xs:
         out.append(subst_pct(x, stem))
     return out
 
-def matches_any(pats: List[String], w: String) -> Bool:
+fn matches_any(pats: List[String], w: String) Bool:
     for p in pats:
         if match_stem(p, w).is_some():
-            return True
-    return False
+            return true
+    return false
 
-def dir_of(w: String) -> String:
+fn dir_of(w: String) String:
     let cs = w.chars()
     let k = last_index(cs, "/")
     if k < 0:
@@ -333,7 +333,7 @@ def dir_of(w: String) -> String:
 
     return cs.take(k + 1).join("")
 
-def notdir_of(w: String) -> String:
+fn notdir_of(w: String) String:
     let cs = w.chars()
     let k = last_index(cs, "/")
     if k < 0:
@@ -341,7 +341,7 @@ def notdir_of(w: String) -> String:
 
     return cs.drop(k + 1).join("")
 
-def suffix_of(w: String) -> String:
+fn suffix_of(w: String) String:
     let cs = w.chars()
     let k = last_index(cs, "/")
     let comp = cs.drop(k + 1)
@@ -351,7 +351,7 @@ def suffix_of(w: String) -> String:
 
     return comp.drop(d).join("")
 
-def basename_of(w: String) -> String:
+fn basename_of(w: String) String:
     let s = suffix_of(w)
     if s == "":
         return w
@@ -359,7 +359,7 @@ def basename_of(w: String) -> String:
     let cs = w.chars()
     return cs.take(cs.length() - s.length()).join("")
 
-def glob_match(p: List[String], pi: Int, s: List[String], si: Int) -> Bool:
+fn glob_match(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
 
@@ -370,39 +370,39 @@ def glob_match(p: List[String], pi: Int, s: List[String], si: Int) -> Bool:
 
         while k <= s.length():
             if glob_match(p, pi + 1, s, k):
-                return True
+                return true
 
             if k < s.length() and s.get(k) != "/":
                 k += 1
             else:
-                return False
+                return false
 
-        return False
+        return false
 
     if si >= s.length():
-        return False
+        return false
 
     if c == "?":
         if s.get(si) == "/":
-            return False
+            return false
 
         return glob_match(p, pi + 1, s, si + 1)
 
     if c != s.get(si):
-        return False
+        return false
 
     return glob_match(p, pi + 1, s, si + 1)
 
 # Splits function arguments at commas outside brackets; each is trimmed.
-def split_args(body: String) -> List[String]:
+fn split_args(body: String) List[String]:
     var out: List[String] = []
     var cur = ""
     var depth = 0
 
     for c in body.chars():
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             depth += 1
-        if c == ")" or c == "}":
+        if c == ")" or c == "\}":
             depth -= 1
 
         if c == "," and depth == 0:
@@ -414,14 +414,14 @@ def split_args(body: String) -> List[String]:
     out.append(cur.trim())
     return out
 
-def raw_at(raw: List[String], i: Int) -> String:
+fn raw_at(raw: List[String], i: Int) String:
     if i < raw.length():
         return raw.get(i)
 
     return ""
 
 # Expands argument `i` (missing arguments are empty).
-def arg(var st: St, sc: Scope, stack: List[String], raw: List[String], i: Int) -> Result[
+fn arg(var st: St, sc: Scope, stack: List[String], raw: List[String], i: Int) Result[
     String, Fatal
 ]:
     if i >= raw.length():
@@ -429,7 +429,7 @@ def arg(var st: St, sc: Scope, stack: List[String], raw: List[String], i: Int) -
 
     return expand(var st, sc, stack, raw.get(i))
 
-def is_func(name: String) -> Bool:
+fn is_func(name: String) Bool:
     return [
         "subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort",
         "word", "wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix",
@@ -437,7 +437,7 @@ def is_func(name: String) -> Bool:
         "error"
     ].contains(name)
 
-def lookup(var st: St, sc: Scope, stack: List[String], name: String) -> Result[
+fn lookup(var st: St, sc: Scope, stack: List[String], name: String) Result[
     String, Fatal
 ]:
     for b in sc.binds.reversed():
@@ -457,7 +457,7 @@ def lookup(var st: St, sc: Scope, stack: List[String], name: String) -> Result[
             return error(
                 fatal(
                     sc.line,
-                    f"Recursive variable '{name}' references itself (eventually)"
+                    "Recursive variable '{name}' references itself (eventually)"
                 )
             )
 
@@ -468,7 +468,7 @@ def lookup(var st: St, sc: Scope, stack: List[String], name: String) -> Result[
     return ok("")
 
 # Index of the closing bracket matching an opener at `start - 1`, or -1.
-def match_close(cs: List[String], start: Int, open: String, close: String) -> Int:
+fn match_close(cs: List[String], start: Int, open: String, close: String) Int:
     var depth = 1
     var k = start
 
@@ -477,7 +477,7 @@ def match_close(cs: List[String], start: Int, open: String, close: String) -> In
 
         if c == open:
             depth += 1
-        elif c == close:
+        else if c == close:
             depth -= 1
             if depth == 0:
                 return k
@@ -486,7 +486,7 @@ def match_close(cs: List[String], start: Int, open: String, close: String) -> In
 
     return -1
 
-def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: String) -> Result[
+fn call_func(var st: St, sc: Scope, stack: List[String], name: String, body: String) Result[
     String, Fatal
 ]:
     let raw = split_args(body)
@@ -541,7 +541,7 @@ def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: St
     if name == "sort":
         let text = try arg(var st, sc, stack, raw, 0)
         let ws = split_words(text).sorted(
-            lambda (x: String, y: String) -> Int: return x.compare(y)
+            fn(x: String, y: String) Int: return x.compare(y)
         )
         return ok(join_words(ws.distinct()))
 
@@ -570,7 +570,7 @@ def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: St
 
     if name == "words":
         let ws = split_words(try arg(var st, sc, stack, raw, 0))
-        return ok(f"{ws.length()}")
+        return ok("{ws.length()}")
 
     if name == "firstword" or name == "lastword":
         let ws = split_words(try arg(var st, sc, stack, raw, 0))
@@ -588,9 +588,9 @@ def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: St
         for w in ws:
             if name == "dir":
                 outs.append(dir_of(w))
-            elif name == "notdir":
+            else if name == "notdir":
                 outs.append(notdir_of(w))
-            elif name == "suffix":
+            else if name == "suffix":
                 outs.append(suffix_of(w))
             else:
                 outs.append(basename_of(w))
@@ -621,7 +621,7 @@ def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: St
                     hits.append(f)
             outs = outs.concat(
                 hits.sorted(
-                    lambda (x: String, y: String) -> Int: return x.compare(
+                    fn(x: String, y: String) Int: return x.compare(
                         y
                     )
                 )
@@ -657,14 +657,14 @@ def call_func(var st: St, sc: Scope, stack: List[String], name: String, body: St
     let msg = try arg(var st, sc.clone(), stack, raw, 0)
     return error(fatal(sc.line, msg))
 
-def if_min(a: Int, b: Int) -> Int:
+fn if_min(a: Int, b: Int) Int:
     if a < b:
         return a
 
     return b
 
 # Resolves `inner` (the text between a reference's brackets).
-def reference(var st: St, sc: Scope, stack: List[String], inner: String) -> Result[
+fn reference(var st: St, sc: Scope, stack: List[String], inner: String) Result[
     String, Fatal
 ]:
     let ic = inner.chars()
@@ -710,7 +710,7 @@ def reference(var st: St, sc: Scope, stack: List[String], inner: String) -> Resu
     let nm = (try expand(var st, sc.clone(), stack.clone(), inner)).trim()
     return lookup(var st, sc, stack, nm)
 
-def index_of_space(cs: List[String]) -> Int:
+fn index_of_space(cs: List[String]) Int:
     var k = 0
 
     while k < cs.length():
@@ -723,7 +723,7 @@ def index_of_space(cs: List[String]) -> Int:
     return -1
 
 # Index of a top-level ':' that has a later '=' (a substitution reference), or -1.
-def subst_colon(cs: List[String]) -> Int:
+fn subst_colon(cs: List[String]) Int:
     var depth = 0
     var k = 0
 
@@ -736,16 +736,16 @@ def subst_colon(cs: List[String]) -> Int:
 
             return -1
 
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             depth += 1
-        if c == ")" or c == "}":
+        if c == ")" or c == "\}":
             depth -= 1
         k += 1
 
     return -1
 
 # Expands text: `$$`, `$(...)`, `${...}` and `$X` references.
-def expand(var st: St, sc: Scope, stack: List[String], text: String) -> Result[
+fn expand(var st: St, sc: Scope, stack: List[String], text: String) Result[
     String, Fatal
 ]:
     let cs = text.chars()
@@ -772,8 +772,8 @@ def expand(var st: St, sc: Scope, stack: List[String], text: String) -> Result[
             k += 2
             continue
 
-        if d == "(" or d == "{":
-            var close = "}"
+        if d == "(" or d == "\{":
+            var close = "\}"
             if d == "(":
                 close = ")"
 
@@ -792,25 +792,25 @@ def expand(var st: St, sc: Scope, stack: List[String], text: String) -> Result[
     return ok(out)
 
 # ---------------------------------------------------------------- parsing
-def is_active(frames: List[Frame]) -> Bool:
+fn is_active(frames: List[Frame]) Bool:
     if frames.length() == 0:
-        return True
+        return true
     if let f = frames.last():
         return f.parent and f.cond != f.in_else
 
-    return True
+    return true
 
-def is_defined(st: St, name: String) -> Bool:
+fn is_defined(st: St, name: String) Bool:
     if let v = st.vars.get(name):
         return v.value != ""
 
-    return False
+    return false
 
-def empty_rule() -> Rule:
+fn empty_rule() Rule:
     return Rule(targets: [], normal: [], order: [], recipe: [], line: 0)
 
 # Splits "(A,B)" into its two raw sides, or none if the syntax is wrong.
-def cond_args(rest: String) -> Optional[Pair]:
+fn cond_args(rest: String) Optional[Pair]:
     let cs = rest.trim().chars()
     let n = cs.length()
     if n < 2 or cs.get(0) != "(":
@@ -822,9 +822,9 @@ def cond_args(rest: String) -> Optional[Pair]:
 
     while k < n:
         let c = cs.get(k)
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             depth += 1
-        if c == ")" or c == "}":
+        if c == ")" or c == "\}":
             depth -= 1
 
         if depth == 0:
@@ -844,9 +844,9 @@ def cond_args(rest: String) -> Optional[Pair]:
 
     while j < inner.length():
         let c = inner.get(j)
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             d2 += 1
-        if c == ")" or c == "}":
+        if c == ")" or c == "\}":
             d2 -= 1
 
         if c == "," and d2 == 0:
@@ -860,29 +860,29 @@ def cond_args(rest: String) -> Optional[Pair]:
 
     return some(Pair(a: inner.take(comma).join(""), b: inner.drop(comma + 1).join("")))
 
-def push_frame(var mk: Mk, parent: Bool, cond: Bool, num: Int) -> Result[Unit, Fatal]:
-    mk.frames.append(Frame(parent: parent, cond: cond, in_else: False, line: num))
-    return ok(())
+fn push_frame(var mk: Mk, parent: Bool, cond: Bool, num: Int) Result[Unit, Fatal]:
+    mk.frames.append(Frame(parent: parent, cond: cond, in_else: false, line: num))
+    return ok(unit)
 
-def directive(var st: St, var mk: Mk, num: Int, text: String, word: String) -> Result[
+fn directive(var st: St, var mk: Mk, num: Int, text: String, word: String) Result[
     Unit, Fatal
 ]:
     let rest = text.chars().drop(word.length()).join("").trim()
 
     if word == "ifdef" or word == "ifndef":
         if not is_active(mk.frames):
-            return push_frame(var mk, False, False, num)
+            return push_frame(var mk, false, false, num)
 
         let name = (try expand(var st, plain(num), [], rest)).trim()
         let defined = is_defined(st, name)
         var cond = defined
         if word == "ifndef":
             cond = not defined
-        return push_frame(var mk, True, cond, num)
+        return push_frame(var mk, true, cond, num)
 
     if word == "ifeq" or word == "ifneq":
         if not is_active(mk.frames):
-            return push_frame(var mk, False, False, num)
+            return push_frame(var mk, false, false, num)
 
         if let p = cond_args(rest):
             let a = (try expand(var st, plain(num), [], p.a.trim())).trim()
@@ -890,7 +890,7 @@ def directive(var st: St, var mk: Mk, num: Int, text: String, word: String) -> R
             var cond = a == b
             if word == "ifneq":
                 cond = a != b
-            return push_frame(var mk, True, cond, num)
+            return push_frame(var mk, true, cond, num)
 
         return error(fatal(num, "invalid syntax in conditional"))
 
@@ -905,20 +905,20 @@ def directive(var st: St, var mk: Mk, num: Int, text: String, word: String) -> R
             mk.frames.set(
                 mk.frames.length() - 1,
                 Frame(
-                    parent: f.parent, cond: f.cond, in_else: True, line: f.line
+                    parent: f.parent, cond: f.cond, in_else: true, line: f.line
                 )
             )
 
-        return ok(())
+        return ok(unit)
 
     # endif
     if mk.frames.length() == 0:
         return error(fatal(num, "extraneous 'endif'"))
 
     mk.frames.pop()
-    return ok(())
+    return ok(unit)
 
-def assign(var st: St, num: Int, cs: List[String], eq: Int) -> Result[Unit, Fatal]:
+fn assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
     var op = "="
     var name_end = eq
 
@@ -937,16 +937,16 @@ def assign(var st: St, num: Int, cs: List[String], eq: Int) -> Result[Unit, Fata
 
     if let old = st.vars.get(name):
         if old.cmd:
-            return ok(())
+            return ok(unit)
 
     if op == "=":
-        st.vars.add(name, Var(value: value_raw, simple: False, cmd: False))
-    elif op == ":":
+        st.vars.add(name, Var(value: value_raw, simple: false, cmd: false))
+    else if op == ":":
         let v = try expand(var st, plain(num), [], value_raw)
-        st.vars.add(name, Var(value: v, simple: True, cmd: False))
-    elif op == "?":
+        st.vars.add(name, Var(value: v, simple: true, cmd: false))
+    else if op == "?":
         if not st.vars.contains(name):
-            st.vars.add(name, Var(value: value_raw, simple: False, cmd: False))
+            st.vars.add(name, Var(value: value_raw, simple: false, cmd: false))
     else:
         if let old = st.vars.get(name):
             if old.simple:
@@ -954,22 +954,22 @@ def assign(var st: St, num: Int, cs: List[String], eq: Int) -> Result[Unit, Fata
                 st.vars.add(
                     name,
                     Var(
-                        value: join_sep(old.value, v), simple: True, cmd: False
+                        value: join_sep(old.value, v), simple: true, cmd: false
                     )
                 )
             else:
                 st.vars.add(
                     name,
                     Var(
-                        value: join_sep(old.value, value_raw), simple: False, cmd: False
+                        value: join_sep(old.value, value_raw), simple: false, cmd: false
                     )
                 )
         else:
-            st.vars.add(name, Var(value: value_raw, simple: False, cmd: False))
+            st.vars.add(name, Var(value: value_raw, simple: false, cmd: false))
 
-    return ok(())
+    return ok(unit)
 
-def rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) -> Result[
+fn rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) Result[
     Unit, Fatal
 ]:
     let targets_raw = cs.take(col).join("")
@@ -993,7 +993,7 @@ def rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) -> R
         normal = split_words(pc.take(bar).join(""))
         order = split_words(pc.drop(bar + 1).join(""))
 
-    mk.is_open = True
+    mk.is_open = true
 
     if targets.length() == 1 and targets.get(0) == ".PHONY":
         for p in normal.concat(order):
@@ -1001,14 +1001,14 @@ def rule_line(var st: St, var mk: Mk, num: Int, cs: List[String], col: Int) -> R
                 mk.phony.append(p)
         mk.rule = empty_rule()
         mk.rule.line = num
-        return ok(())
+        return ok(unit)
 
     mk.rule = Rule(
         targets: targets, normal: normal, order: order, recipe: recipe, line: num
     )
-    return ok(())
+    return ok(unit)
 
-def statement(var st: St, var mk: Mk, num: Int, text: String) -> Result[Unit, Fatal]:
+fn statement(var st: St, var mk: Mk, num: Int, text: String) Result[Unit, Fatal]:
     let cs = text.chars()
     let eq = index_of(cs, "=")
     let col = top_colon(cs)
@@ -1019,16 +1019,16 @@ def statement(var st: St, var mk: Mk, num: Int, text: String) -> Result[Unit, Fa
 
     let v = try expand(var st, plain(num), [], text)
     if v.trim() == "":
-        return ok(())
+        return ok(unit)
 
     return error(fatal(num, "missing separator"))
 
 # Closes the open rule: stores its prerequisites and recipe.
-def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
+fn close_rule(var st: St, var mk: Mk) Result[Unit, Fatal]:
     if not mk.is_open:
-        return ok(())
+        return ok(unit)
 
-    mk.is_open = False
+    mk.is_open = false
 
     let r = mk.rule
 
@@ -1040,7 +1040,7 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
                     recipe: r.recipe.clone()
                 )
             )
-        elif let old = mk.rules.get(t).clone():
+        else if let old = mk.rules.get(t).clone():
             var e = old.clone()
             e.normal = old.normal.concat(r.normal)
             e.order = old.order.concat(r.order)
@@ -1051,7 +1051,7 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
                         st
                         .out
                         .append(
-                            f"Makefile:{r.line}: warning: overriding recipe for target '{t}'"
+                            "Makefile:{r.line}: warning: overriding recipe for target '{t}'"
                         )
                     )
                 e.recipe = r.recipe.clone()
@@ -1066,22 +1066,22 @@ def close_rule(var st: St, var mk: Mk) -> Result[Unit, Fatal]:
                 )
             )
 
-    return ok(())
+    return ok(unit)
 
-def parse_line(var st: St, var mk: Mk, num: Int, text: String) -> Result[Unit, Fatal]:
+fn parse_line(var st: St, var mk: Mk, num: Int, text: String) Result[Unit, Fatal]:
     if text.starts_with("\t"):
         let body = strip_tabs(text)
         if body.trim() == "" or not is_active(mk.frames):
-            return ok(())
+            return ok(unit)
         if not mk.is_open:
             return error(fatal(num, "recipe commences before first target"))
 
         mk.rule.recipe.append(Recipe(text: body, line: num))
-        return ok(())
+        return ok(unit)
 
     let stripped = strip_comment(text).trim()
     if stripped == "":
-        return ok(())
+        return ok(unit)
 
     let word = split_words(stripped).get(0)
 
@@ -1090,12 +1090,12 @@ def parse_line(var st: St, var mk: Mk, num: Int, text: String) -> Result[Unit, F
         return directive(var st, var mk, num, stripped, word)
 
     if not is_active(mk.frames):
-        return ok(())
+        return ok(unit)
 
     try close_rule(var st, var mk)
     return statement(var st, var mk, num, stripped)
 
-def logical_lines(lines: List[String]) -> List[Logical]:
+fn logical_lines(lines: List[String]) List[Logical]:
     var out: List[Logical] = []
     let n = lines.length()
     var i = 0
@@ -1120,11 +1120,11 @@ def logical_lines(lines: List[String]) -> List[Logical]:
 
     return out
 
-def parse(var st: St, lines: List[String]) -> Result[Mk, Fatal]:
+fn parse(var st: St, lines: List[String]) Result[Mk, Fatal]:
     var mk = Mk(
-        rules: Map[String, Explicit](), pats: [], phony: [], is_open: False,
+        rules: Map[String, Explicit](), pats: [], phony: [], is_open: false,
         rule: empty_rule(), frames: [], memo: Map[String, Bool](), stack: [],
-        ran: False, dry: False
+        ran: false, dry: false
     )
     for lg in logical_lines(lines):
         try parse_line(var st, var mk, lg.num, lg.text)
@@ -1135,32 +1135,32 @@ def parse(var st: St, lines: List[String]) -> Result[Mk, Fatal]:
     return ok(mk)
 
 # ---------------------------------------------------------------- building
-def default_goal(mk: Mk) -> String:
+fn default_goal(mk: Mk) String:
     for k in mk.rules.keys():
         if not k.starts_with("."):
             return k
     return ""
 
 # Expanded-rule resolution (explicit recipe, then pattern rule, then explicit without recipe).
-def can_make(st: St, mk: Mk, name: String, depth: Int) -> Bool:
+fn can_make(st: St, mk: Mk, name: String, depth: Int) Bool:
     if st.files.contains(name) or mk.rules.contains(name) or mk.phony.contains(name):
-        return True
+        return true
     if depth > 8:
-        return False
+        return false
 
     return find_pattern(st, mk, name, depth) >= 0
 
-def prereqs_ok(st: St, mk: Mk, p: PatRule, stem: String, depth: Int) -> Bool:
+fn prereqs_ok(st: St, mk: Mk, p: PatRule, stem: String, depth: Int) Bool:
     for x in subst_all(p.normal.clone(), stem):
         if not can_make(st, mk, x, depth + 1):
-            return False
+            return false
     for x in subst_all(p.order.clone(), stem):
         if not can_make(st, mk, x, depth + 1):
-            return False
-    return True
+            return false
+    return true
 
 # Index of the first pattern rule with a recipe that applies to `name`, or -1.
-def find_pattern(st: St, mk: Mk, name: String, depth: Int) -> Int:
+fn find_pattern(st: St, mk: Mk, name: String, depth: Int) Int:
     var i = 0
 
     while i < mk.pats.length():
@@ -1173,11 +1173,11 @@ def find_pattern(st: St, mk: Mk, name: String, depth: Int) -> Int:
 
     return -1
 
-def resolve(st: St, mk: Mk, name: String) -> Resolved:
+fn resolve(st: St, mk: Mk, name: String) Resolved:
     if let ex = mk.rules.get(name):
         if ex.recipe.length() > 0:
             return Resolved(
-                found: True, normal: ex.normal.clone(), order: ex.order.clone(),
+                found: true, normal: ex.normal.clone(), order: ex.order.clone(),
                 recipe: ex.recipe.clone(), stem: ""
             )
 
@@ -1194,22 +1194,22 @@ def resolve(st: St, mk: Mk, name: String) -> Resolved:
             order = order.concat(ex.order)
 
         return Resolved(
-            found: True, normal: normal, order: order, recipe: p.recipe.clone(), stem: s
+            found: true, normal: normal, order: order, recipe: p.recipe.clone(), stem: s
         )
 
     if let ex = mk.rules.get(name):
         return Resolved(
-            found: True, normal: ex.normal.clone(), order: ex.order.clone(), recipe: [],
+            found: true, normal: ex.normal.clone(), order: ex.order.clone(), recipe: [],
             stem: ""
         )
 
-    return Resolved(found: False, normal: [], order: [], recipe: [], stem: "")
+    return Resolved(found: false, normal: [], order: [], recipe: [], stem: "")
 
-def chain(stack: List[String], name: String) -> String:
+fn chain(stack: List[String], name: String) String:
     let i = stack.index_of(name).get(0)
     return stack.drop(i).concat([name]).join(" -> ")
 
-def simulate(var st: St, cmd: String) -> Int:
+fn simulate(var st: St, cmd: String) Int:
     let words = split_words(cmd)
     if words.length() == 0:
         return 0
@@ -1243,7 +1243,7 @@ def simulate(var st: St, cmd: String) -> Int:
 
     if w0 == "cp" and args.length() == 2:
         if not st.files.contains(args.get(0)):
-            st.out.append(f"cp: cannot stat '{args.get(0)}': No such file or directory")
+            st.out.append("cp: cannot stat '{args.get(0)}': No such file or directory")
             return 1
 
         st.clock += 1
@@ -1259,14 +1259,14 @@ def simulate(var st: St, cmd: String) -> Int:
 
     return 0
 
-def is_phony(mk: Mk, name: String) -> Bool:
+fn is_phony(mk: Mk, name: String) Bool:
     return mk.phony.contains(name)
 
 # Runs (or, in a dry run, prints) the recipe of a rule for `name`.
-def run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[String]) -> Result[
+fn run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[String]) Result[
     Unit, Fatal
 ]:
-    mk.ran = True
+    mk.ran = true
 
     var first = ""
     if r.normal.length() > 0:
@@ -1278,21 +1278,21 @@ def run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[St
 
     for rl in r.recipe:
         let sc = Scope(
-            line: rl.line, auto_on: True, target: name, stem: r.stem, first: first,
+            line: rl.line, auto_on: true, target: name, stem: r.stem, first: first,
             deps: all, newer: newer_s, order: order, binds: []
         )
         let text = try expand(var st, sc, [], rl.text)
         let cs = text.trim().chars()
-        var silent = False
-        var ign = False
+        var silent = false
+        var ign = false
         var k = 0
 
         while k < cs.length():
             let c = cs.get(k)
             if c == "@":
-                silent = True
+                silent = true
             if c == "-":
-                ign = True
+                ign = true
             if c != "@" and c != "-" and c != "+" and not is_space(c):
                 break
 
@@ -1317,68 +1317,66 @@ def run_recipe(var st: St, var mk: Mk, name: String, r: Resolved, newer: List[St
                     st
                     .out
                     .append(
-                        f"make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
+                        "make: [Makefile:{rl.line}: {name}] Error {status} (ignored)"
                     )
                 )
             else:
-                st.out.append(f"make: *** [Makefile:{rl.line}: {name}] Error {status}")
+                st.out.append("make: *** [Makefile:{rl.line}: {name}] Error {status}")
                 return error(silent_abort())
 
     if not mk.dry and not is_phony(mk, name):
         st.clock += 1
         st.files.add(name, st.clock)
 
-    return ok(())
+    return ok(unit)
 
 # Brings `name` up to date, discarding whether it changed.
-def visit(var st: St, var mk: Mk, name: String, needed: String) -> Result[Unit, Fatal]:
-    return update(var st, var mk, name, needed).map(
-        lambda (changed: Bool) -> Unit: return ()
-    )
+fn visit(var st: St, var mk: Mk, name: String, needed: String) Result[Unit, Fatal]:
+    return update(var st, var mk, name, needed).map(fn(changed: Bool) Unit: return unit)
 
-def parse_only(var st: St, lines: List[String]) -> Result[Unit, Fatal]:
-    return parse(var st, lines).map(lambda (mk: Mk) -> Unit: return ())
+fn parse_only(var st: St, lines: List[String]) Result[Unit, Fatal]:
+    return parse(var st, lines).map(fn(mk: Mk) Unit: return unit)
 
 # Brings `name` up to date; returns whether it changed.
-def update(var st: St, var mk: Mk, name: String, needed: String) -> Result[Bool, Fatal]:
+fn update(var st: St, var mk: Mk, name: String, needed: String) Result[Bool, Fatal]:
     if let m = mk.memo.get(name):
         return ok(m)
     if mk.stack.contains(name):
-        return error(fatal(0, f"Circular dependency detected: {chain(mk.stack, name)}"))
+        return error(fatal(0, "Circular dependency detected: {chain(mk.stack, name)}"))
 
     let r = resolve(st, mk, name)
 
     if not r.found:
         if st.files.contains(name):
-            mk.memo.add(name, False)
-            return ok(False)
+            mk.memo.add(name, false)
+            return ok(false)
 
         if mk.phony.contains(name):
-            mk.memo.add(name, True)
-            return ok(True)
+            mk.memo.add(name, true)
+            return ok(true)
 
         if needed == "":
-            return error(fatal(0, f"No rule to make target '{name}'"))
+            return error(fatal(0, "No rule to make target '{name}'"))
 
-        return error(fatal(0, f"No rule to make target '{name}', needed by '{needed}'"))
+        return error(fatal(0, "No rule to make target '{name}', needed by '{needed}'"))
 
     let existed = st.files.contains(name)
     let old = st.files.get(name).get(0)
     mk.stack.append(name)
 
-    var any = False
-    var newer = False
+    var any = false
+    var newer = false
     var changed_list: List[String] = []
 
     for p in r.normal.distinct():
         let c = try update(var st, var mk, p, name)
         if c:
-            any = True
+            any = true
 
         let mt = st.files.get(p).get(-1)
         let present = mt >= 0
         if existed and present and mt > old:
-            newer = True
+            newer = true
         if not existed or c or (present and mt > old):
             changed_list.append(p)
 
@@ -1388,17 +1386,17 @@ def update(var st: St, var mk: Mk, name: String, needed: String) -> Result[Bool,
 
     let in_table = st.files.contains(name)
     let must = mk.phony.contains(name) or not in_table or any or newer
-    var changed = False
+    var changed = false
 
     if must:
-        changed = True
+        changed = true
         if r.recipe.length() > 0:
             try run_recipe(var st, var mk, name, r, changed_list)
 
     mk.memo.add(name, changed)
     return ok(changed)
 
-def build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool) -> Result[
+fn build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool) Result[
     Unit, Fatal
 ]:
     var mk = try parse(var st, lines)
@@ -1414,7 +1412,7 @@ def build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool
         goals = [d]
 
     for g in goals:
-        mk.ran = False
+        mk.ran = false
         try visit(var st, var mk, g, "")
 
         if not mk.ran:
@@ -1424,16 +1422,16 @@ def build_req(var st: St, lines: List[String], goals_in: List[String], dry: Bool
                 r.recipe.length() > 0
                 or (not mk.phony.contains(g) and st.files.contains(g))
             ):
-                st.out.append(f"make: '{g}' is up to date.")
+                st.out.append("make: '{g}' is up to date.")
             else:
-                st.out.append(f"make: Nothing to be done for '{g}'.")
+                st.out.append("make: Nothing to be done for '{g}'.")
 
-    return ok(())
+    return ok(unit)
 
-def dep_walk(
+fn dep_walk(
     var st: St, mk: Mk, name: String, var stack: List[String], var seen: List[String],
     var out: List[String]
-) -> Result[Unit, Fatal]:
+) Result[Unit, Fatal]:
     let r = resolve(st, mk, name)
     let kids = r.normal.distinct().concat(r.order.distinct())
 
@@ -1441,7 +1439,7 @@ def dep_walk(
         if seen.contains(c):
             continue
         if stack.contains(c):
-            return error(fatal(0, f"Circular dependency detected: {chain(stack, c)}"))
+            return error(fatal(0, "Circular dependency detected: {chain(stack, c)}"))
 
         stack.append(c)
         try dep_walk(var st, mk, c, var stack, var seen, var out)
@@ -1449,9 +1447,9 @@ def dep_walk(
         seen.append(c)
         out.append(c)
 
-    return ok(())
+    return ok(unit)
 
-def deps_req(var st: St, lines: List[String], target: String) -> Result[Unit, Fatal]:
+fn deps_req(var st: St, lines: List[String], target: String) Result[Unit, Fatal]:
     let mk = try parse(var st, lines)
     var stack = [target]
     var seen: List[String] = []
@@ -1460,9 +1458,9 @@ def deps_req(var st: St, lines: List[String], target: String) -> Result[Unit, Fa
     if out.length() == 0:
         out.append("(no prerequisites)")
     st.out = st.out.concat(out)
-    return ok(())
+    return ok(unit)
 
-def rule_text(head: String, normal: List[String], order: List[String]) -> String:
+fn rule_text(head: String, normal: List[String], order: List[String]) String:
     var s = head + ":"
     if normal.length() > 0:
         s += " " + normal.join(" ")
@@ -1470,28 +1468,28 @@ def rule_text(head: String, normal: List[String], order: List[String]) -> String
         s += " | " + order.join(" ")
     return s
 
-def targets_req(var st: St, lines: List[String]) -> Result[Unit, Fatal]:
+fn targets_req(var st: St, lines: List[String]) Result[Unit, Fatal]:
     let mk = try parse(var st, lines)
     let d = default_goal(mk)
     if d != "":
-        st.out.append(f"default: {d}")
+        st.out.append("default: {d}")
     for e in mk.rules.values():
         st.out.append(rule_text(e.name, e.normal, e.order))
     for p in mk.pats:
         st.out.append(rule_text("pattern " + p.pattern, p.normal, p.order))
     if mk.phony.length() > 0:
         st.out.append("phony: " + mk.phony.join(" "))
-    return ok(())
+    return ok(unit)
 
-def expand_req(var st: St, lines: List[String], text: String) -> Result[Unit, Fatal]:
+fn expand_req(var st: St, lines: List[String], text: String) Result[Unit, Fatal]:
     try parse_only(var st, lines)
 
     let v = try expand(var st, plain(0), [], text)
-    st.out.append(f"[{v}]")
-    return ok(())
+    st.out.append("[{v}]")
+    return ok(unit)
 
 # Sets the command-line variables and returns the remaining (target) arguments.
-def set_vars(var st: St, args: List[String]) -> List[String]:
+fn set_vars(var st: St, args: List[String]) List[String]:
     st.vars = Map[String, Var]()
 
     var targets: List[String] = []
@@ -1504,7 +1502,7 @@ def set_vars(var st: St, args: List[String]) -> List[String]:
             st.vars.add(
                 cs.take(e).join(""),
                 Var(
-                    value: cs.drop(e + 1).join(""), simple: False, cmd: True
+                    value: cs.drop(e + 1).join(""), simple: false, cmd: true
                 )
             )
         else:
@@ -1512,36 +1510,36 @@ def set_vars(var st: St, args: List[String]) -> List[String]:
 
     return targets
 
-def files_req(var st: St) -> Result[Unit, Fatal]:
+fn files_req(var st: St) Result[Unit, Fatal]:
     let names = (
         st
         .files
         .keys()
-        .sorted(lambda (x: String, y: String) -> Int: return x.compare(y))
+        .sorted(fn(x: String, y: String) Int: return x.compare(y))
     )
     if names.length() == 0:
         st.out.append("(no files)")
     for f in names:
-        st.out.append(f"{f} {st.files.get(f).get(0)}")
-    return ok(())
+        st.out.append("{f} {st.files.get(f).get(0)}")
+    return ok(unit)
 
-def touch_req(var st: St, args: List[String]) -> Result[Unit, Fatal]:
+fn touch_req(var st: St, args: List[String]) Result[Unit, Fatal]:
     if args.length() == 1:
         st.clock += 1
         st.files.add(args.get(0), st.clock)
-        return ok(())
+        return ok(unit)
 
     if args.length() == 2:
         if let n = int_arg(args.get(1)):
             st.files.add(args.get(0), n)
             if n > st.clock:
                 st.clock = n
-            return ok(())
+            return ok(unit)
 
     st.out.append("bad request")
-    return ok(())
+    return ok(unit)
 
-def dispatch(var st: St, mk_lines: List[String], line: String, words: List[String]) -> Result[
+fn dispatch(var st: St, mk_lines: List[String], line: String, words: List[String]) Result[
     Unit, Fatal
 ]:
     let cmd = words.get(0)
@@ -1556,7 +1554,7 @@ def dispatch(var st: St, mk_lines: List[String], line: String, words: List[Strin
 
         if targets.length() != 1:
             st.out.append("usage: deps TARGET")
-            return ok(())
+            return ok(unit)
 
         return deps_req(var st, mk_lines, targets.get(0))
 
@@ -1578,12 +1576,12 @@ def dispatch(var st: St, mk_lines: List[String], line: String, words: List[Strin
     if cmd == "rm":
         for a in args:
             st.files.remove(a)
-        return ok(())
+        return ok(unit)
 
-    st.out.append(f"unknown request: {cmd}")
-    return ok(())
+    st.out.append("unknown request: {cmd}")
+    return ok(unit)
 
-export def main() -> Int:
+export fn main() Int:
     let text = read_all(stdin()).get().decode_utf8().get("")
     var mk_lines: List[String] = []
     var tbl: List[String] = []
@@ -1597,7 +1595,7 @@ export def main() -> Int:
 
         if section == 0:
             mk_lines.append(ln)
-        elif section == 1:
+        else if section == 1:
             tbl.append(ln)
         else:
             reqs.append(ln)
@@ -1618,7 +1616,7 @@ export def main() -> Int:
         if t == "" or t.starts_with("#"):
             continue
 
-        st.out.append(f"> {ln.trim_end()}")
+        st.out.append("> {ln.trim_end()}")
 
         let res = dispatch(var st, mk_lines, t, split_words(t))
 

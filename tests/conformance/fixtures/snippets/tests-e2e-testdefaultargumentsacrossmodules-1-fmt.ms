@@ -1,8 +1,8 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/e2e_test.go:505 TestDefaultArgumentsAcrossModules
-def private_value() -> Int:
+fn private_value() Int:
     return 7
 
-export def defaulted(value: Int = private_value()) -> Int:
+export fn defaulted(value: Int = private_value()) Int:
     return value

@@ -1,12 +1,12 @@
 # conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "./first.ms" import first_view, first_method, first_generic, first_resource
-from "./second.ms" import second_view, second_method, second_generic, second_resource
-from "./domain.ms" import Item, Resource
-from "./contracts.ms" import Read, read_view
-from "@std/collections.ms" import ListBuilder
+import {expect_equal, expect_false} from "@std/test.ms"
+import {first_view, first_method, first_generic, first_resource} from "./first.ms"
+import {second_view, second_method, second_generic, second_resource} from "./second.ms"
+import {Item, Resource} from "./domain.ms"
+import {Read, read_view} from "./contracts.ms"
+import ListBuilder from "@std/collections.ms"
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
@@ -33,9 +33,9 @@ test "views and functions retain local implementations across modules":
     let events = ListBuilder[Int]()
     let resource = Resource(events)
     with let first_close = first_resource(resource):
-        let active = True
+        let active = true
     with let second_close = second_resource(resource):
-        let active = True
+        let active = true
 
     let values = events.build()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

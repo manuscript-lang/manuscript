@@ -5,5 +5,5 @@ type Data:
     value: Int
 
 impl Equal for Data:
-    def compare() -> Unit:
+    fn compare() Unit:
         return

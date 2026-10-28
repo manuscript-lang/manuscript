@@ -1,15 +1,15 @@
-from "@std/test.ms" import expect_true
-from "@std/math.ms" import max, min
-from "@std/decimal.ms" import Decimal
+import expect_true from "@std/test.ms"
+import {max, min} from "@std/math.ms"
+import Decimal from "@std/decimal.ms"
 
 type Version:
     major: Int
 
 impl Comparable for Version:
-    def compare(other: Version) -> Int:
+    fn compare(other: Version) Int:
         return self.major - other.major
 
-def larger[T: Comparable](left: T, right: T) -> T:
+fn larger[T: Comparable](left: T, right: T) T:
     return max(left, right)
 
 test "max and min over built-in types":

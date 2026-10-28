@@ -1,30 +1,30 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/string.ms" import from_scalars
-from "@std/collections.ms" import range
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import from_scalars from "@std/string.ms"
+import range from "@std/collections.ms"
 
-def is_letter(c: Int) -> Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
+fn is_letter(c: Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
 
-def is_digit(c: Int) -> Bool: c >= 48 and c <= 57
+fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
-def is_space(c: Int) -> Bool: c == 32
+fn is_space(c: Int) Bool: c == 32
 
 # Shifts one ASCII letter forward by `shift` (0-25), keeping its case; other scalars pass through.
-def rotate(c: Int, shift: Int) -> Int:
+fn rotate(c: Int, shift: Int) Int:
     if c >= 65 and c <= 90: return 65 + (c - 65 + shift) % 26
     if c >= 97 and c <= 122: return 97 + (c - 97 + shift) % 26
 
     return c
 
-def all_scalars(values: List[Int], check: Callable[[Int], Bool]) -> Bool:
+fn all_scalars(values: List[Int], check: fn(Int) Bool) Bool:
     for c in values:
-        if not check(c): return False
-    return True
+        if not check(c): return false
+    return true
 
-def caesar_key(key: String) -> Optional[Int]:
+fn caesar_key(key: String) Optional[Int]:
     let scalars = key.scalar_values()
 
-    let start = (1 if scalars.length() > 0 and scalars[0] == 45 else 0)
+    let start = (if scalars.length() > 0 and scalars[0] == 45: 1 else: 0)
 
     if scalars.length() - start < 1 or scalars.length() - start > 7: return none
 
@@ -33,7 +33,7 @@ def caesar_key(key: String) -> Optional[Int]:
     return key.parse_int()
 
 # Returns the alphabet index (0-25) of each letter of a Vigenere key, or none if the key is empty or has a non-letter.
-def vigenere_shifts(key: String) -> Optional[List[Int]]:
+fn vigenere_shifts(key: String) Optional[List[Int]]:
     let scalars = key.scalar_values()
     if scalars.length() == 0 or not all_scalars(scalars.clone(), is_letter): return none
 
@@ -45,7 +45,7 @@ def vigenere_shifts(key: String) -> Optional[List[Int]]:
 
     return some(shifts)
 
-def run_line(line: String) -> String:
+fn run_line(line: String) String:
     let parts = line.split(" ")
     if parts.length() < 4: return "error: bad command"
 
@@ -65,7 +65,7 @@ def run_line(line: String) -> String:
     if cipher == "caesar":
         if let n = caesar_key(key):
             let shift = ((sign * n) % 26 + 26) % 26
-            return from_scalars(scalars.map(lambda c: rotate(c, shift))).get()
+            return from_scalars(scalars.map(fn c: rotate(c, shift))).get()
 
         return "error: bad key"
 
@@ -85,10 +85,10 @@ def run_line(line: String) -> String:
 
     return "error: bad key"
 
-export def main() -> Int:
+export fn main() Int:
     for line in read_lines(stdin()).get():
         if all_scalars(line.scalar_values(), is_space): continue
 
-        stdout().write(f"{run_line(line)}\n").get()
+        stdout().write("{run_line(line)}\n").get()
 
     return 0

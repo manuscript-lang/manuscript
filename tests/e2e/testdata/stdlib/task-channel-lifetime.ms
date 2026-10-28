@@ -1,44 +1,44 @@
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/process.ms" import control
-from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/test.ms" import expect_equal, expect_error, expect_ok, expect_true
-from "@std/time.ms" import nanoseconds, sleep
+import {Channel, ChannelError} from "@std/channels.ms"
+import control from "@std/process.ms"
+import {TaskError, TaskGroup} from "@std/tasks.ms"
+import {expect_equal, expect_error, expect_ok, expect_true} from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def send_one(ch: Channel[Int, Unit]) -> Result[Unit, ChannelError]:
+fn send_one(ch: Channel[Int, Unit]) Result[Unit, ChannelError]:
     var end = ch
     try end.send(7)
-    return ok(())
+    return ok(unit)
 
-def send_nothing(ch: Channel[Int, Unit]) -> Result[Unit, ChannelError]:
-    return ok(())
+fn send_nothing(ch: Channel[Int, Unit]) Result[Unit, ChannelError]:
+    return ok(unit)
 
-def retained_end(
+fn retained_end(
     group: TaskGroup[Result[Unit, ChannelError], Unit, Int]
-) -> Result[Channel[Unit, Int], Error]:
+) Result[Channel[Unit, Int], Error]:
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
     return ok(task.channel.clone())
 
-def send_payloads(ch: Channel[String, Unit]) -> Result[Unit, ChannelError]:
+fn send_payloads(ch: Channel[String, Unit]) Result[Unit, ChannelError]:
     var end = ch
     for index in 0..16:
         try end.send("unread channel payload".repeat(16).get(""))
-    return ok(())
+    return ok(unit)
 
-def collect_and_drop(
+fn collect_and_drop(
     group: TaskGroup[Result[Unit, ChannelError], Unit, Int]
-) -> Result[Unit, Error]:
+) Result[Unit, Error]:
     let task = group.spawn(send_one)
     task.result() | try expect_ok | try expect_ok
-    return ok(())
+    return ok(unit)
 
-def close_on_return() -> Result[Channel[Unit, Int], Error]:
+fn close_on_return() Result[Channel[Unit, Int], Error]:
     with let group = TaskGroup[Result[Unit, ChannelError], Unit, Int]():
         let task = group.spawn(send_one)
         task.result() | try expect_ok | try expect_ok
         return ok(task.channel.clone())
 
-def close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) -> Unit:
+fn close_on_cancel(ch: Channel[Channel[Unit, Int], Unit]) Unit:
     with let group = TaskGroup[Result[Unit, ChannelError], Unit, Int]():
         let task = group.spawn(send_one)
         let _sent = task.result()
@@ -52,7 +52,7 @@ test "collected buffered channels close with their group":
     task.result() | try expect_ok | try expect_ok
     group.close()
     task.channel.receive() | try expect_error | try expect_equal(ChannelError.Closed)
-    task.channel.send(()) | try expect_error | try expect_equal(ChannelError.Closed)
+    task.channel.send(unit) | try expect_error | try expect_equal(ChannelError.Closed)
 
 test "collected empty channels close with their group":
     var group = TaskGroup[Result[Unit, ChannelError], Unit, Int]()
@@ -152,4 +152,4 @@ test "cancellation cleanup closes collected channels retained outside the task":
             task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
             end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
         else:
-            try expect_true(False)
+            try expect_true(false)

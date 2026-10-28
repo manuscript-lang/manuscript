@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/frontend/source_test.go:30 TestGraphDeduplicatesImportsInDependencyOrder
-from "./shared.ms" import value
+import value from "./shared.ms"
 
-export def right() -> Int: return value()
+export fn right() Int: return value()

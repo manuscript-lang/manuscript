@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Record:
     timestamp: String
@@ -14,14 +14,14 @@ type PathStat:
     count: Int
     total: Int
 
-def all_digits(text: String) -> Bool:
+fn all_digits(text: String) Bool:
     for i in 0..text.length():
         let c = text.get(i)
-        if c.compare("0") < 0 or c.compare("9") > 0: return False
+        if c.compare("0") < 0 or c.compare("9") > 0: return false
 
-    return True
+    return true
 
-def parse_line(line: String) -> Optional[Record]:
+fn parse_line(line: String) Optional[Record]:
     let fields = line.split(" ")
     if fields.length() != 6: return none
 
@@ -43,13 +43,13 @@ def parse_line(line: String) -> Optional[Record]:
         path: path.clone(), status: status.clone(), latency: latency.parse_int().get(0)
     )
 
-def busier(a: PathStat, b: PathStat) -> Int:
+fn busier(a: PathStat, b: PathStat) Int:
     if a.count > b.count: return -1
     if a.count < b.count: return 1
 
     return a.path.compare(b.path)
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     var records = List[Record]()
     var malformed = 0
@@ -78,24 +78,24 @@ export def main() -> Int:
         totals[rec.path.clone()] = totals.get_or(rec.path, 0) + rec.latency
 
     var out = List[String]()
-    out.append(f"valid: {records.length()}")
-    out.append(f"malformed: {malformed}")
+    out.append("valid: {records.length()}")
+    out.append("malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append(f"{level}: {levels.get_or(level, 0)}")
+        out.append("{level}: {levels.get_or(level, 0)}")
 
     let c2 = classes.get_or("2", 0)
     let c3 = classes.get_or("3", 0)
     let c4 = classes.get_or("4", 0)
     let c5 = classes.get_or("5", 0)
     out.append(
-        f"status: 2xx={c2} 3xx={c3} 4xx={c4} 5xx={c5} other={records.length() - c2 - c3 - c4 - c5}"
+        "status: 2xx={c2} 3xx={c3} 4xx={c4} 5xx={c5} other={records.length() - c2 - c3 - c4 - c5}"
     )
     latencies.sort()
 
     let n = latencies.length()
     var p95 = 0
     if n > 0: p95 = latencies[(95 * n + 99) / 100 - 1]
-    out.append(f"p95: {p95}")
+    out.append("p95: {p95}")
 
     var best = -1
     for i in 0..records.length():
@@ -103,7 +103,7 @@ export def main() -> Int:
 
     if best >= 0:
         let rec = records[best]
-        out.append(f"slowest: {rec.latency} {rec.method} {rec.path} {rec.timestamp}")
+        out.append("slowest: {rec.latency} {rec.method} {rec.path} {rec.timestamp}")
 
     var stats = List[PathStat]()
     for path in counts.keys():
@@ -119,7 +119,7 @@ export def main() -> Int:
         if i >= 3: break
 
         let s = stats[i]
-        out.append(f"{s.path} {s.count} avg={s.total / s.count}")
+        out.append("{s.path} {s.count} avg={s.total / s.count}")
 
     stdout().write(out.join("\n") + "\n").get()
     return 0

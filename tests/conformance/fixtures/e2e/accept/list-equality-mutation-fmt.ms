@@ -1,30 +1,29 @@
 # conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/list-equality-mutation.ms
-from "@std/test.ms" import fail
+import fail from "@std/test.ms"
 
 type Element:
     id: Int
-    on_equal: Callable[[], Unit]
+    on_equal: fn() Unit
 
 impl Equal for Element:
-    def equals(other: Element) -> Bool:
+    fn equals(other: Element) Bool:
         self.on_equal()
-
         return self.id == other.id
 
 type Visits:
     count: Int
 
-def noop() -> Unit:
+fn noop() Unit:
     return
 
-def check_equality(side: String, mutation: String) -> Result[Unit, Error]:
+fn check_equality(side: String, mutation: String) Result[Unit, Error]:
     var left: List[Element] = []
     var right: List[Element] = []
     let calls = Visits(0)
 
-    let visit = lambda:
+    let visit = fn:
         calls.count = calls.count + 1
         if calls.count != 1:
             return
@@ -74,10 +73,10 @@ def check_equality(side: String, mutation: String) -> Result[Unit, Error]:
 
     let same = left == right
     if same != expected or calls.count != expected_calls: return fail(
-        f"{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
+        "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
     )
 
-    return ok(())
+    return ok(unit)
 
 test "element Equal mutating either List retains both captured headers":
     for side in ["left", "right"]:

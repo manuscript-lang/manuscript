@@ -1,10 +1,10 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
-def emit(text: String) -> Unit:
-    stdout().write(f"{text}\n").get()
+fn emit(text: String) Unit:
+    stdout().write("{text}\n").get()
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     var rows = lines.length()
     while rows > 0 and lines[rows - 1].length() == 0:
@@ -23,7 +23,7 @@ export def main() -> Int:
             let ch = cells[c]
 
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
-                emit(f"error: bad character at {r + 1},{c + 1}")
+                emit("error: bad character at {r + 1},{c + 1}")
                 return 0
 
         grid.append(cells)
@@ -47,7 +47,7 @@ export def main() -> Int:
             if ch == "S":
                 starts += 1
                 start = r * width + c
-            elif ch == "E":
+            else if ch == "E":
                 ends += 1
                 end = r * width + c
 
@@ -101,6 +101,6 @@ export def main() -> Int:
     if dist[end] < 0:
         emit("no path")
     else:
-        emit(f"{dist[end]}")
+        emit("{dist[end]}")
 
     return 0

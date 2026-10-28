@@ -1,28 +1,28 @@
-from "@std/test.ms" import expect_equal
-from "@std/string.ms" import StringBuilder
+import expect_equal from "@std/test.ms"
+import StringBuilder from "@std/string.ms"
 
 type Counter:
     n: Int
 
 impl Counter:
-    var def bump(by: Int = 1) -> Int:
+    var fn bump(by: Int = 1) Int:
         self.n += by
         return self.n
 
 interface Stepper:
-    var def step() -> Int
+    var fn step() Int
 
 impl Stepper for Counter:
-    var def step() -> Int:
+    var fn step() Int:
         self.n += 10
         return self.n
 
-def drain(var xs: List[Int]) -> Unit:
+fn drain(var xs: List[Int]) Unit:
     let push = xs.append
     push(7)
     push(8)
 
-def each(f: Callable[[Int], Unit]) -> Unit:
+fn each(f: fn(Int) Unit) Unit:
     f(100)
 
 test "a method value that changes its receiver borrows the variable":

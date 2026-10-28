@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,stdlib-json,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/tooling/lint_program_test.go:28 TestUnusedImportsFollowResolvedNames
-from "@std/json.ms" import parse
+import parse from "@std/json.ms"
 
-def answer(parse: Int) -> Int:
+fn answer(parse: Int) Int:
     return parse

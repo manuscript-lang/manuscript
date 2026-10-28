@@ -1,27 +1,27 @@
 # conform: tags=formatter,interpolation,match,modules,parser,stdlib-io,stdlib-process,stdlib-testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/command/main.ms
-from "@std/test.ms" import expect_equal
-from "@std/io.ms" import stderr
-from "@std/process.ms" import commands
-from "@std/io.ms" import stdout
+import expect_equal from "@std/test.ms"
+import stderr from "@std/io.ms"
+import commands from "@std/process.ms"
+import stdout from "@std/io.ms"
 
-def exercise() -> Result[Int, Error]:
+fn exercise() Result[Int, Error]:
     match commands().run(
         program: "/bin/printf", arguments: ["hello"], input: "".to_bytes(),
         max_output_bytes: 64, timeout: 1.seconds
     ):
-        case error(_):
+        error(_):
             return ok(1)
-        case ok(output):
+        ok(output):
             output.exit_code | try expect_equal(0)
 
             let _ = stdout().write_bytes(data: output.stdout)
             return ok(0)
 
-export def main() -> Int:
+export fn main() Int:
     match exercise():
-        case ok(status): return status
-        case error(cause):
-            let written = stderr().write(f"{cause.message()}\n")
+        ok(status): return status
+        error(cause):
+            let written = stderr().write("{cause.message()}\n")
             return 1

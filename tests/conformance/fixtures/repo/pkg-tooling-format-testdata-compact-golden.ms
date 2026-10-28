@@ -1,43 +1,36 @@
 # conform: tags=alternatives,closures,interpolation,match,modules,records,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=pkg/tooling/format/testdata/compact.golden.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def apply(value: Int, transform: Callable[[Int], Int]) -> Int: transform(value)
+fn apply(value: Int, transform: fn(Int) Int) Int: transform(value)
 
 type Choice:
     case Zero
     case One
     case Other(value: Int)
 
-def choose(value: Choice) -> String:
+fn choose(value: Choice) String:
     match value:
-        case Zero:
+        Zero:
             return "zero # unchanged"
         # Keep this comment with the arm.
-        case One:
+        One:
             return "one"
-        case Other(number):
-            return f"value {number}"
+        Other(number):
+            return "value {number}"
 
-def count() -> Int:
+fn count() Int:
     return apply(
-        value: 2,
-        transform: lambda (value: Int) -> Int: return (
-            value
-            + 10
-            + 20
-            + 30
-            + 40
-        )
+        value: 2, transform: fn(value: Int) Int: return (value + 10 + 20 + 30 + 40)
     )
 
 test "compact formatting preserves behavior":
     let values = [1, 2, 2, 4, 3, 6]  # Keep this list compact.
     let nested = [[1, 2], [3, 4]]
-    let invalid = ["", "[1,", "{\"a\" 1}", "tru", "[1] x", "\"abc"]
+    let invalid = ["", "[1,", "\{\"a\" 1\}", "tru", "[1] x", "\"abc"]
     let mapped = [1, 2, 3, 4, 5, 6].map(
-        transform: lambda (value: Int) -> Int: return (value + 1)
+        transform: fn(value: Int) Int: return (value + 1)
     )
     values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])
     nested | try expect_equal(expected: [[1, 2], [3, 4]])

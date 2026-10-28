@@ -4,13 +4,13 @@
 type Ch:
     buf: List[String]
 
-def child(var c: Ch) -> Int:
+fn child(var c: Ch) Int:
     c.buf.append("a")
     return 1
 
-def run(entry: Callable[[Ch], Int]) -> Int:
+fn run(entry: fn(Ch) Int) Int:
     var c = Ch(buf: [])
     return entry(c)
 
-export def main() -> Int:
+export fn main() Int:
     return run(child) - 1

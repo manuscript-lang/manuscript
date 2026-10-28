@@ -1,16 +1,16 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
+fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
 test "function suite boundaries":
     var calls: List[Int] = []
-    let _dormant = lambda () -> Unit:
+    let _dormant = fn() Unit:
         calls.append(1)
 
     let grouped = apply(
         transform: (
-            lambda value:
+            fn value:
                 if value > 0:
                     return value - 1
 
@@ -19,7 +19,7 @@ test "function suite boundaries":
         value: 3
     )
 
-    let final_argument = apply(value: 3, transform: lambda value: return value - 1)
+    let final_argument = apply(value: 3, transform: fn value: return value - 1)
     calls.length() | try expect_equal(0)
     grouped | try expect_equal(2)
     final_argument | try expect_equal(2)

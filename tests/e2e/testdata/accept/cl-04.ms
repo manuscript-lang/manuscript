@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def difference(values: List[Int]) -> Int:
+fn difference(values: List[Int]) Int:
     let [first, second] = values
     return first - second
 

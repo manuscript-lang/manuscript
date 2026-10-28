@@ -1,10 +1,10 @@
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Resource:
     value: Int
 
 impl Closeable for Resource:
-    var def close() -> Unit: return ()
+    var fn close() Unit: return unit
 
-def main() -> Unit:
+fn main() Unit:
     wi

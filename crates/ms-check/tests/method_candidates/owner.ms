@@ -2,5 +2,5 @@ export type Item:
     value: Int
 
 impl Item:
-    def owned() -> Int:
+    fn owned() Int:
         return self.value

@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,generics,lists,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/types/generics.md:115
-def count[T](values: List[T]) -> Int:
+fn count[T](values: List[T]) Int:
     return 0
 
 let known = count[Int]([])

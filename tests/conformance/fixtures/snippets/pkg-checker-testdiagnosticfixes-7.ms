@@ -5,9 +5,9 @@ type K:
     v: Float
 
 impl Equal for K:
-    def equals(other: K) -> Bool:
-        return True
+    fn equals(other: K) Bool:
+        return true
 
-def f() -> Int:
+fn f() Int:
     let s = Set[K]()
     return 0

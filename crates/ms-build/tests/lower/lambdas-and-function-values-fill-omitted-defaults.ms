@@ -1,12 +1,12 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "opt.is_some"
 
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def scale(value: Int, by: Int = 2) -> Int: value * by
+fn scale(value: Int, by: Int = 2) Int: value * by
 
-export def main() -> Int:
+export fn main() Int:
     let f = scale
-    let g = lambda (value: Int = 4): value
-    let _r = stdout().write(f"{f(3)} {f(3, 3)} {g()}\n")
+    let g = fn(value: Int = 4): value
+    let _r = stdout().write("{f(3)} {f(3, 3)} {g()}\n")
     return 0

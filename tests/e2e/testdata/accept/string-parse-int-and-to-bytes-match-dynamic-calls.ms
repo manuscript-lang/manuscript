@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def parsed(text: String) -> Int:
+fn parsed(text: String) Int:
     match text.parse_int():
-        case some(v):
+        some(v):
             return v
-        case none:
+        none:
             return 0 - 1
 
 test "parse_int":

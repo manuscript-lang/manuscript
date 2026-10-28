@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def selected_sum(values: List[Int]) -> Int:
+fn selected_sum(values: List[Int]) Int:
     var total = 0
 
     for value in values:

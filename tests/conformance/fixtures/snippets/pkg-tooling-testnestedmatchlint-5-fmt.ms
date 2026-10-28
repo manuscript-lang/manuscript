@@ -1,11 +1,11 @@
 # conform: tags=formatter,match,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/nested_match_lint_test.go:24 TestNestedMatchLint
-def use(value: Optional[Int]) -> Int:
+fn use(value: Optional[Int]) Int:
     return match (
         match value:
-            case some(x): some(x)
-            case none: some(0)
+            some(x): some(x)
+            none: some(0)
     ):
-        case some(x): x
-        case none: 0
+        some(x): x
+        none: 0

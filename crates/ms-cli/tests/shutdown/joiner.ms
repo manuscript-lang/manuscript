@@ -1,17 +1,19 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import nanoseconds, sleep
-from "@std/workers.ms" import WorkerGroup, worker_channel
+import stdout from "@std/io.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
+import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
-def long() -> Unit:
+fn long() Unit:
     var _ch = worker_channel[Int, Int]()
     for i in 0..600:
         sleep(nanoseconds(100000000))
 
-export def main() -> Int:
+export fn main() Int:
     with let group = WorkerGroup[Int, Int]():
         var w = group.spawn(long).get()
         stdout().write("joining\n").get()
         stdout().flush().get()
+
         let outcome = w.wait()
-        stdout().write(f"joined {outcome.is_ok()}\n").get()
+        stdout().write("joined {outcome.is_ok()}\n").get()
+
     return 0

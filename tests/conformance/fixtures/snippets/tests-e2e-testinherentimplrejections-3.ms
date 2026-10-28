@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,interfaces,modules,stdlib-time,tier-io
 # conform: phase=check
 # conform: origin=tests/e2e/inherent_methods_test.go:34 TestInherentImplRejections
-from "@std/time.ms" import Duration
+import Duration from "@std/time.ms"
 
 impl Duration:
-    def f() -> Int:
+    fn f() Int:
         return 1

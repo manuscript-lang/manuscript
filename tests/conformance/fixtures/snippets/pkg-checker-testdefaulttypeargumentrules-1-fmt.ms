@@ -5,4 +5,4 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-def use() -> Pair[Int]: Pair[Int](1, 2)
+fn use() Pair[Int]: Pair[Int](1, 2)

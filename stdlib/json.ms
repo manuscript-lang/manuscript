@@ -1,18 +1,18 @@
-from "@std/math.ms" import parse_float
+import parse_float from "@std/math.ms"
 
 # The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
-extern def msrt_json_parse[T](
+extern fn msrt_json_parse[T](
     text: String,
     limits: Optional[JsonLimits],
     ignore_unknown_fields: Bool
-) -> Result[T, JsonError]
+) Result[T, JsonError]
 
-extern def msrt_json_stringify[T](
+extern fn msrt_json_stringify[T](
     value: T,
     max_bytes: Optional[Int],
     indent: Optional[Int],
     strict: Bool
-) -> Result[String, JsonError]
+) Result[String, JsonError]
 
 # Errors returned for malformed JSON or configured input and nesting limits.
 export type JsonError:
@@ -78,69 +78,69 @@ export type JsonValue:
 
 impl JsonValue:
     # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
-    def get(key: String) -> ref Optional[JsonValue]:
+    fn get(key: String) ref Optional[JsonValue]:
         match self:
-            case ObjectValue(values): return values.get(key)
-            case _: return none
+            ObjectValue(values): return values.get(key)
+            _: return none
 
     # Returns the value reached by reading each object member of `keys` in turn, or `none` when a
     # member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
     # from the receiver.
-    def get_in(keys: List[String]) -> ref Optional[JsonValue]:
+    fn get_in(keys: List[String]) ref Optional[JsonValue]:
         return member_path(self, keys, 0)
 
     # Returns the array element at `index`, counting a negative index from the end. An index out of
     # range, or a value that is not an array, returns `none`. The result borrows from the receiver.
-    def at(index: Int) -> ref Optional[JsonValue]:
+    fn at(index: Int) ref Optional[JsonValue]:
         match self:
-            case ArrayValue(values):
+            ArrayValue(values):
                 if index >= values.length() or index < 0 - values.length(): return none
 
                 return values.get(index)
-            case _: return none
+            _: return none
 
     # Returns the text of a string value, or `none` for any other value. The result borrows from the receiver.
-    def as_string() -> ref Optional[String]:
+    fn as_string() ref Optional[String]:
         match self:
-            case StringValue(value): return value
-            case _: return none
+            StringValue(value): return value
+            _: return none
 
     # Returns a number value as an Int, or `none` when the value is not a number or its text has a
     # fraction, an exponent, or digits that do not fit in Int.
-    def as_int() -> Optional[Int]:
+    fn as_int() Optional[Int]:
         match self:
-            case NumberValue(text): return text.parse_int()
-            case _: return none
+            NumberValue(text): return text.parse_int()
+            _: return none
 
     # Returns a number value as a Float, or `none` when the value is not a number or its text is not finite.
-    def as_float() -> Optional[Float]:
+    fn as_float() Optional[Float]:
         match self:
-            case NumberValue(text): return parse_float(text).to_optional()
-            case _: return none
+            NumberValue(text): return parse_float(text).to_optional()
+            _: return none
 
     # Returns a boolean value, or `none` for any other value.
-    def as_bool() -> Optional[Bool]:
+    fn as_bool() Optional[Bool]:
         match self:
-            case BoolValue(value): return value
-            case _: return none
+            BoolValue(value): return value
+            _: return none
 
     # Returns the elements of an array value, or `none` for any other value. The result borrows from the receiver.
-    def as_list() -> ref Optional[List[JsonValue]]:
+    fn as_list() ref Optional[List[JsonValue]]:
         match self:
-            case ArrayValue(values): return values
-            case _: return none
+            ArrayValue(values): return values
+            _: return none
 
     # Returns the members of an object value, or `none` for any other value. The result borrows from the receiver.
-    def as_map() -> ref Optional[Map[String, JsonValue]]:
+    fn as_map() ref Optional[Map[String, JsonValue]]:
         match self:
-            case ObjectValue(values): return values
-            case _: return none
+            ObjectValue(values): return values
+            _: return none
 
     # Returns True only for the Null case; a missing key or any other value returns False.
-    def is_null() -> Bool:
+    fn is_null() Bool:
         match self:
-            case Null: return True
-            case _: return False
+            Null: return true
+            _: return false
 
 # Parses one JSON value and applies the supplied input, depth, and value limits.
 #
@@ -171,11 +171,11 @@ impl JsonValue:
 #
 # The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 # record and `parse[Map[String, Int]]` reads the same object as a map.
-export def parse[T = JsonValue](
+export fn parse[T = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
-    ignore_unknown_fields: Bool = True
-) -> Result[T, JsonError]:
+    ignore_unknown_fields: Bool = true
+) Result[T, JsonError]:
     return msrt_json_parse[T](text, limits, ignore_unknown_fields)
 
 # Customizes how `stringify` encodes a type. It takes precedence over the
@@ -209,7 +209,7 @@ export def parse[T = JsonValue](
 # ```
 export interface JsonEncode:
     # Returns the JSON form of this value.
-    def to_json() -> JsonValue
+    fn to_json() JsonValue
 
 # Encodes any value as JSON text. Every type is accepted;
 # a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
@@ -255,28 +255,24 @@ export interface JsonEncode:
 #
 # stringify(value: Request(model: "example", stream: True, user: none))
 # ```
-export def stringify[T](
+export fn stringify[T](
     value: T,
     max_bytes: Optional[Int] = none,
     indent: Optional[Int] = none,
-    strict: Bool = False
-) -> Result[String, JsonError]:
+    strict: Bool = false
+) Result[String, JsonError]:
     return msrt_json_stringify(value, max_bytes, indent, strict)
 
 impl Error for JsonError:
     # Returns a JSON-prefixed diagnostic without echoing input text or number tokens.
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidInput: return "JSON: invalid input"
-            case InvalidData: return "JSON: invalid data"
-            case LimitExceeded: return "JSON: limit exceeded"
+            InvalidInput: return "JSON: invalid input"
+            InvalidData: return "JSON: invalid data"
+            LimitExceeded: return "JSON: limit exceeded"
 
 # The member of `value` at `keys[from:]`, read one object level at a time.
-def member_path(
-    value: JsonValue,
-    keys: List[String],
-    from: Int
-) -> ref Optional[JsonValue]:
+fn member_path(value: JsonValue, keys: List[String], from: Int) ref Optional[JsonValue]:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
     if let next = value.get(keys[from]):

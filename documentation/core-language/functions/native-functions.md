@@ -9,11 +9,11 @@ weight = 3
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-extern def llabs(value: Int) -> Int
+extern fn llabs(value: Int) Int
 
-def magnitude(value: Int) -> Int:
+fn magnitude(value: Int) Int:
     return llabs(value)
 
 test "an extern calls the native symbol":

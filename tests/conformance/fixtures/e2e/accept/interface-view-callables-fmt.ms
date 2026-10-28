@@ -1,51 +1,51 @@
 # conform: tags=closures,control-flow,formatter,generics,interfaces,match,modules,mutation,optional,parser,records,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/interface-view-callables.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 interface Read[T]:
-    def read() -> T
+    fn read() T
 
 type Reader[T]:
-    operation: Callable[[], T]
+    operation: fn() T
 
 impl Read[T] for Reader[T]:
-    def read() -> T:
+    fn read() T:
         return self.operation()
 
 type Log:
     events: String
 
-def mark(var log: Log, event: String, value: Int) -> Int:
+fn mark(var log: Log, event: String, value: Int) Int:
     log.events += event
     return value
 
-def prepare(var log: Log, value: Int) -> Callable[[], Int]:
+fn prepare(var log: Log, value: Int) fn() Int:
     mark(var log, "prepare;", 0)
-    return lambda () -> Int:
+    return fn() Int:
         return value
 
-def wrap[T](operation: Callable[[], T]) -> Read[T]:
+fn wrap[T](operation: fn() T) Read[T]:
     return Reader[T](operation)
 
-def invoke[T: Read[Int]](value: T) -> Int:
+fn invoke[T: Read[Int]](value: T) Int:
     return value.read()
 
 type OrderedReader:
     first: Int
-    operation: Callable[[], Int]
+    operation: fn() Int
     last: Int
 
 impl Read[Int] for OrderedReader:
-    def read() -> Int:
+    fn read() Int:
         return self.first + self.operation() + self.last
 
 type DefaultReader:
     base: Int
-    operation: Callable[[], Int] = lambda () -> Int: base
+    operation: fn() Int = fn() Int: base
 
 impl Read[Int] for DefaultReader:
-    def read() -> Int:
+    fn read() Int:
         return self.operation()
 
 test "nested view receiver prepares once and calls later":
@@ -57,19 +57,21 @@ test "nested view receiver prepares once and calls later":
 test "constructor arguments retain written order and capture snapshots":
     var log = Log("")
     var value = 4
+
     let view: Read[Int] = OrderedReader(
-            last: mark(var log, "last;", 3),
-            operation: (
-                lambda () -> Int:
-                    let nested = lambda () -> Int: value
-                    return nested()
-            ),
-            match some(2):
-                case some(number):
-                    value = 70
-                    mark(var log, "first;", number)
-                case none: 0
-        )
+        last: mark(var log, "last;", 3),
+        operation: (
+            fn() Int:
+                let nested = fn() Int: value
+                return nested()
+        ),
+        match some(2):
+            some(number):
+                value = 70
+                mark(var log, "first;", number)
+            none: 0
+    )
+
     value = 90
     try expect_equal(log.events, "last;first;")
     try expect_equal(view.read(), 9)
@@ -78,8 +80,8 @@ test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
 
     let view = wrap(
-        lambda () -> Int:
-            let nested = lambda () -> Int: value
+        fn() Int:
+            let nested = fn() Int: value
             return nested()
     )
 
@@ -88,9 +90,9 @@ test "explicit nested views and bound methods retain generic dispatch":
     let bound = view.read
     try expect_equal(bound(), 5)
     try expect_equal(invoke(view), 5)
-    try expect_equal(Reader(lambda () -> Int: 6).read(), 6)
-    try expect_equal(Reader(lambda () -> Int: 8).read(), 8)
-    try expect_equal(wrap(lambda () -> String: "text").read(), "text")
+    try expect_equal(Reader(fn() Int: 6).read(), 6)
+    try expect_equal(Reader(fn() Int: 8).read(), 8)
+    try expect_equal(wrap(fn() String: "text").read(), "text")
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
@@ -100,12 +102,14 @@ test "source constructors with callable defaults prepare once":
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
+
     let view: Read[Int] = match some(mark(var log, "select;", 1)):
-        case some(_):
+        some(_):
             mark(var log, "chosen;", 0)
-            Reader(lambda () -> Int: 9)
-        case none:
+            Reader(fn() Int: 9)
+        none:
             mark(var log, "wrong;", 0)
-            Reader(lambda () -> Int: 0)
+            Reader(fn() Int: 0)
+
     try expect_equal(log.events, "select;chosen;")
     try expect_equal(view.read(), 9)

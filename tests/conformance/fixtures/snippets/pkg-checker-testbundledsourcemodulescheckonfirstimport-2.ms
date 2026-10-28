@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,stdlib-toml,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/checker/standard_lazy_test.go:33 TestBundledSourceModulesCheckOnFirstImport
-from "@std/toml.ms" import TomlValue
+import TomlValue from "@std/toml.ms"
 
-def one() -> Int:
+fn one() Int:
     return 1

@@ -7,5 +7,5 @@ type First:
 type Second:
     case Ready(value: Int)
 
-def wrong() -> First:
+fn wrong() First:
     return Ready(value: 1)

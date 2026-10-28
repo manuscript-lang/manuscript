@@ -2,5 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/scheduling_test.go:47 TestQueuedChangesPreserveRangesVersionsAndErrors
 # 😀
-def answer() -> Int:
+fn answer() Int:
     return 1

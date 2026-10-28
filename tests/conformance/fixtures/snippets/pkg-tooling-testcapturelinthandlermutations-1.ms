@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,faults,modules,stdlib-faults,stdlib-http,stdlib-net,tier-io
 # conform: phase=check
 # conform: origin=pkg/tooling/capture_lint_test.go:10 TestCaptureLintHandlerMutations
-from "@std/net.ms" import network
-from "@std/http.ms" import HttpResponse
-from "@std/core.ms" import panic
+import network from "@std/net.ms"
+import HttpResponse from "@std/http.ms"
+import panic from "@std/core.ms"

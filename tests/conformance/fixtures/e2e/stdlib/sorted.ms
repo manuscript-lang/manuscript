@@ -1,12 +1,12 @@
 # conform: tags=optional,stdlib-sorted,stdlib-testing,testing,tier-stdlib
 # conform: phase=test
-from "@std/test.ms" import expect_equal, expect_true, expect_false
-from "@std/sorted.ms" import SortedMap, SortedSet
+import {expect_equal, expect_true, expect_false} from "@std/test.ms"
+import {SortedMap, SortedSet} from "@std/sorted.ms"
 
 test "add get replace remove":
     var map = SortedMap[Int, String]()
     for key in [5, 1, 9, 3, 7]:
-        map.add(key, f"v{key}")
+        map.add(key, "v{key}")
     try expect_equal(map.keys(), [1, 3, 5, 7, 9])
     try expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])
     try expect_equal(map.get(3), some("v3"))

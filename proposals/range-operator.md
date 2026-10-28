@@ -32,13 +32,13 @@ Proposal, 2026-10-24, checked against `main`. Direction: "lets add support for 0
 Intended examples (checked after implementation):
 
 ```manuscript
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def main() -> Unit:
+fn main() Unit:
     var total = 0
     for i in 0..5:
         total += i
-    stdout().write("{total}\n")
+    stdout().write("\{total\}\n")
 ```
 
 Verified today on `main`: `for i in 0..5:` fails with the `no '..' range` parse error above; the `range(0, 5)` form passes `ms check` once `print` is replaced by `stdout().write`.

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/counter_chunk_test.go:41 TestConstantStrideChunkSelection
-def probe() -> Int:
+fn probe() Int:
     var sum = 0
     var i = 0
 

@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdout, stdin
-from "@std/streams.ms" import read_lines
+import {stdout, stdin} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Simulator state for one run of the program. Persistent across requests:
 # files and clock. Everything else is rebuilt by each make invocation.
@@ -55,7 +55,7 @@ type Fail:
     text: String
 
 impl Error for Fail:
-    def message() -> String:
+    fn message() String:
         return self.text.clone()
 
 type Sim:
@@ -82,11 +82,11 @@ type Sim:
     dout: List[String]
     dset: Set[String]
 
-export def main() -> Int:
+export fn main() Int:
     let input = read_lines(stdin()).get()
     var s = Sim(
         files: Map[String, Int](), clock: 0, out: List[String](), mk: List[String](),
-        dry: False, line: 0, cmd: Map[String, String](), vars: Map[String, Variable](),
+        dry: false, line: 0, cmd: Map[String, String](), vars: Map[String, Variable](),
         rules: List[Rule](), rule_index: Map[String, Int](), pats: List[Rule](),
         phony: List[String](), pending: new_open(), frames: List[Frame](),
         binds: List[Bind](), autos: Map[String, String](), expanding: List[String](),
@@ -102,9 +102,9 @@ export def main() -> Int:
 
         if section < 2 and ln == "====":
             section += 1
-        elif section == 0:
+        else if section == 0:
             s.mk.append(ln)
-        elif section == 1:
+        else if section == 1:
             table.append(ln)
         else:
             requests.append(ln)
@@ -123,13 +123,13 @@ export def main() -> Int:
 
 # ---------------------------------------------------------------- text helpers
 
-def strip_cr(line: String) -> String:
+fn strip_cr(line: String) String:
     if line.ends_with("\r"):
         return join_range(line.chars(), 0, line.length() - 1)
 
     return line
 
-def join_range(cs: List[String], a: Int, b: Int) -> String:
+fn join_range(cs: List[String], a: Int, b: Int) String:
     var out = ""
     var i = a
 
@@ -139,7 +139,7 @@ def join_range(cs: List[String], a: Int, b: Int) -> String:
 
     return out
 
-def find_char(cs: List[String], ch: String, from: Int) -> Int:
+fn find_char(cs: List[String], ch: String, from: Int) Int:
     var i = from
 
     while i < cs.length():
@@ -150,7 +150,7 @@ def find_char(cs: List[String], ch: String, from: Int) -> Int:
 
     return -1
 
-def last_index(cs: List[String], ch: String) -> Int:
+fn last_index(cs: List[String], ch: String) Int:
     var i = cs.length() - 1
 
     while i >= 0:
@@ -161,7 +161,7 @@ def last_index(cs: List[String], ch: String) -> Int:
 
     return -1
 
-def split_ws(text: String) -> List[String]:
+fn split_ws(text: String) List[String]:
     var out = List[String]()
     var cur = ""
 
@@ -177,7 +177,7 @@ def split_ws(text: String) -> List[String]:
         out.append(cur)
     return out
 
-def tail_of(xs: List[String]) -> List[String]:
+fn tail_of(xs: List[String]) List[String]:
     var out = List[String]()
     var i = 1
 
@@ -187,7 +187,7 @@ def tail_of(xs: List[String]) -> List[String]:
 
     return out
 
-def join_slice(xs: List[String], a: Int, b: Int) -> String:
+fn join_slice(xs: List[String], a: Int, b: Int) String:
     var out = List[String]()
     var i = a
 
@@ -197,7 +197,7 @@ def join_slice(xs: List[String], a: Int, b: Int) -> String:
 
     return out.join(" ")
 
-def dedup(xs: List[String]) -> List[String]:
+fn dedup(xs: List[String]) List[String]:
     var seen = Set[String]()
     var out = List[String]()
 
@@ -208,7 +208,7 @@ def dedup(xs: List[String]) -> List[String]:
 
     return out
 
-def join_sep(a: String, b: String) -> String:
+fn join_sep(a: String, b: String) String:
     if a.length() == 0:
         return b
     if b.length() == 0:
@@ -216,7 +216,7 @@ def join_sep(a: String, b: String) -> String:
 
     return a + " " + b
 
-def fmt_rule(name: String, normal: List[String], order_only: List[String]) -> String:
+fn fmt_rule(name: String, normal: List[String], order_only: List[String]) String:
     var out = name + ":"
     if normal.length() > 0:
         out += " " + normal.join(" ")
@@ -226,11 +226,11 @@ def fmt_rule(name: String, normal: List[String], order_only: List[String]) -> St
 
 # Index of the matching closer for the opener at `at` ("(" or "{"), counting
 # only brackets of the same kind. -1 if unterminated.
-def find_close(cs: List[String], at: Int) -> Int:
+fn find_close(cs: List[String], at: Int) Int:
     let opener = cs[at]
     var closer = ")"
-    if opener == "{":
-        closer = "}"
+    if opener == "\{":
+        closer = "\}"
 
     var depth = 0
     var j = at
@@ -238,7 +238,7 @@ def find_close(cs: List[String], at: Int) -> Int:
     while j < cs.length():
         if cs[j] == opener:
             depth += 1
-        elif cs[j] == closer:
+        else if cs[j] == closer:
             depth -= 1
             if depth == 0:
                 return j
@@ -249,7 +249,7 @@ def find_close(cs: List[String], at: Int) -> Int:
 
 # Index of the first ':' outside any $(...) / ${...} reference and before any
 # ';', or -1.
-def top_colon(cs: List[String]) -> Int:
+fn top_colon(cs: List[String]) Int:
     var i = 0
 
     while i < cs.length():
@@ -260,7 +260,7 @@ def top_colon(cs: List[String]) -> Int:
         if c == "$" and i + 1 < cs.length():
             let nx = cs[i + 1]
 
-            if nx == "(" or nx == "{":
+            if nx == "(" or nx == "\{":
                 let close = find_close(cs, i + 1)
                 if close < 0:
                     return -1
@@ -268,7 +268,7 @@ def top_colon(cs: List[String]) -> Int:
                 i = close + 1
             else:
                 i += 2
-        elif c == ":":
+        else if c == ":":
             return i
         else:
             i += 1
@@ -276,7 +276,7 @@ def top_colon(cs: List[String]) -> Int:
     return -1
 
 # Splits at top-level commas (parentheses and braces nest); each part trimmed.
-def split_args(t: String) -> List[String]:
+fn split_args(t: String) List[String]:
     let cs = t.chars()
     var out = List[String]()
     var depth = 0
@@ -286,11 +286,11 @@ def split_args(t: String) -> List[String]:
     while i < cs.length():
         let c = cs[i]
 
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             depth += 1
-        elif c == ")" or c == "}":
+        else if c == ")" or c == "\}":
             depth -= 1
-        elif c == "," and depth == 0:
+        else if c == "," and depth == 0:
             out.append(join_range(cs, start, i).trim())
             start = i + 1
 
@@ -299,14 +299,14 @@ def split_args(t: String) -> List[String]:
     out.append(join_range(cs, start, cs.length()).trim())
     return out
 
-def arg_at(args: List[String], i: Int) -> String:
+fn arg_at(args: List[String], i: Int) String:
     if i < args.length():
         return args[i].clone()
 
     return ""
 
 # Stem of `word` against `pat`; a pattern without % must match exactly.
-def pat_stem(pat: String, word: String) -> Optional[String]:
+fn pat_stem(pat: String, word: String) Optional[String]:
     let pcs = pat.chars()
     let pc = find_char(pcs, "%", 0)
 
@@ -328,7 +328,7 @@ def pat_stem(pat: String, word: String) -> Optional[String]:
 
     return some(join_range(word.chars(), plen, wlen - slen))
 
-def subst_stem(rep: String, stem: String) -> String:
+fn subst_stem(rep: String, stem: String) String:
     let rcs = rep.chars()
     let pc = find_char(rcs, "%", 0)
     if pc < 0:
@@ -336,7 +336,7 @@ def subst_stem(rep: String, stem: String) -> String:
 
     return join_range(rcs, 0, pc) + stem + join_range(rcs, pc + 1, rcs.length())
 
-def patsubst_words(pat: String, rep: String, text: String) -> String:
+fn patsubst_words(pat: String, rep: String, text: String) String:
     var out = List[String]()
 
     for w in split_ws(text):
@@ -347,21 +347,21 @@ def patsubst_words(pat: String, rep: String, text: String) -> String:
 
     return out.join(" ")
 
-def filter_words(pats: String, words: String, keep: Bool) -> String:
+fn filter_words(pats: String, words: String, keep: Bool) String:
     let pl = split_ws(pats)
     var out = List[String]()
 
     for w in split_ws(words):
-        var hit = False
+        var hit = false
         for p in pl:
             if let _stem = pat_stem(p, w):
-                hit = True
+                hit = true
         if hit == keep:
             out.append(w)
 
     return out.join(" ")
 
-def sort_words(text: String) -> List[String]:
+fn sort_words(text: String) List[String]:
     let srt = split_ws(text).sorted()
     var out = List[String]()
     for w in srt:
@@ -369,7 +369,7 @@ def sort_words(text: String) -> List[String]:
             out.append(w)
     return out
 
-def path_one(name: String, w: String) -> String:
+fn path_one(name: String, w: String) String:
     let cs = w.chars()
     let slash = last_index(cs, "/")
 
@@ -396,7 +396,7 @@ def path_one(name: String, w: String) -> String:
 
     return join_range(cs, 0, dot)
 
-def path_words(name: String, text: String) -> String:
+fn path_words(name: String, text: String) String:
     var out = List[String]()
 
     for w in split_ws(text):
@@ -406,7 +406,7 @@ def path_words(name: String, text: String) -> String:
 
     return out.join(" ")
 
-def glob_at(p: List[String], pi: Int, t: List[String], ti: Int) -> Bool:
+fn glob_at(p: List[String], pi: Int, t: List[String], ti: Int) Bool:
     if pi == p.length():
         return ti == t.length()
 
@@ -414,20 +414,20 @@ def glob_at(p: List[String], pi: Int, t: List[String], ti: Int) -> Bool:
 
     if c == "*":
         if glob_at(p, pi + 1, t, ti):
-            return True
+            return true
         if ti < t.length() and t[ti] != "/":
             return glob_at(p, pi, t, ti + 1)
 
-        return False
+        return false
 
     if ti >= t.length():
-        return False
+        return false
     if c == "?":
         return t[ti] != "/" and glob_at(p, pi + 1, t, ti + 1)
 
     return t[ti] == c and glob_at(p, pi + 1, t, ti + 1)
 
-def wildcard_files(s: Sim, pats: String) -> String:
+fn wildcard_files(s: Sim, pats: String) String:
     var out = List[String]()
 
     for p in split_ws(pats):
@@ -441,7 +441,7 @@ def wildcard_files(s: Sim, pats: String) -> String:
 
     return out.join(" ")
 
-def is_func_name(name: String) -> Bool:
+fn is_func_name(name: String) Bool:
     let names = [
         "subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort",
         "word", "wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix",
@@ -450,7 +450,7 @@ def is_func_name(name: String) -> Bool:
     ]
     return names.contains(name)
 
-def is_auto(name: String) -> Bool:
+fn is_auto(name: String) Bool:
     return (
         name == "@"
         or name == "<"
@@ -462,42 +462,42 @@ def is_auto(name: String) -> Bool:
 
 # ---------------------------------------------------------------- output
 
-def say(var s: Sim, text: String) -> Unit:
+fn say(var s: Sim, text: String) Unit:
     s.out.append(text)
 
-def make_fail(msg: String) -> Fail:
-    return Fail(text: f"make: *** {msg}.  Stop.")
+fn make_fail(msg: String) Fail:
+    return Fail(text: "make: *** {msg}.  Stop.")
 
-def fail_line(num: Int, msg: String) -> Fail:
-    return Fail(text: f"Makefile:{num}: *** {msg}.  Stop.")
+fn fail_line(num: Int, msg: String) Fail:
+    return Fail(text: "Makefile:{num}: *** {msg}.  Stop.")
 
-def fail_at(s: Sim, msg: String) -> Fail:
+fn fail_at(s: Sim, msg: String) Fail:
     if s.line > 0:
         return fail_line(s.line, msg)
 
     return make_fail(msg)
 
-def report(var s: Sim, r: Result[Bool, Fail]) -> Unit:
+fn report(var s: Sim, r: Result[Bool, Fail]) Unit:
     if r.is_error():
         say(var s, r.err().message())
 
 # ---------------------------------------------------------------- variables and expansion
 
-def is_defined(s: Sim, name: String) -> Bool:
+fn is_defined(s: Sim, name: String) Bool:
     if s.cmd.contains(name):
         return s.cmd.get(name).get("").length() > 0
 
     if s.vars.contains(name):
-        let v = s.vars.get(name).get(Variable(recursive: False, value: ""))
+        let v = s.vars.get(name).get(Variable(recursive: false, value: ""))
         return v.value.length() > 0
 
-    return False
+    return false
 
-def expand_var(var s: Sim, name: String, value: String) -> Result[String, Fail]:
+fn expand_var(var s: Sim, name: String, value: String) Result[String, Fail]:
     if s.expanding.contains(name):
         return error(
             fail_at(
-                s, f"Recursive variable '{name}' references itself (eventually)"
+                s, "Recursive variable '{name}' references itself (eventually)"
             )
         )
 
@@ -507,7 +507,7 @@ def expand_var(var s: Sim, name: String, value: String) -> Result[String, Fail]:
     s.expanding.remove(-1)
     return ok(r)
 
-def lookup(var s: Sim, name: String) -> Result[String, Fail]:
+fn lookup(var s: Sim, name: String) Result[String, Fail]:
     var k = s.binds.length() - 1
 
     while k >= 0:
@@ -524,7 +524,7 @@ def lookup(var s: Sim, name: String) -> Result[String, Fail]:
         return expand_var(var s, name, raw)
 
     if s.vars.contains(name):
-        let v = s.vars.get(name).get(Variable(recursive: False, value: ""))
+        let v = s.vars.get(name).get(Variable(recursive: false, value: ""))
         if v.recursive:
             return expand_var(var s, name, v.value)
 
@@ -532,7 +532,7 @@ def lookup(var s: Sim, name: String) -> Result[String, Fail]:
 
     return ok("")
 
-def expand(var s: Sim, text: String) -> Result[String, Fail]:
+fn expand(var s: Sim, text: String) Result[String, Fail]:
     let cs = text.chars()
     let n = cs.length()
     var out = ""
@@ -544,12 +544,12 @@ def expand(var s: Sim, text: String) -> Result[String, Fail]:
         if c != "$":
             out += c
             i += 1
-        elif i + 1 >= n:
+        else if i + 1 >= n:
             i += 1
-        elif cs[i + 1] == "$":
+        else if cs[i + 1] == "$":
             out += "$"
             i += 2
-        elif cs[i + 1] == "(" or cs[i + 1] == "{":
+        else if cs[i + 1] == "(" or cs[i + 1] == "\{":
             let close = find_close(cs, i + 1)
             if close < 0:
                 return error(fail_at(s, "unterminated variable reference"))
@@ -566,7 +566,7 @@ def expand(var s: Sim, text: String) -> Result[String, Fail]:
     return ok(out)
 
 # The text inside $( ) or ${ }: a function call, a substitution reference or a variable name.
-def reference(var s: Sim, inner: String) -> Result[String, Fail]:
+fn reference(var s: Sim, inner: String) Result[String, Fail]:
     let cs = inner.chars()
     var k = 0
     while k < cs.length() and cs[k] != " " and cs[k] != "\t":
@@ -596,7 +596,7 @@ def reference(var s: Sim, inner: String) -> Result[String, Fail]:
 
     return lookup(var s, name.clone())
 
-def call_func(var s: Sim, name: String, raw: String) -> Result[String, Fail]:
+fn call_func(var s: Sim, name: String, raw: String) Result[String, Fail]:
     let args = split_args(raw)
 
     if name == "subst":
@@ -653,7 +653,7 @@ def call_func(var s: Sim, name: String, raw: String) -> Result[String, Fail]:
         if let a = from_s.trim().parse_int():
             if let b = to_s.trim().parse_int():
                 if a >= 1 and b >= a and a <= ws.length():
-                    let e = ws.length() if b > ws.length() else b
+                    let e = if b > ws.length(): ws.length() else: b
 
                     return ok(join_slice(ws, a - 1, e))
 
@@ -661,7 +661,7 @@ def call_func(var s: Sim, name: String, raw: String) -> Result[String, Fail]:
 
     if name == "words":
         let text = try expand(var s, arg_at(args, 0))
-        return ok(f"{split_ws(text).length()}")
+        return ok("{split_ws(text).length()}")
 
     if name == "firstword" or name == "lastword":
         let text = try expand(var s, arg_at(args, 0))
@@ -725,20 +725,20 @@ def call_func(var s: Sim, name: String, raw: String) -> Result[String, Fail]:
 
 # ---------------------------------------------------------------- parsing
 
-def new_open() -> Open:
+fn new_open() Open:
     return Open(
-        has: False, phony: False, targets: List[String](), normal: List[String](),
+        has: false, phony: false, targets: List[String](), normal: List[String](),
         order_only: List[String](), recipe: List[Line](), line: 0
     )
 
-def is_active(s: Sim) -> Bool:
+fn is_active(s: Sim) Bool:
     if s.frames.length() == 0:
-        return True
+        return true
 
     return s.frames[s.frames.length() - 1].active
 
 # Joins physical lines ending in a backslash into logical lines.
-def logical_lines(raw: List[String]) -> List[Line]:
+fn logical_lines(raw: List[String]) List[Line]:
     var out = List[Line]()
     var k = 0
 
@@ -758,7 +758,7 @@ def logical_lines(raw: List[String]) -> List[Line]:
     return out
 
 # Removes comments; `\#` stands for a literal '#'.
-def strip_comment(text: String) -> String:
+fn strip_comment(text: String) String:
     let cs = text.chars()
     var out = ""
     var i = 0
@@ -769,7 +769,7 @@ def strip_comment(text: String) -> String:
         if c == "\\" and i + 1 < cs.length() and cs[i + 1] == "#":
             out += "#"
             i += 2
-        elif c == "#":
+        else if c == "#":
             return out
         else:
             out += c
@@ -777,7 +777,7 @@ def strip_comment(text: String) -> String:
 
     return out
 
-def strip_tabs(text: String) -> String:
+fn strip_tabs(text: String) String:
     let cs = text.chars()
     var i = 0
     while i < cs.length() and cs[i] == "\t":
@@ -785,7 +785,7 @@ def strip_tabs(text: String) -> String:
     return join_range(cs, i, cs.length())
 
 # Recognises conditional directives. Kind is "" when the line is not one.
-def directive_of(text: String) -> Directive:
+fn directive_of(text: String) Directive:
     let cs = text.chars()
     var k = 0
     while k < cs.length() and cs[k] != " " and cs[k] != "\t" and cs[k] != "(":
@@ -805,7 +805,7 @@ def directive_of(text: String) -> Directive:
 
     return Directive(kind: word, rest: rest)
 
-def equal_args(var s: Sim, rest: String) -> Result[Bool, Fail]:
+fn equal_args(var s: Sim, rest: String) Result[Bool, Fail]:
     if rest.length() < 2 or not rest.starts_with("(") or not rest.ends_with(")"):
         return error(fail_at(s, "invalid syntax in conditional"))
 
@@ -817,29 +817,29 @@ def equal_args(var s: Sim, rest: String) -> Result[Bool, Fail]:
     let b = try expand(var s, parts[1])
     return ok(a.trim() == b.trim())
 
-def handle_directive(var s: Sim, d: Directive) -> Result[Bool, Fail]:
+fn handle_directive(var s: Sim, d: Directive) Result[Bool, Fail]:
     if d.kind == "ifdef" or d.kind == "ifndef" or d.kind == "ifeq" or d.kind == "ifneq":
         let parent = is_active(s)
-        var cond = False
+        var cond = false
 
         if parent:
             if d.kind == "ifdef" or d.kind == "ifndef":
                 let name = (try expand(var s, d.rest)).trim()
                 let defined = is_defined(s, name)
 
-                cond = defined if d.kind == "ifdef" else not defined
+                cond = if d.kind == "ifdef": defined else: not defined
             else:
                 let same = try equal_args(var s, d.rest)
 
-                cond = same if d.kind == "ifeq" else not same
+                cond = if d.kind == "ifeq": same else: not same
 
         s.frames.append(
             Frame(
-                parent: parent, cond: cond, active: parent and cond, has_else: False,
+                parent: parent, cond: cond, active: parent and cond, has_else: false,
                 line: s.line
             )
         )
-        return ok(True)
+        return ok(true)
 
     if d.kind == "else":
         if s.frames.length() == 0:
@@ -849,9 +849,9 @@ def handle_directive(var s: Sim, d: Directive) -> Result[Bool, Fail]:
         if s.frames[k].has_else:
             return error(fail_at(s, "extraneous 'else'"))
 
-        s.frames[k].has_else = True
+        s.frames[k].has_else = true
         s.frames[k].active = s.frames[k].parent and not s.frames[k].cond
-        return ok(True)
+        return ok(true)
 
     if d.kind == "endif":
         if s.frames.length() == 0:
@@ -859,13 +859,13 @@ def handle_directive(var s: Sim, d: Directive) -> Result[Bool, Fail]:
 
         s.frames.remove(-1)
 
-    return ok(True)
+    return ok(true)
 
-def add_phony(var s: Sim, name: String) -> Unit:
+fn add_phony(var s: Sim, name: String) Unit:
     if not s.phony.contains(name):
         s.phony.append(name)
 
-def add_explicit(var s: Sim, t: String, op: Open) -> Unit:
+fn add_explicit(var s: Sim, t: String, op: Open) Unit:
     if s.rule_index.contains(t):
         let idx = s.rule_index.get(t).get(0)
         for q in op.normal:
@@ -877,7 +877,7 @@ def add_explicit(var s: Sim, t: String, op: Open) -> Unit:
             if s.rules[idx].recipe.length() > 0:
                 say(
                     var s,
-                    f"Makefile:{op.line}: warning: overriding recipe for target '{t}'"
+                    "Makefile:{op.line}: warning: overriding recipe for target '{t}'"
                 )
             s.rules[idx].recipe = op.recipe.clone()
 
@@ -892,7 +892,7 @@ def add_explicit(var s: Sim, t: String, op: Open) -> Unit:
     )
 
 # Stores the open rule (if any) into the makefile tables.
-def close_open(var s: Sim) -> Unit:
+fn close_open(var s: Sim) Unit:
     if not s.pending.has:
         return
 
@@ -917,7 +917,7 @@ def close_open(var s: Sim) -> Unit:
         else:
             add_explicit(var s, t.clone(), op)
 
-def assignment(var s: Sim, cs: List[String], eq: Int) -> Result[Bool, Fail]:
+fn assignment(var s: Sim, cs: List[String], eq: Int) Result[Bool, Fail]:
     var op = "="
     var name_end = eq
 
@@ -931,34 +931,34 @@ def assignment(var s: Sim, cs: List[String], eq: Int) -> Result[Bool, Fail]:
 
     let value = join_range(cs, eq + 1, cs.length()).trim()
     if s.cmd.contains(name):
-        return ok(True)
+        return ok(true)
 
     if op == "=":
-        s.vars[name] = Variable(recursive: True, value: value)
-    elif op == ":":
+        s.vars[name] = Variable(recursive: true, value: value)
+    else if op == ":":
         let v = try expand(var s, value)
-        s.vars[name] = Variable(recursive: False, value: v)
-    elif op == "?":
+        s.vars[name] = Variable(recursive: false, value: v)
+    else if op == "?":
         if not s.vars.contains(name):
-            s.vars[name] = Variable(recursive: True, value: value)
-    elif not s.vars.contains(name):
-        s.vars[name] = Variable(recursive: True, value: value)
+            s.vars[name] = Variable(recursive: true, value: value)
+    else if not s.vars.contains(name):
+        s.vars[name] = Variable(recursive: true, value: value)
     else:
-        let old = s.vars.get(name).get(Variable(recursive: True, value: ""))
+        let old = s.vars.get(name).get(Variable(recursive: true, value: ""))
 
         if old.recursive:
             s.vars[name] = Variable(
-                recursive: True, value: join_sep(old.value.clone(), value)
+                recursive: true, value: join_sep(old.value.clone(), value)
             )
         else:
             let add = try expand(var s, value)
             s.vars[name] = Variable(
-                recursive: False, value: join_sep(old.value.clone(), add)
+                recursive: false, value: join_sep(old.value.clone(), add)
             )
 
-    return ok(True)
+    return ok(true)
 
-def rule_line(var s: Sim, cs: List[String], col: Int) -> Result[Bool, Fail]:
+fn rule_line(var s: Sim, cs: List[String], col: Int) Result[Bool, Fail]:
     let n = cs.length()
     var prereq_end = n
     let semi = find_char(cs, ";", col + 1)
@@ -983,12 +983,12 @@ def rule_line(var s: Sim, cs: List[String], col: Int) -> Result[Bool, Fail]:
 
     let is_phony = targets.length() == 1 and targets[0] == ".PHONY"
     s.pending = Open(
-        has: True, phony: is_phony, targets: targets, normal: normal,
+        has: true, phony: is_phony, targets: targets, normal: normal,
         order_only: order_only, recipe: recipe, line: s.line
     )
-    return ok(True)
+    return ok(true)
 
-def parse_line(var s: Sim, text: String) -> Result[Bool, Fail]:
+fn parse_line(var s: Sim, text: String) Result[Bool, Fail]:
     let cs = text.chars()
     let eq = find_char(cs, "=", 0)
     let col = top_colon(cs)
@@ -999,11 +999,11 @@ def parse_line(var s: Sim, text: String) -> Result[Bool, Fail]:
 
     let expanded = try expand(var s, text)
     if expanded.trim().length() == 0:
-        return ok(True)
+        return ok(true)
 
     return error(fail_at(s, "missing separator"))
 
-def parse_lines(var s: Sim, lines: List[Line]) -> Result[Bool, Fail]:
+fn parse_lines(var s: Sim, lines: List[Line]) Result[Bool, Fail]:
     for ln in lines:
         s.line = ln.num
 
@@ -1025,7 +1025,7 @@ def parse_lines(var s: Sim, lines: List[Line]) -> Result[Bool, Fail]:
                     close_open(var s)
 
                     let _d = try handle_directive(var s, d)
-                elif is_active(s):
+                else if is_active(s):
                     close_open(var s)
 
                     let _p = try parse_line(var s, text)
@@ -1036,9 +1036,9 @@ def parse_lines(var s: Sim, lines: List[Line]) -> Result[Bool, Fail]:
         let top = s.frames[s.frames.length() - 1]
         return error(fail_line(top.line, "missing 'endif'"))
 
-    return ok(True)
+    return ok(true)
 
-def parse_makefile(var s: Sim) -> Result[Bool, Fail]:
+fn parse_makefile(var s: Sim) Result[Bool, Fail]:
     s.vars = Map[String, Variable]()
     s.rules = List[Rule]()
     s.rule_index = Map[String, Int]()
@@ -1056,9 +1056,9 @@ def parse_makefile(var s: Sim) -> Result[Bool, Fail]:
     let lines = logical_lines(s.mk)
     let _parsed = try parse_lines(var s, lines)
     s.line = 0
-    return ok(True)
+    return ok(true)
 
-def default_goal(s: Sim) -> String:
+fn default_goal(s: Sim) String:
     for r in s.rules:
         if not r.name.starts_with("."):
             return r.name.clone()
@@ -1066,11 +1066,11 @@ def default_goal(s: Sim) -> String:
 
 # ---------------------------------------------------------------- rule resolution
 
-def can_make(s: Sim, name: String, level: Int) -> Bool:
+fn can_make(s: Sim, name: String, level: Int) Bool:
     if s.files.contains(name) or s.rule_index.contains(name) or s.phony.contains(name):
-        return True
+        return true
     if level > 8:
-        return False
+        return false
 
     var k = 0
 
@@ -1079,27 +1079,27 @@ def can_make(s: Sim, name: String, level: Int) -> Bool:
         if p.recipe.length() > 0:
             if let stem = pat_stem(p.name, name):
                 if stem.length() > 0 and prereqs_ready(s, p, stem, level + 1):
-                    return True
+                    return true
         k += 1
 
-    return False
+    return false
 
-def prereqs_ready(s: Sim, p: Rule, stem: String, level: Int) -> Bool:
+fn prereqs_ready(s: Sim, p: Rule, stem: String, level: Int) Bool:
     for q in p.normal:
         if not can_make(s, subst_stem(q.clone(), stem), level):
-            return False
+            return false
     for q in p.order_only:
         if not can_make(s, subst_stem(q.clone(), stem), level):
-            return False
-    return True
+            return false
+    return true
 
-def resolve(s: Sim, t: String) -> Plan:
+fn resolve(s: Sim, t: String) Plan:
     var ex = -1
     if s.rule_index.contains(t):
         ex = s.rule_index.get(t).get(-1)
     if ex >= 0 and s.rules[ex].recipe.length() > 0:
         return Plan(
-            found: True, normal: s.rules[ex].normal.clone(),
+            found: true, normal: s.rules[ex].normal.clone(),
             order_only: s.rules[ex].order_only.clone(),
             recipe: s.rules[ex].recipe.clone(), stem: ""
         )
@@ -1127,7 +1127,7 @@ def resolve(s: Sim, t: String) -> Plan:
                             order_only.append(q.clone())
 
                     return Plan(
-                        found: True, normal: normal, order_only: order_only,
+                        found: true, normal: normal, order_only: order_only,
                         recipe: p.recipe.clone(), stem: stem
                     )
 
@@ -1135,31 +1135,31 @@ def resolve(s: Sim, t: String) -> Plan:
 
     if ex >= 0:
         return Plan(
-            found: True, normal: s.rules[ex].normal.clone(),
+            found: true, normal: s.rules[ex].normal.clone(),
             order_only: s.rules[ex].order_only.clone(), recipe: List[Line](), stem: ""
         )
 
     return Plan(
-        found: False, normal: List[String](), order_only: List[String](),
+        found: false, normal: List[String](), order_only: List[String](),
         recipe: List[Line](), stem: ""
     )
 
 # ---------------------------------------------------------------- building
 
-def cycle_text(stack: List[String], t: String) -> String:
+fn cycle_text(stack: List[String], t: String) String:
     var parts = List[String]()
-    var on = False
+    var on = false
 
     for x in stack:
         if x == t:
-            on = True
+            on = true
         if on:
             parts.append(x)
 
     parts.append(t)
     return parts.join(" -> ")
 
-def run_command(var s: Sim, cmd: String) -> Int:
+fn run_command(var s: Sim, cmd: String) Int:
     let ws = split_ws(cmd)
     let first = ws[0]
     if first == "false":
@@ -1193,7 +1193,7 @@ def run_command(var s: Sim, cmd: String) -> Int:
             let src = ws[1]
 
             if not s.files.contains(src):
-                say(var s, f"cp: cannot stat '{src}': No such file or directory")
+                say(var s, "cp: cannot stat '{src}': No such file or directory")
                 return 1
 
             s.clock += 1
@@ -1210,7 +1210,7 @@ def run_command(var s: Sim, cmd: String) -> Int:
 
     return 0
 
-def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Result[
+fn run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) Result[
     Bool, Fail
 ]:
     s.ran += 1
@@ -1219,9 +1219,9 @@ def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Res
     var newer = List[String]()
 
     for p in uniq:
-        var hit = (not was_in) or s.memo.get(p).get(False)
+        var hit = (not was_in) or s.memo.get(p).get(false)
         if not hit and s.files.contains(p) and s.files.get(p).get(0) > old:
-            hit = True
+            hit = true
         if hit:
             newer.append(p.clone())
 
@@ -1241,8 +1241,8 @@ def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Res
 
         let expanded = try expand(var s, ln.text)
         let cs = expanded.trim().chars()
-        var silent = False
-        var ignore_err = False
+        var silent = false
+        var ignore_err = false
         var k = 0
 
         while (
@@ -1256,9 +1256,9 @@ def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Res
             )
         ):
             if cs[k] == "@":
-                silent = True
+                silent = true
             if cs[k] == "-":
-                ignore_err = True
+                ignore_err = true
             k += 1
 
         let body = join_range(cs, k, cs.length()).trim()
@@ -1276,11 +1276,11 @@ def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Res
 
         if status != 0:
             if ignore_err:
-                say(var s, f"make: [Makefile:{ln.num}: {t}] Error {status} (ignored)")
+                say(var s, "make: [Makefile:{ln.num}: {t}] Error {status} (ignored)")
             else:
                 return error(
                     Fail(
-                        text: f"make: *** [Makefile:{ln.num}: {t}] Error {status}"
+                        text: "make: *** [Makefile:{ln.num}: {t}] Error {status}"
                     )
                 )
 
@@ -1291,11 +1291,11 @@ def run_recipe(var s: Sim, t: String, plan: Plan, was_in: Bool, old: Int) -> Res
         s.clock += 1
         s.files[t] = s.clock
 
-    return ok(True)
+    return ok(true)
 
-def build_target(var s: Sim, t: String, parent: String) -> Result[Bool, Fail]:
+fn build_target(var s: Sim, t: String, parent: String) Result[Bool, Fail]:
     if s.memo.contains(t):
-        return ok(s.memo.get(t).get(False))
+        return ok(s.memo.get(t).get(false))
     if s.stack.contains(t):
         return error(
             make_fail(
@@ -1310,11 +1310,11 @@ def build_target(var s: Sim, t: String, parent: String) -> Result[Bool, Fail]:
     if not plan.found:
         if not s.files.contains(t) and not s.phony.contains(t):
             if parent.length() == 0:
-                return error(make_fail(f"No rule to make target '{t}'"))
+                return error(make_fail("No rule to make target '{t}'"))
 
             return error(
                 make_fail(
-                    f"No rule to make target '{t}', needed by '{parent}'"
+                    "No rule to make target '{t}', needed by '{parent}'"
                 )
             )
 
@@ -1326,26 +1326,26 @@ def build_target(var s: Sim, t: String, parent: String) -> Result[Bool, Fail]:
 
     let was_in = s.files.contains(t)
     let old = s.files.get(t).get(0)
-    var any_changed = False
+    var any_changed = false
 
     for p in dedup(plan.normal.clone()):
         let c = try build_target(var s, p, t)
         if c:
-            any_changed = True
+            any_changed = true
 
-    var newer = False
+    var newer = false
     if was_in:
         for p in dedup(plan.normal.clone()):
             if s.files.contains(p) and s.files.get(p).get(0) > old:
-                newer = True
+                newer = true
     for p in dedup(plan.order_only.clone()):
         let _o = try build_target(var s, p, t)
 
     let rebuild = s.phony.contains(t) or not s.files.contains(t) or any_changed or newer
-    var changed = False
+    var changed = false
 
     if rebuild:
-        changed = True
+        changed = true
         if plan.recipe.length() > 0:
             let _r = try run_recipe(var s, t.clone(), plan, was_in, old)
 
@@ -1353,7 +1353,7 @@ def build_target(var s: Sim, t: String, parent: String) -> Result[Bool, Fail]:
     s.memo[t] = changed
     return ok(changed)
 
-def build_goals(var s: Sim, goals: List[String]) -> Result[Bool, Fail]:
+fn build_goals(var s: Sim, goals: List[String]) Result[Bool, Fail]:
     for g in goals:
         let before = s.ran
         let _c = try build_target(var s, g.clone(), "")
@@ -1365,13 +1365,13 @@ def build_goals(var s: Sim, goals: List[String]) -> Result[Bool, Fail]:
                 plan.recipe.length() > 0
                 or (not s.phony.contains(g) and s.files.contains(g))
             ):
-                say(var s, f"make: '{g}' is up to date.")
+                say(var s, "make: '{g}' is up to date.")
             else:
-                say(var s, f"make: Nothing to be done for '{g}'.")
+                say(var s, "make: Nothing to be done for '{g}'.")
 
-    return ok(True)
+    return ok(true)
 
-def run_build(var s: Sim, goals: List[String]) -> Result[Bool, Fail]:
+fn run_build(var s: Sim, goals: List[String]) Result[Bool, Fail]:
     let _parsed = try parse_makefile(var s)
     var todo = List[String]()
 
@@ -1386,7 +1386,7 @@ def run_build(var s: Sim, goals: List[String]) -> Result[Bool, Fail]:
 
     return build_goals(var s, todo)
 
-def walk_deps(var s: Sim, node: String) -> Result[Bool, Fail]:
+fn walk_deps(var s: Sim, node: String) Result[Bool, Fail]:
     let plan = resolve(s, node)
     var all = dedup(plan.normal.clone())
     for q in dedup(plan.order_only.clone()):
@@ -1410,9 +1410,9 @@ def walk_deps(var s: Sim, node: String) -> Result[Bool, Fail]:
             s.dset.add(p.clone())
             s.dout.append(p)
 
-    return ok(True)
+    return ok(true)
 
-def run_deps(var s: Sim, target: String) -> Result[Bool, Fail]:
+fn run_deps(var s: Sim, target: String) Result[Bool, Fail]:
     let _parsed = try parse_makefile(var s)
     s.dout = List[String]()
     s.dset = Set[String]()
@@ -1425,9 +1425,9 @@ def run_deps(var s: Sim, target: String) -> Result[Bool, Fail]:
         say(var s, "(no prerequisites)")
     for d in found:
         say(var s, d)
-    return ok(True)
+    return ok(true)
 
-def run_targets(var s: Sim) -> Result[Bool, Fail]:
+fn run_targets(var s: Sim) Result[Bool, Fail]:
     let _parsed = try parse_makefile(var s)
     let dg = default_goal(s)
     if dg.length() > 0:
@@ -1442,17 +1442,17 @@ def run_targets(var s: Sim) -> Result[Bool, Fail]:
         say(var s, "pattern " + fmt_rule(p.name, p.normal, p.order_only))
     if s.phony.length() > 0:
         say(var s, "phony: " + s.phony.join(" "))
-    return ok(True)
+    return ok(true)
 
-def run_expand(var s: Sim, text: String) -> Result[Bool, Fail]:
+fn run_expand(var s: Sim, text: String) Result[Bool, Fail]:
     let _parsed = try parse_makefile(var s)
     let v = try expand(var s, text)
-    say(var s, f"[{v}]")
-    return ok(True)
+    say(var s, "[{v}]")
+    return ok(true)
 
 # ---------------------------------------------------------------- requests
 
-def load_table(var s: Sim, lines: List[String]) -> Unit:
+fn load_table(var s: Sim, lines: List[String]) Unit:
     for ln in lines:
         let f = split_ws(ln)
 
@@ -1463,7 +1463,7 @@ def load_table(var s: Sim, lines: List[String]) -> Unit:
                     s.clock = m
 
 # Sets command-line variables from the arguments and returns the other arguments.
-def set_cmd(var s: Sim, args: List[String]) -> List[String]:
+fn set_cmd(var s: Sim, args: List[String]) List[String]:
     s.cmd = Map[String, String]()
 
     var targets = List[String]()
@@ -1479,20 +1479,20 @@ def set_cmd(var s: Sim, args: List[String]) -> List[String]:
 
     return targets
 
-def list_files(var s: Sim) -> Unit:
+fn list_files(var s: Sim) Unit:
     let names = s.files.keys().sorted()
     if names.length() == 0:
         say(var s, "(no files)")
 
     for n in names:
         let m = s.files.get(n).get(0)
-        say(var s, f"{n} {m}")
+        say(var s, "{n} {m}")
 
-def touch_request(var s: Sim, args: List[String]) -> Unit:
+fn touch_request(var s: Sim, args: List[String]) Unit:
     if args.length() == 1:
         s.clock += 1
         s.files[args[0].clone()] = s.clock
-    elif args.length() == 2:
+    else if args.length() == 2:
         if let m = args[1].parse_int():
             s.files[args[0].clone()] = m
             if m > s.clock:
@@ -1502,11 +1502,11 @@ def touch_request(var s: Sim, args: List[String]) -> Unit:
     else:
         say(var s, "bad request")
 
-def after_word(req: String) -> String:
+fn after_word(req: String) String:
     let t = req.trim()
     return join_range(t.chars(), 6, t.length()).trim()
 
-def handle_request(var s: Sim, raw: String) -> Unit:
+fn handle_request(var s: Sim, raw: String) Unit:
     let req = raw.trim_end()
     let words = split_ws(req)
     if words.length() == 0:
@@ -1524,24 +1524,24 @@ def handle_request(var s: Sim, raw: String) -> Unit:
 
         let goals = set_cmd(var s, args)
         report(var s, run_build(var s, goals))
-    elif cmd == "deps":
+    else if cmd == "deps":
         let targets = set_cmd(var s, args)
 
         if targets.length() != 1:
             say(var s, "usage: deps TARGET")
         else:
             report(var s, run_deps(var s, targets[0].clone()))
-    elif cmd == "targets":
+    else if cmd == "targets":
         let _ignored = set_cmd(var s, args)
         report(var s, run_targets(var s))
-    elif cmd == "expand":
+    else if cmd == "expand":
         s.cmd = Map[String, String]()
         report(var s, run_expand(var s, after_word(req)))
-    elif cmd == "files":
+    else if cmd == "files":
         list_files(var s)
-    elif cmd == "touch":
+    else if cmd == "touch":
         touch_request(var s, args)
-    elif cmd == "rm":
+    else if cmd == "rm":
         for w in args:
             s.files.remove(w)
     else:

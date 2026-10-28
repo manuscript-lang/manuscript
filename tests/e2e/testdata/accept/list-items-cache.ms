@@ -1,17 +1,17 @@
-from "@std/test.ms" import expect_contains, expect_equal, expect_fault
+import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
 
-def grow(var values: List[Int]) -> Unit:
+fn grow(var values: List[Int]) Unit:
     values.append(values.length())
 
 test "indexed loops over a list read and write through the shared storage":
-    var flags = [True, True, True, True, True, True]
+    var flags = [true, true, true, true, true, true]
     var i = 2
 
     while i < flags.length():
-        flags.set(i, False)
+        flags.set(i, false)
         i += 2
 
-    try expect_equal(flags, [True, True, False, True, False, True])
+    try expect_equal(flags, [true, true, false, true, false, true])
 
 test "negative indexes inside a cached loop count from the end":
     let values = [10, 20, 30]
@@ -83,7 +83,7 @@ test "an out of range read or write inside a cached loop faults":
     var values = [1, 2, 3]
 
     let read = try expect_fault(
-        lambda:
+        fn:
             var i = 0
             var _total = 0
 
@@ -95,7 +95,7 @@ test "an out of range read or write inside a cached loop faults":
     try expect_contains(read, "out of range")
 
     let write = try expect_fault(
-        lambda:
+        fn:
             var i = 0
 
             while i < 5:

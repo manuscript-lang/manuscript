@@ -5,5 +5,5 @@ type Counter:
     value: Int
 
 impl Counter:
-    def double() -> Int:
+    fn double() Int:
         return self.value * 2

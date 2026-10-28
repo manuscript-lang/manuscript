@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,interpolation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:272 TestFormatParagraphs
-def example(value: Int = choose(first: 1, second: 2)) -> Int:
-    let text = f"# if value: return {value}"
+fn example(value: Int = choose(first: 1, second: 2)) Int:
+    let text = "# if value: return {value}"
     let next = choose(
         first: value,
         # Explain this argument.

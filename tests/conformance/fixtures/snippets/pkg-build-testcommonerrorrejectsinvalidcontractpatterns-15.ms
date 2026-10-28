@@ -5,12 +5,12 @@ type Box[T]:
     item: T
 
 impl Error for Box[T]:
-    def message() -> String:
+    fn message() String:
         return "box"
 
-def wrong(cause: Error) -> String:
+fn wrong(cause: Error) String:
     match cause:
-        case Box(value):
+        Box(value):
             return value.message()
-        case _:
+        _:
             return cause.message()

@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/checker/checker_test.go:55 TestContextualCallbackPreservesSourceAST
 type Callback:
-    value: Callable[[Int], Int]
+    value: fn(Int) Int
 
-def example() -> Unit:
-    let _callback = Callback(lambda value: value + 1)
+fn example() Unit:
+    let _callback = Callback(fn value: value + 1)

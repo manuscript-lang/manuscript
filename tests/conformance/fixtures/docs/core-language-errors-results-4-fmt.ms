@@ -1,7 +1,7 @@
 # conform: tags=decimal,formatter,modules,optional,parser,stdlib-errors,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/core-language/errors/results.md:75
-from "@std/core.ms" import TextError
+import TextError from "@std/core.ms"
 
-def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:
+fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
     return outcome.to_optional()

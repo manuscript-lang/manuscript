@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:240 TestFormatParagraphs
 # File introduction.
-def example() -> Int:
+fn example() Int:
     let first = 1
 
     # A deliberate new step.

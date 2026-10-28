@@ -1,9 +1,9 @@
 # conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=parse
 # conform: origin=bench/language/list.ms
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let values = [1, 2, 3, 4, 5, 6, 7, 8]
     var sum = 0
     for i in 0..5000000:

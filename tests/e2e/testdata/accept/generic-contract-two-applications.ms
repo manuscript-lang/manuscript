@@ -1,20 +1,20 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 interface Visitor[R]:
-    def visit(n: Int) -> R
+    fn visit(n: Int) R
 
 type Doubler:
     k: Int
 
 impl Visitor[Int] for Doubler:
-    def visit(n: Int) -> Int:
+    fn visit(n: Int) Int:
         return n * self.k
 
 impl Visitor[String] for Doubler:
-    def visit(n: Int) -> String:
-        return f"<{n}>"
+    fn visit(n: Int) String:
+        return "<{n}>"
 
-def run[R](v: Visitor[R], n: Int) -> R:
+fn run[R](v: Visitor[R], n: Int) R:
     return v.visit(n)
 
 test "one receiver implements two applications of a generic contract":

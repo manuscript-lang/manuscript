@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "grouped imports":
     let values: List[Int] = [1, 2]

@@ -1,5 +1,5 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, fail
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false, fail} from "@std/test.ms"
 
 type Shape:
     case Circle(radius: Float)
@@ -8,11 +8,11 @@ type Point:
     x: Int
     y: Int
 
-def roll(i: Int) -> Result[Int, TextError]: ok(i)
+fn roll(i: Int) Result[Int, TextError]: ok(i)
 
-def count(values: List[String]) -> Int: values.length()
+fn count(values: List[String]) Int: values.length()
 
-def update[K: Hashable, V](var values: Map[K, V], key: K, value: V) -> Map[K, V]:
+fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
     values.add(key, value)
     return values.clone()
 
@@ -77,10 +77,10 @@ test "map add captures receivers and arguments in written order":
     var visits = 0
     original.add(
         match some(1):
-            case some(_):
+            some(_):
                 visits = 1
                 1
-            case none: 0
+            none: 0
         ,
         2
     )
@@ -90,26 +90,26 @@ test "map add captures receivers and arguments in written order":
     original.add(
         key,
         match some(1):
-            case some(_):
+            some(_):
                 key = 4
                 5
-            case none: 0
+            none: 0
     )
     try expect_false(original[3] != 5 or original.contains(4))
 
     var order = 0
     original.add(
         value: match some(1):
-            case some(_):
+            some(_):
                 order = 1
                 7
-            case none: 0
+            none: 0
         ,
         key: match some(1):
-            case some(_):
+            some(_):
                 try expect_equal(order, 1)
                 order = 2
                 6
-            case none: 0
+            none: 0
     )
     try expect_false(order != 2 or original[6] != 7)

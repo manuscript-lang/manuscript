@@ -1,4 +1,4 @@
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
 type Box:
     name: String
@@ -8,40 +8,40 @@ type Outer:
     inner: Box
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-    def pick(first: Bool) -> ref List[Int]:
+    fn pick(first: Bool) ref List[Int]:
         if first:
             return self.items
 
         return self.items
 
 impl Outer:
-    def inside() -> ref Box:
+    fn inside() ref Box:
         return self.inner
 
-def first_of[T](xs: List[T]) -> ref T:
+fn first_of[T](xs: List[T]) ref T:
     return xs[0]
 
-def forward(b: Box) -> ref List[Int]:
+fn forward(b: Box) ref List[Int]:
     return b.list()
 
-def grow(var b: Box) -> Unit:
+fn grow(var b: Box) Unit:
     var xs = b.list()
     xs.append(1)
     xs.append(2)
 
-def grow_deep(var o: Outer) -> Unit:
+fn grow_deep(var o: Outer) Unit:
     var xs = o.inside().list().clone()
     xs.append(7)
 
-def copy_it(var b: Box) -> List[Int]:
-    var xs = b.pick(True).clone()
+fn copy_it(var b: Box) List[Int]:
+    var xs = b.pick(true).clone()
     xs.append(100)
     return xs
 
-def early(var b: Box, stop: Bool) -> Int:
+fn early(var b: Box, stop: Bool) Int:
     var xs = b.list()
     xs.append(5)
     if stop:
@@ -50,7 +50,7 @@ def early(var b: Box, stop: Bool) -> Int:
     xs.append(6)
     return xs.length()
 
-export def main() -> Int:
+export fn main() Int:
     var b = Box(name: "a", items: [])
     grow(var b)
 
@@ -62,11 +62,11 @@ export def main() -> Int:
     grow_deep(var o)
 
     var e = Box(name: "e", items: [])
-    let r1 = early(var e, True)
-    let r2 = early(var e, False)
+    let r1 = early(var e, true)
+    let r2 = early(var e, false)
     let rows = [[1, 2], [3]]
     let row = first_of(rows)
     let _ = stdout().write(
-        f"{b.items} {seen} {n} {c.items} {copy} {o.inner.items} {e.items} {r1} {r2} {row}\n"
+        "{b.items} {seen} {n} {c.items} {copy} {o.inner.items} {e.items} {r1} {r2} {row}\n"
     )
     return 0

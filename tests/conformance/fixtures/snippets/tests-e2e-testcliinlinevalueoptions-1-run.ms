@@ -1,15 +1,15 @@
 # conform: tags=control-flow,interpolation,match,modules,mutation,stdlib-io,stdlib-process,strings,testing,tier-io,try-result
 # conform: phase=run
 # conform: origin=tests/e2e/cli_options_test.go:14 TestCLIInlineValueOptions
-from "@std/process.ms" import arguments
-from "@std/io.ms" import stdout
-from "@std/io.ms" import stderr
+import arguments from "@std/process.ms"
+import stdout from "@std/io.ms"
+import stderr from "@std/io.ms"
 
-def write_line(text: String) -> Result[Unit, Error]:
-    try stdout().write(data: f"{text}\n")
-    return ok(())
+fn write_line(text: String) Result[Unit, Error]:
+    try stdout().write(data: "{text}\n")
+    return ok(unit)
 
-def exercise() -> Result[Int, Error]:
+fn exercise() Result[Int, Error]:
     let args = arguments()
     var index = 0
 
@@ -19,11 +19,11 @@ def exercise() -> Result[Int, Error]:
 
     return ok(0)
 
-export def main() -> Int:
+export fn main() Int:
     match exercise():
-        case ok(status): return status
-        case error(cause):
-            let _written = stderr().write(f"{cause.message()}\n")
+        ok(status): return status
+        error(cause):
+            let _written = stderr().write("{cause.message()}\n")
             return 1
 
 test "selected=a=b":

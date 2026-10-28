@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,stdlib-shared,tier-core
 # conform: phase=check
-from "@std/shared.ms" import Shared, share
+import {Shared, share} from "@std/shared.ms"
 
-def bump(box: Shared[List[Int]]) -> Unit:
+fn bump(box: Shared[List[Int]]) Unit:
     var items = box.take()
     items.append(1)
     box.put(items)

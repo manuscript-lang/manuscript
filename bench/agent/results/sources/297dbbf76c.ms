@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Marks a two-space hard break inside paragraph text; always directly followed by "\n".
 let HARD = "\u{2}"
@@ -56,7 +56,7 @@ type Node:
     case Image(dest: String, title: Optional[String], children: List[Node])
     case Emph(level: Int, children: List[Node])
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get(List[String]())
     let parsed = parse_blocks(lines)
     var out = ""
@@ -67,59 +67,59 @@ export def main() -> Int:
 
 # ---------- helpers ----------
 
-def at(s: String, k: Int) -> String:
+fn at(s: String, k: Int) String:
     return s.get(k, "")
 
-def sub(s: String, a: Int, b: Int) -> String:
+fn sub(s: String, a: Int, b: Int) String:
     return s.slice_scalars(a, b).get("")
 
-def rest_from(s: String, k: Int) -> String:
+fn rest_from(s: String, k: Int) String:
     return sub(s, k, s.length())
 
-def esc(s: String) -> String:
+fn esc(s: String) String:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
         "\"", "&quot;"
     )
 
-def is_punct(c: String) -> Bool:
-    return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".contains(c)
+fn is_punct(c: String) Bool:
+    return c.length() == 1 and "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~".contains(c)
 
-def is_space_char(c: String) -> Bool:
+fn is_space_char(c: String) Bool:
     return c == " " or c == "\n" or c == HARD
 
-def is_blank(line: String) -> Bool:
+fn is_blank(line: String) Bool:
     return line.trim().is_empty()
 
-def indent_of(line: String) -> Int:
+fn indent_of(line: String) Int:
     var n = 0
     while n < line.length() and at(line, n) == " ":
         n += 1
     return n
 
-def strip_up_to(line: String, n: Int) -> String:
+fn strip_up_to(line: String, n: Int) String:
     var k = 0
     while k < n and k < line.length() and at(line, k) == " ":
         k += 1
     return rest_from(line, k)
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return c.length() == 1 and "0123456789".contains(c)
 
-def is_hr(line: String) -> Bool:
+fn is_hr(line: String) Bool:
     if indent_of(line) > 3:
-        return False
+        return false
 
     let s = line.replace(" ", "")
     if s.length() < 3:
-        return False
+        return false
 
     let c = at(s, 0)
     if c != "-" and c != "*" and c != "_":
-        return False
+        return false
 
     return s.replace(c, "").is_empty()
 
-def code_html(lines: List[String], lang: String) -> String:
+fn code_html(lines: List[String], lang: String) String:
     var html = "<pre><code>"
     if lang != "":
         html = "<pre><code class=\"language-" + esc(lang) + "\">"
@@ -129,20 +129,20 @@ def code_html(lines: List[String], lang: String) -> String:
 
 # ---------- block structure ----------
 
-def parse_blocks(lines: List[String]) -> Parsed:
+fn parse_blocks(lines: List[String]) Parsed:
     var blocks = List[Block]()
-    var gap = False
-    var blank = False
+    var gap = false
+    var blank = false
     var i = 0
 
     while i < lines.length():
         if is_blank(lines[i]):
-            blank = True
+            blank = true
             i += 1
         else:
             if blank and blocks.length() > 0:
-                gap = True
-            blank = False
+                gap = true
+            blank = false
 
             let t = take_block(lines, i)
             blocks.append(t.block.clone())
@@ -150,14 +150,14 @@ def parse_blocks(lines: List[String]) -> Parsed:
 
     return Parsed(blocks: blocks, gap: gap)
 
-def take_block(lines: List[String], i: Int) -> Taken:
+fn take_block(lines: List[String], i: Int) Taken:
     if let t = try_fence(lines, i):
         return t
     if let t = try_atx(lines, i):
         return t
     if is_hr(lines[i]):
         return Taken(
-            block: Block(html: "<hr />\n", inner: "", para: False), next: i + 1
+            block: Block(html: "<hr />\n", inner: "", para: false), next: i + 1
         )
     if let t = try_quote(lines, i):
         return t
@@ -170,7 +170,7 @@ def take_block(lines: List[String], i: Int) -> Taken:
 
     return try_para(lines, i)
 
-def fence_of(line: String) -> Optional[Fence]:
+fn fence_of(line: String) Optional[Fence]:
     let ind = indent_of(line)
     if ind > 3:
         return none
@@ -192,46 +192,46 @@ def fence_of(line: String) -> Optional[Fence]:
 
     return Fence(ch: c, count: n, indent: ind, info: info)
 
-def is_fence_close(line: String, f: Fence) -> Bool:
+fn is_fence_close(line: String, f: Fence) Bool:
     let ind = indent_of(line)
     if ind > 3:
-        return False
+        return false
 
     let rest = rest_from(line, ind)
     var n = 0
     while n < rest.length() and at(rest, n) == f.ch:
         n += 1
     if n < f.count:
-        return False
+        return false
 
     return rest_from(rest, n).trim().is_empty()
 
-def starts_fence(line: String) -> Bool:
+fn starts_fence(line: String) Bool:
     if let _f = fence_of(line):
-        return True
+        return true
 
-    return False
+    return false
 
-def try_fence(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_fence(lines: List[String], i: Int) Optional[Taken]:
     if let f = fence_of(lines[i]):
         var body = List[String]()
         var j = i + 1
-        var closed = False
+        var closed = false
 
         while j < lines.length() and not closed:
             if is_fence_close(lines[j], f):
-                closed = True
+                closed = true
             else:
                 body.append(strip_up_to(lines[j], f.indent))
                 j += 1
 
-        let next = j + 1 if closed else j
+        let next = if closed: j + 1 else: j
 
-        let lang = "" if f.info.is_empty() else f.info.split(" ").get(0, "")
+        let lang = if f.info.is_empty(): "" else: f.info.split(" ").get(0, "")
 
         return Taken(
             block: Block(
-                html: code_html(body, lang), inner: "", para: False
+                html: code_html(body, lang), inner: "", para: false
             ),
             next: next
         )
@@ -239,7 +239,7 @@ def try_fence(lines: List[String], i: Int) -> Optional[Taken]:
     return none
 
 # Returns the ATX heading level, or 0 when the line is not an ATX heading.
-def atx_level(line: String) -> Int:
+fn atx_level(line: String) Int:
     let ind = indent_of(line)
     if ind > 3:
         return 0
@@ -255,7 +255,7 @@ def atx_level(line: String) -> Int:
 
     return n
 
-def try_atx(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_atx(lines: List[String], i: Int) Optional[Taken]:
     let level = atx_level(lines[i])
     if level == 0:
         return none
@@ -267,14 +267,14 @@ def try_atx(lines: List[String], i: Int) -> Optional[Taken]:
     if k < content.length() and (k == 0 or at(content, k - 1) == " "):
         content = sub(content, 0, k).trim()
 
-    let html = f"<h{level}>{inline_html(content)}</h{level}>\n"
-    return Taken(block: Block(html: html, inner: "", para: False), next: i + 1)
+    let html = "<h{level}>{inline_html(content)}</h{level}>\n"
+    return Taken(block: Block(html: html, inner: "", para: false), next: i + 1)
 
-def starts_quote(line: String) -> Bool:
+fn starts_quote(line: String) Bool:
     let ind = indent_of(line)
     return ind <= 3 and at(line, ind) == ">"
 
-def try_quote(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_quote(lines: List[String], i: Int) Optional[Taken]:
     if not starts_quote(lines[i]):
         return none
 
@@ -294,10 +294,10 @@ def try_quote(lines: List[String], i: Int) -> Optional[Taken]:
     for b in parsed.blocks:
         html += b.html
     html += "</blockquote>\n"
-    return Taken(block: Block(html: html, inner: "", para: False), next: j)
+    return Taken(block: Block(html: html, inner: "", para: false), next: j)
 
 # Parses a list marker; none when the line is not a list marker line.
-def marker_of(line: String) -> Optional[Marker]:
+fn marker_of(line: String) Optional[Marker]:
     let ind = indent_of(line)
     if ind > 3 or is_hr(line):
         return none
@@ -305,7 +305,7 @@ def marker_of(line: String) -> Optional[Marker]:
     let rest = rest_from(line, ind)
     let c = at(rest, 0)
     var width = 1
-    var ordered = False
+    var ordered = false
     var num = 0
     var delim = c.clone()
 
@@ -320,7 +320,7 @@ def marker_of(line: String) -> Optional[Marker]:
         if delim != "." and delim != ")":
             return none
 
-        ordered = True
+        ordered = true
         num = sub(rest, 0, d).parse_int().get(0)
         width = d + 1
 
@@ -331,26 +331,26 @@ def marker_of(line: String) -> Optional[Marker]:
     let tail = rest_from(line, end)
     if tail.trim().is_empty():
         return Marker(
-            ordered: ordered, delim: delim, num: num, content: end + 1, empty: True
+            ordered: ordered, delim: delim, num: num, content: end + 1, empty: true
         )
 
     var sp = 0
     while sp < tail.length() and at(tail, sp) == " ":
         sp += 1
 
-    let content = end + 1 if sp >= 5 else end + sp
+    let content = if sp >= 5: end + 1 else: end + sp
 
     return Marker(
-        ordered: ordered, delim: delim, num: num, content: content, empty: False
+        ordered: ordered, delim: delim, num: num, content: content, empty: false
     )
 
-def same_list(line: String, mk: Marker) -> Bool:
+fn same_list(line: String, mk: Marker) Bool:
     if let other = marker_of(line):
         return other.ordered == mk.ordered and other.delim == mk.delim
 
-    return False
+    return false
 
-def parse_item(lines: List[String], i: Int, mk: Marker) -> Item:
+fn parse_item(lines: List[String], i: Int, mk: Marker) Item:
     var body = List[String]()
 
     if mk.empty:
@@ -367,7 +367,7 @@ def parse_item(lines: List[String], i: Int, mk: Marker) -> Item:
 
         if is_blank(l):
             blanks += 1
-        elif indent_of(l) >= mk.content:
+        else if indent_of(l) >= mk.content:
             for k in 0..blanks:
                 body.append("")
             blanks = 0
@@ -380,51 +380,51 @@ def parse_item(lines: List[String], i: Int, mk: Marker) -> Item:
 
     return Item(parsed: parse_blocks(body), end: end)
 
-def try_list(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_list(lines: List[String], i: Int) Optional[Taken]:
     if let first = marker_of(lines[i]):
         var items = List[Parsed]()
-        var loose = False
+        var loose = false
         var mk = first.clone()
         var at_item = i
         var last_end = i
-        var stop = False
+        var stop = false
 
         while not stop:
             let item = parse_item(lines, at_item, mk)
             items.append(item.parsed.clone())
             if item.parsed.gap:
-                loose = True
+                loose = true
             last_end = item.end
 
             var k = last_end
-            var blank_seen = False
+            var blank_seen = false
 
             while k < lines.length() and is_blank(lines[k]):
                 k += 1
-                blank_seen = True
+                blank_seen = true
 
-            stop = True
+            stop = true
 
             if k < lines.length():
                 if let nxt = marker_of(lines[k]):
                     if same_list(lines[k], mk):
-                        stop = False
+                        stop = false
                         at_item = k
                         mk = nxt
                         if blank_seen:
-                            loose = True
+                            loose = true
 
         let html = render_list(items, loose, first.ordered, first.num)
-        return Taken(block: Block(html: html, inner: "", para: False), next: last_end)
+        return Taken(block: Block(html: html, inner: "", para: false), next: last_end)
 
     return none
 
-def render_list(items: List[Parsed], loose: Bool, ordered: Bool, start: Int) -> String:
-    let tag = "ol" if ordered else "ul"
+fn render_list(items: List[Parsed], loose: Bool, ordered: Bool, start: Int) String:
+    let tag = if ordered: "ol" else: "ul"
 
-    var html = f"<{tag}>\n"
+    var html = "<{tag}>\n"
     if ordered and start != 1:
-        html = f"<ol start=\"{start}\">\n"
+        html = "<ol start=\"{start}\">\n"
 
     for item in items:
         var body = ""
@@ -439,9 +439,9 @@ def render_list(items: List[Parsed], loose: Bool, ordered: Bool, start: Int) -> 
 
         html += "<li>" + body + "</li>\n"
 
-    return html + f"</{tag}>\n"
+    return html + "</{tag}>\n"
 
-def try_indented(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_indented(lines: List[String], i: Int) Optional[Taken]:
     if indent_of(lines[i]) < 4:
         return none
 
@@ -457,10 +457,10 @@ def try_indented(lines: List[String], i: Int) -> Optional[Taken]:
     for k in i..end + 1:
         body.append(strip_up_to(lines[k], 4))
     return Taken(
-        block: Block(html: code_html(body, ""), inner: "", para: False), next: end + 1
+        block: Block(html: code_html(body, ""), inner: "", para: false), next: end + 1
     )
 
-def split_cells(line: String) -> List[String]:
+fn split_cells(line: String) List[String]:
     var s = line.trim().clone()
     if at(s, 0) == "|":
         s = rest_from(s, 1)
@@ -485,18 +485,18 @@ def split_cells(line: String) -> List[String]:
     cells.append(cur.trim().clone())
     return cells
 
-def is_delim_cell(c: String) -> Bool:
+fn is_delim_cell(c: String) Bool:
     var s = c
     if at(s, 0) == ":":
         s = rest_from(s, 1)
     if s.ends_with(":"):
         s = sub(s, 0, s.length() - 1)
     if s.is_empty():
-        return False
+        return false
 
     return s.replace("-", "").is_empty()
 
-def align_of(c: String) -> String:
+fn align_of(c: String) String:
     let left = at(c, 0) == ":"
     let right = c.ends_with(":")
     if left and right:
@@ -508,13 +508,13 @@ def align_of(c: String) -> String:
 
     return ""
 
-def align_attr(align: String) -> String:
+fn align_attr(align: String) String:
     if align.is_empty():
         return ""
 
     return " align=\"" + align + "\""
 
-def try_table(lines: List[String], i: Int) -> Optional[Taken]:
+fn try_table(lines: List[String], i: Int) Optional[Taken]:
     if i + 1 >= lines.length():
         return none
 
@@ -569,9 +569,9 @@ def try_table(lines: List[String], i: Int) -> Optional[Taken]:
     if rows != "":
         html += "<tbody>\n" + rows + "</tbody>\n"
     html += "</table>\n"
-    return Taken(block: Block(html: html, inner: "", para: False), next: j)
+    return Taken(block: Block(html: html, inner: "", para: false), next: j)
 
-def interrupts_para(line: String) -> Bool:
+fn interrupts_para(line: String) Bool:
     if (
         is_blank(line)
         or starts_fence(line)
@@ -579,13 +579,13 @@ def interrupts_para(line: String) -> Bool:
         or is_hr(line)
         or starts_quote(line)
     ):
-        return True
+        return true
     if let mk = marker_of(line):
         return not mk.empty and (not mk.ordered or mk.num == 1)
 
-    return False
+    return false
 
-def try_para(lines: List[String], i: Int) -> Taken:
+fn try_para(lines: List[String], i: Int) Taken:
     var end = i + 1
     while end < lines.length() and not interrupts_para(lines[end]):
         end += 1
@@ -598,65 +598,65 @@ def try_para(lines: List[String], i: Int) -> Taken:
 
         if k == end - 1:
             text += trimmed
-        elif line.length() - trimmed.length() >= 2:
+        else if line.length() - trimmed.length() >= 2:
             text += trimmed + HARD + "\n"
         else:
             text += trimmed + "\n"
 
     let inner = inline_html(text)
     return Taken(
-        block: Block(html: "<p>" + inner + "</p>\n", inner: inner, para: True),
+        block: Block(html: "<p>" + inner + "</p>\n", inner: inner, para: true),
         next: end
     )
 
 # ---------- inline structure ----------
 
-def inline_html(text: String) -> String:
+fn inline_html(text: String) String:
     return render(resolve(scan(text)))
 
-def opener_label(node: Node) -> String:
+fn opener_label(node: Node) String:
     match node:
-        case Opener(image, _active):
+        Opener(image, _active):
             if image:
                 return "!["
 
             return "["
-        case _:
+        _:
             return ""
 
-def opener_active(node: Node) -> Bool:
+fn opener_active(node: Node) Bool:
     match node:
-        case Opener(_image, active):
+        Opener(_image, active):
             return active
-        case _:
-            return True
+        _:
+            return true
 
-def run_of(node: Node) -> Optional[Run]:
+fn run_of(node: Node) Optional[Run]:
     match node:
-        case Delim(run):
+        Delim(run):
             return run
-        case _:
+        _:
             return none
 
-def last_opener(nodes: List[Node]) -> Int:
+fn last_opener(nodes: List[Node]) Int:
     var k = nodes.length() - 1
 
     while k >= 0:
         match nodes[k]:
-            case Opener(_image, _active):
+            Opener(_image, _active):
                 return k
-            case _:
+            _:
                 k -= 1
 
     return -1
 
-def code_content(cs: List[String], a: Int, b: Int) -> String:
+fn code_content(cs: List[String], a: Int, b: Int) String:
     var s = ""
 
     for k in a..b:
         if cs[k] == "\n":
             s += " "
-        elif cs[k] != HARD:
+        else if cs[k] != HARD:
             s += cs[k]
 
     if (
@@ -668,7 +668,7 @@ def code_content(cs: List[String], a: Int, b: Int) -> String:
         s = sub(s, 1, s.length() - 1)
     return s
 
-def parse_tail(cs: List[String], start: Int) -> Optional[Tail]:
+fn parse_tail(cs: List[String], start: Int) Optional[Tail]:
     let n = cs.length()
     if start >= n or cs[start] != "(":
         return none
@@ -685,7 +685,7 @@ def parse_tail(cs: List[String], start: Int) -> Optional[Tail]:
             if cs[k] == "\\" and k + 1 < n and is_punct(cs[k + 1]):
                 dest += cs[k + 1]
                 k += 2
-            elif cs[k] == "\n" or cs[k] == "<":
+            else if cs[k] == "\n" or cs[k] == "<":
                 return none
             else:
                 dest += cs[k]
@@ -704,9 +704,9 @@ def parse_tail(cs: List[String], start: Int) -> Optional[Tail]:
             if c == "\\" and k + 1 < n and is_punct(cs[k + 1]):
                 dest += cs[k + 1]
                 k += 2
-            elif is_space_char(c):
+            else if is_space_char(c):
                 break
-            elif c == ")" and depth == 0:
+            else if c == ")" and depth == 0:
                 break
             else:
                 if c == "(":
@@ -719,11 +719,11 @@ def parse_tail(cs: List[String], start: Int) -> Optional[Tail]:
         if depth != 0 or k >= n:
             return none
 
-    var saw_space = False
+    var saw_space = false
 
     while k < n and is_space_char(cs[k]):
         k += 1
-        saw_space = True
+        saw_space = true
 
     var title: Optional[String] = none
 
@@ -754,29 +754,29 @@ def parse_tail(cs: List[String], start: Int) -> Optional[Tail]:
     return none
 
 # Turns an unresolved delimiter or bracket marker into literal text.
-def literal(node: Node) -> Node:
+fn literal(node: Node) Node:
     match node:
-        case Delim(run):
+        Delim(run):
             var s = ""
             for k in 0..run.count:
                 s += run.ch
             return Node.Text(s)
-        case Opener(_image, _active):
+        Opener(_image, _active):
             return Node.Text(opener_label(node))
-        case _:
+        _:
             return node
 
-def deactivate(node: Node) -> Node:
+fn deactivate(node: Node) Node:
     match node:
-        case Opener(image, _active):
+        Opener(image, _active):
             if image:
                 return node
 
-            return Node.Opener(image: False, active: False)
-        case _:
+            return Node.Opener(image: false, active: false)
+        _:
             return node
 
-def scan(text: String) -> List[Node]:
+fn scan(text: String) List[Node]:
     let cs = text.chars()
     let n = cs.length()
     var nodes = List[Node]()
@@ -788,13 +788,13 @@ def scan(text: String) -> List[Node]:
         if c == "\\" and i + 1 < n and cs[i + 1] == "\n":
             nodes.append(Node.Break)
             i += 2
-        elif c == "\\" and i + 1 < n and is_punct(cs[i + 1]):
+        else if c == "\\" and i + 1 < n and is_punct(cs[i + 1]):
             nodes.append(Node.Text(cs[i + 1].clone()))
             i += 2
-        elif c == HARD and i + 1 < n and cs[i + 1] == "\n":
+        else if c == HARD and i + 1 < n and cs[i + 1] == "\n":
             nodes.append(Node.Break)
             i += 2
-        elif c == "`":
+        else if c == "`":
             var m = 0
             while i + m < n and cs[i + m] == "`":
                 m += 1
@@ -821,14 +821,14 @@ def scan(text: String) -> List[Node]:
                 for k in i..stop:
                     nodes.append(Node.Text(cs[k].clone()))
                 i = stop
-        elif c == "*" or c == "_":
+        else if c == "*" or c == "_":
             var r = 0
             while i + r < n and cs[i + r] == c:
                 r += 1
 
-            let prev = " " if i == 0 else cs[i - 1].clone()
+            let prev = if i == 0: " " else: cs[i - 1].clone()
 
-            let next = " " if i + r >= n else cs[i + r].clone()
+            let next = if i + r >= n: " " else: cs[i + r].clone()
 
             let lf = (
                 next != " "
@@ -870,19 +870,19 @@ def scan(text: String) -> List[Node]:
                 )
             )
             i += r
-        elif c == "!" and i + 1 < n and cs[i + 1] == "[":
-            nodes.append(Node.Opener(image: True, active: True))
+        else if c == "!" and i + 1 < n and cs[i + 1] == "[":
+            nodes.append(Node.Opener(image: true, active: true))
             i += 2
-        elif c == "[":
-            nodes.append(Node.Opener(image: False, active: True))
+        else if c == "[":
+            nodes.append(Node.Opener(image: false, active: true))
             i += 1
-        elif c == "]":
+        else if c == "]":
             let m = last_opener(nodes)
 
             if m < 0:
                 nodes.append(Node.Text("]"))
                 i += 1
-            elif not opener_active(nodes[m]):
+            else if not opener_active(nodes[m]):
                 nodes[m] = Node.Text(opener_label(nodes[m]))
                 nodes.append(Node.Text("]"))
                 i += 1
@@ -902,7 +902,7 @@ def scan(text: String) -> List[Node]:
 
     return nodes
 
-def close_bracket(nodes: List[Node], m: Int, t: Tail, is_image: Bool) -> List[Node]:
+fn close_bracket(nodes: List[Node], m: Int, t: Tail, is_image: Bool) List[Node]:
     var out = List[Node]()
 
     for k in 0..m:
@@ -933,7 +933,7 @@ def close_bracket(nodes: List[Node], m: Int, t: Tail, is_image: Bool) -> List[No
     return out
 
 # Returns the index of the opener matching the closer at index i, or -1.
-def find_opener(nodes: List[Node], i: Int, closer: Run) -> Int:
+fn find_opener(nodes: List[Node], i: Int, closer: Run) Int:
     var j = i - 1
 
     while j >= 0:
@@ -953,7 +953,7 @@ def find_opener(nodes: List[Node], i: Int, closer: Run) -> Int:
 
     return -1
 
-def resolve(input: List[Node]) -> List[Node]:
+fn resolve(input: List[Node]) List[Node]:
     var nodes = List[Node]()
     for node in input:
         nodes.append(node)
@@ -961,7 +961,7 @@ def resolve(input: List[Node]) -> List[Node]:
     var i = 0
 
     while i < nodes.length():
-        var matched = False
+        var matched = false
 
         if let closer = run_of(nodes[i].clone()):
             if closer.can_close and closer.count > 0:
@@ -969,9 +969,9 @@ def resolve(input: List[Node]) -> List[Node]:
 
                 if j >= 0:
                     if let opener = run_of(nodes[j].clone()):
-                        matched = True
+                        matched = true
 
-                        let use = 2 if opener.count >= 2 and closer.count >= 2 else 1
+                        let use = if opener.count >= 2 and closer.count >= 2: 2 else: 1
 
                         let orem = opener.count - use
                         let crem = closer.count - use
@@ -1006,7 +1006,7 @@ def resolve(input: List[Node]) -> List[Node]:
                         for k in i + 1..nodes.length():
                             out.append(nodes[k].clone())
                         nodes = out
-                        i = j + (1 if orem > 0 else 0) + 1
+                        i = j + (if orem > 0: 1 else: 0) + 1
 
         if not matched:
             i += 1
@@ -1016,50 +1016,50 @@ def resolve(input: List[Node]) -> List[Node]:
         result.append(literal(node))
     return result
 
-def title_attr(title: Optional[String]) -> String:
+fn title_attr(title: Optional[String]) String:
     if let t = title:
         return " title=\"" + esc(t) + "\""
 
     return ""
 
-def plain(nodes: List[Node]) -> String:
+fn plain(nodes: List[Node]) String:
     var s = ""
 
     for node in nodes:
         match node:
-            case Text(value):
+            Text(value):
                 s += value.replace("\n", " ")
-            case Code(content):
+            Code(content):
                 s += content
-            case Break:
+            Break:
                 s += " "
-            case Emph(_level, children):
+            Emph(_level, children):
                 s += plain(children)
-            case Link(_dest, _title, children):
+            Link(_dest, _title, children):
                 s += plain(children)
-            case Image(_dest, _title, children):
+            Image(_dest, _title, children):
                 s += plain(children)
-            case _:
+            _:
                 s += ""
 
     return s
 
-def render(nodes: List[Node]) -> String:
+fn render(nodes: List[Node]) String:
     var out = ""
 
     for node in nodes:
         match node:
-            case Text(value):
+            Text(value):
                 out += esc(value)
-            case Code(content):
+            Code(content):
                 out += "<code>" + esc(content) + "</code>"
-            case Break:
+            Break:
                 out += "<br />\n"
-            case Emph(level, children):
-                let tag = "strong" if level == 2 else "em"
+            Emph(level, children):
+                let tag = if level == 2: "strong" else: "em"
 
                 out += "<" + tag + ">" + render(children) + "</" + tag + ">"
-            case Link(dest, title, children):
+            Link(dest, title, children):
                 out += (
                     "<a href=\""
                     + esc(dest)
@@ -1069,7 +1069,7 @@ def render(nodes: List[Node]) -> String:
                     + render(children)
                     + "</a>"
                 )
-            case Image(dest, title, children):
+            Image(dest, title, children):
                 out += (
                     "<img src=\""
                     + esc(dest)
@@ -1079,7 +1079,7 @@ def render(nodes: List[Node]) -> String:
                     + title_attr(title)
                     + " />"
                 )
-            case _:
+            _:
                 out += ""
 
     return out

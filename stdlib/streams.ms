@@ -1,6 +1,6 @@
-from "@std/bytes.ms" import Bytes
-from "@std/crypto.ms" import HashAlgorithm
-from "@std/io.ms" import ReadStream, WriteStream, IoError, read_line
+import Bytes from "@std/bytes.ms"
+import HashAlgorithm from "@std/crypto.ms"
+import {ReadStream, WriteStream, IoError, read_line} from "@std/io.ms"
 
 # Transform and composition helpers for byte streams. Each helper takes its input first, so
 # flows read left to right: `source | map(upper) | take(1024) | copy(sink)`.
@@ -10,11 +10,11 @@ type BytesSource:
     chunk: Int
 
 impl ReadStream for BytesSource:
-    var def close() -> Unit:
+    var fn close() Unit:
         self.offset = self.data.length()
-        return ()
+        return unit
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         let remaining = self.data.length() - self.offset
         if remaining <= 0: return ok(none)
 
@@ -30,19 +30,19 @@ impl ReadStream for BytesSource:
 
 # Streams the bytes in `data` in chunks of at most `chunk_bytes` (default 64 KiB).
 # A non-positive chunk size makes reads fail with InvalidInput.
-export def from_bytes(data: Bytes, chunk_bytes: Int = 65536) -> ReadStream:
+export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream:
     return BytesSource(data, 0, chunk_bytes)
 
 type MappedStream:
     input: ReadStream
-    transform: Callable[[Bytes], Bytes]
+    transform: fn(Bytes) Bytes
 
 impl ReadStream for MappedStream:
-    var def close() -> Unit:
+    var fn close() Unit:
         return self.input.close()
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
-        while True:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+        while true:
             let chunk = try self.input.read(max_bytes)
 
             if let bytes = chunk:
@@ -56,7 +56,7 @@ impl ReadStream for MappedStream:
 # Applies `transform` to each chunk read from `input`. Chunks that transform to empty bytes are skipped.
 # The result is only as stateless as `transform`: it sees chunk boundaries as `input` produces them.
 # Closing the result closes `input`.
-export def map(input: ReadStream, transform: Callable[[Bytes], Bytes]) -> ReadStream:
+export fn map(input: ReadStream, transform: fn(Bytes) Bytes) ReadStream:
     return MappedStream(input, transform)
 
 type LimitedStream:
@@ -64,10 +64,10 @@ type LimitedStream:
     remaining: Int
 
 impl ReadStream for LimitedStream:
-    var def close() -> Unit:
+    var fn close() Unit:
         return self.input.close()
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.remaining < 0: return error(IoError.InvalidInput)
         if self.remaining == 0: return ok(none)
 
@@ -86,7 +86,7 @@ impl ReadStream for LimitedStream:
 
 # Ends the stream after `max_bytes` bytes without reading further from `input`.
 # A negative limit makes reads fail with InvalidInput. Closing the result closes `input`.
-export def take(input: ReadStream, max_bytes: Int) -> ReadStream:
+export fn take(input: ReadStream, max_bytes: Int) ReadStream:
     return LimitedStream(input, max_bytes)
 
 type ConcatStream:
@@ -94,7 +94,7 @@ type ConcatStream:
     index: Int
 
 impl ReadStream for ConcatStream:
-    var def close() -> Unit:
+    var fn close() Unit:
         let first = self.index
         var i = first
 
@@ -103,9 +103,9 @@ impl ReadStream for ConcatStream:
             i += 1
 
         self.index = self.inputs.length()
-        return ()
+        return unit
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         while self.index < self.inputs.length():
             # Read the stored stream in place: a stream is a value, so a local copy would lose its position.
             let chunk = try self.inputs[self.index].read(max_bytes)
@@ -117,7 +117,7 @@ impl ReadStream for ConcatStream:
         return ok(none)
 
 # Reads each input to its end in order. Each input is closed when it ends or when the result is closed.
-export def concat(inputs: List[ReadStream]) -> ReadStream:
+export fn concat(inputs: List[ReadStream]) ReadStream:
     return ConcatStream(inputs, 0)
 
 type TeeStream:
@@ -125,10 +125,10 @@ type TeeStream:
     sink: WriteStream
 
 impl ReadStream for TeeStream:
-    var def close() -> Unit:
+    var fn close() Unit:
         return self.input.close()
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         let chunk = try self.input.read(max_bytes)
 
         if let bytes = chunk:
@@ -139,44 +139,39 @@ impl ReadStream for TeeStream:
 
 # Copies every chunk read from `input` to `sink` as it passes through. A sink failure fails the read.
 # Closing the result closes `input` only; the caller owns `sink`.
-export def tee(input: ReadStream, sink: WriteStream) -> ReadStream:
+export fn tee(input: ReadStream, sink: WriteStream) ReadStream:
     return TeeStream(input, sink)
 
 type MappedWriter:
     output: WriteStream
-    transform: Callable[[Bytes], Bytes]
+    transform: fn(Bytes) Bytes
 
 impl WriteStream for MappedWriter:
-    var def close() -> Unit:
+    var fn close() Unit:
         return self.output.close()
 
-    var def flush() -> Result[Unit, IoError]:
+    var fn flush() Result[Unit, IoError]:
         return self.output.flush()
 
-    var def write(data: String) -> Result[Unit, IoError]:
+    var fn write(data: String) Result[Unit, IoError]:
         return self.write_bytes(data.to_bytes())
 
-    var def write_bytes(data: Bytes) -> Result[Unit, IoError]:
+    var fn write_bytes(data: Bytes) Result[Unit, IoError]:
         let mapped = self.transform(data)
-        if mapped.length() == 0: return ok(())
+        if mapped.length() == 0: return ok(unit)
 
         return self.output.write_bytes(mapped)
 
 # Applies `transform` to each written chunk before writing to `output`. Empty results write nothing.
 # Flush and close pass through to `output`.
-export def map_writer(
-    output: WriteStream,
-    transform: Callable[[Bytes], Bytes]
-) -> WriteStream:
+export fn map_writer(output: WriteStream, transform: fn(Bytes) Bytes) WriteStream:
     return MappedWriter(output, transform)
 
 # Reads `input` to its end and returns its digest, hashing chunk by chunk so memory stays bounded.
-export def digest(var input: ReadStream, algorithm: HashAlgorithm) -> Result[
-    Bytes, IoError
-]:
+export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, IoError]:
     let hasher = algorithm.hasher()
 
-    while True:
+    while true:
         let chunk = try input.read()
 
         if let bytes = chunk:
@@ -187,13 +182,13 @@ export def digest(var input: ReadStream, algorithm: HashAlgorithm) -> Result[
     return ok(hasher.finish())
 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
-export def read_lines(
+export fn read_lines(
     input: ReadStream,
     max_bytes: Optional[Int] = none
-) -> Result[List[String], IoError]:
+) Result[List[String], IoError]:
     var lines = List[String]()
 
-    while True:
+    while true:
         let line = try read_line(input, max_bytes)
         if line.is_none(): break
 

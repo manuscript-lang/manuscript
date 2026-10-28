@@ -1,4 +1,4 @@
-def exercise() -> Int:
+fn exercise() Int:
     let _positional = List[Int](1, reserve: 2)
     let _named_first = List[Int](reserve: 2, 1)
     let _unknown = List[Int](extra: 1, reserve: 2)

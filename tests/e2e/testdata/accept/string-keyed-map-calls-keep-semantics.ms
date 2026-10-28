@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def lookup(m: Map[String, Int], key: String) -> Int:
+fn lookup(m: Map[String, Int], key: String) Int:
     match m.get(key: key):
-        case some(v):
+        some(v):
             return v
-        case none:
+        none:
             return -1
 
 test "string map":
@@ -22,7 +22,7 @@ test "string map":
     var seen = 0
 
     for entry in m.clone():
-        m.add(key: f"x{seen}", value: seen)
+        m.add(key: "x{seen}", value: seen)
         seen = seen + 1
 
     try expect_true((seen == 3 and m.length() == 6))

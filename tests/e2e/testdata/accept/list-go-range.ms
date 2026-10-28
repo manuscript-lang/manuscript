@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_false
+import expect_false from "@std/test.ms"
 
-def replace[T](var values: List[T], value: T) -> Unit:
+fn replace[T](var values: List[T], value: T) Unit:
     values.set(1, value)
 
 test "range iterates a snapshot while the live list changes":
@@ -48,7 +48,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
     var seen: List[Int] = []
 
     each(
-        lambda value:
+        fn value:
             seen.append(value)
             values.fill(8, 0, 3)
     )
@@ -60,7 +60,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
     var mapped = [1, 2, 3]
 
     let output = mapped.clone().map(
-        lambda value:
+        fn value:
             mapped.fill(9, 0, 3)
             return value + 1
     )
@@ -159,7 +159,7 @@ test "clone slice and nested values keep their own contracts":
 
     (
         values.clone().for_each(
-            lambda value:
+            fn value:
                 seen.append(value.value)
                 values.fill(Child(9), 0, 2)
         )
@@ -178,7 +178,7 @@ test "clone slice and nested values keep their own contracts":
     var children: List[Node] = [Node([])]
     var count = 0
     children.clone().for_each(
-        lambda value:
+        fn value:
             children.append(Node([value.clone()]))
     )
     for ignored in children.clone():
@@ -187,16 +187,16 @@ test "clone slice and nested values keep their own contracts":
 
 test "function values can replace later backing elements":
     var seen: List[Int] = []
-    let original = lambda () -> Int: 7
-    let twin = lambda () -> Int: 7
+    let original = fn() Int: 7
+    let twin = fn() Int: 7
     var functions = [original, twin]
     let clone = functions.clone()
 
     (
         functions.clone().for_each(
-            lambda value:
+            fn value:
                 seen.append(value())
-                functions.fill(lambda () -> Int: 9, 0, 2)
+                functions.fill(fn() Int: 9, 0, 2)
         )
     )
 

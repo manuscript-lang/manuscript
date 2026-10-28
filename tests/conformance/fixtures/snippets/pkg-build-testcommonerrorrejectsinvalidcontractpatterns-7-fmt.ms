@@ -2,14 +2,14 @@
 # conform: phase=parse
 # conform: origin=pkg/build/library_test.go:91 TestCommonErrorRejectsInvalidContractPatterns
 interface Diagnostic:
-    def message() -> String
+    fn message() String
 
 type LocalError:
     detail: String
 
 impl Diagnostic for LocalError:
-    def message() -> String:
+    fn message() String:
         return self.detail
 
-def wrong(value: LocalError) -> Diagnostic:
+fn wrong(value: LocalError) Diagnostic:
     return value

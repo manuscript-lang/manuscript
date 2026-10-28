@@ -1,21 +1,21 @@
-from "@std/core.ms" import Closeable, TextError
+import {Closeable, TextError} from "@std/core.ms"
 
 type Journal:
     lines: Int
 
 impl Closeable for Journal:
-    var def close() -> Unit:
+    var fn close() Unit:
         let _ = self.lines
 
 impl Journal:
-    var def flush() -> Result[Unit, TextError]:
-        return ok(())
+    var fn flush() Result[Unit, TextError]:
+        return ok(unit)
 
-export def forgets() -> Int:
+export fn forgets() Int:
     let journal = Journal(1)
     return journal.lines
 
-export def flushes() -> Result[Int, TextError]:
+export fn flushes() Result[Int, TextError]:
     var journal = Journal(2)
     try journal.flush()
     return ok(journal.lines)
@@ -23,13 +23,13 @@ export def flushes() -> Result[Int, TextError]:
 type Holder:
     journal: Journal
 
-def returns() -> Journal:
+fn returns() Journal:
     let journal = Journal(3)
     return journal
 
-def stores() -> Holder:
+fn stores() Holder:
     let journal = Journal(4)
     return Holder(journal)
 
-export def uses_moves() -> Int:
+export fn uses_moves() Int:
     return returns().lines + stores().journal.lines

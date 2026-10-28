@@ -1,15 +1,15 @@
 # conform: tags=aliasing,control-flow,faults,formatter,match,modules,optional,parser,records,stdlib-io,strings,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/mutation_test.go:49 TestClonedRecordRetainsFileHandleLifetime
-from "@std/io.ms" import files
-from "@std/io.ms" import File
-from "@std/io.ms" import IoError
+import files from "@std/io.ms"
+import File from "@std/io.ms"
+import IoError from "@std/io.ms"
 
 type Holder:
     file: File
     label: String
 
-export def main() -> Int:
+export fn main() Int:
     let opened = files().open("data.txt")
     if opened.is_error():
         return 4
@@ -22,10 +22,10 @@ export def main() -> Int:
     let chunk = read.get()
 
     match chunk:
-        case some(data):
+        some(data):
             if data.decode_utf8() != some(value: "d"):
                 return 5
-        case none:
+        none:
             return 6
 
     let original = Holder(file: file, label: "original")
@@ -43,7 +43,7 @@ export def main() -> Int:
     let cause = reread.err()
 
     match cause:
-        case IoError.Closed:
+        IoError.Closed:
             return 0
-        case _:
+        _:
             return 2

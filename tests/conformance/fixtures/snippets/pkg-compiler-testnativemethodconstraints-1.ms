@@ -1,11 +1,11 @@
 # conform: tags=diagnostics,interpolation,strings,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/builtin_parity_test.go:9 TestNativeMethodConstraints
-def stringify(value: Int) -> String:
-    return f"{value}"
+fn stringify(value: Int) String:
+    return "{value}"
 
-def wrong_label(item: Int) -> String:
-    return f"{item}"
+fn wrong_label(item: Int) String:
+    return "{item}"
 
-def callback() -> Unit:
-    return ()
+fn callback() Unit:
+    return unit

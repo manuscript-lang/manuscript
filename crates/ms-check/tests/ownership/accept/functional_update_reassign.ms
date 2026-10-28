@@ -1,9 +1,9 @@
-def step(xs: List[Int]) -> List[Int]:
+fn step(xs: List[Int]) List[Int]:
     var out = xs
     out.append(1)
     return out
 
-def f() -> Int:
+fn f() Int:
     var xs = [0]
     var i = 0
 

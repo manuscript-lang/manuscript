@@ -1,4 +1,4 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=internal/cli/project_check_test.go:73 TestProjectCheckDiscoveryAndReporting
-def broken() -> Int: return "bad"
+fn broken() Int: return "bad"

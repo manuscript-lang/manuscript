@@ -43,13 +43,13 @@
 ### Syntax and API (as built)
 
 ```manuscript
-from "@std/workers.ms" import WorkerGroup, worker_channel
+import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
-def hash_worker() -> Unit:
+fn hash_worker() Unit:
     var ch = worker_channel[String, Bytes]()
     # receive chunks, send digests, until the starter closes its end
 
-def hash_all(chunks: List[Bytes]) -> Result[List[String], WorkerError]:
+fn hash_all(chunks: List[Bytes]) Result[List[String], WorkerError]:
     with let group = WorkerGroup[Bytes, String]():
         var worker = try group.spawn(hash_worker)
         # send chunks, read digests, then worker.channel.close() and worker.join()

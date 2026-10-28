@@ -7,7 +7,7 @@ type First:
 type Second:
     case Ready
 
-def use(value: Optional[Int]) -> Int:
+fn use(value: Optional[Int]) Int:
     match value:
-        case some(Ready): return Ready
-        case none: return 0
+        some(Ready): return Ready
+        none: return 0

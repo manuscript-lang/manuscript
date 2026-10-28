@@ -2,16 +2,16 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/pattern_lint_test.go:29 TestPatternBindingAdvisory
 interface Describe:
-    def describe() -> String
+    fn describe() String
 
 type State:
     case Ready
     case Waiting
 
 impl Describe for State:
-    def describe() -> String: "state"
+    fn describe() String: "state"
 
-def use(value: Describe) -> Int:
+fn use(value: Describe) Int:
     match value:
-        case State(Ready): return 1
-        case _: return 0
+        State(Ready): return 1
+        _: return 0

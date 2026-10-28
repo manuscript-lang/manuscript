@@ -1,17 +1,17 @@
 # conform: tags=control-flow,interfaces,interpolation,modules,mutation,records,stdlib-io,stdlib-testing,stdlib-time,strings,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/standard-contract-calls-reuse-operations-per-site.ms
-from "@std/test.ms" import expect_true
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
+import expect_true from "@std/test.ms"
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
 
 type Boom:
     code: Int
 
 impl Error for Boom:
-    def message() -> String: f"boom {self.code}"
+    fn message() String: "boom {self.code}"
 
-def describe(e: Error) -> String: e.message()
+fn describe(e: Error) String: e.message()
 
 test "repeated calls through one site":
     let c = clock()

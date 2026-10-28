@@ -1,5 +1,5 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/redundant_labels_test.go:63 TestDropRedundantLabelsSkipsBrokenSource
-def f(a: Int) -> Int:
+fn f(a: Int) Int:
     return g(a: a)

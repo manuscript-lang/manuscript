@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=sized numeric types stage 1
-def main() -> Unit:
+fn main() Unit:
     let a: Int32 = 1
     let b: Int64 = 2
     let mixed = a + b

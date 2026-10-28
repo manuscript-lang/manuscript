@@ -2,28 +2,28 @@ type Shape:
     case Circle(r: Int)
     case Name(s: String)
 
-def total(xs: List[Int]) -> Int:
+fn total(xs: List[Int]) Int:
     var n = 0
     for x in xs:
         n += x
     return n
 
-def area(shape: Shape) -> Int:
+fn area(shape: Shape) Int:
     match shape:
-        case Circle(r): return r * r
-        case Name(text): return text.length()
+        Circle(r): return r * r
+        Name(text): return text.length()
 
-def copy_all(xs: List[String]) -> List[String]:
+fn copy_all(xs: List[String]) List[String]:
     var out: List[String] = []
     for x in xs: out.append(x.clone())
     return out
 
-def name_of(shape: Shape) -> String:
+fn name_of(shape: Shape) String:
     match shape:
-        case Name(text): return text
-        case _: return ""
+        Name(text): return text
+        _: return ""
 
-export def main() -> Int:
+export fn main() Int:
     let numbers = [1, 2, 3]
     let words = ["a", "b"]
     let shape = Name("abc")

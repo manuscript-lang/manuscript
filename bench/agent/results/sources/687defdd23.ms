@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Calc:
     toks: List[String]
@@ -7,11 +7,11 @@ type Calc:
     bad: Bool
     div_zero: Bool
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return "0123456789".contains(c)
 
-def tokenize(line: String) -> Calc:
-    var calc = Calc(toks: List[String](), pos: 0, bad: False, div_zero: False)
+fn tokenize(line: String) Calc:
+    var calc = Calc(toks: List[String](), pos: 0, bad: false, div_zero: false)
     var cur = ""
 
     for c in line.chars():
@@ -29,17 +29,17 @@ def tokenize(line: String) -> Calc:
         if "+-*/()".contains(c):
             calc.toks.append(c)
         else:
-            calc.bad = True
+            calc.bad = true
 
     if cur.length() > 0:
         calc.toks.append(cur)
     return calc
 
 impl Calc:
-    def at(t: String) -> Bool:
+    fn at(t: String) Bool:
         return self.pos < self.toks.length() and self.toks[self.pos] == t
 
-    var def expr() -> Int:
+    var fn expr() Int:
         var v = self.term()
 
         while self.at("+") or self.at("-"):
@@ -55,7 +55,7 @@ impl Calc:
 
         return v
 
-    var def term() -> Int:
+    var fn term() Int:
         var v = self.unary()
 
         while self.at("*") or self.at("/"):
@@ -66,24 +66,24 @@ impl Calc:
 
             if op == "*":
                 v = v * r
-            elif r == 0:
-                self.div_zero = True
+            else if r == 0:
+                self.div_zero = true
                 v = 0
             else:
                 v = v / r
 
         return v
 
-    var def unary() -> Int:
+    var fn unary() Int:
         if self.at("-"):
             self.pos += 1
             return -self.unary()
 
         return self.primary()
 
-    var def primary() -> Int:
+    var fn primary() Int:
         if self.pos >= self.toks.length():
-            self.bad = True
+            self.bad = true
             return 0
 
         let t = self.toks[self.pos].clone()
@@ -95,17 +95,17 @@ impl Calc:
             if self.at(")"):
                 self.pos += 1
             else:
-                self.bad = True
+                self.bad = true
 
             return v
 
         if is_digit(t.get(0)):
             return t.parse_int().get(0)
 
-        self.bad = True
+        self.bad = true
         return 0
 
-def evaluate(line: String) -> Optional[String]:
+fn evaluate(line: String) Optional[String]:
     var calc = tokenize(line)
     if calc.toks.length() == 0 and not calc.bad:
         return none
@@ -118,12 +118,12 @@ def evaluate(line: String) -> Optional[String]:
     if calc.div_zero:
         return some("error: division by zero")
 
-    return some(f"{v}")
+    return some("{v}")
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
     for line in read_lines(stdin()).get():
         if let text = evaluate(line):
-            out.write(f"{text}\n").get()
+            out.write("{text}\n").get()
     out.flush().get()
     return 0

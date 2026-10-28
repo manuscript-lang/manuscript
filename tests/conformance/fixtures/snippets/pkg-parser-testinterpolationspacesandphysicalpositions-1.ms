@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,interpolation,strings,tier-core
 # conform: phase=check
 # conform: origin=pkg/parser/parser_test.go:95 TestInterpolationSpacesAndPhysicalPositions
-def add(value: Int) -> Int:
+fn add(value: Int) Int:
     return value
 
-def render() -> String:
-    return f"héllo { add(value: 2) }"
+fn render() String:
+    return "héllo { add(value: 2) }"

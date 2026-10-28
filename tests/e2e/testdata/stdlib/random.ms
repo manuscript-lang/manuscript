@@ -1,13 +1,13 @@
-from "@std/test.ms" import expect_equal
-from "@std/random.ms" import Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice
-from "@std/bytes.ms" import Bytes
-from "@std/collections.ms" import filled
+import expect_equal from "@std/test.ms"
+import {Entropy, RandomError, secure_int, uuid_v4, entropy, float, shuffle, choice} from "@std/random.ms"
+import Bytes from "@std/bytes.ms"
+import filled from "@std/collections.ms"
 
 type ZeroEntropy:
     requested: Int
 
 impl Entropy for ZeroEntropy:
-    var def bytes(count: Int) -> Result[Bytes, RandomError]:
+    var fn bytes(count: Int) Result[Bytes, RandomError]:
         self.requested = count
         return ok(Bytes(filled[UInt8](0, count).get()))
 
@@ -15,7 +15,7 @@ type ExactEntropy:
     expected: Int
 
 impl Entropy for ExactEntropy:
-    def bytes(count: Int) -> Result[Bytes, RandomError]:
+    fn bytes(count: Int) Result[Bytes, RandomError]:
         if count != self.expected:
             return error(RandomError.Failed("unexpected count"))
 
@@ -25,7 +25,7 @@ type FailedEntropy:
     message: String
 
 impl Entropy for FailedEntropy:
-    def bytes(count: Int) -> Result[Bytes, RandomError]:
+    fn bytes(count: Int) Result[Bytes, RandomError]:
         return error(RandomError.Failed(self.message.clone()))
 
 test "random algorithms call Manuscript entropy implementations":
@@ -52,13 +52,12 @@ test "float shuffle and choice use the supplied entropy":
     try expect_equal(try float(zero), 0.0)
 
     let sample = try float(entropy())
-    try expect_equal(sample >= 0.0 and sample < 1.0, True)
+    try expect_equal(sample >= 0.0 and sample < 1.0, true)
 
     let values = [1, 2, 3, 4, 5]
     let shuffled = try shuffle(entropy(), values)
     try expect_equal(
-        shuffled.sorted(lambda (left: Int, right: Int) -> Int: left - right),
-        [1, 2, 3, 4, 5]
+        shuffled.sorted(fn(left: Int, right: Int) Int: left - right), [1, 2, 3, 4, 5]
     )
     try expect_equal(try choice(zero, [7, 8, 9]), some(7))
     try expect_equal(try choice(entropy(), List[Int]()), none)

@@ -1,11 +1,11 @@
 # conform: tags=closures,diagnostics,generics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:31 TestDiagnosticsStateCauseAndFix
-def start[T](operation: Callable[[], T]) -> Int:
+fn start[T](operation: fn() T) Int:
     return 0
 
-def work(n: Int) -> Int:
+fn work(n: Int) Int:
     return n
 
-def f() -> Int:
+fn f() Int:
     return start(work)

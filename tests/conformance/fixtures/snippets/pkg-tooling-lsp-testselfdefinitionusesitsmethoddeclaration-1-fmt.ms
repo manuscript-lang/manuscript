@@ -2,11 +2,11 @@
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/analysis_test.go:50 TestSelfDefinitionUsesItsMethodDeclaration
 interface Read:
-    def get() -> Int
+    fn get() Int
 
 type Box:
     value: Int
 
 impl Read for Box:
-    def get() -> Int:
+    fn get() Int:
         return self.value

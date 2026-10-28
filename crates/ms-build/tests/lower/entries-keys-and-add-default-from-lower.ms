@@ -1,11 +1,12 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
 # expect-mir: "msrt_map_contains"
 
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var m: Map[String, Int] = Map()
-    m.add_default_from("a", lambda (key: String): 5)
+    m.add_default_from("a", fn(key: String): 5)
+
     let items = [4, 5]
-    let _r = stdout().write(f"{items.keys()} {items.entries().length()}\n")
+    let _r = stdout().write("{items.keys()} {items.entries().length()}\n")
     return 0

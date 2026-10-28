@@ -1,7 +1,7 @@
 # conform: tags=closures,formatter,modules,parser,stdlib-csv,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/constructor_imports_test.go:35 TestShadowedConstructorNameDoesNotRetainImport
-from "@std/csv.ms" import CsvOptions
+import CsvOptions from "@std/csv.ms"
 
-def example(CsvOptions: Callable[[], Unit]) -> Unit:
+fn example(CsvOptions: fn() Unit) Unit:
     CsvOptions()

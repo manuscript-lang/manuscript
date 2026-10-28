@@ -1,4 +1,4 @@
-extern def total(values: List[Int]) -> Int
+extern fn total(values: List[Int]) Int
 
-export def main() -> Int:
+export fn main() Int:
     return total([1, 2])

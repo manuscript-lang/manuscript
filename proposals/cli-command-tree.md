@@ -27,10 +27,10 @@ type ServeOptions:
     root: String
     verbose: Bool
 
-def serve(options: ServeOptions) -> Result[Int, Error]:
+fn serve(options: ServeOptions) Result[Int, Error]:
     ...
 
-def main() -> Int:
+fn main() Int:
     let serve_command = command[ServeOptions](
         name: "serve",
         about: "Run the server",
@@ -39,9 +39,9 @@ def main() -> Int:
             Flag("mode", FlagKind.String, default: "dev", choices: ["dev", "prod"])
         ],
         args: [Arg("root", "Directory to serve")],
-        run: lambda options: serve(options)
+        run: fn options: serve(options)
     )
-    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: True)]
+    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: true)]
     return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
 ```
 

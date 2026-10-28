@@ -1,14 +1,14 @@
-from "@std/test.ms" import expect_contains, expect_equal, expect_false, expect_fault, expect_true
+import {expect_contains, expect_equal, expect_false, expect_fault, expect_true} from "@std/test.ms"
 
-def effect(var visits: List[Int], value: Int) -> Int:
+fn effect(var visits: List[Int], value: Int) Int:
     visits.append(value)
     return value
 
-def missing() -> Int:
+fn missing() Int:
     let values = Map[Int, Int]()
     return values.get(0).get()
 
-def returned_alias() -> Map[Int, Int]:
+fn returned_alias() Map[Int, Int]:
     var values = Map[Int, Int]()
     values.add(2, 20)
     return values
@@ -37,7 +37,7 @@ test "closed map arguments retain written evaluation order":
     values.get(3).get() | try expect_equal(30)
 
 test "missing local lookups keep Optional faults":
-    (try expect_fault(lambda: let _ignored = missing())) | try expect_contains(
+    (try expect_fault(fn: let _ignored = missing())) | try expect_contains(
         "Optional.get"
     )
 
@@ -56,5 +56,5 @@ test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
     values.add(1, 10)
 
-    let callback = lambda () -> Int: values.get(1).get()
+    let callback = fn() Int: values.get(1).get()
     callback() | try expect_equal(10)

@@ -1,7 +1,7 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/parser/empty_declarations_test.go:18 TestEmptyFunctionDeclarations
-def empty() -> Unit: ...
+fn empty() Unit: ...
 
 # empty body
-def answer() -> Int: return 3
+fn answer() Int: return 3

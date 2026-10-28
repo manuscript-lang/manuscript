@@ -5,4 +5,4 @@ type Cause:
     text: String
 
 impl Error for Cause:
-    def message() -> String: self.text.clone()
+    fn message() String: self.text.clone()

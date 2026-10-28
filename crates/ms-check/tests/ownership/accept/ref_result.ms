@@ -3,16 +3,16 @@ type Box:
     other: List[Int]
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-def trimmed(line: String) -> ref String:
+fn trimmed(line: String) ref String:
     return line.trim()
 
-def len(line: String) -> Int:
+fn len(line: String) Int:
     let t = trimmed(line)
     return t.length()
 
-def grow(b: Box) -> Int:
+fn grow(b: Box) Int:
     let xs = b.items
     return xs.length()

@@ -1,11 +1,11 @@
 # conform: tags=closures,diagnostics,generics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/defaults_test.go:28 TestDefaultArgumentBoundaries
-def run[T](operation: Callable[[], T]) -> T:
+fn run[T](operation: fn() T) T:
     return operation()
 
-def f(value: Int = 1) -> Int:
+fn f(value: Int = 1) Int:
     return value
 
-def call() -> Int:
+fn call() Int:
     return run(f)

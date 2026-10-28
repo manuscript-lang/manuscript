@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,lists,match,modules,mutation,optional,records,stdlib-faults,testing,tier-stdlib
 # conform: phase=test
 # conform: origin=pkg/lower/testdata/operand-captures.ms
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Counter:
     value: Int
 
-def advance(var counter: Counter) -> Int:
+fn advance(var counter: Counter) Int:
     counter.value += 1
     return counter.value
 
-def mixed(var counter: Counter) -> List[Int]:
+fn mixed(var counter: Counter) List[Int]:
     var value = 1
     return [
         value,
@@ -19,10 +19,10 @@ def mixed(var counter: Counter) -> List[Int]:
         advance(var counter),
         value,
         match some(2):
-            case some(number):
+            some(number):
                 value = number
                 advance(var counter)
-            case none: 0
+            none: 0
         ,
         value,
         counter.value,

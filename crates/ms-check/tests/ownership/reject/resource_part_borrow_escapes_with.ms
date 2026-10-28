@@ -1,14 +1,14 @@
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Res:
     name: String
 
 impl Closeable for Res:
-    var def close() -> Unit:
-        return ()
+    var fn close() Unit:
+        return unit
 
 # A value derived from the `with` resource cannot be stored where it outlives the block.
-def main() -> Int:
+fn main() Int:
     var kept = List[String]()
 
     with let r = Res("b"):

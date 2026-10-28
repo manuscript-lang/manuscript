@@ -5,5 +5,5 @@ type B[T]:
     x: T
 
 impl B:
-    def f() -> Int:
+    fn f() Int:
         return 1

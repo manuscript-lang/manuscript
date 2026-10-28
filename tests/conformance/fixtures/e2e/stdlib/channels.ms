@@ -1,15 +1,15 @@
 # conform: tags=closures,with-cleanup,stdlib-channels,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/test.ms" import expect_equal, expect_error, expect_ok
-from "@std/time.ms" import nanoseconds, sleep
+import {Channel, ChannelError} from "@std/channels.ms"
+import {TaskError, TaskGroup} from "@std/tasks.ms"
+import {expect_equal, expect_error, expect_ok} from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch
     var count = 0
 
-    while True:
+    while true:
         if let n = try c.receive():
             try c.send(n * n)
             count += 1
@@ -18,32 +18,32 @@ def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
 
     return ok(count)
 
-def produce(ch: Channel[Int, Unit]) -> Int:
+fn produce(ch: Channel[Int, Unit]) Int:
     var c = ch
     for n in 0..40:
         if c.send(n).is_error():
             return -1
     return 40
 
-def wait_for_one(ch: Channel[Int, Unit]) -> Int:
+fn wait_for_one(ch: Channel[Int, Unit]) Int:
     var c = ch
     if let _got = c.receive():
         return 1
 
     return 2
 
-def send_all(ch: Channel[Int, Unit], base: Int) -> Int:
+fn send_all(ch: Channel[Int, Unit], base: Int) Int:
     var c = ch
     for n in 0..50:
         if c.send(base + n).is_error():
             return -1
     return 50
 
-def total(ch: Channel[Unit, Int]) -> Int:
+fn total(ch: Channel[Unit, Int]) Int:
     var c = ch
     var sum = 0
 
-    while True:
+    while true:
         let got = c.receive()
         if got.is_error():
             return sum
@@ -56,10 +56,10 @@ def total(ch: Channel[Unit, Int]) -> Int:
     return sum
 
 # Reads every value until the channel ends: the values, then how it ended.
-def drain(var ch: Channel[Unit, Int]) -> List[String]:
+fn drain(var ch: Channel[Unit, Int]) List[String]:
     var seen = List[String]()
 
-    while True:
+    while true:
         let got = ch.receive()
 
         if got.is_error():
@@ -67,7 +67,7 @@ def drain(var ch: Channel[Unit, Int]) -> List[String]:
             return seen
 
         if let value = got.get():
-            seen.append(f"{value}")
+            seen.append("{value}")
         else:
             seen.append("end")
             return seen
@@ -105,7 +105,7 @@ test "the group reads what a finished task sent, then the end":
 
 test "sending after the other end closed gives Closed":
     with let group = TaskGroup[Int, Int, Unit]():
-        var task = group.spawn(lambda ch: 0)
+        var task = group.spawn(fn ch: 0)
         task.result() | try expect_ok | try expect_equal(0)
         task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)
 
@@ -114,10 +114,8 @@ test "an end used after closing it gives Closed":
         var task = group.spawn(square_all)
         task.channel.close()
         task.channel.send(1) | try expect_error | try expect_equal(ChannelError.Closed)
-        (
-            task.channel.receive() | try expect_error | try expect_equal(
-                ChannelError.Closed
-            )
+        task.channel.receive() | try expect_error | try expect_equal(
+            ChannelError.Closed
         )
         task.channel.close()
 
@@ -144,7 +142,7 @@ test "closing the group closes every channel":
 
 test "a group without channel types gives each task a Unit channel":
     with let group = TaskGroup[Int]():
-        var task = group.spawn(lambda ch: 3)
+        var task = group.spawn(fn ch: 3)
         task.result() | try expect_ok | try expect_equal(3)
         task.channel.receive() | try expect_ok | try expect_equal(none)
 
@@ -153,8 +151,8 @@ test "cloned ends share one channel":
         var sink = group.spawn(total)
         let first = sink.channel.clone()
         let second = sink.channel.clone()
-        let a = group.spawn(lambda ch: send_all(first.clone(), 0))
-        let b = group.spawn(lambda ch: send_all(second.clone(), 100))
+        let a = group.spawn(fn ch: send_all(first.clone(), 0))
+        let b = group.spawn(fn ch: send_all(second.clone(), 100))
         a.result() | try expect_ok | try expect_equal(50)
         b.result() | try expect_ok | try expect_equal(50)
         sink.channel.close()

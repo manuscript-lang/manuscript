@@ -1,32 +1,32 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true
-from "@std/core.ms" import TextError
-from "@std/process.ms" import control, ControlError
-from "@std/fs.ms" import filesystem, FileSystemError, FileEvent, FileWatcher, join
-from "@std/time.ms" import milliseconds, sleep
-from "@std/tasks.ms" import TaskGroup
-from "@std/shared.ms" import Shared, share
+import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
+import TextError from "@std/core.ms"
+import {control, ControlError} from "@std/process.ms"
+import {filesystem, FileSystemError, FileEvent, FileWatcher, join} from "@std/fs.ms"
+import {milliseconds, sleep} from "@std/time.ms"
+import TaskGroup from "@std/tasks.ms"
+import {Shared, share} from "@std/shared.ms"
 
-def expect_process_error[T](
+fn expect_process_error[T](
     outcome: Result[T, ControlError],
     expected: ControlError
-) -> Result[Unit, Error]:
+) Result[Unit, Error]:
     match outcome:
-        case ok(_): return error(TextError("process misuse succeeded"))
-        case error(cause):
+        ok(_): return error(TextError("process misuse succeeded"))
+        error(cause):
             if cause != expected: return error(TextError("wrong process error"))
 
-    return ok(())
+    return ok(unit)
 
-def expect_fs_error[T](
+fn expect_fs_error[T](
     outcome: Result[T, FileSystemError],
     expected: FileSystemError
-) -> Result[Unit, Error]:
+) Result[Unit, Error]:
     match outcome:
-        case ok(_): return error(TextError("filesystem misuse succeeded"))
-        case error(cause):
+        ok(_): return error(TextError("filesystem misuse succeeded"))
+        error(cause):
             if cause != expected: return error(TextError("wrong filesystem error"))
 
-    return ok(())
+    return ok(unit)
 
 test "process usage records report this process":
     let process = control()
@@ -103,10 +103,10 @@ test "stat_filesystem describes the filesystem under a path":
         fs.stat_filesystem(path: "/definitely/not/a/path"), FileSystemError.NotFound
     )
 
-def saw(events: List[FileEvent], path: String, kind: String) -> Bool:
+fn saw(events: List[FileEvent], path: String, kind: String) Bool:
     for event in events:
-        if event.path == path and event.kind == kind: return True
-    return False
+        if event.path == path and event.kind == kind: return true
+    return false
 
 test "polling and native watchers report a created file and close":
     let fs = filesystem()
@@ -115,9 +115,9 @@ test "polling and native watchers report a created file and close":
         let root = temporary.path()
 
         with let polling = try fs.watch(
-            path: root, recursive: False, interval: milliseconds(20)
+            path: root, recursive: false, interval: milliseconds(20)
         ):
-            try fs.write_file(path: f"{root}/a.txt", data: "x", replace: False)
+            try fs.write_file(path: "{root}/a.txt", data: "x", replace: false)
             try expect_true(
                 saw(
                     try polling.next(), join([root.clone(), "a.txt"]), "rename"
@@ -125,11 +125,11 @@ test "polling and native watchers report a created file and close":
             )
 
         with let native = try fs.watch_native(
-            path: root, recursive: False, overflow: "error"
+            path: root, recursive: false, overflow: "error"
         ):
-            try fs.write_file(path: f"{root}/b.txt", data: "y", replace: False)
+            try fs.write_file(path: "{root}/b.txt", data: "y", replace: false)
 
-            var found = False
+            var found = false
             for attempt in [1, 2, 3, 4, 5, 6]:
                 if not found:
                     found = saw(
@@ -141,19 +141,19 @@ test "native watcher max_entries counts the paths under the root":
     let fs = filesystem()
 
     with let t = fs.temporary("ms-me-") | try expect_ok:
-        try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
+        try fs.write_file(path: "{t.path()}/a", data: "x", replace: false)
         try expect_fs_error(
             fs.watch_native(
-                path: t.path(), recursive: True, max_entries: some(1), overflow: "error"
+                path: t.path(), recursive: true, max_entries: some(1), overflow: "error"
             ),
             FileSystemError.LimitExceeded
         )
         with var w = try fs.watch_native(
-            path: t.path(), recursive: True, max_entries: some(2), overflow: "error"
+            path: t.path(), recursive: true, max_entries: some(2), overflow: "error"
         ):
             w.close()
 
-def wait_next(w: Shared[FileWatcher]) -> Int:
+fn wait_next(w: Shared[FileWatcher]) Int:
     let r = w.get().next()
     if r.is_ok():
         return 1
@@ -166,13 +166,13 @@ test "close wakes a pending native next with Closed":
     with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch_native(
-                path: t.path(), recursive: False, overflow: "error"
+                path: t.path(), recursive: false, overflow: "error"
             )
         )
 
         with let group = TaskGroup[Int]():
             let a = w
-            group.spawn(lambda ch: wait_next(a))
+            group.spawn(fn ch: wait_next(a))
             sleep(100.milliseconds)
             w.get().close()
 
@@ -185,14 +185,14 @@ test "a group timeout cancels a task waiting on a watcher":
     with let t = fs.temporary("ms-r2-") | try expect_ok:
         let w: Shared[FileWatcher] = share(
             try fs.watch(
-                path: t.path(), recursive: False, interval: milliseconds(20)
+                path: t.path(), recursive: false, interval: milliseconds(20)
             )
         )
 
         with let group = TaskGroup[Int](timeout: 300.milliseconds):
             let a = w
-            let h = group.spawn(lambda ch: wait_next(a))
-            let c = group.spawn(lambda ch: 7)
+            let h = group.spawn(fn ch: wait_next(a))
+            let c = group.spawn(fn ch: 7)
             try expect_equal(c.result().get(-1), 7)
             try expect_true(h.result().is_error())
 
@@ -204,13 +204,13 @@ test "recursive native watch sees a file in a new subdirectory":
     with let t = fs.temporary("ms-r2-") | try expect_ok:
         let r = t.path()
 
-        with var w = try fs.watch_native(path: r, recursive: True, overflow: "error"):
-            try fs.create_directory(path: f"{r}/d", recursive: False)
-            try fs.write_file(path: f"{r}/d/f", data: "1", replace: False)
+        with var w = try fs.watch_native(path: r, recursive: true, overflow: "error"):
+            try fs.create_directory(path: "{r}/d", recursive: false)
+            try fs.write_file(path: "{r}/d/f", data: "1", replace: false)
 
-            var seen = False
+            var seen = false
             for i in [1, 2, 3, 4, 5, 6, 7, 8]:
                 if not seen:
                     for e in try w.next():
-                        if e.path == join([r.clone(), "d", "f"]): seen = True
+                        if e.path == join([r.clone(), "d", "f"]): seen = true
             try expect_true(seen)

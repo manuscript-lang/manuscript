@@ -1,17 +1,18 @@
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Res:
     name: String
 
 impl Closeable for Res:
-    var def close() -> Unit:
-        return ()
+    var fn close() Unit:
+        return unit
 
 # fill, copy_within and merge store copies of what they are given.
-def main() -> Int:
+fn main() Int:
     var xs = [Res("a"), Res("b")]
     xs.fill(Res("c"), 0, 2)  # error: would copy the resources
     xs.copy_within(0, 1, 2)  # error: would copy the resources
+
     var a = Map[String, Res]()
     var b = Map[String, Res]()
     a.merge(b)  # error: would copy the resources

@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/collections.ms" import range
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import range from "@std/collections.ms"
 
 # One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
 type Op:
@@ -8,7 +8,7 @@ type Op:
     text: String
 
 # L(i, j) for suffixes, stored row-major with width b.length() + 1.
-def lcs_table(a: List[String], b: List[String]) -> List[Int]:
+fn lcs_table(a: List[String], b: List[String]) List[Int]:
     let w = b.length() + 1
     var t: List[Int] = []
     for k in range(0, (a.length() + 1) * w):
@@ -33,7 +33,7 @@ def lcs_table(a: List[String], b: List[String]) -> List[Int]:
 
     return t
 
-def edit_script(a: List[String], b: List[String], t: List[Int]) -> List[Op]:
+fn edit_script(a: List[String], b: List[String], t: List[Int]) List[Op]:
     let n = a.length()
     let m = b.length()
     let w = m + 1
@@ -48,14 +48,14 @@ def edit_script(a: List[String], b: List[String], t: List[Int]) -> List[Op]:
         if i == n:
             ops.append(Op(2, b[j]))
             j += 1
-        elif j == m:
+        else if j == m:
             ops.append(Op(1, a[i]))
             i += 1
-        elif a[i] == b[j]:
+        else if a[i] == b[j]:
             ops.append(Op(0, a[i]))
             i += 1
             j += 1
-        elif t[(i + 1) * w + j] >= t[i * w + j + 1]:
+        else if t[(i + 1) * w + j] >= t[i * w + j + 1]:
             ops.append(Op(1, a[i]))
             i += 1
         else:
@@ -65,17 +65,17 @@ def edit_script(a: List[String], b: List[String], t: List[Int]) -> List[Op]:
     return ops
 
 # Start line of a hunk section given the lines consumed before it.
-def hunk_start(before: Int, length: Int) -> Int:
+fn hunk_start(before: Int, length: Int) Int:
     if length > 0: return before + 1
 
     return before
 
-def hunk_span(start: Int, length: Int) -> String:
-    if length == 1: return f"{start}"
+fn hunk_span(start: Int, length: Int) String:
+    if length == 1: return "{start}"
 
-    return f"{start},{length}"
+    return "{start},{length}"
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     let head = lines[0].split(" ")
     let name_a = head[0]
@@ -116,7 +116,7 @@ export def main() -> Int:
         if ops[p].kind != 0:
             if last < 0:
                 first = p
-            elif p - last - 1 > 2 * ctx:
+            else if p - last - 1 > 2 * ctx:
                 starts.append(first)
                 ends.append(last)
                 first = p
@@ -131,7 +131,7 @@ export def main() -> Int:
         return 0
 
     var out: List[String] = []
-    out.append(f"--- {name_a}\n+++ {name_b}\n")
+    out.append("--- {name_a}\n+++ {name_b}\n")
 
     for h in range(0, starts.length()):
         var lo = starts[h] - ctx
@@ -144,17 +144,17 @@ export def main() -> Int:
         let lb = bpre[hi] - bpre[lo]
         let sa = hunk_span(hunk_start(apre[lo], la), la)
         let sb = hunk_span(hunk_start(bpre[lo], lb), lb)
-        out.append(f"@@ -{sa} +{sb} @@\n")
+        out.append("@@ -{sa} +{sb} @@\n")
 
         for p in range(lo, hi):
             let op = ops[p]
 
             if op.kind == 0:
-                out.append(f" {op.text}\n")
-            elif op.kind == 1:
-                out.append(f"-{op.text}\n")
+                out.append(" {op.text}\n")
+            else if op.kind == 1:
+                out.append("-{op.text}\n")
             else:
-                out.append(f"+{op.text}\n")
+                out.append("+{op.text}\n")
 
     stdout().write(out.join("")).get()
     return 0

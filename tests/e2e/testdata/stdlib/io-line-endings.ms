@@ -1,16 +1,16 @@
-from "@std/fs.ms" import filesystem
-from "@std/io.ms" import ReadStream, read_line
-from "@std/test.ms" import expect_equal
-from "./support/streams.ms" import MemoryStream
+import filesystem from "@std/fs.ms"
+import {ReadStream, read_line} from "@std/io.ms"
+import expect_equal from "@std/test.ms"
+import MemoryStream from "./support/streams.ms"
 
 test "an unterminated carriage return remains line content":
     let fs = filesystem()
 
     with let temporary = try fs.temporary("manuscript-line-endings-"):
-        let path = f"{temporary.path()}/line.txt"
+        let path = "{temporary.path()}/line.txt"
 
         for text in ["\r", "tail\r", "tail\r\r"]:
-            try fs.write_file(path, text, replace: True)
+            try fs.write_file(path, text, replace: true)
 
             with let file = try fs.open(path, "r", 384):
                 let input = file.reader()
@@ -24,18 +24,18 @@ test "native and source line readers agree on endings and byte limits":
     ]
 
     with let temporary = try fs.temporary("manuscript-line-parity-"):
-        let path = f"{temporary.path()}/lines.txt"
+        let path = "{temporary.path()}/lines.txt"
 
         for text in [
             "", "a", "a\n", "a\r\n", "a\r", "\r", "\r\n", "a\nb\r", "é\r", "🙂\r\n"
         ]:
             for limit in limits:
-                try fs.write_file(path, text, replace: True)
+                try fs.write_file(path, text, replace: true)
 
                 with let file = try fs.open(path, "r", 384):
                     let input = file.reader()
                     let source: ReadStream = MemoryStream(
-                        text.to_bytes(), 0, closed: False
+                        text.to_bytes(), 0, closed: false
                     )
 
                     for i in 0..3:

@@ -4,30 +4,30 @@ Statically typed; native code. Four-space indentation, `#` comments. No `print`:
 
 <!-- complete -->
 ```manuscript
-from "@std/fs.ms" import filesystem # import
-from "@std/io.ms" import stdout
+import filesystem from "@std/fs.ms" # import
+import stdout from "@std/io.ms"
 
 type Doc:
     lines: List[String]
 
 impl Doc:
-    def longest() -> ref String: # lends part of self
+    fn longest() ref String: # lends part of self
         var best = 0
         for i in 0..self.lines.length():
             if self.lines[i].length() > self.lines[best].length(): best = i
         return self.lines[best]
 
-def load(path: String) -> Result[Doc, Error]:
+fn load(path: String) Result[Doc, Error]:
     let f = try filesystem().open(path, flags: "r", mode: 0) # f closed at scope end
     let lines = try f.read_lines(max_lines: 1000) # Int passes as Optional[Int]
     return ok(Doc(lines)) # moves lines
 
-export def main() -> Int:
+export fn main() Int:
     if let doc = load("notes.txt"):
         let top = doc.longest() # borrows doc
         let keep = top.clone() # owned copy
-        let long = doc.lines.filter(lambda l: l.length() > 3) # lambda
-        stdout().write(f"{keep} {long.length()}\n").get()
+        let long = doc.lines.filter(fn l: l.length() > 3) # lambda
+        stdout().write("{keep} {long.length()}\n").get()
     return 0
 ```
 

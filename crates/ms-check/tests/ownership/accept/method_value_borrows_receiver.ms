@@ -1,4 +1,4 @@
-export def main() -> Int:
+export fn main() Int:
     var xs = [1, 2, 3]
     let add = xs.append
     add(4)

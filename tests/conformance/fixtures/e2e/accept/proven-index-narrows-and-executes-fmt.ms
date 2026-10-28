@@ -1,15 +1,15 @@
 # conform: tags=control-flow,formatter,lists,modules,mutation,optional,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/proven-index-narrows-and-executes.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def read(values: List[Int], index: Int) -> Int:
+fn read(values: List[Int], index: Int) Int:
     if index < 0 or index >= values.length():
         return -1
 
     return values[index]
 
-def total(values: List[Int]) -> Int:
+fn total(values: List[Int]) Int:
     var sum = 0
     var i = 0
 
@@ -19,7 +19,7 @@ def total(values: List[Int]) -> Int:
 
     return sum
 
-def nested(values: List[Optional[Int]], index: Int) -> Optional[Int]:
+fn nested(values: List[Optional[Int]], index: Int) Optional[Int]:
     if index >= 0 and index < values.length():
         return values[index]
 

@@ -1,8 +1,8 @@
 # conform: tags=closures,control-flow,generics,interpolation,modules,records,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/html-unescape.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/html.ms" import escape, unescape
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {escape, unescape} from "@std/html.ms"
 
 test "HTML unescape has an explicit text counterpart":
     try expect_equal(unescape("&lt;é&gt;&amp;"), "<é>&")
@@ -17,13 +17,13 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         EntityCase("&lt;&gt;&amp;&quot;&apos;", "<>&\"'"),
         EntityCase("&aacute;&eacute;&copy;", "áé©"),
         EntityCase("&#225;&#xE1;&#XE1;", "ááá"), EntityCase("&#x1F680;", "🚀"),
-        EntityCase("&NotEqualTilde;", f"\u{2242}\u{338}"),
-        EntityCase("&#101;&#x301;", f"e\u{301}"), EntityCase("&#13;&#10;", "\r\n"),
-        EntityCase("&NewLine;", "\n"), EntityCase(f"a\u{0}b", f"a\u{0}b")
+        EntityCase("&NotEqualTilde;", "\u{2242}\u{338}"),
+        EntityCase("&#101;&#x301;", "e\u{301}"), EntityCase("&#13;&#10;", "\r\n"),
+        EntityCase("&NewLine;", "\n"), EntityCase("a\u{0}b", "a\u{0}b")
     ]
     for entity in cases:
         if unescape(entity.encoded) != entity.decoded: return fail(
-            f"HTML reference: {entity.encoded}"
+            "HTML reference: {entity.encoded}"
         )
 
 test "HTML unescape applies text rules with a single decoding pass":
@@ -35,21 +35,21 @@ test "HTML unescape applies text rules with a single decoding pass":
     try expect_false(unescape("&AMP;") != "&" or unescape("&Amp;") != "&Amp;")
 
 test "HTML numeric references use replacement rules":
-    try expect_equal(unescape("&#0;&#xD800;&#x110000;"), f"\u{fffd}\u{fffd}\u{fffd}")
+    try expect_equal(unescape("&#0;&#xD800;&#x110000;"), "\u{fffd}\u{fffd}\u{fffd}")
     try expect_equal(unescape("&#128;&#x80;"), "€€")
-    try expect_equal(unescape("&#x10FFFF;"), f"\u{10ffff}")
+    try expect_equal(unescape("&#x10FFFF;"), "\u{10ffff}")
 
-def apply[T, U](text: T, operation: Callable[[T], U]) -> U:
+fn apply[T, U](text: T, operation: fn(T) U) U:
     return operation(text)
 
 test "HTML unescape stored and generic calls preserve labels":
     let convert = unescape
-    let typed: Callable[[String], String] = unescape
+    let typed: fn(String) String = unescape
     try expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")
     try expect_equal(apply[String, String]("&amp;", unescape), "&")
 
 test "HTML escape and unescape retain immutable text":
-    let texts = ["", "<&>\"'é🙂", "&amp;lt;", f"e\u{301}", f"a\u{0}b", "\n\r\t"]
+    let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
 

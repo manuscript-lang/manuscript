@@ -1,21 +1,21 @@
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
 type Counter:
     count: Int
     tags: List[String]
 
-def bump(var cs: List[Counter]) -> Int:
+fn bump(var cs: List[Counter]) Int:
     var c = cs[0]
     c.count = c.count + 1
     c.tags.append("x")
     return cs[0].count
 
-def grow(var rows: List[List[Int]]) -> Unit:
+fn grow(var rows: List[List[Int]]) Unit:
     var head = rows[0]
     head.append(5)
     rows.append([9])
 
-export def main() -> Int:
+export fn main() Int:
     var cs = [Counter(count: 1, tags: [])]
     let n = bump(var cs)
     var rows = [[1], [2]]
@@ -37,6 +37,6 @@ export def main() -> Int:
         last.append(4)
 
     let _ = stdout().write(
-        f"{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
+        "{n} {cs[0].count} {cs[0].tags} {rows} {got} {m.get("a")} {xs}\n"
     )
     return 0

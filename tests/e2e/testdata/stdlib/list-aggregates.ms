@@ -1,17 +1,17 @@
-from "@std/test.ms" import expect_equal, expect_true
+import {expect_equal, expect_true} from "@std/test.ms"
 
 type Version:
     major: Int
     label: String
 
 impl Comparable for Version:
-    def compare(other: Version) -> Int:
+    fn compare(other: Version) Int:
         if self.major < other.major: return -1
         if self.major > other.major: return 1
 
         return 0
 
-def ordered[T: Comparable](values: List[T]) -> List[T]:
+fn ordered[T: Comparable](values: List[T]) List[T]:
     return values.sorted()
 
 test "sorted orders Int, Float and String ascending without a comparator":
@@ -33,11 +33,11 @@ test "sorted puts Float NaN last":
     try expect_true(ordered_floats[3].is_nan())
 
 test "sorted with a comparator":
-    try expect_equal([1, 3, 2].sorted(lambda a, b: b - a), [3, 2, 1])
+    try expect_equal([1, 3, 2].sorted(fn a, b: b - a), [3, 2, 1])
 
 test "sorted is stable for user Comparable types":
     let versions = [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]
-    let labels = versions.sorted().map(lambda v: v.label.clone())
+    let labels = versions.sorted().map(fn v: v.label.clone())
     try expect_equal(labels, ["x", "y", "b", "a"])
 
 test "sorted works through a generic Comparable bound":
@@ -48,12 +48,12 @@ test "sort orders the list in place":
     var numbers = [3, 1, 2]
     numbers.sort()
     try expect_equal(numbers, [1, 2, 3])
-    numbers.sort(lambda a, b: b - a)
+    numbers.sort(fn a, b: b - a)
     try expect_equal(numbers, [3, 2, 1])
 
     var versions = [Version(2, "b"), Version(1, "x"), Version(2, "a")]
     versions.sort()
-    try expect_equal(versions.map(lambda v: v.label.clone()), ["x", "b", "a"])
+    try expect_equal(versions.map(fn v: v.label.clone()), ["x", "b", "a"])
 
     var words = ["b", "c", "a"]
     words.sort()

@@ -1,12 +1,12 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Box[T]:
     value: T
 
-def unwrap[T](box: Box[T]) -> ref T:
+fn unwrap[T](box: Box[T]) ref T:
     return box.value
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
 test "generic argument inference":

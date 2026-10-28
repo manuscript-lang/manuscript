@@ -1,4 +1,4 @@
-from "@std/io.ms" import read_all, stdin, stdout
+import {read_all, stdin, stdout} from "@std/io.ms"
 
 let MAX_INT = 9223372036854775807
 let MIN_INT = -9223372036854775807 - 1
@@ -19,7 +19,7 @@ type Fault:
     syntax: Bool
 
 impl Error for Fault:
-    def message() -> String:
+    fn message() String:
         return self.text.clone()
 
 type Value:
@@ -77,125 +77,125 @@ type Token:
 
 # ---------- errors and small helpers ----------
 
-def rt_fault(text: String) -> Fault:
-    return Fault(text: text, syntax: False)
+fn rt_fault(text: String) Fault:
+    return Fault(text: text, syntax: false)
 
-def syntax_fault(text: String) -> Fault:
-    return Fault(text: "syntax error: " + text, syntax: True)
+fn syntax_fault(text: String) Fault:
+    return Fault(text: "syntax error: " + text, syntax: true)
 
-def bad_form(name: String) -> Fault:
+fn bad_form(name: String) Fault:
     return syntax_fault("bad form: " + name)
 
-def wrong_kind(m: Machine, name: String, kind: String, v: Value) -> Fault:
-    return rt_fault(name + ": expected " + kind + ", got " + show(m, v, True))
+fn wrong_kind(m: Machine, name: String, kind: String, v: Value) Fault:
+    return rt_fault(name + ": expected " + kind + ", got " + show(m, v, true))
 
-def check_arity(name: String, low: Int, high: Int, got: Int) -> Result[Unit, Fault]:
+fn check_arity(name: String, low: Int, high: Int, got: Int) Result[Unit, Fault]:
     if got >= low and (high < 0 or got <= high):
-        return ok(())
+        return ok(unit)
 
-    var expected = "at least " + f"{low}"
+    var expected = "at least " + "{low}"
 
     if high == low:
-        expected = f"{low}"
-    elif high >= 0:
-        expected = f"{low} to {high}"
+        expected = "{low}"
+    else if high >= 0:
+        expected = "{low} to {high}"
 
     return error(
         rt_fault(
-            f"wrong number of arguments to {name}: expected {expected}, got {got}"
+            "wrong number of arguments to {name}: expected {expected}, got {got}"
         )
     )
 
-def tag(v: Value) -> Int:
+fn tag(v: Value) Int:
     match v:
-        case Number(_): return T_NUMBER
-        case Boolean(_): return T_BOOLEAN
-        case Text(_): return T_TEXT
-        case Symbol(_): return T_SYMBOL
-        case PairRef(_): return T_PAIR
-        case Nil: return T_NIL
-        case Void: return T_VOID
-        case Builtin(_, _, _): return T_BUILTIN
-        case Closure(_): return T_CLOSURE
+        Number(_): return T_NUMBER
+        Boolean(_): return T_BOOLEAN
+        Text(_): return T_TEXT
+        Symbol(_): return T_SYMBOL
+        PairRef(_): return T_PAIR
+        Nil: return T_NIL
+        Void: return T_VOID
+        Builtin(_, _, _): return T_BUILTIN
+        Closure(_): return T_CLOSURE
 
-def pair_id_of(v: Value) -> Int:
+fn pair_id_of(v: Value) Int:
     match v:
-        case PairRef(id): return id
-        case _: return -1
+        PairRef(id): return id
+        _: return -1
 
-def closure_id_of(v: Value) -> Int:
+fn closure_id_of(v: Value) Int:
     match v:
-        case Closure(id): return id
-        case _: return -1
+        Closure(id): return id
+        _: return -1
 
-def symbol_name(v: Value) -> String:
+fn symbol_name(v: Value) String:
     match v:
-        case Symbol(name): return name.clone()
-        case _: return ""
+        Symbol(name): return name.clone()
+        _: return ""
 
-def text_of(v: Value) -> String:
+fn text_of(v: Value) String:
     match v:
-        case Text(s): return s.clone()
-        case _: return ""
+        Text(s): return s.clone()
+        _: return ""
 
-def builtin_name(v: Value) -> String:
+fn builtin_name(v: Value) String:
     match v:
-        case Builtin(name, _, _): return name.clone()
-        case _: return ""
+        Builtin(name, _, _): return name.clone()
+        _: return ""
 
-def truthy(v: Value) -> Bool:
+fn truthy(v: Value) Bool:
     match v:
-        case Boolean(on): return on
-        case _: return True
+        Boolean(on): return on
+        _: return true
 
-def is_nil(v: Value) -> Bool:
+fn is_nil(v: Value) Bool:
     return tag(v) == T_NIL
 
-def is_procedure(v: Value) -> Bool:
+fn is_procedure(v: Value) Bool:
     return tag(v) == T_BUILTIN or tag(v) == T_CLOSURE
 
 # Text of atoms that have no payload to quote: numbers, booleans, symbols, ().
-def atom_text(v: Value) -> String:
+fn atom_text(v: Value) String:
     match v:
-        case Number(n): return f"{n}"
-        case Boolean(on):
+        Number(n): return "{n}"
+        Boolean(on):
             if on:
                 return "#t"
 
             return "#f"
-        case Symbol(name): return name.clone()
-        case Nil: return "()"
-        case _: return ""
+        Symbol(name): return name.clone()
+        Nil: return "()"
+        _: return ""
 
-def quote_text(s: String) -> String:
+fn quote_text(s: String) String:
     let body = s.replace("\\", "\\\\").replace("\"", "\\\"").replace(
         "\n", "\\n"
     ).replace("\t", "\\t")
     return "\"" + body + "\""
 
-def show(m: Machine, v: Value, quoted: Bool) -> String:
+fn show(m: Machine, v: Value, quoted: Bool) String:
     match v:
-        case Text(s):
+        Text(s):
             if quoted:
                 return quote_text(s)
 
             return s.clone()
-        case PairRef(id): return show_pair(m, id, quoted)
-        case Void: return "#<void>"
-        case Builtin(name, _, _): return "#<builtin " + name + ">"
-        case Closure(id):
+        PairRef(id): return show_pair(m, id, quoted)
+        Void: return "#<void>"
+        Builtin(name, _, _): return "#<builtin " + name + ">"
+        Closure(id):
             let name = m.procs[id].name.clone()
             if name.is_empty():
                 return "#<procedure>"
 
             return "#<procedure " + name + ">"
-        case _: return atom_text(v)
+        _: return atom_text(v)
 
-def show_pair(m: Machine, id: Int, quoted: Bool) -> String:
+fn show_pair(m: Machine, id: Int, quoted: Bool) String:
     var parts = List[String]()
     var rest = Value.PairRef(id)
 
-    while True:
+    while true:
         let pid = pair_id_of(rest)
         if pid < 0:
             break
@@ -210,12 +210,12 @@ def show_pair(m: Machine, id: Int, quoted: Bool) -> String:
 
 # ---------- heap, lists, and output ----------
 
-def cons(var m: Machine, head: Value, rest: Value) -> Value:
+fn cons(var m: Machine, head: Value, rest: Value) Value:
     m.cars.append(head)
     m.cdrs.append(rest)
     return Value.PairRef(m.cars.length() - 1)
 
-def build_list(var m: Machine, items: List[Value], tail: Value) -> Value:
+fn build_list(var m: Machine, items: List[Value], tail: Value) Value:
     var acc = tail
     var i = items.length() - 1
 
@@ -225,11 +225,11 @@ def build_list(var m: Machine, items: List[Value], tail: Value) -> Value:
 
     return acc
 
-def to_list(m: Machine, v: Value) -> Optional[List[Value]]:
+fn to_list(m: Machine, v: Value) Optional[List[Value]]:
     var out = List[Value]()
     var rest = v.clone()
 
-    while True:
+    while true:
         let pid = pair_id_of(rest)
         if pid < 0:
             break
@@ -242,62 +242,62 @@ def to_list(m: Machine, v: Value) -> Optional[List[Value]]:
 
     return none
 
-def list_of(m: Machine, name: String, v: Value) -> Result[List[Value], Fault]:
+fn list_of(m: Machine, name: String, v: Value) Result[List[Value], Fault]:
     if let items = to_list(m, v):
         return ok(items)
 
     return error(wrong_kind(m, name, "list", v))
 
-def int_of(m: Machine, name: String, v: Value) -> Result[Int, Fault]:
+fn int_of(m: Machine, name: String, v: Value) Result[Int, Fault]:
     match v:
-        case Number(n): return ok(n)
-        case _: return error(wrong_kind(m, name, "integer", v))
+        Number(n): return ok(n)
+        _: return error(wrong_kind(m, name, "integer", v))
 
-def str_of(m: Machine, name: String, v: Value) -> Result[String, Fault]:
+fn str_of(m: Machine, name: String, v: Value) Result[String, Fault]:
     match v:
-        case Text(s): return ok(s.clone())
-        case _: return error(wrong_kind(m, name, "string", v))
+        Text(s): return ok(s.clone())
+        _: return error(wrong_kind(m, name, "string", v))
 
-def pair_of(m: Machine, name: String, v: Value) -> Result[Int, Fault]:
+fn pair_of(m: Machine, name: String, v: Value) Result[Int, Fault]:
     let id = pair_id_of(v)
     if id < 0:
         return error(wrong_kind(m, name, "pair", v))
 
     return ok(id)
 
-def ints_of(m: Machine, name: String, args: List[Value]) -> Result[List[Int], Fault]:
+fn ints_of(m: Machine, name: String, args: List[Value]) Result[List[Int], Fault]:
     var out = List[Int]()
 
     for a in args:
         match a:
-            case Number(n): out.append(n)
-            case _: return error(wrong_kind(m, name, "integer", a))
+            Number(n): out.append(n)
+            _: return error(wrong_kind(m, name, "integer", a))
 
     return ok(out)
 
-def emit(var m: Machine, s: String) -> Unit:
+fn emit(var m: Machine, s: String) Unit:
     if s.length() > 0:
         m.clean = s.ends_with("\n")
     stdout().write(s).get()
 
-def report(var m: Machine, f: Fault) -> Unit:
+fn report(var m: Machine, f: Fault) Unit:
     if not m.clean:
         emit(var m, "\n")
     emit(var m, "error: " + f.text + "\n")
 
 # Drops frames created above `mark` unless a closure may still refer to one.
-def release(var m: Machine, mark: Int) -> Unit:
+fn release(var m: Machine, mark: Int) Unit:
     if m.escape >= mark:
         return
 
     while m.frames.length() > mark:
         let _dropped = m.frames.pop()
 
-def new_frame(var m: Machine, parent: Int) -> Int:
+fn new_frame(var m: Machine, parent: Int) Int:
     m.frames.append(Frame(vars: Map[String, Value](), parent: parent))
     return m.frames.length() - 1
 
-def lookup(m: Machine, env: Int, name: String) -> Optional[Value]:
+fn lookup(m: Machine, env: Int, name: String) Optional[Value]:
     var e = env
 
     while e >= 0:
@@ -310,7 +310,7 @@ def lookup(m: Machine, env: Int, name: String) -> Optional[Value]:
 
 # ---------- reader ----------
 
-def is_delim(c: String) -> Bool:
+fn is_delim(c: String) Bool:
     return (
         c == " "
         or c == "\t"
@@ -322,19 +322,19 @@ def is_delim(c: String) -> Bool:
         or c == ";"
     )
 
-def skip_space(var m: Machine) -> Unit:
+fn skip_space(var m: Machine) Unit:
     while m.pos < m.input.length():
         let c = m.input[m.pos]
 
         if c == ";":
             while m.pos < m.input.length() and m.input[m.pos] != "\n":
                 m.pos += 1
-        elif c == " " or c == "\t" or c == "\n" or c == "\r":
+        else if c == " " or c == "\t" or c == "\n" or c == "\r":
             m.pos += 1
         else:
             return
 
-def read_string(var m: Machine) -> Result[Token, Fault]:
+fn read_string(var m: Machine) Result[Token, Fault]:
     var text = ""
 
     while m.pos < m.input.length():
@@ -352,11 +352,11 @@ def read_string(var m: Machine) -> Result[Token, Fault]:
 
             if e == "n":
                 text = text + "\n"
-            elif e == "t":
+            else if e == "t":
                 text = text + "\t"
-            elif e == "\\":
+            else if e == "\\":
                 text = text + "\\"
-            elif e == "\"":
+            else if e == "\"":
                 text = text + "\""
             else:
                 return error(syntax_fault("bad escape"))
@@ -365,7 +365,7 @@ def read_string(var m: Machine) -> Result[Token, Fault]:
 
     return error(syntax_fault("unterminated string"))
 
-def next_token(var m: Machine) -> Result[Token, Fault]:
+fn next_token(var m: Machine) Result[Token, Fault]:
     skip_space(var m)
     if m.pos >= m.input.length():
         return ok(Token.End)
@@ -399,38 +399,38 @@ def next_token(var m: Machine) -> Result[Token, Fault]:
 
     return ok(Token.Atom(text))
 
-def is_close(t: Token) -> Bool:
+fn is_close(t: Token) Bool:
     match t:
-        case Close: return True
-        case _: return False
+        Close: return true
+        _: return false
 
-def is_dot(t: Token) -> Bool:
+fn is_dot(t: Token) Bool:
     match t:
-        case Dot: return True
-        case _: return False
+        Dot: return true
+        _: return false
 
-def is_end(t: Token) -> Bool:
+fn is_end(t: Token) Bool:
     match t:
-        case End: return True
-        case _: return False
+        End: return true
+        _: return false
 
-def is_integer_text(text: String) -> Bool:
+fn is_integer_text(text: String) Bool:
     var digits = text.clone()
     if text.starts_with("-"):
         digits = text.drop(1)
     if digits.is_empty():
-        return False
+        return false
 
     for c in digits.chars():
         if not DIGITS.contains(c):
-            return False
-    return True
+            return false
+    return true
 
-def atom_value(text: String) -> Result[Value, Fault]:
+fn atom_value(text: String) Result[Value, Fault]:
     if text == "#t":
-        return ok(Value.Boolean(True))
+        return ok(Value.Boolean(true))
     if text == "#f":
-        return ok(Value.Boolean(False))
+        return ok(Value.Boolean(false))
     if text.starts_with("#"):
         return error(syntax_fault("bad token: " + text))
 
@@ -442,25 +442,25 @@ def atom_value(text: String) -> Result[Value, Fault]:
 
     return ok(Value.Symbol(text))
 
-def build_quote(var m: Machine, datum: Value) -> Value:
+fn build_quote(var m: Machine, datum: Value) Value:
     let tail = cons(var m, datum, Value.Nil)
     return cons(var m, Value.Symbol("quote"), tail)
 
-def datum_from(var m: Machine, tok: Token) -> Result[Value, Fault]:
+fn datum_from(var m: Machine, tok: Token) Result[Value, Fault]:
     match tok:
-        case End: return error(syntax_fault("unexpected end of input"))
-        case Close: return error(syntax_fault("unexpected )"))
-        case Dot: return error(syntax_fault("unexpected ."))
-        case Open: return read_list(var m)
-        case Str(text): return ok(Value.Text(text))
-        case Atom(text): return atom_value(text)
-        case Quote:
+        End: return error(syntax_fault("unexpected end of input"))
+        Close: return error(syntax_fault("unexpected )"))
+        Dot: return error(syntax_fault("unexpected ."))
+        Open: return read_list(var m)
+        Str(text): return ok(Value.Text(text))
+        Atom(text): return atom_value(text)
+        Quote:
             let next = try next_token(var m)
             let datum = try datum_from(var m, next)
             return ok(build_quote(var m, datum))
 
 # Reads the datum after a dot, then requires the closing paren.
-def read_tail(var m: Machine) -> Result[Value, Fault]:
+fn read_tail(var m: Machine) Result[Value, Fault]:
     let tok = try next_token(var m)
     if is_close(tok):
         return error(syntax_fault("bad dotted list"))
@@ -476,10 +476,10 @@ def read_tail(var m: Machine) -> Result[Value, Fault]:
 
     return error(syntax_fault("bad dotted list"))
 
-def read_list(var m: Machine) -> Result[Value, Fault]:
+fn read_list(var m: Machine) Result[Value, Fault]:
     var items = List[Value]()
 
-    while True:
+    while true:
         let tok = try next_token(var m)
         if is_close(tok):
             return ok(build_list(var m, items, Value.Nil))
@@ -496,11 +496,11 @@ def read_list(var m: Machine) -> Result[Value, Fault]:
 
 # ---------- procedures and argument binding ----------
 
-def parse_params(m: Machine, spec: Value, form: String) -> Result[Params, Fault]:
+fn parse_params(m: Machine, spec: Value, form: String) Result[Params, Fault]:
     var names = List[String]()
     var rest = spec.clone()
 
-    while True:
+    while true:
         let pid = pair_id_of(rest)
         if pid < 0:
             break
@@ -513,16 +513,16 @@ def parse_params(m: Machine, spec: Value, form: String) -> Result[Params, Fault]
         rest = m.cdrs[pid].clone()
 
     if is_nil(rest):
-        return ok(Params(names: names, rest: False))
+        return ok(Params(names: names, rest: false))
 
     let last = symbol_name(rest)
     if last.is_empty() or names.contains(last):
         return error(bad_form(form))
 
     names.append(last)
-    return ok(Params(names: names, rest: True))
+    return ok(Params(names: names, rest: true))
 
-def parse_bindings(m: Machine, spec: Value, form: String) -> Result[Bindings, Fault]:
+fn parse_bindings(m: Machine, spec: Value, form: String) Result[Bindings, Fault]:
     var names = List[String]()
     var inits = List[Value]()
 
@@ -541,9 +541,9 @@ def parse_bindings(m: Machine, spec: Value, form: String) -> Result[Bindings, Fa
 
     return error(bad_form(form))
 
-def make_closure(
+fn make_closure(
     var m: Machine, name: String, params: Params, body: List[Value], env: Int
-) -> Value:
+) Value:
     if env > m.escape:
         m.escape = env
     m.procs.append(
@@ -555,13 +555,13 @@ def make_closure(
     return Value.Closure(m.procs.length() - 1)
 
 # The expressions parts[start..], as a body for a procedure.
-def body_from(parts: List[Value], start: Int) -> List[Value]:
+fn body_from(parts: List[Value], start: Int) List[Value]:
     var body = List[Value]()
     for i in start..parts.length():
         body.append(parts[i].clone())
     return body
 
-def make_lambda(var m: Machine, parts: List[Value], env: Int, name: String) -> Result[
+fn make_lambda(var m: Machine, parts: List[Value], env: Int, name: String) Result[
     Value, Fault
 ]:
     if parts.length() < 3:
@@ -571,7 +571,7 @@ def make_lambda(var m: Machine, parts: List[Value], env: Int, name: String) -> R
     let body = body_from(parts, 2)
     return ok(make_closure(var m, name, params, body, env))
 
-def bind_args(var m: Machine, id: Int, args: List[Value]) -> Result[Int, Fault]:
+fn bind_args(var m: Machine, id: Int, args: List[Value]) Result[Int, Fault]:
     var name = m.procs[id].name.clone()
     if name.is_empty():
         name = "lambda"
@@ -582,7 +582,7 @@ def bind_args(var m: Machine, id: Int, args: List[Value]) -> Result[Int, Fault]:
     if rest:
         fixed = count - 1
 
-    let high = -1 if rest else fixed
+    let high = if rest: -1 else: fixed
 
     let _arity = try check_arity(name, fixed, high, args.length())
     var vars = Map[String, Value]()
@@ -601,23 +601,23 @@ def bind_args(var m: Machine, id: Int, args: List[Value]) -> Result[Int, Fault]:
     return ok(m.frames.length() - 1)
 
 # Evaluates all but the last expression of a procedure body in its new frame.
-def run_prefix(var m: Machine, id: Int, frame: Int, depth: Int) -> Result[Unit, Fault]:
+fn run_prefix(var m: Machine, id: Int, frame: Int, depth: Int) Result[Unit, Fault]:
     let last = m.procs[id].body.length() - 1
     for i in 0..last:
         let _ignored = try eval_expr(
-            var m, m.procs[id].body[i].clone(), frame, depth, True
+            var m, m.procs[id].body[i].clone(), frame, depth, true
         )
-    return ok(())
+    return ok(unit)
 
 # Applies f in a non-tail position of a frame at depth `cur`.
-def apply_proc(var m: Machine, f: Value, args: List[Value], cur: Int) -> Result[
+fn apply_proc(var m: Machine, f: Value, args: List[Value], cur: Int) Result[
     Value, Fault
 ]:
     match f:
-        case Builtin(name, low, high):
+        Builtin(name, low, high):
             let _arity = try check_arity(name, low, high, args.length())
             return call_builtin(var m, name, args, cur)
-        case Closure(id):
+        Closure(id):
             if cur >= MAX_DEPTH:
                 return error(rt_fault("recursion limit exceeded"))
 
@@ -626,25 +626,25 @@ def apply_proc(var m: Machine, f: Value, args: List[Value], cur: Int) -> Result[
             let _prefix = try run_prefix(var m, id, frame, cur + 1)
             let last = m.procs[id].body.length() - 1
             let result = eval_expr(
-                var m, m.procs[id].body[last].clone(), frame, cur + 1, False
+                var m, m.procs[id].body[last].clone(), frame, cur + 1, false
             )
             release(var m, mark)
             return result
-        case _:
-            return error(rt_fault("not a procedure: " + show(m, f, True)))
+        _:
+            return error(rt_fault("not a procedure: " + show(m, f, true)))
 
 # Applies f in the position of the current step. `pending` says the step is
 # not a tail position of its frame, so entering a body adds one to the depth.
-def apply_tail(
+fn apply_tail(
     var m: Machine, f: Value, args: List[Value], var cur: Int, var pending: Bool,
     mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     match f:
-        case Builtin(name, low, high):
+        Builtin(name, low, high):
             let _arity = try check_arity(name, low, high, args.length())
             let v = try call_builtin(var m, name, args, cur)
             return ok(Step.Done(v))
-        case Closure(id):
+        Closure(id):
             release(var m, mark)
 
             let frame = try bind_args(var m, id, args)
@@ -654,20 +654,20 @@ def apply_tail(
                     return error(rt_fault("recursion limit exceeded"))
 
                 cur += 1
-                pending = False
+                pending = false
 
             let _prefix = try run_prefix(var m, id, frame, cur)
             let last = m.procs[id].body.length() - 1
             return ok(Step.Tail(m.procs[id].body[last].clone(), frame))
-        case _:
-            return error(rt_fault("not a procedure: " + show(m, f, True)))
+        _:
+            return error(rt_fault("not a procedure: " + show(m, f, true)))
 
 # ---------- evaluator ----------
 
 # Evaluates expr in env. `depth` is the depth of the frame that contains expr.
 # `pending` is true when expr is not a tail position, so that closure calls
 # made directly by it enter a body one level deeper.
-def eval_expr(var m: Machine, expr: Value, env: Int, depth: Int, pending: Bool) -> Result[
+fn eval_expr(var m: Machine, expr: Value, env: Int, depth: Int, pending: Bool) Result[
     Value, Fault
 ]:
     let mark = m.frames.length()
@@ -675,41 +675,41 @@ def eval_expr(var m: Machine, expr: Value, env: Int, depth: Int, pending: Bool) 
     release(var m, mark)
     return result
 
-def eval_loop(
+fn eval_loop(
     var m: Machine, expr: Value, env: Int, depth: Int, pending: Bool, mark: Int
-) -> Result[Value, Fault]:
+) Result[Value, Fault]:
     var e = expr.clone()
     var en = env
     var cur = depth
     var pend = pending
 
-    while True:
+    while true:
         let step = try eval_step(var m, e.clone(), en, var cur, var pend, mark)
 
         match step:
-            case Done(value):
+            Done(value):
                 return ok(value)
-            case Tail(next, next_env):
+            Tail(next, next_env):
                 e = next
                 en = next_env
 
-def eval_step(
+fn eval_step(
     var m: Machine, expr: Value, env: Int, var cur: Int, var pending: Bool, mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     match expr:
-        case Symbol(name):
+        Symbol(name):
             if let v = lookup(m, env, name):
                 return ok(Step.Done(v))
 
             return error(rt_fault("unbound variable: " + name))
-        case PairRef(id):
+        PairRef(id):
             return eval_pair(var m, id, env, var cur, var pending, mark)
-        case Nil:
+        Nil:
             return error(syntax_fault("empty application"))
-        case _:
+        _:
             return ok(Step.Done(expr.clone()))
 
-def is_special(name: String) -> Bool:
+fn is_special(name: String) Bool:
     return (
         name == "quote"
         or name == "if"
@@ -728,9 +728,9 @@ def is_special(name: String) -> Bool:
         or name == "try"
     )
 
-def eval_pair(
+fn eval_pair(
     var m: Machine, id: Int, env: Int, var cur: Int, var pending: Bool, mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     let form = Value.PairRef(id)
     let name = symbol_name(m.cars[id])
     let special = is_special(name)
@@ -746,32 +746,32 @@ def eval_pair(
 
     return error(syntax_fault("bad application"))
 
-def apply_form(
+fn apply_form(
     var m: Machine, items: List[Value], env: Int, var cur: Int, var pending: Bool,
     mark: Int
-) -> Result[Step, Fault]:
-    let op = try eval_expr(var m, items[0].clone(), env, cur, True)
+) Result[Step, Fault]:
+    let op = try eval_expr(var m, items[0].clone(), env, cur, true)
     var args = List[Value]()
 
     for i in 1..items.length():
-        let arg = try eval_expr(var m, items[i].clone(), env, cur, True)
+        let arg = try eval_expr(var m, items[i].clone(), env, cur, true)
         args.append(arg)
 
     return apply_tail(var m, op, args, var cur, var pending, mark)
 
-def eval_all(var m: Machine, exprs: List[Value], env: Int, cur: Int) -> Result[
+fn eval_all(var m: Machine, exprs: List[Value], env: Int, cur: Int) Result[
     List[Value], Fault
 ]:
     var out = List[Value]()
 
     for x in exprs:
-        let v = try eval_expr(var m, x.clone(), env, cur, True)
+        let v = try eval_expr(var m, x.clone(), env, cur, true)
         out.append(v)
 
     return ok(out)
 
 # Evaluates items[start..] with the last one in tail position.
-def eval_seq(var m: Machine, items: List[Value], start: Int, env: Int, cur: Int) -> Result[
+fn eval_seq(var m: Machine, items: List[Value], start: Int, env: Int, cur: Int) Result[
     Step, Fault
 ]:
     let last = items.length() - 1
@@ -781,15 +781,15 @@ def eval_seq(var m: Machine, items: List[Value], start: Int, env: Int, cur: Int)
     var i = start
 
     while i < last:
-        let _ignored = try eval_expr(var m, items[i].clone(), env, cur, True)
+        let _ignored = try eval_expr(var m, items[i].clone(), env, cur, true)
         i += 1
 
     return ok(Step.Tail(items[last].clone(), env))
 
-def special_form(
+fn special_form(
     var m: Machine, name: String, items: List[Value], env: Int, var cur: Int,
     var pending: Bool, mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     if name == "quote":
         if items.length() != 2:
             return error(bad_form(name))
@@ -820,20 +820,20 @@ def special_form(
     if name == "or":
         return special_or(var m, items, env, cur)
     if name == "when":
-        return special_when(var m, items, env, cur, False)
+        return special_when(var m, items, env, cur, false)
     if name == "unless":
-        return special_when(var m, items, env, cur, True)
+        return special_when(var m, items, env, cur, true)
 
     return special_try(var m, items, env, cur)
 
-def special_if(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_if(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     let n = items.length()
     if n != 3 and n != 4:
         return error(bad_form("if"))
 
-    let verdict = try eval_expr(var m, items[1].clone(), env, cur, True)
+    let verdict = try eval_expr(var m, items[1].clone(), env, cur, true)
     if truthy(verdict):
         return ok(Step.Tail(items[2].clone(), env))
     if n == 4:
@@ -841,15 +841,15 @@ def special_if(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result
 
     return ok(Step.Done(Value.Void))
 
-def define_value(var m: Machine, expr: Value, env: Int, cur: Int, name: String) -> Result[
+fn define_value(var m: Machine, expr: Value, env: Int, cur: Int, name: String) Result[
     Value, Fault
 ]:
     if let parts = to_list(m, expr.clone()):
         if not parts.is_empty() and symbol_name(parts[0]) == "lambda":
             return make_lambda(var m, parts, env, name)
-    return eval_expr(var m, expr, env, cur, True)
+    return eval_expr(var m, expr, env, cur, true)
 
-def special_define(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_define(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     if items.length() < 2:
@@ -877,14 +877,14 @@ def special_define(var m: Machine, items: List[Value], env: Int, cur: Int) -> Re
     m.frames[env].vars.add(name, proc)
     return ok(Step.Done(Value.Void))
 
-def special_set(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_set(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     if items.length() != 3 or symbol_name(items[1]).is_empty():
         return error(bad_form("set!"))
 
     let name = symbol_name(items[1])
-    let value = try eval_expr(var m, items[2].clone(), env, cur, True)
+    let value = try eval_expr(var m, items[2].clone(), env, cur, true)
     var target = -1
     var e = env
 
@@ -901,10 +901,10 @@ def special_set(var m: Machine, items: List[Value], env: Int, cur: Int) -> Resul
     m.frames[target].vars.add(name, value)
     return ok(Step.Done(Value.Void))
 
-def special_let(
+fn special_let(
     var m: Machine, items: List[Value], env: Int, var cur: Int, var pending: Bool,
     mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     if items.length() < 3:
         return error(bad_form("let"))
 
@@ -919,10 +919,10 @@ def special_let(
         m.frames[frame].vars.add(bind.names[i].clone(), vals[i].clone())
     return eval_seq(var m, items, 2, frame, cur)
 
-def named_let(
+fn named_let(
     var m: Machine, name: String, items: List[Value], env: Int, var cur: Int,
     var pending: Bool, mark: Int
-) -> Result[Step, Fault]:
+) Result[Step, Fault]:
     if items.length() < 4:
         return error(bad_form("let"))
 
@@ -931,14 +931,14 @@ def named_let(
     let frame = new_frame(var m, env)
     let body = body_from(items, 3)
     let proc = make_closure(
-        var m, name.clone(), Params(names: bind.names.clone(), rest: False), body, frame
+        var m, name.clone(), Params(names: bind.names.clone(), rest: false), body, frame
     )
     m.frames[frame].vars.add(name, proc.clone())
     return apply_tail(var m, proc, vals, var cur, var pending, mark)
 
-def special_letstar(
-    var m: Machine, items: List[Value], env: Int, cur: Int, form: String
-) -> Result[Step, Fault]:
+fn special_letstar(var m: Machine, items: List[Value], env: Int, cur: Int, form: String) Result[
+    Step, Fault
+]:
     if items.length() < 3:
         return error(bad_form(form))
 
@@ -946,12 +946,12 @@ def special_letstar(
     let frame = new_frame(var m, env)
 
     for i in 0..bind.names.length():
-        let v = try eval_expr(var m, bind.inits[i].clone(), frame, cur, True)
+        let v = try eval_expr(var m, bind.inits[i].clone(), frame, cur, true)
         m.frames[frame].vars.add(bind.names[i].clone(), v)
 
     return eval_seq(var m, items, 2, frame, cur)
 
-def special_cond(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_cond(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     var i = 1
@@ -968,7 +968,7 @@ def special_cond(var m: Machine, items: List[Value], env: Int, cur: Int) -> Resu
 
                 return eval_seq(var m, parts, 1, env, cur)
 
-            let verdict = try eval_expr(var m, parts[0].clone(), env, cur, True)
+            let verdict = try eval_expr(var m, parts[0].clone(), env, cur, true)
 
             if truthy(verdict):
                 if parts.length() == 1:
@@ -982,16 +982,16 @@ def special_cond(var m: Machine, items: List[Value], env: Int, cur: Int) -> Resu
 
     return ok(Step.Done(Value.Void))
 
-def special_and(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_and(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     if items.length() == 1:
-        return ok(Step.Done(Value.Boolean(True)))
+        return ok(Step.Done(Value.Boolean(true)))
 
     var i = 1
 
     while i < items.length() - 1:
-        let v = try eval_expr(var m, items[i].clone(), env, cur, True)
+        let v = try eval_expr(var m, items[i].clone(), env, cur, true)
         if not truthy(v):
             return ok(Step.Done(v))
 
@@ -999,16 +999,16 @@ def special_and(var m: Machine, items: List[Value], env: Int, cur: Int) -> Resul
 
     return ok(Step.Tail(items[items.length() - 1].clone(), env))
 
-def special_or(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_or(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     if items.length() == 1:
-        return ok(Step.Done(Value.Boolean(False)))
+        return ok(Step.Done(Value.Boolean(false)))
 
     var i = 1
 
     while i < items.length() - 1:
-        let v = try eval_expr(var m, items[i].clone(), env, cur, True)
+        let v = try eval_expr(var m, items[i].clone(), env, cur, true)
         if truthy(v):
             return ok(Step.Done(v))
 
@@ -1016,27 +1016,27 @@ def special_or(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result
 
     return ok(Step.Tail(items[items.length() - 1].clone(), env))
 
-def special_when(var m: Machine, items: List[Value], env: Int, cur: Int, negate: Bool) -> Result[
+fn special_when(var m: Machine, items: List[Value], env: Int, cur: Int, negate: Bool) Result[
     Step, Fault
 ]:
-    let name = "unless" if negate else "when"
+    let name = if negate: "unless" else: "when"
 
     if items.length() < 3:
         return error(bad_form(name))
 
-    let verdict = try eval_expr(var m, items[1].clone(), env, cur, True)
+    let verdict = try eval_expr(var m, items[1].clone(), env, cur, true)
     if truthy(verdict) != negate:
         return eval_seq(var m, items, 2, env, cur)
 
     return ok(Step.Done(Value.Void))
 
-def special_try(var m: Machine, items: List[Value], env: Int, cur: Int) -> Result[
+fn special_try(var m: Machine, items: List[Value], env: Int, cur: Int) Result[
     Step, Fault
 ]:
     if items.length() != 3:
         return error(bad_form("try"))
 
-    let attempt = eval_expr(var m, items[1].clone(), env, cur, True)
+    let attempt = eval_expr(var m, items[1].clone(), env, cur, true)
     if attempt.is_ok():
         return ok(Step.Done(attempt.get().clone()))
 
@@ -1044,26 +1044,26 @@ def special_try(var m: Machine, items: List[Value], env: Int, cur: Int) -> Resul
     if fault.syntax:
         return error(fault.clone())
 
-    let handler = try eval_expr(var m, items[2].clone(), env, cur, True)
+    let handler = try eval_expr(var m, items[2].clone(), env, cur, true)
     let message = Value.Text(fault.text.clone())
     let v = try apply_proc(var m, handler, [message], cur)
     return ok(Step.Done(v))
 
 # ---------- equality and arithmetic ----------
 
-def eq_values(a: Value, b: Value) -> Bool:
+fn eq_values(a: Value, b: Value) Bool:
     let ta = tag(a)
     if ta != tag(b):
-        return False
+        return false
     if ta == T_NUMBER or ta == T_BOOLEAN or ta == T_SYMBOL or ta == T_NIL:
         return atom_text(a) == atom_text(b)
 
-    return False
+    return false
 
-def atomic_equal(a: Value, b: Value) -> Bool:
+fn atomic_equal(a: Value, b: Value) Bool:
     let ta = tag(a)
     if ta != tag(b):
-        return False
+        return false
     if ta == T_TEXT:
         return text_of(a) == text_of(b)
     if ta == T_CLOSURE:
@@ -1073,7 +1073,7 @@ def atomic_equal(a: Value, b: Value) -> Bool:
 
     return atom_text(a) == atom_text(b)
 
-def equal_values(m: Machine, a: Value, b: Value) -> Bool:
+fn equal_values(m: Machine, a: Value, b: Value) Bool:
     var x = a.clone()
     var y = b.clone()
 
@@ -1081,33 +1081,33 @@ def equal_values(m: Machine, a: Value, b: Value) -> Bool:
         let px = pair_id_of(x)
         let py = pair_id_of(y)
         if not equal_values(m, m.cars[px].clone(), m.cars[py].clone()):
-            return False
+            return false
 
         x = m.cdrs[px].clone()
         y = m.cdrs[py].clone()
 
     if pair_id_of(x) >= 0 or pair_id_of(y) >= 0:
-        return False
+        return false
 
     return atomic_equal(x, y)
 
-def add_checked(a: Int, b: Int) -> Result[Int, Fault]:
+fn add_checked(a: Int, b: Int) Result[Int, Fault]:
     if (b > 0 and a > MAX_INT - b) or (b < 0 and a < MIN_INT - b):
         return error(rt_fault("integer overflow"))
 
     return ok(a + b)
 
-def sub_checked(a: Int, b: Int) -> Result[Int, Fault]:
+fn sub_checked(a: Int, b: Int) Result[Int, Fault]:
     if (b < 0 and a > MAX_INT + b) or (b > 0 and a < MIN_INT + b):
         return error(rt_fault("integer overflow"))
 
     return ok(a - b)
 
-def mul_checked(a: Int, b: Int) -> Result[Int, Fault]:
+fn mul_checked(a: Int, b: Int) Result[Int, Fault]:
     if a == 0 or b == 0:
         return ok(0)
 
-    var overflow = False
+    var overflow = false
 
     if a > 0:
         if b > 0:
@@ -1125,7 +1125,7 @@ def mul_checked(a: Int, b: Int) -> Result[Int, Fault]:
 
     return ok(a * b)
 
-def quotient_of(a: Int, b: Int) -> Result[Int, Fault]:
+fn quotient_of(a: Int, b: Int) Result[Int, Fault]:
     if b == 0:
         return error(rt_fault("division by zero"))
     if b == -1 and a == MIN_INT:
@@ -1133,7 +1133,7 @@ def quotient_of(a: Int, b: Int) -> Result[Int, Fault]:
 
     return ok(a / b)
 
-def remainder_of(a: Int, b: Int) -> Result[Int, Fault]:
+fn remainder_of(a: Int, b: Int) Result[Int, Fault]:
     if b == 0:
         return error(rt_fault("division by zero"))
     if b == -1:
@@ -1141,14 +1141,14 @@ def remainder_of(a: Int, b: Int) -> Result[Int, Fault]:
 
     return ok(a % b)
 
-def modulo_of(a: Int, b: Int) -> Result[Int, Fault]:
+fn modulo_of(a: Int, b: Int) Result[Int, Fault]:
     let r = try remainder_of(a, b)
     if r != 0 and ((r < 0) != (b < 0)):
         return ok(r + b)
 
     return ok(r)
 
-def compare_ok(name: String, a: Int, b: Int) -> Bool:
+fn compare_ok(name: String, a: Int, b: Int) Bool:
     if name == "=":
         return a == b
     if name == "<":
@@ -1160,7 +1160,7 @@ def compare_ok(name: String, a: Int, b: Int) -> Bool:
 
     return a >= b
 
-def cxr(m: Machine, name: String, v: Value, ops: String) -> Result[Value, Fault]:
+fn cxr(m: Machine, name: String, v: Value, ops: String) Result[Value, Fault]:
     var cur = v.clone()
 
     for op in ops.chars():
@@ -1175,7 +1175,7 @@ def cxr(m: Machine, name: String, v: Value, ops: String) -> Result[Value, Fault]
 
 # ---------- builtins ----------
 
-def numeric_builtin(m: Machine, name: String, args: List[Value]) -> Result[Value, Fault]:
+fn numeric_builtin(m: Machine, name: String, args: List[Value]) Result[Value, Fault]:
     let ns = try ints_of(m, name, args)
 
     if name == "+":
@@ -1234,13 +1234,13 @@ def numeric_builtin(m: Machine, name: String, args: List[Value]) -> Result[Value
     if name == "odd?":
         return ok(Value.Boolean(ns[0] % 2 != 0))
 
-    var holds = True
+    var holds = true
     for i in 0..ns.length() - 1:
         if not compare_ok(name, ns[i], ns[i + 1]):
-            holds = False
+            holds = false
     return ok(Value.Boolean(holds))
 
-def is_numeric_name(name: String) -> Bool:
+fn is_numeric_name(name: String) Bool:
     return (
         name == "+"
         or name == "-"
@@ -1261,9 +1261,7 @@ def is_numeric_name(name: String) -> Bool:
         or name == ">="
     )
 
-def string_builtin(var m: Machine, name: String, args: List[Value]) -> Result[
-    Value, Fault
-]:
+fn string_builtin(var m: Machine, name: String, args: List[Value]) Result[Value, Fault]:
     if name == "string-length":
         let s = try str_of(m, name, args[0])
         return ok(Value.Number(s.length()))
@@ -1317,11 +1315,11 @@ def string_builtin(var m: Machine, name: String, args: List[Value]) -> Result[
         if is_integer_text(s):
             if let n = s.parse_int():
                 return ok(Value.Number(n))
-        return ok(Value.Boolean(False))
+        return ok(Value.Boolean(false))
 
     if name == "number->string":
         let n = try int_of(m, name, args[0])
-        return ok(Value.Text(f"{n}"))
+        return ok(Value.Text("{n}"))
 
     if name == "string->symbol":
         let s = try str_of(m, name, args[0])
@@ -1376,7 +1374,7 @@ def string_builtin(var m: Machine, name: String, args: List[Value]) -> Result[
     let sub = try str_of(m, name, args[1])
     return ok(Value.Boolean(s.contains(sub)))
 
-def is_string_name(name: String) -> Bool:
+fn is_string_name(name: String) Bool:
     return (
         name == "string-length"
         or name == "string-append"
@@ -1397,7 +1395,7 @@ def is_string_name(name: String) -> Bool:
         or name == "string-contains?"
     )
 
-def call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) -> Result[
+fn call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) Result[
     Value, Fault
 ]:
     if is_numeric_name(name):
@@ -1529,7 +1527,7 @@ def call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) -> R
             if equal_values(m, args[0].clone(), m.cars[pid].clone()):
                 return ok(entry.clone())
 
-        return ok(Value.Boolean(False))
+        return ok(Value.Boolean(false))
 
     if name == "member":
         let items = try list_of(m, name, args[1])
@@ -1541,7 +1539,7 @@ def call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) -> R
 
             rest = m.cdrs[pair_id_of(rest)].clone()
 
-        return ok(Value.Boolean(False))
+        return ok(Value.Boolean(false))
 
     if name == "map" or name == "for-each":
         if not is_procedure(args[0]):
@@ -1630,12 +1628,12 @@ def call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) -> R
         return ok(build_list(var m, sorted, Value.Nil))
 
     if name == "display":
-        let text = show(m, args[0], False)
+        let text = show(m, args[0], false)
         emit(var m, text)
         return ok(Value.Void)
 
     if name == "write":
-        let text = show(m, args[0], True)
+        let text = show(m, args[0], true)
         emit(var m, text)
         return ok(Value.Void)
 
@@ -1650,13 +1648,13 @@ def call_builtin(var m: Machine, name: String, args: List[Value], cur: Int) -> R
         let first = try str_of(m, name, args[0])
         var message = first
         for i in 1..args.length():
-            message = message + " " + show(m, args[i], True)
+            message = message + " " + show(m, args[i], true)
         return error(rt_fault(message))
 
     return error(rt_fault("unknown builtin: " + name))
 
 # Stable merge sort; less is called as (less later earlier).
-def merge_sort(var m: Machine, items: List[Value], less: Value, cur: Int) -> Result[
+fn merge_sort(var m: Machine, items: List[Value], less: Value, cur: Int) Result[
     List[Value], Fault
 ]:
     if items.length() <= 1:
@@ -1700,10 +1698,10 @@ def merge_sort(var m: Machine, items: List[Value], less: Value, cur: Int) -> Res
 
     return ok(out)
 
-def install(var m: Machine, name: String, low: Int, high: Int) -> Unit:
+fn install(var m: Machine, name: String, low: Int, high: Int) Unit:
     m.frames[0].vars.add(name.clone(), Value.Builtin(name, low, high))
 
-def install_builtins(var m: Machine) -> Unit:
+fn install_builtins(var m: Machine) Unit:
     install(var m, "+", 0, -1)
     install(var m, "-", 1, -1)
     install(var m, "*", 0, -1)
@@ -1781,22 +1779,22 @@ def install_builtins(var m: Machine) -> Unit:
 
 # ---------- driver ----------
 
-def run_form(var m: Machine) -> Result[Unit, Fault]:
+fn run_form(var m: Machine) Result[Unit, Fault]:
     let tok = try next_token(var m)
     let form = try datum_from(var m, tok)
-    let _ignored = try eval_expr(var m, form, 0, 0, True)
-    return ok(())
+    let _ignored = try eval_expr(var m, form, 0, 0, true)
+    return ok(unit)
 
-export def main() -> Int:
+export fn main() Int:
     let text = read_all(stdin()).get().decode_utf8().get("")
     var m = Machine(
         input: text.chars(), pos: 0, cars: List[Value](), cdrs: List[Value](),
-        frames: List[Frame](), procs: List[Procedure](), clean: True, escape: -1
+        frames: List[Frame](), procs: List[Procedure](), clean: true, escape: -1
     )
     let _root = new_frame(var m, -1)
     install_builtins(var m)
 
-    while True:
+    while true:
         skip_space(var m)
         if m.pos >= m.input.length():
             return 0

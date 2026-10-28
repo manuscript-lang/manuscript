@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Item:
     sku: String
@@ -15,32 +15,32 @@ type Shop:
     price: Map[String, Int]
     orders: Map[String, Order]
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return "0" <= c and c <= "9"
 
-def valid_sku(text: String) -> Bool:
+fn valid_sku(text: String) Bool:
     if text.length() == 0:
-        return False
+        return false
 
     for i in 0..text.length():
         let c = text.get(i)
         if not (("A" <= c and c <= "Z") or is_digit(c) or c == "-"):
-            return False
+            return false
 
-    return True
+    return true
 
-def valid_id(text: String) -> Bool:
+fn valid_id(text: String) Bool:
     if text.length() == 0:
-        return False
+        return false
 
     for i in 0..text.length():
         let c = text.get(i)
         if not (("a" <= c and c <= "z") or is_digit(c) or c == "-"):
-            return False
+            return false
 
-    return True
+    return true
 
-def parse_num(text: String, lo: Int, hi: Int) -> Optional[Int]:
+fn parse_num(text: String, lo: Int, hi: Int) Optional[Int]:
     if text.length() < 1 or text.length() > 7:
         return none
 
@@ -54,21 +54,21 @@ def parse_num(text: String, lo: Int, hi: Int) -> Optional[Int]:
 
     return some(value)
 
-def money(cents: Int) -> String:
+fn money(cents: Int) String:
     let frac = cents % 100
     if frac < 10:
-        return f"{cents / 100}.0{frac}"
+        return "{cents / 100}.0{frac}"
 
-    return f"{cents / 100}.{frac}"
+    return "{cents / 100}.{frac}"
 
-def line_cost(qty: Int, price: Int) -> Int:
+fn line_cost(qty: Int, price: Int) Int:
     if qty >= 10:
         return (qty * price * 90 + 50) / 100
 
     return qty * price
 
 impl Shop:
-    var def stock_cmd(parts: List[String]) -> String:
+    var fn stock_cmd(parts: List[String]) String:
         if parts.length() != 3:
             return "error: usage"
         if not valid_sku(parts[1]):
@@ -81,25 +81,25 @@ impl Shop:
 
             let now = self.stock.get(sku).get(0) + qty
             self.stock[sku.clone()] = now
-            return f"ok {sku} stock={now}"
+            return "ok {sku} stock={now}"
 
         return "error: bad quantity"
 
-    var def price_cmd(parts: List[String]) -> String:
+    var fn price_cmd(parts: List[String]) String:
         if parts.length() != 3:
             return "error: usage"
 
         if let cents = parse_num(parts[2], 0, 10000000):
             let sku = parts[1]
             if not self.price.contains(sku):
-                return f"error: unknown sku {sku}"
+                return "error: unknown sku {sku}"
 
             self.price[sku.clone()] = cents
             return "ok"
 
         return "error: bad price"
 
-    var def order_cmd(parts: List[String]) -> String:
+    var fn order_cmd(parts: List[String]) String:
         if parts.length() < 3:
             return "error: usage"
 
@@ -112,29 +112,29 @@ impl Shop:
         for i in 2..parts.length():
             let pieces = parts[i].split(":")
             if pieces.length() != 2 or not valid_sku(pieces[0]):
-                return f"error: bad item {parts[i]}"
+                return "error: bad item {parts[i]}"
 
             if let qty = parse_num(pieces[1], 1, 100000):
                 items.append(Item(pieces[0].clone(), qty))
             else:
-                return f"error: bad item {parts[i]}"
+                return "error: bad item {parts[i]}"
 
         if self.orders.contains(id):
-            return f"error: order {id} already exists"
+            return "error: order {id} already exists"
 
         var seen = Set[String]()
 
         for it in items:
             if seen.contains(it.sku):
-                return f"error: duplicate sku {it.sku}"
+                return "error: duplicate sku {it.sku}"
 
             seen.add(it.sku.clone())
             if not self.price.contains(it.sku):
-                return f"error: unknown sku {it.sku}"
+                return "error: unknown sku {it.sku}"
 
             let have = self.stock.get(it.sku).get(0)
             if it.qty > have:
-                return f"error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
+                return "error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
         var total = 0
         for it in items:
@@ -142,9 +142,9 @@ impl Shop:
         for it in items:
             self.stock[it.sku.clone()] = self.stock.get(it.sku).get(0) - it.qty
         self.orders[id.clone()] = Order("placed", items, total)
-        return f"ok {id} total={money(total)}"
+        return "ok {id} total={money(total)}"
 
-    var def cancel_cmd(parts: List[String]) -> String:
+    var fn cancel_cmd(parts: List[String]) String:
         if parts.length() != 2:
             return "error: usage"
 
@@ -152,18 +152,18 @@ impl Shop:
 
         if let o = self.orders.get(id).clone():
             if o.status == "shipped":
-                return f"error: order {id} already shipped"
+                return "error: order {id} already shipped"
             if o.status == "cancelled":
-                return f"error: order {id} already cancelled"
+                return "error: order {id} already cancelled"
 
             for it in o.items:
                 self.stock[it.sku.clone()] = self.stock.get(it.sku).get(0) + it.qty
             self.orders[id.clone()] = Order("cancelled", o.items.clone(), o.total)
             return "ok"
 
-        return f"error: unknown order {id}"
+        return "error: unknown order {id}"
 
-    var def ship_cmd(parts: List[String]) -> String:
+    var fn ship_cmd(parts: List[String]) String:
         if parts.length() != 2:
             return "error: usage"
 
@@ -171,16 +171,16 @@ impl Shop:
 
         if let o = self.orders.get(id).clone():
             if o.status == "shipped":
-                return f"error: order {id} already shipped"
+                return "error: order {id} already shipped"
             if o.status == "cancelled":
-                return f"error: order {id} is cancelled"
+                return "error: order {id} is cancelled"
 
             self.orders[id.clone()] = Order("shipped", o.items.clone(), o.total)
             return "ok"
 
-        return f"error: unknown order {id}"
+        return "error: unknown order {id}"
 
-    def report() -> String:
+    fn report() String:
         var lines = List[String]()
         var placed = 0
         var shipped = 0
@@ -190,7 +190,7 @@ impl Shop:
         for e in self.orders.entries():
             if e.value.status == "placed":
                 placed += 1
-            elif e.value.status == "shipped":
+            else if e.value.status == "shipped":
                 shipped += 1
                 revenue += e.value.total
             else:
@@ -204,14 +204,14 @@ impl Shop:
                         if it.sku == sku:
                             reserved += it.qty
             lines.append(
-                f"{sku} stock={self.stock.get(sku).get(0)} price={money(self.price.get(sku).get(0))} reserved={reserved}"
+                "{sku} stock={self.stock.get(sku).get(0)} price={money(self.price.get(sku).get(0))} reserved={reserved}"
             )
 
-        lines.append(f"orders placed={placed} shipped={shipped} cancelled={cancelled}")
-        lines.append(f"revenue={money(revenue)}")
+        lines.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
+        lines.append("revenue={money(revenue)}")
         return lines.join("\n")
 
-    var def handle(parts: List[String]) -> String:
+    var fn handle(parts: List[String]) String:
         let cmd = parts[0]
         if cmd == "stock":
             return self.stock_cmd(parts)
@@ -232,13 +232,13 @@ impl Shop:
 
         return "error: unknown command"
 
-def is_blank(parts: List[String]) -> Bool:
+fn is_blank(parts: List[String]) Bool:
     for p in parts:
         if p != "":
-            return False
-    return True
+            return false
+    return true
 
-export def main() -> Int:
+export fn main() Int:
     var shop = Shop(Map[String, Int](), Map[String, Int](), Map[String, Order]())
 
     for line in read_lines(stdin()).get():
@@ -247,6 +247,6 @@ export def main() -> Int:
             continue
 
         let out = shop.handle(parts)
-        stdout().write(f"{out}\n").get()
+        stdout().write("{out}\n").get()
 
     return 0

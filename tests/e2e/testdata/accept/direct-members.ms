@@ -1,14 +1,14 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Point:
     x: Int
     y: Int
 
 impl Equal for Point:
-    def equals(other: Point) -> Bool:
+    fn equals(other: Point) Bool:
         return self.x == other.x
 
-def contains_generic[T: Equal](values: List[T], value: T) -> Bool:
+fn contains_generic[T: Equal](values: List[T], value: T) Bool:
     return values.contains(value)
 
 test "list members match generic dispatch":

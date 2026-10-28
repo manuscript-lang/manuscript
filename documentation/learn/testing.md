@@ -11,9 +11,9 @@ Save this complete file as `test.ms`:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) Int:
     return a + b
 
 test "addition":
@@ -51,8 +51,8 @@ ms test ms.toml --json
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/json.ms" import parse, JsonError
-from "@std/test.ms" import expect_equal, expect_ok, expect_error, expect_some
+import {parse, JsonError} from "@std/json.ms"
+import {expect_equal, expect_ok, expect_error, expect_some} from "@std/test.ms"
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))
@@ -84,11 +84,11 @@ A property test checks a rule on many generated inputs instead of a few hand-pic
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test/property.ms" import check, ints, lists
-from "@std/test.ms" import expect_equal
+import {check, ints, lists} from "@std/test/property.ms"
+import expect_equal from "@std/test.ms"
 
 test "reversing twice restores a list":
-    try check("reverse twice", lists(ints(-100, 100)), lambda xs: expect_equal(xs.reversed().reversed(), xs))
+    try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
 ```
 
 When a case fails, `check` shrinks the input to a small counterexample and fails the test with it and the case seed:
@@ -128,9 +128,9 @@ A `bench "name":` block works like a `test` block, but `ms bench` times it inste
 
 <!-- manuscript-example: {"mode":"bench"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def sum_to(n: Int) -> Int:
+fn sum_to(n: Int) Int:
     var total = 0
     for i in 0..n:
         total += i
@@ -170,16 +170,16 @@ Without `make_fixture`, no hooks run. Define `def make_fixture() -> T` where `T`
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import TestHooks, expect_equal
+import {TestHooks, expect_equal} from "@std/test.ms"
 
 type Counter:
     count: Int
 
-def make_fixture() -> Counter:
+fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    var def before_each() -> Unit:
+    var fn before_each() Unit:
         self.count = 0
 
 test "increments":
@@ -203,8 +203,8 @@ There is no platform attribute on `test` blocks. Skip at run time instead, compa
 To skip a single test, call `skip` in its body:
 
 ```manuscript
-from "@std/test.ms" import skip
-from "@std/process.ms" import os_type
+import skip from "@std/test.ms"
+import os_type from "@std/process.ms"
 
 test "unix permission bits":
     if os_type() == "Windows_NT":
@@ -215,17 +215,17 @@ test "unix permission bits":
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
 ```manuscript
-from "@std/test.ms" import TestHooks, skip
-from "@std/process.ms" import os_type
+import {TestHooks, skip} from "@std/test.ms"
+import os_type from "@std/process.ms"
 
 type WindowsOnly:
     ok: Bool
 
-def make_fixture() -> WindowsOnly:
+fn make_fixture() WindowsOnly:
     return WindowsOnly(os_type() == "Windows_NT")
 
 impl TestHooks for WindowsOnly:
-    var def before_all() -> Unit:
+    var fn before_all() Unit:
         if not self.ok:
             skip("Windows only")
 ```

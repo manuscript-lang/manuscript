@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdin, stdout, read_line
+import {stdin, stdout, read_line} from "@std/io.ms"
 
-def parse_num(s: String) -> Optional[Int]:
+fn parse_num(s: String) Optional[Int]:
     let codes = s.scalar_values()
     if codes.length() < 1 or codes.length() > 6:
         return none
@@ -15,19 +15,19 @@ def parse_num(s: String) -> Optional[Int]:
 
     return some(n)
 
-def min_int(a: Int, b: Int) -> Int:
+fn min_int(a: Int, b: Int) Int:
     if a < b:
         return a
 
     return b
 
-def max_int(a: Int, b: Int) -> Int:
+fn max_int(a: Int, b: Int) Int:
     if a > b:
         return a
 
     return b
 
-def lcs(a: String, b: String) -> Int:
+fn lcs(a: String, b: String) Int:
     let x = a.scalar_values()
     let y = b.scalar_values()
     var prev = List[Int]()
@@ -54,7 +54,7 @@ def lcs(a: String, b: String) -> Int:
 
     return prev.get(y.length())
 
-def edit(a: String, b: String) -> Int:
+fn edit(a: String, b: String) Int:
     let x = a.scalar_values()
     let y = b.scalar_values()
     var prev = List[Int]()
@@ -88,7 +88,7 @@ def edit(a: String, b: String) -> Int:
 
     return prev.get(y.length())
 
-def knap(t: List[String]) -> String:
+fn knap(t: List[String]) String:
     if t.length() < 2:
         return "error: bad command"
 
@@ -128,9 +128,9 @@ def knap(t: List[String]) -> String:
 
         i = i + 1
 
-    return f"{best.get(capacity)}"
+    return "{best.get(capacity)}"
 
-def coins(t: List[String]) -> String:
+fn coins(t: List[String]) String:
     if t.length() < 3:
         return "error: bad command"
 
@@ -168,9 +168,9 @@ def coins(t: List[String]) -> String:
     if answer >= inf:
         return "impossible"
 
-    return f"{answer}"
+    return "{answer}"
 
-def solve_line(line: String) -> String:
+fn solve_line(line: String) String:
     let t = line.split(" ")
     let name = t.get(0)
 
@@ -178,9 +178,9 @@ def solve_line(line: String) -> String:
         if (t.length() != 3 or t.get(1).is_empty() or t.get(2).is_empty()):
             return "error: bad command"
         if name == "lcs":
-            return f"{lcs(t.get(1), t.get(2))}"
+            return "{lcs(t.get(1), t.get(2))}"
 
-        return f"{edit(t.get(1), t.get(2))}"
+        return "{edit(t.get(1), t.get(2))}"
 
     if name == "knap":
         return knap(t)
@@ -189,8 +189,8 @@ def solve_line(line: String) -> String:
 
     return "error: bad command"
 
-def run() -> Result[Unit, Error]:
-    while True:
+fn run() Result[Unit, Error]:
+    while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -199,11 +199,11 @@ def run() -> Result[Unit, Error]:
         if line.replace(old: " ", new: "").is_empty():
             continue
 
-        try stdout().write(f"{solve_line(line)}\n")
+        try stdout().write("{solve_line(line)}\n")
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

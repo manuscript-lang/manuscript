@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Point:
     x: Int
     y: Int
 
-def origin() -> Point:
+fn origin() Point:
     return Point(x: 1, y: 2)
 
 test "var destructuring binds reassignable copies":

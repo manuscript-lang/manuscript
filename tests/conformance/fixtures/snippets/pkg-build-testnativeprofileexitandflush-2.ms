@@ -1,7 +1,7 @@
 # conform: tags=faults,modules,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=pkg/build/profile_test.go:29 TestNativeProfileExitAndFlush
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-export def main() -> Int:
+export fn main() Int:
     return panic(message: "profile failure")

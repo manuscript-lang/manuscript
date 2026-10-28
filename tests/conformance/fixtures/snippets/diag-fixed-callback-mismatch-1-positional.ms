@@ -1,6 +1,8 @@
 # conform: tags=diagnostics,closures,generics,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
-def source(_0: Int) -> String: "text"
-def apply[T](callback: Callable[[T], Int]) -> Unit: return
-def exercise() -> Unit: apply(source)
+fn source(_0: Int) String: "text"
+
+fn apply[T](callback: fn(T) Int) Unit: return
+
+fn exercise() Unit: apply(source)

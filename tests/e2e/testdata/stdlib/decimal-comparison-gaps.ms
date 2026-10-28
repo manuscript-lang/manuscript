@@ -1,5 +1,5 @@
-from "@std/decimal.ms" import Decimal
-from "@std/test.ms" import expect_equal
+import Decimal from "@std/decimal.ms"
+import expect_equal from "@std/test.ms"
 
 test "decimal comparison orders signs exponent gaps and overlapping digits":
     let ascending = [

@@ -30,9 +30,9 @@ There is no implicit unwrapping or flattening: `Optional[Optional[Int]]` differs
 An argument for a standard `Optional[T]` parameter may be a plain `T`; it is wrapped as `some(value: ...)`. An argument already `Optional[T]` passes unchanged, including `none`.
 
 ```manuscript
-from "@std/queue.ms" import Queue
+import Queue from "@std/queue.ms"
 
-def main() -> Unit:
+fn main() Unit:
     var _bounded = Queue[Int](capacity: 4)
     var _unbounded = Queue[Int]()
 ```
@@ -63,21 +63,21 @@ Receiver methods:
 Fallback for routine absence:
 
 ```manuscript
-def display_name(name: Optional[String]) -> String:
+fn display_name(name: Optional[String]) String:
     return name.get("Anonymous")
 ```
 
 `get(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
 
 ```manuscript
-def display_name(name: Optional[String], create: Callable[[], String]) -> String:
+fn display_name(name: Optional[String], create: fn() String) String:
     return name.get_or_else(create)
 ```
 
 Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
 
 ```manuscript
-def greet(name: Optional[String]) -> String:
+fn greet(name: Optional[String]) String:
     if let value = name:
         return "Hello, " + value
     return "Hello!"
@@ -86,8 +86,8 @@ def greet(name: Optional[String]) -> String:
 Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
 
 ```manuscript
-def first_number(text: Optional[String]) -> Optional[Int]:
-    return text.map(lambda value: value.trim().clone()).and_then(lambda value: value.parse_int())
+fn first_number(text: Optional[String]) Optional[Int]:
+    return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
 ```
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
@@ -95,7 +95,7 @@ def first_number(text: Optional[String]) -> Optional[Int]:
 [`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
 ```manuscript
-def display_name(name: Optional[String]) -> String:
+fn display_name(name: Optional[String]) String:
     if let value = name:
         return value
     return "Anonymous"
@@ -111,7 +111,7 @@ A [match](../control-flow/pattern-matching.md) with only `some` and `none` arms 
 Omitting the cause yields the prelude `MissingValue` (from `@std/core.ms`), the [default type argument](generics.md#default-type-arguments). It records the source file and line of the `ok_or()` call, and `message()` reports them, such as `missing value at src/main.ms:12`. Since `MissingValue` implements `Error`, `try` flattens it in any function whose error type is `Error`:
 
 ```manuscript
-def port_number(text: String) -> Result[Int, Error]:
+fn port_number(text: String) Result[Int, Error]:
     let port = try text.parse_int().ok_or()
     return ok(port)
 ```

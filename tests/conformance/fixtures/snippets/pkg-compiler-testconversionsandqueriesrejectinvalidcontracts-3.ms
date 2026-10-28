@@ -5,4 +5,4 @@ type Optional[T]:
     case some(value: T)
     case none
 
-def wrong(value: Optional[Int]) -> Result[Int, String]: value.ok_or("missing")
+fn wrong(value: Optional[Int]) Result[Int, String]: value.ok_or("missing")

@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def lookup(m: Map[Int, String], key: Int) -> String:
+fn lookup(m: Map[Int, String], key: Int) String:
     match m.get(key: key):
-        case some(v):
+        some(v):
             return v.clone()
-        case none:
+        none:
             return "missing"
 
 test "int map":

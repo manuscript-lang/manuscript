@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,modules,parser,stdlib-faults,testing,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/build/compiler_test.go:280 FuzzCompile
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "list":
     let values = [1, 2]

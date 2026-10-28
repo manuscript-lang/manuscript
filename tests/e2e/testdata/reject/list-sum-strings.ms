@@ -1,2 +1,2 @@
-export def main() -> Int:
+export fn main() Int:
     return ["a", "b"].sum().length()

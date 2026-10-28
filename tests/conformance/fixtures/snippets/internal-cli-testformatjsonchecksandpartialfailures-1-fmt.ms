@@ -1,5 +1,5 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/format_result_test.go:16 TestFormatJSONChecksAndPartialFailures
-def value() -> Int:
+fn value() Int:
     return 0

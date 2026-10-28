@@ -1,29 +1,29 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
-def line_at(lines: List[String], index: Int) -> String:
+fn line_at(lines: List[String], index: Int) String:
     if index < lines.length(): return lines[index].clone()
 
     return ""
 
-def max_of(x: Int, y: Int) -> Int:
+fn max_of(x: Int, y: Int) Int:
     if x > y: return x
 
     return y
 
-def min_of(x: Int, y: Int) -> Int:
+fn min_of(x: Int, y: Int) Int:
     if x < y: return x
 
     return y
 
 # Formats a hunk range: the length is omitted when it is exactly 1.
-def span(start: Int, length: Int) -> String:
-    if length == 1: return f"{start}"
+fn span(start: Int, length: Int) String:
+    if length == 1: return "{start}"
 
-    return f"{start},{length}"
+    return "{start},{length}"
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     let head = lines[0].split(" ")
     let name_a = head[0]
@@ -56,7 +56,7 @@ export def main() -> Int:
             else:
                 let down = table[(i + 1) * width + j]
                 let right = table[i * width + j + 1]
-                table[i * width + j] = down if down >= right else right
+                table[i * width + j] = if down >= right: down else: right
 
     # Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from b.
     var kinds = List[Int]()
@@ -70,7 +70,7 @@ export def main() -> Int:
             texts.append(a[i].clone())
             i += 1
             j += 1
-        elif (
+        else if (
             j == m
             or (
                 i < n
@@ -119,7 +119,7 @@ export def main() -> Int:
         if first < 0:
             first = k
             last = k
-        elif k - last - 1 <= 2 * context:
+        else if k - last - 1 <= 2 * context:
             last = k
         else:
             hunk_lo.append(max_of(first - context, 0))
@@ -134,8 +134,8 @@ export def main() -> Int:
     hunk_hi.append(min_of(last + context, total - 1))
 
     var out = List[String]()
-    out.append(f"--- {name_a}")
-    out.append(f"+++ {name_b}")
+    out.append("--- {name_a}")
+    out.append("+++ {name_b}")
 
     for h in 0..hunk_lo.length():
         let lo = hunk_lo[h]
@@ -143,20 +143,20 @@ export def main() -> Int:
         let la = pre_a[hi + 1] - pre_a[lo]
         let lb = pre_b[hi + 1] - pre_b[lo]
 
-        let sa = pre_a[lo] + 1 if la > 0 else pre_a[lo]
+        let sa = if la > 0: pre_a[lo] + 1 else: pre_a[lo]
 
-        let sb = pre_b[lo] + 1 if lb > 0 else pre_b[lo]
+        let sb = if lb > 0: pre_b[lo] + 1 else: pre_b[lo]
 
-        out.append(f"@@ -{span(sa, la)} +{span(sb, lb)} @@")
+        out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for q in lo..hi + 1:
             if kinds[q] == 0:
-                out.append(f" {texts[q]}")
-            elif kinds[q] == 1:
-                out.append(f"-{texts[q]}")
+                out.append(" {texts[q]}")
+            else if kinds[q] == 1:
+                out.append("-{texts[q]}")
             else:
-                out.append(f"+{texts[q]}")
+                out.append("+{texts[q]}")
 
     let text = out.join("\n")
-    stdout().write(f"{text}\n").get()
+    stdout().write("{text}\n").get()
     return 0

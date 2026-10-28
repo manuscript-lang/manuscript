@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/math.ms" import min, max
+import {expect_equal, expect_false} from "@std/test.ms"
+import {min, max} from "@std/math.ms"
 
 test "min max and clamp on Int and the sized integers":
     try expect_equal((3).min(2), 2)

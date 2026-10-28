@@ -1,13 +1,13 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/math.ms" import max, min
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import {max, min} from "@std/math.ms"
+import read_lines from "@std/streams.ms"
 
 type Script:
     kinds: List[Int]
     texts: List[String]
 
 # LCS lengths of every suffix pair, flattened: table[i * (m + 1) + j] is L(i, j).
-def suffix_lcs(a: List[String], b: List[String]) -> List[Int]:
+fn suffix_lcs(a: List[String], b: List[String]) List[Int]:
     let n = a.length()
     let m = b.length()
     let w = m + 1
@@ -23,7 +23,7 @@ def suffix_lcs(a: List[String], b: List[String]) -> List[Int]:
 
             if a[i] == b[j]:
                 table[i * w + j] = table[(i + 1) * w + j + 1] + 1
-            elif table[(i + 1) * w + j] >= table[i * w + j + 1]:
+            else if table[(i + 1) * w + j] >= table[i * w + j + 1]:
                 table[i * w + j] = table[(i + 1) * w + j]
             else:
                 table[i * w + j] = table[i * w + j + 1]
@@ -31,7 +31,7 @@ def suffix_lcs(a: List[String], b: List[String]) -> List[Int]:
     return table
 
 # Walks the edit script exactly as the spec's rules describe. Kind 0 is unchanged, 1 deletion, 2 insertion.
-def edit_script(a: List[String], b: List[String]) -> Script:
+fn edit_script(a: List[String], b: List[String]) Script:
     let n = a.length()
     let m = b.length()
     let w = m + 1
@@ -47,7 +47,7 @@ def edit_script(a: List[String], b: List[String]) -> Script:
             texts.append(a[i].clone())
             i += 1
             j += 1
-        elif j == m or (i < n and table[(i + 1) * w + j] >= table[i * w + j + 1]):
+        else if j == m or (i < n and table[(i + 1) * w + j] >= table[i * w + j + 1]):
             kinds.append(1)
             texts.append(a[i].clone())
             i += 1
@@ -58,13 +58,13 @@ def edit_script(a: List[String], b: List[String]) -> Script:
 
     return Script(kinds: kinds, texts: texts)
 
-def range_text(start: Int, length: Int) -> String:
+fn range_text(start: Int, length: Int) String:
     if length == 1:
-        return f"{start}"
+        return "{start}"
 
-    return f"{start},{length}"
+    return "{start},{length}"
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     let header = lines[0].split(" ")
     let name_a = header[0]
@@ -91,8 +91,8 @@ export def main() -> Int:
         return 0
 
     var out = List[String]()
-    out.append(f"--- {name_a}")
-    out.append(f"+++ {name_b}")
+    out.append("--- {name_a}")
+    out.append("+++ {name_b}")
 
     var g = 0
 
@@ -125,19 +125,19 @@ export def main() -> Int:
             if kinds[p] != 1:
                 len_b += 1
 
-        let start_a = a_before + 1 if len_a > 0 else a_before
+        let start_a = if len_a > 0: a_before + 1 else: a_before
 
-        let start_b = b_before + 1 if len_b > 0 else b_before
+        let start_b = if len_b > 0: b_before + 1 else: b_before
 
-        out.append(f"@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
+        out.append("@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
 
         for p in s..e + 1:
             if kinds[p] == 0:
-                out.append(f" {texts[p]}")
-            elif kinds[p] == 1:
-                out.append(f"-{texts[p]}")
+                out.append(" {texts[p]}")
+            else if kinds[p] == 1:
+                out.append("-{texts[p]}")
             else:
-                out.append(f"+{texts[p]}")
+                out.append("+{texts[p]}")
 
         g = h
 

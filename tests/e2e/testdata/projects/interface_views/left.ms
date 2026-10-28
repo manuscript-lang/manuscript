@@ -1,8 +1,8 @@
-from "./domain.ms" import Read, Reader
+import {Read, Reader} from "./domain.ms"
 
 impl Read for Reader:
-    def read() -> Int: self.operation() + 10
+    fn read() Int: self.operation() + 10
 
-export def left() -> Read:
+export fn left() Read:
     let value = 1
-    return Reader(lambda () -> Int: value)
+    return Reader(fn() Int: value)

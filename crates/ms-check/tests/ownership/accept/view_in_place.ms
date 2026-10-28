@@ -1,4 +1,4 @@
-def count(line: String) -> Int:
+fn count(line: String) Int:
     let t = line.trim()
     let u = t.trim_end()
     if t == u:
@@ -6,7 +6,7 @@ def count(line: String) -> Int:
 
     return t.length() + 1
 
-def keep(line: String) -> List[String]:
+fn keep(line: String) List[String]:
     var saved: List[String] = []
     saved.append(line.trim().clone())
 

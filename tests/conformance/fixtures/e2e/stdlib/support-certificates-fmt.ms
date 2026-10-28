@@ -2,8 +2,8 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/support/certificates.ms
 # Fixed self-signed test identity, valid 2020–2100. This key is public fixture data.
-export def certificate() -> String:
+export fn certificate() String:
     return "-----BEGIN CERTIFICATE-----\nMIIBUjCCAQSgAwIBAgIBATAFBgMrZXAwFjEUMBIGA1UEAxMLc3RkbGliLnRlc3Qw\nIBcNMjAwMTAxMDAwMDAwWhgPMjEwMDAxMDEwMDAwMDBaMBYxFDASBgNVBAMTC3N0\nZGxpYi50ZXN0MCowBQYDK2VwAyEAe8MHlRjtEdoDNghb9pYpIP+H+zxNYwqbWMth\nU2dPXdajdTBzMA4GA1UdDwEB/wQEAwIChDATBgNVHSUEDDAKBggrBgEFBQcDATAP\nBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBSXj3k9f25C8HSLlIZ2z/wi62CYtDAc\nBgNVHREEFTATggtzdGRsaWIudGVzdIcEfwAAATAFBgMrZXADQQCy10RiI9QU8YqP\nfHjTXEQP3dcOGFmJe/XvuCKA7zvgv1bryG9K95Hh1ci9ZlIuTYmx/LyutoNFvr82\nncADBsAL\n-----END CERTIFICATE-----\n"
 
-export def private_key() -> String:
+export fn private_key() String:
     return "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAx\n-----END PRIVATE KEY-----\n"

@@ -2,17 +2,17 @@
 # conform: phase=run
 # conform: timeout=30
 # Closing a server lets a response in progress finish, and returns as soon as it has.
-from "@std/http.ms" import headers, HttpRequest, HttpResponse, buffered
-from "@std/io.ms" import stdout
-from "@std/net.ms" import network
-from "@std/process.ms" import control
-from "@std/time.ms" import nanoseconds, sleep
+import {headers, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
+import stdout from "@std/io.ms"
+import network from "@std/net.ms"
+import control from "@std/process.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     sleep(nanoseconds(300000000))
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
-export def main() -> Int:
+export fn main() Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
         with var server = acquired:
             if var conn = network().connect(server.address()):
@@ -27,10 +27,10 @@ export def main() -> Int:
                 let close_ms = (control().monotonic_time() - start) / 1000000
                 var text = ""
 
-                while True:
+                while true:
                     if let chunk = conn.read(timeout: nanoseconds(5000000000)):
                         if let data = chunk:
-                            text = f"{text}{data.decode_utf8().get("?")}"
+                            text = "{text}{data.decode_utf8().get("?")}"
                             continue
 
                     break
@@ -38,13 +38,13 @@ export def main() -> Int:
                 conn.close()
 
                 let _status = stdout().write(
-                    f"answered: {text.starts_with("HTTP/1.1 200 OK")}\n"
+                    "answered: {text.starts_with("HTTP/1.1 200 OK")}\n"
                 )
                 let _waited = stdout().write(
-                    f"close waited for the handler: {close_ms >= 200}\n"
+                    "close waited for the handler: {close_ms >= 200}\n"
                 )
                 let _prompt = stdout().write(
-                    f"close returned promptly: {close_ms < 2000}\n"
+                    "close returned promptly: {close_ms < 2000}\n"
                 )
                 return 0
 

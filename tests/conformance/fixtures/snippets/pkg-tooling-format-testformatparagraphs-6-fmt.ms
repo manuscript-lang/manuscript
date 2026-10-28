@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,match,parser,strings,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:66 TestFormatParagraphs
-def process(input: String) -> Int:
+fn process(input: String) Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -10,7 +10,7 @@ def process(input: String) -> Int:
     let payload = encode(report)
 
     match save(payload):
-        case ok(_):
+        ok(_):
             return 0
-        case error(_):
+        error(_):
             return 1

@@ -5,9 +5,9 @@ type B:
     x: Int
 
 impl B:
-    def m() -> Int:
+    fn m() Int:
         return 1
 
 impl B:
-    def m() -> Int:
+    fn m() Int:
         return 2

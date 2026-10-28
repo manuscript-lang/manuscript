@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=documentation/core-language/control-flow/loops.md:102
-def count_down(start: Int) -> Int:
+fn count_down(start: Int) Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1

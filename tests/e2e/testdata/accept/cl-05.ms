@@ -1,11 +1,11 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def increase(value: Int) -> Int:
+fn increase(value: Int) Int:
     return value + 1
 
-def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
+fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
 test "function label compatibility":
-    let transform: Callable[[Int], Int] = increase
+    let transform: fn(Int) Int = increase
     try expect_equal(apply(4, transform), 5)

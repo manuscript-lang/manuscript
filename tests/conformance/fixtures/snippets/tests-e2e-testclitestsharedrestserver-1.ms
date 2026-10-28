@@ -1,17 +1,17 @@
 # conform: tags=control-flow,faults,interfaces,interpolation,modules,records,stdlib-http,stdlib-net,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/test_fixture_test.go:140 TestCLITestSharedRESTServer
-from "@std/test.ms" import TestHooks, expect_equal, expect_ok
-from "@std/http.ms" import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered
-from "@std/net.ms" import network
+import {TestHooks, expect_equal, expect_ok} from "@std/test.ms"
+import {HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered} from "@std/http.ms"
+import network from "@std/net.ms"
 
 type ApiFixture:
     server: HttpServer
 
-def handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "shared".to_bytes())
 
-def make_fixture() -> ApiFixture:
+fn make_fixture() ApiFixture:
     return ApiFixture(
         server: network().serve(
             address: "127.0.0.1:0", handler: buffered(handle)
@@ -19,13 +19,13 @@ def make_fixture() -> ApiFixture:
     )
 
 impl TestHooks for ApiFixture:
-    var def after_all() -> Unit:
+    var fn after_all() Unit:
         self.server.close()
 
 test "first request":
     let response = try expect_ok(
         network().request(
-            method: HttpMethod.Get, url: f"http://{fixture.server.address()}/",
+            method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             headers: headers(), body: ""
         )
     )
@@ -34,7 +34,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(
         network().request(
-            method: HttpMethod.Get, url: f"http://{fixture.server.address()}/",
+            method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             headers: headers(), body: ""
         )
     )

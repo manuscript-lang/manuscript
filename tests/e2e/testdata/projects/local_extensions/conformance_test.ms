@@ -1,9 +1,9 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "./first.ms" import first_view, first_method, first_generic, first_resource
-from "./second.ms" import second_view, second_method, second_generic, second_resource
-from "./domain.ms" import Item, Resource
-from "./contracts.ms" import Read, read_view
-from "@std/collections.ms" import ListBuilder
+import {expect_equal, expect_false} from "@std/test.ms"
+import {first_view, first_method, first_generic, first_resource} from "./first.ms"
+import {second_view, second_method, second_generic, second_resource} from "./second.ms"
+import {Item, Resource} from "./domain.ms"
+import {Read, read_view} from "./contracts.ms"
+import ListBuilder from "@std/collections.ms"
 
 test "views and functions retain local implementations across modules":
     let item = Item(2)
@@ -25,9 +25,9 @@ test "views and functions retain local implementations across modules":
     var events = ListBuilder[Int]()
     let resource = Resource(events)
     with let first_close = first_resource(Resource(events)):
-        let _active = True
+        let _active = true
     with let second_close = second_resource(resource):
-        let _active = True
+        let _active = true
 
     let values = events.build()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

@@ -1,17 +1,17 @@
-from "@std/bench.ms" import keep, measure
-from "@std/string.ms" import StringBuilder
-from "@std/toml.ms" import parse
+import {keep, measure} from "@std/bench.ms"
+import StringBuilder from "@std/string.ms"
+import parse from "@std/toml.ms"
 
-def toml_doc(count: Int) -> String:
+fn toml_doc(count: Int) String:
     var sb = StringBuilder()
     for i in 0..count:
-        sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
+        sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
 bench "toml.parse":
     let toml = toml_doc(2000)
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if parse(toml).is_ok():
             return keep(1)
 

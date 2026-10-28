@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Entry:
     name: String
@@ -52,6 +52,6 @@ test "swap exchanges scalars, counting negative indexes from the end":
     numbers.swap(1, 1)
     try expect_equal(numbers, [4, 3, 2, 1])
 
-    var flags = [True, False]
+    var flags = [true, false]
     flags.swap(0, -1)
-    try expect_equal(flags, [False, True])
+    try expect_equal(flags, [false, true])

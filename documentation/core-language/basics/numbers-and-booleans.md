@@ -11,7 +11,7 @@ weight = 3
 let count = 3
 let ratio = 0.5
 let price = 12.50d
-let active = True
+let active = true
 ```
 
 Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
@@ -38,7 +38,7 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
-def literals() -> Unit:
+fn literals() Unit:
     let smallest: Int = -9223372036854775808
     let exponent: Float = 1e3
     let mask: Int = 0xFF_00
@@ -53,7 +53,7 @@ def literals() -> Unit:
 `Int8`, `Int16`, `Int32` and `Float32` occupy 1, 2, 4 and 4 bytes in lists, records, optionals, alternatives, maps and sets; locals and arguments keep full-width registers, so only storage shrinks. A `List[Int8]` of fifty million elements takes one eighth of the memory of a `List[Int]`. Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejected, and an `Int8` operation that leaves -128 to 127 faults:
 
 ```manuscript
-def sized() -> Unit:
+fn sized() Unit:
     let a: Int8 = 100
     let wide: Int32 = 2000000000
     let ratio: Float32 = 0.1
@@ -125,7 +125,7 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 `BigInt` (from `@std/math.ms`) is an arbitrary-precision signed integer; it cannot overflow. It supports `+ - * / %`, unary `-`, and `< <= > >= == !=`. Both operands must be `BigInt`: `BigInt + Int` is a type error, so convert with `from_int(n)`. `/` truncates toward zero, `%` takes the sign of the dividend, and either by zero is a fault; `divide` and `remainder` return a `Result` instead. There are no bitwise operators; use `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shift_left`, and `shift_right`.
 
 ```manuscript
-from "@std/math.ms" import from_int
+import from_int from "@std/math.ms"
 
 let big = from_int(2) * from_int(3) + from_int(1)
 ```
@@ -151,17 +151,17 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/decimal.ms" import Decimal
-from "@std/math.ms" import NumberError
-from "@std/test.ms" import expect_equal
+import Decimal from "@std/decimal.ms"
+import NumberError from "@std/math.ms"
+import expect_equal from "@std/test.ms"
 
-def amount_text() -> Result[String, NumberError]:
+fn amount_text() Result[String, NumberError]:
     let subtotal = 19.99d * 3d
     let tax = try (subtotal * 0.0825d).round(places: 2)
     let tax_text = try tax.to_fixed(digits: 2)
     let total_text = try (subtotal + tax).to_fixed(digits: 2)
     let padded = try 25.50d.to_fixed(digits: 2)
-    return ok(f"tax {tax_text} total {total_text} padded {padded}")
+    return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":
     try amount_text() | try expect_equal("tax 4.95 total 64.92 padded 25.50")

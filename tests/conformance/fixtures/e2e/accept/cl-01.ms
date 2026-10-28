@@ -1,9 +1,9 @@
 # conform: tags=modules,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-01.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def subtract(amount: Int, deduction: Int) -> Int:
+fn subtract(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 test "named multiline call":

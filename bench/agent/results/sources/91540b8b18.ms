@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/collections.ms" import range
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import range from "@std/collections.ms"
 
 type Stamp:
     year: Int
@@ -9,14 +9,14 @@ type Stamp:
     hour: Int
     minute: Int
 
-def is_leap(y: Int) -> Bool: (y % 4 == 0 and y % 100 != 0) or y % 400 == 0
+fn is_leap(y: Int) Bool: (y % 4 == 0 and y % 100 != 0) or y % 400 == 0
 
-def days_in_year(y: Int) -> Int:
+fn days_in_year(y: Int) Int:
     if is_leap(y): return 366
 
     return 365
 
-def days_in_month(y: Int, m: Int) -> Int:
+fn days_in_month(y: Int, m: Int) Int:
     if m == 2:
         if is_leap(y): return 29
 
@@ -26,28 +26,28 @@ def days_in_month(y: Int, m: Int) -> Int:
 
     return 31
 
-def all_digits(s: String) -> Bool:
+fn all_digits(s: String) Bool:
     for c in s.chars():
-        if not "0123456789".contains(c): return False
-    return True
+        if not "0123456789".contains(c): return false
+    return true
 
 # One or two ASCII digits.
-def parse_num(s: String) -> Optional[Int]:
+fn parse_num(s: String) Optional[Int]:
     if s.length() < 1 or s.length() > 2 or not all_digits(s): return none
 
     return s.parse_int()
 
-def parse_fixed(s: String, width: Int) -> Optional[Int]:
+fn parse_fixed(s: String, width: Int) Optional[Int]:
     if s.length() != width or not all_digits(s): return none
 
     return s.parse_int()
 
-def pad2(n: Int) -> String:
-    if n < 10: return f"0{n}"
+fn pad2(n: Int) String:
+    if n < 10: return "0{n}"
 
-    return f"{n}"
+    return "{n}"
 
-def weekday(st: Stamp) -> Int:
+fn weekday(st: Stamp) Int:
     var days = 0
     var y = 1970
 
@@ -64,7 +64,7 @@ def weekday(st: Stamp) -> Int:
     # 1970-01-01 was a Thursday, which is 4 with Sunday as 0.
     return (days + st.day - 1 + 4) % 7
 
-def parse_start(s: String) -> Optional[Stamp]:
+fn parse_start(s: String) Optional[Stamp]:
     let halves = s.split("T")
     if halves.length() != 2: return none
 
@@ -100,7 +100,7 @@ def parse_start(s: String) -> Optional[Stamp]:
     )
 
 # Values selected by one cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
-def item_values(item: String, lo: Int, hi: Int) -> Optional[List[Int]]:
+fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() > 2: return none
 
@@ -146,7 +146,7 @@ def item_values(item: String, lo: Int, hi: Int) -> Optional[List[Int]]:
 
     return some(values)
 
-def parse_field(text: String, lo: Int, hi: Int) -> Optional[Set[Int]]:
+fn parse_field(text: String, lo: Int, hi: Int) Optional[Set[Int]]:
     var values = Set[Int]()
 
     for item in text.split(","):
@@ -158,11 +158,11 @@ def parse_field(text: String, lo: Int, hi: Int) -> Optional[Set[Int]]:
 
     return some(values)
 
-def pad_stamp(st: Stamp) -> String:
-    return f"{st.year}-{pad2(st.month)}-{pad2(st.day)} {pad2(st.hour)}:{pad2(st.minute)}"
+fn pad_stamp(st: Stamp) String:
+    return "{st.year}-{pad2(st.month)}-{pad2(st.day)} {pad2(st.hour)}:{pad2(st.minute)}"
 
 # Finds up to `count` matching minutes strictly after `st`, searching 3000 days past its date.
-def next_runs(
+fn next_runs(
     st: Stamp,
     count: Int,
     minutes: Set[Int],
@@ -170,7 +170,7 @@ def next_runs(
     doms: Set[Int],
     months: Set[Int],
     dows: Set[Int]
-) -> List[Stamp]:
+) List[Stamp]:
     var found = List[Stamp]()
     var y = st.year + 0
     var mo = st.month + 0
@@ -205,51 +205,51 @@ def next_runs(
 
     return found
 
-def is_blank(line: String) -> Bool:
+fn is_blank(line: String) Bool:
     for c in line.chars():
-        if c != " ": return False
-    return True
+        if c != " ": return false
+    return true
 
-def solve(line: String, n: Int) -> List[String]:
-    let head = f"line {n}:"
+fn solve(line: String, n: Int) List[String]:
+    let head = "line {n}:"
     let tokens = line.split(" ")
-    if tokens.length() != 7: return [f"{head} error: bad line"]
+    if tokens.length() != 7: return ["{head} error: bad line"]
 
     let start = parse_start(tokens[0])
-    if start.is_none(): return [f"{head} error: bad start"]
+    if start.is_none(): return ["{head} error: bad start"]
 
     let count = parse_num(tokens[1])
     if count.is_none() or count.get() < 1 or count.get() > 20: return [
-        f"{head} error: bad count"
+        "{head} error: bad count"
     ]
 
     let minutes = parse_field(tokens[2], 0, 59)
-    if minutes.is_none(): return [f"{head} error: bad minute"]
+    if minutes.is_none(): return ["{head} error: bad minute"]
 
     let hours = parse_field(tokens[3], 0, 23)
-    if hours.is_none(): return [f"{head} error: bad hour"]
+    if hours.is_none(): return ["{head} error: bad hour"]
 
     let doms = parse_field(tokens[4], 1, 31)
-    if doms.is_none(): return [f"{head} error: bad day-of-month"]
+    if doms.is_none(): return ["{head} error: bad day-of-month"]
 
     let months = parse_field(tokens[5], 1, 12)
-    if months.is_none(): return [f"{head} error: bad month"]
+    if months.is_none(): return ["{head} error: bad month"]
 
     let dows = parse_field(tokens[6], 0, 6)
-    if dows.is_none(): return [f"{head} error: bad day-of-week"]
+    if dows.is_none(): return ["{head} error: bad day-of-week"]
 
     let runs = next_runs(
         start.get(), count.get(), minutes.get(), hours.get(), doms.get(), months.get(),
         dows.get()
     )
-    if runs.length() == 0: return [f"{head} never"]
+    if runs.length() == 0: return ["{head} never"]
 
-    var out = [f"{head} {runs.length()} runs"]
+    var out = ["{head} {runs.length()} runs"]
     for run in runs:
         out.append(pad_stamp(run))
     return out
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     var out = List[String]()
     var n = 0

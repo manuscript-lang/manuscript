@@ -4,7 +4,7 @@
 type State:
     count: Int
 
-def increment(var state: State) -> Int:
+fn increment(var state: State) Int:
     state.count = state.count + 1
     return state.count
 
@@ -12,5 +12,5 @@ type Options:
     state: State
     count: Int = increment(state)
 
-def construct(state: State) -> Options:
+fn construct(state: State) Options:
     return Options(state: state)

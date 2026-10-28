@@ -1,29 +1,29 @@
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/io.ms" import stdout
-from "@std/process.ms" import arguments
-from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
+import {Channel, ChannelError} from "@std/channels.ms"
+import stdout from "@std/io.ms"
+import arguments from "@std/process.ms"
+import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
 
 # Eight CPU-bound jobs spread over N workers. Usage: app <workers> [jobs] [n]
-def fib(n: Int) -> Int:
+fn fib(n: Int) Int:
     if n < 2:
         return n
 
     return fib(n - 1) + fib(n - 2)
 
-def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
-    while True:
+fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+    while true:
         if let n = try ch.receive():
             try ch.send(fib(n))
         else:
-            return ok(())
+            return ok(unit)
 
-    return ok(())
+    return ok(unit)
 
-def compute() -> Unit:
+fn compute() Unit:
     var ch = worker_channel[Int, Int]()
     let _finished = serve(var ch)
 
-def run(workers: Int, jobs: Int, n: Int) -> Result[Int, Error]:
+fn run(workers: Int, jobs: Int, n: Int) Result[Int, Error]:
     var total = 0
 
     with let group = WorkerGroup[Int, Int]():
@@ -40,7 +40,7 @@ def run(workers: Int, jobs: Int, n: Int) -> Result[Int, Error]:
 
     return ok(total)
 
-export def main() -> Int:
+export fn main() Int:
     let args = arguments()
     let workers = args.get(0, default: "1").parse_int().get(1)
     let jobs = args.get(1, default: "8").parse_int().get(8)
@@ -50,7 +50,7 @@ export def main() -> Int:
         (
             stdout()
             .write(
-                f"workers={workers} jobs={jobs} fib({n}) checksum={total}\n"
+                "workers={workers} jobs={jobs} fib({n}) checksum={total}\n"
             )
             .get()
         )

@@ -1,19 +1,19 @@
 # conform: tags=strings,control-flow,tier-io
 # conform: phase=run
 # conform: origin=for over String.chars scans bytes: ASCII, multibyte, break, continue, return, nesting
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def show(s: String) -> Unit:
+fn show(s: String) Unit:
     var out = ""
     var n = 0
 
     for c in s.chars():
-        out = f"{out}[{c}]"
+        out = "{out}[{c}]"
         n += 1
 
-    let _i = stdout().write(f"{out} {n}\n")
+    let _i = stdout().write("{out} {n}\n")
 
-def first_o(s: String) -> Int:
+fn first_o(s: String) Int:
     var at = 0
 
     for c in s.chars():
@@ -24,12 +24,12 @@ def first_o(s: String) -> Int:
 
     return -1
 
-export def main() -> Int:
+export fn main() Int:
     show("héllo wörld ✓ 😀!")
     show("")
     show("abc")
 
-    let _i = stdout().write(f"{first_o("héllo wörld")} {first_o("xyz")}\n")
+    let _i = stdout().write("{first_o("héllo wörld")} {first_o("xyz")}\n")
     var kept: List[String] = []
 
     for c in "añb".chars():
@@ -37,7 +37,7 @@ export def main() -> Int:
         if c == "b":
             break
 
-    let _j = stdout().write(f"{kept.length()} {kept.get(1)}\n")
+    let _j = stdout().write("{kept.length()} {kept.get(1)}\n")
     var total = 0
 
     for a in "ab".chars():
@@ -47,5 +47,5 @@ export def main() -> Int:
 
             total += 1
 
-    let _k = stdout().write(f"{total}\n")
+    let _k = stdout().write("{total}\n")
     return 0

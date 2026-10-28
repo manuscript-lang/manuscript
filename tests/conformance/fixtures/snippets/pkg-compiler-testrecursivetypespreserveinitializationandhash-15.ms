@@ -5,4 +5,4 @@ type Pair:
     left: Int
     right: Int
 
-def hash(pair: Pair) -> Int: return pair.hash()
+fn hash(pair: Pair) Int: return pair.hash()

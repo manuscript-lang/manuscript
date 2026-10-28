@@ -1,9 +1,9 @@
 # conform: tags=stdlib-bigint,faults,tier-stdlib,numbers
 # conform: phase=run
-from "@std/io.ms" import stdout
-from "@std/math.ms" import from_int
+import stdout from "@std/io.ms"
+import from_int from "@std/math.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let zero = from_int(0)
     let _ = stdout().write((from_int(1) / zero).to_string_radix(10))
     return 0

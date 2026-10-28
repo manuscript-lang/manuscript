@@ -1,15 +1,15 @@
 # conform: tags=match,modules,stdlib-io,stdlib-net,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/host-accessors.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/process.ms" import arguments, control
-from "@std/io.ms" import stdin, stdout, stderr
-from "@std/time.ms" import clock, wall_clock
-from "@std/random.ms" import entropy
-from "@std/process.ms" import system
-from "@std/net.ms" import network
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {arguments, control} from "@std/process.ms"
+import {stdin, stdout, stderr} from "@std/io.ms"
+import {clock, wall_clock} from "@std/time.ms"
+import entropy from "@std/random.ms"
+import system from "@std/process.ms"
+import network from "@std/net.ms"
 
-def check_services() -> Result[Unit, Error]:
+fn check_services() Result[Unit, Error]:
     arguments().length() | try expect_equal(0)
 
     let before = clock().now()
@@ -21,12 +21,12 @@ def check_services() -> Result[Unit, Error]:
     let _variables = try control().environment()
 
     match entropy().bytes(0):
-        case ok(data):
+        ok(data):
             try expect_equal(data.length(), 0)
-        case error(_):
+        error(_):
             return fail("entropy unavailable")
 
-    return ok(())
+    return ok(unit)
 
 test "host accessors work in callbacks":
     let check = check_services
@@ -39,14 +39,14 @@ test "closing a standard stream leaves the process stream open":
     network().close()
 
     match stdout().write(""):
-        case ok(_):
+        ok(_):
             return
-        case error(_):
+        error(_):
             return fail("closing stdout closed the process stream")
 
 test "a later test receives fresh standard output":
     match stdout().write(""):
-        case ok(_):
+        ok(_):
             return
-        case error(_):
+        error(_):
             return fail("another test closed this test's stdout")

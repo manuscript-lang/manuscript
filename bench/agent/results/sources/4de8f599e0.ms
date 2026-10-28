@@ -1,16 +1,16 @@
-from "@std/bytes.ms" import Bytes
-from "@std/io.ms" import read_all, stdin, stdout
-from "@std/collections.ms" import range
+import Bytes from "@std/bytes.ms"
+import {read_all, stdin, stdout} from "@std/io.ms"
+import range from "@std/collections.ms"
 
-def is_cell(ch: String) -> Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"
+fn is_cell(ch: String) Bool: ch == "#" or ch == "." or ch == "S" or ch == "E"
 
 # Returns the first validation error, or "" when the grid is well formed.
-def validate(grid: List[List[String]]) -> String:
+fn validate(grid: List[List[String]]) String:
     for r in range(0, grid.length()):
         for c in range(0, grid[r].length()):
-            if not is_cell(grid[r][c]): return f"error: bad character at {r + 1},{c + 1}"
+            if not is_cell(grid[r][c]): return "error: bad character at {r + 1},{c + 1}"
 
-    let width = (0 if grid.is_empty() else grid[0].length())
+    let width = (if grid.is_empty(): 0 else: grid[0].length())
 
     for row in grid:
         if row.length() != width: return "error: ragged grid"
@@ -30,15 +30,15 @@ def validate(grid: List[List[String]]) -> String:
 
     return ""
 
-def solve(text: String) -> String:
+fn solve(text: String) String:
     var lines = text.split("\n")
     while not lines.is_empty() and lines[-1] == "": lines.pop()
 
-    let grid = lines.map(lambda (line: String) -> List[String]: line.chars())
+    let grid = lines.map(fn(line: String) List[String]: line.chars())
     let error = validate(grid.clone())
     if error != "": return error
 
-    let width = (0 if grid.is_empty() else grid[0].length())
+    let width = (if grid.is_empty(): 0 else: grid[0].length())
 
     let total = grid.length() * width
     var passable: List[Bool] = []
@@ -52,7 +52,7 @@ def solve(text: String) -> String:
             if ch == "S": start = r * width + c
             if ch == "E": goal = r * width + c
 
-    var dist = range(0, total).map(lambda (i: Int) -> Int: -1)
+    var dist = range(0, total).map(fn(i: Int) Int: -1)
     var queue = [start]
     dist[start] = 0
 
@@ -61,7 +61,7 @@ def solve(text: String) -> String:
     while head < queue.length():
         let cur = queue[head]
         head += 1
-        if cur == goal: return f"{dist[cur]}"
+        if cur == goal: return "{dist[cur]}"
 
         let r = cur / width
         let c = cur % width
@@ -74,19 +74,19 @@ def solve(text: String) -> String:
 
     return "no path"
 
-def visit(
+fn visit(
     next: Int,
     d: Int,
     passable: List[Bool],
     var dist: List[Int],
     var queue: List[Int]
-) -> Unit:
+) Unit:
     if passable[next] and dist[next] == -1:
         dist[next] = d
         queue.append(next)
 
-export def main() -> Int:
-    let bytes = read_all(stdin()).or_else(lambda (cause) -> Bytes: "".to_bytes())
+export fn main() Int:
+    let bytes = read_all(stdin()).or_else(fn(cause) Bytes: "".to_bytes())
     let text = bytes.decode_utf8().get("")
-    stdout().write(f"{solve(text)}\n").get()
+    stdout().write("{solve(text)}\n").get()
     return 0

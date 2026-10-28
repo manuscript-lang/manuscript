@@ -4,6 +4,6 @@
 type Failure:
     case NotFound
 
-def use() -> Int:
+fn use() Int:
     let NotFound = 1
     return NotFound

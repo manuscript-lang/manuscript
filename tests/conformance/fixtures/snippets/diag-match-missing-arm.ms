@@ -4,9 +4,11 @@
 type S:
     case A
     case B(x: Int)
-def f(s: S) -> Int:
+
+fn f(s: S) Int:
     match s:
-        case A:
+        A:
             return 1
-export def main() -> Int:
+
+export fn main() Int:
     return 0

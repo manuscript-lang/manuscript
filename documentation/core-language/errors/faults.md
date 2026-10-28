@@ -12,9 +12,9 @@ A programming fault means an assumption the code relies on has failed. For inval
 Check an invariant with `if` and `return`; import `panic` from `@std/core.ms` to raise a fault when it fails.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-def discount_validated(price: Decimal, percent: Decimal) -> Decimal:
+fn discount_validated(price: Decimal, percent: Decimal) Decimal:
     if price <= 0d:
         return panic("Price must be positive")
     if percent <= 0d or percent >= 100d:

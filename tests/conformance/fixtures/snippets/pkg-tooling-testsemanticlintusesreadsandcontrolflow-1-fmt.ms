@@ -1,9 +1,9 @@
 # conform: tags=formatter,modules,mutation,parser,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/lint_program_test.go:11 TestSemanticLintUsesReadsAndControlFlow
-from "@std/collections.ms" import ListBuilder
+import ListBuilder from "@std/collections.ms"
 
-def answer() -> Int:
+fn answer() Int:
     let _unused = 1
     var _written = 2
     _written = 3

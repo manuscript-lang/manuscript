@@ -9,7 +9,7 @@ Import `Closeable` from `@std/core.ms` to name or implement it. `with` checks th
 
 ```manuscript
 interface Closeable:
-    var def close() -> Unit
+    var fn close() Unit
 ```
 
 `with` accepts:

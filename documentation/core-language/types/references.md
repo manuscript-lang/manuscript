@@ -21,10 +21,10 @@ type Box:
     items: List[Int]
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-def grow(var b: Box) -> Int:
+fn grow(var b: Box) Int:
     var xs = b.list()
     xs.append(1)
     return b.items.length()
@@ -53,18 +53,18 @@ To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/shared.ms" import share, Shared
-from "@std/sync.ms" import lock
-from "@std/test.ms" import expect_equal
+import {share, Shared} from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import expect_equal from "@std/test.ms"
 
 type Counter:
     values: List[Int]
 
 impl Counter:
-    var def bump() -> Unit:
+    var fn bump() Unit:
         self.values.append(1)
 
-def bump(shared: Shared[Counter]) -> Unit:
+fn bump(shared: Shared[Counter]) Unit:
     with var guard = lock(shared):
         guard.value.bump()
 

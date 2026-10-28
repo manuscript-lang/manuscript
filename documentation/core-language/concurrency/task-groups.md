@@ -9,16 +9,16 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `w
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal, expect_ok
+import TaskGroup from "@std/tasks.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
 
-def square(n: Int) -> Int:
+fn square(n: Int) Int:
     return n * n
 
 test "a group collects its results in start order":
     with let group = TaskGroup[Int]():
         for n in [1, 2, 3]:
-            group.spawn(lambda ch: square(n))
+            group.spawn(fn ch: square(n))
         group.results() | try expect_ok | try expect_equal([1, 4, 9])
 ```
 
@@ -41,12 +41,12 @@ A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/channels.ms" import Channel
-from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/test.ms" import expect_equal, expect_error
-from "@std/time.ms" import nanoseconds, sleep
+import Channel from "@std/channels.ms"
+import {TaskError, TaskGroup} from "@std/tasks.ms"
+import {expect_equal, expect_error} from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
+fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
     return 1
 
@@ -70,18 +70,18 @@ Values reach a task by being captured or sent on its channel, and come back as m
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal, expect_ok
+import {Channel, ChannelError} from "@std/channels.ms"
+import TaskGroup from "@std/tasks.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
 
-def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch
-    while True:
+    while true:
         if let n = try c.receive():
             try c.send(n * n)
         else:
-            return ok(())
-    return ok(())
+            return ok(unit)
+    return ok(unit)
 
 test "a task answers messages on its channel":
     with let group = TaskGroup[Result[Unit, ChannelError], Int, Int]():

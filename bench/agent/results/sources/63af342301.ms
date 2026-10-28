@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/math.ms" import bit_and, bit_xor, shift_right_unsigned, wrapping_multiply
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import {bit_and, bit_xor, shift_right_unsigned, wrapping_multiply} from "@std/math.ms"
 
 let FNV_OFFSET = -3750763034362895579
 let FNV_PRIME = 1099511628211
@@ -49,7 +49,7 @@ type Repo:
     merge_name: String
     next_number: Int
 
-def fnv(text: String) -> Int:
+fn fnv(text: String) Int:
     var h = FNV_OFFSET
 
     for b in text.to_bytes().values():
@@ -58,34 +58,34 @@ def fnv(text: String) -> Int:
 
     return h
 
-def hex16(h: Int) -> String:
+fn hex16(h: Int) String:
     var s = ""
     for i in 0..16:
         s = s + HEX_DIGITS.get(bit_and(shift_right_unsigned(h, 60 - 4 * i), 15))
     return s
 
-def short(id: String) -> String:
+fn short(id: String) String:
     return id.slice(0, 7).get()
 
-def tree_hash(tree: Map[String, String]) -> Int:
+fn tree_hash(tree: Map[String, String]) Int:
     var text = ""
     for name in tree.keys().sorted():
         text = text + name + " " + hex16(fnv(tree.get(name).get(""))) + "\n"
     return fnv(text)
 
-def same_tree(a: Map[String, String], b: Map[String, String]) -> Bool:
+fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
     if a.length() != b.length():
-        return False
+        return false
 
     for name in a.keys():
         if not b.contains(name) or a.get(name).get("") != b.get(name).get(""):
-            return False
-    return True
+            return false
+    return true
 
-def is_space(c: String) -> Bool:
+fn is_space(c: String) Bool:
     return c == " " or c == "\t" or c == "\r"
 
-def words(line: String) -> List[String]:
+fn words(line: String) List[String]:
     var out = List[String]()
     var cur = ""
 
@@ -101,7 +101,7 @@ def words(line: String) -> List[String]:
         out.append(cur)
     return out
 
-def rest_of(line: String) -> String:
+fn rest_of(line: String) String:
     let cs = line.chars()
     var i = 0
     while i < cs.length() and is_space(cs[i]):
@@ -114,7 +114,7 @@ def rest_of(line: String) -> String:
         s = s + cs[k]
     return s.trim().clone()
 
-def rstrip(line: String) -> String:
+fn rstrip(line: String) String:
     let cs = line.chars()
     var n = cs.length()
     while n > 0 and is_space(cs[n - 1]):
@@ -125,43 +125,43 @@ def rstrip(line: String) -> String:
         s = s + cs[k]
     return s
 
-def name_char(c: String, dash: Bool) -> Bool:
+fn name_char(c: String, dash: Bool) Bool:
     if (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (c >= "0" and c <= "9"):
-        return True
+        return true
     if c == "." or c == "_" or c == "/":
-        return True
+        return true
 
     return dash and c == "-"
 
-def valid_name(name: String) -> Bool:
+fn valid_name(name: String) Bool:
     let cs = name.chars()
     if cs.is_empty():
-        return False
+        return false
 
     for k in 0..cs.length():
         if not name_char(cs[k], k > 0):
-            return False
-    return True
+            return false
+    return true
 
-def is_digits(text: String) -> Bool:
+fn is_digits(text: String) Bool:
     if text.is_empty():
-        return False
+        return false
 
     for c in text.chars():
         if not (c >= "0" and c <= "9"):
-            return False
-    return True
+            return false
+    return true
 
-def is_hex_lower(text: String) -> Bool:
+fn is_hex_lower(text: String) Bool:
     if text.is_empty():
-        return False
+        return false
 
     for c in text.chars():
         if not ((c >= "0" and c <= "9") or (c >= "a" and c <= "f")):
-            return False
-    return True
+            return false
+    return true
 
-def lines_of(content: String) -> List[String]:
+fn lines_of(content: String) List[String]:
     var out = List[String]()
     if content.is_empty():
         return out
@@ -171,28 +171,28 @@ def lines_of(content: String) -> List[String]:
         out.append(parts[k].clone())
     return out
 
-def join_lines(lines: List[String]) -> String:
+fn join_lines(lines: List[String]) String:
     if lines.is_empty():
         return ""
 
     return lines.join("\n") + "\n"
 
-def same_lines(a: List[String], b: List[String]) -> Bool:
+fn same_lines(a: List[String], b: List[String]) Bool:
     if a.length() != b.length():
-        return False
+        return false
 
     for k in 0..a.length():
         if a[k] != b[k]:
-            return False
-    return True
+            return false
+    return true
 
-def span(lines: List[String], start: Int, stop: Int) -> List[String]:
+fn span(lines: List[String], start: Int, stop: Int) List[String]:
     var out = List[String]()
     for k in start..stop:
         out.append(lines[k].clone())
     return out
 
-def matches(a: List[String], b: List[String]) -> List[Pair]:
+fn matches(a: List[String], b: List[String]) List[Pair]:
     let n = a.length()
     let m = b.length()
     let w = m + 1
@@ -220,14 +220,14 @@ def matches(a: List[String], b: List[String]) -> List[Pair]:
             pairs.append(Pair(a: i, b: j))
             i += 1
             j += 1
-        elif table[(i + 1) * w + j] >= table[i * w + j + 1]:
+        else if table[(i + 1) * w + j] >= table[i * w + j + 1]:
             i += 1
         else:
             j += 1
 
     return pairs
 
-def diff_lines(a: List[String], b: List[String]) -> List[String]:
+fn diff_lines(a: List[String], b: List[String]) List[String]:
     var out = List[String]()
     var ai = 0
     var bi = 0
@@ -255,12 +255,12 @@ def diff_lines(a: List[String], b: List[String]) -> List[String]:
 
     return out
 
-def merge_text(
+fn merge_text(
     base: List[String],
     ours: List[String],
     theirs: List[String],
     branch: String
-) -> Merged:
+) Merged:
     var ours_of = List[Int]()
     var theirs_of = List[Int]()
 
@@ -280,7 +280,7 @@ def merge_text(
     anchors.append(Anchor(b: base.length(), o: ours.length(), t: theirs.length()))
 
     var out = List[String]()
-    var clean = True
+    var clean = true
     var pb = -1
     var po = -1
     var pt = -1
@@ -294,10 +294,10 @@ def merge_text(
 
         if same_lines(co, cb):
             piece = ct
-        elif same_lines(ct, cb) or same_lines(co, ct):
+        else if same_lines(ct, cb) or same_lines(co, ct):
             piece = co
         else:
-            clean = False
+            clean = false
             piece.append("<<<<<<< HEAD")
             for line in co:
                 piece.append(line)
@@ -316,7 +316,7 @@ def merge_text(
 
     return Merged(lines: out, clean: clean)
 
-def tree_names(a: Map[String, String], b: Map[String, String]) -> Set[String]:
+fn tree_names(a: Map[String, String], b: Map[String, String]) Set[String]:
     var names = Set[String]()
     for n in a.keys():
         names.add(n)
@@ -324,25 +324,25 @@ def tree_names(a: Map[String, String], b: Map[String, String]) -> Set[String]:
         names.add(n)
     return names
 
-def new_repo(input: List[String]) -> Repo:
+fn new_repo(input: List[String]) Repo:
     var branches = Map[String, String]()
     branches["main"] = ""
     return Repo(
         input: input, pos: 0, out: List[String](), commits: Map[String, Commit](),
         branches: branches, tags: Map[String, String](), work: Map[String, String](),
         index: Map[String, String](), conflicts: Set[String](), head_branch: "main",
-        detached: False, detached_at: "", merging: False, merge_other: "",
+        detached: false, detached_at: "", merging: false, merge_other: "",
         merge_name: "", next_number: 1
     )
 
 impl Repo:
-    var def emit(line: String) -> Unit:
+    var fn emit(line: String) Unit:
         self.out.append(line)
 
-    var def fail(message: String) -> Unit:
+    var fn fail(message: String) Unit:
         self.out.append("error: " + message)
 
-    var def section(title: String, items: List[String]) -> Unit:
+    var fn section(title: String, items: List[String]) Unit:
         if items.is_empty():
             return
 
@@ -350,43 +350,43 @@ impl Repo:
         for item in items:
             self.out.append("  " + item)
 
-    def head_id() -> String:
+    fn head_id() String:
         if self.detached:
             return self.detached_at.clone()
 
         return self.branches.get(self.head_branch).get("")
 
-    def label() -> String:
+    fn label() String:
         if self.detached:
             return "detached"
 
         return self.head_branch.clone()
 
-    def tree_at(id: String) -> Map[String, String]:
+    fn tree_at(id: String) Map[String, String]:
         if let c = self.commits.get(id):
             return c.tree.clone()
 
         return Map[String, String]()
 
-    def parents_of(id: String) -> List[String]:
+    fn parents_of(id: String) List[String]:
         if let c = self.commits.get(id):
             return c.parents.clone()
 
         return List[String]()
 
-    def message_of(id: String) -> String:
+    fn message_of(id: String) String:
         if let c = self.commits.get(id):
             return c.message.clone()
 
         return ""
 
-    def number_of(id: String) -> Int:
+    fn number_of(id: String) Int:
         if let c = self.commits.get(id):
             return c.number
 
         return 0
 
-    def ancestors(id: String) -> Set[String]:
+    fn ancestors(id: String) Set[String]:
         var seen = Set[String]()
         if id.is_empty():
             return seen
@@ -407,7 +407,7 @@ impl Repo:
 
         return seen
 
-    def merge_base(cur: String, other: String) -> String:
+    fn merge_base(cur: String, other: String) String:
         let mine = self.ancestors(cur)
         let theirs = self.ancestors(other)
         var best = ""
@@ -423,7 +423,7 @@ impl Repo:
 
         return best
 
-    def resolve_name(name: String, spec: String) -> Found:
+    fn resolve_name(name: String, spec: String) Found:
         if name == "HEAD":
             let h = self.head_id()
             if not h.is_empty():
@@ -451,7 +451,7 @@ impl Repo:
 
         return Found(id: "", error: "unknown revision '" + spec + "'")
 
-    def resolve(spec: String) -> Found:
+    fn resolve(spec: String) Found:
         let parts = spec.split("~")
         if parts.length() > 2:
             return Found(id: "", error: "unknown revision '" + spec + "'")
@@ -478,11 +478,11 @@ impl Repo:
 
         return Found(id: id, error: "")
 
-    var def make_commit(
+    var fn make_commit(
         tree: Map[String, String],
         parents: List[String],
         message: String
-    ) -> String:
+    ) String:
         var text = "tree " + hex16(tree_hash(tree)) + "\n"
         for p in parents:
             text = text + "parent " + p + "\n"
@@ -499,55 +499,55 @@ impl Repo:
 
         return id
 
-    var def move_head(id: String) -> Unit:
+    var fn move_head(id: String) Unit:
         if self.detached:
             self.detached_at = id
         else:
             self.branches[self.head_branch.clone()] = id.clone()
 
-    var def drop_work(names: List[String]) -> Unit:
+    var fn drop_work(names: List[String]) Unit:
         for n in names:
             if self.work.contains(n):
                 self.work.remove(n)
 
-    var def load_tree(target: Map[String, String]) -> Unit:
+    var fn load_tree(target: Map[String, String]) Unit:
         self.drop_work(self.index.keys())
         for n in target.keys():
             self.work[n.clone()] = target.get(n.clone()).get("")
         self.index = target.clone()
 
-    def is_dirty() -> Bool:
+    fn is_dirty() Bool:
         if not same_tree(self.index, self.tree_at(self.head_id())):
-            return True
+            return true
 
         for n in self.index.keys():
             if not self.work.contains(n):
-                return True
+                return true
             if self.work.get(n).get("") != self.index.get(n).get(""):
-                return True
+                return true
 
-        return False
+        return false
 
-    def untracked_in(target: Map[String, String]) -> String:
+    fn untracked_in(target: Map[String, String]) String:
         for n in target.keys().sorted():
             if not self.index.contains(n) and self.work.contains(n):
                 return n
         return ""
 
-    var def can_switch(target: Map[String, String]) -> Bool:
+    var fn can_switch(target: Map[String, String]) Bool:
         if self.is_dirty():
             self.fail("local changes would be overwritten")
-            return False
+            return false
 
         let clash = self.untracked_in(target)
 
         if not clash.is_empty():
             self.fail("untracked file would be overwritten: " + clash)
-            return False
+            return false
 
-        return True
+        return true
 
-    var def hard_reset(target: String) -> Unit:
+    var fn hard_reset(target: String) Unit:
         self.drop_work(self.index.keys())
         self.drop_work(self.tree_at(self.head_id()).keys())
 
@@ -556,10 +556,10 @@ impl Repo:
             self.work[n.clone()] = tree.get(n.clone()).get("")
         self.index = tree.clone()
         self.move_head(target)
-        self.merging = False
+        self.merging = false
         self.conflicts = Set[String]()
 
-    var def read_block() -> String:
+    var fn read_block() String:
         var body = ""
 
         while self.pos < self.input.length() and self.input[self.pos] != ".":
@@ -570,7 +570,7 @@ impl Repo:
             self.pos += 1
         return body
 
-    var def run() -> Unit:
+    var fn run() Unit:
         while self.pos < self.input.length():
             let raw = self.input[self.pos].clone()
             self.pos += 1
@@ -581,7 +581,7 @@ impl Repo:
                 self.emit("> " + rstrip(raw))
                 self.dispatch(toks, raw)
 
-    var def dispatch(toks: List[String], raw: String) -> Unit:
+    var fn dispatch(toks: List[String], raw: String) Unit:
         let cmd = toks[0].clone()
         var args = List[String]()
         for k in 1..toks.length():
@@ -589,40 +589,40 @@ impl Repo:
 
         if cmd == "write" or cmd == "append":
             self.cmd_write(cmd, args)
-        elif cmd == "rm":
+        else if cmd == "rm":
             self.cmd_rm(args)
-        elif cmd == "mv":
+        else if cmd == "mv":
             self.cmd_mv(args)
-        elif cmd == "cat":
+        else if cmd == "cat":
             self.cmd_cat(args)
-        elif cmd == "ls":
+        else if cmd == "ls":
             self.cmd_ls()
-        elif cmd == "add":
+        else if cmd == "add":
             self.cmd_add(args)
-        elif cmd == "status":
+        else if cmd == "status":
             self.cmd_status()
-        elif cmd == "commit":
+        else if cmd == "commit":
             self.cmd_commit(rest_of(raw))
-        elif cmd == "log":
+        else if cmd == "log":
             self.cmd_log(args)
-        elif cmd == "diff":
+        else if cmd == "diff":
             self.cmd_diff(args)
-        elif cmd == "branch":
+        else if cmd == "branch":
             self.cmd_branch(args)
-        elif cmd == "tag":
+        else if cmd == "tag":
             self.cmd_tag(args)
-        elif cmd == "show":
+        else if cmd == "show":
             self.cmd_show(args)
-        elif cmd == "checkout":
+        else if cmd == "checkout":
             self.cmd_checkout(args)
-        elif cmd == "merge":
+        else if cmd == "merge":
             self.cmd_merge(args)
-        elif cmd == "reset":
+        else if cmd == "reset":
             self.cmd_reset(args)
         else:
             self.fail("unknown command '" + cmd + "'")
 
-    var def cmd_write(cmd: String, args: List[String]) -> Unit:
+    var fn cmd_write(cmd: String, args: List[String]) Unit:
         if args.length() != 1:
             self.fail("usage: " + cmd + " FILE")
             return
@@ -635,7 +635,7 @@ impl Repo:
         else:
             self.work[name.clone()] = self.work.get(name.clone()).get("") + body
 
-    var def cmd_rm(args: List[String]) -> Unit:
+    var fn cmd_rm(args: List[String]) Unit:
         if args.is_empty():
             self.fail("usage: rm FILE...")
             return
@@ -647,7 +647,7 @@ impl Repo:
 
             self.work.remove(n)
 
-    var def cmd_mv(args: List[String]) -> Unit:
+    var fn cmd_mv(args: List[String]) Unit:
         if args.length() != 2:
             self.fail("usage: mv OLD NEW")
             return
@@ -663,7 +663,7 @@ impl Repo:
         self.work.remove(old)
         self.work[new] = content
 
-    var def cmd_cat(args: List[String]) -> Unit:
+    var fn cmd_cat(args: List[String]) Unit:
         if args.length() != 1:
             self.fail("usage: cat FILE")
             return
@@ -675,7 +675,7 @@ impl Repo:
         for line in lines_of(self.work.get(args[0]).get("")):
             self.emit(line)
 
-    var def cmd_ls() -> Unit:
+    var fn cmd_ls() Unit:
         if self.work.is_empty():
             self.emit("(empty)")
             return
@@ -683,7 +683,7 @@ impl Repo:
         for n in self.work.keys().sorted():
             self.emit(n)
 
-    var def cmd_add(args: List[String]) -> Unit:
+    var fn cmd_add(args: List[String]) Unit:
         if args.is_empty():
             self.fail("usage: add PATH...")
             return
@@ -698,19 +698,19 @@ impl Repo:
                     if not self.work.contains(n):
                         self.index.remove(n.clone())
                         self.conflicts.remove(n.clone())
-            elif self.work.contains(p):
+            else if self.work.contains(p):
                 self.index[p.clone()] = self.work.get(p.clone()).get("")
                 self.conflicts.remove(p.clone())
-            elif self.index.contains(p):
+            else if self.index.contains(p):
                 self.index.remove(p.clone())
                 self.conflicts.remove(p.clone())
-            elif self.conflicts.contains(p):
+            else if self.conflicts.contains(p):
                 self.conflicts.remove(p.clone())
             else:
                 self.fail("pathspec '" + p + "' did not match any files")
                 return
 
-    var def cmd_commit(message: String) -> Unit:
+    var fn cmd_commit(message: String) Unit:
         if message.is_empty():
             self.fail("empty commit message")
             return
@@ -730,20 +730,20 @@ impl Repo:
 
         if self.merging:
             parents.append(self.merge_other.clone())
-        elif same_tree(self.index, self.tree_at(head)):
+        else if same_tree(self.index, self.tree_at(head)):
             self.fail("nothing to commit")
             return
 
         let id = self.make_commit(self.index.clone(), parents, message.clone())
         self.move_head(id.clone())
         if self.merging:
-            self.merging = False
+            self.merging = false
 
-        let root = " (root-commit)" if head.is_empty() else ""
+        let root = if head.is_empty(): " (root-commit)" else: ""
 
         self.emit("[" + self.label() + root + " " + short(id) + "] " + message)
 
-    var def cmd_status() -> Unit:
+    var fn cmd_status() Unit:
         if self.detached:
             self.emit("HEAD detached at " + short(self.detached_at))
         else:
@@ -762,9 +762,9 @@ impl Repo:
 
                 if in_index and not in_head:
                     staged.append("new file: " + n)
-                elif in_head and not in_index:
+                else if in_head and not in_index:
                     staged.append("deleted: " + n)
-                elif head_tree.get(n).get("") != self.index.get(n).get(""):
+                else if head_tree.get(n).get("") != self.index.get(n).get(""):
                     staged.append("modified: " + n)
 
         var unstaged = List[String]()
@@ -773,7 +773,7 @@ impl Repo:
             if not self.conflicts.contains(n):
                 if not self.work.contains(n):
                     unstaged.append("deleted: " + n)
-                elif self.work.get(n).get("") != self.index.get(n).get(""):
+                else if self.work.get(n).get("") != self.index.get(n).get(""):
                     unstaged.append("modified: " + n)
 
         var unmerged = List[String]()
@@ -799,12 +799,12 @@ impl Repo:
         self.section("conflicts:", unmerged)
         self.section("untracked:", untracked)
 
-    var def cmd_log(args: List[String]) -> Unit:
+    var fn cmd_log(args: List[String]) Unit:
         var limit = NO_LIMIT
 
         if args.length() == 2 and args[0] == "-n" and is_digits(args[1]):
             limit = args[1].parse_int().get(NO_LIMIT)
-        elif args.length() != 0:
+        else if args.length() != 0:
             self.fail("usage: log [-n N]")
             return
 
@@ -844,7 +844,7 @@ impl Repo:
             shown += 1
             k -= 1
 
-    var def cmd_diff(args: List[String]) -> Unit:
+    var fn cmd_diff(args: List[String]) Unit:
         if args.length() > 2:
             self.fail("usage: diff [REF [REF]]")
             return
@@ -870,7 +870,7 @@ impl Repo:
 
             right = self.tree_at(g.id)
 
-        var changed = False
+        var changed = false
 
         for n in tree_names(left, right).values().sorted():
             let in_left = left.contains(n)
@@ -879,12 +879,12 @@ impl Repo:
             let cr = right.get(n).get("")
 
             if in_left != in_right or cl != cr:
-                changed = True
+                changed = true
                 self.emit("diff " + n)
 
                 if not in_left:
                     self.emit("new file")
-                elif not in_right:
+                else if not in_right:
                     self.emit("deleted file")
 
                 for line in diff_lines(lines_of(cl), lines_of(cr)):
@@ -893,7 +893,7 @@ impl Repo:
         if not changed:
             self.emit("(no differences)")
 
-    var def cmd_branch(args: List[String]) -> Unit:
+    var fn cmd_branch(args: List[String]) Unit:
         if args.is_empty():
             if self.detached:
                 self.emit("* (HEAD detached at " + short(self.detached_at) + ")")
@@ -903,7 +903,7 @@ impl Repo:
                     self.emit("* " + n)
                 else:
                     self.emit("  " + n)
-        elif args.length() == 1:
+        else if args.length() == 1:
             let name = args[0].clone()
 
             if not valid_name(name):
@@ -921,7 +921,7 @@ impl Repo:
                 return
 
             self.branches[name] = head
-        elif args.length() == 2 and args[0] == "-d":
+        else if args.length() == 2 and args[0] == "-d":
             let name = args[1].clone()
 
             if not self.branches.contains(name):
@@ -943,7 +943,7 @@ impl Repo:
         else:
             self.fail("usage: branch [NAME | -d NAME]")
 
-    var def cmd_tag(args: List[String]) -> Unit:
+    var fn cmd_tag(args: List[String]) Unit:
         if args.is_empty():
             for n in self.tags.keys().sorted():
                 self.emit(n)
@@ -963,7 +963,7 @@ impl Repo:
             self.fail("tag '" + name + "' already exists")
             return
 
-        let target_ref = args[1].clone() if args.length() == 2 else "HEAD"
+        let target_ref = if args.length() == 2: args[1].clone() else: "HEAD"
 
         if target_ref == "HEAD" and self.head_id().is_empty():
             self.fail("no commits yet")
@@ -977,7 +977,7 @@ impl Repo:
 
         self.tags[name.clone()] = f.id.clone()
 
-    var def cmd_show(args: List[String]) -> Unit:
+    var fn cmd_show(args: List[String]) Unit:
         if args.length() != 1:
             self.fail("usage: show REF")
             return
@@ -998,7 +998,7 @@ impl Repo:
         for n in tree.keys().sorted():
             self.emit("  " + n + " " + short(hex16(fnv(tree.get(n).get("")))))
 
-    var def checkout_new(name: String) -> Unit:
+    var fn checkout_new(name: String) Unit:
         if not valid_name(name):
             self.fail("invalid branch name '" + name + "'")
             return
@@ -1020,10 +1020,10 @@ impl Repo:
         self.branches[name.clone()] = head.clone()
         self.load_tree(tree)
         self.head_branch = name.clone()
-        self.detached = False
+        self.detached = false
         self.emit("Switched to a new branch '" + name + "'")
 
-    var def checkout_target(target: String) -> Unit:
+    var fn checkout_target(target: String) Unit:
         if self.merging:
             self.fail("merge in progress")
             return
@@ -1039,7 +1039,7 @@ impl Repo:
 
             self.load_tree(tree)
             self.head_branch = target.clone()
-            self.detached = False
+            self.detached = false
             self.emit("Switched to branch '" + target + "'")
             return
 
@@ -1054,19 +1054,19 @@ impl Repo:
             return
 
         self.load_tree(tree)
-        self.detached = True
+        self.detached = true
         self.detached_at = f.id.clone()
         self.emit("HEAD is now at " + short(f.id) + " " + self.message_of(f.id))
 
-    var def cmd_checkout(args: List[String]) -> Unit:
+    var fn cmd_checkout(args: List[String]) Unit:
         if args.length() == 2 and args[0] == "-b":
             self.checkout_new(args[1].clone())
-        elif args.length() == 1:
+        else if args.length() == 1:
             self.checkout_target(args[0].clone())
         else:
             self.fail("usage: checkout REF | checkout -b NAME")
 
-    var def cmd_merge(args: List[String]) -> Unit:
+    var fn cmd_merge(args: List[String]) Unit:
         if args.length() == 1 and args[0] == "--abort":
             if not self.merging:
                 self.fail("no merge in progress")
@@ -1138,13 +1138,13 @@ impl Repo:
             if in_o == in_t and o == t:
                 if in_o:
                     result[n.clone()] = o.clone()
-            elif in_o == in_b and o == b:
+            else if in_o == in_b and o == b:
                 if in_t:
                     result[n.clone()] = t.clone()
-            elif in_t == in_b and t == b:
+            else if in_t == in_b and t == b:
                 if in_o:
                     result[n.clone()] = o.clone()
-            elif in_o != in_t:
+            else if in_o != in_t:
                 conflicted.append(n.clone())
                 kinds.append("modify/delete")
 
@@ -1163,7 +1163,7 @@ impl Repo:
                     result[n.clone()] = o.clone()
                     overrides[n.clone()] = text.clone()
                     conflicted.append(n.clone())
-                    kinds.append("content" if in_b else "add/add")
+                    kinds.append(if in_b: "content" else: "add/add")
 
         let touched = tree_names(result, overrides)
 
@@ -1185,7 +1185,7 @@ impl Repo:
             self.conflicts.add(n.clone())
 
         if not conflicted.is_empty():
-            self.merging = True
+            self.merging = true
             self.merge_other = other.clone()
             self.merge_name = name.clone()
 
@@ -1219,7 +1219,7 @@ impl Repo:
             ) + "] Merge branch '" + name + "'"
         )
 
-    var def cmd_reset(args: List[String]) -> Unit:
+    var fn cmd_reset(args: List[String]) Unit:
         if args.is_empty() or args.length() > 2 or args[0] != "--hard":
             self.fail("usage: reset --hard [REF]")
             return
@@ -1242,7 +1242,7 @@ impl Repo:
         self.hard_reset(target.clone())
         self.emit("HEAD is now at " + short(target) + " " + self.message_of(target))
 
-export def main() -> Int:
+export fn main() Int:
     var repo = new_repo(read_lines(stdin()).get())
     repo.run()
     if not repo.out.is_empty():

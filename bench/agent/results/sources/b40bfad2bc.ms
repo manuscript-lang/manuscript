@@ -1,19 +1,19 @@
-from "@std/bytes.ms" import Bytes
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import Bytes from "@std/bytes.ms"
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let BAD = "error: bad command"
 
-def is_blank(line: String) -> Bool:
+fn is_blank(line: String) Bool:
     for i in 0..line.length():
-        if line.get(i) != " ": return False
-    return True
+        if line.get(i) != " ": return false
+    return true
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return c >= "0" and c <= "9"
 
 # Returns the decimal value of a 1-6 digit token, or none.
-def number(text: String) -> Optional[Int]:
+fn number(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
 
     for i in 0..text.length():
@@ -21,10 +21,10 @@ def number(text: String) -> Optional[Int]:
     return text.parse_int()
 
 # Like `number`, but -1 marks a malformed token (valid values are never negative).
-def value(text: String) -> Int:
+fn value(text: String) Int:
     return number(text).get(-1)
 
-def lcs(a: Bytes, b: Bytes) -> Int:
+fn lcs(a: Bytes, b: Bytes) Int:
     let n = a.length()
     let m = b.length()
     var prev = List[Int]()
@@ -44,7 +44,7 @@ def lcs(a: Bytes, b: Bytes) -> Int:
 
     return prev[m]
 
-def edit(a: Bytes, b: Bytes) -> Int:
+fn edit(a: Bytes, b: Bytes) Int:
     let n = a.length()
     let m = b.length()
     var prev = List[Int]()
@@ -64,7 +64,7 @@ def edit(a: Bytes, b: Bytes) -> Int:
     return prev[m]
 
 # 0/1 knapsack; only capacities up to the total weight matter, so the table is capped there.
-def knap(cap: Int, ws: List[Int], vs: List[Int]) -> Int:
+fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws: total += w
 
@@ -85,7 +85,7 @@ def knap(cap: Int, ws: List[Int], vs: List[Int]) -> Int:
     return best[limit]
 
 # Minimum coin count, or -1 when the amount cannot be made.
-def coins(amount: Int, cs: List[Int]) -> Int:
+fn coins(amount: Int, cs: List[Int]) Int:
     let inf = amount + 1
     var best = List[Int]()
     best.append(0)
@@ -100,16 +100,16 @@ def coins(amount: Int, cs: List[Int]) -> Int:
 
     return best[amount]
 
-def run(line: String) -> String:
+fn run(line: String) String:
     let t = line.split(" ")
     for s in t:
         if s.length() == 0: return BAD
 
     let cmd = t[0]
     if cmd == "lcs" and t.length() == 3:
-        return f"{lcs(t[1].to_bytes(), t[2].to_bytes())}"
+        return "{lcs(t[1].to_bytes(), t[2].to_bytes())}"
     if cmd == "edit" and t.length() == 3:
-        return f"{edit(t[1].to_bytes(), t[2].to_bytes())}"
+        return "{edit(t[1].to_bytes(), t[2].to_bytes())}"
 
     if cmd == "knap" and t.length() >= 2:
         let cap = value(t[1])
@@ -129,7 +129,7 @@ def run(line: String) -> String:
             ws.append(w)
             vs.append(v)
 
-        return f"{knap(cap, ws, vs)}"
+        return "{knap(cap, ws, vs)}"
 
     if cmd == "coins" and t.length() >= 3:
         let amount = value(t[1])
@@ -146,16 +146,16 @@ def run(line: String) -> String:
         let n = coins(amount, cs)
         if n < 0: return "impossible"
 
-        return f"{n}"
+        return "{n}"
 
     return BAD
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
         if is_blank(line): continue
 
-        out.write(f"{run(line)}\n").get()
+        out.write("{run(line)}\n").get()
 
     return 0

@@ -4,5 +4,5 @@
 type List[T]:
     value: T
 
-def f() -> Unit:
+fn f() Unit:
     let xs = [1]

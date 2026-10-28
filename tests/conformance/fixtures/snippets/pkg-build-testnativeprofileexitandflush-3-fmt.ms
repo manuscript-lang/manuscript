@@ -1,10 +1,10 @@
 # conform: tags=formatter,modules,parser,stdlib-io,stdlib-time,tier-io
 # conform: phase=parse
 # conform: origin=pkg/build/profile_test.go:32 TestNativeProfileExitAndFlush
-from "@std/time.ms" import nanoseconds, sleep
-from "@std/io.ms" import stdout
+import {nanoseconds, sleep} from "@std/time.ms"
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let _ = stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0

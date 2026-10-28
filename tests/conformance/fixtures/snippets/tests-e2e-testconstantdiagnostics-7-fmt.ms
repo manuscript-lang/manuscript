@@ -3,5 +3,5 @@
 # conform: origin=tests/e2e/constants_test.go:18 TestConstantDiagnostics
 let A = 1
 
-def f() -> Int:
+fn f() Int:
     return A()

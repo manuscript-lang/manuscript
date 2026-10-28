@@ -2,4 +2,4 @@
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/positions_test.go:105 BenchmarkIndexedPositions
 # α😀
-def answer() -> Int: 42
+fn answer() Int: 42

@@ -68,11 +68,11 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
         transform: (
-            lambda (value: Int) -> Int:
+            fn(value: Int) Int:
                 return value - 1
         ),
     )
@@ -81,10 +81,10 @@ def example() -> Int:
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
-        transform: lambda (value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
     )
 ```
@@ -92,9 +92,9 @@ def example() -> Int:
 Use `lambda value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
-        transform: lambda (value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
         ,
         value: 3,
@@ -217,10 +217,10 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Inline suites (functions, methods, tests, branches, loops, `with`) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
 ```manuscript
-def double(value: Int) -> Int: value * 2
-def positive(value: Int) -> Bool:
-    if value > 0: return True
-    else: return False
+fn double(value: Int) Int: value * 2
+fn positive(value: Int) Bool:
+    if value > 0: return true
+    else: return false
 ```
 
 - `elif` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
@@ -234,9 +234,9 @@ def positive(value: Int) -> Bool:
 
 ```manuscript
 let count = 3                       # Not a complete module item.
-def wrong() -> Int:
+fn wrong() Int:
   return 1                          # A suite requires four spaces.
-def wrong() -> Int:
+fn wrong() Int:
     let (first, second) = pair       # Parentheses are not a binding pattern.
 ```
 

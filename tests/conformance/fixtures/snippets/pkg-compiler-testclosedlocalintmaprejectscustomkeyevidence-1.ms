@@ -5,12 +5,12 @@ type Key:
     value: Int
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool: True
+    fn equals(other: Key) Bool: true
 
 impl Hashable for Key:
-    def hash() -> Int: 0
+    fn hash() Int: 0
 
-def probe() -> Int:
+fn probe() Int:
     var values = Map[Key, Int]()
     values.add(Key(1), 10)
     values.add(Key(2), 20)

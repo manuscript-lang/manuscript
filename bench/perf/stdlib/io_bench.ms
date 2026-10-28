@@ -1,13 +1,13 @@
-from "@std/bench.ms" import keep, measure
-from "@std/bytes.ms" import Bytes
-from "@std/io.ms" import IoError, ReadStream, lines, read_line
+import {keep, measure} from "@std/bench.ms"
+import Bytes from "@std/bytes.ms"
+import {IoError, ReadStream, lines, read_line} from "@std/io.ms"
 
 type MemoryStream:
     data: Bytes
     offset: Int
 
 impl ReadStream for MemoryStream:
-    var def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
         if self.offset == self.data.length():
             return ok(none)
 
@@ -19,23 +19,23 @@ impl ReadStream for MemoryStream:
         self.offset = end
         return ok(chunk)
 
-    var def close() -> Unit:
+    var fn close() Unit:
         self.offset = self.data.length()
 
-def source_text() -> String:
+fn source_text() String:
     var parts: List[String] = []
     for i in 0..100000:
-        parts.append(f"line number {i} with some padding text\n")
+        parts.append("line number {i} with some padding text\n")
     return parts.join("")
 
 bench "io.read_line_loop":
     let bytes = source_text().to_bytes()
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let input: ReadStream = MemoryStream(bytes.clone(), 0)
         var count = 0
 
-        while True:
+        while true:
             let next = read_line(input, none)
             if next.is_error():
                 return keep(-1)
@@ -51,7 +51,7 @@ bench "io.read_line_loop":
 bench "io.lines":
     let bytes = source_text().to_bytes()
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var reader = lines(MemoryStream(bytes.clone(), 0))
         var count = 0
         for line in reader:

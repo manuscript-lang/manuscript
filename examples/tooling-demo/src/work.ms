@@ -1,10 +1,10 @@
-def compute() -> Int:
+fn compute() Int:
     var result = 0
     for index in 0..3000000:
         result += index % 7
     return result
 
-def compare() -> Int:
+fn compare() Int:
     let left = compute()
     let right = compute()
     if left != right:
@@ -12,5 +12,5 @@ def compare() -> Int:
 
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     return compare()

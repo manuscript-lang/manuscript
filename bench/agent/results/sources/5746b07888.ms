@@ -1,11 +1,11 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Bad:
     text: String
 
 impl Error for Bad:
-    def message() -> String: self.text.clone()
+    fn message() String: self.text.clone()
 
 type Stamp:
     year: Int
@@ -26,25 +26,25 @@ type Job:
     count: Int
     cron: Cron
 
-def is_leap(year: Int) -> Bool:
+fn is_leap(year: Int) Bool:
     return (year % 4 == 0 and year % 100 != 0) or year % 400 == 0
 
-def days_in_month(year: Int, month: Int) -> Int:
-    if month == 2: return 29 if is_leap(year) else 28
+fn days_in_month(year: Int, month: Int) Int:
+    if month == 2: return if is_leap(year): 29 else: 28
     if month == 4 or month == 6 or month == 9 or month == 11: return 30
 
     return 31
 
-def all_digits(text: String) -> Bool:
+fn all_digits(text: String) Bool:
     let codes = text.scalar_values()
-    if codes.length() == 0: return False
+    if codes.length() == 0: return false
 
     for c in codes:
-        if c < 48 or c > 57: return False
-    return True
+        if c < 48 or c > 57: return false
+    return true
 
 # A one- or two-digit number inside `low` through `high`.
-def small_number(text: String, low: Int, high: Int) -> Optional[Int]:
+fn small_number(text: String, low: Int, high: Int) Optional[Int]:
     if not all_digits(text) or text.length() > 2: return none
 
     let value = text.parse_int().get(0)
@@ -52,25 +52,25 @@ def small_number(text: String, low: Int, high: Int) -> Optional[Int]:
 
     return value
 
-def valid_start_shape(text: String) -> Bool:
+fn valid_start_shape(text: String) Bool:
     let cs = text.chars()
-    if cs.length() != 16: return False
+    if cs.length() != 16: return false
 
     for i in 0..16:
         let c = cs[i]
 
         if i == 4 or i == 7:
-            if c != "-": return False
-        elif i == 10:
-            if c != "T": return False
-        elif i == 13:
-            if c != ":": return False
-        elif not all_digits(c):
-            return False
+            if c != "-": return false
+        else if i == 10:
+            if c != "T": return false
+        else if i == 13:
+            if c != ":": return false
+        else if not all_digits(c):
+            return false
 
-    return True
+    return true
 
-def parse_start(text: String) -> Result[Stamp, Bad]:
+fn parse_start(text: String) Result[Stamp, Bad]:
     if not valid_start_shape(text): return error(Bad(text: "bad start"))
 
     let year = text.take(4).parse_int().get(0)
@@ -87,14 +87,14 @@ def parse_start(text: String) -> Result[Stamp, Bad]:
 
     return ok(Stamp(year: year, month: month, day: day, hour: hour, minute: minute))
 
-def parse_count(text: String) -> Result[Int, Bad]:
+fn parse_count(text: String) Result[Int, Bad]:
     if let count = small_number(text, 1, 20):
         return ok(count)
 
     return error(Bad(text: "bad count"))
 
 # The values one cron item selects, or none when the item is malformed.
-def item_values(item: String, low: Int, high: Int) -> Optional[List[Int]]:
+fn item_values(item: String, low: Int, high: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() == 0 or parts.length() > 2: return none
 
@@ -126,7 +126,7 @@ def item_values(item: String, low: Int, high: Int) -> Optional[List[Int]]:
                 return none
 
             if first > last: return none
-        elif stepped:
+        else if stepped:
             return none
         else:
             last = first
@@ -140,26 +140,21 @@ def item_values(item: String, low: Int, high: Int) -> Optional[List[Int]]:
 
     return values
 
-def parse_field(
-    text: String,
-    low: Int,
-    high: Int,
-    label: String
-) -> Result[List[Bool], Bad]:
+fn parse_field(text: String, low: Int, high: Int, label: String) Result[List[Bool], Bad]:
     var allowed = List[Bool]()
     for i in 0..high + 1:
-        allowed.append(False)
+        allowed.append(false)
 
     for item in text.split(","):
         if let values = item_values(item, low, high):
             for v in values:
-                allowed[v] = True
+                allowed[v] = true
         else:
             return error(Bad(text: label))
 
     return ok(allowed)
 
-def parse_cron(tokens: List[String]) -> Result[Cron, Bad]:
+fn parse_cron(tokens: List[String]) Result[Cron, Bad]:
     let minutes = try parse_field(tokens[2], 0, 59, "bad minute")
     let hours = try parse_field(tokens[3], 0, 23, "bad hour")
     let days = try parse_field(tokens[4], 1, 31, "bad day-of-month")
@@ -172,7 +167,7 @@ def parse_cron(tokens: List[String]) -> Result[Cron, Bad]:
         )
     )
 
-def parse_job(tokens: List[String]) -> Result[Job, Bad]:
+fn parse_job(tokens: List[String]) Result[Job, Bad]:
     if tokens.length() != 7: return error(Bad(text: "bad line"))
 
     let start = try parse_start(tokens[0])
@@ -181,19 +176,19 @@ def parse_job(tokens: List[String]) -> Result[Job, Bad]:
     return ok(Job(start: start, count: count, cron: cron))
 
 # Day of week of a date, with 0 meaning Sunday; 1970-01-01 was a Thursday.
-def weekday(s: Stamp) -> Int:
+fn weekday(s: Stamp) Int:
     var days = 0
     for y in 1970..s.year:
-        days += 365 + (1 if is_leap(y) else 0)
+        days += 365 + (if is_leap(y): 1 else: 0)
     for m in 1..s.month:
         days += days_in_month(s.year, m)
     days += s.day - 1
     return (days + 4) % 7
 
-def two(n: Int) -> String:
-    return f"{n}".pad_start(2, "0")
+fn two(n: Int) String:
+    return "{n}".pad_start(2, "0")
 
-def find_runs(job: Job) -> List[String]:
+fn find_runs(job: Job) List[String]:
     var runs = List[String]()
     let start = job.start
     var year = 0
@@ -220,7 +215,7 @@ def find_runs(job: Job) -> List[String]:
                         and job.cron.minutes[minute]
                     ):
                         runs.append(
-                            f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+                            "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
                         )
 
         day += 1
@@ -238,20 +233,20 @@ def find_runs(job: Job) -> List[String]:
 
     return runs
 
-def solve(line_no: Int, line: String) -> List[String]:
-    let head = f"line {line_no}"
+fn solve(line_no: Int, line: String) List[String]:
+    let head = "line {line_no}"
     let job = parse_job(line.split(" "))
-    if job.is_error(): return [f"{head}: error: {job.err().message()}"]
+    if job.is_error(): return ["{head}: error: {job.err().message()}"]
 
     let runs = find_runs(job.get())
-    if runs.length() == 0: return [f"{head}: never"]
+    if runs.length() == 0: return ["{head}: never"]
 
-    var out = [f"{head}: {runs.length()} runs"]
+    var out = ["{head}: {runs.length()} runs"]
     for run in runs:
         out.append(run)
     return out
 
-export def main() -> Int:
+export fn main() Int:
     var out = List[String]()
     var line_no = 0
 

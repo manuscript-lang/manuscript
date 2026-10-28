@@ -213,7 +213,9 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
         // The two tokens of a compound assignment such as +=.
         return false;
     }
-    if current == Tok::LParen && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket) {
+    if current == Tok::LParen
+        && matches!(previous, Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn)
+    {
         return false;
     }
     if current == Tok::LBracket && matches!(previous, Tok::Name | Tok::SelfKw | Tok::RBracket) {
@@ -762,7 +764,7 @@ impl<'a> Layout<'a> {
                 if code.len() > 1
                     && matches!(
                         code[code.len() - 2].kind,
-                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Lambda
+                        Tok::Name | Tok::RParen | Tok::RBracket | Tok::Fn
                     )
                 {
                     items = true;
@@ -950,8 +952,7 @@ impl<'a> Layout<'a> {
         let (mut selected, mut level, mut count) = (None, 7, 0);
         for node in nodes {
             if node.tok.kind == Tok::Newline
-                || node.tok.kind == Tok::Lambda
-                || node.tok.kind == Tok::Def
+                || node.tok.kind == Tok::Fn
             {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
@@ -1350,7 +1351,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     k if is_open(k) => depth += 1,
                     Tok::RParen | Tok::RBracket | Tok::RBrace => depth -= 1,
                     Tok::Dot if depth == 0 => dots += 1,
-                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Lambda | Tok::Def => return,
+                    Tok::Newline | Tok::Indent | Tok::Dedent | Tok::Fn => return,
                     Tok::If | Tok::Else => return,
                     k if depth == 0
                         && (matches!(k, Tok::And | Tok::Or) || is_comparison(k) || is_arith(k)) =>
@@ -1470,7 +1471,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 return;
             };
             let tokens = self.tokens;
-            if matches!(tokens[start].kind, Tok::String | Tok::Def) {
+            if matches!(tokens[start].kind, Tok::String | Tok::Fn) {
                 return;
             }
             let mut start = start;

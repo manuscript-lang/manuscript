@@ -2,14 +2,14 @@
 # conform: phase=parse
 # conform: origin=pkg/build/compiler_test.go:549 TestImplementationDeclarationParameters
 interface Same[V: Equal]:
-    def same(other: V) -> Bool
+    fn same(other: V) Bool
 
 type Box[T]:
     value: T
 
 impl Same[T] for Box[T]:
-    def same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
-def compare[T](value: Box[T], other: T) -> Bool:
+fn compare[T](value: Box[T], other: T) Bool:
     return value.same(other: other)

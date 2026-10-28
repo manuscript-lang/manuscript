@@ -1,19 +1,19 @@
-from "@std/test.ms" import expect_equal, expect_false, fail
+import {expect_equal, expect_false, fail} from "@std/test.ms"
 
 type Failure:
     message_text: String
 
 impl Error for Failure:
-    def message() -> String:
+    fn message() String:
         return self.message_text.clone()
 
-def success() -> Result[Optional[Int], Error]:
+fn success() Result[Optional[Int], Error]:
     return ok(some(7))
 
-def failure() -> Result[Int, Failure]:
+fn failure() Result[Int, Failure]:
     return error(Failure("failed"))
 
-def propagated() -> Result[Int, Error]:
+fn propagated() Result[Int, Error]:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
@@ -26,7 +26,7 @@ test "prelude cases and optional methods need no imports":
         (
             absent.get(9) != 9
             or absent.or_else(
-                lambda () -> Optional[Int]: return some(11)
+                fn() Optional[Int]: return some(11)
             ).get() != 11
         )
     )
@@ -42,6 +42,6 @@ test "prelude Error preserves concrete failures through try":
     try expect_equal(cause.message(), "failed")
 
     match cause:
-        case Failure(value):
+        Failure(value):
             try expect_equal(value.message_text, "failed")
-        case _: return fail("concrete error lost")
+        _: return fail("concrete error lost")

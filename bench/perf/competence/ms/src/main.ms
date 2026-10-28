@@ -1,10 +1,10 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
-from "@std/string.ms" import StringBuilder
-from "@std/math.ms" import parse_int
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+import StringBuilder from "@std/string.ms"
+import parse_int from "@std/math.ms"
 
 interface Shape:
-    def area() -> Int
+    fn area() Int
 
 type Sq:
     s: Int
@@ -18,15 +18,15 @@ type Tri:
     h: Int
 
 impl Shape for Sq:
-    def area() -> Int:
+    fn area() Int:
         return self.s * self.s
 
 impl Shape for Rect:
-    def area() -> Int:
+    fn area() Int:
         return self.w * self.h
 
 impl Shape for Tri:
-    def area() -> Int:
+    fn area() Int:
         return self.b * self.h / 2
 
 type Item:
@@ -37,7 +37,7 @@ type Fail:
     code: Int
 
 impl Error for Fail:
-    def message() -> String:
+    fn message() String:
         return "fail"
 
 type P:
@@ -46,16 +46,16 @@ type P:
     vx: Int
     vy: Int
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-def fib(n: Int) -> Int:
+fn fib(n: Int) Int:
     if n < 2:
         return n
 
     return fib(n - 1) + fib(n - 2)
 
-def dispatch(n: Int) -> Int:
+fn dispatch(n: Int) Int:
     let shapes: List[Shape] = [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
     var total = 0
     var i = 0
@@ -66,13 +66,13 @@ def dispatch(n: Int) -> Int:
 
     return total
 
-def compare(left: Int, right: Int) -> Int:
+fn compare(left: Int, right: Int) Int:
     if left < right: return -1
     if left > right: return 1
 
     return 0
 
-def sorting(n: Int) -> Int:
+fn sorting(n: Int) Int:
     var v: List[Int] = []
     var i = 0
 
@@ -83,9 +83,9 @@ def sorting(n: Int) -> Int:
     let s = v.sorted(compare)
     return s.get(0) + s.get(n / 2) + s.get(n - 1)
 
-def closures(n: Int) -> Int:
+fn closures(n: Int) Int:
     let base = 3
-    let f = lambda (x: Int) -> Int:
+    let f = fn(x: Int) Int:
         return x * base + 1
     var total = 0
     var i = 0
@@ -96,12 +96,12 @@ def closures(n: Int) -> Int:
 
     return total
 
-def text_build_parse(n: Int) -> Int:
+fn text_build_parse(n: Int) Int:
     var b = StringBuilder()
     var i = 0
 
     while i < n:
-        b.append(f"{i * 31 % 1000},")
+        b.append("{i * 31 % 1000},")
         i += 1
 
     let parts = b.build().split(",")
@@ -110,12 +110,12 @@ def text_build_parse(n: Int) -> Int:
         total += p.parse_int().get(0)
     return total
 
-def word_map(n: Int) -> Int:
+fn word_map(n: Int) Int:
     var words: List[String] = []
     var i = 0
 
     while i < 1000:
-        words.append(f"word{i}")
+        words.append("word{i}")
         i += 1
 
     var m = Map[String, Int]()
@@ -128,17 +128,17 @@ def word_map(n: Int) -> Int:
 
     return m.length() + m.get_or("word7", 0)
 
-def check(i: Int) -> Result[Int, Fail]:
+fn check(i: Int) Result[Int, Fail]:
     if i % 1000 == 999:
         return error(Fail(i))
 
     return ok(i)
 
-def step(i: Int) -> Result[Int, Fail]:
+fn step(i: Int) Result[Int, Fail]:
     let v = try check(i)
     return ok(v + 1)
 
-def errors(n: Int) -> Int:
+fn errors(n: Int) Int:
     var total = 0
     var i = 0
 
@@ -152,12 +152,12 @@ def errors(n: Int) -> Int:
 
     return total
 
-def records(n: Int) -> Int:
+fn records(n: Int) Int:
     var items: List[Item] = []
     var i = 0
 
     while i < n:
-        items.append(Item(i * 7919 % 10007, f"n{i % 100}"))
+        items.append(Item(i * 7919 % 10007, "n{i % 100}"))
         i += 1
 
     var total = 0
@@ -170,7 +170,7 @@ def records(n: Int) -> Int:
 
     return total
 
-def grid2d(n: Int) -> Int:
+fn grid2d(n: Int) Int:
     var g: List[List[Int]] = []
     var i = 0
 
@@ -204,10 +204,10 @@ def grid2d(n: Int) -> Int:
 
     return total
 
-def bump(p: P) -> P:
+fn bump(p: P) P:
     return P(p.x + p.vx, p.y + p.vy, p.vx, p.vy)
 
-def structs(n: Int) -> Int:
+fn structs(n: Int) Int:
     var p = P(0, 0, 1, 2)
     var i = 0
 
@@ -217,7 +217,7 @@ def structs(n: Int) -> Int:
 
     return p.x + p.y
 
-def stack_ops(n: Int) -> Int:
+fn stack_ops(n: Int) Int:
     var s: List[Int] = []
     var total = 0
     var i = 0
@@ -233,7 +233,7 @@ def stack_ops(n: Int) -> Int:
 
     return total + s.length()
 
-def optionals(n: Int) -> Int:
+fn optionals(n: Int) Int:
     var total = 0
     var i = 0
 
@@ -251,7 +251,7 @@ def optionals(n: Int) -> Int:
 
     return total
 
-def sets(n: Int) -> Int:
+fn sets(n: Int) Int:
     var s = Set[Int]()
     var i = 0
 
@@ -269,7 +269,7 @@ def sets(n: Int) -> Int:
 
     return hits + s.length()
 
-def chars(n: Int) -> Int:
+fn chars(n: Int) Int:
     var text = "the quick brown fox jumps over the lazy dog "
     var total = 0
     var r = 0
@@ -282,24 +282,24 @@ def chars(n: Int) -> Int:
 
     return total
 
-def timed(name: String, run: Callable[[], Int]) -> Unit:
+fn timed(name: String, run: fn() Int) Unit:
     let t = clock().now()
     let r = run()
-    say(f"{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
+    say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
 
-export def main() -> Int:
-    timed("call_fib_36", lambda () -> Int: return fib(36))
-    timed("dispatch_100M", lambda () -> Int: return dispatch(100000000))
-    timed("closure_100M", lambda () -> Int: return closures(100000000))
-    timed("sort_1M", lambda () -> Int: return sorting(1000000))
-    timed("text_1M", lambda () -> Int: return text_build_parse(1000000))
-    timed("strmap_10M", lambda () -> Int: return word_map(10000000))
-    timed("errors_50M", lambda () -> Int: return errors(50000000))
-    timed("records_1M_x20", lambda () -> Int: return records(1000000))
-    timed("grid2d_500x20", lambda () -> Int: return grid2d(500))
-    timed("struct_100M", lambda () -> Int: return structs(100000000))
-    timed("stack_20M", lambda () -> Int: return stack_ops(20000000))
-    timed("optional_100M", lambda () -> Int: return optionals(100000000))
-    timed("set_2M", lambda () -> Int: return sets(2000000))
-    timed("chars_1M", lambda () -> Int: return chars(1000000))
+export fn main() Int:
+    timed("call_fib_36", fn() Int: return fib(36))
+    timed("dispatch_100M", fn() Int: return dispatch(100000000))
+    timed("closure_100M", fn() Int: return closures(100000000))
+    timed("sort_1M", fn() Int: return sorting(1000000))
+    timed("text_1M", fn() Int: return text_build_parse(1000000))
+    timed("strmap_10M", fn() Int: return word_map(10000000))
+    timed("errors_50M", fn() Int: return errors(50000000))
+    timed("records_1M_x20", fn() Int: return records(1000000))
+    timed("grid2d_500x20", fn() Int: return grid2d(500))
+    timed("struct_100M", fn() Int: return structs(100000000))
+    timed("stack_20M", fn() Int: return stack_ops(20000000))
+    timed("optional_100M", fn() Int: return optionals(100000000))
+    timed("set_2M", fn() Int: return sets(2000000))
+    timed("chars_1M", fn() Int: return chars(1000000))
     return 0

@@ -1,5 +1,5 @@
-def number() -> Int:
+fn number() Int:
     return "wrong"
 
-def text() -> String:
+fn text() String:
     return 1

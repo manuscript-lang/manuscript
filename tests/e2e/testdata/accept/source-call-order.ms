@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def pair(a: Int, b: Int) -> Int: a * 10 + b
+fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
@@ -8,18 +8,18 @@ test "arguments":
     let result = pair(
         a: value,
         b: match option:
-            case some(i):
+            some(i):
                 value = 9
                 i
-            case none: 0
+            none: 0
     )
     try expect_equal(result, 12)
 
-def optional(value: Optional[Int]) -> Int: value.get()
+fn optional(value: Optional[Int]) Int: value.get()
 
-def defaulted(value: Int = 3) -> Int: value
+fn defaulted(value: Int = 3) Int: value
 
-def identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
 test "source call dispatch contracts":
     try expect_equal(optional(4), 4)

@@ -1,16 +1,16 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def double(value: Int) -> Int: value * 2
+fn double(value: Int) Int: value * 2
 
-def apply(value: Int, transform: Callable[[Int], Int]) -> Int: transform(value)
+fn apply(value: Int, transform: fn(Int) Int) Int: transform(value)
 
-def choose(value: Int) -> Int:
+fn choose(value: Int) Int:
     if value > 0: return double(value)
     else: return 0
 
-def alternate(value: Int) -> Int:
+fn alternate(value: Int) Int:
     if value < 0: return -1
-    elif value == 0: return 0
+    else if value == 0: return 0
     else:
         return 1
 
@@ -20,10 +20,10 @@ test "inline functions and branches":
     try expect_equal(alternate(0), 0)
     try expect_equal(alternate(3), 1)
 
-    let increment = lambda (value: Int): value + 1
+    let increment = fn(value: Int): value + 1
     try expect_equal(increment(2), 3)
 
-    let result = apply(4, lambda value: value * 3)
+    let result = apply(4, fn value: value * 3)
     try expect_equal(result, 12)
 
     var count = 0

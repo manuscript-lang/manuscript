@@ -1,5 +1,5 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal
+import TextError from "@std/core.ms"
+import expect_equal from "@std/test.ms"
 
 type Counter:
     n: Int
@@ -9,30 +9,30 @@ type Shape:
     case Square(side: Int)
 
 interface Bumper:
-    def bump(by: Int) -> Int
+    fn bump(by: Int) Int
 
 interface Scaler:
-    def scale(factor: Int, offset: Optional[Int] = none) -> Int
+    fn scale(factor: Int, offset: Optional[Int] = none) Int
 
 impl Bumper for Counter:
-    def bump(by: Int) -> Int: self.n + by
+    fn bump(by: Int) Int: self.n + by
 
 impl Scaler for Counter:
-    def scale(factor: Int, offset: Optional[Int] = none) -> Int: (
+    fn scale(factor: Int, offset: Optional[Int] = none) Int: (
         self.n * factor
         + offset.get(0)
     )
 
 impl Bumper for Shape:
-    def bump(by: Int) -> Int:
+    fn bump(by: Int) Int:
         match self:
-            case Circle(r): return r + by
-            case Square(side): return side * by
+            Circle(r): return r + by
+            Square(side): return side * by
 
-def through_view(b: Bumper, by: Int) -> Int:
+fn through_view(b: Bumper, by: Int) Int:
     return b.bump(by)
 
-def guarded(c: Counter, by: Int) -> Int:
+fn guarded(c: Counter, by: Int) Int:
     if by < 0:
         return 0
 
@@ -62,10 +62,10 @@ type Parser:
     base: Int
 
 interface Parse:
-    def parse(n: Int) -> Result[Int, TextError]
+    fn parse(n: Int) Result[Int, TextError]
 
 impl Parse for Parser:
-    def parse(n: Int) -> Result[Int, TextError]:
+    fn parse(n: Int) Result[Int, TextError]:
         if n < 0:
             return error(TextError("negative"))
 
@@ -75,22 +75,22 @@ type Chain:
     parser: Parser
 
 interface Step:
-    def step(n: Int) -> Result[Int, TextError]
+    fn step(n: Int) Result[Int, TextError]
 
 impl Step for Chain:
-    def step(n: Int) -> Result[Int, TextError]:
+    fn step(n: Int) Result[Int, TextError]:
         return ok((try self.parser.parse(n)) + 1)
 
-def code(r: Result[Int, TextError]) -> Int:
+fn code(r: Result[Int, TextError]) Int:
     return r.get(-1)
 
-def run_direct(chain: Chain, n: Int) -> Int:
+fn run_direct(chain: Chain, n: Int) Int:
     return chain.step(n) | code
 
-def run_view(chain: Chain, n: Int) -> Int:
+fn run_view(chain: Chain, n: Int) Int:
     return chain.step(n) | code
 
-def run_bound(chain: Chain, n: Int) -> Int:
+fn run_bound(chain: Chain, n: Int) Int:
     let callback = chain.step
     return callback(n) | code
 

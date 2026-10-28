@@ -5,4 +5,4 @@ type Options:
     count: Int = 1
     required: Int
 
-def f() -> Options: return Options()
+fn f() Options: return Options()

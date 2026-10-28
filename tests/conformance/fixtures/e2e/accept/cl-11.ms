@@ -1,7 +1,7 @@
 # conform: tags=lists,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/cl-11.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Tree[T]:
     value: T

@@ -1,11 +1,11 @@
 # conform: tags=formatter,modules,parser,stdlib-io,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/debug_script_test.go:125 TestDebugOneShotRejectsUnknownAndUnreachedBreakpoints
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def never() -> Int:
+fn never() Int:
     return 1
 
-export def main() -> Int:
+export fn main() Int:
     let _written = stdout().write(data: "TARGET_RAN\n")
     return 0

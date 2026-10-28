@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=sized numeric types stage 2
-def main() -> Unit:
+fn main() Unit:
     let a: Int8 = 1
     let b: Int32 = a
     let c: Int8 = b.to_int8()

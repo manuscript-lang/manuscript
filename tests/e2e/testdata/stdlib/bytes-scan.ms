@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal
-from "@std/bytes.ms" import Bytes
+import expect_equal from "@std/test.ms"
+import Bytes from "@std/bytes.ms"
 
 test "index_of_byte finds a byte at or after start":
     let data = Bytes([1, 2, 3, 2, 255])

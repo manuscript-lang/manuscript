@@ -4,6 +4,6 @@
 type Request:
     model: String
 
-def f(text: String) -> Result[Request, JsonError]:
+fn f(text: String) Result[Request, JsonError]:
     let request = try parse[Request](text)
     return ok(request)

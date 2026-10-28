@@ -1,24 +1,24 @@
 # conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-bytes,stdlib-compress,stdlib-crypto,stdlib-faults,stdlib-io,stdlib-streams,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/streams.ms
-from "@std/streams.ms" import from_bytes, map, take, concat, tee, map_writer, digest
-from "@std/io.ms" import read_all, copy
-from "@std/archive.ms" import CompressionFormat
-from "@std/crypto.ms" import HashAlgorithm, sha256
-from "@std/bytes.ms" import Bytes
-from "@std/core.ms" import panic
-from "@std/fs.ms" import filesystem
-from "@std/test.ms" import expect_ok
+import {from_bytes, map, take, concat, tee, map_writer, digest} from "@std/streams.ms"
+import {read_all, copy} from "@std/io.ms"
+import CompressionFormat from "@std/archive.ms"
+import {HashAlgorithm, sha256} from "@std/crypto.ms"
+import Bytes from "@std/bytes.ms"
+import panic from "@std/core.ms"
+import filesystem from "@std/fs.ms"
+import expect_ok from "@std/test.ms"
 
-def upper(chunk: Bytes) -> Bytes:
+fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()
 
 test "flows compose stream transforms":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
-        let path = f"{temporary.path()}/pipeline.bin"
-        var output = (fs.open(path: path, flags: "w", mode: 420) | try expect_ok)
+    with let temporary = fs.temporary("manuscript-streams-") | try expect_ok:
+        let path = "{temporary.path()}/pipeline.bin"
+        var output = fs.open(path: path, flags: "w", mode: 420) | try expect_ok
         let source = from_bytes("hello world".to_bytes(), 4)
         let copied = source | map(upper) | take(8) | try copy(output.writer())
         output.close()
@@ -30,9 +30,9 @@ test "flows compose stream transforms":
 test "concat tee and writer helpers":
     let fs = filesystem()
 
-    with let temporary = (fs.temporary("manuscript-streams-") | try expect_ok):
-        let log_path = f"{temporary.path()}/tee.bin"
-        var log = (fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok)
+    with let temporary = fs.temporary("manuscript-streams-") | try expect_ok:
+        let log_path = "{temporary.path()}/tee.bin"
+        var log = fs.open(path: log_path, flags: "w", mode: 420) | try expect_ok
         let joined = concat([from_bytes("ab".to_bytes()), from_bytes("cd".to_bytes())])
         let seen = tee(joined, log.writer())
         if (try read_all(seen)) != "abcd".to_bytes(): return panic("concat")
@@ -42,8 +42,8 @@ test "concat tee and writer helpers":
             "tee"
         )
 
-        let sink_path = f"{temporary.path()}/writer.bin"
-        var sink = (fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok)
+        let sink_path = "{temporary.path()}/writer.bin"
+        var sink = fs.open(path: sink_path, flags: "w", mode: 420) | try expect_ok
         var writer = map_writer(sink.writer(), upper)
         try writer.write("quiet")
         try writer.write_bytes("!".to_bytes())
@@ -70,15 +70,8 @@ test "compression streams round trip all formats":
             "compression stream roundtrip"
         )
 
-    let limited = (
-        CompressionFormat
-        .Gzip
-        .decompress_stream(
-            CompressionFormat.Gzip.compress_stream(
-                from_bytes(text.clone())
-            ),
-            some(4)
-        )
+    let limited = CompressionFormat.Gzip.decompress_stream(
+        CompressionFormat.Gzip.compress_stream(from_bytes(text.clone())), some(4)
     )
     if read_all(limited).is_ok(): return panic("decompression budget")
 

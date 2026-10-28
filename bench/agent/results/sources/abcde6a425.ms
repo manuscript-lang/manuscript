@@ -1,21 +1,21 @@
-from "@std/bytes.ms" import Bytes
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import Bytes from "@std/bytes.ms"
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Parses 1 to 6 unsigned decimal digits; anything else is malformed.
-def parse_num(text: String) -> Optional[Int]:
+fn parse_num(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
     if text.get(0) == "-" or text.get(0) == "+": return none
 
     return text.parse_int()
 
-def zeros(n: Int) -> List[Int]:
+fn zeros(n: Int) List[Int]:
     var xs = List[Int](reserve: n)
     for i in 0..n:
         xs.append(0)
     return xs
 
-def lcs(a: Bytes, b: Bytes) -> Int:
+fn lcs(a: Bytes, b: Bytes) Int:
     let m = b.length()
     var prev = zeros(m + 1)
 
@@ -32,7 +32,7 @@ def lcs(a: Bytes, b: Bytes) -> Int:
 
     return prev[m]
 
-def edit(a: Bytes, b: Bytes) -> Int:
+fn edit(a: Bytes, b: Bytes) Int:
     let m = b.length()
     var prev = zeros(m + 1)
     for j in 0..m + 1:
@@ -43,7 +43,7 @@ def edit(a: Bytes, b: Bytes) -> Int:
         cur[0] = i + 1
 
         for j in 0..m:
-            let cost = 0 if a.get(i) == b.get(j) else 1
+            let cost = if a.get(i) == b.get(j): 0 else: 1
 
             cur[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(cur[j] + 1)
 
@@ -52,7 +52,7 @@ def edit(a: Bytes, b: Bytes) -> Int:
     return prev[m]
 
 # 0/1 knapsack. dp[j] is the best value within weight j, so the table is monotone and dp[c] is the answer.
-def knap(cap: Int, ws: List[Int], vs: List[Int]) -> Int:
+fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws:
         total += w
@@ -71,7 +71,7 @@ def knap(cap: Int, ws: List[Int], vs: List[Int]) -> Int:
     return dp[c]
 
 # Returns the fewest coins, or -1 when the amount cannot be made.
-def coins(amount: Int, cs: List[Int]) -> Int:
+fn coins(amount: Int, cs: List[Int]) Int:
     let inf = amount + 1
     var dp = zeros(amount + 1)
 
@@ -87,7 +87,7 @@ def coins(amount: Int, cs: List[Int]) -> Int:
     return dp[amount]
 
 # Returns the answer, or -1 for a malformed command.
-def knap_cmd(parts: List[String]) -> Int:
+fn knap_cmd(parts: List[String]) Int:
     let cap = parse_num(parts[1]).get(-1)
     if cap < 0: return -1
 
@@ -108,7 +108,7 @@ def knap_cmd(parts: List[String]) -> Int:
     return knap(cap, ws, vs)
 
 # Returns the fewest coins (or -1 when impossible), or -2 for a malformed command.
-def coins_cmd(parts: List[String]) -> Int:
+fn coins_cmd(parts: List[String]) Int:
     let amount = parse_num(parts[1]).get(-1)
     if amount < 0: return -2
 
@@ -122,37 +122,37 @@ def coins_cmd(parts: List[String]) -> Int:
 
     return coins(amount, cs)
 
-def solve(parts: List[String]) -> String:
+fn solve(parts: List[String]) String:
     let cmd = parts[0]
     let n = parts.length()
     if cmd == "lcs" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
-        return f"{lcs(parts[1].to_bytes(), parts[2].to_bytes())}"
+        return "{lcs(parts[1].to_bytes(), parts[2].to_bytes())}"
     if cmd == "edit" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
-        return f"{edit(parts[1].to_bytes(), parts[2].to_bytes())}"
+        return "{edit(parts[1].to_bytes(), parts[2].to_bytes())}"
 
     if cmd == "knap" and n >= 2:
         let best = knap_cmd(parts)
-        if best >= 0: return f"{best}"
+        if best >= 0: return "{best}"
 
     if cmd == "coins" and n >= 3:
         let fewest = coins_cmd(parts)
         if fewest == -1: return "impossible"
-        if fewest >= 0: return f"{fewest}"
+        if fewest >= 0: return "{fewest}"
 
     return "error: bad command"
 
 # A line is blank when every space-separated part is empty.
-def is_blank(parts: List[String]) -> Bool:
+fn is_blank(parts: List[String]) Bool:
     for p in parts:
-        if p.length() > 0: return False
-    return True
+        if p.length() > 0: return false
+    return true
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
         let parts = line.split(" ")
         if not is_blank(parts):
-            out.write(f"{solve(parts)}\n").get()
+            out.write("{solve(parts)}\n").get()
 
     return 0

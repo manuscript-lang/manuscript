@@ -2,9 +2,9 @@ type Box:
     items: List[Int]
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-def f() -> List[Int]:
+fn f() List[Int]:
     let b = Box(items: [1])
     return b.list()  # error: only a read-only parameter can

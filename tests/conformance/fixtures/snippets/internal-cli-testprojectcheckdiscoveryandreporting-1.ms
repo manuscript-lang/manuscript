@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=internal/cli/project_check_test.go:49 TestProjectCheckDiscoveryAndReporting
-from "./lib/value.ms" import value
+import value from "./lib/value.ms"
 
-export def main() -> Int:
+export fn main() Int:
     return value()

@@ -1,16 +1,16 @@
-from "@std/io.ms" import stdout
-from "@std/string.ms" import StringBuilder
-from "@std/time.ms" import clock
+import stdout from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+import clock from "@std/time.ms"
 
 # Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
-def run(piece: String, count: Int) -> Int:
+fn run(piece: String, count: Int) Int:
     var sb = StringBuilder()
     for i in 0..count:
         sb.append(piece)
     return sb.build().byte_length()
 
 # Builds a list of `count` Ints with append in a `while` loop, so growth is by doubling, the path every list shares with the builder.
-def fill(count: Int) -> Int:
+fn fill(count: Int) Int:
     var items: List[Int] = []
     var i = 0
 
@@ -20,7 +20,7 @@ def fill(count: Int) -> Int:
 
     return items.length()
 
-export def main() -> Int:
+export fn main() Int:
     var piece = "x"
 
     for size in [4, 16, 64, 256, 1024, 8192]:
@@ -38,7 +38,7 @@ export def main() -> Int:
             if elapsed < best:
                 best = elapsed
 
-        let _ignored = stdout().write(f"append{size}\t{best / 1000}\t# {checksum}\n")
+        let _ignored = stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
 
     for count in [10000, 100000, 1000000]:
         var best = 1000000000000
@@ -52,6 +52,6 @@ export def main() -> Int:
             if elapsed < best:
                 best = elapsed
 
-        let _ignored = stdout().write(f"list{count}\t{best / 1000}\t# {checksum}\n")
+        let _ignored = stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
 
     return 0

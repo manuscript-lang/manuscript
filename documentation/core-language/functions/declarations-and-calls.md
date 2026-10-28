@@ -8,7 +8,7 @@ weight = 1
 A function names its inputs, declares their types, and declares its return type. Use `return` in a multiline body. A one-line body returns its expression implicitly: `def double(value: Int) -> Int: value * 2` (see [suite rules](../basics/grammar.md#statements-and-patterns)).
 
 ```manuscript
-def decrement(value: Int) -> Int:
+fn decrement(value: Int) Int:
     return value - 1
 
 let remaining = decrement(3)
@@ -29,7 +29,7 @@ Parameters and return types are explicit; local annotations are optional.
 Labels are optional. An unlabeled argument fills the first parameter not yet filled, in declaration order. `name: value` fills that parameter in any order. A bare identifier is an ordinary expression, so renaming a local never changes which parameter it fills.
 
 ```manuscript
-def reduce(amount: Int, deduction: Int) -> Int:
+fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
 
 let remaining = reduce(10, 3)
@@ -59,10 +59,10 @@ A parameter with a default may be omitted; others are required, including `Optio
 Write `= expression` after a parameter's type to supply a default:
 
 ```manuscript
-def subtract(amount: Int, deduction: Int = 1) -> Int:
+fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
 
-def example() -> Int:
+fn example() Int:
     let usual = subtract(5)
     let explicit = subtract(5, 2)
     return usual + explicit
@@ -84,7 +84,7 @@ def example() -> Int:
 To accept a variable number of values, declare an ordinary list parameter:
 
 ```manuscript
-def sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value
@@ -114,13 +114,13 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 `()` is the single value of `Unit`. A `Unit` function may `return`, `return ()`, or fall off the end. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-def check_positive(value: Int) -> Unit:
+fn check_positive(value: Int) Unit:
     if not (value > 0):
         return panic(message: "check failed")
 
-def missing_value() -> Int:
+fn missing_value() Int:
     return panic(message: "Required value is missing")
 ```
 
@@ -143,7 +143,7 @@ An expression has no normal successor when a necessarily evaluated subexpression
 Typing is separate: `1 + panic(message: "stop")` has type `Int` ([operators](../basics/expressions.md#never-operands)) but cannot complete, so the next statement is unreachable.
 
 ```manuscript
-def incomplete(active: Bool) -> Int:
+fn incomplete(active: Bool) Int:
     if active:
         return 1
     # Rejected: the false path reaches the end without returning Int.

@@ -4,7 +4,7 @@
 type Child:
     value: Int
 
-export def main() -> Int:
+export fn main() Int:
     var values = [Child(1), Child(1)]
     let c = Child(9)
     values.fill(c, 0, 1)

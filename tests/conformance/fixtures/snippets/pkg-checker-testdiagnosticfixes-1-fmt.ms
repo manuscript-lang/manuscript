@@ -2,8 +2,8 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/diagnostic_fixes_test.go:21 TestDiagnosticFixes
 impl Error for Result:
-    def message() -> String:
+    fn message() String:
         return "x"
 
-def general(value: Result) -> Error:
+fn general(value: Result) Error:
     return value

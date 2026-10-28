@@ -1,15 +1,15 @@
 # conform: tags=closures,control-flow,faults,generics,interfaces,lists,modules,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/inference-call-order.ms
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
-def first[T](left: T, right: T) -> T: left
+fn first[T](left: T, right: T) T: left
 
-def optional[T](value: Optional[T], fallback: T) -> T: value.get(fallback)
+fn optional[T](value: Optional[T], fallback: T) T: value.get(fallback)
 
-def describe[T](value: T, cause: Error) -> String: cause.message()
+fn describe[T](value: T, cause: Error) String: cause.message()
 
 type Events:
     values: List[Int]
@@ -18,15 +18,15 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> String: self.detail.clone()
+    fn message() String: self.detail.clone()
 
 type GenericFailure[T]:
     detail: T
 
 impl Error for GenericFailure[T]:
-    def message() -> String: self.detail.to_string()
+    fn message() String: self.detail.to_string()
 
-def record(var events: Events, value: Int) -> Int:
+fn record(var events: Events, value: Int) Int:
     events.values.append(value)
     return value
 
@@ -50,5 +50,5 @@ test "reused inference preserves evaluation and argument conversions":
     try expect_equal(generic_message, "4")
 
     let offset = 7
-    let callback = identity(identity(lambda (value: Int): offset + value))
+    let callback = identity(identity(fn(value: Int): offset + value))
     try expect_equal(callback(3), 10)

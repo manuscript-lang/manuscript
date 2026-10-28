@@ -71,15 +71,15 @@ Maps and sets iterate in insertion order, with a [for loop](../control-flow/loop
 `xs.entries()` pairs each element with its index, and `a.zip(b)` pairs two lists by position. Neither needs a nested index loop:
 
 ```ms
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let names = ["ann", "bo", "cy"]
     let scores = [90, 72]
     for pair in names.zip(scores):
-        stdout().write(f"{pair.first}: {pair.second}\n")
+        stdout().write("{pair.first}: {pair.second}\n")
     for part in [1, 2, 3, 4, 5].chunks(2):
-        stdout().write(f"{part.length()}\n")
+        stdout().write("{part.length()}\n")
     return 0
 ```
 
@@ -220,13 +220,13 @@ Enumeration returns owned results. Callbacks borrow the receiver for the travers
 List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: lambda a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "sorting and aggregates":
     var scores = [3, 1, 2]
     if scores.sorted() != [1, 2, 3]:
         return panic("check failed")
-    scores.sort(lambda a, b: b - a)
+    scores.sort(fn a, b: b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
     if scores.sum() != 6 or scores.max() != some(3) or List[Int]().min() != none:
@@ -236,10 +236,10 @@ test "sorting and aggregates":
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 
-def positives(values: List[Int]) -> List[Int]:
+fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
@@ -269,8 +269,8 @@ Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filt
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
 ```manuscript
-def increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
-    return scores.map(lambda name, score: score + 1)
+fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
+    return scores.map(fn name, score: score + 1)
 ```
 
 ## Reducing and querying

@@ -1,11 +1,11 @@
-from "@std/io.ms" import stdout, stdin
-from "@std/streams.ms" import read_lines
+import {stdout, stdin} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Fail:
     text: String
 
 impl Error for Fail:
-    def message() -> String:
+    fn message() String:
         return self.text.clone()
 
 type RecLine:
@@ -48,10 +48,10 @@ let AUTO = ["@", "<", "^", "?", "|", "*"]
 let LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 let DIGITS = "0123456789"
 
-def emit(s: String) -> Unit:
+fn emit(s: String) Unit:
     stdout().write(s + "\n").get()
 
-def join_chars(cs: List[String], a: Int, b: Int) -> String:
+fn join_chars(cs: List[String], a: Int, b: Int) String:
     var out = ""
     var k = a
 
@@ -61,7 +61,7 @@ def join_chars(cs: List[String], a: Int, b: Int) -> String:
 
     return out
 
-def find_char(cs: List[String], ch: String, from: Int) -> Int:
+fn find_char(cs: List[String], ch: String, from: Int) Int:
     var k = from
 
     while k < cs.length():
@@ -72,7 +72,7 @@ def find_char(cs: List[String], ch: String, from: Int) -> Int:
 
     return -1
 
-def last_char(cs: List[String], ch: String) -> Int:
+fn last_char(cs: List[String], ch: String) Int:
     var k = cs.length() - 1
 
     while k >= 0:
@@ -83,20 +83,20 @@ def last_char(cs: List[String], ch: String) -> Int:
 
     return -1
 
-def count_letters(cs: List[String]) -> Int:
+fn count_letters(cs: List[String]) Int:
     var k = 0
     while k < cs.length() and LETTERS.contains(cs[k].clone()):
         k += 1
     return k
 
-def match_close(cs: List[String], start: Int, opener: String, closer: String) -> Int:
+fn match_close(cs: List[String], start: Int, opener: String, closer: String) Int:
     var depth = 1
     var k = start
 
     while k < cs.length():
         if cs[k] == opener:
             depth += 1
-        elif cs[k] == closer:
+        else if cs[k] == closer:
             depth -= 1
             if depth == 0:
                 return k
@@ -105,7 +105,7 @@ def match_close(cs: List[String], start: Int, opener: String, closer: String) ->
 
     return -1
 
-def strip_cr(s: String) -> String:
+fn strip_cr(s: String) String:
     let cs = s.chars()
     let n = cs.length()
     if n > 0 and cs[n - 1] == "\r":
@@ -113,14 +113,14 @@ def strip_cr(s: String) -> String:
 
     return s
 
-def strip_tabs(s: String) -> String:
+fn strip_tabs(s: String) String:
     let cs = s.chars()
     var k = 0
     while k < cs.length() and cs[k] == "\t":
         k += 1
     return join_chars(cs, k, cs.length())
 
-def words(s: String) -> List[String]:
+fn words(s: String) List[String]:
     var out = List[String]()
     var cur = ""
 
@@ -136,7 +136,7 @@ def words(s: String) -> List[String]:
         out.append(cur)
     return out
 
-def join_from(ws: List[String], a: Int, b: Int) -> String:
+fn join_from(ws: List[String], a: Int, b: Int) String:
     var out = List[String]()
     var k = a
 
@@ -146,24 +146,24 @@ def join_from(ws: List[String], a: Int, b: Int) -> String:
 
     return out.join(" ")
 
-def dedup(xs: List[String]) -> List[String]:
+fn dedup(xs: List[String]) List[String]:
     var out = List[String]()
     for x in xs:
         if not out.contains(x):
             out.append(x.clone())
     return out
 
-def is_digits(s: String) -> Bool:
+fn is_digits(s: String) Bool:
     let cs = s.chars()
     if cs.length() == 0:
-        return False
+        return false
 
     for c in cs:
         if not DIGITS.contains(c):
-            return False
-    return True
+            return false
+    return true
 
-def strip_comment(s: String) -> String:
+fn strip_comment(s: String) String:
     let cs = s.chars()
     let n = cs.length()
     var out = ""
@@ -173,7 +173,7 @@ def strip_comment(s: String) -> String:
         if cs[k] == "\\" and k + 1 < n and cs[k + 1] == "#":
             out = out + "#"
             k += 2
-        elif cs[k] == "#":
+        else if cs[k] == "#":
             break
         else:
             out = out + cs[k].clone()
@@ -181,7 +181,7 @@ def strip_comment(s: String) -> String:
 
     return out
 
-def find_col(cs: List[String]) -> Int:
+fn find_col(cs: List[String]) Int:
     var depth = 0
     var k = 0
     let n = cs.length()
@@ -191,34 +191,34 @@ def find_col(cs: List[String]) -> Int:
         if depth == 0 and c == ";":
             return -1
 
-        if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "{"):
+        if c == "$" and k + 1 < n and (cs[k + 1] == "(" or cs[k + 1] == "\{"):
             depth += 1
             k += 2
             continue
 
         if depth > 0:
-            if c == "(" or c == "{":
+            if c == "(" or c == "\{":
                 depth += 1
-            elif c == ")" or c == "}":
+            else if c == ")" or c == "\}":
                 depth -= 1
-        elif c == ":":
+        else if c == ":":
             return k
 
         k += 1
 
     return -1
 
-def logical_lines(lines: List[String]) -> List[RecLine]:
+fn logical_lines(lines: List[String]) List[RecLine]:
     var out = List[RecLine]()
     var acc = ""
     var start = 0
-    var joining = False
+    var joining = false
     var idx = 0
 
     for raw in lines:
         idx += 1
 
-        let piece = raw.trim_start().clone() if joining else raw.clone()
+        let piece = if joining: raw.trim_start().clone() else: raw.clone()
 
         if not joining:
             start = idx
@@ -228,18 +228,18 @@ def logical_lines(lines: List[String]) -> List[RecLine]:
 
         if pn > 0 and pc[pn - 1] == "\\":
             acc = acc + join_chars(pc, 0, pn - 1).trim_end() + " "
-            joining = True
+            joining = true
         else:
             acc = acc + piece
             out.append(RecLine(no: start, text: acc))
             acc = ""
-            joining = False
+            joining = false
 
     if joining:
         out.append(RecLine(no: start, text: acc))
     return out
 
-def pat_match(pat: String, w: String) -> Optional[String]:
+fn pat_match(pat: String, w: String) Optional[String]:
     let pc = pat.chars()
     let wc = w.chars()
     let k = find_char(pc.clone(), "%", 0)
@@ -266,13 +266,13 @@ def pat_match(pat: String, w: String) -> Optional[String]:
 
     return join_chars(wc, k, n - suf_n)
 
-def pat_hit(pat: String, w: String) -> Bool:
+fn pat_hit(pat: String, w: String) Bool:
     if let _s = pat_match(pat, w):
-        return True
+        return true
 
-    return False
+    return false
 
-def subst_pct(rep: String, stem: String) -> String:
+fn subst_pct(rep: String, stem: String) String:
     let cs = rep.chars()
     let k = find_char(cs.clone(), "%", 0)
     if k < 0:
@@ -284,13 +284,13 @@ def subst_pct(rep: String, stem: String) -> String:
         + join_chars(cs, k + 1, rep.chars().length())
     )
 
-def subst_all(xs: List[String], stem: String) -> List[String]:
+fn subst_all(xs: List[String], stem: String) List[String]:
     var out = List[String]()
     for w in xs:
         out.append(subst_pct(w.clone(), stem.clone()))
     return out
 
-def pat_subst(pat: String, rep: String, w: String) -> String:
+fn pat_subst(pat: String, rep: String, w: String) String:
     if not pat.contains("%"):
         if pat == w:
             return rep
@@ -302,7 +302,7 @@ def pat_subst(pat: String, rep: String, w: String) -> String:
 
     return w
 
-def glob_at(p: List[String], pi: Int, s: List[String], si: Int) -> Bool:
+fn glob_at(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
 
@@ -313,32 +313,32 @@ def glob_at(p: List[String], pi: Int, s: List[String], si: Int) -> Bool:
 
         while k <= s.length():
             if glob_at(p.clone(), pi + 1, s.clone(), k):
-                return True
+                return true
             if k < s.length() and s[k] == "/":
-                return False
+                return false
 
             k += 1
 
-        return False
+        return false
 
     if si >= s.length():
-        return False
+        return false
     if c == "?":
         return s[si] != "/" and glob_at(p, pi + 1, s, si + 1)
     if c != s[si]:
-        return False
+        return false
 
     return glob_at(p, pi + 1, s, si + 1)
 
-def split_args(raw: String) -> List[String]:
+fn split_args(raw: String) List[String]:
     var out = List[String]()
     var cur = ""
     var depth = 0
 
     for c in raw.chars():
-        if c == "(" or c == "{":
+        if c == "(" or c == "\{":
             depth += 1
-        elif c == ")" or c == "}":
+        else if c == ")" or c == "\}":
             depth -= 1
 
         if c == "," and depth == 0:
@@ -350,13 +350,13 @@ def split_args(raw: String) -> List[String]:
     out.append(cur)
     return out
 
-def raw_arg(args: List[String], k: Int) -> String:
+fn raw_arg(args: List[String], k: Int) String:
     if k < args.length():
         return args[k].trim().clone()
 
     return ""
 
-def dir_of(w: String) -> String:
+fn dir_of(w: String) String:
     let cs = w.chars()
     let k = last_char(cs.clone(), "/")
     if k < 0:
@@ -364,7 +364,7 @@ def dir_of(w: String) -> String:
 
     return join_chars(cs, 0, k + 1)
 
-def notdir_of(w: String) -> String:
+fn notdir_of(w: String) String:
     let cs = w.chars()
     let k = last_char(cs.clone(), "/")
     if k < 0:
@@ -372,7 +372,7 @@ def notdir_of(w: String) -> String:
 
     return join_chars(cs, k + 1, cs.length())
 
-def suffix_of(w: String) -> String:
+fn suffix_of(w: String) String:
     let cs = w.chars()
     let n = cs.length()
     let start = last_char(cs.clone(), "/") + 1
@@ -382,7 +382,7 @@ def suffix_of(w: String) -> String:
 
     return ""
 
-def basename_of(w: String) -> String:
+fn basename_of(w: String) String:
     let cs = w.chars()
     let start = last_char(cs.clone(), "/") + 1
     let d = last_char(cs.clone(), ".")
@@ -391,7 +391,7 @@ def basename_of(w: String) -> String:
 
     return w
 
-def rule_tail(pre: List[String], op: List[String]) -> String:
+fn rule_tail(pre: List[String], op: List[String]) String:
     var s = ""
     if pre.length() > 0:
         s = " " + pre.join(" ")
@@ -399,13 +399,13 @@ def rule_tail(pre: List[String], op: List[String]) -> String:
         s = s + " | " + op.join(" ")
     return s
 
-def cond_plain_keyword(kw: String) -> Bool:
+fn cond_plain_keyword(kw: String) Bool:
     return kw == "else" or kw == "endif"
 
-def cond_expr_keyword(kw: String) -> Bool:
+fn cond_expr_keyword(kw: String) Bool:
     return kw == "ifdef" or kw == "ifndef" or kw == "ifeq" or kw == "ifneq"
 
-def strip_quotes(s: String) -> String:
+fn strip_quotes(s: String) String:
     var out = ""
     for c in s.chars():
         if c != "'" and c != "\"":
@@ -444,71 +444,71 @@ type Make:
     dry: Bool
 
 impl Make:
-    def fail(msg: String) -> Fail:
+    fn fail(msg: String) Fail:
         if self.line > 0:
-            return Fail(text: f"Makefile:{self.line}: *** {msg}.  Stop.")
+            return Fail(text: "Makefile:{self.line}: *** {msg}.  Stop.")
 
-        return Fail(text: f"make: *** {msg}.  Stop.")
+        return Fail(text: "make: *** {msg}.  Stop.")
 
-    def is_phony(name: String) -> Bool:
+    fn is_phony(name: String) Bool:
         return self.phony.contains(name)
 
-    def is_defined(name: String) -> Bool:
+    fn is_defined(name: String) Bool:
         if let c = self.cmdvars.get(name.clone()).clone():
             return c != ""
         if let v = self.vars.get(name).clone():
             return v.value != ""
 
-        return False
+        return false
 
-    def active() -> Bool:
+    fn active() Bool:
         let k = self.frames.length() - 1
         if k < 0:
-            return True
+            return true
 
         let f = self.frames[k].clone()
         return f.parent_on and f.cond != f.in_else
 
-    def pre_of(name: String) -> List[String]:
+    fn pre_of(name: String) List[String]:
         if let p = self.prereqs.get(name).clone():
             return p.clone()
 
         return List[String]()
 
-    def op_of(name: String) -> List[String]:
+    fn op_of(name: String) List[String]:
         if let p = self.oprereqs.get(name).clone():
             return p.clone()
 
         return List[String]()
 
-    def recipe_of(name: String) -> List[RecLine]:
+    fn recipe_of(name: String) List[RecLine]:
         if let p = self.recipes.get(name).clone():
             return p
 
         return List[RecLine]()
 
-    def default_goal() -> String:
+    fn default_goal() String:
         for t in self.order:
             if not t.starts_with("."):
                 return t.clone()
         return ""
 
-    def cycle_error(name: String) -> Fail:
+    fn cycle_error(name: String) Fail:
         var parts = List[String]()
-        var started = False
+        var started = false
 
         for p in self.path:
             if p == name:
-                started = True
+                started = true
             if started:
                 parts.append(p.clone())
 
         parts.append(name.clone())
 
         let chain = parts.join(" -> ")
-        return Fail(text: f"make: *** Circular dependency detected: {chain}.  Stop.")
+        return Fail(text: "make: *** Circular dependency detected: {chain}.  Stop.")
 
-    var def reset_parse() -> Unit:
+    var fn reset_parse() Unit:
         self.vars = Map[String, VarDef]()
         self.prereqs = Map[String, List[String]]()
         self.oprereqs = Map[String, List[String]]()
@@ -517,7 +517,7 @@ impl Make:
         self.prules = List[PatRule]()
         self.phony = List[String]()
         self.frames = List[CondFrame]()
-        self.rule_open = False
+        self.rule_open = false
         self.binds = List[Binding]()
         self.auto = Map[String, String]()
         self.stack = List[String]()
@@ -527,11 +527,11 @@ impl Make:
         self.done = List[String]()
         self.outl = List[String]()
 
-    var def expand_recursive(name: String, raw: String) -> Result[String, Fail]:
+    var fn expand_recursive(name: String, raw: String) Result[String, Fail]:
         if self.stack.contains(name.clone()):
             return error(
                 self.fail(
-                    f"Recursive variable '{name}' references itself (eventually)"
+                    "Recursive variable '{name}' references itself (eventually)"
                 )
             )
 
@@ -541,7 +541,7 @@ impl Make:
         let _ = self.stack.pop()
         return ok(r)
 
-    var def var_value(name: String) -> Result[String, Fail]:
+    var fn var_value(name: String) Result[String, Fail]:
         var k = self.binds.length() - 1
 
         while k >= 0:
@@ -563,7 +563,7 @@ impl Make:
 
         return ok("")
 
-    var def expand(text: String) -> Result[String, Fail]:
+    var fn expand(text: String) Result[String, Fail]:
         let cs = text.chars()
         let n = cs.length()
         var out = ""
@@ -573,15 +573,15 @@ impl Make:
             if cs[i] != "$":
                 out = out + cs[i].clone()
                 i += 1
-            elif i + 1 >= n:
+            else if i + 1 >= n:
                 i += 1
-            elif cs[i + 1] == "$":
+            else if cs[i + 1] == "$":
                 out = out + "$"
                 i += 2
-            elif cs[i + 1] == "(" or cs[i + 1] == "{":
+            else if cs[i + 1] == "(" or cs[i + 1] == "\{":
                 let opener = cs[i + 1].clone()
 
-                let closer = ")" if opener == "(" else "}"
+                let closer = if opener == "(": ")" else: "\}"
 
                 let j = match_close(cs.clone(), i + 2, opener, closer)
                 if j < 0:
@@ -598,7 +598,7 @@ impl Make:
 
         return ok(out)
 
-    var def expand_ref(inner: String) -> Result[String, Fail]:
+    var fn expand_ref(inner: String) Result[String, Fail]:
         for f in FUNCS:
             if (
                 inner.starts_with(f.clone() + " ")
@@ -627,9 +627,9 @@ impl Make:
                 let to = join_chars(cs.clone(), ei + 1, n)
                 let has_pct = from.contains("%")
 
-                let pf = from.clone() if has_pct else "%" + from
+                let pf = if has_pct: from.clone() else: "%" + from
 
-                let pt = to.clone() if has_pct else "%" + to
+                let pt = if has_pct: to.clone() else: "%" + to
 
                 let value = try self.var_value(vname)
                 var out = List[String]()
@@ -639,7 +639,7 @@ impl Make:
 
         return self.var_value(name)
 
-    var def call(fname: String, rest: String) -> Result[String, Fail]:
+    var fn call(fname: String, rest: String) Result[String, Fail]:
         if fname == "info":
             let t = try self.expand(rest.trim())
             emit(t)
@@ -716,12 +716,12 @@ impl Make:
             var out = List[String]()
 
             for w in words(a1):
-                var hit = False
+                var hit = false
                 for p in pats.clone():
                     if pat_hit(p, w.clone()):
-                        hit = True
+                        hit = true
 
-                let keep = hit if fname == "filter" else not hit
+                let keep = if fname == "filter": hit else: not hit
 
                 if keep:
                     out.append(w)
@@ -748,7 +748,7 @@ impl Make:
                 if let ev = a1.parse_int():
                     let ws = words(a2)
 
-                    let ne = ws.length() if ev > ws.length() else ev
+                    let ne = if ev > ws.length(): ws.length() else: ev
 
                     if sv >= 1 and ev >= sv and sv <= ws.length():
                         return ok(join_from(ws, sv - 1, ne))
@@ -756,7 +756,7 @@ impl Make:
             return ok("")
 
         if fname == "words":
-            return ok(f"{words(a0).length()}")
+            return ok("{words(a0).length()}")
 
         if fname == "firstword":
             let ws = words(a0)
@@ -783,9 +783,9 @@ impl Make:
             for w in words(a0):
                 if fname == "dir":
                     out.append(dir_of(w))
-                elif fname == "notdir":
+                else if fname == "notdir":
                     out.append(notdir_of(w))
-                elif fname == "suffix":
+                else if fname == "suffix":
                     let s = suffix_of(w)
                     if s != "":
                         out.append(s)
@@ -807,7 +807,7 @@ impl Make:
 
         return ok("")
 
-    var def simulate(command: String) -> Int:
+    var fn simulate(command: String) Int:
         let ws = words(command)
         if ws.length() == 0:
             return 0
@@ -848,7 +848,7 @@ impl Make:
                 let dst = ws[2].clone()
 
                 if not self.table.contains(src.clone()):
-                    emit(f"cp: cannot stat '{src}': No such file or directory")
+                    emit("cp: cannot stat '{src}': No such file or directory")
                     return 1
 
                 self.clock += 1
@@ -865,11 +865,11 @@ impl Make:
 
         return 0
 
-    def resolve(name: String) -> Resolved:
+    fn resolve(name: String) Resolved:
         let rec = self.recipe_of(name.clone())
         if rec.length() > 0:
             return Resolved(
-                found: True, prereqs: self.pre_of(name.clone()),
+                found: true, prereqs: self.pre_of(name.clone()),
                 oprereqs: self.op_of(name.clone()), recipe: rec, stem: ""
             )
 
@@ -889,39 +889,39 @@ impl Make:
                             for w in self.op_of(name.clone()):
                                 fullo.append(w)
                             return Resolved(
-                                found: True, prereqs: full, oprereqs: fullo,
+                                found: true, prereqs: full, oprereqs: fullo,
                                 recipe: p.recipe.clone(), stem: s
                             )
 
         if self.prereqs.contains(name.clone()):
             return Resolved(
-                found: True, prereqs: self.pre_of(name.clone()),
+                found: true, prereqs: self.pre_of(name.clone()),
                 oprereqs: self.op_of(name.clone()), recipe: List[RecLine](), stem: ""
             )
 
         return Resolved(
-            found: False, prereqs: List[String](), oprereqs: List[String](),
+            found: false, prereqs: List[String](), oprereqs: List[String](),
             recipe: List[RecLine](), stem: ""
         )
 
-    def all_can_make(pre: List[String], op: List[String], depth: Int) -> Bool:
+    fn all_can_make(pre: List[String], op: List[String], depth: Int) Bool:
         for w in pre:
             if not self.can_make(w.clone(), depth):
-                return False
+                return false
         for w in op:
             if not self.can_make(w.clone(), depth):
-                return False
-        return True
+                return false
+        return true
 
-    def can_make(name: String, depth: Int) -> Bool:
+    fn can_make(name: String, depth: Int) Bool:
         if (
             self.table.contains(name.clone())
             or self.prereqs.contains(name.clone())
             or self.is_phony(name.clone())
         ):
-            return True
+            return true
         if depth >= 8:
-            return False
+            return false
 
         for p in self.prules:
             if p.recipe.length() > 0:
@@ -936,22 +936,22 @@ impl Make:
                             ),
                             depth + 1
                         ):
-                            return True
-        return False
+                            return true
+        return false
 
-    var def run_recipe(
+    var fn run_recipe(
         name: String,
         res: Resolved,
         was_in: Bool,
         old: Int
-    ) -> Result[Unit, Fail]:
+    ) Result[Unit, Fail]:
         self.recipes_run += 1
 
         let all = dedup(res.prereqs.clone())
         var newer = List[String]()
 
         for p in all.clone():
-            let changed = self.memo.get(p.clone()).get(False)
+            let changed = self.memo.get(p.clone()).get(false)
             let later = (
                 self.table.contains(p.clone())
                 and self.table.get(p.clone()).get(0) > old
@@ -959,7 +959,7 @@ impl Make:
             if not was_in or changed or later:
                 newer.append(p)
 
-        let first = res.prereqs[0].clone() if res.prereqs.length() > 0 else ""
+        let first = if res.prereqs.length() > 0: res.prereqs[0].clone() else: ""
 
         self.auto = Map[String, String]()
         self.auto.add("@", name.clone())
@@ -976,8 +976,8 @@ impl Make:
             let cs = raw.trim().chars()
             let n = cs.length()
             var k = 0
-            var silent = False
-            var ignore = False
+            var silent = false
+            var ignore = false
 
             while (
                 k < n
@@ -990,9 +990,9 @@ impl Make:
                 )
             ):
                 if cs[k] == "@":
-                    silent = True
+                    silent = true
                 if cs[k] == "-":
-                    ignore = True
+                    ignore = true
                 k += 1
 
             let command = join_chars(cs, k, n).trim()
@@ -1009,9 +1009,9 @@ impl Make:
 
             if status != 0:
                 if ignore:
-                    emit(f"make: [Makefile:{line.no}: {name}] Error {status} (ignored)")
+                    emit("make: [Makefile:{line.no}: {name}] Error {status} (ignored)")
                 else:
-                    emit(f"make: *** [Makefile:{line.no}: {name}] Error {status}")
+                    emit("make: *** [Makefile:{line.no}: {name}] Error {status}")
                     return error(Fail(text: ""))
 
         self.line = 0
@@ -1021,11 +1021,11 @@ impl Make:
             self.clock += 1
             self.table.add(name.clone(), self.clock)
 
-        return ok(())
+        return ok(unit)
 
-    var def update(name: String, parent: String) -> Result[Bool, Fail]:
+    var fn update(name: String, parent: String) Result[Bool, Fail]:
         if self.memo.contains(name.clone()):
-            return ok(self.memo.get(name.clone()).get(False))
+            return ok(self.memo.get(name.clone()).get(false))
         if self.path.contains(name.clone()):
             return error(self.cycle_error(name.clone()))
 
@@ -1033,23 +1033,23 @@ impl Make:
 
         if not res.found:
             if self.table.contains(name.clone()):
-                self.memo.add(name.clone(), False)
-                return ok(False)
+                self.memo.add(name.clone(), false)
+                return ok(false)
 
             if self.is_phony(name.clone()):
-                self.memo.add(name.clone(), True)
-                return ok(True)
+                self.memo.add(name.clone(), true)
+                return ok(true)
 
             if parent == "":
                 return error(
                     Fail(
-                        text: f"make: *** No rule to make target '{name}'.  Stop."
+                        text: "make: *** No rule to make target '{name}'.  Stop."
                     )
                 )
 
             return error(
                 Fail(
-                    text: f"make: *** No rule to make target '{name}', needed by '{parent}'.  Stop."
+                    text: "make: *** No rule to make target '{name}', needed by '{parent}'.  Stop."
                 )
             )
 
@@ -1060,19 +1060,19 @@ impl Make:
         if was_in:
             old = self.table.get(name.clone()).get(0)
 
-        var changed = False
-        var newer = False
+        var changed = false
+        var newer = false
 
         for p in dedup(res.prereqs.clone()):
             let c = try self.update(p.clone(), name.clone())
             if c:
-                changed = True
+                changed = true
             if (
                 was_in
                 and self.table.contains(p.clone())
                 and self.table.get(p.clone()).get(0) > old
             ):
-                newer = True
+                newer = true
 
         for o in dedup(res.oprereqs.clone()):
             let _o = try self.update(o, name.clone())
@@ -1084,19 +1084,19 @@ impl Make:
             or changed
             or newer
         )
-        var result = False
+        var result = false
 
         if must:
-            result = True
+            result = true
             if res.recipe.length() > 0:
                 try self.run_recipe(name.clone(), res, was_in, old)
 
         self.memo.add(name.clone(), result)
         return ok(result)
 
-    var def visit(p: String) -> Result[Unit, Fail]:
+    var fn visit(p: String) Result[Unit, Fail]:
         if self.done.contains(p.clone()):
-            return ok(())
+            return ok(unit)
         if self.path.contains(p.clone()):
             return error(self.cycle_error(p.clone()))
 
@@ -1106,21 +1106,21 @@ impl Make:
         let _ = self.path.pop()
         self.done.append(p.clone())
         self.outl.append(p)
-        return ok(())
+        return ok(unit)
 
-    var def collect(name: String) -> Result[Unit, Fail]:
+    var fn collect(name: String) Result[Unit, Fail]:
         let res = self.resolve(name.clone())
         for p in dedup(res.prereqs.clone()):
             try self.visit(p)
         for p in dedup(res.oprereqs.clone()):
             try self.visit(p)
-        return ok(())
+        return ok(unit)
 
-    var def close_rule() -> Unit:
+    var fn close_rule() Unit:
         if not self.rule_open:
             return
 
-        self.rule_open = False
+        self.rule_open = false
 
         for t in self.open_explicit.clone():
             if self.prereqs.contains(t.clone()):
@@ -1141,7 +1141,7 @@ impl Make:
             if self.open_recipe.length() > 0:
                 if self.recipe_of(t.clone()).length() > 0:
                     emit(
-                        f"Makefile:{self.open_no}: warning: overriding recipe for target '{t}'"
+                        "Makefile:{self.open_no}: warning: overriding recipe for target '{t}'"
                     )
                 self.recipes.add(t.clone(), self.open_recipe.clone())
 
@@ -1153,7 +1153,7 @@ impl Make:
                 )
             )
 
-    var def cond_line(kw: String, rest: String, no: Int) -> Result[Unit, Fail]:
+    var fn cond_line(kw: String, rest: String, no: Int) Result[Unit, Fail]:
         if kw == "else":
             let k = self.frames.length() - 1
             if k < 0:
@@ -1164,26 +1164,26 @@ impl Make:
                 return error(self.fail("extraneous 'else'"))
 
             self.frames[k] = CondFrame(
-                line: f.line, parent_on: f.parent_on, cond: f.cond, in_else: True
+                line: f.line, parent_on: f.parent_on, cond: f.cond, in_else: true
             )
-            return ok(())
+            return ok(unit)
 
         if kw == "endif":
             if self.frames.length() == 0:
                 return error(self.fail("extraneous 'endif'"))
 
             let _ = self.frames.pop()
-            return ok(())
+            return ok(unit)
 
         let parent = self.active()
-        var on = False
+        var on = false
 
         if parent:
             if kw == "ifdef" or kw == "ifndef":
                 let raw = try self.expand(rest.clone())
                 let defined = self.is_defined(raw.trim().clone())
 
-                on = defined if kw == "ifdef" else not defined
+                on = if kw == "ifdef": defined else: not defined
             else:
                 let cs = rest.trim().chars()
                 let n = cs.length()
@@ -1198,14 +1198,14 @@ impl Make:
                 let bv = try self.expand(parts[1].trim())
                 let same = av.trim() == bv.trim()
 
-                on = same if kw == "ifeq" else not same
+                on = if kw == "ifeq": same else: not same
 
         self.frames.append(
-            CondFrame(line: no, parent_on: parent, cond: on, in_else: False)
+            CondFrame(line: no, parent_on: parent, cond: on, in_else: false)
         )
-        return ok(())
+        return ok(unit)
 
-    var def assign(cs: List[String], eqi: Int) -> Result[Unit, Fail]:
+    var fn assign(cs: List[String], eqi: Int) Result[Unit, Fail]:
         let n = cs.length()
         var op = ""
         var name_end = eqi
@@ -1221,48 +1221,48 @@ impl Make:
 
         let value = join_chars(cs, eqi + 1, n).trim().clone()
         if self.cmdvars.contains(name.clone()):
-            return ok(())
+            return ok(unit)
 
         if op == "":
-            self.vars.add(name.clone(), VarDef(value: value, recursive: True))
-        elif op == ":":
+            self.vars.add(name.clone(), VarDef(value: value, recursive: true))
+        else if op == ":":
             let v = try self.expand(value)
-            self.vars.add(name.clone(), VarDef(value: v, recursive: False))
-        elif op == "?":
+            self.vars.add(name.clone(), VarDef(value: v, recursive: false))
+        else if op == "?":
             if not self.vars.contains(name.clone()):
-                self.vars.add(name.clone(), VarDef(value: value, recursive: True))
+                self.vars.add(name.clone(), VarDef(value: value, recursive: true))
         else:
             if let old = self.vars.get(name.clone()).clone():
-                let sep = " " if old.value != "" and value != "" else ""
+                let sep = if old.value != "" and value != "": " " else: ""
 
                 if old.recursive:
                     self.vars.add(
                         name.clone(),
                         VarDef(
-                            value: old.value + sep + value, recursive: True
+                            value: old.value + sep + value, recursive: true
                         )
                     )
                 else:
                     let v = try self.expand(value)
 
-                    let sep2 = " " if old.value != "" and v != "" else ""
+                    let sep2 = if old.value != "" and v != "": " " else: ""
 
                     self.vars.add(
                         name.clone(),
                         VarDef(
-                            value: old.value + sep2 + v, recursive: False
+                            value: old.value + sep2 + v, recursive: false
                         )
                     )
             else:
-                self.vars.add(name.clone(), VarDef(value: value, recursive: True))
+                self.vars.add(name.clone(), VarDef(value: value, recursive: true))
 
-        return ok(())
+        return ok(unit)
 
-    var def rule(cs: List[String], col: Int, no: Int) -> Result[Unit, Fail]:
+    var fn rule(cs: List[String], col: Int, no: Int) Result[Unit, Fail]:
         let n = cs.length()
         let semi = find_char(cs.clone(), ";", col + 1)
 
-        let pre_end = semi if semi >= 0 else n
+        let pre_end = if semi >= 0: semi else: n
 
         let tv = try self.expand(join_chars(cs.clone(), 0, col))
         let targets = words(tv)
@@ -1271,13 +1271,13 @@ impl Make:
         let pl = pcs.length()
         let bar = find_char(pcs.clone(), "|", 0)
 
-        let be = bar if bar >= 0 else pl
+        let be = if bar >= 0: bar else: pl
 
         let normal = words(join_chars(pcs.clone(), 0, be))
         var order = List[String]()
         if bar >= 0:
             order = words(join_chars(pcs.clone(), bar + 1, pl))
-        self.rule_open = True
+        self.rule_open = true
         self.open_no = no
         self.open_normal = normal.clone()
         self.open_order = order
@@ -1302,9 +1302,9 @@ impl Make:
                     no: no, text: strip_tabs(join_chars(cs, semi + 1, n))
                 )
             )
-        return ok(())
+        return ok(unit)
 
-    var def parse(lines: List[String]) -> Result[Unit, Fail]:
+    var fn parse(lines: List[String]) Result[Unit, Fail]:
         self.reset_parse()
 
         for lg in logical_lines(lines):
@@ -1336,7 +1336,7 @@ impl Make:
             let kw = join_chars(cs.clone(), 0, k)
             let rest = join_chars(cs.clone(), k, n)
 
-            let nxt = cs[k].clone() if k < n else ""
+            let nxt = if k < n: cs[k].clone() else: ""
 
             if cond_plain_keyword(kw.clone()) and rest.trim() == "":
                 self.close_rule()
@@ -1382,12 +1382,12 @@ impl Make:
 
         if top >= 0:
             let f = self.frames[top].clone()
-            return error(Fail(text: f"Makefile:{f.line}: *** missing 'endif'.  Stop."))
+            return error(Fail(text: "Makefile:{f.line}: *** missing 'endif'.  Stop."))
 
         self.line = 0
-        return ok(())
+        return ok(unit)
 
-    var def request(ws: List[String], line: String) -> Result[Unit, Fail]:
+    var fn request(ws: List[String], line: String) Result[Unit, Fail]:
         let cmd = ws[0].clone()
         self.cmdvars = Map[String, String]()
 
@@ -1406,8 +1406,8 @@ impl Make:
                 try self.parse(self.mk_lines.clone())
 
                 let v = try self.expand(text)
-                emit(f"[{v}]")
-                return ok(())
+                emit("[{v}]")
+                return ok(unit)
 
             for k in 1..ws.length():
                 let wc = ws[k].chars()
@@ -1441,12 +1441,12 @@ impl Make:
                     )
                 if self.phony.length() > 0:
                     emit("phony: " + self.phony.join(" "))
-                return ok(())
+                return ok(unit)
 
             if cmd == "deps":
                 if goals.length() != 1:
                     emit("usage: deps TARGET")
-                    return ok(())
+                    return ok(unit)
 
                 try self.parse(self.mk_lines.clone())
 
@@ -1457,7 +1457,7 @@ impl Make:
                     emit("(no prerequisites)")
                 for p in self.outl.clone():
                     emit(p)
-                return ok(())
+                return ok(unit)
 
             self.dry = cmd == "dry"
             try self.parse(self.mk_lines.clone())
@@ -1469,7 +1469,7 @@ impl Make:
 
                 if d == "":
                     emit("make: *** No targets.  Stop.")
-                    return ok(())
+                    return ok(unit)
 
                 gl.append(d)
 
@@ -1485,25 +1485,25 @@ impl Make:
                     )
 
                     if res.recipe.length() > 0 or is_file:
-                        emit(f"make: '{g}' is up to date.")
+                        emit("make: '{g}' is up to date.")
                     else:
-                        emit(f"make: Nothing to be done for '{g}'.")
+                        emit("make: Nothing to be done for '{g}'.")
 
-            return ok(())
+            return ok(unit)
 
         if cmd == "files":
             let names = self.table.keys().sorted()
             if names.length() == 0:
                 emit("(no files)")
             for n in names:
-                emit(f"{n} {self.table.get(n.clone()).get(0)}")
-            return ok(())
+                emit("{n} {self.table.get(n.clone()).get(0)}")
+            return ok(unit)
 
         if cmd == "touch":
             if ws.length() == 2:
                 self.clock += 1
                 self.table.add(ws[1].clone(), self.clock)
-                return ok(())
+                return ok(unit)
 
             if ws.length() == 3 and is_digits(ws[2].clone()):
                 if let m = ws[2].parse_int():
@@ -1511,35 +1511,35 @@ impl Make:
                     if m > self.clock:
                         self.clock = m
 
-                return ok(())
+                return ok(unit)
 
             emit("bad request")
-            return ok(())
+            return ok(unit)
 
         if cmd == "rm":
             for k in 1..ws.length():
                 self.table.remove(ws[k].clone())
-            return ok(())
+            return ok(unit)
 
         emit("unknown request: " + cmd)
-        return ok(())
+        return ok(unit)
 
-def new_make(lines: List[String]) -> Make:
+fn new_make(lines: List[String]) Make:
     return Make(
         mk_lines: lines, vars: Map[String, VarDef](), cmdvars: Map[String, String](),
         table: Map[String, Int](), clock: 0, prereqs: Map[String, List[String]](),
         oprereqs: Map[String, List[String]](), recipes: Map[String, List[RecLine]](),
         order: List[String](), prules: List[PatRule](), phony: List[String](),
-        frames: List[CondFrame](), rule_open: False, open_no: 0,
+        frames: List[CondFrame](), rule_open: false, open_no: 0,
         open_explicit: List[String](), open_pattern: List[String](),
         open_normal: List[String](), open_order: List[String](),
         open_recipe: List[RecLine](), binds: List[Binding](),
         auto: Map[String, String](), stack: List[String](), line: 0,
         memo: Map[String, Bool](), path: List[String](), done: List[String](),
-        outl: List[String](), recipes_run: 0, dry: False
+        outl: List[String](), recipes_run: 0, dry: false
     )
 
-export def main() -> Int:
+export fn main() Int:
     let all = read_lines(stdin()).get()
     var seps = 0
     var mk_lines = List[String]()
@@ -1551,9 +1551,9 @@ export def main() -> Int:
 
         if l == "====" and seps < 2:
             seps += 1
-        elif seps == 0:
+        else if seps == 0:
             mk_lines.append(l)
-        elif seps == 1:
+        else if seps == 1:
             tb.append(l)
         else:
             rq.append(l)

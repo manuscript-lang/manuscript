@@ -9,7 +9,7 @@ An interface is an operation contract: implementations must supply the declared 
 
 ```manuscript
 interface Payments:
-    def charge(amount: Money) -> Result[Receipt, PaymentError]
+    fn charge(amount: Money) Result[Receipt, PaymentError]
 ```
 
 ## Explicit implementations
@@ -20,13 +20,13 @@ Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` 
 
 ```manuscript
 interface Increment:
-    def apply(value: Int) -> Int
+    fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    def apply(value: Int) -> Int:
+    fn apply(value: Int) Int:
         return value + self.delta
 ```
 
@@ -37,7 +37,7 @@ After substituting generic arguments, an implementation must match the contract 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
-    def apply(amount: Int) -> Int:
+    fn apply(amount: Int) Int:
         return amount + self.delta
 ```
 
@@ -83,13 +83,13 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    def get() -> ref T
+    fn get() ref T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    def get() -> ref T:
+    fn get() ref T:
         return self.value
 ```
 
@@ -99,10 +99,10 @@ Interface parameter bounds can restrict an implementation without restricting th
 
 ```manuscript
 interface SameValue[T: Equal]:
-    def same(other: T) -> Bool
+    fn same(other: T) Bool
 
 impl SameValue[T] for Box[T]:
-    def same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 ```
 
@@ -113,7 +113,7 @@ Two blocks overlap if their receiver and contract applications can match the sam
 ```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
-    def get() -> Int:
+    fn get() Int:
         return self.value
 ```
 
@@ -125,10 +125,10 @@ An interface operation, an implementation method and an inherent method may decl
 
 ```manuscript
 interface Ranked[T]:
-    def best_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+    fn best_by[K: Comparable](key: fn(T) K) Optional[T]
 
 impl Ranked[Int] for Scores:
-    def best_by[K: Comparable](key: Callable[[Int], K]) -> Optional[Int]:
+    fn best_by[K: Comparable](key: fn(Int) K) Optional[Int]:
         ...
 ```
 
@@ -141,7 +141,7 @@ A value whose type has a declared implementation of an interface converts implic
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. The interface value owns a copy when the operand is borrowed.
 
 ```manuscript
-def use_increment(operation: Increment) -> Int:
+fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
 let offset = Offset(2)
@@ -159,7 +159,7 @@ A receiver or generic parameter may call an operation directly when exactly one 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
-def invoke[T: Increment](operation: T) -> Int:
+fn invoke[T: Increment](operation: T) Int:
     let view: Increment = operation
     return view.apply(1)
 

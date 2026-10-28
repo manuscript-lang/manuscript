@@ -5,7 +5,7 @@ type Shape:
     case Dot
     case Line
 
-def use(value: Shape) -> Int:
+fn use(value: Shape) Int:
     return match value:
-        case Dot: 0
-        case Line: 1
+        Dot: 0
+        Line: 1

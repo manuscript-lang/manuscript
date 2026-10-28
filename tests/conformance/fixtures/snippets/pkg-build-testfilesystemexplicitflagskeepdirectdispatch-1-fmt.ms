@@ -1,12 +1,12 @@
 # conform: tags=formatter,modules,parser,stdlib-fs,tier-io
 # conform: phase=parse
 # conform: origin=pkg/build/filesystem_defaults_test.go:52 TestFilesystemExplicitFlagsKeepDirectDispatch
-from "@std/fs.ms" import filesystem
+import filesystem from "@std/fs.ms"
 
-def explicit() -> Unit:
+fn explicit() Unit:
     let fs = filesystem()
-    let _ = fs.write_file("", "", False)
-    let _ = fs.copy_file("", "", True)
-    let _ = fs.copy_tree("", "", False, max_entries: none, max_bytes: 3)
-    let _ = fs.create_directory("", True)
-    let _ = fs.remove("", False)
+    let _ = fs.write_file("", "", false)
+    let _ = fs.copy_file("", "", true)
+    let _ = fs.copy_tree("", "", false, max_entries: none, max_bytes: 3)
+    let _ = fs.create_directory("", true)
+    let _ = fs.remove("", false)

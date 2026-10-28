@@ -13,9 +13,9 @@ Save this complete program as `hello.ms` and run `ms run hello.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     if stdout().write("Hello, Manuscript!\n").is_error():
         return 1
     return 0
@@ -29,15 +29,15 @@ Complete examples below use `test` blocks: save as `example.ms` and run `ms test
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "unread message count":
     let customer = "Sam"
     var unread = 2
     unread += 1
-    let message = f"{customer}, you have {unread} unread messages."
-    let enabled: Bool = True
-    try expect_equal(enabled, True)
+    let message = "{customer}, you have {unread} unread messages."
+    let enabled: Bool = true
+    try expect_equal(enabled, true)
     try expect_equal(message, "Sam, you have 3 unread messages.")
 ```
 
@@ -49,7 +49,7 @@ test "unread message count":
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "collections and lookup":
     var tags = ["docs", "release"]
@@ -78,7 +78,7 @@ test "collections and lookup":
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "free shipping for orders of at least 40":
     let prices = [12, 8, 25]
@@ -98,7 +98,7 @@ Count with an exclusive range:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "count five iterations":
     var total = 0
@@ -112,10 +112,10 @@ test "count five iterations":
 ## Functions
 
 ```manuscript
-def greeting(name: String = "world") -> String:
-    return f"Hello, {name}!"
+fn greeting(name: String = "world") String:
+    return "Hello, {name}!"
 
-def line_total(price: Int, quantity: Int) -> Int:
+fn line_total(price: Int, quantity: Int) Int:
     return price * quantity
 
 let welcome = greeting("Sam")
@@ -130,8 +130,8 @@ Functions are values:
 ```manuscript
 
 let prices = [12, 8, 25]
-let discounted = prices.map(lambda value: value - 2)
-let affordable = discounted.filter(lambda value: value <= 10)
+let discounted = prices.map(fn value: value - 2)
+let affordable = discounted.filter(fn value: value <= 10)
 # affordable contains [10, 6]; prices is unchanged.
 ```
 
@@ -139,31 +139,31 @@ let affordable = discounted.filter(lambda value: value <= 10)
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Todo:
     title: String
-    completed: Bool = False
+    completed: Bool = false
 
 type Status:
     case Draft
     case Published(url: String)
 
-def status_label(status: Status) -> String:
+fn status_label(status: Status) String:
     match status:
-        case Draft:
+        Draft:
             return "Not published"
-        case Published(url):
-            return f"Published at {url}"
+        Published(url):
+            return "Published at {url}"
 
 test "publish a help page":
     var todo = Todo("Update the help page")
-    todo.completed = True
+    todo.completed = true
     let backup = todo.clone()
     todo.title = "Update the contact page"
     let label = status_label(Status.Published("/help"))
     try expect_equal(backup.title, "Update the help page")
-    try expect_equal(backup.completed, True)
+    try expect_equal(backup.completed, true)
     try expect_equal(label, "Published at /help")
 ```
 
@@ -177,12 +177,12 @@ test "publish a help page":
 type QuantityError:
     case MustBePositive
 
-def quantity(value: Int) -> Result[Int, QuantityError]:
+fn quantity(value: Int) Result[Int, QuantityError]:
     if value <= 0:
         return error(QuantityError.MustBePositive)
     return ok(value)
 
-def order_total(count: Int) -> Result[Int, QuantityError]:
+fn order_total(count: Int) Result[Int, QuantityError]:
     let valid_count = try quantity(count)
     return ok(valid_count * 12)
 ```
@@ -199,16 +199,16 @@ Each `.ms` file is a module; `export` what others need.
 ```manuscript
 export let UNIT_PRICE = 12
 
-export def line_total(quantity: Int) -> Int:
+export fn line_total(quantity: Int) Int:
     return UNIT_PRICE * quantity
 ```
 
 In another file in the same directory:
 
 ```manuscript
-from "./pricing.ms" import line_total
+import line_total from "./pricing.ms"
 
-export def checkout_total() -> Int:
+export fn checkout_total() Int:
     return line_total(quantity: 3)
 ```
 
@@ -220,15 +220,15 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def apply(value: Int, transform: Callable[[Int], Int]) -> Int:
+fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
 test "a callback borrows a prepared value":
     var offset = 1
     offset += 1
-    let adjust = lambda (value: Int) -> Int:
+    let adjust = fn(value: Int) Int:
         return value + offset
     try expect_equal(apply(10, adjust), 12)
 ```
@@ -241,19 +241,19 @@ Prepare a value before a borrowing closure uses it. Non-escaping closures borrow
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Reading:
     celsius: Int
 
-def parse_reading(text: String) -> Result[Reading, Error]:
+fn parse_reading(text: String) Result[Reading, Error]:
     let celsius = try text.trim().parse_int().ok_or()
     return ok(Reading(celsius))
 
-def to_fahrenheit(reading: Reading) -> Int:
+fn to_fahrenheit(reading: Reading) Int:
     return reading.celsius * 9 / 5 + 32
 
-def fahrenheit(text: String) -> Result[Int, Error]:
+fn fahrenheit(text: String) Result[Int, Error]:
     let value = try parse_reading(text) | to_fahrenheit
     return ok(value)
 
@@ -269,19 +269,19 @@ Methods live in `impl` blocks, never inside the `type`. Declare an `interface`, 
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 interface Increment:
-    var def increment() -> Unit
+    var fn increment() Unit
 
 type Counter:
     value: Int
 
 impl Increment for Counter:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
-def reset(var counter: Counter) -> Unit:
+fn reset(var counter: Counter) Unit:
     counter.value = 0
 
 test "counter behavior":
@@ -296,13 +296,13 @@ A type's own methods go in `impl Counter:`, without an interface:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Counter:
     value: Int
 
 impl Counter:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
 test "own methods":
@@ -318,13 +318,13 @@ Use an interface when callers should depend on behavior rather than on the type.
 ## Files and cleanup
 
 ```manuscript
-from "@std/fs.ms" import filesystem, FileSystemError
+import {filesystem, FileSystemError} from "@std/fs.ms"
 
-def copy_notes() -> Result[Unit, FileSystemError]:
+fn copy_notes() Result[Unit, FileSystemError]:
     with let source = try filesystem().open("notes.txt", flags: "r", mode: 0):
         let contents = try source.read_file(max_bytes: 1048576)
-        try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: True)
-    return ok(())
+        try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
+    return ok(unit)
 ```
 
 `with` closes the file at block end, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).

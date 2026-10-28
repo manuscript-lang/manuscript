@@ -5,4 +5,4 @@ type Box:
     value: Int
 
 impl Box:
-    def get() -> Int: self.value
+    fn get() Int: self.value

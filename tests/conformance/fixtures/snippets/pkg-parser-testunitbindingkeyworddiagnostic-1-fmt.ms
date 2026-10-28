@@ -1,6 +1,6 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/parser/lambda_keyword_test.go:40 TestUnitBindingKeywordDiagnostic
-def before() -> Unit: ()
+fn before() Unit: unit
 
-def broken() -> Unit: ...
+fn broken() Unit: ...

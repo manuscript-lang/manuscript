@@ -1,50 +1,50 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal
+import TextError from "@std/core.ms"
+import expect_equal from "@std/test.ms"
 
-def parse(n: Int) -> Result[Int, TextError]:
+fn parse(n: Int) Result[Int, TextError]:
     if n < 0:
         return error(TextError("neg"))
 
     return ok(n)
 
-def bound(n: Int) -> Result[Int, TextError]:
+fn bound(n: Int) Result[Int, TextError]:
     let v = try parse(n)
     return ok(v + 1)
 
-def reassigned(n: Int) -> Result[Int, TextError]:
+fn reassigned(n: Int) Result[Int, TextError]:
     var total = 1
     total = try parse(n)
     return ok(total * 2)
 
-def check(n: Int) -> Result[Unit, TextError]:
+fn check(n: Int) Result[Unit, TextError]:
     if n < 0:
         return error(TextError("neg"))
 
-    return ok(())
+    return ok(unit)
 
-def discarded(n: Int) -> Result[Int, TextError]:
+fn discarded(n: Int) Result[Int, TextError]:
     try check(n)
     return ok(7)
 
-def code(r: Result[Int, TextError]) -> Int:
+fn code(r: Result[Int, TextError]) Int:
     return r.get(-1)
 
-def nested(n: Int) -> Result[Int, TextError]:
+fn nested(n: Int) Result[Int, TextError]:
     return ok((try parse(n)) + (try parse(n - 5)))
 
-def chained(n: Int) -> Result[Int, TextError]:
+fn chained(n: Int) Result[Int, TextError]:
     let a = try bound(n)
     let b = try reassigned(a - 10)
     return ok(b)
 
-def in_loop(values: List[Int]) -> Result[Int, TextError]:
+fn in_loop(values: List[Int]) Result[Int, TextError]:
     var sum = 0
     for v in values:
         sum += try parse(v)
     return ok(sum)
 
-def in_lambda(n: Int) -> Result[Int, TextError]:
-    let inner = lambda () -> Result[Int, TextError]:
+fn in_lambda(n: Int) Result[Int, TextError]:
+    let inner = fn() Result[Int, TextError]:
         let v = try parse(n)
         return ok(v * 10)
 

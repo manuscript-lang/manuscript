@@ -4,7 +4,7 @@
 type Item:
     value: Int
 
-def use(value: Optional[Item]) -> Int:
+fn use(value: Optional[Item]) Int:
     match value:
-        case some(Item): return Item.value
-        case none: return 0
+        some(Item): return Item.value
+        none: return 0

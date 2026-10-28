@@ -5,5 +5,5 @@ type Optional[T]:
     case some(value: T)
     case none
 
-def wrong(value: Optional[Int]) -> Int:
+fn wrong(value: Optional[Int]) Int:
     return value.get()

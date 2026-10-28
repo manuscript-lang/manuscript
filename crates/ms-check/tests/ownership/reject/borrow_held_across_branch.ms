@@ -1,4 +1,4 @@
-def f(c: Bool) -> Int:
+fn f(c: Bool) Int:
     var rows = [[1]]
     let head = rows[0]
     if c:

@@ -1,9 +1,9 @@
 # conform: tags=formatter,modules,parser,stdlib-string,strings,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/compiler/builder_range_test.go:30 TestClosedBuilderGrouping
-from "@std/string.ms" import StringBuilder
+import StringBuilder from "@std/string.ms"
 
-def fragment() -> String: return "x"
+fn fragment() String: return "x"
 
-def probe(flag: Bool) -> String:
+fn probe(flag: Bool) String:
     let b = StringBuilder()

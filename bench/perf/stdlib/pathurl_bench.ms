@@ -1,10 +1,10 @@
-from "@std/bench.ms" import keep, measure
-from "@std/fs.ms" import basename, join, normalize
-from "@std/net.ms" import parse, encode_component
-from "@std/math.ms" import sqrt, sin
+import {keep, measure} from "@std/bench.ms"
+import {basename, join, normalize} from "@std/fs.ms"
+import {parse, encode_component} from "@std/net.ms"
+import {sqrt, sin} from "@std/math.ms"
 
 bench "path.join_normalize":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var n = 0
         for i in 0..50000:
             n += join(["/a", "b/../c", "d.txt"]) | normalize | .length()
@@ -13,7 +13,7 @@ bench "path.join_normalize":
     try measure(50000, work)
 
 bench "path.basename":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var n = 0
         for i in 0..100000:
             n += basename("/a/b/c/file.txt").length()
@@ -22,7 +22,7 @@ bench "path.basename":
     try measure(100000, work)
 
 bench "url.parse":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         let address = "https://example.com:8080/a/b?x=1&y=2#frag"
         var n = 0
         for i in 0..20000:
@@ -32,7 +32,7 @@ bench "url.parse":
     try measure(20000, work)
 
 bench "url.encode_component":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var n = 0
         for i in 0..50000:
             n += encode_component("a b&c=d/é").length()
@@ -41,7 +41,7 @@ bench "url.encode_component":
     try measure(50000, work)
 
 bench "math.sqrt_sin":
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         var acc = 0.0
         for i in 0..1000000:
             acc += sqrt(2.0) + sin(1.0)

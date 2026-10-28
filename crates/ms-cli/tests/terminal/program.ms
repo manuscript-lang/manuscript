@@ -1,35 +1,41 @@
-from "@std/io.ms" import terminal, TerminalEvent, EraseRegion
-from "@std/io.ms" import stdout
-from "@std/time.ms" import nanoseconds
+import {terminal, TerminalEvent, EraseRegion} from "@std/io.ms"
+import stdout from "@std/io.ms"
+import nanoseconds from "@std/time.ms"
 
-def describe(e: TerminalEvent) -> String:
+fn describe(e: TerminalEvent) String:
     match e:
-        case Text(t): return "text:" + t
-        case Key(n, c, a, s): return "key:" + n + f" ctrl={c} alt={a} shift={s}"
-        case Resize(c, r): return f"resize:{c}x{r}"
+        Text(t): return "text:" + t
+        Key(n, c, a, s): return "key:" + n + " ctrl={c} alt={a} shift={s}"
+        Resize(c, r): return "resize:{c}x{r}"
 
-export def main() -> Int:
-    let raw = terminal().raw_mode(alternate_screen: False)
+export fn main() Int:
+    let raw = terminal().raw_mode(alternate_screen: false)
+
     if let t = raw:
         with let term = t:
             let _ = term.move_cursor(1, 2)
-            let _ = term.show_cursor(False)
+            let _ = term.show_cursor(false)
             let _ = term.erase(EraseRegion.LineEnd)
             if let size = term.size():
-                let _ = stdout().write(f"size {size.columns}x{size.rows}\r\n")
-            var done = False
+                let _ = stdout().write("size {size.columns}x{size.rows}\r\n")
+
+            var done = false
+
             while not done:
                 let next = term.next_event(nanoseconds(5000000000))
+
                 if let maybe = next:
                     if let e = maybe:
                         let _ = stdout().write(describe(e.clone()) + "\r\n")
                         done = describe(e) == "text:q"
                     else:
                         let _ = stdout().write("timeout\r\n")
-                        done = True
+                        done = true
                 else:
                     let _ = stdout().write("error\r\n")
-                    done = True
+                    done = true
+
         return 0
+
     let _ = stdout().write("no raw mode\n")
     return 1

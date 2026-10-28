@@ -1,10 +1,10 @@
 # conform: tags=formatter,modules,parser,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_test.go:205 TestFormatKeepsConsecutiveConstantsTogether
-from "@std/collections.ms" import ListBuilder
+import ListBuilder from "@std/collections.ms"
 
 let A = 1
 let B = 2
 
-def f() -> Int:
+fn f() Int:
     return A + B

@@ -1,16 +1,16 @@
 # conform: tags=control-flow,faults,formatter,generics,interfaces,modules,parser,records,stdlib-testing,testing,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/e2e_test.go:381 TestNominalIdentityEscapesPathDelimiters
-from "@std/test.ms" import expect_true, fail
+import {expect_true, fail} from "@std/test.ms"
 
 interface Read:
-    def get() -> Int
+    fn get() Int
 
 type Box[T]:
     value: T
 
 impl Read for Box[T]:
-    def get() -> Int:
+    fn get() Int:
         return 3
 
 test "encoded nominal identity":

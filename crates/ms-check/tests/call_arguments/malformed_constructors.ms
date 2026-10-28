@@ -1,4 +1,4 @@
-def exercise() -> Int:
+fn exercise() Int:
     let _set_named = Set[Int, String](values: [1])
     let _set_positional = Set[Int, String]([1])
     let _set_unknown = Set[Int, String](extra: [1])

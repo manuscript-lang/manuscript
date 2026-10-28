@@ -1,42 +1,42 @@
 # conform: tags=control-flow,interpolation,lists,modules,stdlib-csv,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/csv.ms
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
+import {expect_equal, expect_false} from "@std/test.ms"
+import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
 
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:
         for delimiter in [",", ";", "\t"]:
             let options = CsvOptions(delimiter.clone(), ending.clone())
             let rows = [["a"], [""], ["b"], [""], [""]]
-            let expected = f"a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
+            let expected = "a{ending}\"\"{ending}b{ending}\"\"{ending}\"\"{ending}"
             let text = try stringify(rows, options)
             try expect_equal(text, expected)
             try expect_equal((try parse(text, options)), rows)
 
             let empty_rows: List[List[String]] = [[], []]
-            try expect_equal((try stringify(empty_rows, options)), f"{ending}{ending}")
+            try expect_equal((try stringify(empty_rows, options)), "{ending}{ending}")
 
             let no_rows: List[List[String]] = []
-            try expect_equal((try parse(f"{ending}{ending}", options)), no_rows)
+            try expect_equal((try parse("{ending}{ending}", options)), no_rows)
             try expect_false(
                 (
                     (
                         try parse(
-                            f"{ending}\"\"{ending}{ending}\"\"", options
+                            "{ending}\"\"{ending}{ending}\"\"", options
                         )
                     ) != [[""], [""]]
                 )
             )
             try expect_equal(
-                (try stringify([["", ""]], options)), f"{delimiter}{ending}"
+                (try stringify([["", ""]], options)), "{delimiter}{ending}"
             )
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
     for ending in ["\n", "\r\n"]:
         let options = CsvOptions(",", ending.clone())
         let rows = [[""], ["a"], [""]]
-        let text = f"\"\"{ending}a{ending}\"\"{ending}"
+        let text = "\"\"{ending}a{ending}\"\"{ending}"
         let bytes = text.byte_length()
         try expect_equal((try stringify(rows, options, bytes)), text)
 

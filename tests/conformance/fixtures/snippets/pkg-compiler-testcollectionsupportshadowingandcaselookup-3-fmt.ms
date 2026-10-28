@@ -4,4 +4,4 @@
 type Other:
     case OutOfRange
 
-def get() -> Other: OutOfRange
+fn get() Other: OutOfRange

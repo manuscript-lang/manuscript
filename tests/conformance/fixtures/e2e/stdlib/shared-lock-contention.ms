@@ -1,13 +1,13 @@
 # conform: tags=stdlib-shared,stdlib-tasks,tier-io
 # conform: phase=run
 # conform: timeout=20
-from "@std/io.ms" import stdout
-from "@std/shared.ms" import Shared, share
-from "@std/sync.ms" import lock
-from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import nanoseconds, sleep
+import stdout from "@std/io.ms"
+import {Shared, share} from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import TaskGroup from "@std/tasks.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def bump(box: Shared[Int], n: Int) -> Int:
+fn bump(box: Shared[Int], n: Int) Int:
     for i in 0..50:
         with var g = lock(box):
             g.value = g.value + 1
@@ -15,13 +15,13 @@ def bump(box: Shared[Int], n: Int) -> Int:
 
     return n
 
-export def main() -> Int:
+export fn main() Int:
     let box = share(0)
 
     with let g = TaskGroup[Int]():
         for n in 0..100:
             let b = box
-            g.spawn(lambda ch: bump(b, n))
+            g.spawn(fn ch: bump(b, n))
 
         let _ = g.results()
 

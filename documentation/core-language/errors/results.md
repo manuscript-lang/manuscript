@@ -17,12 +17,12 @@ type DiscountError:
     case InvalidPercent
 
 impl Error for DiscountError:
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidPrice: return "invalid price"
-            case InvalidPercent: return "invalid percent"
+            InvalidPrice: return "invalid price"
+            InvalidPercent: return "invalid percent"
 
-def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
+fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:
@@ -38,9 +38,9 @@ The function validates inputs, returns an explicit error for each failure, and w
 This continues the declarations above:
 
 ```manuscript
-def discount_message(price: Decimal, percent: Decimal) -> String:
+fn discount_message(price: Decimal, percent: Decimal) String:
     if let value = discount(price, percent):
-        return f"Discounted price: {value}"
+        return "Discounted price: {value}"
     return "Discount could not be calculated."
 ```
 
@@ -65,7 +65,7 @@ This fragment uses `discount` above:
 
 ```manuscript
 let price = discount(price: 20d, percent: 10d).get(0d)
-let text = discount(price: 20d, percent: 10d).map(lambda value: value.to_string())
+let text = discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` reports `called Result.get() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
@@ -75,8 +75,8 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 `to_optional() -> Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-from "@std/core.ms" import TextError
-def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:
+import TextError from "@std/core.ms"
+fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
     return outcome.to_optional()
 ```
 
@@ -97,10 +97,10 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() -> String`). Standard errors implement it; custom errors declare `impl Error`.
 
 ```manuscript
-from "@std/bytes.ms" import Bytes
-from "@std/encoding.ms" import hex_decode
+import Bytes from "@std/bytes.ms"
+import hex_decode from "@std/encoding.ms"
 
-def decode(text: String) -> Result[Bytes, Error]:
+fn decode(text: String) Result[Bytes, Error]:
     let bytes = try hex_decode(text)
     return ok(bytes)
 ```

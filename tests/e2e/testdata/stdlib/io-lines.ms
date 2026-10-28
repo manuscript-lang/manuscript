@@ -1,13 +1,10 @@
-from "@std/test.ms" import expect_equal
-from "@std/io.ms" import IoError, LineReader, lines
-from "@std/core.ms" import Iterator
-from "./support/streams.ms" import MemoryStream
+import expect_equal from "@std/test.ms"
+import {IoError, LineReader, lines} from "@std/io.ms"
+import Iterator from "@std/core.ms"
+import MemoryStream from "./support/streams.ms"
 
-def collect(
-    text: String,
-    max_bytes: Optional[Int] = none
-) -> Result[List[String], IoError]:
-    var reader = lines(MemoryStream(text.to_bytes(), 0, closed: False), max_bytes)
+fn collect(text: String, max_bytes: Optional[Int] = none) Result[List[String], IoError]:
+    var reader = lines(MemoryStream(text.to_bytes(), 0, closed: false), max_bytes)
     var seen: List[String] = []
     for line in reader:
         seen.append(line)
@@ -27,7 +24,7 @@ test "a final newline adds no empty line":
 
 test "an over-budget line stops the loop and sets the error":
     var reader = lines(
-        MemoryStream("ok\ntoo long line\nnever".to_bytes(), 0, closed: False), 5
+        MemoryStream("ok\ntoo long line\nnever".to_bytes(), 0, closed: false), 5
     )
     var seen: List[String] = []
     for line in reader:
@@ -36,7 +33,7 @@ test "an over-budget line stops the loop and sets the error":
     try expect_equal(reader.error(), some(IoError.LimitExceeded))
 
 test "a closed stream ends the loop with its error":
-    var reader = lines(MemoryStream("a\n".to_bytes(), 0, closed: True))
+    var reader = lines(MemoryStream("a\n".to_bytes(), 0, closed: true))
     var count = 0
     for line in reader:
         count += 1
@@ -44,7 +41,7 @@ test "a closed stream ends the loop with its error":
     try expect_equal(reader.error(), some(IoError.Closed))
 
 test "break and continue work in an iterator loop":
-    var reader = lines(MemoryStream("1\nskip\n3\n4\n".to_bytes(), 0, closed: False))
+    var reader = lines(MemoryStream("1\nskip\n3\n4\n".to_bytes(), 0, closed: false))
     var seen: List[String] = []
 
     for line in reader:
@@ -61,7 +58,7 @@ type Countdown:
     left: Int
 
 impl Iterator[Int] for Countdown:
-    var def next() -> Optional[Int]:
+    var fn next() Optional[Int]:
         if self.left == 0:
             return none
 

@@ -2,10 +2,10 @@ type Box:
     items: List[Int]
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-def f(var b: Box) -> Int:
+fn f(var b: Box) Int:
     var x = b.list()
     var y = b.list()  # error: cannot borrow mutably
     x.append(1)

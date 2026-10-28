@@ -1,11 +1,11 @@
-from "@std/fs.ms" import filesystem
-from "@std/io.ms" import stdout
-from "@std/json.ms" import parse, stringify, JsonValue
-from "@std/process.ms" import arguments
-from "@std/time.ms" import clock
+import filesystem from "@std/fs.ms"
+import stdout from "@std/io.ms"
+import {parse, stringify, JsonValue} from "@std/json.ms"
+import arguments from "@std/process.ms"
+import clock from "@std/time.ms"
 
 # Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and `budget` ns.
-def median_ns(body: Callable[[], Int], budget: Int, runs: Int) -> Int:
+fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
     let _warm = body()
     var samples: List[Int] = []
     var total = 0
@@ -17,10 +17,10 @@ def median_ns(body: Callable[[], Int], budget: Int, runs: Int) -> Int:
         samples.append(elapsed)
         total += elapsed
 
-    let sorted = samples.sorted(lambda (a: Int, b: Int) -> Int: a.compare(b))
+    let sorted = samples.sorted(fn(a: Int, b: Int) Int: a.compare(b))
     return sorted.get(sorted.length() / 2)
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
 # The typed case: a list of records, written without building a `JsonValue` first. The size is
@@ -32,91 +32,91 @@ type Row:
     score: Float
     ok: Bool
 
-def row_list() -> List[Row]:
+fn row_list() List[Row]:
     var rows: List[Row] = []
     for i in 0..10000:
         rows.append(
             Row(
-                id: i, name: f"user{i}", tags: ["a", "b"], score: i.to_float() + 0.5,
+                id: i, name: "user{i}", tags: ["a", "b"], score: i.to_float() + 0.5,
                 ok: i % 2 == 0
             )
         )
     return rows
 
-def records_body(rows: List[Row]) -> Callable[[], Int]:
-    return lambda () -> Int:
+fn records_body(rows: List[Row]) fn() Int:
+    return fn() Int:
         if let out = stringify(rows): return out.byte_length()
 
         return 0
 
-def bench_records(budget: Int, runs: Int) -> Unit:
+fn bench_records(budget: Int, runs: Int) Unit:
     let rows = row_list()
     let size = records_body(rows.clone())()
     let s = median_ns(records_body(rows), budget, runs)
-    say(f"records\tstringify\t{s}\t{size}\n")
+    say("records\tstringify\t{s}\t{size}\n")
 
-def bench_one(name: String, op: String, budget: Int, runs: Int) -> Unit:
+fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
     if name == "records":
         bench_records(budget, runs)
         return
 
-    let read = filesystem().read_file(f"bench/perf/json/data/{name}.json")
+    let read = filesystem().read_file("bench/perf/json/data/{name}.json")
 
     if let bytes = read:
         if let text = bytes.decode_utf8():
             bench_text(name, op, text, bytes.length(), budget, runs)
         else:
-            say(f"{name}\tnot utf-8\n")
+            say("{name}\tnot utf-8\n")
     else:
-        say(f"{name}\tunreadable\n")
+        say("{name}\tunreadable\n")
 
-def bench_text(
+fn bench_text(
     name: String,
     op: String,
     text: String,
     size: Int,
     budget: Int,
     runs: Int
-) -> Unit:
+) Unit:
     if let tree = parse(text):
         if op == "doc":
             let d = median_ns(doc_body(text.clone()), budget, runs)
-            say(f"{name}\tdoc\t{d}\t{size}\n")
+            say("{name}\tdoc\t{d}\t{size}\n")
 
         if op != "stringify" and op != "doc":
             let p = median_ns(parse_body(text.clone()), budget, runs)
-            say(f"{name}\tparse\t{p}\t{size}\n")
+            say("{name}\tparse\t{p}\t{size}\n")
 
         if op != "parse" and op != "doc":
             let s = median_ns(stringify_body(tree), budget, runs)
-            say(f"{name}\tstringify\t{s}\t{size}\n")
+            say("{name}\tstringify\t{s}\t{size}\n")
     else:
-        say(f"{name}\tinvalid json\n")
+        say("{name}\tinvalid json\n")
 
 # Decodes to a record with no fields, so only the document build and its release are timed.
 type Nothing:
     placeholder: Optional[Int] = none
 
-def doc_body(text: String) -> Callable[[], Int]:
-    return lambda () -> Int:
+fn doc_body(text: String) fn() Int:
+    return fn() Int:
         if let _v = parse[Nothing](text): return 1
 
         return 0
 
-def parse_body(text: String) -> Callable[[], Int]:
-    return lambda () -> Int:
+fn parse_body(text: String) fn() Int:
+    return fn() Int:
         if let _v = parse(text): return 1
 
         return 0
 
-def stringify_body(tree: JsonValue) -> Callable[[], Int]:
-    return lambda () -> Int:
+fn stringify_body(tree: JsonValue) fn() Int:
+    return fn() Int:
         if let out = stringify(tree): return out.byte_length()
 
         return 0
 
 # Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes it 5 runs, no time floor.
-export def main() -> Int:
+export fn main() Int:
     var budget = 1000000000
     var runs = 5
 

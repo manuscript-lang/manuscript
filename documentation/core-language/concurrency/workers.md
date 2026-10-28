@@ -9,20 +9,20 @@ A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS thre
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/test.ms" import expect_equal, expect_ok
-from "@std/workers.ms" import WorkerGroup, worker_channel
+import {Channel, ChannelError} from "@std/channels.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
+import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
-def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
-    while True:
+fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+    while true:
         if let n = try ch.receive():
             try ch.send(n * n)
         else:
-            return ok(())
+            return ok(unit)
 
-    return ok(())
+    return ok(unit)
 
-def squares() -> Unit:
+fn squares() Unit:
     var ch = worker_channel[Int, Int]()
     let _finished = serve(var ch)
 
@@ -58,9 +58,9 @@ Send plain serializable data. Messages reconstruct values through JSON; acceptan
 Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: True)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
 
 ```manuscript
-def serve_loop() -> Unit:
+fn serve_loop() Unit:
     var ch = worker_channel[Int, Int]()
-    let options = HttpServerOptions(shared: True)
+    let options = HttpServerOptions(shared: true)
     if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
         with let server = acquired:
             let _stopped = server.wait()

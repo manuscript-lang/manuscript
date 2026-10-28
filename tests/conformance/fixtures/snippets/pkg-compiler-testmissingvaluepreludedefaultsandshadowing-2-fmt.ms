@@ -4,10 +4,10 @@
 type Other:
     case Missing(value: Int)
 
-def other() -> Other: Other.Missing(1)
+fn other() Other: Other.Missing(1)
 
-def standard() -> MissingValue: MissingValue.Missing("location")
+fn standard() MissingValue: MissingValue.Missing("location")
 
-def read(value: Other) -> Int:
+fn read(value: Other) Int:
     match value:
-        case Missing(found): return found
+        Missing(found): return found

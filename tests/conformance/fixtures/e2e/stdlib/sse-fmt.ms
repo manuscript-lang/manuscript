@@ -1,10 +1,10 @@
 # conform: tags=closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/sse.ms" import decoder, reader, next_event, SseError, SseEvent, SseLimits
-from "@std/bytes.ms" import Bytes, BytesBuilder
-from "@std/io.ms" import IoError, ReadStream
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {decoder, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
+import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import {IoError, ReadStream} from "@std/io.ms"
 
 type Chunks:
     parts: List[Bytes]
@@ -13,10 +13,10 @@ type Chunks:
     failure: Optional[IoError]
 
 impl ReadStream for Chunks:
-    var def close() -> Unit:
-        self.closed = True
+    var fn close() Unit:
+        self.closed = true
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.index < self.parts.length():
             let part = self.parts.get(self.index)
             self.index += 1
@@ -26,11 +26,11 @@ impl ReadStream for Chunks:
 
         return ok(none)
 
-def stream(parts: List[Bytes], failure: Optional[IoError]) -> Chunks:
-    return Chunks(parts, 0, closed: False, failure)
+fn stream(parts: List[Bytes], failure: Optional[IoError]) Chunks:
+    return Chunks(parts, 0, closed: false, failure)
 
 # Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
-def splits(source: Bytes) -> List[List[Bytes]]:
+fn splits(source: Bytes) List[List[Bytes]]:
     var all = List[List[Bytes]]()
     let size = source.length()
 
@@ -45,7 +45,7 @@ def splits(source: Bytes) -> List[List[Bytes]]:
     all.append(single)
     return all
 
-def decode(parts: List[Bytes]) -> Result[List[SseEvent], SseError]:
+fn decode(parts: List[Bytes]) Result[List[SseEvent], SseError]:
     var created = try decoder()
     var events = List[SseEvent]()
 
@@ -56,22 +56,22 @@ def decode(parts: List[Bytes]) -> Result[List[SseEvent], SseError]:
     try created.finish()
     return ok(events)
 
-def summary(events: List[SseEvent]) -> String:
+fn summary(events: List[SseEvent]) String:
     return (
         events
-        .map(lambda event: f"{event.event}|{event.data}|{event.id.get("-")}")
+        .map(fn event: "{event.event}|{event.data}|{event.id.get("-")}")
         .join(";")
     )
 
-def expect(source: String, want: String) -> Result[Unit, Error]:
+fn expect(source: String, want: String) Result[Unit, Error]:
     for parts in splits(source.to_bytes()):
         let events = try decode(parts)
         let got = summary(events)
         if got != want: return fail(
-            f"{source.to_bytes().values()}: want {want}, got {got}"
+            "{source.to_bytes().values()}: want {want}, got {got}"
         )
 
-    return ok(())
+    return ok(unit)
 
 test "LF CRLF and CR endings decode identically under every chunk split":
     let want = "message|a|-;message|b|-"
@@ -102,7 +102,7 @@ test "event type applies to one event and id persists":
     )
 
 test "ids containing NUL are ignored":
-    try expect(f"id: 1\ndata: a\n\nid: x\u{0}y\ndata: b\n\n", "message|a|1;message|b|1")
+    try expect("id: 1\ndata: a\n\nid: x\u{0}y\ndata: b\n\n", "message|a|1;message|b|1")
 
 test "events without data are not dispatched and reset the event type":
     try expect("event: lost\n\ndata: a\n\n", "message|a|-")
@@ -119,28 +119,28 @@ test "retry accepts digits only and survives between events":
     try expect_equal(created.retry().get(0), 1500)
 
 test "a byte order mark is dropped only at the start of the stream":
-    try expect(f"\u{feff}data: a\n\n", "message|a|-")
-    try expect(f"data: a\n\n\u{feff}data: b\n\n", "message|a|-")
+    try expect("\u{feff}data: a\n\n", "message|a|-")
+    try expect("data: a\n\n\u{feff}data: b\n\n", "message|a|-")
 
 test "multi-byte scalars survive every chunk split":
-    try expect(f"data: é\u{20ac}😀\nevent: 世界\n\n", f"世界|é\u{20ac}😀|-")
+    try expect("data: é\u{20ac}😀\nevent: 世界\n\n", "世界|é\u{20ac}😀|-")
 
-def invalid_bytes() -> Bytes:
+fn invalid_bytes() Bytes:
     var builder = BytesBuilder()
     builder.append_bytes("data: ".to_bytes())
     builder.append(255)
     builder.append_bytes("\n\n".to_bytes())
     return builder.build()
 
-def is_case(result: Result[List[SseEvent], SseError], want: SseError) -> Bool:
-    if not result.is_error(): return False
+fn is_case(result: Result[List[SseEvent], SseError], want: SseError) Bool:
+    if not result.is_error(): return false
 
     return result.err() == want
 
 test "invalid UTF-8 is InvalidData and final":
     for parts in splits(invalid_bytes()):
         var created = try decoder()
-        var failure = False
+        var failure = false
 
         for part in parts:
             let outcome = created.feed(part)
@@ -183,7 +183,7 @@ test "truncated streams fail and clean ends succeed":
         let _events = try created.feed(source.to_bytes())
         let ending = created.finish()
         if ending.is_ok() or ending.err() != SseError.Truncated: return fail(
-            f"{source} must be Truncated"
+            "{source} must be Truncated"
         )
 
     for source in ["", "data: a\n\n", ": keepalive\n", "data: a\r\n\r\n", "\n"]:

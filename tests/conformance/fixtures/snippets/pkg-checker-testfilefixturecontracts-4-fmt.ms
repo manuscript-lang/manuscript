@@ -2,10 +2,10 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/test_fixture_test.go:32 TestFileFixtureContracts
 impl TestHooks for State:
-    def before_each(value: Int) -> Unit:
+    fn before_each(value: Int) Unit:
         return
 
-def make_fixture() -> State:
+fn make_fixture() State:
     return State(value: 1)
 
 test "test":
