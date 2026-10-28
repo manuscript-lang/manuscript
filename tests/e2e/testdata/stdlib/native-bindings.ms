@@ -148,7 +148,7 @@ test "native watcher max_entries counts the paths under the root":
             ),
             FileSystemError.LimitExceeded
         )
-        with let w = try fs.watch_native(
+        with var w = try fs.watch_native(
             path: t.path(), recursive: True, max_entries: some(2), overflow: "error"
         ):
             w.close()
@@ -204,7 +204,7 @@ test "recursive native watch sees a file in a new subdirectory":
     with let t = fs.temporary("ms-r2-") | try expect_ok:
         let r = t.path()
 
-        with let w = try fs.watch_native(path: r, recursive: True, overflow: "error"):
+        with var w = try fs.watch_native(path: r, recursive: True, overflow: "error"):
             try fs.create_directory(path: f"{r}/d", recursive: False)
             try fs.write_file(path: f"{r}/d/f", data: "1", replace: False)
 

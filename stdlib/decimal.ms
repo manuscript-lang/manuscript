@@ -1,3 +1,4 @@
+from "@std/core.ms" import panic
 from "@std/math.ms" import NumberError
 
 # How a Decimal rounds to a multiple of the requested power of ten.
@@ -38,6 +39,31 @@ impl Decimal:
     # Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`; trailing zeros do not matter.
     def compare(other: Decimal) -> Int:
         return msstd_decimal_compare(self, other)
+
+    # Returns the lesser of this value and `other`, or this value when they compare equal.
+    def min(other: Decimal) -> Decimal:
+        if other.compare(self) < 0:
+            return other
+
+        return self
+
+    # Returns the greater of this value and `other`, or this value when they compare equal.
+    def max(other: Decimal) -> Decimal:
+        if other.compare(self) > 0:
+            return other
+
+        return self
+
+    # Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+    def clamp(low: Decimal, high: Decimal) -> Decimal:
+        if low.compare(high) > 0:
+            panic("clamp: low must not be greater than high")
+        if self.compare(low) < 0:
+            return low
+        if self.compare(high) > 0:
+            return high
+
+        return self
 
     # Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
     # Returns none when the value is beyond the Float range.
