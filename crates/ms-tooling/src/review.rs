@@ -1,5 +1,7 @@
 //! Classifies what changed between a base and a head program and ranks it.
 
+mod reach;
+
 use crate::facts::{Fact, Facts};
 use crate::json::Json;
 use crate::views::{effect_list, or_none};
@@ -85,13 +87,22 @@ pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Findi
     let keys: BTreeSet<&String> = head.entities.keys().chain(base.entities.keys()).collect();
     let touched = touched_keys(head, &input.touched);
     let mut findings = Vec::new();
+    let mut scored_keys = Vec::new();
     for key in keys {
         let h = head.entities.get(key);
         let mut b = base.entities.get(key);
         if b.is_some_and(|b| input.added.contains(&b.file)) {
             b = None;
         }
-        let mut f = classify(key, h, b, input.base_checked, &callers, head);
+        let (mut f, scored) = classify(key, h, b, input.base_checked, head);
+        if scored && callers.contains_key(key.as_str()) {
+            scored_keys.push(key.as_str());
+        } else if scored && h.is_some_and(|h| h.exported) {
+            // A target without incoming edges has exact reach zero. Finish its
+            // score here instead of allocating a deferred count entry.
+            f.terms.push("exported +3".to_string());
+            f.score += 3;
+        }
         if f.changes.is_empty() && touched.contains(key) {
             f.changes = vec!["body changed".to_string()];
         }
@@ -99,6 +110,22 @@ pub fn compare_facts(base: &Facts, head: &Facts, input: &DiffInput) -> Vec<Findi
             continue;
         }
         findings.push(f);
+    }
+    let reaches = reach::counts(&scored_keys, &callers, head);
+    for f in &mut findings {
+        let Some(&r) = reaches.get(f.id.as_str()) else {
+            continue;
+        };
+        f.reach = r;
+        if r > 0 {
+            let weight = 2 * (usize::BITS - r.leading_zeros()) as i64;
+            f.terms.push(format!("reach({r}) +{weight}"));
+            f.score += weight;
+        }
+        if head.entities[&f.id].exported {
+            f.terms.push("exported +3".to_string());
+            f.score += 3;
+        }
     }
     findings.sort_by(|a, b| {
         b.score
@@ -138,9 +165,8 @@ fn classify(
     h: Option<&Fact>,
     b: Option<&Fact>,
     base_checked: bool,
-    callers: &HashMap<&str, Vec<&str>>,
     head: &Facts,
-) -> Finding {
+) -> (Finding, bool) {
     let subject = h.or(b).expect("a key comes from base or head");
     let mut s = Scorer {
         finding: Finding {
@@ -179,7 +205,7 @@ fn classify(
     }
     let Some(h) = h else {
         s.finding.tier = s.tier().to_string();
-        return s.finding;
+        return (s.finding, false);
     };
     if let Some(b) = b {
         let gained = gained_effects(h, Some(b));
@@ -187,21 +213,9 @@ fn classify(
             s.finding.evidence.push(effect_path(h, &gained, head));
         }
     }
-    if !s.finding.changes.is_empty() && s.finding.score > 1 {
-        let r = reach_count(key, callers);
-        s.finding.reach = r;
-        if r > 0 {
-            let weight = 2 * (usize::BITS - r.leading_zeros()) as i64;
-            s.finding.terms.push(format!("reach({r}) +{weight}"));
-            s.finding.score += weight;
-        }
-        if h.exported {
-            s.finding.terms.push("exported +3".to_string());
-            s.finding.score += 3;
-        }
-    }
+    let scored = !s.finding.changes.is_empty() && s.finding.score > 1;
     s.finding.tier = s.tier().to_string();
-    s.finding
+    (s.finding, scored)
 }
 
 fn compare(h: &Fact, b: &Fact, s: &mut Scorer) {
