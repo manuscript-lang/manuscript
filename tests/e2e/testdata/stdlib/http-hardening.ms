@@ -53,7 +53,7 @@ test "serve ends a connection that trickles its request head":
 test "close cancels a handler that outlives the grace period":
     let net = network()
 
-    with let server = net.serve(
+    with var server = net.serve(
         address: "127.0.0.1:0", handler: buffered(slow_route),
         options: HttpServerOptions(grace: 200.milliseconds)
     ) | try expect_ok:
