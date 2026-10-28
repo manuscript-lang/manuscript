@@ -10,6 +10,12 @@ test "padding counts scalars":
     try expect_equal("é".pad_start(3, "🙂"), "🙂🙂é")
     try expect_equal("x".pad_end(4, "é🙂"), "xé🙂é")
 
+test "repeated fills keep pattern and scalar boundaries":
+    try expect_equal("ab".repeat(17).get(), "ababababababababababababababababab")
+    try expect_equal("é🙂".repeat(5).get(), "é🙂é🙂é🙂é🙂é🙂")
+    try expect_equal("!".pad_start(10, "ab"), "ababababa!")
+    try expect_equal("!".pad_end(6, "é🙂"), "!é🙂é🙂é")
+
 test "a short target, negative target or empty padding leaves the text unchanged":
     try expect_equal("abc".pad_start(2, "-"), "abc")
     try expect_equal("abc".pad_end(3, "-"), "abc")
