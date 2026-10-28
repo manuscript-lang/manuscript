@@ -25,7 +25,7 @@
           "index": 2,
           "name": "tests-e2e-testdurationunitpropertysourceframes-1.ms::receiver fault comes first",
           "status": "failed",
-          "failure": "Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first"
+          "failure": "division by zero; right must be nonzero, found 0\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first"
         },
         {
           "index": 3,
@@ -43,7 +43,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN tests-e2e-testdurationunitpropertysourceframes-1.ms::positive unit overflow\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::positive unit overflow: Int.minutes: value must be between -153722867 and 153722867, found 153722868\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:5 in test positive unit overflow\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::negative unit overflow\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::negative unit overflow: Int.minutes: value must be between -153722867 and 153722867, found -153722868\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:8 in test negative unit overflow\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::receiver fault comes first\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::receiver fault comes first: Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::continues with valid units\nPASS tests-e2e-testdurationunitpropertysourceframes-1.ms::continues with valid units\n4 tests, 3 failed\n",
+      "stdout": "RUN tests-e2e-testdurationunitpropertysourceframes-1.ms::positive unit overflow\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::positive unit overflow: Int.minutes: value must be between -153722867 and 153722867, found 153722868\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:5 in test positive unit overflow\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::negative unit overflow\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::negative unit overflow: Int.minutes: value must be between -153722867 and 153722867, found -153722868\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:8 in test negative unit overflow\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::receiver fault comes first\nFAIL tests-e2e-testdurationunitpropertysourceframes-1.ms::receiver fault comes first: division by zero; right must be nonzero, found 0\n  at tests-e2e-testdurationunitpropertysourceframes-1.ms:11 in test receiver fault comes first\nRUN tests-e2e-testdurationunitpropertysourceframes-1.ms::continues with valid units\nPASS tests-e2e-testdurationunitpropertysourceframes-1.ms::continues with valid units\n4 tests, 3 failed\n",
       "diagnostics": []
     },
     "shape": [

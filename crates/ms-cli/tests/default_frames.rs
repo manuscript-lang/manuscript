@@ -35,7 +35,7 @@ fn check_frames(file: &str, frames: &str) {
         assert_eq!(out.status.code(), Some(67));
         assert_eq!(
             String::from_utf8_lossy(&out.stderr),
-            format!("Int./: division by zero; right must be nonzero, found 0\n{frames}")
+            format!("division by zero; right must be nonzero, found 0\n{frames}")
         );
     }
 }

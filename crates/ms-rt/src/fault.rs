@@ -1181,18 +1181,18 @@ pub extern "C-unwind" fn msrt_fault_int_range() -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_div_zero() -> ! {
-    fault(b"Int./: division by zero; right must be nonzero, found 0")
+    fault(b"division by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_rem_zero() -> ! {
-    fault(b"Int.%: remainder by zero; right must be nonzero, found 0")
+    fault(b"remainder by zero; right must be nonzero, found 0")
 }
 
 #[unsafe(no_mangle)]
 pub extern "C-unwind" fn msrt_fault_div_overflow(a: i64, b: i64) -> ! {
     fault_fmt(format_args!(
-        "Int./: overflow; found left {a} and right {b}; result must be between {} and {}",
+        "division overflow; found left {a} and right {b}; result must be between {} and {}",
         i64::MIN,
         i64::MAX
     ))

@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "MS\ni1 = -898142\ncollatz(1197) = 119\nalpha\n-290099866 -898133 true sum -290997999\ni2 = 0\nl3 = [] len 0\n-806659052164 0 true sum -806659052164\ni4 = 0\nacc5 = 0\ni6 = -17812638324488\ni7 = 3\ns8 = [42]\nl9 = [] len 0\n",
-    "stderr": "Int.%: remainder by zero; right must be nonzero, found 0\n  at seed-0307.ms:79 in main\n"
+    "stderr": "remainder by zero; right must be nonzero, found 0\n  at seed-0307.ms:79 in main\n"
   }
 }
