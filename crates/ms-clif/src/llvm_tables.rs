@@ -287,6 +287,15 @@ pub fn read(
                             file = path_of(i);
                         }
                     }
+                    // The call's file is the file of the callee it sits in, which LLVM leaves unsaid.
+                    if parent != 0
+                        && let Some(gimli::AttributeValue::FileIndex(i)) =
+                            entry.attr_value(gimli::DW_AT_call_file)
+                        && let Some(caller) = scopes.get_mut(parent as usize - 1)
+                        && caller.file == u32::MAX
+                    {
+                        caller.file = path_of(i);
+                    }
                     let call_line = match entry.attr_value(gimli::DW_AT_call_line) {
                         Some(gimli::AttributeValue::Udata(l)) => l as u32,
                         _ => 0,

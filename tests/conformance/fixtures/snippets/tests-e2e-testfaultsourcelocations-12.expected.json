@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "",
-    "stderr": "Int./: division by zero; right must be nonzero, found 0\n  at tests-e2e-testfaultsourcelocations-12.ms:7 in crash\n  at tests-e2e-testfaultsourcelocations-12.ms:11 in main\n"
+    "stderr": "division by zero; right must be nonzero, found 0\n  at tests-e2e-testfaultsourcelocations-12.ms:7 in crash\n  at tests-e2e-testfaultsourcelocations-12.ms:11 in main\n"
   }
 }

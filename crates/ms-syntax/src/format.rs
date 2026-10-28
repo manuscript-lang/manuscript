@@ -49,6 +49,16 @@ pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
         if parts.is_empty() {
             let trimmed = line.trim();
             if trimmed.is_empty() {
+                // A blank line after a comment-only line separates the comment block from
+                // what follows (a module header from the first declaration's doc).
+                if !blank
+                    && lines[..index]
+                        .last()
+                        .is_some_and(|l| l.trim().starts_with('#'))
+                {
+                    output.push(String::new());
+                    blank = true;
+                }
                 continue;
             }
             let stripped = line.trim_start_matches(' ');
