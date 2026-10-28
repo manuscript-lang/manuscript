@@ -3,9 +3,9 @@
 ## Summary
 
 - Problem: the policies a human wants enforced on agent-written code (an approval is used once, authenticate before query, secrets never reach logs, untrusted input never reaches SQL, money is conserved, only these hosts) live in prose and review. The compiler enforces none of them, and tests only sample them.
-- Change: let programs declare their own **resources** and reuse the ownership checker that already enforces memory and host resources. Three rules, no new syntax: **opaque types** (a record with a hidden field can only be built, read, taken apart or structurally converted inside its module), **`Linear`** (a standard interface the checker recognizes: never copied, never dropped, consumed by moving or by taking it apart in its module), and **`State`** (a standard marker for typestate parameters, from which tooling derives the state machine and the "call X first" diagnostic).
+- Change: let programs declare their own **resources** and reuse the ownership checker that already enforces memory and host resources. Three rules, no new syntax: **opaque types** (a record with a hidden field can only be built, read, taken apart or structurally converted inside its module), **`Linear`** (a standard interface the checker recognizes: never copied, never dropped, consumed by moving or by taking it apart in its module), and **typestate as plain named types** (one type per state, transitions as functions; tooling derives the state machine and the "call X first" diagnostic from signatures).
 - Cost: checker rules for opacity, linearity and typestate hints; a `structural` tag on generic builders in `bindings.json`; a stdlib kit in `.ms`; later an opt-in `[permissions]` table and stdlib handles adopting typestate. No prover, no solver, no keyword.
-- Decision requested: approve stage 1 (opaque types, `State`, consume-once tokens, the frozen-module review check, an adversarial corpus and an agent-bench arm). Stage 2 (`Linear` must-consume) is gated on that evidence.
+- Decision requested: approve stage 1 (opaque types, typestate hints, consume-once tokens, the frozen-module review check, an adversarial corpus and an agent-bench arm). Stage 2 (`Linear` must-consume) is gated on that evidence.
 
 ## Status
 
@@ -94,44 +94,49 @@ app.ms:9:12: type: json.stringify builds its output structurally, which Secret[S
 
 ### Typestate (stage 1)
 
-`State` is an empty standard interface in `@std/core.ms`. A stateful type bounds its parameter, states are empty types implementing it, and a transition is a function from one state to another:
+A state is a plain named type; a transition is a function that takes one apart and builds the next; an operation exists only on the states that allow it. Nothing new is needed (Chinmay, 2026-10-28: "why can't typestate be just individual named types?"):
 
 ```manuscript
-# `State` and the bound are proposed; the rest checks today.
-type Open:
-type Authed:
-
-type Connection[S]:
+type OpenConnection:
     host: String
 
-interface Querying:
-    def query(sql: String) -> String
+type AuthedConnection:
+    host: String
+    user: String
 
-impl Querying for Connection[Authed]:
-    def query(sql: String) -> String:
-        return f"{self.host}: {sql}"
+type AuthError:
+    case Rejected
 
-def authenticate(conn: Connection[Open], token: String) -> Connection[Authed]:
+impl Error for AuthError:
+    def message() -> String: "authentication rejected"
+
+# The transition: takes the open connection apart and builds the authenticated one.
+def authenticate(conn: OpenConnection, token: String) -> Result[AuthedConnection, AuthError]:
     let {host} = conn
-    return Connection[Authed](host: host)
+    if token != "ok": return error(Rejected)
+    return ok(AuthedConnection(host: host, user: "svc"))
+
+impl AuthedConnection:
+    def query(sql: String) -> String:
+        return f"{self.user}@{self.host}: {sql}"
 
 export def main() -> Int:
-    let c = Connection[Open](host: "db")
+    let c = OpenConnection(host: "db")
     let bad = c.query("select 2")
     return bad.length()
 ```
 
 ```text
-iface.ms:21:17: resolution: unknown or ambiguous member query on Connection[Open]; available: host
+named.ms:25:17: resolution: unknown or ambiguous member query on OpenConnection; available: host
 ```
 
-Proposed additions, all derived from signatures:
+Shared fields or state-independent operations go in a carried record each state holds, or an interface every state implements. Proposed additions, derived from signatures and needing no marker:
 
-- the diagnostic names the transition when the operation exists at another state: "`query` is available on `Connection[Authed]`; call `authenticate` to get there";
-- `ms inspect --states Connection` and `ms diagram` render the state machine (states, transitions, operations per state); `ms review` reports added or removed transitions;
-- a transition takes the old state apart (`let {host} = conn`) so the old value is consumed; today destructuring borrows unless a part is moved on, so for opaque types destructuring always consumes (proposed, stage 1); the bound uses the existing `[S: State]` syntax; with `Linear` (stage 2) it also cannot be dropped, so a `Transaction[Open]` must reach `Committed` or `RolledBack` on every path.
+- the diagnostic names the transition when the operation exists on a type reachable by one: "`query` is available on `AuthedConnection`; call `authenticate` to get there";
+- `ms inspect --states AuthedConnection` and `ms diagram` render the state machine: the types connected by transition functions (a function from one type to another, or to a `Result` of it), grouped by a shared interface when there is one; `ms review` reports added or removed transitions;
+- destructuring the old state consumes it; today destructuring borrows unless a part is moved on, so for opaque types destructuring always consumes (proposed, stage 1). With `Linear` (stage 2) the old state also cannot be dropped, so a `OpenTransaction` must reach `CommittedTransaction` or `RolledBackTransaction` on every path.
 
-Stdlib adoption (stage 3) replaces runtime state errors with states: `HttpExchange[HeadersPending] -> send_headers -> HttpExchange[Streaming] -> Done`, `WebSocket` after `upgrade`, `Subprocess[Running] -> wait -> Exited`, and `Closeable` handles gaining a `Closed` state so use after close is a type error. That is the general form of the three parked close proposals.
+Stdlib adoption (stage 3) replaces runtime state errors with states: `HttpExchange` becomes `PendingExchange -> send_headers -> StreamingExchange -> Done`, `WebSocket` after `upgrade`, `RunningProcess -> wait -> ExitedProcess`, and `Closeable` handles gaining a closed type so use after close is a type error. That is the general form of the three parked close proposals.
 
 ### Linear types (stage 2)
 
@@ -359,13 +364,13 @@ Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` 
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-syntax` | accept an empty `interface` body (`State`, `Linear`); no new tokens | parser fixture |
+| `crates/ms-syntax` | accept an empty `interface` body (`Linear`); no new tokens | parser fixture |
 | `crates/ms-check` contracts (`contracts.rs` `fn public`) | hidden fields, opaque rule (construction, access, destructuring, clone) | reject fixtures per operation, per module boundary |
 | `crates/ms-check` calls | `structural` tag: reject opaque type arguments to tagged generics | reject: `json.parse[Secret]`, `stringify`, `decode`, `f"{secret}"` |
 | `crates/ms-check` resolution | typestate hint naming the transition | conformance `check` fixture with exact text |
 | `crates/ms-check` ownership (stage 2) | linear class: no copy, must-consume at every drop site, destructure-in-module, generic drop summaries, closure move rejection | adversarial corpus (below) |
 | `crates/ms-lower`, `ms-mir`, codegen, `ms-rt`, ABI | unchanged | existing e2e |
-| `stdlib/core.ms` | `interface State:`, `interface Linear:` | prelude fixture |
+| `stdlib/core.ms` | `interface Linear:` (stage 2) | prelude fixture |
 | `stdlib/bindings.json` | `structural` on `json.parse`, `json.stringify`, `cli.decode`, `processes.decode`, interpolation; `drops_element` (stage 3) | audit test: every generic builder is tagged |
 | `stdlib/resources.ms` (new, `.ms`) | `Approved[T]`, `Secret[T]`, `Untrusted[T]`, `Confirmed`, quantity pattern, typestate pattern | `ms test` fixtures |
 | `stdlib/http.ms`, `net.ms`, `fs.ms`, `process.ms` (stage 3) | typestate on `HttpExchange`, `WebSocket`, `Subprocess`, `Closeable` handles; `Untrusted` at boundaries | fixtures; the 29 runtime `Closed` tests become reject fixtures |
@@ -390,7 +395,7 @@ Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` 
 
 ## Staging and verification
 
-1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, `State` and the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus: reject fixtures for every opacity bypass in Problem and for copy, double destructure and `peek` twice on an opaque token; the drop sites listed under Linear, closures, generics, `var self` and fault/cancel paths enter the corpus as expected-fail fixtures (`tests/conformance/expect-fail.txt`) each naming the stage that flips it; full conformance corpus otherwise unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
+1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus: reject fixtures for every opacity bypass in Problem and for copy, double destructure and `peek` twice on an opaque token; the drop sites listed under Linear, closures, generics, `var self` and fault/cancel paths enter the corpus as expected-fail fixtures (`tests/conformance/expect-fail.txt`) each naming the stage that flips it; full conformance corpus otherwise unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
 2. **Linear.** `Linear`, must-consume, generic drop summaries, closure rule, `drops_element` for `Optional`/`Result`. Gate: the adversarial corpus turns from "documented" to "rejected"; ergonomics measured on the ledger and on the agent arm; go/no-go recorded here.
 3. **Stdlib typestate and containers.** `HttpExchange`, `WebSocket`, `Subprocess`, `Closeable` states; `Untrusted` at HTTP and CLI boundaries behind an option; collection audit. Gate: the 29 runtime `Closed` cases and the `send_headers` twice case become compile errors with their tests converted.
 4. **Capabilities as values.** `[permissions]`, accessor rule, `restrict` on `FileSystem` and `Commands`, `.experts` update. Gate: capabilities proposal tests; projects without the table unchanged.
@@ -411,11 +416,10 @@ Blockers from the 2026-10-28 review and their resolution:
 10. Vacuous gate: adversarial corpus and agent-bench arm moved into stage 1.
 11. Do-nothing evidence: stage 1 ships one token and one label and measures before the kit grows.
 
-Second pass (same day): A. scalar-only tokens copied and read-only destructors left the value reusable: opaque types are now move-only with consuming destructure in stage 1. B. the stage 1 gate asked for rejections stage 1 cannot produce: those fixtures are expected-fail, each naming its stage. C. the ledger's `main` dropped a linear default and discarded a `Result`: rewritten with `try` in `run`, verified. D. who owns `policy/`: the repository (CODEOWNERS plus a required check), `ms review` only detects. Smaller: checked-arithmetic faults are aborts; loop back-edges are checkpoints (open question updated); `[S: State]` is existing bound syntax; test renderers are tagged `structural` (#1868).
+Second pass (same day): A. scalar-only tokens copied and read-only destructors left the value reusable: opaque types are now move-only with consuming destructure in stage 1. B. the stage 1 gate asked for rejections stage 1 cannot produce: those fixtures are expected-fail, each naming its stage. C. the ledger's `main` dropped a linear default and discarded a `Result`: rewritten with `try` in `run`, verified. D. who owns `policy/`: the repository (CODEOWNERS plus a required check), `ms review` only detects. Smaller: checked-arithmetic faults are aborts; loop back-edges are checkpoints (open question updated); the `State` marker was then dropped in favor of plain named types (owner direction); test renderers are tagged `structural` (#1868).
 
 ## Open questions
 
 - A linear value live across a cancellation checkpoint (a checkpointing call or a loop back-edge): reject it in stage 2 (recommended; `ms check` knows both), or let the type declare a `release` operation the runtime calls on cancellation.
-- Whether `State`-bounded parameters may be inferred at construction (`Connection(host: "db")` as `Connection[Open]` when the module names a start state): recommended later, not stage 1.
-- Whether the typestate hint should also fire for free-function transitions (`query(c, ...)` where `c: Connection[Open]`): recommended yes, same lookup.
+- Whether the typestate hint should also fire for free functions (`query(c, ...)` where `c: OpenConnection`): recommended yes, same lookup.
 - Accessor rule granularity under `[permissions]`: entry module only (recommended) or modules the table names.
