@@ -28,7 +28,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 `ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and `with` scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
-## Details that remove agent guesswork
+## What Manuscript offers
 
 - **Cleanup on every exit:** `with` closes a resource on `return`, `try`, fault or cancellation, and lint `MSL114` flags a close that would swallow a failed flush. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Inferred closures:** a closure that stays local borrows what it captures; one that escapes owns it. No capture lists. [Closures](documentation/core-language/functions/function-values-and-closures.md#closure-captures)
