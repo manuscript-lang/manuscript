@@ -101,7 +101,7 @@ What holds afterwards: every `Approved` came from `approve` and names the entity
 - Do nothing: `forge.ms` stays accepted; policies stay prose.
 - A lint for construct/parse/interpolate across modules: catches `forge.ms` as written, cannot see a generic that renders or decodes a `T`.
 - Implicit marker (a private field with no default, the three-round draft): no syntax, but one added default silently removes the guarantee, and alternatives cannot carry it. Rejected by the owner.
-- Move-only opaque values (same draft): gives "spent at most once" but forbids copy and clone on every opaque value, which the owner judged not useful; single use stays available through resources and non-clonable fields. The collection-copy bug that draft found (`xs.concat(xs)` on one `Closeable` closes it three times) is filed separately.
+- Move-only opaque values (same draft): gives "spent at most once" but forbids copy and clone on every opaque value, which the owner judged not useful; single use stays available through resources and non-clonable fields. The collection-copy bug that draft found (`xs.concat(xs)` on one `Closeable` closed it three times) is #1900, fixed in #1901.
 - Reject rendering at check time instead of printing the name: needs a bound or inferred flag for bare `T`; printing the name is one lowering rule and keeps unconstrained-`T` rendering as documented (`intrinsics.ms:6`).
 - `restricted type`: says something is forbidden without saying what, and collides with `Network.restrict` (`net.ms:351`).
 - Opaque without `[imports]`: agent code bypasses the abstraction by importing the raw module; owner's point.
