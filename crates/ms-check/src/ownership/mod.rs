@@ -13,13 +13,12 @@ mod modes;
 mod places;
 mod walk;
 
-pub use classify::Class;
+pub use classify::{Class, Classifier};
 pub use modes::{CallModes, ParamMode, ResultOrigin, Slot};
 pub use places::{Place, Step};
 
 use crate::hir::*;
 use crate::types::*;
-use classify::Classifier;
 use modes::{Key, Summaries};
 use ms_syntax::Diagnostic;
 use ms_syntax::ast::NodeId;

@@ -1,0 +1,19 @@
+module "record_copy_earlier_projection"
+record Item { values: list<int> }
+entry @main
+fn @main() -> int {
+b0:
+  %ten: int = iconst 10
+  %zero: int = iconst 0
+  %values: list<int> = list.lit %ten
+  %item: Item = rec.new Item %values
+  %field: list<int> = rec.get Item.values %item
+  %copy: Item = copy %item
+  %slot: ptr = slot Item
+  put %slot, %copy
+  %back: Item = take Item %slot
+  drop %back
+  %r: int = list.get %field, %zero
+  drop %item
+  ret %r
+}

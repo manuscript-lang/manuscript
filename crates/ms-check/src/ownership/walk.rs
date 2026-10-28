@@ -320,6 +320,10 @@ impl Walker<'_> {
         match &e.kind {
             ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
             ExprKind::Call { callee, args, .. } => {
+                // A constructor takes its arguments: the value it builds owns them.
+                if matches!(self.cx.m.resolution(e), Resolution::Constructor { .. }) {
+                    return false;
+                }
                 let result = self.cx.m.ty(e);
                 // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
                 // value of it (`result.get()`) hands the value over: the binding owns it.
@@ -334,6 +338,13 @@ impl Walker<'_> {
             }
             _ => false,
         }
+    }
+
+    /// Whether the scope can close a resource binding of `ty`: it has a close operation, or it
+    /// is a record, alternative or collection that closes the resources it holds.
+    fn closable(&self, s: &Stmt, ty: &Ty) -> bool {
+        self.cx.m.stmt(s).cleanup.is_some()
+            || matches!(ty.kind, Kind::Record | Kind::Alternative | Kind::Native)
     }
 
     /// Closes at scope end an owned resource nothing takes (a binding never moved: returned,
@@ -1142,7 +1153,7 @@ impl Walker<'_> {
             return;
         };
         if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
-            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, p.pos, closable));
         }
     }
@@ -1310,7 +1321,7 @@ impl Walker<'_> {
             false,
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
-            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            let closable = self.closable(s, &b.ty);
             self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
     }
@@ -2193,7 +2204,24 @@ impl Walker<'_> {
         let mut operands: Vec<(Operand, Vec<(Place, bool)>)> = Vec::new();
         let reported = self.diags.len();
         if let Some(r) = receiver_expr {
-            let mode = modes.receiver.unwrap_or(ParamMode::Borrow);
+            if self.cx.m.info(e).native_str() == "clone" && self.class_of(r) == Class::Resource {
+                let text = self.expr_text(r);
+                self.error(
+                    e.pos,
+                    format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
+                );
+            }
+            let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
+            // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the
+            // receiver's one owner handing it over, not a copy.
+            if mode == ParamMode::Borrow
+                && !modes.accessor
+                && self.class_of(r) == Class::Resource
+                && self.class_of(e) == Class::Resource
+                && ty_contains(&self.cx.m.ty(r), &self.cx.m.ty(e))
+            {
+                mode = ParamMode::Consume;
+            }
             let held = self.held(r, mode);
             self.receiver(r, mode);
             operands.push((Operand::Receiver(r), held));
@@ -2621,6 +2649,13 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
         Role::Pattern => "a pattern variable",
         _ => "a borrow",
     }
+}
+
+/// Whether `part` is exactly one of the type arguments of `src`, at any depth.
+fn ty_contains(src: &Ty, part: &Ty) -> bool {
+    src.args
+        .iter()
+        .any(|a| crate::types::same(a, part) || ty_contains(a, part))
 }
 
 /// Whether `src` is `part` or has it among its type arguments, at any depth.

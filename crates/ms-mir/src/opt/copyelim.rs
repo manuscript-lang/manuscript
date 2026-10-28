@@ -15,7 +15,7 @@ pub fn run(m: &mut Module) -> bool {
     let mut changed = false;
     for fi in 0..m.funcs.len() {
         changed |= run_func(m, fi);
-        changed |= move_dead_sources(&mut m.funcs[fi]);
+        changed |= move_dead_sources(m, fi);
         changed |= move_dead_sources_across_blocks(m, fi);
         changed |= borrow_local_copies(m, fi);
         changed |= borrow_str_copies_across_blocks(m, fi);
@@ -78,7 +78,9 @@ impl BlockUses {
 /// Turns `c = copy v; ...; drop v` into a move when `v` is not touched in between: the copy
 /// and the drop cancel, and `c` is `v`. This is the shape of `l = More(l)` in a loop, which
 /// would otherwise deep-copy the old value on every iteration.
-fn move_dead_sources(f: &mut Func) -> bool {
+fn move_dead_sources(m: &mut Module, fi: usize) -> bool {
+    let borrows_of = borrows_of(m, fi);
+    let f = &mut m.funcs[fi];
     let mut rename: Vec<Option<Value>> = vec![None; f.values.len()];
     let mut touched = vec![false; f.values.len()];
     let mut dead: Vec<(usize, usize)> = Vec::new();
@@ -97,6 +99,21 @@ fn move_dead_sources(f: &mut Func) -> bool {
                 continue;
             };
             if jb != bi || b.insts[j].op != Op::Drop {
+                continue;
+            }
+            // What was borrowed out of `v` before the copy (a projection another pass merged
+            // into an earlier one) must not be read once the copy's drop frees `v`.
+            let mut held = vec![false; f.values.len()];
+            let mut stack = vec![v];
+            while let Some(x) = stack.pop() {
+                if !std::mem::replace(&mut held[x.index()], true) {
+                    stack.extend(borrows_of[x.index()].iter().copied());
+                }
+            }
+            if b.insts[i + 1..j]
+                .iter()
+                .any(|n| n.args.iter().any(|a| *a != v && held[a.index()]))
+            {
                 continue;
             }
             touched[c.index()] = true;
@@ -125,6 +142,21 @@ fn move_dead_sources(f: &mut Func) -> bool {
         });
     }
     true
+}
+
+/// The values each value of function `fi` lends out: results that borrow from their operands.
+fn borrows_of(m: &Module, fi: usize) -> Vec<Vec<Value>> {
+    let f = &m.funcs[fi];
+    let mut borrows_of: Vec<Vec<Value>> = vec![Vec::new(); f.values.len()];
+    for b in &f.blocks {
+        for inst in &b.insts {
+            let Some(r) = inst.res else { continue };
+            if !matches!(m.result_mode(f, inst), Some(Mode::Own) | None) {
+                inst.args.iter().for_each(|a| borrows_of[a.index()].push(r));
+            }
+        }
+    }
+    borrows_of
 }
 
 /// Turns `c = copy v` into a move when every path from the copy reaches `v` again only to drop

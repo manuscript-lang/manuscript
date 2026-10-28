@@ -28,7 +28,7 @@ def operation(var state: State, fail: Bool) -> Result[Unit, Failure]:
 
 def exact(state: State, fail: Bool) -> Result[String, Failure]:
     with let resource = state:
-        var work = resource.clone()
+        var work = State(resource.calls, resource.marker.clone())
         try operation(var work, fail)
         work.calls += 10
         return ok(f"done {work.calls}")

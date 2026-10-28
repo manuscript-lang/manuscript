@@ -646,3 +646,20 @@ impl MapUpdate[T, U] for Map[T, U]:
     # Example: `counts.update(word, 0, lambda n: n + 1)` counts occurrences.
     var def update(key: T, initial: U, change: Callable[[U], U]) -> Unit:
         self.add(key.clone(), change(self.get_or(key, initial)))
+
+from "@std/core.ms" import Closeable
+
+# Closing the resources a map holds. The compiler calls this when a map of resources goes out of scope; the values close newest entry first.
+interface MapCloseValues[U: Closeable]:
+    var def close_values() -> Unit
+
+impl MapCloseValues[U] for Map[T, U]:
+    # Closes every value in place, last inserted first. The entries stay in the map.
+    var def close_values() -> Unit:
+        let keys = self.keys()
+        var i = keys.length() - 1
+
+        while i >= 0:
+            if var value = self.get(keys[i]):
+                value.close()
+            i -= 1
