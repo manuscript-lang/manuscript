@@ -169,3 +169,17 @@ fn json_diagnostics_carry_the_sub_code_of_their_cause() {
     assert!(text.contains("\"subcode\": \"MS3000.1\""), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn fix_renames_a_misspelled_member() {
+    let dir = std::env::temp_dir().join(format!("ms-cli-fix-member-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = "def main() -> Int:\n    let xs = [1, 2]\n    return xs.lenght() + xs.len()\n";
+    std::fs::write(dir.join("a.ms"), source).unwrap();
+    let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
+    assert_eq!(status, Some(0), "{text}");
+    let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
+    assert!(fixed.contains("xs.length() + xs.length()"), "{fixed}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

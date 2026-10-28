@@ -29,7 +29,7 @@ ms fmt src/*.ms --check
 Formatting preserves meaning and comments, uses four-space indentation and LF endings with a final newline, and is idempotent. Rules:
 
 - Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
-- Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines. Authored blank lines are discarded.
+- Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines. Authored blank lines are discarded, except one kept after a comment-only line so a comment block stays apart from the next comment or declaration.
 - Keep match arms together.
 - One space around operators and after colons and commas; none next to delimiters; two before inline comments.
 - Keep comment text, drop trailing whitespace, round comment-only indentation down to a multiple of four.
