@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "close early\nbody local\nclose local\nafter local\nelse branch\nmoved_on got moved\nbody ok-result\nclose ok-result\nclose var\nbody var-reassigned\nclose var-reassigned\nend\nclose moved\n",
+    "stderr": ""
+  }
+}

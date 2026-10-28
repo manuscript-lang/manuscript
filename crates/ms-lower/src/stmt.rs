@@ -175,8 +175,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("break outside loop"))?;
                 ctx.brk_used = true;
-                let (brk, depth) = (ctx.brk, ctx.depth);
+                let (brk, depth, outer) = (ctx.brk, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(brk, &[]);
                 self.terminated();
@@ -188,8 +189,9 @@ impl<'a> FnLower<'a> {
                     .last_mut()
                     .ok_or_else(|| Error::new("continue outside loop"))?;
                 ctx.cont_used = true;
-                let (cont, depth) = (ctx.cont, ctx.depth);
+                let (cont, depth, outer) = (ctx.cont, ctx.depth, ctx.temps);
                 self.flush_temps(mark);
+                self.drop_temps_from(outer);
                 self.unwind_to(depth);
                 self.b.br(cont, &[]);
                 self.terminated();
@@ -202,7 +204,7 @@ impl<'a> FnLower<'a> {
                 body,
                 else_body,
             } => {
-                self.if_stmt(binding.as_ref(), cond, body, else_body)?;
+                self.if_stmt(s, binding.as_ref(), cond, body, else_body)?;
                 self.flush_temps(mark);
                 return Ok(());
             }
@@ -641,6 +643,7 @@ impl<'a> FnLower<'a> {
 
     fn if_stmt(
         &mut self,
+        s: &Stmt,
         binding: Option<&Pattern>,
         cond: &Expr,
         body: &[Stmt],
@@ -724,7 +727,13 @@ impl<'a> FnLower<'a> {
                 // The payload of a scrutinee that is itself a borrow is a lexical borrow for
                 // the branch (the checker rejects changing its origin meanwhile): no copy. An
                 // owned scrutinee is dropped here, so its payload is copied out first.
-                let lend = !o.own
+                let closing = if self.cx.implicit_closes.contains(&bnd.uid) {
+                    self.hir.stmt(s).cleanup
+                } else {
+                    None
+                };
+                let lend = closing.is_none()
+                    && !o.own
                     && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
                     && self.ownership_checked()
@@ -732,6 +741,12 @@ impl<'a> FnLower<'a> {
                     && self.needs_drop(self.ty_of(payload));
                 if lend {
                     self.bind_lent(&bnd, payload);
+                } else if let Some(cleanup) = closing {
+                    let held = Val {
+                        v: payload,
+                        own: false,
+                    };
+                    self.bind_closing(&bnd, held, &cleanup)?;
                 } else {
                     self.bind_local(
                         &bnd,
@@ -828,6 +843,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -956,6 +972,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1048,6 +1065,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1169,6 +1187,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: header,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });
@@ -1317,6 +1336,7 @@ impl<'a> FnLower<'a> {
             brk: exit,
             cont: step,
             depth,
+            temps: self.temps.len(),
             cont_used: false,
             brk_used: false,
         });

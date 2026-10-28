@@ -42,6 +42,8 @@ pub(crate) struct LoopCtx {
     pub cont: Block,
     /// Scope depth at loop entry.
     pub depth: usize,
+    /// Temporaries pending at loop entry; those above belong to statements around a `break`.
+    pub temps: usize,
     /// A `continue` branches to `cont`.
     pub cont_used: bool,
     /// A `break` branches to `brk`.
@@ -552,6 +554,18 @@ impl<'a> FnLower<'a> {
             if !self.dead {
                 self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
             }
+        }
+    }
+
+    /// Drops the pending temporaries from index `from` on, keeping them for the paths that
+    /// stay in the statement: a loop exit leaves the enclosing statements' temporaries behind.
+    pub fn drop_temps_from(&mut self, from: usize) {
+        if self.dead {
+            return;
+        }
+        for i in (from..self.temps.len()).rev() {
+            let v = self.temps[i];
+            self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
         }
     }
 

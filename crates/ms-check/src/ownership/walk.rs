@@ -320,14 +320,17 @@ impl Walker<'_> {
         match &e.kind {
             ExprKind::Unary { operand, .. } => self.derived_from_resource(operand),
             ExprKind::Call { callee, args, .. } => {
+                let result = self.cx.m.ty(e);
+                // A source holding the result's own type (`keep(r)`, `Optional.get(d)`) or a
+                // value of it (`result.get()`) hands the value over: the binding owns it.
+                let wraps = |src: &Expr| {
+                    self.class_of(src) == Class::Resource && !ty_holds(&self.cx.m.ty(src), &result)
+                };
                 let receiver = match &callee.kind {
-                    ExprKind::Member { left, .. } => self.class_of(left) == Class::Resource,
+                    ExprKind::Member { left, .. } => wraps(left),
                     _ => false,
                 };
-                receiver
-                    || args
-                        .iter()
-                        .any(|a| self.class_of(&a.value) == Class::Resource)
+                receiver || args.iter().any(|a| wraps(&a.value))
             }
             _ => false,
         }
@@ -1103,8 +1106,10 @@ impl Walker<'_> {
                 let scrutinee = self.scrutinee(s.id, cond);
                 if mutable {
                     self.mutable_payload(p, cond, &scrutinee);
+                    self.payload_resource(s, p, cond, &scrutinee);
                 } else {
                     self.pattern_bindings(p, &scrutinee, Role::Pattern);
+                    self.payload_resource(s, p, cond, &scrutinee);
                 }
             }
             None => self.expr(cond, Demand::Read),
@@ -1125,6 +1130,21 @@ impl Walker<'_> {
             .filter(|a| !ended.contains(&a.holder))
             .collect();
         self.active = Self::join_active(then_state, else_state);
+    }
+
+    /// An `if let name = value` that owns a resource payload closes it when the branch ends,
+    /// unless the branch moves it on.
+    fn payload_resource(&mut self, s: &Stmt, p: &Pattern, value: &Expr, source: &Scrutinee) {
+        if !source.owned || !matches!(p.kind, PatternKind::Name(_)) {
+            return;
+        }
+        let Some(b) = self.cx.m.pattern_binding(p) else {
+            return;
+        };
+        if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
+            let closable = self.cx.m.stmt(s).cleanup.is_some();
+            self.resources.push((b.uid, b.name, p.pos, closable));
+        }
     }
 
     fn for_stmt(&mut self, s: &Stmt, iter: &Expr, body: &[Stmt]) {
@@ -2601,4 +2621,9 @@ fn role_text(role: Role, perm: Perm) -> &'static str {
         Role::Pattern => "a pattern variable",
         _ => "a borrow",
     }
+}
+
+/// Whether `src` is `part` or has it among its type arguments, at any depth.
+fn ty_holds(src: &Ty, part: &Ty) -> bool {
+    src.id == part.id || src.args.iter().any(|a| ty_holds(a, part))
 }
