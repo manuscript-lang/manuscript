@@ -34,7 +34,7 @@ fn diagram_json_preserves_source_navigation_and_recursion() {
     let dir = scratch("json");
     std::fs::write(
         dir.join("main.ms"),
-        "def recurse(n: Int) -> Int:\n    if n == 0: return 0\n    return recurse(n - 1)\n",
+        "fn recurse(n: Int) Int:\n    if n == 0: return 0\n    return recurse(n - 1)\n",
     )
     .unwrap();
     let output = ms(&dir, &["diagram", "main.ms", "--json"]);
@@ -95,10 +95,10 @@ fn review_json_links_a_finding_to_its_diagram() {
     let dir = scratch("handoff");
     std::fs::write(
         dir.join("main.ms"),
-        "export def value() -> String:\n    return \"new\"\n",
+        "export fn value() String:\n    return \"new\"\n",
     )
     .unwrap();
-    std::fs::write(dir.join("change.patch"), "--- a/main.ms\n+++ b/main.ms\n@@ -1,2 +1,2 @@\n-export def value() -> Int:\n-    return 1\n+export def value() -> String:\n+    return \"new\"\n").unwrap();
+    std::fs::write(dir.join("change.patch"), "--- a/main.ms\n+++ b/main.ms\n@@ -1,2 +1,2 @@\n-export fn value() Int:\n-    return 1\n+export fn value() String:\n+    return \"new\"\n").unwrap();
     let report = json(&ms(
         &dir,
         &["review", "main.ms", "--diff", "change.patch", "--json"],
@@ -143,7 +143,7 @@ fn review_json_links_a_finding_to_its_diagram() {
 #[test]
 fn review_preserves_source_and_reports_check_failures_as_json() {
     let dir = scratch("outputs");
-    let source = "export def value() -> Int:\n    return 1\n";
+    let source = "export fn value() Int:\n    return 1\n";
     std::fs::write(dir.join("main.ms"), source).unwrap();
     let output = ms(&dir, &["review", "main.ms", "-o", "main.ms"]);
     assert_eq!(output.status.code(), Some(2));
@@ -154,7 +154,7 @@ fn review_preserves_source_and_reports_check_failures_as_json() {
     );
     std::fs::write(
         dir.join("main.ms"),
-        "def value() -> Int:\n    return \"wrong\"\n",
+        "fn value() Int:\n    return \"wrong\"\n",
     )
     .unwrap();
     for command in ["review", "diagram"] {
@@ -177,7 +177,7 @@ fn review_preserves_source_and_reports_check_failures_as_json() {
 fn json_project_reports_are_complete_while_text_stays_bounded() {
     let dir = scratch("complete");
     let source: String = (0..8)
-        .map(|n| format!("export def value{n}() -> Int:\n    return {n}\n\n"))
+        .map(|n| format!("export fn value{n}() Int:\n    return {n}\n\n"))
         .collect();
     std::fs::write(dir.join("main.ms"), source).unwrap();
     let report = json(&ms(&dir, &["review", "main.ms", "--json"]));
@@ -211,7 +211,7 @@ fn json_project_reports_are_complete_while_text_stays_bounded() {
 #[test]
 fn standard_library_is_a_boundary_rather_than_the_project_surface() {
     let dir = scratch("boundaries");
-    std::fs::write(dir.join("main.ms"), "from \"@std/process.ms\" import arguments\n\nexport def main() -> Int:\n    return arguments().length()\n").unwrap();
+    std::fs::write(dir.join("main.ms"), "import arguments from \"@std/process.ms\"\n\nexport fn main() Int:\n    return arguments().length()\n").unwrap();
     let report = json(&ms(&dir, &["review", "main.ms", "--json"]));
     assert_eq!(
         report.get("result").unwrap().as_str(),
@@ -262,10 +262,10 @@ fn project_review_counts_discovered_test_files() {
     .unwrap();
     std::fs::write(
         dir.join("src/main.ms"),
-        "export def main() -> Int:\n    return 0\n",
+        "export fn main() Int:\n    return 0\n",
     )
     .unwrap();
-    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return ()\n").unwrap();
+    std::fs::write(dir.join("test.ms"), "test \"t\":\n    return unit\n").unwrap();
     let output = ms(&dir, &["review", "ms.toml"]);
     assert!(output.status.success());
     let text = String::from_utf8_lossy(&output.stdout);

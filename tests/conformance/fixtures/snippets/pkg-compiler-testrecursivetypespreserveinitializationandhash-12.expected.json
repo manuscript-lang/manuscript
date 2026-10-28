@@ -14,7 +14,7 @@
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms",
           "line": 16,
           "column": 13,
-          "offset": 427
+          "offset": 415
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms",
           "line": 5,
-          "column": 9,
-          "offset": 241
+          "column": 8,
+          "offset": 240
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:16:13: type: I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly\n    |\n 16 |     let i = I[Int](value: b)\n    |             ^\n<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:9: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     def f(x: I[List[T]]) -> Int\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:16:13: type: I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly\n    |\n 16 |     let i = I[Int](value: b)\n    |             ^\n<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-12.ms:5:8: type: recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     fn f(x: I[List[T]]) Int\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/io.ms\" import stdout\n\ndef never() -> Int:\n    return 1\n\nexport def main() -> Int:\n    let _written = stdout().write(data: \"TARGET_RAN\\n\")\n    return 0\n"
+    "fmt": "import stdout from \"@std/io.ms\"\n\nfn never() Int:\n    return 1\n\nexport fn main() Int:\n    let _written = stdout().write(data: \"TARGET_RAN\\n\")\n    return 0\n"
   }
 }

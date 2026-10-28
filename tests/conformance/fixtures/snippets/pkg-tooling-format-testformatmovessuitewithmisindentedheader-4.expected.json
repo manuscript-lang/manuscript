@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding foo; declare it with 'let foo = ...' before use, define 'def foo(...) -> T:', or import it from a module",
+        "message": "unknown binding foo; declare it with 'let foo = ...' before use, define 'fn foo(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms",
           "line": 5,
           "column": 11,
-          "offset": 215
+          "offset": 211
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a module",
+        "message": "unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms",
           "line": 6,
           "column": 12,
-          "offset": 234
+          "offset": 230
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms:5:11: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'def foo(...) -> T:', or import it from a module\n   |\n 5 |     while foo(a):\n   |           ^\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms:6:12: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'def b(...) -> T:', or import it from a module\n   |\n 6 |         if b:\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms:5:11: resolution: unknown binding foo; declare it with 'let foo = ...' before use, define 'fn foo(...) T:', or import it from a module\n   |\n 5 |     while foo(a):\n   |           ^\n<DIR>/pkg-tooling-format-testformatmovessuitewithmisindentedheader-4.ms:6:12: resolution: unknown binding b; declare it with 'let b = ...' before use, define 'fn b(...) T:', or import it from a module\n   |\n 6 |         if b:\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

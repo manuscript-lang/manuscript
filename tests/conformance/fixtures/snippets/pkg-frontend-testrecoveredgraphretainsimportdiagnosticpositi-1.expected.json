@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-frontend-testrecoveredgraphretainsimportdiagnosticpositi-1.ms:4:1: resolution: cannot find module ./missing.ms (looked for missing.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | from \"./missing.ms\" import missing\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-frontend-testrecoveredgraphretainsimportdiagnosticpositi-1.ms:4:1: resolution: cannot find module ./missing.ms (looked for missing.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | import missing from \"./missing.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

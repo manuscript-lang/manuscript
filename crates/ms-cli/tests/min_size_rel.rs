@@ -9,7 +9,7 @@ fn min_size_rel_builds_and_runs() {
     let source = dir.join("main.ms");
     std::fs::write(
         &source,
-        "from \"@std/io.ms\" import stdout\n\nexport def main() -> Int:\n    stdout().write(\"ok\\n\").get()\n    return 0\n",
+        "import stdout from \"@std/io.ms\"\n\nexport fn main() Int:\n    stdout().write(\"ok\\n\").get()\n    return 0\n",
     )
     .unwrap();
     let out = Command::new(env!("CARGO_BIN_EXE_ms"))

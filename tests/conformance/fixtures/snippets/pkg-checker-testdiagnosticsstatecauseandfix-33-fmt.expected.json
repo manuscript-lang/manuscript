@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Choice[T]:\n    case Found(value: T)\n    case Missing\n\ndef f(c: Choice[Int]) -> Int:\n    match c:\n        case Choice[String].Found(v): return 1\n        case Choice[String].Missing: return 0\n"
+    "fmt": "type Choice[T]:\n    case Found(value: T)\n    case Missing\n\nfn f(c: Choice[Int]) Int:\n    match c:\n        Choice[String].Found(v): return 1\n        Choice[String].Missing: return 0\n"
   }
 }

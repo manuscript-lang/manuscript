@@ -6,7 +6,7 @@ test "maps and sets keep distinct keys after removal to empty":
     m.remove("cap")
     m.add(key: "pen", value: 2)
     m.add(key: "cap", value: 3)
-    if m.length() != 2: return fail("without: length {m.length()}")
+    if m.length() != 2: return fail("without: length \{m.length()\}")
 
     m.get("pen").get() | try expect_equal(expected: 2)
     m.get("cap").get() | try expect_equal(expected: 3)

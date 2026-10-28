@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Options:\n    count: Int = True\n"
+    "fmt": "type Options:\n    count: Int = true\n"
   }
 }

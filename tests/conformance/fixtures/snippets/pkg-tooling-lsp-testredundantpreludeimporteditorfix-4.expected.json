@@ -14,26 +14,26 @@
           "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 5,
           "column": 5,
-          "offset": 233
+          "offset": 206
         },
         "end": {
           "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
           "line": 5,
           "column": 9,
-          "offset": 237
+          "offset": 210
         },
         "fix": {
           "position": {
             "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 5,
             "column": 5,
-            "offset": 233
+            "offset": 206
           },
           "end": {
             "file": "pkg-tooling-lsp-testredundantpreludeimporteditorfix-4.ms",
             "line": 5,
             "column": 10,
-            "offset": 238
+            "offset": 211
           },
           "replacement": ""
         }

@@ -29,20 +29,20 @@
             "file": "expression-conveniences.ms",
             "line": 58,
             "column": 37,
-            "offset": 1950
+            "offset": 1894
           },
           "fix": {
             "position": {
               "file": "expression-conveniences.ms",
               "line": 58,
               "column": 42,
-              "offset": 1955
+              "offset": 1899
             },
             "end": {
               "file": "expression-conveniences.ms",
               "line": 58,
               "column": 42,
-              "offset": 1955
+              "offset": 1899
             },
             "replacement": ".clone()"
           }

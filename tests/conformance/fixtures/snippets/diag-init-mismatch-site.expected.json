@@ -9,34 +9,34 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"",
+        "message": "expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
         "position": {
           "file": "diag-init-mismatch-site.ms",
           "line": 5,
           "column": 21,
-          "offset": 158
+          "offset": 154
         },
         "fix": {
           "position": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
             "column": 21,
-            "offset": 158
+            "offset": 154
           },
           "end": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
             "column": 22,
-            "offset": 159
+            "offset": 155
           },
-          "replacement": "f\"{1}\""
+          "replacement": "\"{1}\""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-init-mismatch-site.ms:5:21: type: expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"\n   |\n 5 |     let x: String = 1\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-init-mismatch-site.ms:5:21: type: expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 5 |     let x: String = 1\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

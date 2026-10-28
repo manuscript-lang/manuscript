@@ -1,0 +1,28 @@
+{
+  "format": 1,
+  "phase": "parse",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "there is no Callable[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type",
+        "position": {
+          "file": "foreign-callable.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 129
+        },
+        "end": {
+          "file": "foreign-callable.ms",
+          "line": 4,
+          "column": 18,
+          "offset": 130
+        }
+      }
+    ],
+    "fmt": null,
+    "fmt_exit_code": 1
+  }
+}

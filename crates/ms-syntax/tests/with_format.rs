@@ -29,7 +29,7 @@ fn long_with_initializers_group_only_the_resource_expression() {
             "very_long_resource_name_one + very_long_resource_name_two + very_long_resource_name_three",
         ] {
             let source = format!(
-                "def f() -> Int:\n    with {binding} handle = {initializer}:\n        return 1\n"
+                "fn f() Int:\n    with {binding} handle = {initializer}:\n        return 1\n"
             );
             let before = ms_syntax::parser::parse(&file, &source).unwrap();
             for input in [source.clone(), source.replace('\n', "\r\n")] {

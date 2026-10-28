@@ -64,7 +64,7 @@ fn total(cents: Cents) Result[Int, TextError]:
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms put the value after the colon (`case none: 0`). End an effect-only arm with `()` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm is `()`; there is no `pass`.
+Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm is `()`; there is no `pass`.
 
 ## Payload patterns
 
@@ -114,19 +114,19 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 A contract view keeps its concrete receiver. `ConcreteType(receiver)` recovers it for a particular implementation, and `_:` handles the rest. This is not a constructor call.
 
 ```text
-from "@std/json.ms" import JsonError
+import JsonError from "@std/json.ms"
 
-def describe(cause: Error) -> String:
+fn describe(cause: Error) String:
     match cause:
-        case JsonError(json): return describe_json(json)
-        case _:
+        JsonError(json): return describe_json(json)
+        _:
             return cause.message()
 
-def describe_json(cause: JsonError) -> String:
+fn describe_json(cause: JsonError) String:
     match cause:
-        case InvalidInput: return "Invalid JSON limits"
-        case InvalidData: return "Malformed JSON"
-        case LimitExceeded: return "JSON limit exceeded"
+        InvalidInput: return "Invalid JSON limits"
+        InvalidData: return "Malformed JSON"
+        LimitExceeded: return "JSON limit exceeded"
 ```
 
 - The type is a local or imported nominal record or alternative with an explicit implementation of the scrutinee's exact contract.

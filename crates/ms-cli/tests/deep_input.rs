@@ -22,7 +22,7 @@ fn long_operator_chain_checks_and_runs() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let terms = vec!["1"; 9000].join(" + ");
-    let source = format!("export def main() -> Int:\n    let x = {terms}\n    return x - 9000\n");
+    let source = format!("export fn main() Int:\n    let x = {terms}\n    return x - 9000\n");
     std::fs::write(dir.join("chain.ms"), source).unwrap();
     for command in ["check", "fmt", "lint"] {
         let (status, text) = run_ms(&[command, "chain.ms"], &dir);
@@ -43,20 +43,20 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     // Nesting depth 64 prints `...`; a long list formats in linear time.
-    let source = "from \"@std/io.ms\" import stdout\n\
+    let source = "import stdout from \"@std/io.ms\"\n\
         type L:\n\
         \x20   case Nil\n\
         \x20   case Cons(head: Int, tail: L)\n\
-        export def main() -> Int:\n\
+        export fn main() Int:\n\
         \x20   var l: L = Nil\n\
         \x20   for i in 0..100000:\n\
         \x20       l = Cons(i, l)\n\
-        \x20   let text = f\"{l}\"\n\
+        \x20   let text = \"{l}\"\n\
         \x20   var xs: List[Int] = []\n\
         \x20   for i in 0..300000:\n\
         \x20       xs.append(i)\n\
-        \x20   let list_text = f\"{xs}\"\n\
-        \x20   stdout().write(f\"{text.length()} {list_text.length()}\\n\").get()\n\
+        \x20   let list_text = \"{xs}\"\n\
+        \x20   stdout().write(\"{text.length()} {list_text.length()}\\n\").get()\n\
         \x20   return 0\n\
         ";
     std::fs::write(dir.join("text.ms"), source).unwrap();
@@ -74,10 +74,10 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     let dir = std::env::temp_dir().join(format!("ms-cli-sigma-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "from \"@std/io.ms\" import stdout\n\
-        export def main() -> Int:\n\
-        \x20   let lowered = f\"\\u{1C5}\\u{3A3}\".lower()\n\
-        \x20   stdout().write(f\"{lowered.scalar_values()}\\n\").get()\n\
+    let source = "import stdout from \"@std/io.ms\"\n\
+        export fn main() Int:\n\
+        \x20   let lowered = \"\\u{1C5}\\u{3A3}\".lower()\n\
+        \x20   stdout().write(\"{lowered.scalar_values()}\\n\").get()\n\
         \x20   return 0\n\
         ";
     std::fs::write(dir.join("sigma.ms"), source).unwrap();
@@ -94,16 +94,16 @@ fn a_match_over_thousands_of_cases_builds_in_linear_time() {
     std::fs::create_dir_all(&dir).unwrap();
     // Every payload read and construction used to copy the layout of all cases.
     let cases = 10_000;
-    let mut source = String::from("from \"@std/io.ms\" import stdout\ntype E:\n");
+    let mut source = String::from("import stdout from \"@std/io.ms\"\ntype E:\n");
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
     }
-    source.push_str("\ndef g(e: E) -> Int:\n    match e:\n");
+    source.push_str("\nfn g(e: E) Int:\n    match e:\n");
     for i in 0..cases {
-        source.push_str(&format!("        case C{i}(x): return x + {i}\n"));
+        source.push_str(&format!("        C{i}(x): return x + {i}\n"));
     }
     source.push_str(
-        "\nexport def main() -> Int:\n    stdout().write(f\"{g(C9999(1))}\\n\").get()\n    return 0\n",
+        "\nexport fn main() Int:\n    stdout().write(\"{g(C9999(1))}\\n\").get()\n    return 0\n",
     );
     std::fs::write(dir.join("cases.ms"), source).unwrap();
     let started = std::time::Instant::now();

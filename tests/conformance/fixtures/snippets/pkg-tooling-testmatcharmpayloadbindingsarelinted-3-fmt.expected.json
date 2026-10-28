@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def answer() -> Int:\n    match parse(\"1\"):\n        case ok(value): return value\n        case error(_): return 2\n"
+    "fmt": "fn answer() Int:\n    match parse(\"1\"):\n        ok(value): return value\n        error(_): return 2\n"
   }
 }

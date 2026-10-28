@@ -111,7 +111,7 @@ A failed or nonreturning argument prevents later arguments and the call. Constru
 
 ## Unit and Never
 
-`()` is the single value of `Unit`. A `Unit` function may `return`, `return ()`, or fall off the end. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
+`unit` is the single value of `Unit`. A `Unit` function may `return`, `return unit`, or fall off the end. Other functions must return a compatible value on every reachable exit; bare `return` and reachable fallthrough are errors. Multiline bodies need explicit `return`.
 
 ```manuscript
 import panic from "@std/core.ms"

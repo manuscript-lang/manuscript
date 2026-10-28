@@ -9,15 +9,8 @@
       "include": "#string"
     },
     {
-      "match": "^\\s*(import)\\b[^#\"\\n]*?\\b(from)\\b",
-      "captures": {
-        "1": {
-          "name": "keyword.control.manuscript"
-        },
-        "2": {
-          "name": "keyword.control.manuscript"
-        }
-      }
+      "name": "keyword.control.manuscript",
+      "match": "\\bfrom\\b(?=[ \\t]*\")"
     },
     {
       "match": "\\b(fn)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",

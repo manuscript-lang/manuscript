@@ -81,7 +81,7 @@ fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
         .get(&n(entry))
         .and_then(|names| names.borrow().get(&n("main")).cloned());
     let mut position = Pos::new(0, 1, 1);
-    let mut detail = "no main function is declared, so add 'export def main() -> Int:' with an indented 'return 0' body".to_string();
+    let mut detail = "no main function is declared, so add 'export fn main() Int:' with an indented 'return 0' body".to_string();
     if let Some(main) = &main {
         let ty = main.ty_opt();
         let constant = main.is_constant();
@@ -101,12 +101,12 @@ fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
             position = decl.pos();
         }
         detail = if constant {
-            "main is a constant, so rename it and declare 'export def main() -> Int:'".to_string()
+            "main is a constant, so rename it and declare 'export fn main() Int:'".to_string()
         } else if main.kind != SymKind::Fn {
-            "main is declared as a type, so rename it and declare 'export def main() -> Int:'"
+            "main is declared as a type, so rename it and declare 'export fn main() Int:'"
                 .to_string()
         } else if !main.export {
-            "main is not exported, so write 'export def main() -> Int:'".to_string()
+            "main is not exported, so write 'export fn main() Int:'".to_string()
         } else if generic {
             "main cannot be generic, so remove its type parameters".to_string()
         } else if parameters > 0 {
@@ -122,7 +122,7 @@ fn check_entry(program: &Program, entry: &str) -> Option<Diagnostic> {
         file,
         pos: position,
         phase: Phase::Type,
-        message: format!("entry must export def main() -> Int; {detail}"),
+        message: format!("entry must export fn main() Int; {detail}"),
         end: None,
         fix: None,
     })

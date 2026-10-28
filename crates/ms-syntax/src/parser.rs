@@ -93,6 +93,9 @@ fn describe_kind(kind: &str) -> String {
 }
 
 /// Adds the usual fix for the punctuation that is most often missing.
+/// Text interpolates by default, so Python's `f"..."` prefix is a stray name.
+const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}";
+
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
         ":" => "; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body".into(),
@@ -298,11 +301,19 @@ impl<'a> Parser<'a> {
                 ":",
             );
         }
+        let glued_f = t.kind == Tok::String
+            && self.at > 0
+            && self.text(self.previous()) == "f"
+            && self.previous().end.offset == t.pos.offset;
+        let hint = if glued_f {
+            F_STRING_HINT.to_string()
+        } else {
+            need_hint(k.as_str(), t.kind, self.text(t))
+        };
         let msg = format!(
-            "expected {}, found {}{}",
+            "expected {}, found {}{hint}",
             describe_kind(k.as_str()),
             describe(self.src, t),
-            need_hint(k.as_str(), t.kind, self.text(t))
         );
         self.fail(t, msg)
     }
@@ -434,7 +445,24 @@ impl<'a> Parser<'a> {
             );
         }
         let prev_new = self.at > 0 && self.text(self.previous()) == "new";
+        let prev_word = if self.at > 0 {
+            self.text(self.previous())
+        } else {
+            ""
+        };
+        let glued_text =
+            t.kind == Tok::String && self.at > 0 && self.previous().end.offset == t.pos.offset;
         let hint = match t.kind {
+            _ if prev_word == "def" && t.kind == Tok::Name => {
+                "; there is no 'def': declare a function with 'fn name(a: Int) Int:'"
+            }
+            _ if prev_word == "lambda" => {
+                "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'"
+            }
+            _ if prev_word == "elif" => {
+                "; there is no 'elif': write 'else if <condition>:' for a further branch"
+            }
+            _ if prev_word == "f" && glued_text => F_STRING_HINT,
             Tok::Name if self.text(t) == "is" => {
                 "; there is no 'is' operator: write '==' to compare values, or 'match value:' to test which alternative a value is"
             }
@@ -637,6 +665,10 @@ impl<'a> Parser<'a> {
             full = Symbol::intern(&s);
         }
         let mut args = Vec::new();
+        if self.kind() == Tok::LBracket && self.speculative == 0 && full.as_str() == "Callable" {
+            let t = self.peek();
+            return self.fail(t, format!("there is no {full}[...] type; a function type is written fn(Int) Int: parameter types in parentheses, then the result type"));
+        }
         if self.take(Tok::LBracket) {
             args = self.type_args()?;
         }
@@ -982,7 +1014,7 @@ impl<'a> Parser<'a> {
                 let (result_ref, result) = self.result_type()?;
                 if self.kind() == Tok::Colon {
                     let t = self.peek();
-                    return self.fail(t, "an extern def has no body; remove the ':'");
+                    return self.fail(t, "an extern fn has no body; remove the ':'");
                 }
                 self.end()?;
                 DeclKind::Fn(Func {
@@ -1193,7 +1225,7 @@ impl<'a> Parser<'a> {
         }
         self.need(Tok::Dedent)?;
         if token.kind == Tok::Interface && methods.is_empty() {
-            return self.fail(token, "declaration body cannot be empty; an interface needs at least one 'def name(...) -> Type' operation");
+            return self.fail(token, "declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation");
         }
         let kind = match form {
             Form::Interface => DeclKind::Interface(InterfaceDecl {
@@ -1535,24 +1567,26 @@ impl<'a> Parser<'a> {
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match n.as_str() {
-                        "pass" => return self.fail(t, "'pass' is not a keyword; write '()' for an empty block or match arm"),
+                        "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
                         "const" | "val" | "final" => {
                             return self.fail(t, format!("'{n}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes"));
                         }
                         "throw" | "raise" | "catch" => {
-                            return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a def returning Result and handle it with 'try' or 'if let'"));
+                            return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'"));
                         }
                         "elseif" => return self.fail(t, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch"),
+                        "elif" => return self.fail(t, "there is no 'elif': write 'else if <condition>:' for a further branch"),
+                        "def" => return self.fail(t, "there is no 'def': declare a function with 'fn name(a: Int) Int:'"),
                         "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"),
-                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a def returning Result and handle it with 'try' or 'if let'")),
+                        "except" | "finally" => return self.fail(t, format!("'{n}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'")),
                         "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
-                        "class" => return self.fail(t, "'class' is not a keyword inside a def; declare a record with 'type Name:' at module level"),
+                        "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
-                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(lambda ch: work())"),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(fn ch: work())"),
                         _ => {}
                     }
                 }
@@ -2308,7 +2342,7 @@ impl<'a> Parser<'a> {
                     && self.kind() == Tok::Arrow
                 {
                     let a = self.peek();
-                    return self.fail(a, format!("arrow lambdas are not supported; write 'lambda {n}: {n} + 1', or 'lambda ({n}: Int) -> Int: {n} + 1' with explicit types"));
+                    return self.fail(a, format!("arrow closures are not supported; write 'fn {n}: {n} + 1', or 'fn({n}: Int) Int: {n} + 1' with explicit types"));
                 }
                 args.push(Argument {
                     pos,

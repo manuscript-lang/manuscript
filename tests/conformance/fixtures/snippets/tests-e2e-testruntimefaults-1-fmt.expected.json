@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"fault\":\n    let missing: Optional[Int] = none\n    let impossible = missing.get()\n"
+    "fmt": "test \"fault\":\n    let missing: Optional[Int] = none\n    let _impossible = missing.get()\n"
   }
 }

@@ -14,14 +14,14 @@
           "file": "logging-main.ms",
           "line": 8,
           "column": 1,
-          "offset": 453
+          "offset": 455
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/logging-main.ms:8:1: resolution: cannot find module ./records.ms (looked for records.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 8 | from \"./records.ms\" import emit\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/logging-main.ms:8:1: resolution: cannot find module ./records.ms (looked for records.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 8 | import emit from \"./records.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

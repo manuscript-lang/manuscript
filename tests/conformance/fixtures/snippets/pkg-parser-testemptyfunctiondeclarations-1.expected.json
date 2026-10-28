@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Commands; add: from \"@std/process.ms\" import Commands",
+        "message": "unknown type Commands; add: import Commands from \"@std/process.ms\"",
         "position": {
           "file": "pkg-parser-testemptyfunctiondeclarations-1.ms",
           "line": 4,
-          "column": 26,
-          "offset": 175
+          "column": 22,
+          "offset": 171
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/process.ms\" import Commands\n"
+          "replacement": "import Commands from \"@std/process.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-1.ms:4:26: resolution: unknown type Commands; add: from \"@std/process.ms\" import Commands\n   |\n 4 | export def commands() -> Commands: ...\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testemptyfunctiondeclarations-1.ms:4:22: resolution: unknown type Commands; add: import Commands from \"@std/process.ms\"\n   |\n 4 | export fn commands() Commands: ...\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

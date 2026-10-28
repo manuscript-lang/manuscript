@@ -7,33 +7,33 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'",
+        "message": "'def' is not a Manuscript declaration keyword; declare a function as 'fn name(a: Int) Int:' with the result type after the parameters",
         "position": {
-          "file": "foreign-fn.ms",
+          "file": "foreign-def.ms",
           "line": 4,
           "column": 1,
           "offset": 113
         },
         "end": {
-          "file": "foreign-fn.ms",
+          "file": "foreign-def.ms",
           "line": 4,
-          "column": 3,
-          "offset": 115
+          "column": 4,
+          "offset": 116
         },
         "fix": {
           "position": {
-            "file": "foreign-fn.ms",
+            "file": "foreign-def.ms",
             "line": 4,
             "column": 1,
             "offset": 113
           },
           "end": {
-            "file": "foreign-fn.ms",
+            "file": "foreign-def.ms",
             "line": 4,
-            "column": 3,
-            "offset": 115
+            "column": 4,
+            "offset": 116
           },
-          "replacement": "def"
+          "replacement": "fn"
         }
       }
     ],

@@ -348,7 +348,7 @@ fn library_failure(graph: &Graph) -> Failure {
             file: file.as_str().into(),
             pos,
             phase: Phase::Resolution,
-            message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export def main() -> Int from that file, or use check, lint, or test for the library".to_string(),
+            message: "library project has no executable entry; add entry = \"src/main.ms\" under [project] and export fn main() Int from that file, or use check, lint, or test for the library".to_string(),
             end: None,
             fix: None,
         }],

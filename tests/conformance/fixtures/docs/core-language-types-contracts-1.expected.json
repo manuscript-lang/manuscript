@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-types-contracts-1.ms",
           "line": 5,
-          "column": 24,
-          "offset": 194
+          "column": 23,
+          "offset": 193
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "core-language-types-contracts-1.ms",
           "line": 5,
-          "column": 41,
-          "offset": 211
+          "column": 37,
+          "offset": 207
         }
       },
       {
@@ -35,15 +35,15 @@
         "position": {
           "file": "core-language-types-contracts-1.ms",
           "line": 5,
-          "column": 50,
-          "offset": 220
+          "column": 46,
+          "offset": 216
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-contracts-1.ms:5:24: resolution: unknown type Money; declare it with 'type Money:' / 'interface Money:', declare it as a type parameter, or import it\n   |\n 5 |     def charge(amount: Money) -> Result[Receipt, PaymentError]\n   |                        ^\n<DIR>/core-language-types-contracts-1.ms:5:41: resolution: unknown type Receipt; declare it with 'type Receipt:' / 'interface Receipt:', declare it as a type parameter, or import it\n   |\n 5 |     def charge(amount: Money) -> Result[Receipt, PaymentError]\n   |                                         ^\n<DIR>/core-language-types-contracts-1.ms:5:50: resolution: unknown type PaymentError; declare it with 'type PaymentError:' / 'interface PaymentError:', declare it as a type parameter, or import it\n   |\n 5 |     def charge(amount: Money) -> Result[Receipt, PaymentError]\n   |                                                  ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-contracts-1.ms:5:23: resolution: unknown type Money; declare it with 'type Money:' / 'interface Money:', declare it as a type parameter, or import it\n   |\n 5 |     fn charge(amount: Money) Result[Receipt, PaymentError]\n   |                       ^\n<DIR>/core-language-types-contracts-1.ms:5:37: resolution: unknown type Receipt; declare it with 'type Receipt:' / 'interface Receipt:', declare it as a type parameter, or import it\n   |\n 5 |     fn charge(amount: Money) Result[Receipt, PaymentError]\n   |                                     ^\n<DIR>/core-language-types-contracts-1.ms:5:46: resolution: unknown type PaymentError; declare it with 'type PaymentError:' / 'interface PaymentError:', declare it as a type parameter, or import it\n   |\n 5 |     fn charge(amount: Money) Result[Receipt, PaymentError]\n   |                                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

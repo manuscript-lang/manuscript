@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type B:\n    x: Int\n\nimpl B:\n    def m() -> Int:\n        return 1\n\nimpl B:\n    def m() -> Int:\n        return 2\n"
+    "fmt": "type B:\n    x: Int\n\nimpl B:\n    fn m() Int:\n        return 1\n\nimpl B:\n    fn m() Int:\n        return 2\n"
   }
 }

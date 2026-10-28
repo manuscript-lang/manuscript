@@ -22,13 +22,12 @@ Rows are ordered from highest to lowest precedence.
 | `not` | Right to left; its operand includes comparisons |
 | `and` | Left to right, short circuit |
 | `or` | Left to right, short circuit |
-| Conditional `a if c else b` | Right to left; below `or`, above the pipe |
+| `if c: a else: b` | A primary expression; its branches are full expressions; `else if` chains |
 | Pipe `\|` | Left to right; lowest precedence, see [pipe flows](#pipe-flows) |
 
 ```ebnf
 Expression    = Pipe ;
-Pipe          = Conditional, { "|", PipeStep } ;
-Conditional   = OrExpression, [ "if", OrExpression, "else", Conditional ] ;
+Pipe          = OrExpression, { "|", PipeStep } ;
 PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] | Postfix-from-dot ) | "try" ;
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
@@ -42,14 +41,15 @@ Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | Ca
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], Expression ;
 Primary       = IntLiteral | FloatLiteral | DecimalLiteral | StringLiteral
-              | "True" | "False" | "(", ")" | "self" | Name
-              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression | MatchExpression ;
+              | "true" | "false" | "unit" | "self" | Name
+              | "(", Expression, ")" | SharedViewConstruction | ListLiteral | MapLiteral | FunctionExpression | MatchExpression | IfExpression ;
 SharedViewConstruction = "(", SharedContractType, ")", CallArguments ;
 ListLiteral   = "[", [ Expression, { ",", Expression }, [ "," ] ], "]" ;
 MapLiteral    = "{", [ MapEntry, { ",", MapEntry }, [ "," ] ], "}" ;
 MapEntry      = Expression, ":", Expression ;
-FunctionExpression = "lambda", [ CallbackParameters ], FunctionSuite
-                   | "lambda", "(", [ CallbackParameters ], ")", [ "->", Type ], FunctionSuite ;
+FunctionExpression = "fn", [ Name, { ",", Name } ], FunctionSuite
+                   | "fn", "(", [ CallbackParameters ], ")", [ Type ], FunctionSuite ;
+IfExpression  = "if", Expression, ":", Expression, "else", ( ":", Expression | IfExpression ) ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                   MatchArm, { MatchArm }, DEDENT ;
 ```

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"continues after numeric faults\":\n    let valid = 1\n"
+    "fmt": "test \"continues after numeric faults\":\n    let _valid = 1\n"
   }
 }

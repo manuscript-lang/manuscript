@@ -12,16 +12,16 @@
         "message": "K does not satisfy Hashable; it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead",
         "position": {
           "file": "diag-shared-key-not-hashable.ms",
-          "line": 12,
+          "line": 16,
           "column": 13,
-          "offset": 343
+          "offset": 335
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-shared-key-not-hashable.ms:12:13: type: K does not satisfy Hashable; it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead\n    |\n 12 |     let s = Set[K]()\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-shared-key-not-hashable.ms:16:13: type: K does not satisfy Hashable; it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead\n    |\n 16 |     let s = Set[K]()\n    |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

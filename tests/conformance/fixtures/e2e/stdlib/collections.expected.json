@@ -27,22 +27,22 @@
           "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
           "position": {
             "file": "collections.ms",
-            "line": 169,
+            "line": 162,
             "column": 5,
-            "offset": 5791
+            "offset": 5649
           },
           "fix": {
             "position": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 5,
-              "offset": 5757
+              "offset": 5615
             },
             "end": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 8,
-              "offset": 5760
+              "offset": 5618
             },
             "replacement": "var"
           }
@@ -53,22 +53,22 @@
           "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
           "position": {
             "file": "collections.ms",
-            "line": 170,
+            "line": 163,
             "column": 5,
-            "offset": 5810
+            "offset": 5668
           },
           "fix": {
             "position": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 5,
-              "offset": 5757
+              "offset": 5615
             },
             "end": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 8,
-              "offset": 5760
+              "offset": 5618
             },
             "replacement": "var"
           }
@@ -79,22 +79,22 @@
           "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
           "position": {
             "file": "collections.ms",
-            "line": 171,
+            "line": 164,
             "column": 22,
-            "offset": 5846
+            "offset": 5704
           },
           "fix": {
             "position": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 5,
-              "offset": 5757
+              "offset": 5615
             },
             "end": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 8,
-              "offset": 5760
+              "offset": 5618
             },
             "replacement": "var"
           }
@@ -105,22 +105,22 @@
           "message": "cannot change `list`: `list` is declared with let, which is immutable including its contents; declare it `var list` to change it",
           "position": {
             "file": "collections.ms",
-            "line": 171,
-            "column": 49,
-            "offset": 5873
+            "line": 164,
+            "column": 48,
+            "offset": 5730
           },
           "fix": {
             "position": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 5,
-              "offset": 5757
+              "offset": 5615
             },
             "end": {
               "file": "collections.ms",
-              "line": 168,
+              "line": 161,
               "column": 8,
-              "offset": 5760
+              "offset": 5618
             },
             "replacement": "var"
           }
@@ -129,154 +129,154 @@
           "code": "MS3060",
           "phase": "type",
           "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 167,
+            "column": 5,
+            "offset": 5799
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 5,
+              "offset": 5759
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 8,
+              "offset": 5762
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 168,
+            "column": 5,
+            "offset": 5819
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 5,
+              "offset": 5759
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 8,
+              "offset": 5762
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 169,
+            "column": 22,
+            "offset": 5856
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 5,
+              "offset": 5759
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 166,
+              "column": 8,
+              "offset": 5762
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 172,
+            "column": 5,
+            "offset": 5924
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 171,
+              "column": 5,
+              "offset": 5892
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 171,
+              "column": 8,
+              "offset": 5895
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
+          "position": {
+            "file": "collections.ms",
+            "line": 173,
+            "column": 5,
+            "offset": 5939
+          },
+          "fix": {
+            "position": {
+              "file": "collections.ms",
+              "line": 171,
+              "column": 5,
+              "offset": 5892
+            },
+            "end": {
+              "file": "collections.ms",
+              "line": 171,
+              "column": 8,
+              "offset": 5895
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
           "position": {
             "file": "collections.ms",
             "line": 174,
-            "column": 5,
-            "offset": 5943
-          },
-          "fix": {
-            "position": {
-              "file": "collections.ms",
-              "line": 173,
-              "column": 5,
-              "offset": 5903
-            },
-            "end": {
-              "file": "collections.ms",
-              "line": 173,
-              "column": 8,
-              "offset": 5906
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
-          "position": {
-            "file": "collections.ms",
-            "line": 175,
-            "column": 5,
-            "offset": 5963
-          },
-          "fix": {
-            "position": {
-              "file": "collections.ms",
-              "line": 173,
-              "column": 5,
-              "offset": 5903
-            },
-            "end": {
-              "file": "collections.ms",
-              "line": 173,
-              "column": 8,
-              "offset": 5906
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map`: `map` is declared with let, which is immutable including its contents; declare it `var map` to change it",
-          "position": {
-            "file": "collections.ms",
-            "line": 176,
             "column": 22,
-            "offset": 6000
+            "offset": 5971
           },
           "fix": {
             "position": {
               "file": "collections.ms",
-              "line": 173,
+              "line": 171,
               "column": 5,
-              "offset": 5903
+              "offset": 5892
             },
             "end": {
               "file": "collections.ms",
-              "line": 173,
+              "line": 171,
               "column": 8,
-              "offset": 5906
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
-          "position": {
-            "file": "collections.ms",
-            "line": 179,
-            "column": 5,
-            "offset": 6069
-          },
-          "fix": {
-            "position": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 5,
-              "offset": 6037
-            },
-            "end": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 8,
-              "offset": 6040
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
-          "position": {
-            "file": "collections.ms",
-            "line": 180,
-            "column": 5,
-            "offset": 6084
-          },
-          "fix": {
-            "position": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 5,
-              "offset": 6037
-            },
-            "end": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 8,
-              "offset": 6040
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `set`: `set` is declared with let, which is immutable including its contents; declare it `var set` to change it",
-          "position": {
-            "file": "collections.ms",
-            "line": 181,
-            "column": 22,
-            "offset": 6116
-          },
-          "fix": {
-            "position": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 5,
-              "offset": 6037
-            },
-            "end": {
-              "file": "collections.ms",
-              "line": 178,
-              "column": 8,
-              "offset": 6040
+              "offset": 5895
             },
             "replacement": "var"
           }

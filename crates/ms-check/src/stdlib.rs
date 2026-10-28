@@ -1603,7 +1603,7 @@ mod tests {
 
     #[test]
     fn a_bodied_inherent_impl_becomes_an_interface_and_a_contract_impl() {
-        let text = "export type Box[T]: ...\n\nimpl Box[T]:\n    def native() -> Int: ...\n\nimpl Box[T]:\n    def size() -> Int:\n        return 1\n";
+        let text = "export type Box[T]: ...\n\nimpl Box[T]:\n    fn native() Int: ...\n\nimpl Box[T]:\n    fn size() Int:\n        return 1\n";
         let (native, source) = halves(text).unwrap().expect("mixed");
         assert_eq!(native.file.as_ref(), "@std/t.ms");
         assert_eq!(source.file.as_ref(), "@std/t.ms+source");
@@ -1622,14 +1622,14 @@ mod tests {
 
     #[test]
     fn a_default_argument_on_a_source_method_is_rejected() {
-        let text = "export type Box: ...\n\nimpl Box:\n    def native() -> Int: ...\n\nimpl Box:\n    def size(n: Int = 1) -> Int:\n        return n\n";
+        let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n\nimpl Box:\n    fn size(n: Int = 1) Int:\n        return n\n";
         let error = halves(text).unwrap_err();
         assert!(error.contains("default argument"), "{error}");
     }
 
     #[test]
     fn a_file_without_bodies_is_not_split() {
-        let text = "export type Box: ...\n\nimpl Box:\n    def native() -> Int: ...\n";
+        let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
         assert!(halves(text).unwrap().is_none());
     }
 }

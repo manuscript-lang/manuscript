@@ -14,13 +14,13 @@
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-11.ms",
           "line": 6,
           "column": 5,
-          "offset": 251
+          "offset": 224
         },
         "end": {
           "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-11.ms",
           "line": 6,
           "column": 9,
-          "offset": 255
+          "offset": 228
         },
         "fix": {
           "position": {
@@ -31,11 +31,11 @@
           },
           "end": {
             "file": "pkg-checker-testredundantpreludeimportdiagnosticsandfixes-11.ms",
-            "line": 4,
-            "column": 27,
-            "offset": 223
+            "line": 7,
+            "column": 29,
+            "offset": 258
           },
-          "replacement": ""
+          "replacement": "\n    # keep me\n    "
         }
       }
     ],

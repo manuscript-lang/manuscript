@@ -1,1 +1,1 @@
-error parse 1:1:0 "'fn' is not a Manuscript declaration keyword; declare a function as 'def name(a: Int) -> Int:' with the result type after '->'"
+error parse 2:5:19 "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"

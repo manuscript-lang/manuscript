@@ -14,7 +14,7 @@
           "file": "sized-conversions-reject.ms",
           "line": 6,
           "column": 20,
-          "offset": 180
+          "offset": 176
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "sized-conversions-reject.ms",
           "line": 7,
           "column": 21,
-          "offset": 202
+          "offset": 198
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "sized-conversions-reject.ms",
           "line": 8,
           "column": 33,
-          "offset": 244
+          "offset": 240
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "sized-conversions-reject.ms",
           "line": 9,
           "column": 24,
-          "offset": 277
+          "offset": 273
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "sized-conversions-reject.ms",
           "line": 10,
           "column": 28,
-          "offset": 315
+          "offset": 311
         }
       }
     ],

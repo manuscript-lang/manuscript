@@ -14,13 +14,13 @@
           "file": "range-operator-chain.ms",
           "line": 5,
           "column": 18,
-          "offset": 155
+          "offset": 151
         },
         "end": {
           "file": "range-operator-chain.ms",
           "line": 5,
           "column": 20,
-          "offset": 157
+          "offset": 153
         }
       }
     ],

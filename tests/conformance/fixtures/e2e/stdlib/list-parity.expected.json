@@ -24,23 +24,23 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "cannot change `values` while `insert` borrows it (method value, at 88:25); finish using `insert` before this, or give `insert` its own value by ending its initializer with `.clone()`",
+          "message": "cannot change `values` while `insert` borrows it (method value, at 87:25); finish using `insert` before this, or give `insert` its own value by ending its initializer with `.clone()`",
           "position": {
             "file": "list-parity.ms",
-            "line": 89,
-            "column": 51,
-            "offset": 2903
+            "line": 88,
+            "column": 42,
+            "offset": 2833
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "cannot use `values` while closure `insert` (made at 88:25) changes it; call or drop the closure first, or copy the value before creating it",
+          "message": "cannot use `values` while closure `insert` (made at 87:25) changes it; call or drop the closure first, or copy the value before creating it",
           "position": {
             "file": "list-parity.ms",
-            "line": 90,
+            "line": 89,
             "column": 17,
-            "offset": 2923
+            "offset": 2853
           }
         }
       ]

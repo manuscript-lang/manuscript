@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/json.ms\" import parse, JsonError\nfrom \"@std/test.ms\" import expect_equal, expect_ok, expect_error, expect_some\n\ntest \"typed JSON and Optional payloads\":\n    let number = try expect_ok(parse[Int](\"3\"))\n    try expect_equal(number, 3)\n    try expect_error(parse[Int](\"true\")) | try expect_equal(JsonError.InvalidData)\n    try expect_some([number].first()) | try expect_equal(3)\n"
+    "fmt": "import {parse, JsonError} from \"@std/json.ms\"\nimport {expect_equal, expect_ok, expect_error, expect_some} from \"@std/test.ms\"\n\ntest \"typed JSON and Optional payloads\":\n    let number = try expect_ok(parse[Int](\"3\"))\n    try expect_equal(number, 3)\n    try expect_error(parse[Int](\"true\")) | try expect_equal(JsonError.InvalidData)\n    try expect_some([number].first()) | try expect_equal(3)\n"
   }
 }

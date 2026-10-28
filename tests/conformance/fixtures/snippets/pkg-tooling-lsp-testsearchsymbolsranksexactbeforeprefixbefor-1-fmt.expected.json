@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def parse_all() -> Int:\n    return 1\n\ndef reparse() -> Int:\n    return 2\n\ndef parse() -> Int:\n    return 3\n\nexport def main() -> Int:\n    return parse()\n"
+    "fmt": "fn parse_all() Int:\n    return 1\n\nfn reparse() Int:\n    return 2\n\nfn parse() Int:\n    return 3\n\nexport fn main() Int:\n    return parse()\n"
   }
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/fs.ms\" import filesystem, FileSystemError\n\ndef copy_notes() -> Result[Unit, FileSystemError]:\n    with let source = try filesystem().open(\"notes.txt\", flags: \"r\", mode: 0):\n        let contents = try source.read_file(max_bytes: 1048576)\n        try filesystem().write_file_bytes(\n            path: \"backup.txt\", data: contents, replace: True\n        )\n\n    return ok(())\n"
+    "fmt": "import {filesystem, FileSystemError} from \"@std/fs.ms\"\n\nfn copy_notes() Result[Unit, FileSystemError]:\n    with let source = try filesystem().open(\"notes.txt\", flags: \"r\", mode: 0):\n        let contents = try source.read_file(max_bytes: 1048576)\n        try filesystem().write_file_bytes(\n            path: \"backup.txt\", data: contents, replace: true\n        )\n\n    return ok(unit)\n"
   }
 }

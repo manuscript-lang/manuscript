@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-4.ms",
           "line": 4,
-          "column": 28,
-          "offset": 181
+          "column": 24,
+          "offset": 177
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonError\n"
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-4.ms:4:28: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def wrong(value: Error) -> JsonError:\n   |                            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-4.ms:4:24: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn wrong(value: Error) JsonError:\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

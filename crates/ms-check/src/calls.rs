@@ -434,7 +434,7 @@ impl Checker {
         if !named {
             self.type_error(
                 entry.value.pos,
-                "process entry must name a top-level def: it runs again in another process, which cannot carry a lambda or the values it captures; move the work into a def taking the channel".to_string(),
+                "process entry must name a top-level fn: it runs again in another process, which cannot carry a closure or the values it captures; move the work into a fn taking the channel".to_string(),
             );
         }
     }
@@ -567,7 +567,7 @@ impl Checker {
         if self.function_symbol(entry.value).is_none() {
             self.type_error(
                 entry.value.pos,
-                "a worker entry must be the name of a top-level def; lambdas, local functions and captured values cannot run on another thread, so move the work into a def and send what it needs through the worker's channel",
+                "a worker entry must be the name of a top-level fn; closures, local functions and captured values cannot run on another thread, so move the work into a fn and send what it needs through the worker's channel",
             );
         }
     }

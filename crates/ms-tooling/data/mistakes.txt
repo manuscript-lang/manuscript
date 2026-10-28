@@ -7,24 +7,24 @@
 
 wrong: print("hi")
 right: stdout().write("hi\n").get()
-setup: from "@std/io.ms" import stdout
+setup: import stdout from "@std/io.ms"
 diag: no built-in print
 
 wrong: stdout().write("hi\n")
 right: stdout().write("hi\n").get()
-setup: from "@std/io.ms" import stdout
+setup: import stdout from "@std/io.ms"
 diag: this statement discards
 
-wrong: "n={n}"
-right: f"n={n}"
-setup: from "@std/io.ms" import stdout
+wrong: f"n={n}"
+right: "n={n}"
+setup: import stdout from "@std/io.ms"
 body: let n = 1;;stdout().write({}).get()
-diag: -
+diag: no f-string prefix
 
-wrong: else if c:
-right: elif c:
-body: let c = True;;if c:;;    return 1;;{};;    return 2
-diag: no 'else if'
+wrong: elif c:
+right: else if c:
+body: let c = true;;if c:;;    return 1;;{};;    return 2
+diag: there is no 'elif'
 
 wrong: let n = 1;;n = 2
 right: var n = 1;;n = 2
@@ -63,8 +63,18 @@ diag: no '++' operator
 
 wrong: a && b
 right: a and b
-body: let a = True;;let b = True;;let c = {}
+body: let a = true;;let b = true;;let c = {}
 diag: not an operator
+
+wrong: True
+right: true
+body: let b = {}
+diag: booleans are lowercase
+
+wrong: lambda x: x
+right: fn(x: Int) Int: x
+body: let f = {}
+diag: there is no 'lambda'
 
 wrong: null
 right: none
@@ -73,6 +83,6 @@ diag: no null
 
 wrong: let v = try f()
 right: let v = f().get(0)
-setup: def f() -> Result[Int, Error]: ok(1)
+setup: fn f() Result[Int, Error]: ok(1)
 body: {}
 diag: try requires an enclosing Result

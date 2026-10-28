@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(lambda ch: work())",
+        "message": "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(fn ch: work())",
         "position": {
           "file": "foreign-go.ms",
           "line": 5,
           "column": 5,
-          "offset": 147
+          "offset": 143
         },
         "end": {
           "file": "foreign-go.ms",
           "line": 5,
           "column": 7,
-          "offset": 149
+          "offset": 145
         }
       }
     ],

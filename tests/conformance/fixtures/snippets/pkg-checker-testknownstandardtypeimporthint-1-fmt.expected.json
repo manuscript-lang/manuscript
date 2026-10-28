@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def boxed(value: SetBuilder[Int]) -> Unit: return\n"
+    "fmt": "fn boxed(value: SetBuilder[Int]) Unit: return\n"
   }
 }

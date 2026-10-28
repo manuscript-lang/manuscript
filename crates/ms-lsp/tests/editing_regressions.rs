@@ -40,13 +40,13 @@ fn inside_value(source: &str) -> (usize, usize) {
 
 #[test]
 fn completion_survives_an_earlier_unmatched_opener() {
-    let valid = "def valid(value: Int) -> Int:\n    return value\n";
+    let valid = "fn valid(value: Int) Int:\n    return value\n";
     for source in [
-        format!("def broken(\n\n{valid}"),
-        format!("def broken(\n    a: Int,\n\n{valid}"),
-        format!("def broken(\r\n\r\n{}", valid.replace('\n', "\r\n")),
-        format!("def broken(a: Int):\n    return foo(\n\n{valid}"),
-        format!("{valid}\ndef broken(\n"),
+        format!("fn broken(\n\n{valid}"),
+        format!("fn broken(\n    a: Int,\n\n{valid}"),
+        format!("fn broken(\r\n\r\n{}", valid.replace('\n', "\r\n")),
+        format!("fn broken(a: Int):\n    return foo(\n\n{valid}"),
+        format!("{valid}\nfn broken(\n"),
     ] {
         let (line, character) = inside_value(&source);
         assert!(
@@ -59,12 +59,12 @@ fn completion_survives_an_earlier_unmatched_opener() {
 #[test]
 fn completion_works_inside_fstring_interpolation() {
     for expression in [
-        "f\"hello {name}\"",
-        "f\"{name} and {name}\"",
-        "f\"a {greet(name)}\"",
-        "f\"a {id(\"x\")} {name}\"",
+        "\"hello {name}\"",
+        "\"{name} and {name}\"",
+        "\"a {greet(name)}\"",
+        "\"a {id(\"x\")} {name}\"",
     ] {
-        let source = format!("def greet(name: String) -> String:\n    return {expression}\n");
+        let source = format!("fn greet(name: String) String:\n    return {expression}\n");
         let column = source.split('\n').nth(1).unwrap().rfind("name").unwrap() + 3;
         assert!(
             labels(&source, 1, column).contains(&"name".to_string()),
@@ -72,8 +72,8 @@ fn completion_works_inside_fstring_interpolation() {
         );
     }
     // Literal text and an escaped brace stay suppressed.
-    for expression in ["f\"hel{name}lo\"", "f\"\\{na\""] {
-        let source = format!("def greet(name: String) -> String:\n    return {expression}\n");
+    for expression in ["\"hel{name}lo\"", "\"\\{na\""] {
+        let source = format!("fn greet(name: String) String:\n    return {expression}\n");
         let column = source.split('\n').nth(1).unwrap().find("hel").unwrap_or(0)
             + if expression.contains("hel") { 3 } else { 14 };
         let found = labels(&source, 1, column);
@@ -83,7 +83,7 @@ fn completion_works_inside_fstring_interpolation() {
 
 #[test]
 fn completion_offers_members_inside_fstring_interpolation() {
-    let source = "def greet(name: String) -> String:\n    return f\"hello {name.}\"\n";
+    let source = "fn greet(name: String) String:\n    return \"hello {name.}\"\n";
     let column = source.split('\n').nth(1).unwrap().find("name.").unwrap() + 5;
     let found = labels(source, 1, column);
     assert!(found.iter().any(|l| l == "len" || l == "trim"), "{found:?}");
@@ -142,19 +142,19 @@ fn title(action: &Json) -> &str {
 
 #[test]
 fn removing_the_last_unused_import_drops_the_separator() {
-    let body = "\ndef root(value: Float) -> Float:\n    return sqrt(value)\n";
+    let body = "\nfn root(value: Float) Float:\n    return sqrt(value)\n";
     for (source, expected) in [
         (
-            "from \"@std/math.ms\" import sqrt, sin\n",
-            "from \"@std/math.ms\" import sqrt\n",
+            "import {sqrt, sin} from \"@std/math.ms\"\n",
+            "import {sqrt} from \"@std/math.ms\"\n",
         ),
         (
-            "from \"@std/math.ms\" import (sqrt, sin,)\n",
-            "from \"@std/math.ms\" import (sqrt, )\n",
+            "import {sqrt, sin,} from \"@std/math.ms\"\n",
+            "import {sqrt, } from \"@std/math.ms\"\n",
         ),
         (
-            "from \"@std/math.ms\" import sin, sqrt\n",
-            "from \"@std/math.ms\" import sqrt\n",
+            "import {sin, sqrt} from \"@std/math.ms\"\n",
+            "import {sqrt} from \"@std/math.ms\"\n",
         ),
     ] {
         let source = format!("{source}{body}");
@@ -177,7 +177,7 @@ fn organize_imports_moves_whole_multiline_declarations() {
         let action = found.first().expect("organize imports");
         let organized = apply(&source, action);
         assert!(
-            organized.starts_with("from \"@std/math.ms\" import (") && organized.contains("sqrt,"),
+            organized.starts_with("import {") && organized.contains("sqrt,"),
             "{organized}"
         );
         assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());
@@ -185,7 +185,7 @@ fn organize_imports_moves_whole_multiline_declarations() {
     }
 }
 
-const IDENTITY: &str = "def identity(value: Int) -> Int:\n    return value\n";
+const IDENTITY: &str = "fn identity(value: Int) Int:\n    return value\n";
 
 fn rename_edit(uri: &str) -> Json {
     let d = Document {
@@ -303,11 +303,11 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
             &text::Range {
                 start: Position {
                     line: 0,
-                    character: 4
+                    character: 3
                 },
                 end: Position {
                     line: 0,
-                    character: 9
+                    character: 8
                 },
             }
             .json()
@@ -380,18 +380,18 @@ fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
 fn unresolved_standard_name_offers_an_add_import_fix() {
     for (source, expected) in [
         (
-            "def size(b: Bytes) -> Int:\n    return 0\n",
-            "from \"@std/bytes.ms\" import Bytes\ndef size(b: Bytes) -> Int:\n    return 0\n",
+            "fn size(b: Bytes) Int:\n    return 0\n",
+            "import Bytes from \"@std/bytes.ms\"\nfn size(b: Bytes) Int:\n    return 0\n",
         ),
         (
-            "from \"@std/math.ms\" import sqrt\n\ndef size(b: Bytes) -> Int:\n    return 0\n",
-            "from \"@std/math.ms\" import sqrt\nfrom \"@std/bytes.ms\" import Bytes\n\ndef size(b: Bytes) -> Int:\n    return 0\n",
+            "import sqrt from \"@std/math.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
+            "import sqrt from \"@std/math.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn size(b: Bytes) Int:\n    return 0\n",
         ),
     ] {
         let (_, found) = actions(source, "quickfix");
         let action = found
             .iter()
-            .find(|a| title(a) == "Add `from \"@std/bytes.ms\" import Bytes`")
+            .find(|a| title(a) == "Add `import Bytes from \"@std/bytes.ms\"`")
             .expect("add import fix");
         assert_eq!(apply(source, action), expected);
     }
@@ -406,7 +406,7 @@ fn project_exports_are_offered_before_standard_ones() {
         "export type Bytes:\n    size: Int\n",
     )
     .unwrap();
-    let source = "def size(b: Bytes) -> Int:\n    return 0\n";
+    let source = "fn size(b: Bytes) Int:\n    return 0\n";
     let d = Document::new(ws.uri("main.ms"), source);
     let checked = analyze(&d, &Documents::new());
     let whole = Range {
@@ -422,10 +422,10 @@ fn project_exports_are_offered_before_standard_ones() {
     assert_eq!(
         titles,
         [
-            "Add `from \"./lib/blobs.ms\" import Bytes`",
-            "Add `from \"@std/bytes.ms\" import Bytes`"
+            "Add `import Bytes from \"./lib/blobs.ms\"`",
+            "Add `import Bytes from \"@std/bytes.ms\"`"
         ]
     );
     let first = found.iter().find(|a| title(a) == titles[0]).unwrap();
-    assert!(apply(source, first).starts_with("from \"./lib/blobs.ms\" import Bytes\n"));
+    assert!(apply(source, first).starts_with("import Bytes from \"./lib/blobs.ms\"\n"));
 }

@@ -9,19 +9,19 @@
       {
         "code": "MS3050",
         "phase": "type",
-        "message": "non-exhaustive match; missing cases: B, or add a final 'case _:' arm; add the arms 'case B(x):'",
+        "message": "non-exhaustive match; missing cases: B, or add a final '_:' arm; add the arms 'case B(x):'",
         "position": {
           "file": "diag-match-missing-arm.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 187
+          "offset": 184
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-match-missing-arm.ms:8:5: type: non-exhaustive match; missing cases: B, or add a final 'case _:' arm; add the arms 'case B(x):'\n   |\n 8 |     match s:\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-match-missing-arm.ms:9:5: type: non-exhaustive match; missing cases: B, or add a final '_:' arm; add the arms 'case B(x):'\n   |\n 9 |     match s:\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

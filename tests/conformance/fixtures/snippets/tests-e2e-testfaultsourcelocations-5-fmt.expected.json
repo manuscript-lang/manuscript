@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/io.ms\" import read_line, ReadStream, stdin\n\ndef limit() -> Int:\n    return 1 / 0\n\ndef probe(input: ReadStream) -> Bool:\n    if let line = read_line(input, limit()):\n        return line.is_some()\n\n    return False\n\nexport def main() -> Int:\n    if probe(stdin()): return 1\n\n    return 0\n"
+    "fmt": "import {read_line, ReadStream, stdin} from \"@std/io.ms\"\n\nfn limit() Int:\n    return 1 / \"\".byte_length()\n\nfn probe(input: ReadStream) Bool:\n    if let line = read_line(input, limit()):\n        return line.is_some()\n\n    return false\n\nexport fn main() Int:\n    if probe(stdin()): return 1\n\n    return 0\n"
   }
 }

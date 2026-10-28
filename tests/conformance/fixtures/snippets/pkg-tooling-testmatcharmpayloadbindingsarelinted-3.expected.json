@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding parse; add: from \"@std/csv.ms\" import parse",
+        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
         "position": {
           "file": "pkg-tooling-testmatcharmpayloadbindingsarelinted-3.ms",
           "line": 5,
           "column": 11,
-          "offset": 190
+          "offset": 186
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/csv.ms\" import parse\n"
+          "replacement": "import parse from \"@std/csv.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-testmatcharmpayloadbindingsarelinted-3.ms:5:11: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n   |\n 5 |     match parse(\"1\"):\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-testmatcharmpayloadbindingsarelinted-3.ms:5:11: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 5 |     match parse(\"1\"):\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

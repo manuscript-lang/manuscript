@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal
-from "@std/queue.ms" import Queue
+import expect_equal from "@std/test.ms"
+import Queue from "@std/queue.ms"
 
 test "each paragraph develops one case":
     var queue = Queue[Int]()
@@ -14,11 +14,11 @@ test "each paragraph develops one case":
     let missing: Optional[Int] = none
     try expect_equal(queue.dequeue(), missing)
 
-def prepare(value: Int) -> Int:
+fn prepare(value: Int) Int:
     let adjusted = value + 1
     return adjusted
 
-def guarded(value: Int) -> Int:
+fn guarded(value: Int) Int:
     let adjusted = value + 1
     if adjusted < 0: return 0
     if adjusted > 10: return 10
@@ -28,7 +28,7 @@ def guarded(value: Int) -> Int:
     let result = adjusted * 2
     return result
 
-def sections() -> Unit:
+fn sections() Unit:
     let first = 1
 
     # Explain the next stage.
@@ -38,20 +38,20 @@ def sections() -> Unit:
     # Report its result.
     record(first + second)
 
-def callbacks() -> Unit:
+fn callbacks() Unit:
     record(0)
 
-    let transform = lambda (value: Int) -> Int:
+    let transform = fn(value: Int) Int:
         let adjusted = value + 1
         return adjusted
 
     record(transform(2))
 
     consume(
-        lambda:
+        fn:
             let value = 3
             return value
     )
 
     record(4)
-    consume(lambda: return 7)
+    consume(fn: return 7)

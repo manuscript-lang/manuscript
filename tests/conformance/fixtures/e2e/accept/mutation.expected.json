@@ -24,12 +24,23 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "implementation of increment is declared var def but Counter declares it def; an operation that changes its receiver is declared `var def` in the interface too",
+          "message": "implementation of increment is declared var fn but Counter declares it fn; an operation that changes its receiver is declared `var fn` in the interface too",
           "position": {
             "file": "mutation.ms",
-            "line": 14,
-            "column": 13,
-            "offset": 513
+            "line": 13,
+            "column": 12,
+            "offset": 467
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "Counter is an interface and cannot be constructed; a type with 'impl Counter for <Type>:' passes wherever Counter is expected, so pass the value directly",
+          "position": {
+            "file": "mutation.ms",
+            "line": 39,
+            "column": 16,
+            "offset": 993
           }
         }
       ]

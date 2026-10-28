@@ -1,12 +1,12 @@
-def helper(left: Int, right: Int) -> Int:
+fn helper(left: Int, right: Int) Int:
     return left + right
-export def defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: Callable[[Int], Int] = (lambda (value: Int) -> Int:
+export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(Int) Int = (fn(value: Int) Int:
     return value + 1
-)) -> Int:
+)) Int:
     return callback(second)
-def answer(value: Int = (lambda () -> Int:
+fn answer(value: Int = (fn() Int:
     var current = 0
     current = current + 1
     return current
-)()) -> Int:
+)()) Int:
     return value

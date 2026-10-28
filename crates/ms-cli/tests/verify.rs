@@ -8,7 +8,7 @@ fn dash_prefixed_target_reaches_every_verification_step() {
     std::fs::create_dir_all(&root).unwrap();
     std::fs::write(
         root.join("-input.ms"),
-        "from \"@std/test.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n",
+        "import expect_equal from \"@std/test.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, 2)\n",
     )
     .unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_ms"))
@@ -41,7 +41,7 @@ fn no_test_succeeds_only_when_source_checks_pass() {
     let root = std::env::temp_dir().join(format!("ms-cli-verify-{}", std::process::id()));
     std::fs::create_dir_all(&root).unwrap();
     let path = root.join("main.ms");
-    std::fs::write(&path, "def main() -> Int:\n    return 0\n").unwrap();
+    std::fs::write(&path, "fn main() Int:\n    return 0\n").unwrap();
     for json in [false, true] {
         let mut command = Command::new(env!("CARGO_BIN_EXE_ms"));
         command
@@ -62,8 +62,8 @@ fn no_test_succeeds_only_when_source_checks_pass() {
     }
 
     for source in [
-        "def main() -> Int:\n    return missing\n",
-        "def main( ) -> Int:\n    return 0\n",
+        "fn main() Int:\n    return missing\n",
+        "fn main( ) Int:\n    return 0\n",
     ] {
         std::fs::write(&path, source).unwrap();
         let out = Command::new(env!("CARGO_BIN_EXE_ms"))

@@ -301,14 +301,13 @@ impl Checker {
     // ------------------------------------------------------------ diagnostics
 
     fn import_reported(&self, name: &str, pos: Pos) -> bool {
-        let suffix = format!(" import {name}");
+        let hint = format!("; add: import {name} from ");
         let file = self.current_file();
         let _ = pos;
-        self.p.diagnostics.iter().any(|d| {
-            d.file.as_ref() == file.as_str()
-                && d.message.contains("; add: from ")
-                && d.message.ends_with(&suffix)
-        })
+        self.p
+            .diagnostics
+            .iter()
+            .any(|d| d.file.as_ref() == file.as_str() && d.message.contains(&hint))
     }
 
     /// Reports a diagnostic, applying the checker's suppression rules.
@@ -1221,7 +1220,7 @@ impl Checker {
         if name.starts_with("msrt_") || name.starts_with("msstd_") {
             self.type_error(
                 pos,
-                format!("extern def {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
+                format!("extern fn {name} names a runtime-internal symbol; msrt_ and msstd_ natives are reserved for bundled standard modules, so call the standard library instead"),
             );
         }
         if !f.type_params.is_empty() {
@@ -1490,7 +1489,7 @@ impl Checker {
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must be a nongeneric zero-argument function; declare def make_fixture() -> ConcreteFixture",
+                "make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture",
             );
             return;
         }

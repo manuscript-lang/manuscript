@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-4.ms",
           "line": 8,
           "column": 19,
-          "offset": 239
+          "offset": 231
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module",
         "position": {
           "file": "tests-e2e-testboundedmatchnative-4.ms",
           "line": 9,
           "column": 12,
-          "offset": 267
+          "offset": 259
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testboundedmatchnative-4.ms:8:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'def Shape(...) -> T:', or import it from a module\n   |\n 8 |     let shapes = [Shape.Circle(2)]\n   |                   ^\n<DIR>/tests-e2e-testboundedmatchnative-4.ms:9:12: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n   |\n 9 |     return area(shapes.get(fail() * 0))\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testboundedmatchnative-4.ms:8:19: resolution: unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 8 |     let shapes = [Shape.Circle(2)]\n   |                   ^\n<DIR>/tests-e2e-testboundedmatchnative-4.ms:9:12: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 9 |     return area(shapes.get(fail() * 0))\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

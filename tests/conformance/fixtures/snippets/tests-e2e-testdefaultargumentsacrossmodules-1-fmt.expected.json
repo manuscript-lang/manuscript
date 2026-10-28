@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def private_value() -> Int:\n    return 7\n\nexport def defaulted(value: Int = private_value()) -> Int:\n    return value\n"
+    "fmt": "fn private_value() Int:\n    return 7\n\nexport fn defaulted(value: Int = private_value()) Int:\n    return value\n"
   }
 }

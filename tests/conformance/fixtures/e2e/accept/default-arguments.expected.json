@@ -3,52 +3,51 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "default-arguments.ms::omitted and explicit defaults",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "default-arguments.ms::default evaluation order and repeated calls",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "default-arguments.ms::function values and captures",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "default-arguments.ms::implementation and bound method defaults",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN default-arguments.ms::omitted and explicit defaults\nPASS default-arguments.ms::omitted and explicit defaults\nRUN default-arguments.ms::default evaluation order and repeated calls\nPASS default-arguments.ms::default evaluation order and repeated calls\nRUN default-arguments.ms::function values and captures\nPASS default-arguments.ms::function values and captures\nRUN default-arguments.ms::implementation and bound method defaults\nPASS default-arguments.ms::implementation and bound method defaults\n4 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "Add is an interface and cannot be constructed; a type with 'impl Add for <Type>:' passes wherever Add is expected, so pass the value directly",
+          "position": {
+            "file": "default-arguments.ms",
+            "line": 107,
+            "column": 16,
+            "offset": 3109
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -59,11 +58,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

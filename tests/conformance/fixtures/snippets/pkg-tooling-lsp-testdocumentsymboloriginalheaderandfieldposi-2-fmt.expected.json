@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "# α😀\ninterface Read:\n    def get() -> Int\n\ntype Box:\n    value: Int  # 😀é\n\nimpl Read for Box:\n    def get() -> Int:\n        return self.value\n\ndef neighbor() -> Int: 1\n"
+    "fmt": "# α😀\ninterface Read:\n    fn get() Int\n\ntype Box:\n    value: Int  # 😀é\n\nimpl Read for Box:\n    fn get() Int:\n        return self.value\n\nfn neighbor() Int: 1\n"
   }
 }

@@ -53,16 +53,16 @@ export type Offset:
 Another module can add its own implementation:
 
 ```text
-from "./offset.ms" import Offset
+import Offset from "./offset.ms"
 
 export interface Double:
-    def doubled() -> Int
+    fn doubled() Int
 
 impl Double for Offset:
-    def doubled() -> Int:
+    fn doubled() Int:
         return self.delta * 2
 
-export def double_view(value: Offset) -> Double:
+export fn double_view(value: Offset) Double:
     return value
 ```
 

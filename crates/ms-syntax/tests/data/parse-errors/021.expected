@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 31:10:602 "expected 'let' or 'var'; with binds its resource: with let file = open(path):"

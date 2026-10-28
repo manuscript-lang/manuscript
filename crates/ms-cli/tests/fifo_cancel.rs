@@ -20,8 +20,8 @@ fn a_group_timeout_cancels_tasks_blocked_on_a_fifo() {
     std::fs::write(
         &source,
         PROGRAM.replace(
-            "import filesystem\n",
-            "import filesystem\nfrom \"@std/process.ms\" import arguments\n",
+            "import filesystem from \"@std/fs.ms\"\n",
+            "import filesystem from \"@std/fs.ms\"\nimport arguments from \"@std/process.ms\"\n",
         ),
     )
     .unwrap();

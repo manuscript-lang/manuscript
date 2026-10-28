@@ -14,14 +14,14 @@
           "file": "local-extensions-second.ms",
           "line": 5,
           "column": 1,
-          "offset": 334
+          "offset": 336
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/local-extensions-second.ms:5:1: resolution: cannot find module ./domain.ms (looked for domain.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 5 | from \"./domain.ms\" import Item, Box, Holder, Choice\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/local-extensions-second.ms:5:1: resolution: cannot find module ./domain.ms (looked for domain.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 5 | import {Item, Box, Holder, Choice} from \"./domain.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

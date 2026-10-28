@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-50.ms:4:1: resolution: cannot find module ./contracts.ms (looked for contracts.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | from \"./contracts.ms\" import First, Second, Third, Fourth, Fifth\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-50.ms:4:1: resolution: cannot find module ./contracts.ms (looked for contracts.ms); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | import {First, Second, Third, Fourth, Fifth} from \"./contracts.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

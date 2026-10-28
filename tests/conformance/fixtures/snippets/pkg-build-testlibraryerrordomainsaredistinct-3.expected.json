@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
         "position": {
           "file": "pkg-build-testlibraryerrordomainsaredistinct-3.ms",
           "line": 4,
-          "column": 16,
-          "offset": 158
+          "column": 12,
+          "offset": 154
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonError\n"
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding JsonError; add: from \"@std/json.ms\" import JsonError",
+        "message": "unknown binding JsonError; add: import JsonError from \"@std/json.ms\"",
         "position": {
           "file": "pkg-build-testlibraryerrordomainsaredistinct-3.ms",
           "line": 5,
           "column": 12,
-          "offset": 180
+          "offset": 176
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonError\n"
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:4:16: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def wrong() -> JsonError:\n   |                ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:5:12: resolution: unknown binding JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 5 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:4:12: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn wrong() JsonError:\n   |            ^\n<DIR>/pkg-build-testlibraryerrordomainsaredistinct-3.ms:5:12: resolution: unknown binding JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 5 |     return JsonError.PermissionDenied\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder",
+        "message": "unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-35.ms",
           "line": 5,
           "column": 13,
-          "offset": 176
+          "offset": 172
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/collections.ms\" import SetBuilder\n"
+          "replacement": "import SetBuilder from \"@std/collections.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-35.ms:5:13: resolution: unknown binding SetBuilder; add: from \"@std/collections.ms\" import SetBuilder\n   |\n 5 |     let s = SetBuilder[String]()\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-35.ms:5:13: resolution: unknown binding SetBuilder; add: import SetBuilder from \"@std/collections.ms\"\n   |\n 5 |     let s = SetBuilder[String]()\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -15,13 +15,13 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 The reserved words are:
 
 ```manuscript
-and break case continue def elif else export False fixture for if
-impl in interface lambda let match not or ref return self test True try type
-var while with
+and break case continue else export extern false fixture fn for if
+impl import in interface let match not or ref return self test true try type
+unit var while with
 ```
 
-- `from` starts an import at a module item, `as` appears only in a `with` header, and `bench` starts a benchmark only before a string literal at a module item; all three are contextual, so `let from = 2`, `let as = 1` and `let bench = 3` are valid.
-- Words from other languages (`fn`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `()`, `try expr`, and so on).
+- `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
+- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `#` starts a comment through the end of the line.
@@ -109,9 +109,7 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "from", PlainStringLiteral, "import",
-                ( ImportNames, NEWLINE
-                | "(", NEWLINE, INDENT, ImportNames, DEDENT, ")", NEWLINE ) ;
+Import        = "import", ( Name | "{", ImportNames, "}" ), "from", PlainStringLiteral, NEWLINE ;
 ImportNames   = Name, { ",", Name }, [ "," ] ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
@@ -128,20 +126,20 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE ;
-FunctionDeclaration = "def", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", ResultType, FunctionSuite ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
+FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
+                      ResultType, FunctionSuite ;
 ResultType    = [ "ref" ], Type ;
 (* `ref` marks a result that lends part of a borrowed parameter or the receiver; see ownership. A function type has no `ref`. *)
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = [ "var" ], "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, FunctionSuite ;
-ExternDeclaration = "extern", "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE
+MethodDeclaration = [ "var" ], "fn", Name, "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
+ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
-(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return ()` succeeds; try or return error(...) fails it. *)
+(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return unit` succeeds; try or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
@@ -159,11 +157,11 @@ Type          = NamedType | FunctionType | "(", Type, ")" ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
-FunctionType  = "Callable", "[", "[", [ Type, { ",", Type } ], "]", ",", Type, "]" ;
+FunctionType  = "fn", "(", [ Type, { ",", Type } ], ")", Type ;
 ```
 
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
-- A result type follows `->` after the parameter list (`fn double(value: Int) Int:`). A fn writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn (value: Int) Int: value * 2`).
+- A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn commands() Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
@@ -190,15 +188,15 @@ CompoundAssignment = Name, { ".", Name }, ( "+=" | "-=" | "*=" | "/=" | "%=" ), 
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
 IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
-                { "elif", [ "let", Name, "=" ], Expression, Suite },
+                { "else", "if", [ "let", Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
 WithStatement = "with", Expression, "as", Name, Suite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
-MatchArm      = "case", (CasePattern | LiteralPattern | "_"), ArmSuite ;
-LiteralPattern = [ "-" ], Number | String | "True" | "False" ;
+MatchArm      = (CasePattern | LiteralPattern | "_"), ArmSuite ;
+LiteralPattern = [ "-" ], Number | String | "true" | "false" ;
 ArmSuite      = ":", (SimpleStatement | Expression
               | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
@@ -226,7 +224,7 @@ fn positive(value: Int) Bool:
 - `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; loops and `with` are statements, and `if` is a statement. The conditional expression is `a if c else b` (a required `else`; chains nest in the final `else`).
+- `match` is an expression even when discarded; loops and `with` are statements, and `if` is a statement. The conditional expression is `if c: a else: b` (a required `else:`; chains continue with `else if`). An inline function body that starts with one is parenthesized: `fn x: (if x > 0: 1 else: 0)`.
 - Local type, implementation, import, test, and bench declarations are rejected; a local function is a `fn` statement, sugar for binding a `fn` (it cannot call itself).
 - `with` follows the [cleanup scopes](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
 

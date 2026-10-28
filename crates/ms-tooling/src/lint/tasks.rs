@@ -44,7 +44,7 @@ impl Visitor for Scan<'_> {
         if !body_scan.may_wait_or_exit {
             self.findings.push(finding(
                 "MSL111",
-                "This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep or a channel call), or return once cancelled() is True",
+                "This loop never waits or exits, so other tasks cannot run and a timeout cannot stop it; wait inside the loop (sleep or a channel call), or return once cancelled() is true",
                 self.file,
                 cond.pos,
             ));

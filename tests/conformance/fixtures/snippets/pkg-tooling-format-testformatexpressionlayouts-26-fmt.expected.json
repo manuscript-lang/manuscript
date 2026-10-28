@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def work(early: Int) -> Int:\n    let result = subtract(\n        try match some(0):\n            case some(_):\n                10\n            case none: 10\n    )\n    return result\n"
+    "fmt": "fn work(early: Int) Int:\n    let result = subtract(\n        try match some(0):\n            some(_):\n                10\n            none: 10\n    )\n    return result\n"
   }
 }

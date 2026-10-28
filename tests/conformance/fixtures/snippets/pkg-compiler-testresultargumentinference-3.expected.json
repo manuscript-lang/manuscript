@@ -13,26 +13,26 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinference-3.ms",
           "line": 6,
-          "column": 34,
-          "offset": 276
+          "column": 30,
+          "offset": 268
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module",
+        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinference-3.ms",
           "line": 6,
-          "column": 56,
-          "offset": 298
+          "column": 52,
+          "offset": 290
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-3.ms:6:34: type: cannot infer type argument T for both; write both[T, Error](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | def first(cause: Error) -> Unit: both(cause: cause, r: f())\n   |                                  ^\n<DIR>/pkg-compiler-testresultargumentinference-3.ms:6:56: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n   |\n 6 | def first(cause: Error) -> Unit: both(cause: cause, r: f())\n   |                                                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinference-3.ms:6:30: type: cannot infer type argument T for both; write both[T, Error](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first(cause: Error) Unit: both(cause: cause, r: f())\n   |                              ^\n<DIR>/pkg-compiler-testresultargumentinference-3.ms:6:52: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first(cause: Error) Unit: both(cause: cause, r: f())\n   |                                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

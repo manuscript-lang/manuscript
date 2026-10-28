@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def wrong(cause: Error) -> String:\n    match cause:\n        case JsonError.InvalidData(value):\n            return \"invalid\"\n        case _:\n            return cause.message()\n"
+    "fmt": "fn wrong(cause: Error) String:\n    match cause:\n        JsonError.InvalidData(value):\n            return \"invalid\"\n        _:\n            return cause.message()\n"
   }
 }

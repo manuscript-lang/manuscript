@@ -13,27 +13,27 @@
         "position": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 35,
-          "offset": 254
+          "column": 9,
+          "offset": 228
         },
         "end": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 39,
-          "offset": 258
+          "column": 13,
+          "offset": 232
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 35,
-            "offset": 254
+            "column": 9,
+            "offset": 228
           },
           "end": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 41,
-            "offset": 260
+            "column": 15,
+            "offset": 234
           },
           "replacement": ""
         }
@@ -45,27 +45,27 @@
         "position": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 41,
-          "offset": 260
+          "column": 15,
+          "offset": 234
         },
         "end": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 44,
-          "offset": 263
+          "column": 18,
+          "offset": 237
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 41,
-            "offset": 260
+            "column": 15,
+            "offset": 234
           },
           "end": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 46,
-            "offset": 265
+            "column": 20,
+            "offset": 239
           },
           "replacement": ""
         }
@@ -77,27 +77,27 @@
         "position": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 46,
-          "offset": 265
+          "column": 20,
+          "offset": 239
         },
         "end": {
           "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
           "line": 4,
-          "column": 49,
-          "offset": 268
+          "column": 23,
+          "offset": 242
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 44,
-            "offset": 263
+            "column": 18,
+            "offset": 237
           },
           "end": {
             "file": "pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms",
             "line": 4,
-            "column": 49,
-            "offset": 268
+            "column": 23,
+            "offset": 242
           },
           "replacement": ""
         }
@@ -106,7 +106,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:35: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import List, Map, Set\n   |                                   ^^^^\n<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:41: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import List, Map, Set\n   |                                         ^^^\n<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:46: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import List, Map, Set\n   |                                              ^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:9: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 4 | import {List, Map, Set} from \"@std/collections.ms\"\n   |         ^^^^\n<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:15: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | import {List, Map, Set} from \"@std/collections.ms\"\n   |               ^^^\n<DIR>/pkg-compiler-testpreludeimportpolicyusesresolvedidentity-2.ms:4:20: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | import {List, Map, Set} from \"@std/collections.ms\"\n   |                    ^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

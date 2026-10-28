@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/encoding.ms\" import base64_encode, base64_decode\nfrom \"@std/csv.ms\" import parse, CsvOptions\nfrom \"@std/process.ms\" import commands, Commands, CommandOutput, CommandError\nfrom \"@std/bytes.ms\" import Bytes\nfrom \"@std/time.ms\" import Duration\n\ndef forward[T](item: T) -> T: item\n"
+    "fmt": "import {base64_encode, base64_decode} from \"@std/encoding.ms\"\nimport {parse, CsvOptions} from \"@std/csv.ms\"\nimport {commands, Commands, CommandOutput, CommandError} from \"@std/process.ms\"\nimport Bytes from \"@std/bytes.ms\"\nimport Duration from \"@std/time.ms\"\n\nfn forward[T](item: T) T: item\n"
   }
 }

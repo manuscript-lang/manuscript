@@ -24,75 +24,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`copied` is moved here but used again at 118:23; a value has one owner, so pass `copied.clone()` to keep the original, or move it only at its last use",
+          "message": "Subtract is an interface and cannot be constructed; a type with 'impl Subtract for <Type>:' passes wherever Subtract is expected, so pass the value directly",
           "position": {
             "file": "positional-arguments.ms",
-            "line": 116,
-            "column": 44,
-            "offset": 3851
-          },
-          "fix": {
-            "position": {
-              "file": "positional-arguments.ms",
-              "line": 116,
-              "column": 50,
-              "offset": 3857
-            },
-            "end": {
-              "file": "positional-arguments.ms",
-              "line": 116,
-              "column": 50,
-              "offset": 3857
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "`typed` is moved here but used again at 118:45; a value has one owner, so pass `typed.clone()` to keep the original, or move it only at its last use",
-          "position": {
-            "file": "positional-arguments.ms",
-            "line": 117,
-            "column": 19,
-            "offset": 3876
-          },
-          "fix": {
-            "position": {
-              "file": "positional-arguments.ms",
-              "line": 117,
-              "column": 24,
-              "offset": 3881
-            },
-            "end": {
-              "file": "positional-arguments.ms",
-              "line": 117,
-              "column": 24,
-              "offset": 3881
-            },
-            "replacement": ".clone()"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot change `counter` while `factory` borrows it (closure capture, at 174:19); finish using `factory` before this, or give `factory` its own value by ending its initializer with `.clone()`",
-          "position": {
-            "file": "positional-arguments.ms",
-            "line": 178,
-            "column": 37,
-            "offset": 5693
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot change `counter` while `factory` borrows it (closure capture, at 174:19); finish using `factory` before this, or give `factory` its own value by ending its initializer with `.clone()`",
-          "position": {
-            "file": "positional-arguments.ms",
-            "line": 178,
-            "column": 59,
-            "offset": 5715
+            "line": 106,
+            "column": 16,
+            "offset": 3505
           }
         }
       ]
@@ -101,18 +38,6 @@
       "completed",
       "diagnostics",
       "diagnostics[].code",
-      "diagnostics[].fix",
-      "diagnostics[].fix.end",
-      "diagnostics[].fix.end.column",
-      "diagnostics[].fix.end.file",
-      "diagnostics[].fix.end.line",
-      "diagnostics[].fix.end.offset",
-      "diagnostics[].fix.position",
-      "diagnostics[].fix.position.column",
-      "diagnostics[].fix.position.file",
-      "diagnostics[].fix.position.line",
-      "diagnostics[].fix.position.offset",
-      "diagnostics[].fix.replacement",
       "diagnostics[].message",
       "diagnostics[].phase",
       "diagnostics[].position",

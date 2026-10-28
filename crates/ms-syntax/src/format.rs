@@ -951,9 +951,7 @@ impl<'a> Layout<'a> {
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
         let (mut selected, mut level, mut count) = (None, 7, 0);
         for node in nodes {
-            if node.tok.kind == Tok::Newline
-                || node.tok.kind == Tok::Fn
-            {
+            if node.tok.kind == Tok::Newline || node.tok.kind == Tok::Fn {
                 return (None, 0); // Operators here belong to a callable body or type.
             }
             if node.group.is_some() {

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import unwrap\n"
+    "fmt": "import unwrap from \"@std/core.ms\"\n"
   }
 }

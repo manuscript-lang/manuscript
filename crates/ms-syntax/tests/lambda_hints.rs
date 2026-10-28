@@ -4,7 +4,7 @@ fn arrow_lambda_diagnostic_suggests_parseable_current_syntax() {
     let file = Arc::from("arrow.ms");
     for name in ["value", "item"] {
         let foreign = format!("{name} -> {name} + 1");
-        let original = format!("def f() -> Int:\n    return apply({foreign})\n");
+        let original = format!("fn f() Int:\n    return apply({foreign})\n");
         for source in [original.clone(), original.replace('\n', "\r\n")] {
             let error = ms_syntax::parser::parse(&file, &source).unwrap_err();
             assert_eq!(error.code(), "MS1000");
@@ -18,7 +18,7 @@ fn arrow_lambda_diagnostic_suggests_parseable_current_syntax() {
                 .collect::<Vec<_>>();
             assert_eq!(suggestions.len(), 2, "{}", error.message);
             for suggestion in suggestions {
-                assert!(suggestion.starts_with("lambda "), "{suggestion}");
+                assert!(suggestion.starts_with("fn"), "{suggestion}");
                 let repaired = source.replace(&foreign, suggestion);
                 ms_syntax::parser::parse(&file, &repaired).unwrap();
             }

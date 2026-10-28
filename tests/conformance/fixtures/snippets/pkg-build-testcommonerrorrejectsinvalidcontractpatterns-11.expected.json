@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms",
           "line": 6,
-          "column": 14,
-          "offset": 234
+          "column": 9,
+          "offset": 225
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms",
           "line": 6,
-          "column": 14,
-          "offset": 234
+          "column": 9,
+          "offset": 225
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms:6:14: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n   |\n 6 |         case JsonError:\n   |              ^\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms:6:14: type: concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'\n   |\n 6 |         case JsonError:\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms:6:9: type: contract pattern requires a concrete record or alternative type; name an implementing type like Circle, or use '_'\n   |\n 6 |         JsonError:\n   |         ^\n<DIR>/pkg-build-testcommonerrorrejectsinvalidcontractpatterns-11.ms:6:9: type: concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'\n   |\n 6 |         JsonError:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

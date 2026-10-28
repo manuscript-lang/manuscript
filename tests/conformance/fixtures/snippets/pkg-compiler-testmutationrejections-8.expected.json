@@ -14,20 +14,20 @@
           "file": "pkg-compiler-testmutationrejections-8.ms",
           "line": 6,
           "column": 5,
-          "offset": 174
+          "offset": 170
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testmutationrejections-8.ms",
             "line": 5,
             "column": 5,
-            "offset": 156
+            "offset": 152
           },
           "end": {
             "file": "pkg-compiler-testmutationrejections-8.ms",
             "line": 5,
             "column": 8,
-            "offset": 159
+            "offset": 155
           },
           "replacement": "var"
         }

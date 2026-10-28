@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding subtract; declare it with 'let subtract = ...' before use, define 'def subtract(...) -> T:', or import it from a module",
+        "message": "unknown binding subtract; declare it with 'let subtract = ...' before use, define 'fn subtract(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-26.ms",
           "line": 5,
           "column": 18,
-          "offset": 224
+          "offset": 220
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-26.ms:5:18: resolution: unknown binding subtract; declare it with 'let subtract = ...' before use, define 'def subtract(...) -> T:', or import it from a module\n   |\n 5 |     let result = subtract(\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-26.ms:5:18: resolution: unknown binding subtract; declare it with 'let subtract = ...' before use, define 'fn subtract(...) T:', or import it from a module\n   |\n 5 |     let result = subtract(\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

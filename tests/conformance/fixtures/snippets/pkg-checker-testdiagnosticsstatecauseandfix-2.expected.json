@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding panic; add: from \"@std/core.ms\" import panic",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-2.ms",
           "line": 5,
           "column": 12,
-          "offset": 175
+          "offset": 171
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/core.ms\" import panic\n"
+          "replacement": "import panic from \"@std/core.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-2.ms:5:12: resolution: unknown binding panic; add: from \"@std/core.ms\" import panic\n   |\n 5 |     return panic(message: \"x\")\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-2.ms:5:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 5 |     return panic(message: \"x\")\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

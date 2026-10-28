@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "impl TestHooks for State:\n\ndef make_fixture() -> TestHooks:\n    return State(1)\n\ntest \"test\":\n    return\n"
+    "fmt": "impl TestHooks for State:\n\nfn make_fixture() TestHooks:\n    return State(1)\n\ntest \"test\":\n    return\n"
   }
 }

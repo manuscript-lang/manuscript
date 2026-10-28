@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def example() -> Unit:\n    choose(first: lambda: \"a\", second: lambda: \"b\", other: lambda: missing)\n"
+    "fmt": "fn example() Unit:\n    choose(first: fn: \"a\", second: fn: \"b\", other: fn: missing)\n"
   }
 }

@@ -3,8 +3,8 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
-    "stdout": "callable\nsecond\nfirst\npair second\npair first\nclose normal\nafter normal\nclose iteration\nclose iteration\niterable\nclose break\nclose propagation\nreturn value\nclose inner\nclose outer\nfinished\n",
-    "stderr": ""
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/lifecycle-main.ms:71:13: type: local binding completed is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 71 |         let completed = unit\n    |             ^\n<DIR>/lifecycle-main.ms:90:17: type: local binding completed is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 90 |             let completed = unit\n    |                 ^\n<DIR>/lifecycle-main.ms:102:17: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n     |\n 102 |             let written = stderr().write(\"{cause.message()}\\n\")\n     |                 ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }

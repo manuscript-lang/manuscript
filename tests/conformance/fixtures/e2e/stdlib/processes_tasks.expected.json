@@ -27,9 +27,9 @@
           "message": "standalone try requires a Unit success value, found CommandOutput; use 'let name = try ...' to keep the value or 'return try ...' to return it",
           "position": {
             "file": "processes_tasks.ms",
-            "line": 96,
+            "line": 97,
             "column": 9,
-            "offset": 3041
+            "offset": 3008
           }
         },
         {
@@ -38,9 +38,9 @@
           "message": "standalone try requires a Unit success value, found CommandOutput; use 'let name = try ...' to keep the value or 'return try ...' to return it",
           "position": {
             "file": "processes_tasks.ms",
-            "line": 98,
+            "line": 103,
             "column": 9,
-            "offset": 3142
+            "offset": 3161
           }
         }
       ]

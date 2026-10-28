@@ -7,62 +7,47 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot move `k` out: it only borrows its value (a loop variable); use `k.clone()` to get an owned copy",
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member replace_all on String; did you mean 'replace'?",
         "position": {
-          "file": "src/maps.ms",
-          "line": 26,
-          "column": 23,
-          "offset": 638
+          "file": "src/strings.ms",
+          "line": 43,
+          "column": 31,
+          "offset": 922
         },
         "fix": {
           "position": {
-            "file": "src/maps.ms",
-            "line": 26,
-            "column": 24,
-            "offset": 639
+            "file": "src/strings.ms",
+            "line": 43,
+            "column": 31,
+            "offset": 922
           },
           "end": {
-            "file": "src/maps.ms",
-            "line": 26,
-            "column": 24,
-            "offset": 639
+            "file": "src/strings.ms",
+            "line": 43,
+            "column": 42,
+            "offset": 933
           },
-          "replacement": ".clone()"
+          "replacement": "replace"
         }
       },
       {
-        "code": "MS3000",
+        "code": "MS3001",
         "phase": "type",
-        "message": "cannot change `d`: parameter `d` is not declared var; write `var d: <Type>` in the signature and pass `var` at every call",
+        "message": "expected UInt8, found Int (in argument 'value' of bb.append)",
         "position": {
-          "file": "src/hostbench.ms",
-          "line": 76,
-          "column": 21,
-          "offset": 1850
-        },
-        "fix": {
-          "position": {
-            "file": "src/hostbench.ms",
-            "line": 75,
-            "column": 14,
-            "offset": 1792
-          },
-          "end": {
-            "file": "src/hostbench.ms",
-            "line": 75,
-            "column": 14,
-            "offset": 1792
-          },
-          "replacement": "var "
+          "file": "src/binarybench.ms",
+          "line": 36,
+          "column": 29,
+          "offset": 977
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/maps.ms:26:23: type: cannot move `k` out: it only borrows its value (a loop variable); use `k.clone()` to get an owned copy\n<DIR>/src/hostbench.ms:76:21: type: cannot change `d`: parameter `d` is not declared var; write `var d: <Type>` in the signature and pass `var` at every call\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

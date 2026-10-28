@@ -13,21 +13,21 @@
         "position": {
           "file": "pkg-checker-testinterfaceandreceiverhints-8.ms",
           "line": 8,
-          "column": 30,
-          "offset": 261
+          "column": 26,
+          "offset": 257
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testinterfaceandreceiverhints-8.ms",
             "line": 8,
-            "column": 30,
-            "offset": 261
+            "column": 26,
+            "offset": 257
           },
           "end": {
             "file": "pkg-checker-testinterfaceandreceiverhints-8.ms",
             "line": 8,
-            "column": 34,
-            "offset": 265
+            "column": 30,
+            "offset": 261
           },
           "replacement": "self"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-8.ms:8:30: resolution: unknown binding this; the receiver in an impl method is 'self'; write self instead of this\n   |\n 8 |     def message() -> String: this.text\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-8.ms:8:26: resolution: unknown binding this; the receiver in an impl method is 'self'; write self instead of this\n   |\n 8 |     fn message() String: this.text\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

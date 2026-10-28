@@ -88,7 +88,7 @@ Examples:
 
 pub const HELP_BUILD: &str = r#"Usage: ms build <file.ms|ms.toml> [--json] [-o output] [--build-type level]
 
-Build an application exporting main() -> Int as a native executable.
+Build an application exporting main() Int as a native executable.
 Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
 
 Options:
@@ -120,7 +120,7 @@ Examples:
 
 pub const HELP_RUN: &str = r#"Usage: ms run <file.ms|ms.toml> [--json] [options] [-- program arguments]
 
-Build a temporary executable and run its exported main() -> Int.
+Build a temporary executable and run its exported main() Int.
 Arguments after -- are passed unchanged to the application; its exit status is returned.
 Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.
 

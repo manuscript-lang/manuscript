@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding absent; declare it with 'let absent = ...' before use, define 'def absent(...) -> T:', or import it from a module",
+        "message": "unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinference-2.ms",
           "line": 5,
-          "column": 57,
-          "offset": 253
+          "column": 44,
+          "offset": 236
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-2.ms:5:57: resolution: unknown binding absent; declare it with 'let absent = ...' before use, define 'def absent(...) -> T:', or import it from a module\n   |\n 5 |     let callback: Callable[[], Optional[Int]] = lambda: absent()\n   |                                                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-2.ms:5:44: resolution: unknown binding absent; declare it with 'let absent = ...' before use, define 'fn absent(...) T:', or import it from a module\n   |\n 5 |     let callback: fn() Optional[Int] = fn: absent()\n   |                                            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

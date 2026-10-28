@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-teststandalonetryparsing-1.ms:4:1: type: reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)\n   |\n 4 | def f() -> Result[Unit, String]: ...\n   | ^\n<DIR>/pkg-parser-teststandalonetryparsing-1.ms:4:1: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | def f() -> Result[Unit, String]: ...\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-teststandalonetryparsing-1.ms:4:1: type: reachable fallthrough in function returning Result[Unit, String]; end every path with 'return <Result[Unit, String]>' (or make the last branch return)\n   |\n 4 | fn f() Result[Unit, String]: ...\n   | ^\n<DIR>/pkg-parser-teststandalonetryparsing-1.ms:4:1: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | fn f() Result[Unit, String]: ...\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

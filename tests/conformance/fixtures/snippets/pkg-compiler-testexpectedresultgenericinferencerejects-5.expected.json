@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type TextError; add: from \"@std/core.ms\" import TextError",
+        "message": "unknown type TextError; add: import TextError from \"@std/core.ms\"",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
           "line": 5,
-          "column": 47,
-          "offset": 269
+          "column": 39,
+          "offset": 257
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/core.ms\" import TextError\n"
+          "replacement": "import TextError from \"@std/core.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding fail; add: from \"@std/test.ms\" import fail",
+        "message": "unknown binding fail; add: import fail from \"@std/test.ms\"",
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinferencerejects-5.ms",
           "line": 5,
-          "column": 61,
-          "offset": 283
+          "column": 52,
+          "offset": 270
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/test.ms\" import fail\n"
+          "replacement": "import fail from \"@std/test.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-5.ms:5:47: resolution: unknown type TextError; add: from \"@std/core.ms\" import TextError\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-5.ms:5:61: resolution: unknown binding fail; add: from \"@std/test.ms\" import fail\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown type TextError; add: import TextError from \"@std/core.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                       ^\n<DIR>/pkg-compiler-testexpectedresultgenericinferencerejects-5.ms:5:52: resolution: unknown binding fail; add: import fail from \"@std/test.ms\"\n   |\n 5 |     let value: fn(String) Result[Int, TextError] = fail\n   |                                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

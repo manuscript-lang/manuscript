@@ -14,20 +14,20 @@
           "file": "diag-idiom-starts-with.ms",
           "line": 5,
           "column": 17,
-          "offset": 154
+          "offset": 150
         },
         "fix": {
           "position": {
             "file": "diag-idiom-starts-with.ms",
             "line": 5,
             "column": 17,
-            "offset": 154
+            "offset": 150
           },
           "end": {
             "file": "diag-idiom-starts-with.ms",
             "line": 5,
             "column": 27,
-            "offset": 164
+            "offset": 160
           },
           "replacement": "starts_with"
         }

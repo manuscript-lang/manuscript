@@ -14,7 +14,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 5,
           "column": 20,
-          "offset": 163
+          "offset": 159
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 6,
           "column": 21,
-          "offset": 187
+          "offset": 183
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 8,
           "column": 13,
-          "offset": 222
+          "offset": 218
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 9,
           "column": 18,
-          "offset": 242
+          "offset": 238
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 10,
           "column": 20,
-          "offset": 263
+          "offset": 259
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 11,
           "column": 21,
-          "offset": 285
+          "offset": 281
         }
       },
       {
@@ -80,7 +80,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 12,
           "column": 17,
-          "offset": 303
+          "offset": 299
         }
       },
       {
@@ -91,7 +91,7 @@
           "file": "unsigned-ints-reject.ms",
           "line": 13,
           "column": 22,
-          "offset": 328
+          "offset": 324
         }
       }
     ],

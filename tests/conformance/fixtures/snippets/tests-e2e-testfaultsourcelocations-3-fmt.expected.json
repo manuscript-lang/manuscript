@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/core.ms\" import TextError\n\ndef checked(n: Int) -> Result[Int, TextError]:\n    if n < 0:\n        return error(TextError(\"negative\"))\n\n    return ok(n + 1)\n\ndef chain(n: Int) -> Result[Int, TextError]:\n    let value = try checked(n)\n    return ok(value)\n\nexport def main() -> Int:\n    return chain(9223372036854775807).get()\n"
+    "fmt": "import TextError from \"@std/core.ms\"\n\nfn checked(n: Int) Result[Int, TextError]:\n    if n < 0:\n        return error(TextError(\"negative\"))\n\n    return ok(n + 1)\n\nfn chain(n: Int) Result[Int, TextError]:\n    let value = try checked(n)\n    return ok(value)\n\nexport fn main() Int:\n    return chain(9223372036854775807).get()\n"
   }
 }

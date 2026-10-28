@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-build-testtypeboundaries-1.ms",
           "line": 4,
-          "column": 12,
-          "offset": 149
+          "column": 11,
+          "offset": 148
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testtypeboundaries-1.ms:4:12: resolution: unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import it\n   |\n 4 | def old[T: MissingBound](value: T) -> T:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testtypeboundaries-1.ms:4:11: resolution: unknown type MissingBound; declare it with 'type MissingBound:' / 'interface MissingBound:', declare it as a type parameter, or import it\n   |\n 4 | fn old[T: MissingBound](value: T) T:\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

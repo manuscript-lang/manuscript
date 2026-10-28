@@ -50,21 +50,20 @@ pub fn append_unique(list: &mut Vec<String>, value: &str) {
 
 /// Extracts E from a function type whose result is `Result[T, E]`.
 pub fn error_type(signature: &str) -> String {
-    let Some(params) = signature.strip_prefix("Callable[[") else {
+    let Some(params) = signature.strip_prefix("fn(") else {
         return String::new();
     };
     let bytes = params.as_bytes();
     let (mut end, mut depth) = (0usize, 1i32);
     while end < bytes.len() && depth > 0 {
         match bytes[end] {
-            b'[' => depth += 1,
-            b']' => depth -= 1,
+            b'(' => depth += 1,
+            b')' => depth -= 1,
             _ => {}
         }
         end += 1;
     }
-    let result = params[end..].trim().trim_start_matches(',').trim();
-    let result = result.strip_suffix(']').unwrap_or(result);
+    let result = params[end..].trim();
     if depth != 0 || !result.starts_with("Result[") {
         return String::new();
     }
@@ -93,12 +92,12 @@ mod tests {
 
     #[test]
     fn error_type_reads_result_error() {
-        assert_eq!(error_type("Callable[[Int], Result[Int, Error]]"), "Error");
+        assert_eq!(error_type("fn(Int) Result[Int, Error]"), "Error");
         assert_eq!(
-            error_type("Callable[[Callable[[Int], Int]], Result[List[Int], Map[String, Int]]]"),
+            error_type("fn(fn(Int) Int) Result[List[Int], Map[String, Int]]"),
             "Map[String, Int]"
         );
-        assert_eq!(error_type("Callable[[Int], Int]"), "");
+        assert_eq!(error_type("fn(Int) Int"), "");
         assert_eq!(error_type("Int"), "");
     }
 }

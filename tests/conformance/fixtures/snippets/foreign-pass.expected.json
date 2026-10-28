@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'pass' is not a keyword; write '()' for an empty block or match arm",
+        "message": "'pass' is not a keyword; write 'unit' for an empty block or match arm",
         "position": {
           "file": "foreign-pass.ms",
           "line": 5,
           "column": 5,
-          "offset": 134
+          "offset": 130
         },
         "end": {
           "file": "foreign-pass.ms",
           "line": 5,
           "column": 9,
-          "offset": 138
+          "offset": 134
         }
       }
     ],

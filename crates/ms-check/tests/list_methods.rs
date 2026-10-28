@@ -33,7 +33,7 @@ fn operations_need_their_element_bound() {
     ];
     for (call, name) in cases {
         let source = format!(
-            "type Plain:\n    n: Int\nexport def main() -> Int:\n    let x = {call}\n    return 0\n"
+            "type Plain:\n    n: Int\nexport fn main() Int:\n    let x = {call}\n    return 0\n"
         );
         let found = diagnostics(&source);
         assert!(

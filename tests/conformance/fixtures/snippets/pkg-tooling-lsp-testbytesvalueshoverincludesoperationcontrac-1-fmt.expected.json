@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/bytes.ms\" import Bytes\n\ndef extract(data: Bytes) -> List[Int]:\n    let _bound: Callable[[], List[Int]] = data.values\n    return data.values()\n"
+    "fmt": "import Bytes from \"@std/bytes.ms\"\n\nfn extract(data: Bytes) List[Int]:\n    let _bound: fn() List[Int] = data.values\n    return data.values()\n"
   }
 }

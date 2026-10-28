@@ -18,10 +18,10 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 | `\n` | LF, U+000A |
 | `\r` | CR, U+000D |
 | `\t` | Tab, U+0009 |
-| `\{`, `\}` | Literal opening/closing brace; valid only in f-strings, where plain braces are interpolation |
+| `\{`, `\}` | Literal opening/closing brace; plain `{` opens an interpolation |
 | `\u{H}` | Unicode scalar with one to six hexadecimal digits H |
 
-Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace in an f-string, and unterminated literals are compile errors. `\u{0}` is a valid null character.
+Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
 let quote = "She said \"hello\"."
@@ -34,7 +34,7 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-A plain `"..."` literal has no interpolation: braces are ordinary characters. An f-string `"..."` is the same literal with a prefix, and an unescaped `{` in it opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`, or use a plain literal, which needs no escape: `"{\"a\": 1}"`.
+Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
 
 ```manuscript
 let name = "Ada"
@@ -178,7 +178,7 @@ Formatting never depends on locale or host settings.
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
 | Bool | `true` or `false` |
-| Unit | `()` |
+| Unit | `unit` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |
 | Decimal | Exact numerical decimal value, normalized as below; no significance/scale padding |

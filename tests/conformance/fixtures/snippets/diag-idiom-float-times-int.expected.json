@@ -14,20 +14,20 @@
           "file": "diag-idiom-float-times-int.ms",
           "line": 5,
           "column": 17,
-          "offset": 154
+          "offset": 150
         },
         "fix": {
           "position": {
             "file": "diag-idiom-float-times-int.ms",
             "line": 5,
             "column": 19,
-            "offset": 156
+            "offset": 152
           },
           "end": {
             "file": "diag-idiom-float-times-int.ms",
             "line": 5,
             "column": 20,
-            "offset": 157
+            "offset": 153
           },
           "replacement": "2.0"
         }

@@ -236,7 +236,7 @@ pub const CODES: &[CodeInfo] = &[
     CodeInfo {
         code: "MS3001",
         family: "Exact types and operators",
-        repair: "convert explicitly: to_float(), f\"{value}\", or an explicit comparison",
+        repair: "convert explicitly: to_float(), \"{value}\", or an explicit comparison",
     },
     CodeInfo {
         code: "MS3002",
@@ -286,7 +286,7 @@ pub const CODES: &[CodeInfo] = &[
     CodeInfo {
         code: "MS3050",
         family: "Exhaustiveness",
-        repair: "add the missing cases or a final `case _:`",
+        repair: "add the missing cases or a final `_:`",
     },
     CodeInfo {
         code: "MS3060",
@@ -475,7 +475,7 @@ pub const KINDS: &[Kind] = &[
         "MS3000.13",
         "with needs a Closeable",
         "With needs a resource",
-        "bind a value with `close() -> Unit`"
+        "bind a value with `close() Unit`"
     ),
     kind!(
         "MS3001",
@@ -538,7 +538,7 @@ pub const KINDS: &[Kind] = &[
         "MS3050.1",
         "exhaustive",
         "Non-exhaustive match",
-        "add the missing cases or a final `case _:`"
+        "add the missing cases or a final `_:`"
     ),
     kind!(
         "MS3000",
@@ -559,7 +559,7 @@ pub const KINDS: &[Kind] = &[
         "MS3000.19",
         "does not change its receiver",
         "Method does not change its receiver",
-        "declare the method `var def`"
+        "declare the method `var fn`"
     ),
     kind!(
         "MS3080",

@@ -13,14 +13,14 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-13.ms",
           "line": 4,
-          "column": 35,
-          "offset": 221
+          "column": 8,
+          "offset": 194
         },
         "end": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-13.ms",
           "line": 4,
-          "column": 38,
-          "offset": 224
+          "column": 11,
+          "offset": 197
         },
         "fix": {
           "position": {
@@ -31,9 +31,9 @@
           },
           "end": {
             "file": "pkg-compiler-testcollectionpreludeandshadowing-13.ms",
-            "line": 4,
-            "column": 27,
-            "offset": 213
+            "line": 5,
+            "column": 1,
+            "offset": 225
           },
           "replacement": ""
         }
@@ -53,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-13.ms:4:35: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import Map\n   |                                   ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-13.ms:6:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 6 | type Map[K, V]:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-13.ms:4:8: resolution: redundant prelude import Map; remove Map from this import and use its prelude declaration directly\n   |\n 4 | import Map from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-13.ms:6:1: resolution: declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration\n   |\n 6 | type Map[K, V]:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

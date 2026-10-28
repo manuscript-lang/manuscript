@@ -47,14 +47,14 @@ test('the published browser bundle highlights the landing example and current sy
     assert.equal(output[index].map(node => node.textContent).join(''), source, 'Copy must retain the original source');
   }
   const [rendered, syntax] = output;
-  assert.ok(rendered.some(node => node.className === 's' && node.textContent === 'f"Hello, '),
-    'The f-string opener must receive string styling');
+  assert.ok(rendered.some(node => node.className === 's' && node.textContent === '"Hello, '),
+    'The text opener must receive string styling');
   assert.ok(rendered.some(node => node.className === 'se' && node.textContent === '\\n'),
-    'The shared escape rule must run inside the f-string');
+    'The shared escape rule must run inside the interpolating text');
   assert.equal(rendered.filter(node => node.className === 'si').map(node => node.textContent).join(''), '{}',
     'The shared interpolation rules must delimit the expression');
   assert.equal(rendered.filter(node => node.className === 'k' && node.textContent === 'return').length, 2,
-    'Both returns after the f-string must retain keyword styling');
+    'Both returns after the text must retain keyword styling');
   for (const kind of ['k', 'kc', 'nc', 'nf', 'mi', 'o', 'p', 's', 'se', 'si', 'c1']) {
     assert.ok(syntax.some(node => node.className === kind), `Missing current-syntax scope ${kind}`);
   }

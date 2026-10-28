@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def reduce(amount: Int, deduction: Int) -> Int:\n    return amount - deduction\n\nlet remaining = reduce(10, 3)\nlet explicit_remaining = reduce(amount: 10, deduction: 3)\nlet mixed = reduce(deduction: 3, 10)\nlet amount = 10\nlet deduction = 3\nlet swapped = reduce(deduction: deduction, amount: amount)\n"
+    "fmt": "fn reduce(amount: Int, deduction: Int) Int:\n    return amount - deduction\n\nlet remaining = reduce(10, 3)\nlet explicit_remaining = reduce(amount: 10, deduction: 3)\nlet mixed = reduce(deduction: 3, 10)\nlet amount = 10\nlet deduction = 3\nlet swapped = reduce(deduction: deduction, amount: amount)\n"
   }
 }

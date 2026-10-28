@@ -12,16 +12,16 @@
         "message": "expected Int, found String (in argument 'a' of f)",
         "position": {
           "file": "diag-arg-mismatch-site.ms",
-          "line": 7,
+          "line": 8,
           "column": 14,
-          "offset": 186
+          "offset": 179
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-arg-mismatch-site.ms:7:14: type: expected Int, found String (in argument 'a' of f)\n   |\n 7 |     return f(\"s\")\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-arg-mismatch-site.ms:8:14: type: expected Int, found String (in argument 'a' of f)\n   |\n 8 |     return f(\"s\")\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

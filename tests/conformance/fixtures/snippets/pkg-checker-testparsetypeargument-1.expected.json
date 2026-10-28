@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonValue; add: from \"@std/json.ms\" import JsonValue",
+        "message": "unknown type JsonValue; add: import JsonValue from \"@std/json.ms\"",
         "position": {
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 4,
-          "column": 31,
-          "offset": 184
+          "column": 27,
+          "offset": 180
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonValue\n"
+          "replacement": "import JsonValue from \"@std/json.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
         "position": {
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 4,
-          "column": 42,
-          "offset": 195
+          "column": 38,
+          "offset": 191
         },
         "fix": {
           "position": {
@@ -55,18 +55,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonError\n"
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding parse; add: from \"@std/csv.ms\" import parse",
+        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
         "position": {
           "file": "pkg-checker-testparsetypeargument-1.ms",
           "line": 5,
           "column": 12,
-          "offset": 218
+          "offset": 214
         },
         "fix": {
           "position": {
@@ -81,14 +81,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/csv.ms\" import parse\n"
+          "replacement": "import parse from \"@std/csv.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:31: resolution: unknown type JsonValue; add: from \"@std/json.ms\" import JsonValue\n   |\n 4 | def f(text: String) -> Result[JsonValue, JsonError]:\n   |                               ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:42: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 4 | def f(text: String) -> Result[JsonValue, JsonError]:\n   |                                          ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n   |\n 5 |     return parse(text)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-1.ms:4:27: resolution: unknown type JsonValue; add: import JsonValue from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) Result[JsonValue, JsonError]:\n   |                           ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:4:38: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 4 | fn f(text: String) Result[JsonValue, JsonError]:\n   |                                      ^\n<DIR>/pkg-checker-testparsetypeargument-1.ms:5:12: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 5 |     return parse(text)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

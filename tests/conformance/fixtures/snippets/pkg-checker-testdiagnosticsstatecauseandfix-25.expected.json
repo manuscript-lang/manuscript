@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found Callable[[], Int] (in the return value); this is a function; call it with parentheses to get its Int result",
+        "message": "expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int result",
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-25.ms",
           "line": 5,
           "column": 19,
-          "offset": 174
+          "offset": 170
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-25.ms:5:19: type: expected Int, found Callable[[], Int] (in the return value); this is a function; call it with parentheses to get its Int result\n   |\n 5 |     return [1, 2].length\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-25.ms:5:19: type: expected Int, found fn() Int (in the return value); this is a function; call it with parentheses to get its Int result\n   |\n 5 |     return [1, 2].length\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

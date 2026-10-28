@@ -352,7 +352,7 @@ impl Checker {
                 self.res_error_name(
                     e.pos,
                     text.len(),
-                    "Decimal literal requires the canonical Decimal import; add: from \"@std/decimal.ms\" import Decimal".to_string(),
+                    "Decimal literal requires the canonical Decimal import; add: import Decimal from \"@std/decimal.ms\"".to_string(),
                 );
             }
             i.ty = Some(standard("Decimal", vec![]));
@@ -476,7 +476,7 @@ impl Checker {
                     self.type_error(
                         e.pos,
                         format!(
-                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a lambda"
+                            "{name} has a var parameter, so it cannot be a function value: calls through a function value cannot mark an argument var; take the parameter by value (var copy = param inside the body) or call {name} from a closure"
                         ),
                     );
                     i.ty = Some(invalid());
@@ -1108,7 +1108,7 @@ impl Checker {
                 hint = int_float_mix_hint(&at, &bt);
             }
             if hint.is_empty() {
-                hint = "convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)".to_string();
+                hint = "convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)".to_string();
             }
             let source = self.m().source.clone();
             let fix = match (at.id.as_str(), bt.id.as_str()) {

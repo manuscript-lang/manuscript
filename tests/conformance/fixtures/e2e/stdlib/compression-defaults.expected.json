@@ -24,27 +24,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`method` is moved here but used again at 39:31; a value has one owner, so pass `method.clone()` to keep the original, or move it only at its last use",
+          "message": "`method` is moved here but used again at 39:31; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
           "position": {
             "file": "compression-defaults.ms",
             "line": 37,
             "column": 22,
-            "offset": 1339
-          },
-          "fix": {
-            "position": {
-              "file": "compression-defaults.ms",
-              "line": 37,
-              "column": 28,
-              "offset": 1345
-            },
-            "end": {
-              "file": "compression-defaults.ms",
-              "line": 37,
-              "column": 28,
-              "offset": 1345
-            },
-            "replacement": ".clone()"
+            "offset": 1326
           }
         },
         {
@@ -55,20 +40,20 @@
             "file": "compression-defaults.ms",
             "line": 82,
             "column": 83,
-            "offset": 3412
+            "offset": 3399
           },
           "fix": {
             "position": {
               "file": "compression-defaults.ms",
               "line": 82,
               "column": 87,
-              "offset": 3416
+              "offset": 3403
             },
             "end": {
               "file": "compression-defaults.ms",
               "line": 82,
               "column": 87,
-              "offset": 3416
+              "offset": 3403
             },
             "replacement": ".clone()"
           }

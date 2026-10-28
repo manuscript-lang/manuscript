@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-checkinvalidbounds-3.ms",
           "line": 4,
-          "column": 15,
-          "offset": 159
+          "column": 14,
+          "offset": 158
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-checker-checkinvalidbounds-3.ms",
           "line": 4,
-          "column": 21,
-          "offset": 165
+          "column": 20,
+          "offset": 164
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-checkinvalidbounds-3.ms:4:15: type: a bound must be an interface, but U resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | def mutual[T: U, U: T](value: T) -> Unit: return\n   |               ^\n<DIR>/pkg-checker-checkinvalidbounds-3.ms:4:21: type: a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | def mutual[T: U, U: T](value: T) -> Unit: return\n   |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-checkinvalidbounds-3.ms:4:14: type: a bound must be an interface, but U resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | fn mutual[T: U, U: T](value: T) Unit: return\n   |              ^\n<DIR>/pkg-checker-checkinvalidbounds-3.ms:4:20: type: a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | fn mutual[T: U, U: T](value: T) Unit: return\n   |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

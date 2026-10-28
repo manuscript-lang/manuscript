@@ -1,19 +1,19 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type State:
     case Ready
     case Waiting
 
-def loop(state: State) -> Int:
+fn loop(state: State) Int:
     var count = 0
 
     for value in [1, 2, 3]:
         count += 1
 
         match state:
-            case Ready:
+            Ready:
                 break
-            case Waiting:
+            Waiting:
                 continue
 
         count += 100

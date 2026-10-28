@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 1,
     "stdout": "",
-    "stderr": "<DIR>/pkg-build-testparameterlessentrysignature-2.ms:4:8: type: entry must export def main() -> Int; main takes no parameters, so remove them (read program arguments through the standard cli module)\n   |\n 4 | export def main(value: Int) -> Int:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    "stderr": "<DIR>/pkg-build-testparameterlessentrysignature-2.ms:4:8: type: entry must export fn main() Int; main takes no parameters, so remove them (read program arguments through the standard cli module)\n   |\n 4 | export fn main(value: Int) Int:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }

@@ -95,7 +95,7 @@ fn lexer_tokens(d: &Document) -> Vec<Token> {
         };
         tokens.push(Token {
             kind,
-            previous_fn: previous == "def",
+            previous_fn: previous == "fn",
             previous_type: previous == "type",
             text: t.text.to_string(),
             offset: t.start,

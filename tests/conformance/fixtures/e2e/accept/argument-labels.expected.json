@@ -3,47 +3,51 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "argument-labels.ms::optional labels on single-parameter functions",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "argument-labels.ms::optional labels on methods and native functions",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "argument-labels.ms::omitted labels preserve evaluation order",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN argument-labels.ms::optional labels on single-parameter functions\nPASS argument-labels.ms::optional labels on single-parameter functions\nRUN argument-labels.ms::optional labels on methods and native functions\nPASS argument-labels.ms::optional labels on methods and native functions\nRUN argument-labels.ms::omitted labels preserve evaluation order\nPASS argument-labels.ms::omitted labels preserve evaluation order\n3 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "Increment is an interface and cannot be constructed; a type with 'impl Increment for <Type>:' passes wherever Increment is expected, so pass the value directly",
+          "position": {
+            "file": "argument-labels.ms",
+            "line": 87,
+            "column": 16,
+            "offset": 2437
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -54,11 +58,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

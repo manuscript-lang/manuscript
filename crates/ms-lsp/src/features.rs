@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn folding_headers_allow_comments_and_hashes_in_strings() {
-        let source = "def main() -> Int: # 😀 note\n    if \"a#b\" == \"a#b\": # note\n        return 1\n    return 0\n";
+        let source = "fn main() Int: # 😀 note\n    if \"a#b\" == \"a#b\": # note\n        return 1\n    return 0\n";
         let expected = Json::Arr(vec![
             obj([
                 ("startLine", 0usize.into()),

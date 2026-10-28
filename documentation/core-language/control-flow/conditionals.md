@@ -26,7 +26,7 @@ fn status(active: Bool) String:
 See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing inline and indented bodies.
 
 - Conditions must be `Bool`; numbers and text have no truth values.
-- `if` is a statement, not an expression.
+- `if` is a statement here; the expression form is [below](#if-as-an-expression).
 - The condition is evaluated once; at most one branch runs.
 - `else if` and `else` start on their own line, aligned with `if`.
 - Each branch has its own scope; assignments to an outer `var` persist.
@@ -46,14 +46,14 @@ fn classify(value: Int) String:
 
 ## If as an expression
 
-`a if c else b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and chains nest in the final `else`. It has the lowest expression precedence and is right-associative:
+`if c: a else: b` is an expression when it appears where a value is expected. Both branches are single expressions of one type, `else` is required, and `else if` chains:
 
 ```manuscript
 fn sign(value: Int) Int:
     return if value < 0: -1 else if value == 0: 0 else: 1
 ```
 
-The branches are expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
+The branches are one-line expressions on the same line. For statements in a branch, use an `if` statement or a `match` arm. The [return rules](../functions/declarations-and-calls.md#unit-and-never) still require every reachable path of a function to return.
 
 ## Unwrapping an Optional or Result
 

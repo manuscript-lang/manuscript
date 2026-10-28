@@ -25,11 +25,11 @@ fn write(dir: &Path, name: &str, text: &str) -> String {
 #[test]
 fn imports_are_loaded_before_their_importers() {
     let dir = scratch("order");
-    write(&dir, "lib.ms", "export def one() -> Int:\n    return 1\n");
+    write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");
     let entry = write(
         &dir,
         "main.ms",
-        "from \"./lib.ms\" import one\n\nexport def main() -> Int:\n    return one()\n",
+        "import one from \"./lib.ms\"\n\nexport fn main() Int:\n    return one()\n",
     );
     let graph = load_file(&entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty());
@@ -45,12 +45,12 @@ fn cycles_are_reported_at_the_closing_import() {
     write(
         &dir,
         "b.ms",
-        "from \"./a.ms\" import x\nexport def y() -> Int:\n    return 0\n",
+        "import x from \"./a.ms\"\nexport fn y() Int:\n    return 0\n",
     );
     let entry = write(
         &dir,
         "a.ms",
-        "from \"./b.ms\" import y\n\nexport def main() -> Int:\n    return 0\n",
+        "import y from \"./b.ms\"\n\nexport fn main() Int:\n    return 0\n",
     );
     let graph = load_file(&entry, LoadOptions::default());
     assert!(graph.modules.is_empty());
@@ -68,7 +68,7 @@ fn cycles_are_reported_at_the_closing_import() {
 fn imported_parse_diagnostics_keep_their_source_in_strict_and_recovery_loads() {
     let dir = scratch("import-diagnostic");
     write(&dir, "broken.ms", "\n\nfn broken(:\n");
-    let entry = write(&dir, "main.ms", "from \"./broken.ms\" import broken\n");
+    let entry = write(&dir, "main.ms", "import broken from \"./broken.ms\"\n");
     let strict = load_file(&entry, LoadOptions::default());
     let recovered = load_editor_file(
         &entry,
@@ -100,12 +100,12 @@ fn project_aliases_and_discovered_tests() {
     write(
         &dir,
         "src/lib/util.ms",
-        "export def two() -> Int:\n    return 2\n",
+        "export fn two() Int:\n    return 2\n",
     );
     write(
         &dir,
         "src/main.ms",
-        "from \"@lib/util.ms\" import two\n\nexport def main() -> Int:\n    return two()\n",
+        "import two from \"@lib/util.ms\"\n\nexport fn main() Int:\n    return two()\n",
     );
     write(&dir, "main_test.ms", "test \"always\":\n    return\n");
     let manifest = dir.join("ms.toml");
@@ -131,7 +131,7 @@ fn entry_diagnostics_name_the_required_signature() {
     let entry = write(
         &dir,
         "main.ms",
-        "export def main() -> String:\n    return \"a\"\n",
+        "export fn main() String:\n    return \"a\"\n",
     );
     let checked = check_graph(
         load_file(&entry, LoadOptions::default()),
@@ -140,7 +140,7 @@ fn entry_diagnostics_name_the_required_signature() {
     let issue = &checked.diagnostics[0];
     assert_eq!(
         issue.message,
-        "entry must export def main() -> Int; main returns String, so declare its result type Int and return an exit status, e.g. 'return 0'"
+        "entry must export fn main() Int; main returns String, so declare its result type Int and return an exit status, e.g. 'return 0'"
     );
     // Without the entry requirement the same file checks.
     let fine = check_graph(

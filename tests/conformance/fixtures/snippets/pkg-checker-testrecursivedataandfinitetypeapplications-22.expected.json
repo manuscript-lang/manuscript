@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-testrecursivedataandfinitetypeapplications-22.ms",
           "line": 5,
-          "column": 9,
-          "offset": 217
+          "column": 8,
+          "offset": 216
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-22.ms:5:9: type: recursive generic applications must preserve their parameters in Grow.next; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     def next() -> Grow[List[T]]\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testrecursivedataandfinitetypeapplications-22.ms:5:8: type: recursive generic applications must preserve their parameters in Grow.next; keep the same type arguments in the same positions along a recursive cycle\n   |\n 5 |     fn next() Grow[List[T]]\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

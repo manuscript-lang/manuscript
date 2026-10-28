@@ -13,8 +13,8 @@
         "position": {
           "file": "diag-shadows-enclosing-lambda-parameter.ms",
           "line": 6,
-          "column": 20,
-          "offset": 178
+          "column": 16,
+          "offset": 170
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "diag-shadows-enclosing-lambda-parameter.ms",
           "line": 6,
-          "column": 20,
-          "offset": 178
+          "column": 16,
+          "offset": 170
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:20: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 6 |     let f = lambda x: return x + 1\n   |                    ^\n<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:20: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |     let f = lambda x: return x + 1\n   |                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 6 |     let f = fn x: return x + 1\n   |                ^\n<DIR>/diag-shadows-enclosing-lambda-parameter.ms:6:16: type: binding x shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n   |\n 6 |     let f = fn x: return x + 1\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

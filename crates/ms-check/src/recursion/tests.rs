@@ -26,10 +26,10 @@ fn branch_exclusive_prefix_into_preserving_cycle() {
     let mut source = String::new();
     // Forty branch levels represent over a trillion paths, but only 41 declarations.
     for i in 0..40 {
-        source.push_str(&format!("def f{i}[T](n: Int) -> Int:\n    if n < 0:\n        return f{}[T](n)\n    return f{}[T](n)\n\n", i+1, i+1));
+        source.push_str(&format!("fn f{i}[T](n: Int) Int:\n    if n < 0:\n        return f{}[T](n)\n    return f{}[T](n)\n\n", i+1, i+1));
     }
     source.push_str(
-        "def f40[T](n: Int) -> Int:\n    if n <= 0:\n        return 0\n    return f40[T](n - 1)\n",
+        "fn f40[T](n: Int) Int:\n    if n <= 0:\n        return 0\n    return f40[T](n - 1)\n",
     );
     assert!(diagnostics(&[("branches.ms", &source)]).is_empty());
 }
@@ -38,9 +38,9 @@ fn branch_exclusive_prefix_into_preserving_cycle() {
 fn distinct_diamond_arms_into_mutual_cycle() {
     let mut source = String::new();
     for i in 0..30 {
-        source.push_str(&format!("def f{i}[T](n: Int) -> Int:\n    if n < 0:\n        return left{i}[T](n)\n    return right{i}[T](n)\n\ndef left{i}[T](n: Int) -> Int:\n    return f{}[T](n)\n\ndef right{i}[T](n: Int) -> Int:\n    return f{}[T](n)\n\n", i+1, i+1));
+        source.push_str(&format!("fn f{i}[T](n: Int) Int:\n    if n < 0:\n        return left{i}[T](n)\n    return right{i}[T](n)\n\nfn left{i}[T](n: Int) Int:\n    return f{}[T](n)\n\nfn right{i}[T](n: Int) Int:\n    return f{}[T](n)\n\n", i+1, i+1));
     }
-    source.push_str("def f30[T](n: Int) -> Int:\n    if n <= 0:\n        return 0\n    return other[T](n - 1)\n\ndef other[U](n: Int) -> Int:\n    return f30[U](n)\n");
+    source.push_str("fn f30[T](n: Int) Int:\n    if n <= 0:\n        return 0\n    return other[T](n - 1)\n\nfn other[U](n: Int) Int:\n    return f30[U](n)\n");
     assert!(diagnostics(&[("diamonds.ms", &source)]).is_empty());
 }
 
@@ -48,7 +48,7 @@ const ERROR: &str = "recursive generic applications must preserve their paramete
 
 #[test]
 fn ancestor_context_and_failure_order_are_preserved() {
-    let source = "def root[T](n: Int) -> Unit:\n    b[Int](n)\n    a[List[T]](n)\n\ndef a[T](n: Int) -> Unit:\n    b[Int](n)\n\ndef b[T](n: Int) -> Unit:\n    a[Int](n)\n";
+    let source = "fn root[T](n: Int) Unit:\n    b[Int](n)\n    a[List[T]](n)\n\nfn a[T](n: Int) Unit:\n    b[Int](n)\n\nfn b[T](n: Int) Unit:\n    a[Int](n)\n";
     assert_eq!(
         diagnostics(&[("ancestors.ms", source)]),
         vec![
@@ -60,7 +60,7 @@ fn ancestor_context_and_failure_order_are_preserved() {
 
 #[test]
 fn reused_success_does_not_hide_a_later_changing_specialization() {
-    let source = "def root[T](n: Int) -> Unit:\n    fixed[Int](n)\n    fixed[T](n)\n    fixed[Int](n)\n    fixed[T](n)\n\ndef fixed[T](n: Int) -> Unit:\n    fixed[Int](n)\n";
+    let source = "fn root[T](n: Int) Unit:\n    fixed[Int](n)\n    fixed[T](n)\n    fixed[Int](n)\n    fixed[T](n)\n\nfn fixed[T](n: Int) Unit:\n    fixed[Int](n)\n";
     // The public frontend result deduplicates identical diagnostics; the graph oracle
     // below also checks the pre-deduplication sequence, including repeated failures.
     assert_eq!(

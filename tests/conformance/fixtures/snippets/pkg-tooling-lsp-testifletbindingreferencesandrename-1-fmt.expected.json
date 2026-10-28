@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def read(values: List[Int]) -> Int:\n    if let first = values.first():\n        return first + 1\n\n    return 0\n"
+    "fmt": "fn read(values: List[Int]) Int:\n    if let first = values.first():\n        return first + 1\n\n    return 0\n"
   }
 }

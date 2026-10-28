@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[Int], Int], found Callable[[Int], String] (in the initializer of 'callback')",
+        "message": "expected fn(Int) Int, found fn(Int) String (in the initializer of 'callback')",
         "position": {
           "file": "diag-callable-mismatch-3-positional.ms",
-          "line": 6,
-          "column": 42,
-          "offset": 224
+          "line": 7,
+          "column": 33,
+          "offset": 208
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-callable-mismatch-3-positional.ms:6:42: type: expected Callable[[Int], Int], found Callable[[Int], String] (in the initializer of 'callback')\n   |\n 6 |     let callback: Callable[[Int], Int] = source\n   |                                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-callable-mismatch-3-positional.ms:7:33: type: expected fn(Int) Int, found fn(Int) String (in the initializer of 'callback')\n   |\n 7 |     let callback: fn(Int) Int = source\n   |                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

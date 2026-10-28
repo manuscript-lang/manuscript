@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/crypto.ms\" import HashAlgorithm\nfrom \"@std/archive.ms\" import CompressionFormat\n\ndef choose(algorithm: HashAlgorithm) -> Unit:\n    return ()\n\ndef wrong() -> Unit:\n    choose(CompressionFormat.Gzip)\n"
+    "fmt": "import HashAlgorithm from \"@std/crypto.ms\"\nimport CompressionFormat from \"@std/archive.ms\"\n\nfn choose(algorithm: HashAlgorithm) Unit:\n    return unit\n\nfn wrong() Unit:\n    choose(CompressionFormat.Gzip)\n"
   }
 }

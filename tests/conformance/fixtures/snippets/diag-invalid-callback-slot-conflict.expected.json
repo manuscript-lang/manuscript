@@ -13,8 +13,8 @@
         "position": {
           "file": "diag-invalid-callback-slot-conflict.ms",
           "line": 4,
-          "column": 19,
-          "offset": 142
+          "column": 18,
+          "offset": 141
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
         "position": {
           "file": "diag-invalid-callback-slot-conflict.ms",
-          "line": 7,
+          "line": 9,
           "column": 11,
-          "offset": 275
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-invalid-callback-slot-conflict.ms:4:19: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | def broken(first: Missing, second: Int) -> Int: 1\n   |                   ^\n<DIR>/diag-invalid-callback-slot-conflict.ms:7:11: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 7 |     apply(broken)\n   |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-invalid-callback-slot-conflict.ms:4:18: resolution: unknown type Missing; declare it with 'type Missing:' / 'interface Missing:', declare it as a type parameter, or import it\n   |\n 4 | fn broken(first: Missing, second: Int) Int: 1\n   |                  ^\n<DIR>/diag-invalid-callback-slot-conflict.ms:9:11: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 9 |     apply(broken)\n   |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

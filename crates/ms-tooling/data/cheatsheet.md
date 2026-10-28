@@ -4,7 +4,7 @@ Statically typed; native code. Four-space indentation, `#` comments. No `print`:
 
 <!-- complete -->
 ```manuscript
-import filesystem from "@std/fs.ms" # import
+import filesystem from "@std/fs.ms"
 import stdout from "@std/io.ms"
 
 type Doc:
@@ -18,7 +18,7 @@ impl Doc:
         return self.lines[best]
 
 fn load(path: String) Result[Doc, Error]:
-    let f = try filesystem().open(path, flags: "r", mode: 0) # f closed at scope end
+    let f = try filesystem().open(path, flags: "r", mode: 0)
     let lines = try f.read_lines(max_lines: 1000) # Int passes as Optional[Int]
     return ok(Doc(lines)) # moves lines
 
@@ -26,15 +26,15 @@ export fn main() Int:
     if let doc = load("notes.txt"):
         let top = doc.longest() # borrows doc
         let keep = top.clone() # owned copy
-        let long = doc.lines.filter(fn l: l.length() > 3) # closure
+        let long = doc.lines.filter(fn l: l.length() > 3)
         stdout().write("{keep} {long.length()}\n").get()
     return 0
 ```
 
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Be terse: infer closure types, one-line bodies (`fn f(x: Int) Int: x * 2`), `map`/`filter`/`fold`/`join`/`get(d)` over loops.
-- `main() -> Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
-- Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`; braces need `\{`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
+- `main() Int` returns the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test.ms`), `bench "name":` under `ms bench`.
+- Stdlib (`@std/<m>.ms`): `io` `fs` `streams` (`read_lines(stdin())`) `string` (regex `compile`) `collections` `bytes` `decimal` `json` `csv` `toml` `yaml` `time` `math` `random` `crypto` `process` `http` `net` `tasks` `channels` `workers` `sync` `shared`.
 - Imports: `import {a, b} from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; lines starting `|` or `.` continue. Module constants: `let LIMIT = 3`.
 - Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`. Operators `and or not`.
@@ -54,4 +54,4 @@ export fn main() Int:
 - `var` parameters need `var` at the signature and every call: `fn f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
-- Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` (never `def`/`lambda`), `true`/`false`, `else if`, `none`, no `f""`.
+- Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

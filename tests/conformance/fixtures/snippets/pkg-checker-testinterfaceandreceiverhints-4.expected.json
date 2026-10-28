@@ -13,26 +13,26 @@
         "position": {
           "file": "pkg-checker-testinterfaceandreceiverhints-4.ms",
           "line": 4,
-          "column": 22,
-          "offset": 175
+          "column": 18,
+          "offset": 171
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Sq; declare it with 'let Sq = ...' before use, define 'def Sq(...) -> T:', or import it from a module",
+        "message": "unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...) T:', or import it from a module",
         "position": {
           "file": "pkg-checker-testinterfaceandreceiverhints-4.ms",
           "line": 4,
-          "column": 31,
-          "offset": 184
+          "column": 27,
+          "offset": 180
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-4.ms:4:22: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | def shapes() -> List[Shape]: [Sq(2)]\n   |                      ^\n<DIR>/pkg-checker-testinterfaceandreceiverhints-4.ms:4:31: resolution: unknown binding Sq; declare it with 'let Sq = ...' before use, define 'def Sq(...) -> T:', or import it from a module\n   |\n 4 | def shapes() -> List[Shape]: [Sq(2)]\n   |                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfaceandreceiverhints-4.ms:4:18: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | fn shapes() List[Shape]: [Sq(2)]\n   |                  ^\n<DIR>/pkg-checker-testinterfaceandreceiverhints-4.ms:4:27: resolution: unknown binding Sq; declare it with 'let Sq = ...' before use, define 'fn Sq(...) T:', or import it from a module\n   |\n 4 | fn shapes() List[Shape]: [Sq(2)]\n   |                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

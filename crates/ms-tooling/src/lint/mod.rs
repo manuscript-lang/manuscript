@@ -96,7 +96,7 @@ pub const RULES: &[Rule] = &[
     Rule {
         code: "MSL111",
         family: "Loop that never waits or exits",
-        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is True",
+        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is true",
     },
     Rule {
         code: "MSL112",

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "# 😀 comment\ndef answer(input: Int) -> Int:\n    return input\n"
+    "fmt": "# 😀 comment\nfn answer(input: Int) Int:\n    return input\n"
   }
 }

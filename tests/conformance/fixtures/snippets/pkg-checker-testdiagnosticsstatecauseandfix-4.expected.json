@@ -13,21 +13,21 @@
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-4.ms",
           "line": 4,
-          "column": 10,
-          "offset": 149
+          "column": 9,
+          "offset": 148
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testdiagnosticsstatecauseandfix-4.ms",
             "line": 4,
-            "column": 10,
-            "offset": 149
+            "column": 9,
+            "offset": 148
           },
           "end": {
             "file": "pkg-checker-testdiagnosticsstatecauseandfix-4.ms",
             "line": 4,
-            "column": 15,
-            "offset": 154
+            "column": 14,
+            "offset": 153
           },
           "replacement": "String"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-4.ms:4:10: resolution: unknown type Strin; did you mean 'String'?\n   |\n 4 | def f(x: Strin) -> Unit:\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-4.ms:4:9: resolution: unknown type Strin; did you mean 'String'?\n   |\n 4 | fn f(x: Strin) Unit:\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -21,10 +21,10 @@ fn ms(dir: &Path, args: &[&str]) -> Output {
 #[test]
 fn mixed_inputs_keep_successes_and_report_each_failure_once() {
     let dir = scratch("mixed");
-    std::fs::write(dir.join("good.ms"), "def value() -> Int:\n    return 1\n").unwrap();
+    std::fs::write(dir.join("good.ms"), "fn value() Int:\n    return 1\n").unwrap();
     std::fs::write(
         dir.join("bad.ms"),
-        "def value() -> Int:\n    return \"wrong\"\n",
+        "fn value() Int:\n    return \"wrong\"\n",
     )
     .unwrap();
     let args = ["check", "good.ms", "missing.ms", "bad.ms", "./good.ms"];
@@ -71,7 +71,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     for name in ["a.ms", "b.ms"] {
         std::fs::write(
             dir.join(name),
-            "from \"./shared.ms\" import value\n\ndef use_value() -> Int:\n    return value()\n",
+            "import value from \"./shared.ms\"\n\nfn use_value() Int:\n    return value()\n",
         )
         .unwrap();
     }
@@ -82,11 +82,7 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     assert_eq!(stderr.matches("MSL102").count(), 1, "{stderr}");
     assert!(!stderr.contains("fix them and re-run"), "{stderr}");
 
-    std::fs::write(
-        dir.join("bad.ms"),
-        "def invalid() -> Int:\n    return False\n",
-    )
-    .unwrap();
+    std::fs::write(dir.join("bad.ms"), "fn invalid() Int:\n    return false\n").unwrap();
     let output = ms(&dir, &["lint", "b.ms", "bad.ms", "a.ms", "--json"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stderr.is_empty());

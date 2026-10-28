@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def double(n: Int) -> Int: n * 2\n\ndef run(n: Int) -> Int:\n    let a = n | double | double\n    let b = n\n        | double  # first\n        # second\n        | double\n    return a + b\n"
+    "fmt": "fn double(n: Int) Int: n * 2\n\nfn run(n: Int) Int:\n    let a = n | double | double\n    let b = n\n        | double  # first\n        # second\n        | double\n    return a + b\n"
   }
 }

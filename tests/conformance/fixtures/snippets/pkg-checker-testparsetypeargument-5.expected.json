@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type JsonError; add: from \"@std/json.ms\" import JsonError",
+        "message": "unknown type JsonError; add: import JsonError from \"@std/json.ms\"",
         "position": {
           "file": "pkg-checker-testparsetypeargument-5.ms",
           "line": 7,
-          "column": 40,
-          "offset": 234
+          "column": 36,
+          "offset": 230
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/json.ms\" import JsonError\n"
+          "replacement": "import JsonError from \"@std/json.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding parse; add: from \"@std/csv.ms\" import parse",
+        "message": "unknown binding parse; add: import parse from \"@std/csv.ms\"",
         "position": {
           "file": "pkg-checker-testparsetypeargument-5.ms",
           "line": 8,
           "column": 32,
-          "offset": 277
+          "offset": 273
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/csv.ms\" import parse\n"
+          "replacement": "import parse from \"@std/csv.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testparsetypeargument-5.ms:7:40: resolution: unknown type JsonError; add: from \"@std/json.ms\" import JsonError\n   |\n 7 | def f(text: String) -> Result[Request, JsonError]:\n   |                                        ^\n<DIR>/pkg-checker-testparsetypeargument-5.ms:8:32: resolution: unknown binding parse; add: from \"@std/csv.ms\" import parse\n   |\n 8 |     let request: Request = try parse(text)\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testparsetypeargument-5.ms:7:36: resolution: unknown type JsonError; add: import JsonError from \"@std/json.ms\"\n   |\n 7 | fn f(text: String) Result[Request, JsonError]:\n   |                                    ^\n<DIR>/pkg-checker-testparsetypeargument-5.ms:8:32: resolution: unknown binding parse; add: import parse from \"@std/csv.ms\"\n   |\n 8 |     let request: Request = try parse(text)\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
