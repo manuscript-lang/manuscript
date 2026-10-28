@@ -53,5 +53,5 @@ export def main() -> Int:
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
-- Resources (files) close when their `let`/`var` goes out of scope, unless moved on (returned, stored).
+- Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
 - No exceptions, classes, `async`, `null`, `pass`.
