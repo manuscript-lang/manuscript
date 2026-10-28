@@ -83,7 +83,7 @@ def expect_file_reply(conn: Connection) -> Result[Unit, Error]:
 test "serve answers requests while handlers read and write files":
     let net = network()
     let fs = filesystem()
-    let dir = fs.temporary("ms-http-io") | try expect_ok
+    var dir = fs.temporary("ms-http-io") | try expect_ok
     let root = dir.path()
     let payload = ("0123456789abcdef".repeat(262144) | try expect_ok).to_bytes()
 

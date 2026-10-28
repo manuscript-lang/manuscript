@@ -77,7 +77,7 @@ def log_many(logger: Logger) -> Unit:
 export def bench_fs() -> Unit:
     let fs = filesystem()
 
-    if let dir = fs.temporary("ms-bench-"):
+    if var dir = fs.temporary("ms-bench-"):
         run(fs, dir.path())
         log_run(f"{dir.path()}/log.txt")
         dir.close()

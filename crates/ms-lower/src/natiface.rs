@@ -554,23 +554,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_fs_watch_native",
         &[],
     ),
-    ("fs", "Directory", "read", "msstd_fs_directory_read", &[]),
-    ("fs", "Directory", "path", "msstd_fs_directory_path", &[]),
-    ("fs", "Directory", "close", "msstd_fs_directory_close", &[]),
-    (
-        "fs",
-        "TemporaryDirectory",
-        "path",
-        "msstd_fs_temporary_path",
-        &[],
-    ),
-    (
-        "fs",
-        "TemporaryDirectory",
-        "close",
-        "msstd_fs_temporary_close",
-        &[],
-    ),
     (
         "crypto",
         "Hasher",
