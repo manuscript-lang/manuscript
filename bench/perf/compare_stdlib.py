@@ -1,6 +1,7 @@
 """Compare two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and checking the cases match."""
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 from pathlib import Path
@@ -18,7 +19,7 @@ def parse_sample(output, expected=None):
         raise ValueError("; ".join(d["message"] for d in document["diagnostics"]))
     rows = {}
     for case in document["benches"]:
-        name = case["name"].split("::", 1)[-1]
+        name = case["name"]
         if name in rows:
             raise ValueError(f"duplicate case: {name}")
         if case["status"] != "passed":
@@ -66,6 +67,9 @@ def main():
                 samples[version].setdefault(name, []).append(value)
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {}
+    short_names = {name: name.split("::", 1)[-1] for name in expected}
+    counts = Counter(short_names.values())
+    labels = {name: short if counts[short] == 1 else name for name, short in short_names.items()}
     table = [f"Median of {args.repeats} alternating runs of {args.samples} samples; all {len(expected)} cases and operation counts verified.", "",
              "| operation | ops | before ns/op | after ns/op | after/before |",
              "|---|---:|---:|---:|---:|"]
@@ -73,9 +77,9 @@ def main():
         before = statistics.median(samples["before"][name])
         after = statistics.median(samples["after"][name])
         ratio = after / before if before else None
-        summary[name] = {"ops": ops, "before": before, "after": after, "ratio": ratio}
+        summary[labels[name]] = {"ops": ops, "before": before, "after": after, "ratio": ratio}
         ratio_text = f"{ratio:.3f}x" if ratio is not None else "—"
-        table.append(f"| {name} | {ops} | {before:.4g} | {after:.4g} | {ratio_text} |")
+        table.append(f"| {labels[name]} | {ops} | {before:.4g} | {after:.4g} | {ratio_text} |")
     for version, outputs in raw.items():
         (args.output / f"stdlib-{version}.jsonl").write_text("".join(o.strip() + "\n" for o in outputs))
     metadata = {"platform": platform.platform(), "repeats": args.repeats, "samples": args.samples,
