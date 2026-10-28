@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_ok
+from "@std/test.ms" import expect_equal, expect_error, expect_false, expect_ok
 from "./support/http.ms" import http_result
 from "@std/http.ms" import headers, HttpMethod, buffered
 from "./support/http.ms" import text_headers, list_headers
@@ -145,7 +145,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
                 try expect_equal(response.metadata().protocol, "HTTP/2.0")
                 try expect_equal((try response.read()).get(), "HTTP/2.0".to_bytes())
 
-def answer_ping(connection: Connection) -> Int:
+def answer_ping(var connection: Connection) -> Int:
     let ping = connection.read(some(4), some(3.seconds))
     let pong = connection.write("pong", some(3.seconds))
     connection.close()
@@ -156,7 +156,9 @@ def answer_ping(connection: Connection) -> Int:
 
 def serve_one_tls(listener: Shared[Listener]) -> Int:
     match listener.get().accept(some(3.seconds)):
-        case ok(connection): return answer_ping(connection)
+        case ok(accepted):
+            var connection = accepted
+            return answer_ping(var connection)
         case error(_): return 0
 
 test "raw TLS listeners and clients handshake and report negotiated details":
@@ -217,11 +219,11 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         let handle = listener
         group.spawn(lambda ch: serve_one_tls(handle))
 
-        let refused = net.connect_tls(
-            listener.get().address(), "stdlib.test", some(3.seconds)
+        let _failure = try expect_error(
+            net.connect_tls(
+                listener.get().address(), "stdlib.test", some(3.seconds)
+            )
         )
-        try expect_false(refused.is_ok())
-
         let _served = try group.results()
 
     listener.get().close()

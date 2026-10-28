@@ -106,8 +106,8 @@ test "two tasks accept on one listener":
         group.spawn(lambda ch: accept_one(b))
         sleep(50.milliseconds)
 
-        let c1 = try net.connect(shared.get().address(), 2.seconds)
-        let c2 = try net.connect(shared.get().address(), 2.seconds)
+        var c1 = try net.connect(shared.get().address(), 2.seconds)
+        var c2 = try net.connect(shared.get().address(), 2.seconds)
         let got = try group.results()
         try expect_equal(got.length(), 2)
         try expect_equal(got[0] + got[1], 2)
@@ -127,7 +127,7 @@ test "two tasks read one connection":
     let net = network()
 
     with let listener = try net.listen("127.0.0.1:0"):
-        let client = try net.connect(listener.address(), 2.seconds)
+        var client = try net.connect(listener.address(), 2.seconds)
         let server = try listener.accept(2.seconds)
         let shared: Shared[Connection] = share(server)
 

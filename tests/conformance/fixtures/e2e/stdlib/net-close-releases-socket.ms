@@ -28,22 +28,24 @@ def receive_one(address: String) -> Int:
         return 0
 
 def rebound_datagram(address: String) -> Int:
-    let again = network().bind_datagram(address)
-    if again.is_ok():
-        again.get().close()
-        return 1
-    return 0
+    match network().bind_datagram(address):
+        case ok(bound):
+            var again = bound
+            again.close()
+            return 1
+        case error(_): return 0
 
 def rebound(address: String) -> Int:
-    let again = network().listen(address)
-    if again.is_ok():
-        again.get().close()
-        return 1
-    return 0
+    match network().listen(address):
+        case ok(bound):
+            var again = bound
+            again.close()
+            return 1
+        case error(_): return 0
 
 export def main() -> Int:
     let net = network()
-    let first = net.listen("127.0.0.1:0").get()
+    var first = net.listen("127.0.0.1:0").get()
     let address = first.address().clone()
     first.close()
     stdout().write(f"closed listener rebound: {rebound(address)}\n").get()
@@ -67,7 +69,7 @@ export def main() -> Int:
             if accepted.is_ok():
                 accepted.get().close()
     stdout().write(f"cancelled reads rebound: {rebound(third_address)}\n").get()
-    let udp = net.bind_datagram("127.0.0.1:0").get()
+    var udp = net.bind_datagram("127.0.0.1:0").get()
     let udp_address = udp.address().clone()
     udp.close()
     stdout().write(f"closed datagram socket rebound: {rebound_datagram(udp_address)}\n").get()
