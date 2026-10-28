@@ -1,3 +1,4 @@
+from "@std/core.ms" import Closeable
 from "@std/bytes.ms" import Bytes
 from "@std/time.ms" import Duration
 from "@std/net.ms" import IpFamily
@@ -77,24 +78,63 @@ export interface Commands:
         stderr: Stdio = Stdio.Pipe
     ) -> Result[Subprocess, CommandError]
 
+# The runtime handle behind a `Subprocess`.
+export extern type NativeSubprocess
+
+extern def msstd_process_subprocess_stdin(handle: NativeSubprocess) -> WriteStream
+
+extern def msstd_process_subprocess_stream(
+    handle: NativeSubprocess,
+    which: Int
+) -> ReadStream
+
+extern def msstd_process_subprocess_wait(
+    handle: NativeSubprocess,
+    timeout: Optional[Duration]
+) -> Result[Int, CommandError]
+
+extern def msstd_process_subprocess_terminate(handle: NativeSubprocess) -> Unit
+
+extern def msstd_process_subprocess_kill(handle: NativeSubprocess) -> Unit
+
+extern def msstd_process_subprocess_close(handle: NativeSubprocess) -> Unit
+
 # A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 # kills the child's process group, joins it, and closes all three streams.
 # A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return Closed.
-export interface Subprocess:
-    # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
-    def stdin() -> WriteStream
-    # The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
-    def stdout() -> ReadStream
-    # The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
-    def stderr() -> ReadStream
-    # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
-    def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]
-    # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
-    def terminate() -> Unit
-    # Sends SIGKILL to the child's process group. Does not wait.
-    def kill() -> Unit
+export type Subprocess:
+    # The runtime handle; it is released by `close` and owned by this value.
+    native: NativeSubprocess
+
+impl Closeable for Subprocess:
     # Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; `with` calls it on scope exit.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_process_subprocess_close(self.native)
+
+impl Subprocess:
+    # The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
+    def stdin() -> WriteStream:
+        return msstd_process_subprocess_stdin(self.native)
+
+    # The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
+    def stdout() -> ReadStream:
+        return msstd_process_subprocess_stream(self.native, 1)
+
+    # The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
+    def stderr() -> ReadStream:
+        return msstd_process_subprocess_stream(self.native, 2)
+
+    # Waits for the child to exit and returns its exit status. Returns Timeout if `timeout` elapses first, leaving the child running.
+    def wait(timeout: Optional[Duration] = none) -> Result[Int, CommandError]:
+        return msstd_process_subprocess_wait(self.native, timeout)
+
+    # Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
+    def terminate() -> Unit:
+        return msstd_process_subprocess_terminate(self.native)
+
+    # Sends SIGKILL to the child's process group. Does not wait.
+    def kill() -> Unit:
+        return msstd_process_subprocess_kill(self.native)
 
 # Process and operating-system controls for the current process.
 # `watch_signals` observes signals without claiming them; SIGINT/SIGTERM still cancel the native application.
