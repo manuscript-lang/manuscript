@@ -47,3 +47,13 @@ test "decimal scale extremes and invalid requests return typed errors":
 
     let overflow: Result[Decimal, NumberError] = error(NumberError.OutOfRange)
     try expect_equal(9.999999999999999999999999999999999e6144d.round(-6144), overflow)
+
+test "exact rounding retains values at every supported precision":
+    for mode in [
+        RoundingMode.HalfEven, RoundingMode.HalfAwayFromZero, RoundingMode.TowardZero,
+        RoundingMode.Floor, RoundingMode.Ceil
+    ]:
+        for value in [0d, 1.25d, -1.25d, 1e6144d, -1e6144d]:
+            try expect_equal((try value.round(6176, mode)), value)
+        try expect_equal((try 0d.round(-6144, mode)), 0d)
+        try expect_equal((try (-1e-6176d).round(6176, mode)), -1e-6176d)
