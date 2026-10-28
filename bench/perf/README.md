@@ -15,7 +15,7 @@ How fast Manuscript is, compared with hand-written Go and Rust, Node's JSON, and
 | [`workers/`](workers) | eight CPU-bound jobs over 1, 2 and 4 `WorkerGroup` workers | `MS=./target/release/ms sh bench/perf/workers/run.sh 3` | [`workers/README.md`](workers/README.md) |
 | [`web/`](web) | the same HTTP server on Manuscript's standard library and Go's `net/http`: throughput, latency, memory, system calls, idle connections, file and DNS handlers | `sh bench/perf/web/run.sh 5` | [`web/results.md`](web/results.md) |
 
-Latest Manuscript-only baseline for every suite: [`baseline-2026-10-27.md`](baseline-2026-10-27.md).
+Latest Manuscript-only baseline for every suite: [`baseline-2026-10-28.md`](baseline-2026-10-28.md) (previous: [`baseline-2026-10-27.md`](baseline-2026-10-27.md)).
 
 Compare numbers only from the same machine; treat them as a profiling guide, not a pass/fail gate.
 
