@@ -544,14 +544,31 @@ impl Directory:
     def read() -> Result[Optional[DirectoryEntry], FileSystemError]:
         return msstd_fs_directory_read(self.native)
 
+# The runtime handle behind a `FileWatcher`.
+export extern type NativeWatcher
+
+extern def msstd_fs_watch_next(
+    watcher: NativeWatcher
+) -> Result[List[FileEvent], FileSystemError]
+
+extern def msstd_fs_watch_close(watcher: NativeWatcher) -> Unit
+
 # A change stream returned by a filesystem watch operation.
-export interface FileWatcher:
+export type FileWatcher:
+    # The runtime handle for the watch; it is released by `close` and owned by this value.
+    native: NativeWatcher
+
+impl Closeable for FileWatcher:
     # Stops the watcher, wakes a pending `next` with Closed, and waits for its worker to stop.
     # Safe to call repeatedly.
-    def close() -> Unit
+    var def close() -> Unit:
+        msstd_fs_watch_close(self.native)
+
+impl FileWatcher:
     # Waits for filesystem activity and returns events. A native watcher returns one event per call; a polling watcher returns every difference seen after an interval.
     # Cancelling the waiting task unwinds it, and a closed watcher returns Closed. A native watcher that overflowed with policy `error` returns LimitExceeded.
-    def next() -> Result[List[FileEvent], FileSystemError]
+    def next() -> Result[List[FileEvent], FileSystemError]:
+        return msstd_fs_watch_next(self.native)
 
 # The runtime handle behind a `TemporaryDirectory`.
 export extern type NativeTemporary
