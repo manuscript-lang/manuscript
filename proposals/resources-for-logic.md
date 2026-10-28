@@ -64,8 +64,9 @@ One rule: **a type may declare itself a resource; the checker then applies to it
 A record with a **hidden field** (a field whose type is not exported, extending the private-field-types proposal, and without a default) is opaque outside its declaring module:
 
 - no construction (`Secret[String](value: ..., seal: ...)`), no field read or write, no destructuring, no `.clone()` unless the module implements `Clonable`;
-- no structural operation: `json.parse[T]`, `json.stringify`, `cli.decode[T]`, `processes.decode[T]`, `f"{value}"` and any future generic builder or renderer are tagged `structural` in `stdlib/bindings.json` and reject an opaque type argument at the call site; the module may opt in by implementing an explicit interface (`Display`, a codec);
-- equality and hashing are not derived; the module implements `Equal`/`Hashable` if it wants them.
+- no structural operation: `json.parse[T]`, `json.stringify`, `cli.decode[T]`, `processes.decode[T]`, `f"{value}"`, the `@std/test.ms` renderers in `expect_equal` and friends, and any future generic builder or renderer are tagged `structural` (issue #1868) in `stdlib/bindings.json` and reject an opaque type argument at the call site; the module may opt in by implementing an explicit interface (`Display`, a codec);
+- equality and hashing are not derived; the module implements `Equal`/`Hashable` if it wants them;
+- **move-only**: an opaque value never copies implicitly, even when every field is a scalar, and destructuring it (inside its module) consumes it. So a token with one `Int` field, or a destructor that only reads a part, still gives single use; the review showed both leak when opacity is construction-only.
 
 The module exports the only constructors and accessors. This is what "sealing" meant in the first draft; the review showed construction-only sealing leaks through fields and decoders.
 
@@ -127,7 +128,7 @@ Proposed additions, all derived from signatures:
 
 - the diagnostic names the transition when the operation exists at another state: "`query` is available on `Connection[Authed]`; call `authenticate` to get there";
 - `ms inspect --states Connection` and `ms diagram` render the state machine (states, transitions, operations per state); `ms review` reports added or removed transitions;
-- a transition takes the old state apart (`let {host} = conn`) so the old value is consumed; today destructuring borrows unless a part is moved on, so for `State` and `Linear` types destructuring always consumes (proposed); with `Linear` (stage 2) it also cannot be dropped, so a `Transaction[Open]` must reach `Committed` or `RolledBack` on every path.
+- a transition takes the old state apart (`let {host} = conn`) so the old value is consumed; today destructuring borrows unless a part is moved on, so for opaque types destructuring always consumes (proposed, stage 1); the bound uses the existing `[S: State]` syntax; with `Linear` (stage 2) it also cannot be dropped, so a `Transaction[Open]` must reach `Committed` or `RolledBack` on every path.
 
 Stdlib adoption (stage 3) replaces runtime state errors with states: `HttpExchange[HeadersPending] -> send_headers -> HttpExchange[Streaming] -> Done`, `WebSocket` after `upgrade`, `Subprocess[Running] -> wait -> Exited`, and `Closeable` handles gaining a `Closed` state so use after close is a type error. That is the general form of the three parked close proposals.
 
@@ -142,7 +143,7 @@ Stdlib adoption (stage 3) replaces runtime state errors with states: `HttpExchan
 - **Propagation.** A record with a linear field is linear, so an `Account` holding `Money` must itself be settled: the module provides the consuming function (`settle`). `Optional[T]` and `Result[T, E]` of a linear `T` are linear and are consumed by `try`, `if let` and `match`; methods that drop the payload are tagged `drops_element` in `bindings.json` and unavailable.
 - **Not allowed in stage 2:** linear type arguments to `List`, `Map`, `Set`, `Deque`, `Queue`, `Channel`, `Task`, `Shared`, and module-level `var` bindings; closures may borrow a linear capture but not move it (so `twice(lambda: eat(t))` is an error at the move). Stdlib collections are audited in stage 3; once-callable closures are out of scope.
 - **Generics.** The ownership pass records per type parameter whether a generic body may drop a `T` value (as it records `Consume` today), propagated through nested generic calls. Instantiating such a parameter with a linear type is an error at the call site: "`swallow` drops its parameter `x: T`, so `T` cannot be `Money`". No bound syntax.
-- **Faults and cancellation** abort the task; the fault-site drop releases linear values. The guarantee is therefore: *no non-aborting path of a compiling program copies or loses a linear value*. A module that must hold the guarantee across a cancellation checkpoint keeps the whole operation inside one call of its own (the `withdraw`/`deposit` pair below has no checkpoint between them) or provides a compensating release; see Open questions.
+- **Faults and cancellation** abort the task; the fault-site drop releases linear values. The guarantee is therefore: *no non-aborting path of a compiling program copies or loses a linear value*. Cancellation is observed at checkpoints, which include loop back-edges, so a linear local live across one is a gap; see Open questions for the two ways to close it.
 - `Linear` and `Closeable` are exclusive: closing at scope end is a drop. A closeable handle gets typestate instead.
 
 ```text
@@ -210,14 +211,16 @@ def transfer(var from: Account, var to: Account, cents: Int) -> Result[Unit, Led
     to.deposit(m)
     return ok(())
 
-export def main() -> Int:
-    var alice = Account(id: "alice", balance: mint(50).get(Money(cents: 0)))
+def run() -> Result[Int, LedgerError]:
+    var alice = Account(id: "alice", balance: try mint(50))
     var bob = Account(id: "bob", balance: Money(cents: 0))
-    let _ = transfer(var alice, var bob, 30)
-    return settle(alice) + settle(bob)
+    try transfer(var alice, var bob, 30)
+    return ok(settle(alice) + settle(bob))
+
+export def main() -> Int: run().get(1)
 ```
 
-Under stage 2: deleting `to.deposit(m)` is "`m: Money` is not consumed"; depositing twice is the existing "moved here but used again"; `Money(cents: 100)` in another module is "opaque outside ledger.ms"; `m.cents = 1000000` elsewhere is the same error; `transfer(..., -100)` is refused by `withdraw`, the one validator, and the review of that module is the whole review. `main` must `settle` both accounts because `Account` is linear. (`mint(50).get(Money(cents: 0))` is inside the module; from outside it is `try mint(50)`.)
+Under stage 2: deleting `to.deposit(m)` is "`m: Money` is not consumed"; depositing twice is the existing "moved here but used again"; `Money(cents: 100)` in another module is "opaque outside ledger.ms"; `m.cents = 1000000` elsewhere is the same error; `transfer(..., -100)` is refused by `withdraw`, the one validator, and the review of that module is the whole review. `run` must `settle` both accounts because `Account` is linear, and a `try` that fails after `alice` exists would drop her balance, so under stage 2 `run` needs an error path that settles too; that is the cost the stage 2 gate measures. Checked arithmetic faults between `withdraw` and `deposit` abort, which the guarantee excludes.
 
 What the checker proves versus what the module is trusted for:
 
@@ -345,7 +348,7 @@ Arguments are `Untrusted` until `inside` accepts them, so `..` never reaches `fs
 
 ### Frozen modules (stage 1)
 
-An agent that meets "opaque outside ledger.ms" will add `export def mint_free` to `ledger.ms`. So the guarantee needs `ms review` to refuse a diff that touches a module listed in `policy/frozen` without a human, and to report changed exported signatures. `ms review` today produces an authority map and `--diff`; stage 1 verifies it can list exported signatures per module and adds the frozen check, which lands with the first opaque type, not after.
+An agent that meets "opaque outside ledger.ms" will add `export def mint_free` to `ledger.ms`. So the guarantee needs `ms review` to report a diff that touches a module listed in `policy/frozen`, or `policy/` itself, as a frozen change, and to report changed exported signatures. Who may make such a change is not a language question: the repository protects `policy/` and the listed modules with CODEOWNERS and a required CI check that fails on a frozen change without an owner approval. `ms review` is the detector; the repository is the gate. `ms review` today produces an authority map and `--diff`; stage 1 verifies it can list exported signatures per module and adds the frozen report, which lands with the first opaque type, not after.
 
 ### Capabilities as values (stage 4)
 
@@ -386,7 +389,7 @@ Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` 
 
 ## Staging and verification
 
-1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, `State` and the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus of reject fixtures (every opacity bypass in Problem, every drop site listed under Linear even though stage 1 does not yet enforce them, closures, generics, `var self`, fault and cancel paths); full conformance corpus unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
+1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, `State` and the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus: reject fixtures for every opacity bypass in Problem and for copy, double destructure and `peek` twice on an opaque token; the drop sites listed under Linear, closures, generics, `var self` and fault/cancel paths enter the corpus as expected-fail fixtures (`tests/conformance/expect-fail.txt`) each naming the stage that flips it; full conformance corpus otherwise unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
 2. **Linear.** `Linear`, must-consume, generic drop summaries, closure rule, `drops_element` for `Optional`/`Result`. Gate: the adversarial corpus turns from "documented" to "rejected"; ergonomics measured on the ledger and on the agent arm; go/no-go recorded here.
 3. **Stdlib typestate and containers.** `HttpExchange`, `WebSocket`, `Subprocess`, `Closeable` states; `Untrusted` at HTTP and CLI boundaries behind an option; collection audit. Gate: the 29 runtime `Closed` cases and the `send_headers` twice case become compile errors with their tests converted.
 4. **Capabilities as values.** `[permissions]`, accessor rule, `restrict` on `FileSystem` and `Commands`, `.experts` update. Gate: capabilities proposal tests; projects without the table unchanged.
@@ -407,9 +410,11 @@ Blockers from the 2026-10-28 review and their resolution:
 10. Vacuous gate: adversarial corpus and agent-bench arm moved into stage 1.
 11. Do-nothing evidence: stage 1 ships one token and one label and measures before the kit grows.
 
+Second pass (same day): A. scalar-only tokens copied and read-only destructors left the value reusable: opaque types are now move-only with consuming destructure in stage 1. B. the stage 1 gate asked for rejections stage 1 cannot produce: those fixtures are expected-fail, each naming its stage. C. the ledger's `main` dropped a linear default and discarded a `Result`: rewritten with `try` in `run`, verified. D. who owns `policy/`: the repository (CODEOWNERS plus a required check), `ms review` only detects. Smaller: checked-arithmetic faults are aborts; loop back-edges are checkpoints (open question updated); `[S: State]` is existing bound syntax; test renderers are tagged `structural` (#1868).
+
 ## Open questions
 
-- Compensation across cancellation for a linear value held over a checkpoint: forbid checkpoints while a linear local is live (recommended for stage 2; `ms check` knows the checkpointing calls), or a `release` operation on the type.
+- A linear value live across a cancellation checkpoint (a checkpointing call or a loop back-edge): reject it in stage 2 (recommended; `ms check` knows both), or let the type declare a `release` operation the runtime calls on cancellation.
 - Whether `State`-bounded parameters may be inferred at construction (`Connection(host: "db")` as `Connection[Open]` when the module names a start state): recommended later, not stage 1.
 - Whether the typestate hint should also fire for free-function transitions (`query(c, ...)` where `c: Connection[Open]`): recommended yes, same lookup.
 - Accessor rule granularity under `[permissions]`: entry module only (recommended) or modules the table names.
