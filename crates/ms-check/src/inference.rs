@@ -17,6 +17,8 @@ pub(crate) struct Arg<'a> {
     pub pos: Pos,
     pub name: Name,
     pub value: &'a Expr,
+    /// Written `var value`.
+    pub mutable: bool,
 }
 
 /// Evidence for inferring a generic call's type arguments from its result.

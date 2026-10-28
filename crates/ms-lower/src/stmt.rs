@@ -725,6 +725,7 @@ impl<'a> FnLower<'a> {
                 // the branch (the checker rejects changing its origin meanwhile): no copy. An
                 // owned scrutinee is dropped here, so its payload is copied out first.
                 let lend = !o.own
+                    && !bnd.mutable
                     && matches!(p.kind, PatternKind::Name(_))
                     && self.ownership_checked()
                     && !self.slotted.contains(&bnd.uid)
