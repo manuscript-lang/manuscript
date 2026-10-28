@@ -1149,13 +1149,36 @@ pub unsafe extern "C-unwind" fn msrt_string_repeat(
         if count as usize > limit / text.len() {
             return STATUS_LIMIT_EXCEEDED;
         }
-        let r = alloc_str(text.len() * count as usize);
-        let d = r.ptr_word;
-        for i in 0..count as usize {
-            core::ptr::copy_nonoverlapping(text.as_ptr(), d.add(i * text.len()), text.len());
-        }
+        let total = text.len() * count as usize;
+        let r = alloc_str(total);
+        fill_repeated(r.ptr_word, text, total);
         *out = r;
         STATUS_OK
+    }
+}
+
+/// Fill an uninitialized destination with a whole number of pattern copies.
+///
+/// # Safety
+/// `dst` has `len` writable bytes, `pattern` is nonempty and independent of the
+/// destination, and `len` is a multiple of `pattern.len()`.
+unsafe fn fill_repeated(dst: *mut u8, pattern: &[u8], len: usize) {
+    // SAFETY: each copy reads only initialized bytes strictly before its destination.
+    unsafe {
+        if len == 0 {
+            return;
+        }
+        if pattern.len() == 1 {
+            core::ptr::write_bytes(dst, pattern[0], len);
+            return;
+        }
+        core::ptr::copy_nonoverlapping(pattern.as_ptr(), dst, pattern.len());
+        let mut filled = pattern.len();
+        while filled < len {
+            let n = filled.min(len - filled);
+            core::ptr::copy_nonoverlapping(dst, dst.add(filled), n);
+            filled += n;
+        }
     }
 }
 
@@ -1466,17 +1489,19 @@ unsafe fn pad(
         if total > MAX_BYTES as u128 {
             fault::fault(b"string: limit exceeded");
         }
-        let mut b = Vec::with_capacity(total as usize);
-        if !atstart {
-            b.extend_from_slice(text);
-        }
-        for _ in 0..cycles {
-            b.extend_from_slice(padb);
-        }
-        b.extend_from_slice(&padb[..prefix_end]);
+        let total = total as usize;
+        let pad_len = total - text.len();
+        let mut b = Vec::<u8>::with_capacity(total);
+        let dst = b.as_mut_ptr();
+        let pad_dst = if atstart { dst } else { dst.add(text.len()) };
         if atstart {
-            b.extend_from_slice(text);
+            core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
+        } else {
+            core::ptr::copy_nonoverlapping(text.as_ptr(), dst, text.len());
         }
+        fill_repeated(pad_dst, padb, cycles * padb.len());
+        core::ptr::copy_nonoverlapping(padb.as_ptr(), pad_dst.add(cycles * padb.len()), prefix_end);
+        b.set_len(total);
         from_buf(b).write_to(out)
     }
 }
@@ -2724,6 +2749,47 @@ mod tests {
                 STATUS_OUT_OF_RANGE
             );
             assert_eq!(ret(|o| msrt_string_reverse(st("aé"), o)), "éa");
+        }
+    }
+
+    #[test]
+    fn repeat_and_pad_fill_patterns_across_doubling_boundaries() {
+        let _g = testutil::lock();
+        unsafe {
+            for pattern in ["x", "ab", "é🙂", "abcd123"] {
+                for count in [0, 1, 2, 3, 5, 9, 17, 257] {
+                    let mut out = NO_STR;
+                    assert_eq!(
+                        msrt_string_repeat(st(pattern), count, 0, 0, &mut out),
+                        STATUS_OK
+                    );
+                    assert_eq!(txt(&out), pattern.repeat(count as usize));
+                    let target = count * pattern.chars().count() as i64 + 1;
+                    assert_eq!(
+                        ret(|o| msrt_string_pad_start(st("!"), target, st(pattern), o)),
+                        std::format!("{}!", pattern.repeat(count as usize))
+                    );
+                    assert_eq!(
+                        ret(|o| msrt_string_pad_end(st("!"), target, st(pattern), o)),
+                        std::format!("!{}", pattern.repeat(count as usize))
+                    );
+                }
+            }
+            assert_eq!(
+                ret(|o| msrt_string_pad_start(st("!"), 6, st("é🙂"), o)),
+                "é🙂é🙂é!"
+            );
+            let mut out = NO_STR;
+            assert_eq!(
+                msrt_string_repeat(st("ab"), -1, 0, 0, &mut out),
+                STATUS_INVALID_INPUT
+            );
+            assert_eq!(
+                msrt_string_repeat(st("ab"), 3, 1, 5, &mut out),
+                STATUS_LIMIT_EXCEEDED
+            );
+            assert_eq!(msrt_string_repeat(st(""), 3, 1, 0, &mut out), STATUS_OK);
+            assert_eq!(txt(&out), "");
         }
     }
 
