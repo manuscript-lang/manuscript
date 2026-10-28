@@ -297,50 +297,6 @@ fn single_partial_root(module: &Module) -> bool {
     }
     root.is_some()
 }
-
-#[cfg(test)]
-mod continuation_tests {
-    use super::*;
-
-    #[test]
-    fn indexed_prefixes_match_lexing_each_candidate_prefix() {
-        let file: Arc<str> = Arc::from("recovery.ms");
-        let bodies = [
-            "1,\n2,\n3,\n",
-            "(1),\n[2],\n{3},\n",
-            "\"a ] # b\",\n# ignored )\n2,\n",
-            "(\nfrom: Int,\n)\nnext(\n",
-            "    1,\n2,\n    [3],\n",
-            "1,\n]\n[\n2,\n",
-            "1,\n@\n2,\n",
-            "f\"{value}\",\n2,\n",
-        ];
-        for ending in ["\n", "\r\n"] {
-            for body in bodies {
-                let source = ("let data = [\n".to_string() + body).replace('\n', ending);
-                let lines: Vec<&str> = source.split_inclusive('\n').collect();
-                let stop_at: Vec<bool> = lines
-                    .iter()
-                    .enumerate()
-                    .map(|(index, line)| index > 0 && is_candidate_line(line))
-                    .collect();
-                let indexed = unterminated_prefixes(&file, &source, &stop_at);
-                let mut offset = 0;
-                for (index, line) in lines.iter().enumerate() {
-                    if stop_at[index] {
-                        let expected = matches!(lex(&file, &source[..offset]), Err(d) if d.message.starts_with("unterminated delimiter"));
-                        assert_eq!(indexed[index], expected, "{source:?} at {offset}");
-                        if !expected {
-                            break;
-                        }
-                    }
-                    offset += line.len();
-                }
-            }
-        }
-    }
-}
-
 /// Retries a failed declaration chunk with each offending statement (and the
 /// block it opens) blanked to spaces, so every remaining statement keeps its
 /// original position. Returns `None` when no bounded number of blankings
@@ -466,4 +422,47 @@ fn declared_name(chunk: &str) -> Option<String> {
             .map(str::to_string);
     }
     None
+}
+
+#[cfg(test)]
+mod continuation_tests {
+    use super::*;
+
+    #[test]
+    fn indexed_prefixes_match_lexing_each_candidate_prefix() {
+        let file: Arc<str> = Arc::from("recovery.ms");
+        let bodies = [
+            "1,\n2,\n3,\n",
+            "(1),\n[2],\n{3},\n",
+            "\"a ] # b\",\n# ignored )\n2,\n",
+            "(\nfrom: Int,\n)\nnext(\n",
+            "    1,\n2,\n    [3],\n",
+            "1,\n]\n[\n2,\n",
+            "1,\n@\n2,\n",
+            "f\"{value}\",\n2,\n",
+        ];
+        for ending in ["\n", "\r\n"] {
+            for body in bodies {
+                let source = ("let data = [\n".to_string() + body).replace('\n', ending);
+                let lines: Vec<&str> = source.split_inclusive('\n').collect();
+                let stop_at: Vec<bool> = lines
+                    .iter()
+                    .enumerate()
+                    .map(|(index, line)| index > 0 && is_candidate_line(line))
+                    .collect();
+                let indexed = unterminated_prefixes(&file, &source, &stop_at);
+                let mut offset = 0;
+                for (index, line) in lines.iter().enumerate() {
+                    if stop_at[index] {
+                        let expected = matches!(lex(&file, &source[..offset]), Err(d) if d.message.starts_with("unterminated delimiter"));
+                        assert_eq!(indexed[index], expected, "{source:?} at {offset}");
+                        if !expected {
+                            break;
+                        }
+                    }
+                    offset += line.len();
+                }
+            }
+        }
+    }
 }
