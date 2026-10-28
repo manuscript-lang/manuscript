@@ -53,8 +53,9 @@ pub(super) fn analyze_with(
 }
 
 /// The checked program, or the failure that stopped it.
-fn accepted(filename: &str, overlay: &Overlay) -> Result<Checked, Failure> {
-    let checked = analyze(filename, overlay);
+/// `project` also loads a manifest's discovered test files, as `ms check` does.
+fn accepted(filename: &str, overlay: &Overlay, project: bool) -> Result<Checked, Failure> {
+    let checked = analyze_with(filename, overlay, project, true);
     if checked.success() && checked.program.is_some() {
         return Ok(checked);
     }
@@ -417,9 +418,10 @@ fn source_program(
     filename: &str,
     output: &str,
     json: bool,
+    project: bool,
     io: &mut Io,
 ) -> Result<Checked, BackendResult> {
-    let checked = match accepted(filename, &Overlay::new()) {
+    let checked = match accepted(filename, &Overlay::new(), project) {
         Ok(checked) => checked,
         Err(failure) => return Err(Ok(failure_status(&failure, json, io))),
     };
@@ -436,7 +438,8 @@ fn source_program(
 }
 
 pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
-    let checked = match source_program(&request.filename, &request.output, request.json, io) {
+    let checked = match source_program(&request.filename, &request.output, request.json, false, io)
+    {
         Ok(checked) => checked,
         Err(done) => return done,
     };
@@ -449,7 +452,8 @@ pub fn inspect_command(request: &OutputRequest, io: &mut Io) -> BackendResult {
 }
 
 pub fn diagram(request: &DiagramRequest, io: &mut Io) -> BackendResult {
-    let checked = match source_program(&request.filename, &request.output, request.json, io) {
+    let checked = match source_program(&request.filename, &request.output, request.json, false, io)
+    {
         Ok(checked) => checked,
         Err(done) => return done,
     };
@@ -487,7 +491,7 @@ fn view(request: &DiagramRequest, head: &Checked, io: &mut Io) -> i32 {
         }
     };
     if !request.diff.is_empty() {
-        let (input, base) = match diff_inputs(&request.filename, &request.diff, head, io) {
+        let (input, base) = match diff_inputs(&request.filename, &request.diff, head, false, io) {
             Ok(inputs) => inputs,
             Err(status) => return status,
         };
@@ -519,6 +523,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
         &request.filename,
         &request.output,
         request.format == "json",
+        true,
         io,
     ) {
         Ok(head) => head,
@@ -536,7 +541,7 @@ pub fn review(request: &ReviewRequest, io: &mut Io) -> BackendResult {
             report.render(&request.format).as_bytes(),
         ));
     }
-    let (input, base) = match diff_inputs(&request.filename, &request.diff, &head, io) {
+    let (input, base) = match diff_inputs(&request.filename, &request.diff, &head, true, io) {
         Ok(inputs) => inputs,
         Err(status) => return Ok(status),
     };
@@ -571,6 +576,7 @@ fn diff_inputs(
     filename: &str,
     diff: &str,
     head: &Checked,
+    project: bool,
     io: &mut Io,
 ) -> Result<(DiffInput, Facts), i32> {
     let mut fail = |status: i32, message: String| {
@@ -612,7 +618,7 @@ fn diff_inputs(
         }
     };
     let mut base = Facts::default();
-    if let Ok(checked) = accepted(filename, &overlay) {
+    if let Ok(checked) = accepted(filename, &overlay, project) {
         input.base_checked = true;
         base = facts_of(&checked);
     }
