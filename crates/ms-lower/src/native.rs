@@ -1883,17 +1883,25 @@ impl<'a> FnLower<'a> {
         let result_mty = self.emty(e)?;
         let hands_back = !discarded
             && (result_ty.is_std("List") || result_ty.is_std("Map") || result_ty.is_std("Set"));
-        if name == "add"
-            && let Some(done) = self.fused_update(e, view, m, recv_expr)?
-        {
-            return Ok(done);
-        }
-        if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
-            return Ok(done);
+        // A mutator that discards an entry closes a resource in it first; the fast paths below
+        // overwrite entries without a look at the old one.
+        let discards = self.discards_resource(recv_expr, name)?;
+        if !discards {
+            if name == "add"
+                && let Some(done) = self.fused_update(e, view, m, recv_expr)?
+            {
+                return Ok(done);
+            }
+            if let Some(done) = self.lent_key_add(e, view, m, recv_expr, name)? {
+                return Ok(done);
+            }
         }
         let args = self.native_args(view)?;
         if self.dead {
             return Ok(self.dummy(MTy::UNIT));
+        }
+        if discards {
+            self.close_discarded_entry(recv_expr, name, &args)?;
         }
         if name == "set"
             && !hands_back
@@ -1929,6 +1937,128 @@ impl<'a> FnLower<'a> {
                 Ok(Val { v: u, own: false })
             }
         }
+    }
+
+    /// Whether `name` on the place `recv_expr` discards a resource entry of a list or map:
+    /// `set` and `remove` on a list of resources, `add`, `remove` and `clear` on a map of them.
+    fn discards_resource(&mut self, recv_expr: &Expr, name: &str) -> Result<bool, Error> {
+        if !matches!(name, "set" | "add" | "remove" | "clear") || !self.is_place(recv_expr) {
+            return Ok(false);
+        }
+        let ty = self.ety(recv_expr);
+        let held = if ty.is_std("List") && matches!(name, "set" | "remove") {
+            ty.args.first()
+        } else if ty.is_std("Map") && matches!(name, "add" | "remove" | "clear") {
+            ty.args.get(1)
+        } else {
+            None
+        };
+        match held {
+            Some(t) => Ok(self.part_closer(t)?.is_some()),
+            None => Ok(false),
+        }
+    }
+
+    /// Closes the entry `name` is about to discard from the place `recv_expr`.
+    fn close_discarded_entry(
+        &mut self,
+        recv_expr: &Expr,
+        name: &str,
+        args: &[NArg],
+    ) -> Result<(), Error> {
+        let ty = self.ety(recv_expr);
+        if ty.is_std("List") {
+            return self.close_list_entry(recv_expr, &args[0]);
+        }
+        if name == "clear" {
+            // Every value goes: the map closes what it holds, last inserted first.
+            let x = self.expr(recv_expr)?;
+            if self.dead {
+                return Ok(());
+            }
+            let map = self.borrow(x);
+            self.close_discarded_ty(&ty, map)?;
+            self.finish(x);
+            return Ok(());
+        }
+        self.close_map_entry(recv_expr, &args[0])
+    }
+
+    /// `m.add(k, v)` over an existing key and `m.remove(k)` discard the value of `k`.
+    fn close_map_entry(&mut self, recv_expr: &Expr, key: &NArg) -> Result<(), Error> {
+        use ms_mir::ir::{Imm, Op};
+        let ty = self.ety(recv_expr);
+        let Some(value) = ty.args.get(1).cloned() else {
+            return Ok(());
+        };
+        let x = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(());
+        }
+        let mv = self.borrow(x);
+        let kv = self.borrow(key.val);
+        let mt = self.ty_of(mv);
+        let value_ty = self.map_value_type(mv)?;
+        let (kd, vd) = self.map_descs(mt)?;
+        let vd = vd.ok_or_else(|| Error::new("a set has no values"))?;
+        let ks = self.lend_slot(kv);
+        let p = self.call_runtime("msrt_map_get_ptr", &[mv, kd, vd, ks], MTy::PTR)?;
+        let missing = self
+            .b
+            .emit(Op::PtrIsNull, &[p], Imm::None, Some(MTy::BOOL))
+            .expect("is_null");
+        let (absent, present) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(missing, absent, &[], present, &[]);
+        self.b.seal_block(present);
+        self.b.switch_to(present);
+        let old = self
+            .b
+            .emit(Op::Load, &[p], Imm::Ty(value_ty), Some(value_ty))
+            .expect("load");
+        self.close_discarded_ty(&value, old)?;
+        self.b.br(absent, &[]);
+        self.b.seal_block(absent);
+        self.b.switch_to(absent);
+        self.finish(x);
+        Ok(())
+    }
+
+    /// `xs.set(i, v)` and `xs.remove(i)` discard the element at `i`: a resource in it closes
+    /// first. An index out of range closes nothing and faults in the mutator.
+    fn close_list_entry(&mut self, recv_expr: &Expr, index: &NArg) -> Result<(), Error> {
+        use ms_mir::ir::{Cc, Op};
+        let list_ty = self.ety(recv_expr);
+        let Some(elem) = list_ty.args.first().filter(|_| list_ty.is_std("List")) else {
+            return Ok(());
+        };
+        if self.part_closer(elem)?.is_none() {
+            return Ok(());
+        }
+        let x = self.expr(recv_expr)?;
+        if self.dead {
+            return Ok(());
+        }
+        let list = self.borrow(x);
+        let i = self.borrow(index.val);
+        let n = self.b.list_len(list);
+        let zero = self.b.iconst(0);
+        let neg = self.b.icmp(Cc::Lt, i, zero);
+        let shifted = self.b.binop(Op::IAdd, i, n);
+        let r = self.b.select(neg, shifted, i);
+        let lo = self.b.icmp(Cc::Ge, r, zero);
+        let hi = self.b.icmp(Cc::Lt, r, n);
+        let inside = self.b.binop(Op::And, lo, hi);
+        let (yes, exit) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(inside, yes, &[], exit, &[]);
+        self.b.seal_block(yes);
+        self.b.switch_to(yes);
+        let e = self.b.list_get(list, r);
+        self.close_discarded_ty(elem, e)?;
+        self.b.br(exit, &[]);
+        self.b.seal_block(exit);
+        self.b.switch_to(exit);
+        self.finish(x);
+        Ok(())
     }
 
     /// `xs.set(i, v)` on a list variable that lives in memory (a closure shares it): the element
