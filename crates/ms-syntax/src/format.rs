@@ -517,7 +517,7 @@ fn format_expression_layout(file: &Arc<str>, source: &str) -> PResult<String> {
         } else {
             0
         };
-        output.push_str(&layout.group(gid, indent, column, following));
+        layout.group(gid, indent, column, following, &mut output);
         offset = g.close.hi as usize;
     }
     output.push_str(&source[offset..]);
@@ -604,11 +604,10 @@ fn compact_callback_suites(module: &Module, tokens: &[Token], source: &str) -> O
     }
     compact.cuts.sort_unstable_by(|a, b| b.cmp(a));
     compact.cuts.dedup();
-    let mut result = source.to_string();
-    for (from, to) in compact.cuts {
-        result.replace_range(from..to, " ");
-    }
-    Some(result)
+    Some(apply_edits(
+        source,
+        compact.cuts.iter().rev().map(|&(from, to)| (from, to, " ")),
+    ))
 }
 
 /// A lambda whose body is a suite of several statements; a one-expression
@@ -821,7 +820,9 @@ impl<'a> Layout<'a> {
         out
     }
 
-    fn group(&self, gid: usize, indent: usize, column: usize, following: usize) -> String {
+    // Append descendants to the caller's buffer so each enclosing group does
+    // not copy its child's complete, increasingly indented output.
+    fn group(&self, gid: usize, indent: usize, column: usize, following: usize, out: &mut String) {
         let g = &self.groups[gid];
         let nodes = trim_trailing_comma(self, &g.nodes);
         let flat = format!(
@@ -851,19 +852,25 @@ impl<'a> Layout<'a> {
         force = force || nodes.iter().any(|n| n.tok.kind == Tok::Comment);
         let mut parts = split_layout(nodes, Tok::Comma);
         if parts.is_empty() {
-            return flat;
+            out.push_str(&flat);
+            return;
         }
         let comma_separated = parts.len() > 1;
         if !force {
             // A child's complexity or width can expand the containing argument.
-            let trial = self.sequence(
+            let mut trial = String::new();
+            self.sequence(
                 nodes,
                 indent,
                 column + (g.open.hi - g.open.lo) as usize,
                 false,
+                &mut trial,
             );
             if !trial.contains('\n') {
-                return format!("{}{}{}", self.text(&g.open), trial, self.text(&g.close));
+                out.push_str(self.text(&g.open));
+                out.push_str(&trial);
+                out.push_str(self.text(&g.close));
+                return;
             }
             force = true;
         }
@@ -874,7 +881,8 @@ impl<'a> Layout<'a> {
             parts = split_layout(nodes, op);
         }
         if g.list && !g.force && simple_layout_items(&parts) {
-            return self.packed(g, &parts, indent);
+            out.push_str(&self.packed(g, &parts, indent));
+            return;
         }
         if g.items
             && !g.parameters
@@ -883,16 +891,17 @@ impl<'a> Layout<'a> {
             && parts.len() > 1
             && let Some(packed) = self.packed_arguments(g, &parts, indent)
         {
-            return packed;
+            out.push_str(&packed);
+            return;
         }
         // Keep an opener's trailing comment on its original line.
-        let mut opening = self.text(&g.open).to_string();
+        out.push_str(self.text(&g.open));
         if !nodes.is_empty()
             && nodes[0].tok.kind == Tok::Comment
             && nodes[0].tok.pos.line == g.open.pos.line
         {
-            opening.push_str("  ");
-            opening.push_str(self.text(&nodes[0].tok));
+            out.push_str("  ");
+            out.push_str(self.text(&nodes[0].tok));
             let remaining = &nodes[1..];
             parts = split_layout(remaining, Tok::Comma);
             if parts.len() == 1
@@ -901,37 +910,40 @@ impl<'a> Layout<'a> {
                 parts = split_layout(remaining, op);
             }
         }
-        let mut out = opening;
         for part in &parts {
-            let text = self.item(part, indent + 4);
-            if !text.is_empty() {
-                out.push('\n');
-                out.push_str(&text);
+            let start = out.len();
+            out.push('\n');
+            self.item(part, indent + 4, out);
+            if out.len() == start + 1 {
+                out.truncate(start);
             }
         }
         out.push('\n');
         out.push_str(&" ".repeat(indent));
         out.push_str(self.text(&g.close));
-        out
     }
 
     /// An item's enclosing delimiters already allow continuation lines. Break
     /// its operators directly rather than inserting another pair of parentheses.
-    fn item(&self, nodes: &[Node], indent: usize) -> String {
-        let text = self.sequence(nodes, indent, indent, true);
-        let long = text.split('\n').any(|l| l.chars().count() > WIDTH);
+    fn item(&self, nodes: &[Node], indent: usize, out: &mut String) {
         let (operator, count) = self.layout_operators(nodes);
         let Some(operator) = operator else {
-            return text;
+            self.sequence(nodes, indent, indent, true, out);
+            return;
         };
+        let mut text = String::new();
+        self.sequence(nodes, indent, indent, true, &mut text);
+        let long = text.split('\n').any(|l| l.chars().count() > WIDTH);
         if !long || (operator == Tok::Dot && count < 2) || is_comparison(operator) {
-            return text; // Keep comparison operands together.
+            out.push_str(&text); // Keep comparison operands together.
+            return;
         }
-        let lines: Vec<String> = split_layout(nodes, operator)
-            .iter()
-            .map(|p| self.sequence(p, indent, indent, true))
-            .collect();
-        lines.join("\n")
+        for (index, part) in split_layout(nodes, operator).iter().enumerate() {
+            if index > 0 {
+                out.push('\n');
+            }
+            self.sequence(part, indent, indent, true, out);
+        }
     }
 
     fn layout_operators(&self, nodes: &[Node]) -> (Option<Tok>, usize) {
@@ -972,7 +984,8 @@ impl<'a> Layout<'a> {
             if part.iter().any(|n| n.tok.kind == Tok::Comment) {
                 return None;
             }
-            let text = self.item(part, indent + 4);
+            let mut text = String::new();
+            self.item(part, indent + 4, &mut text);
             if text.is_empty() || text.contains('\n') {
                 return None;
             }
@@ -1056,15 +1069,29 @@ impl<'a> Layout<'a> {
         following
     }
 
-    fn sequence(&self, nodes: &[Node], indent: usize, column: usize, prefix: bool) -> String {
-        struct W {
-            out: String,
+    fn sequence(
+        &self,
+        nodes: &[Node],
+        indent: usize,
+        column: usize,
+        prefix: bool,
+        out: &mut String,
+    ) {
+        struct W<'a> {
+            out: &'a mut String,
+            start: usize,
             column: usize,
             line_indent: usize,
         }
-        impl W {
+        impl W<'_> {
             fn write(&mut self, text: &str) {
+                let start = self.out.len();
                 self.out.push_str(text);
+                self.measure_from(start);
+            }
+
+            fn measure_from(&mut self, start: usize) {
+                let text = &self.out[start..];
                 if let Some(at) = text.rfind('\n') {
                     let tail = &text[at + 1..];
                     self.column = tail.chars().count();
@@ -1073,9 +1100,14 @@ impl<'a> Layout<'a> {
                     self.column += text.chars().count();
                 }
             }
+
+            fn is_empty(&self) -> bool {
+                self.out.len() == self.start
+            }
         }
         let mut w = W {
-            out: String::new(),
+            start: out.len(),
+            out,
             column,
             line_indent: indent,
         };
@@ -1094,10 +1126,10 @@ impl<'a> Layout<'a> {
                 continue;
             }
             let comment = node.tok.kind == Tok::Comment;
-            if comment && last_line != node.tok.pos.line && !w.out.is_empty() {
+            if comment && last_line != node.tok.pos.line && !w.is_empty() {
                 pending = true;
             }
-            if !w.out.is_empty()
+            if !w.is_empty()
                 && !pending
                 && !suite
                 && last_line != 0
@@ -1108,8 +1140,8 @@ impl<'a> Layout<'a> {
                 // holds its header.
                 first_indent = self.line_indent(node.tok.pos.line) as i64;
             }
-            if w.out.is_empty() || pending {
-                if !w.out.is_empty() {
+            if w.is_empty() || pending {
+                if !w.is_empty() {
                     w.write("\n");
                     for line in last_line + 1..node.tok.pos.line {
                         if self.lines[line as usize - 1].trim().is_empty() {
@@ -1124,7 +1156,7 @@ impl<'a> Layout<'a> {
                         - first_indent)
                         .max(0) as usize;
                 }
-                if prefix || !w.out.is_empty() {
+                if prefix || !w.is_empty() {
                     let pad = " ".repeat(w.line_indent);
                     w.write(&pad);
                 }
@@ -1135,8 +1167,9 @@ impl<'a> Layout<'a> {
             }
             if let Some(gid) = node.group {
                 let following = self.following_width(&nodes[index + 1..], false);
-                let text = self.group(gid, w.line_indent, w.column, following);
-                w.write(&text);
+                let start = w.out.len();
+                self.group(gid, w.line_indent, w.column, following, w.out);
+                w.measure_from(start);
                 last_line = self.groups[gid].close.pos.line;
             } else {
                 w.write(self.text(&node.tok));
@@ -1144,7 +1177,6 @@ impl<'a> Layout<'a> {
             }
             pending = comment;
         }
-        w.out
     }
 }
 
@@ -1507,18 +1539,63 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
         visit::walk_decl(&mut g, d);
     }
     if strip {
-        let mut result = source.to_string();
-        g.remove.sort_unstable_by(|a, b| b.cmp(a));
-        for (from, to, flat) in &g.remove {
-            result.replace_range(*from..*to, flat);
-        }
-        return Ok(result);
+        g.remove.sort_unstable();
+        return Ok(apply_edits(
+            source,
+            g.remove
+                .iter()
+                .map(|(from, to, flat)| (*from, *to, flat.as_str())),
+        ));
     }
     let mut offsets: Vec<usize> = g.insert.keys().copied().collect();
-    offsets.sort_unstable_by(|a, b| b.cmp(a));
-    let mut result = source.to_string();
-    for offset in offsets {
-        result.insert_str(offset, &g.insert[&offset]);
+    offsets.sort_unstable();
+    Ok(apply_edits(
+        source,
+        offsets
+            .into_iter()
+            .map(|offset| (offset, offset, g.insert[&offset].as_str())),
+    ))
+}
+
+/// Applies nonoverlapping, source-ordered edits without shifting each suffix.
+fn apply_edits<'a>(
+    source: &str,
+    edits: impl IntoIterator<Item = (usize, usize, &'a str)>,
+) -> String {
+    let mut result = String::with_capacity(source.len());
+    let mut cursor = 0;
+    for (from, to, text) in edits {
+        result.push_str(&source[cursor..from]);
+        result.push_str(text);
+        cursor = to;
     }
-    Ok(result)
+    result.push_str(&source[cursor..]);
+    result
+}
+
+#[cfg(test)]
+mod edit_tests {
+    use super::apply_edits;
+
+    #[test]
+    fn source_edits_preserve_utf8_and_adjacent_boundaries() {
+        let source = "α\r\nhello λ!";
+        let edits = [(0, 0, "("), (4, 9, "world"), (9, 10, ""), (12, 12, ")")];
+        let mut expected = source.to_string();
+        for &(from, to, text) in edits.iter().rev() {
+            expected.replace_range(from..to, text);
+        }
+        assert_eq!(apply_edits(source, edits), expected);
+        assert_eq!(apply_edits(source, []), source);
+    }
+
+    #[test]
+    fn many_edits_keep_the_original_coordinate_space() {
+        let source = "abcd".repeat(4096);
+        let edits: Vec<_> = (0..source.len())
+            .step_by(4)
+            .map(|at| (at + 1, at + 3, "λ"))
+            .collect();
+        assert_eq!(apply_edits(&source, edits), "aλd".repeat(4096));
+    }
 }

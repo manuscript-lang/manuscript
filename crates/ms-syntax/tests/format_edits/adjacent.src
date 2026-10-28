@@ -1,0 +1,9 @@
+def edited() -> Int:
+    let first = (value.one().two())
+    let second = (value.three().four())
+    let text = "λ"
+    consume(
+        lambda:
+            return first
+    )
+    return alpha_long_name + beta_long_name + gamma_long_name + delta_long_name + epsilon_long_name

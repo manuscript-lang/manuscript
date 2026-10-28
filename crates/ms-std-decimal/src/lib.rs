@@ -222,6 +222,12 @@ impl Dec {
 
     /// The exact sum and difference share one alignment.
     fn combine(&self, other: &Dec, subtract: bool) -> Result<Dec, Overflow> {
+        if other.is_zero() {
+            return Ok(*self);
+        }
+        if self.is_zero() {
+            return Ok(if subtract { other.negate() } else { *other });
+        }
         let (a, b) = (self.coefficient(), other.coefficient());
         let b = if subtract { -b } else { b };
         let exp = self.exp.min(other.exp);
@@ -538,6 +544,31 @@ mod tests {
         }
         assert_eq!(d("1e6144").compare(&d("1e-6176")), 1);
         assert_eq!(d("-1e6144").compare(&d("-1e-6176")), -1);
+    }
+
+    #[test]
+    fn zero_addition_and_subtraction_preserve_values() {
+        for text in [
+            "0",
+            "1.25",
+            "-1.25",
+            "1e6144",
+            "-1e6144",
+            "1e-6176",
+            "-1e-6176",
+            "9.999999999999999999999999999999999e6144",
+        ] {
+            let value = d(text);
+            assert_eq!(value.add(&Dec::ZERO), Ok(value));
+            assert_eq!(Dec::ZERO.add(&value), Ok(value));
+            assert_eq!(value.subtract(&Dec::ZERO), Ok(value));
+            assert_eq!(Dec::ZERO.subtract(&value), Ok(value.negate()));
+        }
+        assert_eq!(
+            d("9.999999999999999999999999999999999e6144").add(&d("1e6144")),
+            Err(Overflow::Magnitude)
+        );
+        assert_eq!(d("1.25").add(&d("-1.25")), Ok(Dec::ZERO));
     }
 
     #[test]
