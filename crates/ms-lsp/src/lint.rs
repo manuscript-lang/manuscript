@@ -4,12 +4,15 @@
 //! [`Hygiene`] the whitespace-only subset.
 
 use ms_check::Program;
+use ms_tooling::lint::Severity;
 
 /// One advisory finding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LintFinding {
     /// Rule code such as `MSL001`.
     pub code: String,
+    /// LSP severity: 1 for an error rule, 2 for a warning rule.
+    pub severity: i64,
     /// Message.
     pub message: String,
     /// Logical module file.
@@ -40,6 +43,7 @@ impl Lint for Hygiene {
             if trimmed.len() != body.len() {
                 findings.push(LintFinding {
                     code: "MSL001".to_string(),
+                    severity: 2,
                     message: "Remove trailing whitespace".to_string(),
                     file: filename.to_string(),
                     offset: offset + trimmed.len(),
@@ -50,6 +54,7 @@ impl Lint for Hygiene {
         if !source.is_empty() && !source.ends_with('\n') {
             findings.push(LintFinding {
                 code: "MSL002".to_string(),
+                severity: 2,
                 message: "End the file with a newline".to_string(),
                 file: filename.to_string(),
                 offset: source.len(),
@@ -77,6 +82,10 @@ impl Lint for Tooling {
             .into_iter()
             .map(|finding| LintFinding {
                 code: finding.code.to_string(),
+                severity: match finding.severity {
+                    Severity::Warning => 2,
+                    Severity::Error => 1,
+                },
                 message: finding.message,
                 file: finding.file.to_string(),
                 offset: finding.pos.offset as usize,

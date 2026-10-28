@@ -53,6 +53,6 @@ export def main() -> Int:
 - Borrow: using a value without owning it. Read-only parameters, `let x = a.b`, `xs[i]`, loop variables and match payloads borrow their owner. A borrow cannot be moved or stored, so `.clone()` it to own a copy; and while it lives the owner cannot change (many readers, or one `var` writer).
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
-- Lints (`ms lint`, `ms verify`): `Optional.get()` without default, unread bindings (prefix `_`).
+- Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
 - No exceptions, classes, `async`, `null`, `pass`.

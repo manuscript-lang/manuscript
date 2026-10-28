@@ -57,12 +57,14 @@ impl Step {
 
 pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) -> i32 {
     let (mut structured, mut skip_test, mut positional) = (false, false, false);
+    let mut deny_warnings = false;
     let mut targets: Vec<&String> = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--" if !positional => positional = true,
             "--json" if !positional => structured = true,
             "--no-test" if !positional => skip_test = true,
+            "--deny-warnings" if !positional => deny_warnings = true,
             _ if !positional && arg.starts_with('-') => {
                 let _ = writeln!(
                     io.stderr,
@@ -123,7 +125,11 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
     let format = run_step("fmt", &["fmt", &input, "--check", "--json"], engine, io);
     record(io, format, &mut steps);
     if check_passed {
-        let lint = run_step("lint", &["lint", &input, "--json"], engine, io);
+        let mut lint_args = vec!["lint", &input, "--json"];
+        if deny_warnings {
+            lint_args.push("--deny-warnings");
+        }
+        let lint = run_step("lint", &lint_args, engine, io);
         record(io, lint, &mut steps);
     } else {
         record(io, skip("lint", "check failed"), &mut steps);
@@ -147,6 +153,17 @@ pub fn run_verify<L: Lower>(args: &[String], engine: &Engine<L>, io: &mut Io) ->
                 Json::Arr(steps.iter().map(Step::to_json).collect()),
             );
         return emit_json(io, &document, status);
+    }
+    for step in steps
+        .iter()
+        .filter(|step| step.name == "lint" && step.status == "passed")
+    {
+        if print_findings(step, io) > 0 {
+            let _ = writeln!(
+                io.stderr,
+                "lint warnings do not fail verify; pass --deny-warnings to fail on them"
+            );
+        }
     }
     for step in steps.iter().filter(|step| step.status == "failed") {
         print_findings(step, io);
@@ -189,7 +206,7 @@ fn run_step<L: Lower>(name: &'static str, args: &[&str], engine: &Engine<L>, io:
 
 /// Print the leading findings of a failed step so the text summary names the
 /// problem instead of only pointing at another command.
-fn print_findings(step: &Step, io: &mut Io) {
+fn print_findings(step: &Step, io: &mut Io) -> usize {
     let mut findings: Vec<String> = Vec::new();
     if !step.error.is_empty() {
         findings.push(step.error.clone());
@@ -234,4 +251,5 @@ fn print_findings(step: &Step, io: &mut Io) {
         }
         let _ = writeln!(io.stderr, "  {finding}");
     }
+    findings.len()
 }

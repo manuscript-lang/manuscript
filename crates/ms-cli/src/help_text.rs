@@ -66,17 +66,19 @@ Examples:
   ms check src utilities.ms --json
 "#;
 
-pub const HELP_LINT: &str = r#"Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix]
+pub const HELP_LINT: &str = r#"Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings]
 
 Check source hygiene and semantic lint rules in independent inputs and their imports.
 A project directory selects ms.toml; standalone directories discover .ms files recursively.
 Discovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.
 Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
-Exit status is 1 when any input fails checking or has lint findings.
+Each rule is a warning or an error (`severity` in --json; `ms guide MSL110` shows it). Warnings are reported
+without failing; exit status is 1 when any input fails checking or has an error finding, or any finding with --deny-warnings.
 
 Options:
   --json  Emit versioned JSON findings with stable rule codes
   --watch Recheck after each saved change to an input or loaded module (no --json)
+  --deny-warnings  Treat warnings as errors (for CI)
   --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)
   -h, --help  Show this help without executing the command
 
@@ -224,7 +226,7 @@ Examples:
   ms fmt src/*.ms --check
 "#;
 
-pub const HELP_VERIFY: &str = r#"Usage: ms verify [file.ms|directory|ms.toml] [--json] [--no-test]
+pub const HELP_VERIFY: &str = r#"Usage: ms verify [file.ms|directory|ms.toml] [--json] [--no-test] [--deny-warnings]
 
 Run check, fmt --check, lint, and test on one target and report every step together.
 The target defaults to ms.toml. Lint and test are skipped when check fails; fmt always runs.
@@ -234,6 +236,7 @@ Exit status is 1 when any step fails.
 Options:
   --json     Emit one versioned result with every step
   --no-test  Skip the test step (it builds a native executable)
+  --deny-warnings  Fail the lint step on warnings, not only errors
   -h, --help  Show this help without executing the command
 
 Examples:

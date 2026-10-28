@@ -135,6 +135,7 @@ fn run_source_command<L: Lower>(
                 json: inv.structured,
                 watch: inv.watch,
                 fix: inv.fix,
+                deny_warnings: inv.deny_warnings,
             };
             engine::analysis(&request, io)
         }

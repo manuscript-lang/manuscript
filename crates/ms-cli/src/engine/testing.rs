@@ -327,6 +327,7 @@ fn run<L: Lower>(
         }
         document.reason = Some(format!("{phase}_error"));
         document.diagnostics.push(CommandDiagnostic {
+            severity: String::new(),
             code: "MST001".into(),
             phase: phase.into(),
             message: message.into(),
@@ -436,6 +437,7 @@ impl Runner<'_> {
             let _ = writeln!(out.io.stderr, "{message}");
             document.reason = Some("no_match".into());
             document.diagnostics.push(CommandDiagnostic {
+                severity: String::new(),
                 code: "MST001".into(),
                 phase: "execution".into(),
                 message,
