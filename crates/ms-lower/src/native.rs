@@ -322,6 +322,20 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
+            "shared/share" => {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                self.at(e.pos);
+                let held = self.ety(e).args.first().cloned();
+                let shared = self.native_call(native, params, &args, result)?;
+                if let Some(held) = held {
+                    self.register_shared_close(&held, result)?;
+                }
+                Ok(shared)
+            }
             "collections/map_from_entries" => {
                 let args = self.native_args(view)?;
                 if self.dead {

@@ -1064,6 +1064,9 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
+    /// Closers of `Shared` payloads holding resources: for the payload record type, a function
+    /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
+    pub shared_close: Vec<(Ty, FuncId)>,
 }
 
 impl Default for Module {
@@ -1090,6 +1093,7 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
+            shared_close: Vec::new(),
         }
     }
 

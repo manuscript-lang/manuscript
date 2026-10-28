@@ -520,6 +520,12 @@ impl<'a, 'm> Lower<'a, 'm> {
             }
             Glue::SharedDrop => {
                 let obj = params[0];
+                if let Some(&(_, close)) = self.g.m.shared_close.iter().find(|(t, _)| *t == ty) {
+                    // The last holder is gone: close the payload before it is dropped.
+                    let at = self.add_imm(obj, SHARED_VALUE);
+                    let id = self.g.funcs[close.index()];
+                    self.call_id(id, &[at]);
+                }
                 if self.g.m.needs_drop(ty) {
                     let leaves = self.g.lay.leaves(ty);
                     let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
