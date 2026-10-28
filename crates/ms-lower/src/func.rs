@@ -828,7 +828,7 @@ impl<'a> FnLower<'a> {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
                 if let Some(closer) = self.closers.get(uid).cloned() {
-                    self.emit_close(*uid, &closer);
+                    self.close_at_scope_end(*uid, &closer);
                 }
                 let l = self.locals[uid];
                 if self.needs_drop(l.ty) {

@@ -23,7 +23,11 @@ pub(super) fn lint(program: &Program, module: &ModuleData, findings: &mut Vec<Fi
     walk_module(module, &mut scan);
     let file = module_file(module);
     for (uid, name, pos, ty) in scan.owned {
-        if scan.finished.contains(&uid) || !program.implicit_closes.contains(&uid) {
+        // A binding some path moves is left alone: the new owner reports the close.
+        if scan.finished.contains(&uid)
+            || !program.implicit_closes.contains(&uid)
+            || program.close_moves.contains_key(&uid)
+        {
             continue;
         }
         let Some(method) = finisher(program, module, &ty) else {
