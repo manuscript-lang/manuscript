@@ -22,7 +22,7 @@ test "addition":
 - Be terse: omit types a closure can infer, use one-line bodies (`if n < 0: return 0`; `def f(x: Int) -> Int: x * 2` returns implicitly), `xs[i]`, `xs[i] = v`, `read_lines(stdin())` (`@std/streams.ms`), and `map`/`filter`/`fold`/`join`/`get(d)` over loops. stdout flushes at exit.
 - Regex: `compile` in `@std/string.ms`; `captures`, `named_captures`, `split`, `replace_template`; pattern braces need `\{`.
 - Workflow: `ms search_symbol <name or words>` finds a symbol (`<module>` lists one); `ms verify` (check, fmt, lint, test); `ms review`.
-- `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `error(...)` (or a failing `try`) fails.
+- `main() -> Int` returns the exit status. `test "name":` blocks run under `ms test`: finishing passes; `try fail("why")` (`@std/test.ms`) fails.
 - Imports: `from "@std/x.ms" import a, b` or `from "./local.ms" import a`; `export` shares. Prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) need no import.
 - `let` binds once, `var` reassigns; `n += 1` (`-=` etc.); `for i in 0..n:` counts up, excluding `n`; steps use `range_by` from `@std/collections.ms`. Types `Int Float Bool String Unit`; `f"{expr}"` interpolates (plain `"..."` keeps braces literally); `True`/`False`; `()` is the Unit value; `a if c else b`. Function types are `Callable[[Int], Int]`; closures `lambda x: x + 1`. No implicit casts.
 - `[1, 2]` List; `List[T](reserve: n)` preallocates; `Map[K, V]()`, `Set[T]()` or `Set([1, 2])` mutate in place; `for e in m.entries():` and `if var n = m.get(k): n += 1` work in place; `.clone()` is deep; storing a borrowed String needs it.

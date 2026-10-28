@@ -374,7 +374,7 @@ pub const HELP_GUIDE: &str = r#"Usage: ms guide [code...] [--json]
 Print the language cheat sheet: syntax, types, errors, a checked example
 program, and common mistakes beside their fixes. Look symbols up with ms search_symbol.
 
-With diagnostic codes from ms check --json, print each code's rule family and
+With diagnostic codes from ms check --json or ms lint --json (MS and MSL), print each code's rule family and
 usual repair instead. Apply the diagnostic's own fix field first when it has one.
 
 Options:
