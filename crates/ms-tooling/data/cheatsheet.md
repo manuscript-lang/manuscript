@@ -39,5 +39,5 @@ test "addition":
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
-- Cleanup: `with let f = try open(path):` closes `f` at block end. Concurrency: `with let g = TaskGroup[T]():`, `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` / `g.results()` waits; leaving the block cancels the rest.
+- Cleanup: `with let f = try filesystem().open(path, flags: "r", mode: 0):` (`@std/fs.ms`) closes `f` at block end. Concurrency: `with let g = TaskGroup[T]():`, `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` / `g.results()` waits; leaving the block cancels the rest.
 - No exceptions, classes, `async`, `null`, `pass`.
