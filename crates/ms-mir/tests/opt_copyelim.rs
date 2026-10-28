@@ -261,6 +261,11 @@ fn readonly_record_projections_borrow_the_original_without_a_deep_copy() {
             include_str!("fixtures-opt/record_copy_parent_update.mir"),
             1,
         ),
+        // A projection taken before the copy is read after the copy's drop, so the copy stays.
+        (
+            include_str!("fixtures-opt/record_copy_earlier_projection.mir"),
+            1,
+        ),
     ] {
         let mut m = parse_module(source).unwrap();
         verify_module(&m).unwrap();

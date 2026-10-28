@@ -175,6 +175,8 @@ pub struct Cx {
     pub consumes: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<bool>>>,
     /// Calls bound as a mutable borrow of a field path of their argument, by module file and node.
     pub getters: Rc<HashMap<(Name, ms_syntax::ast::NodeId), Vec<Name>>>,
+    /// Which types are resources, for the closers of records and collections that hold them.
+    pub classes: ms_check::ownership::Classifier,
 }
 
 impl Cx {
@@ -228,6 +230,7 @@ impl Cx {
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),
             getters: program.getter_borrows.clone(),
+            classes: ms_check::ownership::Classifier::new(program),
         }
     }
 

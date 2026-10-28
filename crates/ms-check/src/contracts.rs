@@ -635,6 +635,10 @@ impl Checker {
                 || t.is_std("Timestamp");
         }
         if t.def.is_some() {
+            // A resource has one owner: a copy would be closed a second time.
+            if self.closeable(t) {
+                return false;
+            }
             return fields(t)
                 .iter()
                 .all(|f| self.property_in(&f.ty, "Clonable", state));

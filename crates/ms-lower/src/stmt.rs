@@ -283,9 +283,9 @@ impl<'a> FnLower<'a> {
         if let PatternKind::Name(_) = pattern.kind
             && let Some(b) = self.hir.pattern_binding(pattern)
             && self.cx.implicit_closes.contains(&b.uid)
-            && let Some(cleanup) = self.hir.stmt(s).cleanup
         {
-            return self.bind_closing(&b, x, &cleanup);
+            let cleanup = self.hir.stmt(s).cleanup;
+            return self.bind_closing(&b, x, cleanup.as_ref());
         }
         self.bind_pattern(pattern, x)
     }
@@ -727,11 +727,11 @@ impl<'a> FnLower<'a> {
                 // The payload of a scrutinee that is itself a borrow is a lexical borrow for
                 // the branch (the checker rejects changing its origin meanwhile): no copy. An
                 // owned scrutinee is dropped here, so its payload is copied out first.
-                let closing = if self.cx.implicit_closes.contains(&bnd.uid) {
-                    self.hir.stmt(s).cleanup
-                } else {
-                    None
-                };
+                let closing = self
+                    .cx
+                    .implicit_closes
+                    .contains(&bnd.uid)
+                    .then(|| self.hir.stmt(s).cleanup);
                 let lend = closing.is_none()
                     && !o.own
                     && !bnd.mutable
@@ -741,12 +741,12 @@ impl<'a> FnLower<'a> {
                     && self.needs_drop(self.ty_of(payload));
                 if lend {
                     self.bind_lent(&bnd, payload);
-                } else if let Some(cleanup) = closing {
+                } else if let Some(cleanup) = closing.as_ref() {
                     let held = Val {
                         v: payload,
                         own: false,
                     };
-                    self.bind_closing(&bnd, held, &cleanup)?;
+                    self.bind_closing(&bnd, held, cleanup.as_ref())?;
                 } else {
                     self.bind_local(
                         &bnd,

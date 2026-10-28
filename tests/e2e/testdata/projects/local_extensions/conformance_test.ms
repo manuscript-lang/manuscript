@@ -24,7 +24,7 @@ test "views and functions retain local implementations across modules":
 
     var events = ListBuilder[Int]()
     let resource = Resource(events)
-    with let first_close = first_resource(resource.clone()):
+    with let first_close = first_resource(Resource(events)):
         let _active = True
     with let second_close = second_resource(resource):
         let _active = True

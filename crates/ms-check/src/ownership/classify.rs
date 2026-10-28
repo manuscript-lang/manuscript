@@ -64,12 +64,26 @@ impl Classifier {
         } else if t.is_std("Shared") {
             // Copying shares the box; the payload is closed once the last holder releases it.
             Class::Copy
-        } else if t.is_std("List") || t.is_std("Map") || t.is_std("Set") || t.is_std("Bytes") {
+        } else if t.is_std("List") {
+            // An owning collection of resources is itself a resource, closed with its elements.
+            // A `Set` does not own its elements yet, so it stays `Move`.
+            self.holds(t.args.first(), visiting)
+        } else if t.is_std("Map") {
+            self.holds(t.args.get(1), visiting)
+        } else if t.is_std("Bytes") {
             Class::Move
         } else {
             // Immutable value natives and shared handles.
-            let _ = visiting;
             Class::Copy
+        }
+    }
+
+    /// The class of a collection holding `element`: `Resource` when its elements are, else
+    /// `Move`, so a collection of plain values stays as cheap as before.
+    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<Name>) -> Class {
+        match element.map(|e| self.class_in(e, visiting)) {
+            Some(Class::Resource) => Class::Resource,
+            _ => Class::Move,
         }
     }
 
