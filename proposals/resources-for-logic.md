@@ -15,7 +15,7 @@
 - Skeptical review (2026-10-28, project file `architecture/resources-for-logic-review.md`): "direction is sound; stage 1 is under-specified in ways that break the headline claim". Blockers and gaps are resolved in [Review outcome](#review-outcome); stage 1 is rescoped to consume-once tokens as the review suggested.
 - Final review pass (same day, `ff073b49`): **stage 1 approved by the reviewer; stage 2 stays gated.** Notes: expected-fail fixtures get matching entries in `expect-fail.windows.txt` where relevant so no platform is gated silently; stage 2 starts with the ownership prototype before any ergonomics claim; the scalar-token-twice and read-only-destructor-twice repros are stage 1 reject fixtures. Owner decision pending.
 - Supersedes `contracts-effects-refinements.md` (withdrawn): `requires`/`ensures`/`where` and `uses` annotations are dropped, see Alternatives. Builds on the project-file proposals `capabilities-enforcement.md`, `capabilities-os-mechanisms.md` (authority manifest, OS layer), the `policy-end-to-end.md` draft (its ledger is reworked here), `private-field-types.md` (hidden fields), and the parked `check-use-after-close.md` / `close-is-last-use.md` / `consuming-close.md`, which typestate on `Closeable` resolves generally. Survey of other systems: project file `logic-enforcement-research.md`.
-- Kept decisions: parameterless `main`, imported host accessors by default, ordinary service parameters, no per-function authority annotations. Stage 4 changes accessor rules only for projects that opt in; the `.experts/language.md` "Parameterless main and imported host accessors" entry and the `language-design-taste` line are updated in that PR.
+- Kept decisions: parameterless `main`, imported host accessors by default, ordinary service parameters, no per-function authority annotations. `[stdlib]` changes nothing for projects without the table; the `.experts/language.md` "Parameterless main and imported host accessors" entry and the `language-design-taste` line are updated in the stage 1 PR to record that imports can be denied per module by manifest.
 
 ## Problem
 
@@ -264,7 +264,7 @@ What the checker proves versus what the module is trusted for:
 | Authenticate before query | `query` exists only on `Connection[Authed]` | `authenticate` checks the token |
 | Secrets never reach logs | no field read, no structural render outside the module | `declassify` is the only exit |
 | Untrusted input never reaches SQL | `Sql` is opaque; only validators build it | the validator |
-| Only these hosts | nothing until stage 4 (`Network.restrict`, runtime) | the manifest |
+| Only these hosts | agent code cannot import `@std/net.ms` under `[stdlib]`; `Network.restrict` checks at runtime | the allowlist in `types/` |
 
 ### Worked example: a web service
 
@@ -376,17 +376,32 @@ def run(fs: FileSystem, root: String, args: List[Untrusted[String]], go: Confirm
 cli.ms:34:44: type: `go` is moved here but used again at 36:46; a value has one owner, so pass `go.clone()` to keep the original, or move it only at its last use
 ```
 
-Arguments are `Untrusted` until `inside` accepts them, so `..` never reaches `fs.remove`; a `--force` confirmation covers one removal, so a batch takes a confirmation per item or a separate `ConfirmedBatch` minted by the prompt; the tool only touches the `FileSystem` it was handed (stage 4 narrows it to `root` and rejects `filesystem()` inside `run`).
+Arguments are `Untrusted` until `inside` accepts them, so `..` never reaches `fs.remove`; a `--force` confirmation covers one removal, so a batch takes a confirmation per item or a separate `ConfirmedBatch` minted by the prompt; the tool only touches the `FileSystem` it was handed (with `[stdlib]` denying `@std/fs.ms` outside `types/`, `run` cannot import `filesystem()` at all).
 
 ### Frozen modules (stage 1)
 
-Agent modules declare plain data types only: `ms review` reports a new opaque type, or a type with a field of capability or handle type, outside `types/` as a frozen change. With raw primitives behind capabilities (stage 4), a second write path or worker pool has nothing to build on.
+Agent modules declare plain data types only: `ms review` reports a new opaque type, or a type with a field of capability or handle type, outside `types/` as a frozen change. With stdlib modules switched off for agent code (next section), a second write path or worker pool has nothing to build on.
+
+### Stdlib modules off by config (stage 1)
+
+Chinmay, 2026-10-28: "we want the ability to turn off stdlib modules via config". `ms.toml` gains one table:
+
+```toml
+[stdlib]
+deny = ["@std/fs.ms", "@std/process.ms", "@std/net.ms", "@std/tasks.ms"]
+except = ["types/**"]
+```
+
+- An import of a denied module from a file outside `except` is a check error: "`@std/fs.ms` is denied by ms.toml [stdlib]; use the abstractions exported by types/". Module granularity only; no per-symbol lists.
+- `types/` imports the raw module and exports the abstraction (`Disk`, `Compute`); agent code imports the abstraction. Re-exported types are not imports of the denied module.
+- `ms.toml` is in the frozen set, so `ms review` reports any change to `[stdlib]`.
+- The parser accepts only `[project]` and `[aliases]` today (`crates/ms-driver/src/project/manifest.rs:1`), so this is one table there and one check at import resolution in `ms-check`. No table, no change.
 
 An agent that meets "opaque outside ledger.ms" will add `export def mint_free` to `ledger.ms`. So the guarantee needs `ms review` to report a diff that touches a module listed in `policy/frozen`, or `policy/` itself, as a frozen change, and to report changed exported signatures. Who may make such a change is not a language question: the repository protects `policy/` and the listed modules with CODEOWNERS and a required CI check that fails on a frozen change without an owner approval. `ms review` is the detector; the repository is the gate. `ms review` today produces an authority map and `--diff`; stage 1 verifies it can list exported signatures per module and adds the frozen report, which lands with the first opaque type, not after.
 
-### Capabilities as values (stage 4)
+### Narrowed capabilities (stage 4, optional)
 
-Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` and `[aliases]` today, `crates/ms-driver/src/project/manifest.rs:1`), ambient accessors are accepted only in the entry module; other modules receive capabilities as parameters and narrow them with `restrict` (`Network.restrict` exists, `stdlib/net.ms:268-303`; `FileSystem.restrict`, `Commands.restrict` per the capabilities proposal). Host allowlists stay runtime checks. Effects stay inferred for `ms review` and `ms diagram`.
+With `[stdlib]` denying the raw modules, agent code only ever holds what `types/` hands it, so per-function capability passing is no longer needed for reachability. What remains from the capabilities proposal is value-level narrowing inside `types/`: `Network.restrict` exists (`stdlib/net.ms:268-303`); `FileSystem.restrict` and `Commands.restrict` follow it. Host allowlists stay runtime checks. Effects stay inferred for `ms review` and `ms diagram`.
 
 ## Components touched
 
@@ -403,7 +418,7 @@ Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` 
 | `stdlib/resources.ms` (new, `.ms`) | `Approved[T]`, `Secret[T]`, `Untrusted[T]`, `Confirmed`, quantity pattern, typestate pattern | `ms test` fixtures |
 | `stdlib/http.ms`, `net.ms`, `fs.ms`, `process.ms` (stage 3) | typestate on `HttpExchange`, `WebSocket`, `Subprocess`, `Closeable` handles; `Untrusted` at boundaries | fixtures; the 29 runtime `Closed` tests become reject fixtures |
 | `crates/ms-tooling` | `ms inspect --states`, `ms diagram` state view, `ms review` transitions diff and frozen-module check | tooling tests |
-| manifest (`ms-driver`, stage 4) | `[permissions]` | manifest tests |
+| manifest (`ms-driver`) | `[stdlib]` deny/except (stage 1) | manifest tests; reject fixture for a denied import; accept via `except` |
 | formatter, lint | unchanged; lint for a linear value passed where a borrow suffices | lint tests |
 | LSP, VS Code | hover shows opaque, linear, state | LSP tests |
 | documentation | `types/resources.md`; update `types/records.md` construction and visibility, `modules/boundaries.md`, `glossary.md` "resource", "opaque", "state"; `.experts/language.md` (stage 4) | `make docs`, repo-check |
@@ -423,10 +438,10 @@ Under a `[permissions]` table in `ms.toml` (the parser accepts only `[project]` 
 
 ## Staging and verification
 
-1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus: reject fixtures for every opacity bypass in Problem and for copy, double destructure and `peek` twice on an opaque token; the drop sites listed under Linear, closures, generics, `var self` and fault/cancel paths enter the corpus as expected-fail fixtures (`tests/conformance/expect-fail.txt`) each naming the stage that flips it; full conformance corpus otherwise unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
+1. **Consume-once tokens.** Hidden fields and opaque types, `structural` tags, `[stdlib]` deny/except, the transition diagnostic, `ms review` frozen modules and signature diff, `stdlib/resources.ms` with `Approved`, `Secret`, `Untrusted`, `Confirmed`. Gate: an adversarial corpus: reject fixtures for every opacity bypass in Problem and for copy, double destructure and `peek` twice on an opaque token; the drop sites listed under Linear, closures, generics, `var self` and fault/cancel paths enter the corpus as expected-fail fixtures (`tests/conformance/expect-fail.txt`) each naming the stage that flips it; full conformance corpus otherwise unchanged; a `bench/agent/` arm on the approval-token and secret-label tasks with a dated result section comparing bug classes against the untyped arm.
 2. **Linear.** `Linear`, must-consume, generic drop summaries, closure rule, `drops_element` for `Optional`/`Result`. Gate: the adversarial corpus turns from "documented" to "rejected"; ergonomics measured on the ledger and on the agent arm; go/no-go recorded here.
 3. **Stdlib typestate and containers.** `HttpExchange`, `WebSocket`, `Subprocess`, `Closeable` states; `Untrusted` at HTTP and CLI boundaries behind an option; collection audit. Gate: the 29 runtime `Closed` cases and the `send_headers` twice case become compile errors with their tests converted.
-4. **Capabilities as values.** `[permissions]`, accessor rule, `restrict` on `FileSystem` and `Commands`, `.experts` update. Gate: capabilities proposal tests; projects without the table unchanged.
+4. **Narrowed capabilities (optional).** `restrict` on `FileSystem` and `Commands`, `.experts` update. Gate: capabilities proposal tests.
 
 ## Review outcome
 
@@ -450,4 +465,4 @@ Second pass (same day): A. scalar-only tokens copied and read-only destructors l
 
 - A linear value live across a cancellation checkpoint (a checkpointing call or a loop back-edge): reject it in stage 2 (recommended; `ms check` knows both), or let the type declare a `release` operation the runtime calls on cancellation.
 - Whether the typestate hint should also fire for free functions (`query(c, ...)` where `c: OpenConnection`): recommended yes, same lookup.
-- Accessor rule granularity under `[permissions]`: entry module only (recommended) or modules the table names.
+- Whether `[stdlib] deny` should also cover prelude types that reach the host (`TaskGroup` is in `@std/tasks.ms`, so a module deny covers it; nothing in the prelude reaches the host today, to verify in stage 1).
