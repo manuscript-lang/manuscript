@@ -5,9 +5,10 @@ from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskGroup
 
 def show(xs: List[Int]) -> Int:
-    with let group = TaskGroup[Int]():
-        group.spawn(lambda ch: xs.length())
-        group.spawn(lambda ch: xs.length())
+    var group = TaskGroup[Int]()
+    group.spawn(lambda ch: xs.length())
+    group.spawn(lambda ch: xs.length())
+    group.close()
     return 0
 
 export def main() -> Int:

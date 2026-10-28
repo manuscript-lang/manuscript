@@ -15,8 +15,7 @@ impl File for ClosedFile:
 
 test "contract-valued cleanup":
     let opened: File = ClosedFile(())
-
-    with let file = opened:
-        let read = file.read(1)
-        try expect_false(read.is_ok())
-        try expect_equal(read.err(), IoError.Closed)
+    let file = opened
+    let read = file.read(1)
+    try expect_false(read.is_ok())
+    try expect_equal(read.err(), IoError.Closed)

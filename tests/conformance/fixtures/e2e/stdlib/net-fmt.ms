@@ -25,45 +25,40 @@ test "IP parsing CIDR normalization and containment":
 
 test "TCP loopback writes reads half close and EOF":
     let net = network()
-
-    with let listener = try net.listen("127.0.0.1:0"):
-        with let client = try net.connect(listener.address(), 2.seconds):
-            with let server = try listener.accept(2.seconds):
-                try client.write("hello", 2.seconds)
-                try expect_equal(
-                    (try server.read(5, 2.seconds)).get(), "hello".to_bytes()
-                )
-                try expect_equal(server.peer_address(), client.local_address())
-                try client.shutdown_write()
-                try expect_false(not (try server.read(5, 2.seconds)).is_none())
+    let listener = try net.listen("127.0.0.1:0")
+    let client = try net.connect(listener.address(), 2.seconds)
+    let server = try listener.accept(2.seconds)
+    try client.write("hello", 2.seconds)
+    try expect_equal((try server.read(5, 2.seconds)).get(), "hello".to_bytes())
+    try expect_equal(server.peer_address(), client.local_address())
+    try client.shutdown_write()
+    try expect_false(not (try server.read(5, 2.seconds)).is_none())
 
 test "UDP loopback preserves datagram data and sender":
     let net = network()
+    let receiver = try net.bind_datagram("127.0.0.1:0")
+    let sender = try net.bind_datagram("127.0.0.1:0")
+    try sender.send("packet", receiver.address(), 2.seconds)
 
-    with let receiver = try net.bind_datagram("127.0.0.1:0"):
-        with let sender = try net.bind_datagram("127.0.0.1:0"):
-            try sender.send("packet", receiver.address(), 2.seconds)
-
-            let packet = try receiver.receive(64, 2.seconds)
-            try expect_false(
-                (
-                    packet.data != "packet".to_bytes()
-                    or packet.sender != sender.address()
-                )
-            )
+    let packet = try receiver.receive(64, 2.seconds)
+    try expect_false(
+        (
+            packet.data != "packet".to_bytes()
+            or packet.sender != sender.address()
+        )
+    )
 
 test "network restriction denies admission and close rejects acquisitions":
     let restricted = try network().restrict([], [], allow_listen: False)
-    with let scoped = restricted:
-        try expect_false(
+    var _scoped = restricted
+    try expect_false(
+        (
             (
-                (
-                    try expect_error(
-                        restricted.listen("127.0.0.1:0")
-                    )
-                ) != NetworkError.PermissionDenied
-            )
+                try expect_error(restricted.listen("127.0.0.1:0"))
+            ) != NetworkError.PermissionDenied
         )
+    )
+    _scoped.close()
     try expect_false(
         (
             (

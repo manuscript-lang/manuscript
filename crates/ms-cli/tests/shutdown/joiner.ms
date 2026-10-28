@@ -8,10 +8,12 @@ def long() -> Unit:
         sleep(nanoseconds(100000000))
 
 export def main() -> Int:
-    with let group = WorkerGroup[Int, Int]():
-        var w = group.spawn(long).get()
-        stdout().write("joining\n").get()
-        stdout().flush().get()
-        let outcome = w.wait()
-        stdout().write(f"joined {outcome.is_ok()}\n").get()
+    var group = WorkerGroup[Int, Int]()
+    var w = group.spawn(long).get()
+    stdout().write("joining\n").get()
+    stdout().flush().get()
+
+    let outcome = w.wait()
+    stdout().write(f"joined {outcome.is_ok()}\n").get()
+    group.close()
     return 0

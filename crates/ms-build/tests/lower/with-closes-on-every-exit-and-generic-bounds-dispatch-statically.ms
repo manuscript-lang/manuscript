@@ -12,17 +12,22 @@ impl Closeable for Res:
         let _x = self.n
 
 def run[T: Closeable](r: T, early: Bool) -> Int:
-    with let it = r:
-        if early:
-            return 1
+    var _it = r
+    if early:
+        return 1
+
+    _it.close()
     return 2
 
 export def main() -> Int:
     var i = 0
+
     while i < 3:
-        with let c = Res(i):
-            i += 1
-            if i == 1:
-                continue
-            break
+        let _c = Res(i)
+        i += 1
+        if i == 1:
+            continue
+
+        break
+
     return run(r: Res(1), early: True) + i

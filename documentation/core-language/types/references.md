@@ -65,8 +65,8 @@ impl Counter:
         self.values.append(1)
 
 def bump(shared: Shared[Counter]) -> Unit:
-    with var guard = lock(shared):
-        guard.value.bump()
+    var guard = lock(shared)
+    guard.value.bump()
 
 test "change a shared value through its guard":
     let shared = share(Counter([]))

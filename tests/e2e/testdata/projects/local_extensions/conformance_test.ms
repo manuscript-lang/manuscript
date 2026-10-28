@@ -24,10 +24,13 @@ test "views and functions retain local implementations across modules":
 
     var events = ListBuilder[Int]()
     let resource = Resource(events)
-    with let first_close = first_resource(Resource(events)):
-        let _active = True
-    with let second_close = second_resource(resource):
-        let _active = True
+    var _first_close = first_resource(Resource(events))
+    let _active = True
+    _first_close.close()
+
+    var _second_close = second_resource(resource)
+    let _second_active = True
+    _second_close.close()
 
     let values = events.build()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

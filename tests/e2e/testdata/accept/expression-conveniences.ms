@@ -19,14 +19,15 @@ def closed(marker: String) -> Bool: filesystem().read_file(marker).is_ok()
 def identity[T](value: T) -> T: return value
 
 def amount(text: String, marker: String) -> Result[Int, TextError]:
-    with let resource = Resource(marker: marker.clone()):
-        let cents = match text.parse_int():
-            case some(value):
-                value
-            case none:
-                return error(cause: TextError("Invalid amount"))
+    let _resource = Resource(marker: marker.clone())
 
-        return ok(value: cents + 1)
+    let cents = match text.parse_int():
+        case some(value):
+            value
+        case none:
+            return error(cause: TextError("Invalid amount"))
+
+    return ok(value: cents + 1)
 
 def early(value: Optional[Int]) -> Int:
     let number = match value:
@@ -97,16 +98,16 @@ test "match expressions preserve returns and cleanup":
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
     let fs = filesystem()
+    var temporary = fs.temporary("manuscript-match-") | try expect_ok
+    let dir = temporary.path()
+    let parsed = amount(text: "3", marker: f"{dir}/parsed")
+    (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
+    closed(f"{dir}/parsed") | try expect_true
 
-    with let temporary = fs.temporary("manuscript-match-") | try expect_ok:
-        let dir = temporary.path()
-        let parsed = amount(text: "3", marker: f"{dir}/parsed")
-        (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
-        closed(f"{dir}/parsed") | try expect_true
-
-        let invalid = amount(text: "invalid", marker: f"{dir}/invalid")
-        (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
-        closed(f"{dir}/invalid") | try expect_true
+    let invalid = amount(text: "invalid", marker: f"{dir}/invalid")
+    (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
+    closed(f"{dir}/invalid") | try expect_true
+    temporary.close()
 
     let nested = match present:
         case some(value):

@@ -32,17 +32,17 @@ def select(output: WriteStream) -> Callable[[Int, Int], Int]:
     return combine
 
 def early(output: WriteStream) -> Int:
-    with let outer = Resource(label: "outer", output: output):
-        with let inner = Resource(label: "inner", output: output):
-            return report(output: output, label: "return value", value: 5)
+    let _outer = Resource(label: "outer", output: output)
+    let _inner = Resource(label: "inner", output: output)
+    return report(output: output, label: "return value", value: 5)
 
 def failure() -> Result[Int, TextError]:
     return error(TextError("expected"))
 
 def propagate(output: WriteStream) -> Result[Int, TextError]:
-    with let resource = Resource(label: "propagation", output: output):
-        let number = try failure()
-        return ok(number)
+    let _resource = Resource(label: "propagation", output: output)
+    let number = try failure()
+    return ok(number)
 
 def iterable(output: WriteStream) -> List[Int]:
     let _ = output.write(data: "iterable\n")
@@ -60,20 +60,22 @@ def exercise() -> Result[Int, Error]:
         first: report(output: stdout(), label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
-    with let resource = Resource(label: "normal", output: stdout()):
-        let completed = ()
+
+    var _resource = Resource(label: "normal", output: stdout())
+    let completed = ()
+    _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
-        with let resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
-            continue
+        let _resource = Resource(label: "iteration", output: stdout())
+        count = count + 1
+        continue
 
     for value in iterable(output: stdout()):
-        with let resource = Resource(label: "break", output: stdout()):
-            break
+        let _resource = Resource(label: "break", output: stdout())
+        break
 
     match propagate(output: stdout()):
         case ok(_):

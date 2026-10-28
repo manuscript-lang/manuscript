@@ -31,79 +31,68 @@ def written(path: String) -> Result[Optional[String], Error]:
     return ok(data.decode_utf8())
 
 test "logger writes typed escaped records and protects metadata":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    var logger = try create(stream_transport(file.writer()), timestamp: False)
+    let fields = Payload(
+        9007199254740993, ok: True, Items([none, some(1)]), 0, "fake", 0
+    )
+    try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
 
-        with let logger = try create(stream_transport(file.writer()), timestamp: False):
-            let fields = Payload(
-                9007199254740993, ok: True, Items([none, some(1)]), 0, "fake", 0
-            )
-            try record(logger, LogLevel.Info, "say \"hi\"\nnext", fields)
-
-            let expected = "{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":{\"items\":[null,1]}}\n"
-            try expect_equal((try written(path)), some(expected))
-            try logger.flush()
-
-        file.append_file("x") | try expect_ok
+    let expected = "{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"count\":9007199254740993,\"ok\":true,\"nested\":{\"items\":[null,1]}}\n"
+    try expect_equal((try written(path)), some(expected))
+    try logger.flush()
+    logger.close()
+    file.append_file("x") | try expect_ok
 
 test "non-object values are written under data":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let logger = try create(stream_transport(file.writer()), timestamp: False)
+    try record(logger, LogLevel.Info, "n", 7)
+    try record(logger, LogLevel.Warn, "l", ["a", "b"])
 
-        with let logger = try create(stream_transport(file.writer()), timestamp: False):
-            try record(logger, LogLevel.Info, "n", 7)
-            try record(logger, LogLevel.Warn, "l", ["a", "b"])
-
-            let expected = "{\"level\":30,\"msg\":\"n\",\"data\":7}\n{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n"
-            try expect_equal((try written(path)), some(expected))
+    let expected = "{\"level\":30,\"msg\":\"n\",\"data\":7}\n{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]}\n"
+    try expect_equal((try written(path)), some(expected))
 
 test "levels filter methods and function values":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let logger = try create(stream_transport(file.writer()), LogLevel.Warn, False)
+    try expect_false(
+        (logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn))
+    )
+    try logger.trace("filtered")
+    try logger.debug("filtered")
+    try logger.info("filtered")
+    try expect_equal((try written(path)), some(""))
+    try logger.warn("warn")
 
-        with let logger = try create(
-            stream_transport(file.writer()), LogLevel.Warn, False
-        ):
-            try expect_false(
-                (
-                    logger.enabled(LogLevel.Info)
-                    or not logger.enabled(LogLevel.Warn)
-                )
-            )
-            try logger.trace("filtered")
-            try logger.debug("filtered")
-            try logger.info("filtered")
-            try expect_equal((try written(path)), some(""))
-            try logger.warn("warn")
+    let error_log = logger.error
+    try error_log("error")
+    try logger.fatal("fatal")
+    logger.set_level(LogLevel.Trace)
+    try expect_equal(logger.level(), LogLevel.Trace)
+    try logger.log(LogLevel.Trace, "trace")
+    try logger.debug("debug")
+    try logger.info("info")
 
-            let error_log = logger.error
-            try error_log("error")
-            try logger.fatal("fatal")
-            logger.set_level(LogLevel.Trace)
-            try expect_equal(logger.level(), LogLevel.Trace)
-            try logger.log(LogLevel.Trace, "trace")
-            try logger.debug("debug")
-            try logger.info("info")
+    let expected = "{\"level\":40,\"msg\":\"warn\"}\n{\"level\":50,\"msg\":\"error\"}\n{\"level\":60,\"msg\":\"fatal\"}\n{\"level\":10,\"msg\":\"trace\"}\n{\"level\":20,\"msg\":\"debug\"}\n{\"level\":30,\"msg\":\"info\"}\n"
+    try expect_equal((try written(path)), some(expected))
+    logger.set_level(LogLevel.Silent)
+    try expect_false(
+        (logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent))
+    )
 
-            let expected = "{\"level\":40,\"msg\":\"warn\"}\n{\"level\":50,\"msg\":\"error\"}\n{\"level\":60,\"msg\":\"fatal\"}\n{\"level\":10,\"msg\":\"trace\"}\n{\"level\":20,\"msg\":\"debug\"}\n{\"level\":30,\"msg\":\"info\"}\n"
-            try expect_equal((try written(path)), some(expected))
-            logger.set_level(LogLevel.Silent)
-            try expect_false(
-                (
-                    logger.enabled(LogLevel.Fatal)
-                    or logger.enabled(LogLevel.Silent)
-                )
-            )
+    let before = try written(path)
+    try logger.fatal("filtered")
+    try expect_equal((try written(path)), before)
 
-            let before = try written(path)
-            try logger.fatal("filtered")
-            try expect_equal((try written(path)), before)
-
-            let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
-            try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
+    let invalid: Result[Unit, LogError] = error(LogError.InvalidInput)
+    try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
     service: String
@@ -112,120 +101,113 @@ type Request:
     request: Int
 
 test "child bindings snapshot values and merge without mutating inputs":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let root = try create(stream_transport(file.writer()), timestamp: False)
+    let logger = try root.child_json("{\"service\":\"api\"}")
+    let child = try logger.child_json("{\"request\":7}")
+    logger.set_level(LogLevel.Fatal)
+    try expect_equal(child.level(), LogLevel.Info)
+    try record(child, LogLevel.Info, "child", Service("worker"))
+    try logger.fatal("parent")
 
-        with let root = try create(stream_transport(file.writer()), timestamp: False):
-            let logger = try root.child_json("{\"service\":\"api\"}")
-            let child = try logger.child_json("{\"request\":7}")
-            logger.set_level(LogLevel.Fatal)
-            try expect_equal(child.level(), LogLevel.Info)
-            try record(child, LogLevel.Info, "child", Service("worker"))
-            try logger.fatal("parent")
-
-            let expected = "{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7}\n{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"}\n"
-            try expect_equal((try written(path)), some(expected))
+    let expected = "{\"level\":30,\"msg\":\"child\",\"service\":\"worker\",\"request\":7}\n{\"level\":60,\"msg\":\"parent\",\"service\":\"api\"}\n"
+    try expect_equal((try written(path)), some(expected))
 
 test "limits and unencodable values reject before writing":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
-        let line = "{\"level\":30,\"msg\":\"x\"}\n"
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let line = "{\"level\":30,\"msg\":\"x\"}\n"
+    let logger = try create(
+        stream_transport(file.writer()), timestamp: False,
+        max_bytes: (line.to_bytes().length())
+    )
+    try logger.info("x")
+    try expect_equal((try written(path)), some(line))
 
-        with let logger = try create(
-            stream_transport(file.writer()), timestamp: False,
-            max_bytes: (line.to_bytes().length())
-        ):
-            try logger.info("x")
-            try expect_equal((try written(path)), some(line))
+    let before = try written(path)
+    let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
+    try expect_equal(logger.info("xx"), limited)
 
-            let before = try written(path)
-            let limited: Result[Unit, LogError] = error(LogError.LimitExceeded)
-            try expect_equal(logger.info("xx"), limited)
-
-            let zero = try create(
-                stream_transport(file.writer()), timestamp: False, max_bytes: 0
-            )
-            try expect_equal(zero.info(""), limited)
-            try expect_false(
-                (
-                    (
-                        try expect_error(
-                            create(
-                                stream_transport(
-                                    file.writer()
-                                ),
-                                max_bytes: -1
-                            )
-                        )
-                    ) != LogError.InvalidInput
+    let zero = try create(
+        stream_transport(file.writer()), timestamp: False, max_bytes: 0
+    )
+    try expect_equal(zero.info(""), limited)
+    try expect_false(
+        (
+            (
+                try expect_error(
+                    create(
+                        stream_transport(file.writer()), max_bytes: -1
+                    )
                 )
-            )
+            ) != LogError.InvalidInput
+        )
+    )
 
-            let unlimited = try create(
-                stream_transport(file.writer()), timestamp: False
-            )
-            let bad = JsonValue.NumberValue("NaN")
-            let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
-            try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
-            try expect_equal((try written(path)), before)
+    let unlimited = try create(stream_transport(file.writer()), timestamp: False)
+    let bad = JsonValue.NumberValue("NaN")
+    let invalid_data: Result[Unit, LogError] = error(LogError.InvalidData)
+    try expect_equal(record(unlimited, LogLevel.Info, "bad", bad), invalid_data)
+    try expect_equal((try written(path)), before)
 
 test "transport closure and stream errors preserve identity":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        var file = try filesystem().open(
-            path: f"{directory.path()}/out.ndjson", flags: "w", mode: 420
-        )
-        var logger = try create(stream_transport(file.writer()))
-        file.close()
+    let directory = try filesystem().temporary("manuscript-log-")
+    var file = try filesystem().open(
+        path: f"{directory.path()}/out.ndjson", flags: "w", mode: 420
+    )
+    var logger = try create(stream_transport(file.writer()))
+    file.close()
 
-        let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
-        try expect_equal(logger.info("closed"), io_closed)
-        try expect_equal(logger.flush(), io_closed)
-        logger.close()
-        logger.close()
+    let io_closed: Result[Unit, LogError] = error(LogError.Io(IoError.Closed))
+    try expect_equal(logger.info("closed"), io_closed)
+    try expect_equal(logger.flush(), io_closed)
+    logger.close()
+    logger.close()
 
-        let closed: Result[Unit, LogError] = error(LogError.Closed)
-        try expect_equal(logger.info("closed"), closed)
-        try expect_equal(logger.flush(), closed)
+    let closed: Result[Unit, LogError] = error(LogError.Closed)
+    try expect_equal(logger.info("closed"), closed)
+    try expect_equal(logger.flush(), closed)
 
 test "file transport appends and flushes with scoped cleanup":
     let fs = filesystem()
+    let directory = try fs.temporary("manuscript-log-")
+    let path = f"{directory.path()}/events.ndjson"
+    var logger = try create(try file_transport(path), timestamp: False)
+    try logger.info("first")
+    try logger.flush()
+    logger.close()
 
-    with let directory = try fs.temporary("manuscript-log-"):
-        let path = f"{directory.path()}/events.ndjson"
+    var logger2 = try create(try file_transport(path), timestamp: False)
+    try logger2.warn("second")
+    logger2.close()
 
-        with let logger = try create(try file_transport(path), timestamp: False):
-            try logger.info("first")
-            try logger.flush()
-
-        with let logger = try create(try file_transport(path), timestamp: False):
-            try logger.warn("second")
-
-        let data = try fs.read_file(path)
-        try expect_false(
-            (
-                data.decode_utf8() != some(
-                    "{\"level\":30,\"msg\":\"first\"}\n{\"level\":40,\"msg\":\"second\"}\n"
-                )
+    let data = try fs.read_file(path)
+    try expect_false(
+        (
+            data.decode_utf8() != some(
+                "{\"level\":30,\"msg\":\"first\"}\n{\"level\":40,\"msg\":\"second\"}\n"
             )
         )
-        try expect_false(
+    )
+    try expect_false(
+        (
             (
-                (
-                    try expect_error(
-                        file_transport(
-                            f"{directory.path()}/missing/events.ndjson"
-                        )
+                try expect_error(
+                    file_transport(
+                        f"{directory.path()}/missing/events.ndjson"
                     )
-                ) != LogError.FileSystem(FileSystemError.NotFound)
-            )
+                )
+            ) != LogError.FileSystem(FileSystemError.NotFound)
         )
+    )
 
 test "stdout transport accepts records and leaves stdout open":
-    with let logger = try create(stdout_transport(), timestamp: False):
-        try logger.info("stdout log")
-        try logger.flush()
+    let logger = try create(stdout_transport(), timestamp: False)
+    try logger.info("stdout log")
+    try logger.flush()
 
 type CaptureTransport:
     path: String
@@ -255,35 +237,32 @@ impl Transport for CaptureTransport:
 
 test "source transports receive complete records and close through their contract":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-log-transport-") | try expect_ok:
-        let path = f"{temporary.path()}/records.ndjson"
-
-        with let logger = try create(CaptureTransport(path.clone()), timestamp: False):
-            try logger.info("source transport")
-            try logger.flush()
-            try expect_equal(
-                (fs.read_file(path) | try expect_ok).decode_utf8(),
-                some("{\"level\":30,\"msg\":\"source transport\"}\n")
-            )
-
-        try expect_true(fs.read_file(f"{path}.closed").is_ok())
+    let temporary = fs.temporary("manuscript-log-transport-") | try expect_ok
+    let path = f"{temporary.path()}/records.ndjson"
+    var logger = try create(CaptureTransport(path.clone()), timestamp: False)
+    try logger.info("source transport")
+    try logger.flush()
+    try expect_equal(
+        (fs.read_file(path) | try expect_ok).decode_utf8(),
+        some("{\"level\":30,\"msg\":\"source transport\"}\n")
+    )
+    logger.close()
+    try expect_true(fs.read_file(f"{path}.closed").is_ok())
 
 test "log_json and child_json accept only JSON objects":
-    with let directory = try filesystem().temporary("manuscript-log-"):
-        let path = f"{directory.path()}/out.ndjson"
-        let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let directory = try filesystem().temporary("manuscript-log-")
+    let path = f"{directory.path()}/out.ndjson"
+    let file = try filesystem().open(path: path, flags: "w", mode: 420)
+    let logger = try create(stream_transport(file.writer()), timestamp: False)
+    let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
 
-        with let logger = try create(stream_transport(file.writer()), timestamp: False):
-            let invalid: Result[Unit, LogError] = error(LogError.InvalidData)
+    for text in ["[1]", "5", "null", "\"s\"", "nope"]:
+        try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)
+        try expect_false(logger.child_json(text).is_ok())
 
-            for text in ["[1]", "5", "null", "\"s\"", "nope"]:
-                try expect_equal(logger.log_json(LogLevel.Info, "m", text), invalid)
-                try expect_false(logger.child_json(text).is_ok())
+    try expect_equal((try written(path)), some(""))
+    try logger.log_json(LogLevel.Info, "m", "{\"a\":1}")
+    try record(logger, LogLevel.Info, "m", [1])
 
-            try expect_equal((try written(path)), some(""))
-            try logger.log_json(LogLevel.Info, "m", "{\"a\":1}")
-            try record(logger, LogLevel.Info, "m", [1])
-
-            let expected = "{\"level\":30,\"msg\":\"m\",\"a\":1}\n{\"level\":30,\"msg\":\"m\",\"data\":[1]}\n"
-            try expect_equal((try written(path)), some(expected))
+    let expected = "{\"level\":30,\"msg\":\"m\",\"a\":1}\n{\"level\":30,\"msg\":\"m\",\"data\":[1]}\n"
+    try expect_equal((try written(path)), some(expected))

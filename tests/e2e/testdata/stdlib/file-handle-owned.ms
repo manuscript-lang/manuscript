@@ -8,16 +8,16 @@ def view_of(path: String) -> Result[ReadStream, Error]:
     return ok(file.reader())
 
 test "a file handle binding is closed when its scope ends":
-    with let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok:
-        let path = f"{temporary.path()}/a.txt"
-        try expect_true(filesystem().write_file(path, "x", True).is_ok())
+    let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok
+    let path = f"{temporary.path()}/a.txt"
+    try expect_true(filesystem().write_file(path, "x", True).is_ok())
 
-        var view = view_of(path) | try expect_ok
-        try expect_true(view.read(none).is_error())
+    var view = view_of(path) | try expect_ok
+    try expect_true(view.read(none).is_error())
 
 test "closing a file handle by hand is allowed once more at scope end":
-    with let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok:
-        let path = f"{temporary.path()}/b.txt"
-        var file = filesystem().open(path, "w", 420) | try expect_ok
-        try expect_true(file.write("hello").is_ok())
-        file.close()
+    let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok
+    let path = f"{temporary.path()}/b.txt"
+    var file = filesystem().open(path, "w", 420) | try expect_ok
+    try expect_true(file.write("hello").is_ok())
+    file.close()

@@ -18,11 +18,11 @@ export def main() -> Int:
     if let acquired = serve(
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
-        with let server = acquired:
-            if stdout().write(f"{server.address()}\n").is_error():
-                return 1
+        let server = acquired
+        if stdout().write(f"{server.address()}\n").is_error():
+            return 1
 
-            let _ignored = server.wait()
-            return 0
+        let _ignored = server.wait()
+        return 0
 
     return 1

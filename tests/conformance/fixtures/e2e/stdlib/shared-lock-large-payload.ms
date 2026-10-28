@@ -14,15 +14,20 @@ export def main() -> Int:
     var big = List[Int]()
     for i in 0..200000:
         big.append(i)
+
     let box: Shared[List[Int]] = share(big)
+
     for round in 0..3000:
-        with var guard = lock(box):
-            guard.value[0] = round
+        var guard = lock(box)
+        guard.value[0] = round
+
     stdout().write(f"first {box.get()[0]} length {box.get().length()}\n").get()
 
-    with let group = TaskGroup[Int]():
-        for i in 0..20000:
-            group.spawn(lambda ch: i)
-        let results = group.results().get([])
-        stdout().write(f"tasks {results.length()} last {results[19999]}\n").get()
+    var group = TaskGroup[Int]()
+    for i in 0..20000:
+        group.spawn(lambda ch: i)
+
+    let results = group.results().get([])
+    stdout().write(f"tasks {results.length()} last {results[19999]}\n").get()
+    group.close()
     return 0

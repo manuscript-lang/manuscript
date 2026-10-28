@@ -48,13 +48,16 @@ test "primitive equality captures operands once in order":
 
 def conditional(counter: Counter, take: Bool) -> Int:
     if take:
-        with let resource = Resource(counter): return 7
+        let _resource = Resource(counter)
+        return 7
+
     return 8
 
 def matched(counter: Counter) -> Int:
     return match some(1):
         case some(value):
-            with let resource = Resource(counter): return value
+            var _resource = Resource(counter)
+            return value
             0
         case none: 0
 
@@ -62,24 +65,26 @@ def defaulted(
     counter: Counter,
     value: Int = match some(2):
         case some(number):
-            with let resource = Resource(counter):
-                let _used = ()
+            var _resource = Resource(counter)
+            let _used = ()
+            _resource.close()
             number
         case none: 0
 ) -> Int: value
 
 def nested(counter: Counter) -> Unit:
     let callback = lambda () -> Unit:
-        with let resource = Resource(counter): return
+        let _resource = Resource(counter)
+        return
+
     callback()
 
 def failed() -> Result[Int, TextError]: error(TextError("expected"))
 
 def propagate(counter: Counter) -> Result[Int, TextError]:
-    with let resource = Resource(counter):
-        let value = try failed()
-        return ok(value)
-
+    var _resource = Resource(counter)
+    let value = try failed()
+    return ok(value)
     return ok(0)
 
 def bare_propagate() -> Result[Int, TextError]:
@@ -94,10 +99,9 @@ def bool_failed() -> Result[Bool, TextError]: error(TextError("expected"))
 
 def nested_results(counter: Counter) -> Result[Int, TextError]:
     let child = lambda () -> Result[Bool, TextError]:
-        with let resource = Resource(counter):
-            let value = try bool_failed()
-            return ok(value)
-
+        var _resource = Resource(counter)
+        let value = try bool_failed()
+        return ok(value)
         return ok(False)
 
     let _ignored = child()
@@ -107,9 +111,9 @@ def nested_results(counter: Counter) -> Result[Int, TextError]:
 def statement_match_try(counter: Counter) -> Result[Int, TextError]:
     match some(1):
         case some(_):
-            with let resource = Resource(counter):
-                let value = try failed()
-                return ok(value)
+            let _resource = Resource(counter)
+            let value = try failed()
+            return ok(value)
         case none: return ok(0)
 
     return ok(-1)
@@ -120,8 +124,9 @@ def value_match_loop_try(counter: Counter) -> Result[Int, TextError]:
     while index < 2:
         let _selected = match some(index):
             case some(number):
-                with let resource = Resource(counter):
-                    let _value = try failed()
+                var _resource = Resource(counter)
+                let _value = try failed()
+                _resource.close()
                 number
             case none: 0
 
@@ -185,8 +190,8 @@ test "cleanup remains owned by its source callable":
     while index < 3:
         index += 1
 
-        with let resource = Resource(counter):
-            if index == 1: continue
-            if index == 2: break
+        let _resource = Resource(counter)
+        if index == 1: continue
+        if index == 2: break
 
     try expect_equal(counter.value, 7)

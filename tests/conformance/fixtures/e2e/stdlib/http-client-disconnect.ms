@@ -20,23 +20,25 @@ impl Closeable for Reporter:
         )
 
 def handle(request: HttpRequest) -> HttpResponse:
-    with let reporter = Reporter("handler"):
-        sleep(nanoseconds(30000000000))
+    var _reporter = Reporter("handler")
+    sleep(nanoseconds(30000000000))
+    _reporter.close()
     return HttpResponse(200, headers(), "late\n".to_bytes())
 
 export def main() -> Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with var server = acquired:
-            if var conn = network().connect(server.address()):
-                let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+        var server = acquired
 
-                # Let the handler start, then leave without waiting for the response.
-                sleep(nanoseconds(100000000))
-                conn.close()
-                sleep(nanoseconds(500000000))
+        if var conn = network().connect(server.address()):
+            let _sent = conn.write("GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
-                let _done = stdout().write("done\n")
-                server.close()
-                return 0
+            # Let the handler start, then leave without waiting for the response.
+            sleep(nanoseconds(100000000))
+            conn.close()
+            sleep(nanoseconds(500000000))
+
+            let _done = stdout().write("done\n")
+            server.close()
+            return 0
 
     return 1
