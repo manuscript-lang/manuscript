@@ -143,6 +143,8 @@ impl<'a> FnLower<'a> {
                 self.discard = Some(e as *const Expr as usize);
                 let x = self.expr(e)?;
                 if x.own {
+                    let ty = self.ety(e);
+                    self.close_unused(x.v, &ty);
                     self.drop_value(x.v);
                 }
             }
