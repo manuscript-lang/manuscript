@@ -361,6 +361,7 @@ impl<'a> FnLower<'a> {
         if obj.own {
             // Take a copy out of the temporary, then release the temporary.
             let o = self.owned(Val { v: f, own: false });
+            self.close_temp(obj.v);
             self.drop_value(obj.v);
             return Ok(Val {
                 v: o,

@@ -88,3 +88,15 @@ test "reassigning a resource closes the value it replaces":
         try expect_equal(reassigns(dir.clone()), 31)
         try expect_true(closed(dir, 30))
         try expect_true(closed(dir, 31))
+
+def open_resource(dir: String, id: Int) -> Resource:
+    return Resource(dir, id)
+
+def temporary_id(dir: String) -> Int:
+    return open_resource(dir, 40).id
+
+test "an unbound resource temporary is closed at the end of its statement":
+    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
+        let dir = temporary.path()
+        try expect_equal(temporary_id(dir.clone()), 40)
+        try expect_true(closed(dir, 40))

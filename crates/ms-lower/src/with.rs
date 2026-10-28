@@ -153,6 +153,26 @@ fn close_call(b: &mut FuncBuilder<'_>, kind: &CloseKind, v: Value, ty: MTy) {
 }
 
 impl FnLower<'_> {
+    /// Closes an owned temporary that is a resource (`open().id()`) before it is dropped at the
+    /// end of its statement.
+    pub(crate) fn close_temp(&mut self, v: Value) {
+        let mt = self.b.ty(v);
+        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+            return;
+        };
+        // Only a value that is itself a resource: a wrapper (`Result`, `Optional`) may have had
+        // its payload moved out already.
+        if self.cx.classes.class(&ty) != ms_check::ownership::Class::Resource
+            || self.closeable_impl(&ty).is_none()
+        {
+            return;
+        }
+        let Ok(Some(kind)) = self.part_closer(&ty) else {
+            return;
+        };
+        close_call(&mut self.b, &kind, v, mt);
+    }
+
     pub(crate) fn with_stmt(&mut self, s: &Stmt, value: &Expr, body: &[Stmt]) -> Result<(), Error> {
         let info = self.hir.stmt(s);
         let binding = info
@@ -321,7 +341,7 @@ impl FnLower<'_> {
 
     /// The close of a resource held inside another: its own `close`, then what it holds in turn.
     /// `None` for a value that is not a resource.
-    fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
+    pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
         if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
         }
