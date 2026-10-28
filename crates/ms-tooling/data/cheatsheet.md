@@ -4,19 +4,31 @@ Statically typed; native code. Four-space indentation, `#` comments. No `print`:
 
 <!-- complete -->
 ```manuscript
+from "@std/fs.ms" import filesystem # import
 from "@std/io.ms" import stdout
-from "@std/test.ms" import expect_equal
 
-def add(a: Int, b: Int) -> Int: a + b
+type Doc:
+    lines: List[String]
+
+impl Doc:
+    def longest() -> ref String: # lends part of self
+        var best = 0
+        for i in 0..self.lines.length():
+            if self.lines[i].length() > self.lines[best].length(): best = i
+        return self.lines[best]
+
+def load(path: String) -> Result[Doc, Error]:
+    let f = try filesystem().open(path, flags: "r", mode: 0) # f closed at scope end
+    let lines = try f.read_lines()
+    return ok(Doc(lines)) # moves lines
 
 export def main() -> Int:
-    let xs = [1, 2, 3]
-    let big = xs.filter(lambda x: x > 1).map(lambda x: f"{x * 2}")
-    stdout().write(f"sum {add(xs[0], 2)} {big.join(",")}\n").get()
+    if let doc = load("notes.txt"):
+        let top = doc.longest() # borrows doc
+        let keep = top.clone() # owned copy
+        let long = doc.lines.filter(lambda l: l.length() > 3) # lambda
+        stdout().write(f"{keep} {long.length()}\n").get()
     return 0
-
-test "addition":
-    try expect_equal(add(1, 2), 3)
 ```
 
 - Helpful commands: `ms search_symbol <name or words>`; `ms verify` (check, fmt, lint, test); `ms review`.
@@ -39,5 +51,5 @@ test "addition":
 - A def returning part of a parameter or receiver writes `ref` before the result type (`-> ref String`); its result borrows from every argument. Otherwise return `.clone()`.
 - `var` parameters need `var` at the signature and every call: `def f(var xs: List[Int])`, `f(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints (`ms lint`, `ms verify`): redundant `some(x)`, `Optional.get()` without default, unread bindings (prefix `_`).
-- Cleanup: `with let f = try filesystem().open(path, flags: "r", mode: 0):` (`@std/fs.ms`) closes `f` at block end. Concurrency: `with let g = TaskGroup[T]():`, `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` / `g.results()` waits; leaving the block cancels the rest.
+- Resources (files, task groups) close when their `let`/`var` goes out of scope, unless moved on (returned, stored). Concurrency: `let g = TaskGroup[T]()` (`@std/tasks.ms`), `g.spawn(lambda channel: f(x))` gives a `Task`; `t.result()` / `g.results()` waits; dropping `g` cancels the rest.
 - No exceptions, classes, `async`, `null`, `pass`.
