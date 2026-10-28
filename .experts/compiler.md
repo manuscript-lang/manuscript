@@ -136,6 +136,10 @@ Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a 
 Evidence: [type recursion pass](../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies, many matches, deeply nested literals), time `ms check` and `ms build` separately, and profile any step that grows faster than 2x per doubling. Prefer a global memo or index over a per-query rescan, and keep cycle checks ahead of memo hits.
 
+Verified: method candidate indexes must be populated for declared and synthetic methods, cached standard-module adoption, and editor queries that reconstruct a checker from a checked program. Index nominal receiver identity, leaving generic argument unification, bounds and module visibility at lookup; preserve declaration order within each bucket for ambiguity diagnostics.
+Evidence: [method registration and lookup](../crates/ms-check/src/contracts.rs), [candidate regressions](../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../crates/ms-check/src/editor.rs).
+Verify: the frontend-only candidate tests check constant-size buckets for unrelated methods, generic bounds, overlapping implementations, module-local extensions, ambiguity order and editor members.
+
 Verified: collecting all caller constants at every inline candidate repeatedly scans a growing function. Index the caller once and extend the index with the appended callee blocks; the continuation contains old instructions and must not be scanned again. Keep the constant-argument bonus, growth budget and inlining decisions unchanged.
 Evidence: [inliner](../crates/ms-mir/src/opt/inline.rs), [constant-bonus regression](../crates/ms-mir/tests/opt_inline.rs).
 Verify: compare optimized MIR and native binaries before/after on real programs, and measure the entire build as well as the inline pass at N/2N/4N. A compiler-only improvement does not imply faster generated programs.
