@@ -2,6 +2,7 @@
 
 ## Summary
 
+- Framing (Chinmay, 2026-10-28): "we'll have reusable abstractions and prohibit agent from reinventing new ones". The stdlib and the human-owned `types/` modules own a fixed vocabulary of resource abstractions; agent modules compose them and cannot add their own: raw primitives need a capability agent modules never receive, and `ms review` fails a diff that declares an opaque type or a type holding a capability or handle outside `types/`.
 - Problem: the policies a human wants enforced on agent-written code (an approval is used once, authenticate before query, secrets never reach logs, untrusted input never reaches SQL, money is conserved, only these hosts) live in prose and review. The compiler enforces none of them, and tests only sample them.
 - Change: let programs declare their own **resources** and reuse the ownership checker that already enforces memory and host resources. Three rules, no new syntax: **opaque types** (a record with a hidden field can only be built, read, taken apart or structurally converted inside its module), **`Linear`** (a standard interface the checker recognizes: never copied, never dropped, consumed by moving or by taking it apart in its module), and **typestate as plain named types** (one type per state, transitions as functions; tooling derives the state machine and the "call X first" diagnostic from signatures).
 - Cost: checker rules for opacity, linearity and typestate hints; a `structural` tag on generic builders in `bindings.json`; a stdlib kit in `.ms`; later an opt-in `[permissions]` table and stdlib handles adopting typestate. No prover, no solver, no keyword.
@@ -378,6 +379,8 @@ cli.ms:34:44: type: `go` is moved here but used again at 36:46; a value has one 
 Arguments are `Untrusted` until `inside` accepts them, so `..` never reaches `fs.remove`; a `--force` confirmation covers one removal, so a batch takes a confirmation per item or a separate `ConfirmedBatch` minted by the prompt; the tool only touches the `FileSystem` it was handed (stage 4 narrows it to `root` and rejects `filesystem()` inside `run`).
 
 ### Frozen modules (stage 1)
+
+Agent modules declare plain data types only: `ms review` reports a new opaque type, or a type with a field of capability or handle type, outside `types/` as a frozen change. With raw primitives behind capabilities (stage 4), a second write path or worker pool has nothing to build on.
 
 An agent that meets "opaque outside ledger.ms" will add `export def mint_free` to `ledger.ms`. So the guarantee needs `ms review` to report a diff that touches a module listed in `policy/frozen`, or `policy/` itself, as a frozen change, and to report changed exported signatures. Who may make such a change is not a language question: the repository protects `policy/` and the listed modules with CODEOWNERS and a required CI check that fails on a frozen change without an owner approval. `ms review` is the detector; the repository is the gate. `ms review` today produces an authority map and `--diff`; stage 1 verifies it can list exported signatures per module and adds the frozen report, which lands with the first opaque type, not after.
 
