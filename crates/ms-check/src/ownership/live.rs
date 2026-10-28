@@ -3,7 +3,7 @@
 //! The ownership walk asks this oracle whether a move is the final use of a
 //! binding. A use is **last** when no later use of the same value can run:
 //! reassigning a binding ends the old value's life, a loop keeps reads alive
-//! until the final iteration, and a `with` resource and a closure's captured
+//! until the final iteration, and a scope-closed resource and a closure's captured
 //! variables stay live to the end of their scope.
 
 use crate::hir::*;
@@ -65,7 +65,7 @@ struct Pass<'a> {
     out: Liveness,
     breaks: Vec<Live>,
     continues: Vec<Live>,
-    /// Live at `return`: resources of enclosing `with` blocks, and the captured
+    /// Live at `return`: resources of enclosing scopes, and the captured
     /// variables inside a lambda.
     exit: Live,
 }
@@ -142,22 +142,6 @@ impl Pass<'_> {
             StmtKind::For { iter, body, .. } => {
                 let variable = self.m.stmt(s).loop_binding;
                 live = self.looping(None, Some(iter), variable.map(|b| b.uid), body, live);
-            }
-            StmtKind::With { value, body, .. } => {
-                let resource = self.m.stmt(s).loop_binding;
-                let mut inner = live;
-                let saved = self.exit.clone();
-                if let Some(b) = &resource {
-                    // Cleanup at scope exit is the resource's final use.
-                    inner.insert(b.uid, s.id);
-                    self.exit.insert(b.uid, s.id);
-                }
-                live = self.block(body, inner);
-                self.exit = saved;
-                if let Some(b) = &resource {
-                    live.remove(&b.uid);
-                }
-                self.expr(value, &mut live);
             }
         }
         live

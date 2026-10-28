@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,match,modules,parser,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,match,modules,parser,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/local_extensions/first.ms
 from "@std/test.ms" import expect_equal, expect_false

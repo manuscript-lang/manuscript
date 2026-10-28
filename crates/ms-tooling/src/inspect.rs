@@ -406,19 +406,17 @@ impl Visitor for Sites<'_> {
     fn stmt(&mut self, s: &Stmt) {
         self.statements
             .push(source_span(self.module, s.pos, self.ends));
-        if let StmtKind::With { .. } = s.kind {
-            let cleanup = self
+        if let StmtKind::Bind { .. } = s.kind
+            && let Some(method) = self
                 .module
                 .facts()
                 .stmts
                 .get(&s.id)
-                .and_then(|f| f.cleanup.clone());
-            let target = match cleanup {
-                None => "indirect.close".to_string(),
-                Some(method) => match self.method_ids.get(method.id.as_str()) {
-                    Some(id) => id.clone(),
-                    None => format!("{}.close", method.receiver),
-                },
+                .and_then(|f| f.cleanup.clone())
+        {
+            let target = match self.method_ids.get(method.id.as_str()) {
+                Some(id) => id.clone(),
+                None => format!("{}.close", method.receiver),
             };
             self.calls.push(CallSite {
                 id: format!("{}#cleanup#{}", self.module.file.as_str(), s.pos.offset),

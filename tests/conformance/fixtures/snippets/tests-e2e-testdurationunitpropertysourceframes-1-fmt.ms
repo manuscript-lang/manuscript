@@ -1,4 +1,4 @@
-# conform: tags=formatter,parser,testing,tier-core,with-cleanup
+# conform: tags=formatter,parser,testing,tier-core,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/unit_property_locations_test.go:13 TestDurationUnitPropertySourceFrames
 test "positive unit overflow":

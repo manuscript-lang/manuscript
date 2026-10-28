@@ -1,4 +1,4 @@
-# conform: tags=diagnostics,modules,stdlib-fs,tier-io,try-result,with-cleanup
+# conform: tags=diagnostics,modules,stdlib-fs,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=documentation/learn/tour.md:312
 from "@std/fs.ms" import filesystem, FileSystemError

@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,generics,interpolation,match,modules,mutation,optional,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,generics,interpolation,match,modules,mutation,optional,stdlib-bytes,stdlib-errors,stdlib-fs,stdlib-io,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/fs.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, fail

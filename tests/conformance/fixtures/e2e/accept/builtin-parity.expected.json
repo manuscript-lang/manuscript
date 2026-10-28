@@ -3,469 +3,82 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
+      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [],
+      "tests": [
+        {
+          "index": 0,
+          "name": "builtin-parity.ms::list methods mutate explicit clones and remain typed",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "builtin-parity.ms::map enumeration, merge, and clear preserve insertion order",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "builtin-parity.ms::set algebra and enumeration preserve source values",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "builtin-parity.ms::string methods use Unicode scalars",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "builtin-parity.ms::bytes have analogous immutable operations",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "builtin-parity.ms::growth limits and invalid inputs return values",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "builtin-parity.ms::grouping and lazy map defaults",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "builtin-parity.ms::normalization, empty separators, and precision formatting",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "builtin-parity.ms::BigInt and Regex share function implementations with methods",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "builtin-parity.ms::generic native methods accept omitted single-parameter labels",
+          "status": "passed"
+        }
+      ],
       "summary": {
-        "available": 0,
-        "selected": 0,
-        "passed": 0,
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": false,
-      "exit_code": 1,
-      "reason": "compile_error",
-      "stdout": "",
-      "diagnostics": [
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "try requires Result, found <invalid>; apply try only to a call returning Result[T, E]",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 73,
-            "column": 13,
-            "offset": 2198
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 73,
-            "column": 17,
-            "offset": 2202
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 73,
-            "column": 17,
-            "offset": 2202
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[<invalid>, <invalid>], found String (in argument 'result' of common_result)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 74,
-            "column": 29,
-            "offset": 2245
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_start: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 75,
-            "column": 58,
-            "offset": 2313
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "try requires Result, found <invalid>; apply try only to a call returning Result[T, E]",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 82,
-            "column": 13,
-            "offset": 2440
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 82,
-            "column": 17,
-            "offset": 2444
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 82,
-            "column": 17,
-            "offset": 2444
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[<invalid>, <invalid>], found String (in argument 'result' of common_result)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 83,
-            "column": 29,
-            "offset": 2487
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_end: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 84,
-            "column": 58,
-            "offset": 2553
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[String, StringError], found String (in argument 'actual' of expect_equal); wrap the value in ok(...), e.g. return ok(value)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 360,
-            "column": 9,
-            "offset": 13874
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_start: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 360,
-            "column": 56,
-            "offset": 13921
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_end: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 366,
-            "column": 68,
-            "offset": 14091
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "operator operands require the same independently known type, found String == Result[String, StringError]; unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 367,
-            "column": 15,
-            "offset": 14118
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[String, StringError], found String (in argument 'actual' of expect_equal); wrap the value in ok(...), e.g. return ok(value)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 370,
-            "column": 11,
-            "offset": 14176
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_start: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 370,
-            "column": 52,
-            "offset": 14217
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[String, StringError], found String (in argument 'actual' of expect_equal); wrap the value in ok(...), e.g. return ok(value)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 373,
-            "column": 9,
-            "offset": 14283
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_start: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 373,
-            "column": 52,
-            "offset": 14326
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected Result[String, StringError], found String (in argument 'actual' of expect_equal); wrap the value in ok(...), e.g. return ok(value)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 378,
-            "column": 9,
-            "offset": 14448
-          }
-        },
-        {
-          "code": "MS3004",
-          "phase": "type",
-          "message": "unknown argument max_bytes; parameters of pad_end: padding, target_length",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 378,
-            "column": 48,
-            "offset": 14487
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 453,
-            "column": 10,
-            "offset": 16819
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 453,
-            "column": 10,
-            "offset": 16819
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 453,
-            "column": 24,
-            "offset": 16833
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 454,
-            "column": 10,
-            "offset": 16904
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 454,
-            "column": 10,
-            "offset": 16904
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 454,
-            "column": 24,
-            "offset": 16918
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 457,
-            "column": 10,
-            "offset": 17012
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 457,
-            "column": 10,
-            "offset": 17012
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 457,
-            "column": 24,
-            "offset": 17026
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 460,
-            "column": 10,
-            "offset": 17118
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 460,
-            "column": 10,
-            "offset": 17118
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 460,
-            "column": 24,
-            "offset": 17132
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument T for common_result; write common_result[T, E](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 465,
-            "column": 17,
-            "offset": 17257
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "cannot infer type argument E for common_result; write common_result[T, E](...) with an explicit type for E; call arguments and the expected result must determine every type parameter",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 465,
-            "column": 17,
-            "offset": 17257
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 466,
-            "column": 17,
-            "offset": 17288
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 492,
-            "column": 50,
-            "offset": 18487
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected String, found Result[String, NumberError] (in argument 'expected' of expect_equal); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 492,
-            "column": 50,
-            "offset": 18487
-          }
-        },
-        {
-          "code": "MS3080",
-          "phase": "type",
-          "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 493,
-            "column": 55,
-            "offset": 18557
-          }
-        },
-        {
-          "code": "MS3001",
-          "phase": "type",
-          "message": "expected String, found Result[String, NumberError] (in argument 'expected' of expect_equal); unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'",
-          "position": {
-            "file": "builtin-parity.ms",
-            "line": 493,
-            "column": 55,
-            "offset": 18557
-          }
-        }
-      ]
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN builtin-parity.ms::list methods mutate explicit clones and remain typed\nPASS builtin-parity.ms::list methods mutate explicit clones and remain typed\nRUN builtin-parity.ms::map enumeration, merge, and clear preserve insertion order\nPASS builtin-parity.ms::map enumeration, merge, and clear preserve insertion order\nRUN builtin-parity.ms::set algebra and enumeration preserve source values\nPASS builtin-parity.ms::set algebra and enumeration preserve source values\nRUN builtin-parity.ms::string methods use Unicode scalars\nPASS builtin-parity.ms::string methods use Unicode scalars\nRUN builtin-parity.ms::bytes have analogous immutable operations\nPASS builtin-parity.ms::bytes have analogous immutable operations\nRUN builtin-parity.ms::growth limits and invalid inputs return values\nPASS builtin-parity.ms::growth limits and invalid inputs return values\nRUN builtin-parity.ms::grouping and lazy map defaults\nPASS builtin-parity.ms::grouping and lazy map defaults\nRUN builtin-parity.ms::normalization, empty separators, and precision formatting\nPASS builtin-parity.ms::normalization, empty separators, and precision formatting\nRUN builtin-parity.ms::BigInt and Regex share function implementations with methods\nPASS builtin-parity.ms::BigInt and Regex share function implementations with methods\nRUN builtin-parity.ms::generic native methods accept omitted single-parameter labels\nPASS builtin-parity.ms::generic native methods accept omitted single-parameter labels\n10 tests, 0 failed\n",
+      "diagnostics": []
     },
     "shape": [
       "completed",
       "diagnostics",
-      "diagnostics[].code",
-      "diagnostics[].message",
-      "diagnostics[].phase",
-      "diagnostics[].position",
-      "diagnostics[].position.column",
-      "diagnostics[].position.file",
-      "diagnostics[].position.line",
-      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "reason",
+      "repeat",
       "source_root",
       "stdout",
       "summary",
@@ -476,7 +89,11 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests"
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
     ],
     "stderr": ""
   }

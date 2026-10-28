@@ -401,7 +401,7 @@ b0:
 "#;
     let (m, changed) = rewrite(body, true);
     assert!(changed, "{}", print_module(&m));
-    // Two windows around the checked additions: one discard must not pop the `with` entry.
+    // Two windows around the checked additions: one discard must not pop the scope entry.
     assert_eq!(
         calls(&m, "main", "msrt_cleanup_discard"),
         2,

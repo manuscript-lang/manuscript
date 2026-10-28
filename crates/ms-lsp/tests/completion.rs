@@ -10,23 +10,23 @@ mod support;
 use support::Workspace;
 
 #[test]
-fn with_snippet_inserts_a_checked_resource_binding() {
+fn for_snippet_inserts_a_checked_loop() {
     let workspace = Workspace::new("completion-snippet");
-    let source = include_str!("completion/with-snippet-inserts-a-checked-resource-binding.ms");
+    let source = include_str!("completion/for-snippet-inserts-a-checked-loop.ms");
     for source in [source.to_string(), source.replace('\n', "\r\n")] {
         let mut document = Document::new(workspace.uri("completion.ms"), source);
         assert!(Path::new(&document.path()).is_absolute());
         assert!(!Path::new(&document.path()).exists(), "unsaved document");
         let at = Position {
-            line: 9,
+            line: 1,
             character: 6,
         };
         let item = completion_at(&document, &Documents::new(), at, true)
             .expect("completion")
             .into_iter()
             .map(|item| item.json())
-            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("with"))
-            .expect("with snippet");
+            .find(|item| item.get("label").and_then(|j| j.as_str()) == Some("for"))
+            .expect("for snippet");
         assert_eq!(
             item.get("insertTextFormat").and_then(|j| j.as_i64()),
             Some(2)
@@ -35,16 +35,14 @@ fn with_snippet_inserts_a_checked_resource_binding() {
         let range = Range::from_json(edit.get("range").expect("range")).expect("valid range");
         let start = ms_lsp::text::offset(&document.text, range.start).expect("start");
         let end = ms_lsp::text::offset(&document.text, range.end).expect("end");
-        assert_eq!(&document.text[start..end], "wi");
+        assert_eq!(&document.text[start..end], "fo");
         // Fill by placeholder name even if the tab order changes.
         let insertion = edit
             .get("newText")
             .and_then(|j| j.as_str())
             .expect("snippet")
-            .replace("${1:resource}", "resource")
-            .replace("${2:initializer}", "Resource(1)")
-            .replace("${1:initializer}", "Resource(1)")
-            .replace("${2:resource}", "resource")
+            .replace("${1:item}", "item")
+            .replace("${2:items}", "[1, 2]")
             .replace("$0", "return ()")
             .replace('\n', "\n    ");
         document.text.replace_range(start..end, &insertion);

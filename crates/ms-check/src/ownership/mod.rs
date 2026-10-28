@@ -69,8 +69,6 @@ pub enum Role {
     Pattern,
     /// A `for` variable.
     Loop,
-    /// A `with` resource.
-    With,
     /// A match arm payload variable.
     Arm,
     /// A lambda parameter.

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,generics,interpolation,lists,maps,match,modules,optional,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-numbers,stdlib-regex,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,generics,interpolation,lists,maps,match,modules,optional,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-numbers,stdlib-regex,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/builtin-parity.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_true, fail

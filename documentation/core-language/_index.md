@@ -13,7 +13,7 @@ These chapters define how Manuscript programs behave. New readers should start w
 4. [Control flow](control-flow/_index.md): conditions, loops, and matching.
 5. [Error handling](errors/_index.md): results, propagation, and faults.
 6. [Modules](modules/_index.md): imports, exports, and public boundaries.
-7. [Managing resources](cleanup/_index.md): closing files and connections with `with`.
+7. [Managing resources](cleanup/_index.md): closing files and connections when their scope ends.
 8. [Concurrent tasks](concurrency/_index.md): running work at once with `TaskGroup`.
 
 Find declarations in the generated [standard-library API reference](../standard-library/reference/_index.md).

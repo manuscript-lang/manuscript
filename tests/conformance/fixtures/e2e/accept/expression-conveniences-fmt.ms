@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/expression-conveniences.ms
 from "@std/core.ms" import TextError

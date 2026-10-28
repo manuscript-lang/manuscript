@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,interpolation,modules,optional,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,interpolation,modules,optional,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
 from "@std/test.ms" import expect_equal, expect_false, fail

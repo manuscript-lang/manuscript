@@ -207,11 +207,11 @@ def outcome_of(report: String) -> Result[Unit, WorkerError]:
     return ok(())
 
 # A group of workers. Every worker's channel sends `In` to it and receives `Out` from it.
-# Open a group with `with`: leaving the block cancels workers that are still running and waits for them.
+# Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
 # Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
 # Worker threads are not a process-crash isolation boundary.
 export type WorkerGroup[In = Unit, Out = Unit]:
-    # Internal state: the workers in start order, changed through the shared handle so the group works as a `with` binding.
+    # Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
     workers: Shared[List[Worker[In, Out]]] = share([])
 
 impl WorkerGroup[In, Out]:

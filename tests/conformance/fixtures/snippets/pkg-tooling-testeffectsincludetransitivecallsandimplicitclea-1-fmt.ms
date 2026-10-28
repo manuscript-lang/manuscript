@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,stdlib-queues,tier-stdlib,with-cleanup
+# conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,stdlib-queues,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
 from "@std/core.ms" import Closeable

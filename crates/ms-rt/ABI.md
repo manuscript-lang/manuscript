@@ -301,7 +301,7 @@ and call `msrt_cancelled() -> !`, which runs cleanups and exits 130 (SIGINT) or 
 (SIGTERM). A second stop request or 30 s later prints `incomplete cleanup: <reason>`
 and exits 67.
 
-**Cleanup stack (`with`).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
+**Cleanup stack (scope-end closes).** `msrt_cleanup_push(f: fn(arg: *mut u8), arg: *mut u8) -> usize`
 returns a handle; `msrt_cleanup_run(handle)` runs and removes that action (and any
 newer pending ones first, innermost to outermost). On a fault the remaining actions
 run LIFO shielded from cancellation.
@@ -317,7 +317,7 @@ plus `at file:line in fn` frames, no trailing newline) as a new String in `*msg_
 `*msg_out = null`; the cancel flag stays set so the caller should stop soon after.
 Guards nest: a fault leaves only the innermost one. Cleanups registered before entry
 are untouched. Not unwound: values owned by the abandoned frames are only released
-through cleanup actions, so a fault leaks anything not under `with`; the HTTP server's handler thunk registers its request
+through cleanup actions, so a fault leaks anything not registered on the cleanup stack; the HTTP server's handler thunk registers its request
 with the cleanup stack for this reason. Faults still exit
 67 outside any guard. Implementation: `msrt_guard_enter` saves callee-saved registers
 and the stack pointer and calls `code`; a fault jumps back to it (x86_64 and aarch64;
@@ -329,7 +329,7 @@ global stay non-atomic; a task runs until it parks or yields. This is a runtime 
 natives (an HTTP server running handlers concurrently); the language has no concurrency
 surface. Each task has its own stack (default 256 MiB of address space, committed lazily, 64 KiB
 guard), cleanup stack, guard stack, stack limit, equality-cycle state and cancellation request;
-the runtime swaps them on every switch, so faults, `with` cleanups and `msrt_guard_call`
+the runtime swaps them on every switch, so faults, scope-end cleanups and `msrt_guard_call`
 behave per task.
 
 ```text

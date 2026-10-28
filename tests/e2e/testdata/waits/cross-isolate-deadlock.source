@@ -7,8 +7,9 @@ export def waits() -> Unit:
     ch.send(1)
 
 export def main() -> Int:
-    with let workers = WorkerGroup[Int, Int]():
-        var w = workers.spawn(waits).get()
-        let v = w.channel.receive()
-        stdout().write(f"main got {v.is_ok()}\n").get()
+    var workers = WorkerGroup[Int, Int]()
+    var w = workers.spawn(waits).get()
+    let v = w.channel.receive()
+    stdout().write(f"main got {v.is_ok()}\n").get()
+    workers.close()
     return 0

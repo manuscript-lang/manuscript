@@ -148,12 +148,12 @@ test('shared nested rules scope escapes, interpolation expressions and nested st
   ]);
 });
 
-test('parser fixture covers declarations, ref results, implicit borrows, lambdas and patterns', () => {
+test('parser fixture covers declarations, ref results, implicit borrows, with bindings, lambdas and patterns', () => {
   const source = fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8');
   assertScopes(source, [
     ['extern', 'k'], ['type', 'k'], ['Box', 'nc'], ['interface', 'k'], ['Reader', 'nc'],
     ['impl', 'k'], ['identity', 'nf'], ['ref', 'k'], ['self', 'k'], ['replace', 'nf'],
-    ['var', 'k'], ['let', 'k'], ['lambda', 'k'], ['Callable', 'nc'],
+    ['with', 'k'], ['var', 'k'], ['let', 'k'], ['lambda', 'k'], ['Callable', 'nc'],
     ['match', 'k'], ['case', 'k'], ['Ready', 'nc'],
     ['borrowed', ''], ['exclusive', ''], ['specialized', ''], ['->', 'o'], ['...', 'o'],
   ]);

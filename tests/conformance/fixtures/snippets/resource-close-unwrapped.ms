@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,tier-core
+# conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=a resource unwrapped or passed through a call closes at scope end
 from "@std/core.ms" import Closeable, TextError

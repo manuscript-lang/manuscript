@@ -1,4 +1,4 @@
-# conform: tags=alternatives,diagnostics,records,tier-core,with-cleanup
+# conform: tags=alternatives,diagnostics,records,tier-core,scope-cleanup
 # conform: phase=check
 # conform: origin=documentation/core-language/types/alternatives.md:38
 type LeftState:

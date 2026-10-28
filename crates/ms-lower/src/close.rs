@@ -1,4 +1,5 @@
-//! `with name = value:` — the value's `close` runs on every way out of the block.
+//! Closing resources: a binding's `close` runs on every way out of its scope, and the parts a
+//! holder owns close with it.
 
 use crate::Error;
 use crate::func::FnLower;
@@ -8,7 +9,7 @@ use ms_mir::ir::{Cc, FuncId, FuncKind, Imm, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, IfaceId, RecId, Ty as MTy, TyKind};
 use ms_syntax::ast::*;
 
-/// How a `with` binding is closed.
+/// How a binding is closed.
 #[derive(Clone)]
 pub(crate) enum CloseKind {
     /// An interface value: the vtable entry.
@@ -102,7 +103,7 @@ fn emit_parts(b: &mut FuncBuilder<'_>, v: Value, shape: Shape) {
     }
 }
 
-/// A `with` binding's close operation and its entry on the runtime cleanup stack, which a fault
+/// A closing binding's close operation and its entry on the runtime cleanup stack, which a fault
 /// runs.
 #[derive(Clone)]
 pub(crate) struct Closer {
@@ -187,27 +188,6 @@ impl FnLower<'_> {
             return;
         };
         close_call(&mut self.b, &kind, v, mt);
-    }
-
-    pub(crate) fn with_stmt(&mut self, s: &Stmt, value: &Expr, body: &[Stmt]) -> Result<(), Error> {
-        let info = self.hir.stmt(s);
-        let binding = info
-            .loop_binding
-            .ok_or_else(|| Error::new("with without a binding"))?;
-        let cleanup = info
-            .cleanup
-            .ok_or_else(|| Error::new("with without a cleanup operation"))?;
-        let mark = self.temps.len();
-        let x = self.expr(value)?;
-        if self.dead {
-            return Ok(());
-        }
-        self.push_scope();
-        self.bind_closing(&binding, x, Some(&cleanup))?;
-        self.flush_temps(mark);
-        let r = self.stmts(body);
-        self.pop_scope();
-        r
     }
 
     /// Binds `binding` to `x` and registers its close operation: a fault runs it through the
@@ -707,7 +687,7 @@ impl FnLower<'_> {
         Ok(())
     }
 
-    /// Leaves the `with` binding `uid`: the cleanup entry goes away and its close runs on the
+    /// Leaves the closing binding `uid`: the cleanup entry goes away and its close runs on the
     /// current value.
     pub(crate) fn emit_close(&mut self, uid: usize, closer: &Closer) {
         let l = self.locals[&uid];

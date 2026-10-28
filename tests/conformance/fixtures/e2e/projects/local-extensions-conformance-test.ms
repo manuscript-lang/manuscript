@@ -1,4 +1,4 @@
-# conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
 from "@std/test.ms" import expect_equal, expect_false

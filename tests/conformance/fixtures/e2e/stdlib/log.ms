@@ -1,4 +1,4 @@
-# conform: tags=aliasing,control-flow,diagnostics,interfaces,interpolation,lists,modules,optional,records,stdlib-bytes,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,control-flow,diagnostics,interfaces,interpolation,lists,modules,optional,records,stdlib-bytes,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/stdlib/log.ms
 from "@std/test.ms" import expect_equal, expect_error, expect_false

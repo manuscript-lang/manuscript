@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interfaces,interpolation,modules,parser,records,stdlib-cleanup,stdlib-io,strings,tier-stdlib,with-cleanup
+# conform: tags=control-flow,formatter,interfaces,interpolation,modules,parser,records,stdlib-cleanup,stdlib-io,strings,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/signal/main.ms
 from "@std/io.ms" import stdout

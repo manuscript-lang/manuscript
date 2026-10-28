@@ -3,192 +3,51 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "json.ms::JSON exact numbers Unicode and nested roundtrip",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "json.ms::JSON rejects duplicate keys malformed Unicode and trailing values",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "json.ms::JSON independently enforces byte depth and value budgets",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "json.ms::JSON stringify rejects number text with trailing whitespace",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "json.ms::JSON parse bounds nesting even without a depth limit",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "json.ms::JSON stringify encodes records in declaration order and omits none fields",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "json.ms::JSON stringify encodes alternatives and nested optionals",
-          "status": "passed"
-        },
-        {
-          "index": 7,
-          "name": "json.ms::JSON stringify keeps map insertion order and encodes scalars exactly",
-          "status": "passed"
-        },
-        {
-          "index": 8,
-          "name": "json.ms::JSON stringify reports non-finite numbers and budgets as errors",
-          "status": "passed"
-        },
-        {
-          "index": 9,
-          "name": "json.ms::JSON stringify repeats shared acyclic values and reads current field values",
-          "status": "passed"
-        },
-        {
-          "index": 10,
-          "name": "json.ms::JSON stringify omits values without a JSON form and writes null for list elements",
-          "status": "passed"
-        },
-        {
-          "index": 11,
-          "name": "json.ms::JSON stringify encodes standard-library values",
-          "status": "passed"
-        },
-        {
-          "index": 12,
-          "name": "json.ms::JSON stringify encodes scalar map keys and rejects the rest",
-          "status": "passed"
-        },
-        {
-          "index": 13,
-          "name": "json.ms::JSON stringify honors JsonEncode wherever the value appears",
-          "status": "passed"
-        },
-        {
-          "index": 14,
-          "name": "json.ms::JSON stringify indents like JSON.stringify and clamps at ten",
-          "status": "passed"
-        },
-        {
-          "index": 15,
-          "name": "json.ms::JSON stringify omits interface values and monotonic instants",
-          "status": "passed"
-        },
-        {
-          "index": 16,
-          "name": "json.ms::JSON stringify lets JsonEncode override the structural encoding of an alternative",
-          "status": "passed"
-        },
-        {
-          "index": 17,
-          "name": "json.ms::JSON stringify keeps cases with identical labels distinct by default",
-          "status": "passed"
-        },
-        {
-          "index": 18,
-          "name": "json.ms::JSON parse decodes records by field name with defaults and optional fields",
-          "status": "passed"
-        },
-        {
-          "index": 19,
-          "name": "json.ms::JSON parse rejects shape mismatches as InvalidData",
-          "status": "passed"
-        },
-        {
-          "index": 20,
-          "name": "json.ms::JSON parse decodes alternatives and generic records",
-          "status": "passed"
-        },
-        {
-          "index": 21,
-          "name": "json.ms::JSON parse decodes recursive types exact numbers and passthrough values",
-          "status": "passed"
-        },
-        {
-          "index": 22,
-          "name": "json.ms::JSON parse inverts stringify and works in generic code",
-          "status": "passed"
-        },
-        {
-          "index": 23,
-          "name": "json.ms::JSON parse takes its type from an explicit argument, the expected result or the JsonValue default",
-          "status": "passed"
-        },
-        {
-          "index": 24,
-          "name": "json.ms::JSON parse reads what stringify writes for standard values and scalar map keys",
-          "status": "passed"
-        },
-        {
-          "index": 25,
-          "name": "json.ms::JSON parse needs a default for fields without a JSON form",
-          "status": "passed"
-        },
-        {
-          "index": 26,
-          "name": "json.ms::JSON parse reads standard alternatives and rejects keys that collide",
-          "status": "passed"
-        },
-        {
-          "index": 27,
-          "name": "json.ms::JSON stringify fails on nesting deeper than parse accepts",
-          "status": "passed"
-        },
-        {
-          "index": 28,
-          "name": "json.ms::JSON parse runs field defaults that read earlier fields",
-          "status": "passed"
-        },
-        {
-          "index": 29,
-          "name": "json.ms::JSON round trips fields named like Go keywords",
-          "status": "passed"
-        },
-        {
-          "index": 30,
-          "name": "json.ms::JSON round trips generic records alternatives and Duration keys",
-          "status": "passed"
-        },
-        {
-          "index": 31,
-          "name": "json.ms::JSON parse returns InvalidData for targets that cannot be read",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 32,
-        "selected": 32,
-        "passed": 32,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN json.ms::JSON exact numbers Unicode and nested roundtrip\nPASS json.ms::JSON exact numbers Unicode and nested roundtrip\nRUN json.ms::JSON rejects duplicate keys malformed Unicode and trailing values\nPASS json.ms::JSON rejects duplicate keys malformed Unicode and trailing values\nRUN json.ms::JSON independently enforces byte depth and value budgets\nPASS json.ms::JSON independently enforces byte depth and value budgets\nRUN json.ms::JSON stringify rejects number text with trailing whitespace\nPASS json.ms::JSON stringify rejects number text with trailing whitespace\nRUN json.ms::JSON parse bounds nesting even without a depth limit\nPASS json.ms::JSON parse bounds nesting even without a depth limit\nRUN json.ms::JSON stringify encodes records in declaration order and omits none fields\nPASS json.ms::JSON stringify encodes records in declaration order and omits none fields\nRUN json.ms::JSON stringify encodes alternatives and nested optionals\nPASS json.ms::JSON stringify encodes alternatives and nested optionals\nRUN json.ms::JSON stringify keeps map insertion order and encodes scalars exactly\nPASS json.ms::JSON stringify keeps map insertion order and encodes scalars exactly\nRUN json.ms::JSON stringify reports non-finite numbers and budgets as errors\nPASS json.ms::JSON stringify reports non-finite numbers and budgets as errors\nRUN json.ms::JSON stringify repeats shared acyclic values and reads current field values\nPASS json.ms::JSON stringify repeats shared acyclic values and reads current field values\nRUN json.ms::JSON stringify omits values without a JSON form and writes null for list elements\nPASS json.ms::JSON stringify omits values without a JSON form and writes null for list elements\nRUN json.ms::JSON stringify encodes standard-library values\nPASS json.ms::JSON stringify encodes standard-library values\nRUN json.ms::JSON stringify encodes scalar map keys and rejects the rest\nPASS json.ms::JSON stringify encodes scalar map keys and rejects the rest\nRUN json.ms::JSON stringify honors JsonEncode wherever the value appears\nPASS json.ms::JSON stringify honors JsonEncode wherever the value appears\nRUN json.ms::JSON stringify indents like JSON.stringify and clamps at ten\nPASS json.ms::JSON stringify indents like JSON.stringify and clamps at ten\nRUN json.ms::JSON stringify omits interface values and monotonic instants\nPASS json.ms::JSON stringify omits interface values and monotonic instants\nRUN json.ms::JSON stringify lets JsonEncode override the structural encoding of an alternative\nPASS json.ms::JSON stringify lets JsonEncode override the structural encoding of an alternative\nRUN json.ms::JSON stringify keeps cases with identical labels distinct by default\nPASS json.ms::JSON stringify keeps cases with identical labels distinct by default\nRUN json.ms::JSON parse decodes records by field name with defaults and optional fields\nPASS json.ms::JSON parse decodes records by field name with defaults and optional fields\nRUN json.ms::JSON parse rejects shape mismatches as InvalidData\nPASS json.ms::JSON parse rejects shape mismatches as InvalidData\nRUN json.ms::JSON parse decodes alternatives and generic records\nPASS json.ms::JSON parse decodes alternatives and generic records\nRUN json.ms::JSON parse decodes recursive types exact numbers and passthrough values\nPASS json.ms::JSON parse decodes recursive types exact numbers and passthrough values\nRUN json.ms::JSON parse inverts stringify and works in generic code\nPASS json.ms::JSON parse inverts stringify and works in generic code\nRUN json.ms::JSON parse takes its type from an explicit argument, the expected result or the JsonValue default\nPASS json.ms::JSON parse takes its type from an explicit argument, the expected result or the JsonValue default\nRUN json.ms::JSON parse reads what stringify writes for standard values and scalar map keys\nPASS json.ms::JSON parse reads what stringify writes for standard values and scalar map keys\nRUN json.ms::JSON parse needs a default for fields without a JSON form\nPASS json.ms::JSON parse needs a default for fields without a JSON form\nRUN json.ms::JSON parse reads standard alternatives and rejects keys that collide\nPASS json.ms::JSON parse reads standard alternatives and rejects keys that collide\nRUN json.ms::JSON stringify fails on nesting deeper than parse accepts\nPASS json.ms::JSON stringify fails on nesting deeper than parse accepts\nRUN json.ms::JSON parse runs field defaults that read earlier fields\nPASS json.ms::JSON parse runs field defaults that read earlier fields\nRUN json.ms::JSON round trips fields named like Go keywords\nPASS json.ms::JSON round trips fields named like Go keywords\nRUN json.ms::JSON round trips generic records alternatives and Duration keys\nPASS json.ms::JSON round trips generic records alternatives and Duration keys\nRUN json.ms::JSON parse returns InvalidData for targets that cannot be read\nPASS json.ms::JSON parse returns InvalidData for targets that cannot be read\n32 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "Named is an interface and cannot be constructed; a type with 'impl Named for <Type>:' passes wherever Named is expected, so pass the value directly",
+          "position": {
+            "file": "json.ms",
+            "line": 255,
+            "column": 15,
+            "offset": 9905
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -199,11 +58,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

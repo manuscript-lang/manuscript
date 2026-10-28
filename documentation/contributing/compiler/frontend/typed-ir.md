@@ -14,7 +14,7 @@ After checking, the program is stored as typed IR holding the facts code generat
 | Lists | Keep element types |
 | Destructuring | Keep shapes, field bindings, extraction order |
 | Closure environments | Record borrowed or owned captures and receiver places |
-| `with` and cleanup scopes | Resolve `close()` and unwind exited scopes |
+| Resource bindings and cleanup scopes | Resolve `close()` and unwind exited scopes |
 | Effects and host boundaries | Derive host/service relationships and diagrams |
 | Source locations | Map generated behavior to source |
 

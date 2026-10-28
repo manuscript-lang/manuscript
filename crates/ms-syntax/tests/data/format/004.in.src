@@ -17,10 +17,10 @@ export def main() -> Int:
         timeout: 2.seconds,
         grace: 0.seconds
     ):
-        with let server = acquired:
-            if stdout().write(f"{server.address()}\n").is_error():
-                return 1
-            let _ignored = server.wait()
-            return 0
+        let server = acquired
+        if stdout().write(f"{server.address()}\n").is_error():
+            return 1
+        let _ignored = server.wait()
+        return 0
 
     return 1

@@ -29,20 +29,20 @@
             "file": "conversions-queries.ms",
             "line": 196,
             "column": 27,
-            "offset": 6394
+            "offset": 6392
           },
           "fix": {
             "position": {
               "file": "conversions-queries.ms",
               "line": 196,
               "column": 28,
-              "offset": 6395
+              "offset": 6393
             },
             "end": {
               "file": "conversions-queries.ms",
               "line": 196,
               "column": 28,
-              "offset": 6395
+              "offset": 6393
             },
             "replacement": ".clone()"
           }
@@ -55,20 +55,20 @@
             "file": "conversions-queries.ms",
             "line": 332,
             "column": 27,
-            "offset": 9984
+            "offset": 9982
           },
           "fix": {
             "position": {
               "file": "conversions-queries.ms",
               "line": 332,
               "column": 32,
-              "offset": 9989
+              "offset": 9987
             },
             "end": {
               "file": "conversions-queries.ms",
               "line": 332,
               "column": 32,
-              "offset": 9989
+              "offset": 9987
             },
             "replacement": ".clone()"
           }

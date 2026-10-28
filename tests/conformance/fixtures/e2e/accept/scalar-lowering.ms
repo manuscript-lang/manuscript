@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,generics,interfaces,interpolation,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,generics,interfaces,interpolation,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
 from "@std/core.ms" import TextError

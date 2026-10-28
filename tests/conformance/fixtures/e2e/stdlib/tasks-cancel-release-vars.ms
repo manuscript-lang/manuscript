@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.

@@ -1,4 +1,4 @@
-# conform: tags=closures,faults,stdlib-tasks,tier-stdlib,with-cleanup
+# conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
 # conform: phase=run
 from "@std/io.ms" import stdout
 from "@std/tasks.ms" import TaskError, TaskGroup

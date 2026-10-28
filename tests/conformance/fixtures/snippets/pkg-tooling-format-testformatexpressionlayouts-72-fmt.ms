@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interpolation,parser,strings,tier-core,with-cleanup
+# conform: tags=control-flow,formatter,interpolation,parser,strings,tier-core,scope-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_layout_test.go:523 TestFormatExpressionLayouts
 def work() -> String:

@@ -1,4 +1,4 @@
-# conform: tags=closures,faults,lists,modules,optional,stdlib-testing,strings,testing,tier-core,try-result,with-cleanup
+# conform: tags=closures,faults,lists,modules,optional,stdlib-testing,strings,testing,tier-core,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/map-set-and-sort-callbacks-keep-semantics.ms
 from "@std/test.ms" import expect_true

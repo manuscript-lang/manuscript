@@ -51,7 +51,7 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
     for (phase, message, expected) in [
         (
             "type",
-            "`f` is a resource that is never closed: open it with `with let f = ...`",
+            "`f` is a resource that is never closed: call `f.close()`, or return it so the caller owns it",
             "MS3000.10",
         ),
         (

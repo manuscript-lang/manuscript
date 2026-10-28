@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,mutation,tier-core
+# conform: tags=scope-cleanup,mutation,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
 from "@std/shared.ms" import Shared, share

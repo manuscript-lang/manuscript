@@ -247,13 +247,12 @@ fn search_rejects_noise_and_empty_queries() {
     assert!(format_matches("zzqxjv", &[]).contains("No standard-library match"));
 }
 
-/// `with` binds its resource with `let` or `var`; the removed `with expr as name:` spelling must not return.
+/// Scope-end close replaced the `with` statement; the cheat sheet must not teach it.
 #[test]
-fn cheatsheet_uses_the_current_with_syntax() {
+fn cheatsheet_does_not_teach_with() {
     let text = cheatsheet();
-    for line in text.lines().filter(|l| l.contains("`with ")) {
-        assert!(!line.contains(" as "), "old with-as spelling: {line}");
-    }
+    let taught = text.lines().find(|l| l.contains("`with "));
+    assert!(taught.is_none(), "removed with statement: {taught:?}");
 }
 
 // Every listed mistake is real: `wrong` fails (or is silently accepted) as stated, `right` checks clean.

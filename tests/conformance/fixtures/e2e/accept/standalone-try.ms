@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,interfaces,match,modules,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,interfaces,match,modules,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/standalone-try.ms
 from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail

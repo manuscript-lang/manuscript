@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,generics,interpolation,modules,records,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,generics,interpolation,modules,records,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/html-unescape.ms
 from "@std/test.ms" import expect_equal, expect_false, fail

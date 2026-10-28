@@ -499,7 +499,7 @@ impl Checker {
             self.type_error(
                 e.pos,
                 format!(
-                    "Shared.{name} is internal; change a Shared with `with var guard = lock(box):` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the block ends"
+                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
                 ),
             );
             return;

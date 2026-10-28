@@ -1,4 +1,4 @@
-# conform: tags=closures,with-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
+# conform: tags=closures,scope-cleanup,stdlib-tasks,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 from "@std/shared.ms" import share, Shared
 from "@std/sync.ms" import lock

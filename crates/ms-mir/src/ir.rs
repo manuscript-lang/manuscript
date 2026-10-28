@@ -671,7 +671,7 @@ pub enum Term {
     },
     /// Returns an owned value (or nothing for `Unit` functions).
     Ret(Option<Value>),
-    /// Aborts the program with a fault, running `with` cleanups first.
+    /// Aborts the program with a fault, running scope cleanups first.
     Fault(FaultKind),
     /// Control never reaches here; undefined behavior if it does.
     Unreachable,

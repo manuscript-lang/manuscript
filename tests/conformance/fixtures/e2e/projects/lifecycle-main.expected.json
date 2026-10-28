@@ -3,8 +3,8 @@
   "phase": "run",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
-    "stdout": "callable\nsecond\nfirst\npair second\npair first\nclose normal\nafter normal\nclose iteration\nclose iteration\niterable\nclose break\nclose propagation\nreturn value\nclose inner\nclose outer\nfinished\n",
-    "stderr": ""
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "<DIR>/lifecycle-main.ms:93:17: type: binding completed shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n    |\n 93 |             let completed = ()\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }

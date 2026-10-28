@@ -91,7 +91,7 @@ def notes_reader(path: String) -> Callable[[], Result[Bytes, FileSystemError]]:
 
 `notes_reader("notes.txt")` returns a callback; each call opens, reads, and closes its own file.
 
-Capturing an already-open file keeps the same handle and does not delay its `with` cleanup: `FileHandle.read_file` after the block returns `FileSystemError.Closed`. Parameters and record fields follow the same lifetime rule.
+Capturing an already-open file keeps the same handle and does not delay its scope-end cleanup: `FileHandle.read_file` after the scope ends returns `FileSystemError.Closed`. Parameters and record fields follow the same lifetime rule.
 
 ## Contextual callback inference
 

@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-net,tier-io
+# conform: tags=scope-cleanup,stdlib-net,tier-io
 # conform: phase=run
 from "@std/io.ms" import stdout
 from "@std/net.ms" import network

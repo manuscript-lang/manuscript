@@ -5,16 +5,16 @@ weight = 3
 
 # Implementing Closeable
 
-Import `Closeable` from `@std/core.ms` to name or implement it. `with` checks the identity of this standard contract; an unrelated same-named interface does not qualify.
+Import `Closeable` from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
 ```manuscript
 interface Closeable:
     var def close() -> Unit
 ```
 
-`with` accepts:
+A binding is closed when it holds:
 
-- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close`.
+- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close` when the binding is created.
 - A contract value whose own declaration contains exactly `var def close() -> Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
 - A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
@@ -44,4 +44,4 @@ Expected failures belong to explicit operations such as `commit()`, `flush()`, o
 
 A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.
 
-User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [using with](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).
+User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [scope-end cleanup](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).

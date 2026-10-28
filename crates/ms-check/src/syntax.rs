@@ -298,9 +298,9 @@ impl Info {
 /// Statement facts.
 #[derive(Clone, Default)]
 pub struct StmtFacts {
-    /// Loop or `with` variable.
+    /// Loop variable.
     pub loop_binding: Option<BindingRef>,
-    /// Cleanup method of a `with`.
+    /// Cleanup method the binding's scope runs.
     pub cleanup: Option<MethodRef>,
     /// Whether control can fall through.
     pub falls_through: Option<bool>,

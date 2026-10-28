@@ -309,7 +309,7 @@ impl ModuleHir {
         self.data.facts().patterns.get(&p.id).cloned()
     }
 
-    /// Facts of a statement (loop or `with` variable, cleanup, flow).
+    /// Facts of a statement (loop variable, cleanup, flow).
     pub fn stmt(&self, s: &Stmt) -> StmtFacts {
         self.data
             .facts()

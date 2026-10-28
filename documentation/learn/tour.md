@@ -328,7 +328,7 @@ def copy_notes() -> Result[Unit, FileSystemError]:
     return ok(())
 ```
 
-`with` closes the file at block end, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
+The file closes at the end of its scope, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
 
 ## A few compiler errors to recognize
 

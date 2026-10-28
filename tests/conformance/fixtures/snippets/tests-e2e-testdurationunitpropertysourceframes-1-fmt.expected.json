@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"positive unit overflow\":\n    let impossible = (153722868).minutes\n\ntest \"negative unit overflow\":\n    let impossible = (-153722868).minutes\n\ntest \"receiver fault comes first\":\n    let impossible = (1 / 0).minutes\n\ntest \"continues with valid units\":\n    let valid = (1).seconds\n"
+    "fmt": "test \"positive unit overflow\":\n    let _impossible = (153722868).minutes\n\ntest \"negative unit overflow\":\n    let _impossible = (-153722868).minutes\n\ntest \"receiver fault comes first\":\n    let _impossible = (1 / \"\".byte_length()).minutes\n\ntest \"continues with valid units\":\n    let _valid = (1).seconds\n"
   }
 }
