@@ -25,6 +25,31 @@ fn method_default_fault_names_the_receiver_type() {
     );
 }
 
+#[test]
+fn bundled_extension_method_fault_names_the_bundled_file() {
+    let fixture = format!(
+        "{}/tests/default_frames/clamp.ms",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    for build_type in ["Debug", "Release"] {
+        let out = Command::new(env!("CARGO_BIN_EXE_ms"))
+            .args(["run", &fixture, "--build-type", build_type])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(67));
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let frames: Vec<&str> = stderr.lines().filter(|l| l.starts_with("  at ")).collect();
+        assert_eq!(frames.len(), 3, "{stderr}");
+        assert!(
+            frames[0].starts_with("  at @std/ordering.ms:") && frames[0].ends_with(" in clamped")
+        );
+        assert!(
+            frames[1].starts_with("  at @std/ordering.ms:") && frames[1].ends_with(" in Int.clamp")
+        );
+        assert_eq!(frames[2], "  at clamp.ms:3 in main");
+    }
+}
+
 fn check_frames(file: &str, frames: &str) {
     let fixture = format!("{}/tests/default_frames/{file}", env!("CARGO_MANIFEST_DIR"));
     for build_type in ["Debug", "Release"] {

@@ -738,8 +738,6 @@ const METHODS: &[MethodRow] = &[
         "msstd_process_cpu_usage",
         &[],
     ),
-    ("fs", "FileWatcher", "next", "msstd_fs_watch_next", &[]),
-    ("fs", "FileWatcher", "close", "msstd_fs_watch_close", &[]),
     (
         "process",
         "ProcessControl",

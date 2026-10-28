@@ -15,14 +15,16 @@ fn text(out: &std::process::Output) -> String {
 fn compile_shim() -> PathBuf {
     let manifest = env!("CARGO_MANIFEST_DIR");
     let object = std::env::temp_dir().join(format!("ms-extern-greet-{}.o", std::process::id()));
-    let status = Command::new("cc")
+    // CI sets CC where the default `cc` is not the host architecture (Windows on arm64).
+    let cc = std::env::var("CC").unwrap_or_else(|_| "cc".into());
+    let status = Command::new(&cc)
         .args(["-c", "-O1", "-I"])
         .arg(format!("{manifest}/../ms-rt-abi/include"))
         .arg(format!("{manifest}/tests/extern_link/greet.c"))
         .arg("-o")
         .arg(&object)
         .status()
-        .expect("a C compiler (cc) builds the test shim");
+        .expect("a C compiler ($CC or cc) builds the test shim");
     assert!(status.success());
     object
 }
