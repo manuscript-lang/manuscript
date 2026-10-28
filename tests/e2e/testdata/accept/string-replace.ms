@@ -23,6 +23,17 @@ test "empty patterns use Unicode scalar boundaries without normalization":
     try expect_equal("éé".replace("é", "😀"), "😀😀")
     try expect_equal("éé".replace_first("é", "😀"), "😀é")
 
+test "replace_first handles early and late matches across output sizes":
+    try expect_equal("abcabc".replace_first("abc", "X"), "Xabc")
+    try expect_equal("abcabc".replace_first("bc", "LONG"), "aLONGabc")
+    try expect_equal("abcabc".replace_first("bc", ""), "aabc")
+    try expect_equal("abcabc".replace_first("cab", "é🙂"), "abé🙂c")
+    try expect_equal("é🙂é".replace_first("🙂", "X"), "éXé")
+    try expect_equal("abcdefghijklmno".replace_first("o", "世界"), "abcdefghijklmn世界")
+    try expect_equal(
+        "abcdefghijklmno".replace_first("missing", "世界"), "abcdefghijklmno"
+    )
+
 def forward[T](value: T) -> T: value
 
 test "bound typed and generic calls keep the all-versus-first split":
