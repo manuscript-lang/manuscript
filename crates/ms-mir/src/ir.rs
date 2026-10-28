@@ -845,6 +845,9 @@ pub struct Func {
     /// A cleanup closer that acts only while a cancellation or fault unwinds a guarded task
     /// (see `unwind`). Registering it is skipped when no guard is open, where it would do nothing.
     pub unwind_only: bool,
+    /// A closure function whose environment owns resources: the capture index and the function
+    /// that closes it (taking the captured value by borrow), run when the closure is dropped.
+    pub capture_closers: Vec<(u32, FuncId)>,
 }
 
 impl Func {
@@ -865,6 +868,7 @@ impl Func {
             noalias: Vec::new(),
             scoped: false,
             unwind_only: false,
+            capture_closers: Vec::new(),
         };
         for p in params {
             let v = f.new_value(p.ty);

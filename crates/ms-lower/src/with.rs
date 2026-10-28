@@ -569,6 +569,18 @@ impl FnLower<'_> {
         Ok(())
     }
 
+    /// The function that closes a value of the closing binding `uid` held by a closure built at
+    /// `e`, when `e` moves the binding into its environment.
+    pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
+        let closer = self.closers.get(&uid).cloned()?;
+        closer.flag?;
+        let moves = self.cx.close_moves.get(&uid)?;
+        if self.dead || !moves.contains(&e.id) {
+            return None;
+        }
+        Some(self.close_thunk(&closer.kind, ty, false))
+    }
+
     /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
     /// value, so neither the cleanup entry nor the scope end does.
     pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {

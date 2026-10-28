@@ -62,6 +62,8 @@ export def main() -> Int:
     var_move_reassign(True)
     stdout().write("--var_move_reassign false\n").get()
     var_move_reassign(False)
+    stdout().write("--captured true\n").get()
+    let _f = captured(True)
     stdout().write("--captured false\n").get()
     let _g = captured(False)
     stdout().write("--end\n").get()
