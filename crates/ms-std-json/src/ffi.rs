@@ -5,7 +5,7 @@
 //! accessors; an encoder starts a `builder_new` document, adds nodes bottom-up and serializes the
 //! root. Node ids are only valid for the document that issued them.
 use crate::{Doc, Limits, Node, Writer};
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, ObjMut, ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::tree::{
@@ -129,6 +129,24 @@ native! {
         crate::parse_int(text).ok_or(NotNumber)
     }
 
+    /// An integer in `lo..=hi`, for the sized signed and narrower unsigned types.
+    fn msrt_json_dec_int_in(text: &str, lo: i64, hi: i64) -> Result<i64, NotNumber> {
+        crate::parse_int(text)
+            .filter(|v| (lo..=hi).contains(v))
+            .ok_or(NotNumber)
+    }
+
+    /// A `UInt64` as its bit pattern.
+    fn msrt_json_dec_uint(text: &str) -> Result<i64, NotNumber> {
+        text.parse::<u64>().map(|v| v as i64).map_err(|_| NotNumber)
+    }
+
+    /// A `Float32` value as the `f64` holding it; a finite number too large for `f32` is not a number.
+    fn msrt_json_dec_float32(text: &str) -> Result<f64, NotNumber> {
+        let v: f32 = text.parse().map_err(|_| NotNumber)?;
+        if v.is_finite() { Ok(f64::from(v)) } else { Err(NotNumber) }
+    }
+
     fn msrt_json_dec_float(text: &str) -> Result<f64, NotNumber> {
         crate::parse_float(text).ok_or(NotNumber)
     }
@@ -195,6 +213,19 @@ native! {
 
     fn msrt_json_w_int(w: ObjMut<Writer>, v: i64) -> () {
         w.0.int(v);
+    }
+
+    /// A `UInt64` given as its bit pattern.
+    fn msrt_json_w_uint(w: ObjMut<Writer>, v: i64) -> () {
+        w.0.number(&(v as u64).to_string());
+    }
+
+    /// A `Float32` held in an `f64`, written as the shortest decimal that reads back as that `f32`.
+    fn msrt_json_w_float32(w: ObjMut<Writer>, v: f64) -> () {
+        match (v as f32).to_string().parse::<f64>() {
+            Ok(short) if v.is_finite() => w.0.float(short),
+            _ => w.0.float(v),
+        }
     }
 
     fn msrt_json_w_float(w: ObjMut<Writer>, v: f64) -> () {
