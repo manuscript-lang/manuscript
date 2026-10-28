@@ -8,10 +8,15 @@ def handle(request: HttpRequest) -> HttpResponse:
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export def main() -> Int:
-    if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle), options: HttpServerOptions(grace: nanoseconds(10000000000))):
-        with let server = acquired:
-            stdout().write(f"{server.address()}\n").get()
-            stdout().flush().get()
-            let _ignored = server.wait()
-            return 0
+    if let acquired = network().serve(
+        address: "127.0.0.1:0", handler: buffered(handle),
+        options: HttpServerOptions(grace: nanoseconds(10000000000))
+    ):
+        let server = acquired
+        stdout().write(f"{server.address()}\n").get()
+        stdout().flush().get()
+
+        let _ignored = server.wait()
+        return 0
+
     return 1

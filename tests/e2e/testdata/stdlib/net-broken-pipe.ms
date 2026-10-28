@@ -7,25 +7,23 @@ from "@std/time.ms" import sleep
 # whole process dies with the signal instead.
 test "writing to a closed connection returns an error":
     let net = network()
+    let listener = net.listen("127.0.0.1:0") | try expect_ok
+    var client = net.connect(listener.address(), 2.seconds) | try expect_ok
+    let accepted = listener.accept(2.seconds) | try expect_ok
+    client.close()
 
-    with let listener = net.listen("127.0.0.1:0") | try expect_ok:
-        var client = net.connect(listener.address(), 2.seconds) | try expect_ok
+    var attempts = 0
 
-        with let accepted = listener.accept(2.seconds) | try expect_ok:
-            client.close()
+    while attempts < 200:
+        sleep(10.milliseconds)
 
-            var attempts = 0
+        let written = accepted.write("ping", 1.seconds)
 
-            while attempts < 200:
-                sleep(10.milliseconds)
+        if let _sent = written:
+            attempts += 0
+        else:
+            return ok(())
 
-                let written = accepted.write("ping", 1.seconds)
+        attempts += 1
 
-                if let _sent = written:
-                    attempts += 0
-                else:
-                    return ok(())
-
-                attempts += 1
-
-            return error(TextError("writes to a closed peer never failed"))
+    return error(TextError("writes to a closed peer never failed"))

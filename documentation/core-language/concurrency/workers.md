@@ -27,12 +27,12 @@ def squares() -> Unit:
     let _finished = serve(var ch)
 
 test "a worker answers over its channel":
-    with let group = WorkerGroup[Int, Int]():
-        var worker = group.spawn(squares) | try expect_ok
-        try expect_ok(worker.channel.send(12))
-        try expect_equal(worker.channel.receive(), ok(some(144)))
-        worker.channel.close()
-        try expect_ok(worker.wait())
+    let group = WorkerGroup[Int, Int]()
+    var worker = group.spawn(squares) | try expect_ok
+    try expect_ok(worker.channel.send(12))
+    try expect_equal(worker.channel.receive(), ok(some(144)))
+    worker.channel.close()
+    try expect_ok(worker.wait())
 ```
 
 ## How workers run
@@ -62,8 +62,8 @@ def serve_loop() -> Unit:
     var ch = worker_channel[Int, Int]()
     let options = HttpServerOptions(shared: True)
     if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
-        with let server = acquired:
-            let _stopped = server.wait()
+        let server = acquired
+        let _stopped = server.wait()
 ```
 
 Start one worker per core with `group.spawn(serve_loop)`. Measured with a CPU-bound handler on two server cores: one thread 23k requests per second, two workers 45k. A handler runs on the worker that accepted the connection and shares no memory with the other workers.

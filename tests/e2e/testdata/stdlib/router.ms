@@ -267,21 +267,20 @@ test "in-process reads reject nonpositive sizes without consuming input":
 
 test "the router serves over a socket":
     let handler = router().handler()
+    let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions())
+    let client = try network().http_client(HttpClientOptions())
+    let response = try client.request(
+        HttpMethod.Get, f"http://{server.address()}/users/9", headers()
+    )
+    try expect_equal(response.metadata().status, 200)
 
-    with let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions()):
-        with let client = try network().http_client(HttpClientOptions()):
-            let response = try client.request(
-                HttpMethod.Get, f"http://{server.address()}/users/9", headers()
-            )
-            try expect_equal(response.metadata().status, 200)
+    let body = try read_all(body_stream(response))
+    try expect_equal(body.decode_utf8().get(""), "9|-")
 
-            let body = try read_all(body_stream(response))
-            try expect_equal(body.decode_utf8().get(""), "9|-")
-
-            let missing = try client.request(
-                HttpMethod.Delete, f"http://{server.address()}/users", headers()
-            )
-            try expect_equal(missing.metadata().status, 405)
+    let missing = try client.request(
+        HttpMethod.Delete, f"http://{server.address()}/users", headers()
+    )
+    try expect_equal(missing.metadata().status, 405)
 
 test "mount places a router under a prefix with its own middleware":
     var api = Router()
@@ -366,8 +365,9 @@ type Sink:
 
 impl Transport for Sink:
     var def write(data: String) -> Result[Unit, LogError]:
-        with var guard = lock(self.lines):
-            guard.value.append(data.clone())
+        var guard = lock(self.lines)
+        guard.value.append(data.clone())
+        guard.close()
         return ok(())
 
     var def write_bytes(data: Bytes) -> Result[Unit, LogError]:
@@ -380,8 +380,8 @@ impl Transport for Sink:
         return ()
 
 def logged(lines: Shared[List[String]]) -> String:
-    with var guard = lock(lines):
-        return guard.value.join("")
+    var guard = lock(lines)
+    return guard.value.join("")
 
 test "access_log writes one record per request":
     let lines = share(List[String]())

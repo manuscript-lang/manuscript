@@ -16,14 +16,14 @@ impl Closeable for Bad:
         stdout().write(f"{xs[3]}\n").get()
 
 def work() -> Int:
-    with let b = Bad(1):
-        sleep(nanoseconds(5000000000))
-        return 1
+    let _b = Bad(1)
+    sleep(nanoseconds(5000000000))
+    return 1
 
 export def main() -> Int:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
-        group.spawn(lambda ch: work())
+    var group = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    group.spawn(lambda ch: work())
 
-        let _ = group.wait()
-
+    let _ = group.wait()
+    group.close()
     return 0

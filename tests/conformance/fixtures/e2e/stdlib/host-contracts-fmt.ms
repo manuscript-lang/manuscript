@@ -64,69 +64,67 @@ test "closed codec strings reject spelling changes with their domain errors":
 
 test "all ten string open modes are accepted and changed spellings are invalid":
     let fs = filesystem()
+    let temporary = try fs.temporary("manuscript-open-modes-")
 
-    with let temporary = try fs.temporary("manuscript-open-modes-"):
-        for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
-            let path = f"{temporary.path()}/{mode}"
-            if mode == "r" or mode == "r+":
-                try fs.write_file(path, "", replace: False)
-            with let handle = try fs.open(path, mode, 384):
-                let _fileinfo = try handle.stat()
+    for mode in ["r", "r+", "w", "wx", "w+", "wx+", "a", "ax", "a+", "ax+"]:
+        let path = f"{temporary.path()}/{mode}"
+        if mode == "r" or mode == "r+":
+            try fs.write_file(path, "", replace: False)
 
-        for mode in ["R", "rs", "w+x", " r", ""]:
-            try expect_false(
+        let handle = try fs.open(path, mode, 384)
+        let _fileinfo = try handle.stat()
+
+    for mode in ["R", "rs", "w+x", " r", ""]:
+        try expect_false(
+            (
                 (
-                    (
-                        try expect_error(
-                            fs.open(
-                                f"{temporary.path()}/invalid", mode, 384
-                            )
+                    try expect_error(
+                        fs.open(
+                            f"{temporary.path()}/invalid", mode, 384
                         )
-                    ) != FileSystemError.InvalidInput
-                )
+                    )
+                ) != FileSystemError.InvalidInput
             )
+        )
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
     let fs = filesystem()
+    let temporary = try fs.temporary("manuscript-write-contract-")
+    let path = f"{temporary.path()}/data"
+    let data = (try "é".repeat(40000)).to_bytes()
+    var handle = try fs.open(path, "w+", 384)
+    try handle.write_bytes(data)
+    try expect_equal((try handle.stat()).size, 80000)
+    try expect_false((try handle.read()).is_some())
+    try expect_equal((try handle.read_at(80000)).length(), 0)
+    try expect_equal((try handle.read_at(0, 80000)).length(), 65536)
+    try expect_equal((try handle.read_file()).length(), 0)
+    try expect_equal((try handle.seek(0, 0)), 0)
+    try expect_equal((try handle.read()).get().length(), 65536)
+    try expect_equal((try handle.read_file()).length(), 14464)
 
-    with let temporary = try fs.temporary("manuscript-write-contract-"):
-        let path = f"{temporary.path()}/data"
-        let data = (try "é".repeat(40000)).to_bytes()
+    let _count = try handle.seek(0, 0)
+    try handle.append_file("XY")
+    try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
+    try expect_equal((try handle.stat()).size, 80000)
+    try handle.write_at(4, "ZZ")
+    try expect_equal((try handle.seek(0, 1)), 2)
 
-        with let handle = try fs.open(path, "w+", 384):
-            try handle.write_bytes(data)
-            try expect_equal((try handle.stat()).size, 80000)
-            try expect_false((try handle.read()).is_some())
-            try expect_equal((try handle.read_at(80000)).length(), 0)
-            try expect_equal((try handle.read_at(0, 80000)).length(), 65536)
-            try expect_equal((try handle.read_file()).length(), 0)
-            try expect_equal((try handle.seek(0, 0)), 0)
-            try expect_equal((try handle.read()).get().length(), 65536)
-            try expect_equal((try handle.read_file()).length(), 14464)
+    var writer = handle.writer()
+    try writer.write("AB")
+    try writer.flush()
+    try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
 
-            let _count = try handle.seek(0, 0)
-            try handle.append_file("XY")
-            try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
-            try expect_equal((try handle.stat()).size, 80000)
-            try handle.write_at(4, "ZZ")
-            try expect_equal((try handle.seek(0, 1)), 2)
+    var reader = handle.reader()
+    writer.close()
 
-            var writer = handle.writer()
-            try writer.write("AB")
-            try writer.flush()
-            try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
+    let closed_read: Result[Bytes, FileSystemError] = error(FileSystemError.Closed)
+    try expect_equal(handle.read_at(0), closed_read)
+    try expect_equal((try expect_error(reader.read())), IoError.Closed)
+    handle.close()
 
-            var reader = handle.reader()
-            writer.close()
-
-            let closed_read: Result[Bytes, FileSystemError] = error(
-                FileSystemError.Closed
-            )
-            try expect_equal(handle.read_at(0), closed_read)
-            try expect_equal((try expect_error(reader.read())), IoError.Closed)
-
-        let missing = f"{temporary.path()}/missing"
-        try expect_equal(
-            (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
-        )
-        try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)
+    let missing = f"{temporary.path()}/missing"
+    try expect_equal(
+        (try expect_error(fs.open(missing, "r", 384))), FileSystemError.NotFound
+    )
+    try expect_equal((try expect_error(files().open(missing))), IoError.Unavailable)

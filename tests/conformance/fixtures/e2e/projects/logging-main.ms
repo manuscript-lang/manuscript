@@ -9,36 +9,37 @@ from "./records.ms" import emit
 
 def exercise(mode: String, path: String) -> Result[Unit, Error]:
     if (mode == "file" or mode == "missing"):
-        with let root = try create(try file_transport(path), timestamp: False):
-            let logger = try root.child_json("{\"service\":\"api\"}")
-            try emit(logger)
-            try logger.flush()
-
+        var root = try create(try file_transport(path), timestamp: False)
+        let logger = try root.child_json("{\"service\":\"api\"}")
+        try emit(logger)
+        try logger.flush()
+        root.close()
         return ok(())
 
     if mode == "limit":
-        with let logger = try create(stdout_transport(), max_bytes: 1):
-            try logger.info("too large")
+        let logger = try create(stdout_transport(), max_bytes: 1)
+        try logger.info("too large")
     elif mode == "closed":
         var root = try create(stdout_transport())
         let logger = try root.child_json("{\"service\":\"api\"}")
         root.close()
         try logger.info("closed")
     else:
-        with let root = try create(stdout_transport()):
-            let logger = try root.child_json("{\"service\":\"api\"}")
+        let root = try create(stdout_transport())
+        let logger = try root.child_json("{\"service\":\"api\"}")
 
-            if mode == "invalid":
-                try record(
-                    logger, level: LogLevel.Info, message: "invalid",
-                    fields: JsonValue.NumberValue("NaN")
-                )
-            else:
-                try emit(logger)
-                try logger.flush()
+        if mode == "invalid":
+            try record(
+                logger, level: LogLevel.Info, message: "invalid",
+                fields: JsonValue.NumberValue("NaN")
+            )
+        else:
+            try emit(logger)
+            try logger.flush()
 
-    with let logger = try create(stdout_transport(), timestamp: False):
-        try logger.info("still open")
+    var logger = try create(stdout_transport(), timestamp: False)
+    try logger.info("still open")
+    logger.close()
     return ok(())
 
 export def main() -> Int:

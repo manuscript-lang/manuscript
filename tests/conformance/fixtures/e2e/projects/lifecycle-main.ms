@@ -32,17 +32,17 @@ def select(var output: WriteStream) -> Callable[[Int, Int], Int]:
     return combine
 
 def early(var output: WriteStream) -> Int:
-    with let outer = Resource(label: "outer", output: stdout()):
-        with let inner = Resource(label: "inner", output: stdout()):
-            return report(output: var output, label: "return value", value: 5)
+    let _outer = Resource(label: "outer", output: stdout())
+    let _inner = Resource(label: "inner", output: stdout())
+    return report(output: var output, label: "return value", value: 5)
 
 def failure() -> Result[Int, TextError]:
     return error(TextError("expected"))
 
 def propagate(output: WriteStream) -> Result[Int, TextError]:
-    with let resource = Resource(label: "propagation", output: output):
-        let number = try failure()
-        return ok(number)
+    let _resource = Resource(label: "propagation", output: output)
+    let number = try failure()
+    return ok(number)
 
 def iterable(var output: WriteStream) -> List[Int]:
     let _ = output.write(data: "iterable\n")
@@ -67,21 +67,24 @@ def exercise() -> Result[Int, Error]:
         first: report(output: var pair_first_out, label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
-    with let resource = Resource(label: "normal", output: stdout()):
-        let completed = ()
+
+    var _resource = Resource(label: "normal", output: stdout())
+    let completed = ()
+    _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
-        with let resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
-            continue
+        let _resource = Resource(label: "iteration", output: stdout())
+        count = count + 1
+        continue
 
     var iterable_out = stdout()
+
     for value in iterable(output: var iterable_out):
-        with let resource = Resource(label: "break", output: stdout()):
-            break
+        let _resource = Resource(label: "break", output: stdout())
+        break
 
     match propagate(output: stdout()):
         case ok(_):

@@ -110,48 +110,37 @@ def saw(events: List[FileEvent], path: String, kind: String) -> Bool:
 
 test "polling and native watchers report a created file and close":
     let fs = filesystem()
+    let temporary = fs.temporary("manuscript-watch-") | try expect_ok
+    let root = temporary.path()
+    var polling = try fs.watch(path: root, recursive: False, interval: milliseconds(20))
+    try fs.write_file(path: f"{root}/a.txt", data: "x", replace: False)
+    try expect_true(saw(try polling.next(), join([root.clone(), "a.txt"]), "rename"))
+    polling.close()
 
-    with let temporary = fs.temporary("manuscript-watch-") | try expect_ok:
-        let root = temporary.path()
+    let native = try fs.watch_native(path: root, recursive: False, overflow: "error")
+    try fs.write_file(path: f"{root}/b.txt", data: "y", replace: False)
 
-        with let polling = try fs.watch(
-            path: root, recursive: False, interval: milliseconds(20)
-        ):
-            try fs.write_file(path: f"{root}/a.txt", data: "x", replace: False)
-            try expect_true(
-                saw(
-                    try polling.next(), join([root.clone(), "a.txt"]), "rename"
-                )
-            )
-
-        with let native = try fs.watch_native(
-            path: root, recursive: False, overflow: "error"
-        ):
-            try fs.write_file(path: f"{root}/b.txt", data: "y", replace: False)
-
-            var found = False
-            for attempt in [1, 2, 3, 4, 5, 6]:
-                if not found:
-                    found = saw(
-                        try native.next(), join([root.clone(), "b.txt"]), "rename"
-                    )
-            try expect_true(found)
+    var found = False
+    for attempt in [1, 2, 3, 4, 5, 6]:
+        if not found:
+            found = saw(try native.next(), join([root.clone(), "b.txt"]), "rename")
+    try expect_true(found)
 
 test "native watcher max_entries counts the paths under the root":
     let fs = filesystem()
+    let t = fs.temporary("ms-me-") | try expect_ok
+    try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
+    try expect_fs_error(
+        fs.watch_native(
+            path: t.path(), recursive: True, max_entries: some(1), overflow: "error"
+        ),
+        FileSystemError.LimitExceeded
+    )
 
-    with let t = fs.temporary("ms-me-") | try expect_ok:
-        try fs.write_file(path: f"{t.path()}/a", data: "x", replace: False)
-        try expect_fs_error(
-            fs.watch_native(
-                path: t.path(), recursive: True, max_entries: some(1), overflow: "error"
-            ),
-            FileSystemError.LimitExceeded
-        )
-        with var w = try fs.watch_native(
-            path: t.path(), recursive: True, max_entries: some(2), overflow: "error"
-        ):
-            w.close()
+    var w = try fs.watch_native(
+        path: t.path(), recursive: True, max_entries: some(2), overflow: "error"
+    )
+    w.close()
 
 def wait_next(w: Shared[FileWatcher]) -> Int:
     let r = w.get().next()
@@ -162,55 +151,47 @@ def wait_next(w: Shared[FileWatcher]) -> Int:
 
 test "close wakes a pending native next with Closed":
     let fs = filesystem()
+    let t = fs.temporary("ms-r2-") | try expect_ok
+    let w: Shared[FileWatcher] = share(
+        try fs.watch_native(path: t.path(), recursive: False, overflow: "error")
+    )
+    let group = TaskGroup[Int]()
+    let a = w
+    group.spawn(lambda ch: wait_next(a))
+    sleep(100.milliseconds)
+    w.get().close()
 
-    with let t = fs.temporary("ms-r2-") | try expect_ok:
-        let w: Shared[FileWatcher] = share(
-            try fs.watch_native(
-                path: t.path(), recursive: False, overflow: "error"
-            )
-        )
-
-        with let group = TaskGroup[Int]():
-            let a = w
-            group.spawn(lambda ch: wait_next(a))
-            sleep(100.milliseconds)
-            w.get().close()
-
-            let got = try group.results()
-            try expect_equal(got[0], 2)
+    let got = try group.results()
+    try expect_equal(got[0], 2)
 
 test "a group timeout cancels a task waiting on a watcher":
     let fs = filesystem()
-
-    with let t = fs.temporary("ms-r2-") | try expect_ok:
-        let w: Shared[FileWatcher] = share(
-            try fs.watch(
-                path: t.path(), recursive: False, interval: milliseconds(20)
-            )
+    let t = fs.temporary("ms-r2-") | try expect_ok
+    let w: Shared[FileWatcher] = share(
+        try fs.watch(
+            path: t.path(), recursive: False, interval: milliseconds(20)
         )
-
-        with let group = TaskGroup[Int](timeout: 300.milliseconds):
-            let a = w
-            let h = group.spawn(lambda ch: wait_next(a))
-            let c = group.spawn(lambda ch: 7)
-            try expect_equal(c.result().get(-1), 7)
-            try expect_true(h.result().is_error())
-
-        w.get().close()
+    )
+    var group = TaskGroup[Int](timeout: 300.milliseconds)
+    let a = w
+    let h = group.spawn(lambda ch: wait_next(a))
+    let c = group.spawn(lambda ch: 7)
+    try expect_equal(c.result().get(-1), 7)
+    try expect_true(h.result().is_error())
+    group.close()
+    w.get().close()
 
 test "recursive native watch sees a file in a new subdirectory":
     let fs = filesystem()
+    let t = fs.temporary("ms-r2-") | try expect_ok
+    let r = t.path()
+    var w = try fs.watch_native(path: r, recursive: True, overflow: "error")
+    try fs.create_directory(path: f"{r}/d", recursive: False)
+    try fs.write_file(path: f"{r}/d/f", data: "1", replace: False)
 
-    with let t = fs.temporary("ms-r2-") | try expect_ok:
-        let r = t.path()
-
-        with var w = try fs.watch_native(path: r, recursive: True, overflow: "error"):
-            try fs.create_directory(path: f"{r}/d", recursive: False)
-            try fs.write_file(path: f"{r}/d/f", data: "1", replace: False)
-
-            var seen = False
-            for i in [1, 2, 3, 4, 5, 6, 7, 8]:
-                if not seen:
-                    for e in try w.next():
-                        if e.path == join([r.clone(), "d", "f"]): seen = True
-            try expect_true(seen)
+    var seen = False
+    for i in [1, 2, 3, 4, 5, 6, 7, 8]:
+        if not seen:
+            for e in try w.next():
+                if e.path == join([r.clone(), "d", "f"]): seen = True
+    try expect_true(seen)

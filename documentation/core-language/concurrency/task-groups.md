@@ -16,10 +16,10 @@ def square(n: Int) -> Int:
     return n * n
 
 test "a group collects its results in start order":
-    with let group = TaskGroup[Int]():
-        for n in [1, 2, 3]:
-            group.spawn(lambda ch: square(n))
-        group.results() | try expect_ok | try expect_equal([1, 4, 9])
+    let group = TaskGroup[Int]()
+    for n in [1, 2, 3]:
+        group.spawn(lambda ch: square(n))
+    group.results() | try expect_ok | try expect_equal([1, 4, 9])
 ```
 
 ## How tasks run
@@ -51,9 +51,9 @@ def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
     return 1
 
 test "a task that passes its timeout is cancelled":
-    with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
-        task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    let group = TaskGroup[Int]()
+    let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
+    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
 `cancelled()` from `@std/tasks.ms` returns `True` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `True` inside `with` cleanups.
@@ -84,12 +84,12 @@ def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
     return ok(())
 
 test "a task answers messages on its channel":
-    with let group = TaskGroup[Result[Unit, ChannelError], Int, Int]():
-        var task = group.spawn(square_all)
-        task.channel.send(3) | try expect_ok
-        task.channel.receive() | try expect_ok | try expect_equal(some(9))
-        task.channel.close()
-        task.result() | try expect_ok | try expect_ok
+    let group = TaskGroup[Result[Unit, ChannelError], Int, Int]()
+    var task = group.spawn(square_all)
+    task.channel.send(3) | try expect_ok
+    task.channel.receive() | try expect_ok | try expect_equal(some(9))
+    task.channel.close()
+    task.result() | try expect_ok | try expect_ok
 ```
 
 - `send(value)` moves `value` to the other end. It waits while the other end has 16 unread values.
