@@ -1699,6 +1699,23 @@ impl Walker<'_> {
             resolved: source.origins.clone(),
             projection: true,
         };
+        let reads_in_place = matches!(
+            &value.kind,
+            ExprKind::Call { callee, .. }
+                if matches!(&callee.kind, ExprKind::Member { name, .. }
+                    if matches!(name.as_str(), "get" | "first" | "last"))
+        );
+        if !reads_in_place {
+            self.error(
+                p.pos,
+                format!(
+                    "`if var` borrows the payload of `get` on a map or list, or `first` or `last` on a list, but `{}` is neither; bind a copy with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    info.text
+                ),
+            );
+            self.declare(&b, Role::Pattern, Perm::Mutable, None, false);
+            return;
+        }
         let before = self.diags.len();
         self.mutate(p.pos, &info, "borrow mutably");
         if self.diags.len() == before {
