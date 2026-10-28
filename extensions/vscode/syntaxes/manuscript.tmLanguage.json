@@ -6,21 +6,21 @@
       "match": "#.*$"
     },
     {
-      "include": "#fstring"
-    },
-    {
       "include": "#string"
     },
     {
-      "match": "^[ \\t]*(from)(?=[ \\t]+\")",
+      "match": "^\\s*(import)\\b[^#\"\\n]*?\\b(from)\\b",
       "captures": {
         "1": {
+          "name": "keyword.control.manuscript"
+        },
+        "2": {
           "name": "keyword.control.manuscript"
         }
       }
     },
     {
-      "match": "\\b(def)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(fn)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.manuscript"
@@ -43,15 +43,15 @@
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "^bench(?=\\s+f?\")"
+      "match": "^bench(?=\\s+\")"
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "\\b(def|lambda|type|interface|impl|import|export|extern|ref|let|var|if|elif|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(fn|type|interface|impl|import|export|extern|ref|let|var|if|else|for|in|while|match|case|return|with|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
-      "match": "\\b(True|False)\\b"
+      "match": "\\b(true|false|unit)\\b"
     },
     {
       "name": "constant.numeric.manuscript",
@@ -79,9 +79,9 @@
     }
   ],
   "repository": {
-    "fstring": {
-      "name": "string.quoted.double.fstring.manuscript",
-      "begin": "\\bf\"",
+    "string": {
+      "name": "string.quoted.double.manuscript",
+      "begin": "\"",
       "end": "\"",
       "patterns": [
         {
@@ -116,17 +116,6 @@
               "include": "$self"
             }
           ]
-        }
-      ]
-    },
-    "string": {
-      "name": "string.quoted.double.manuscript",
-      "begin": "\"",
-      "end": "\"",
-      "patterns": [
-        {
-          "name": "constant.character.escape.manuscript",
-          "match": "\\\\(?:u\\{[0-9A-Fa-f]{1,6}\\}|[\"\\\\nrt])"
         }
       ]
     }

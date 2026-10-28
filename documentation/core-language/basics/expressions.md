@@ -133,7 +133,7 @@ See [compatibility](../types/compatibility.md) and [error propagation](../errors
 
 ## Evaluation
 
-- Subexpressions evaluate left to right, each once. The right side of `False and ...` and `True or ...` is skipped but must still type-check.
+- Subexpressions evaluate left to right, each once. The right side of `false and ...` and `true or ...` is skipped but must still type-check.
 - A call evaluates its callable or receiver first, then arguments in written order (not parameter order).
 - Indexing evaluates the receiver, then the index.
 - List elements and map entries evaluate in written order, key before value ([collections](../types/collections.md)).

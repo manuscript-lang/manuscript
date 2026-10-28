@@ -31,7 +31,7 @@ Matching a `Result` with only `ok` and `error` arms is flagged the same way as a
 
 ## Matching literals
 
-A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `True`, and `False`. Arms are tested in order; each value may appear once. A final `_` is required unless `True` and `False` are both covered. Arms bind nothing.
+A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (with an optional `-`), plain text literals, `true`, and `false`. Arms are tested in order; each value may appear once. A final `_` is required unless `true` and `false` are both covered. Arms bind nothing.
 
 ```manuscript
 fn name(count: Int) String:
@@ -41,7 +41,7 @@ fn name(count: Int) String:
         _: return "many"
 ```
 
-Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `elif`.
+Computed values, interpolated text, ranges, and `Float` scrutinees are not literal patterns; use `if` and `else if`.
 
 ## Arm values
 

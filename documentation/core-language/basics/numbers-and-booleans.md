@@ -5,7 +5,7 @@ weight = 3
 
 # Numbers and booleans
 
-`3` is an `Int`, `0.5` a `Float`, `12.50d` a `Decimal`. Conversions are explicit. Booleans are `True` and `False`.
+`3` is an `Int`, `0.5` a `Float`, `12.50d` a `Decimal`. Conversions are explicit. Booleans are `true` and `false`.
 
 ```manuscript
 let count = 3
@@ -14,7 +14,7 @@ let price = 12.50d
 let active = true
 ```
 
-Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
+Decimal literals need `import Decimal from "@std/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
 
 | Type | Representation |
 | --- | --- |
@@ -24,7 +24,7 @@ Decimal literals need `from "@std/decimal.ms" import Decimal`. Integer literals 
 | `Float` | IEEE 754 binary64; `Float64` is another name for it |
 | `Float32` | IEEE 754 binary32; every operation rounds to binary32 |
 | `Decimal` | Base-10, 34 significant digits, round half to even |
-| `Bool` | `True` or `False` |
+| `Bool` | `true` or `false` |
 
 ## Arithmetic and conversion
 
@@ -69,11 +69,11 @@ fn sized() Unit:
 
 | Receiver | Signature/result |
 | --- | --- |
-| `Int` | `to_float() -> Float`; `to_decimal() -> Decimal` |
+| `Int` | `to_float() Float`; `to_decimal() Decimal` |
 | Any sized integer or `Int` | `to_int8()`, `to_int16()`, `to_int32()`, `to_int64()`, `to_int()`, `to_float32()`, `to_float64()`, `to_float()`, `to_decimal()` |
-| `Float` | `to_float32() -> Optional[Float32]` (none when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() -> Optional[Int]` |
-| `Float32` | `to_float32()`, `to_float64()`, `to_float()`, `truncate_to_int() -> Optional[Int]` |
-| `Decimal`, `BigInt` | `to_float() -> Optional[Float]` (none beyond the `Float` range); `truncate_to_int() -> Optional[Int]` |
+| `Float` | `to_float32() Optional[Float32]` (none when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() Optional[Int]` |
+| `Float32` | `to_float32()`, `to_float64()`, `to_float()`, `truncate_to_int() Optional[Int]` |
+| `Decimal`, `BigInt` | `to_float() Optional[Float]` (none beyond the `Float` range); `truncate_to_int() Optional[Int]` |
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 

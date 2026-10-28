@@ -15,7 +15,7 @@ interface Closeable:
 `with` accepts:
 
 - A concrete value with an explicit `Closeable` implementation; the compiler registers that `close`.
-- A contract value whose own declaration contains exactly `var def close() -> Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
+- A contract value whose own declaration contains exactly `var fn close() Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
 - A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
 The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. A stream interface such as `ReadStream` or `WriteStream` is never owned by its holder, because `stdout()` and a file's `writer()` share one type.

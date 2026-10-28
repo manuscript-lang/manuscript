@@ -51,13 +51,13 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
-| `get(default: Optional[T] = none) -> T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
-| `err() -> E` | Return the error payload; fault on success |
-| `get_or_else(create: Callable[[E], T]) -> T` | Return the successful payload, or call `create` once with the original error on failure |
-| `or_else(create: Callable[[E], Result[T, E]]) -> Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
-| `map_error[F: Error](transform: Callable[[E], F]) -> Result[T, F]` | Transform an error once; preserve a success unchanged |
-| `map[U](transform: Callable[[T], U]) -> Result[U, E]` | Transform success once; preserve an error unchanged |
-| `and_then[U](transform: Callable[[T], Result[U, E]]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
+| `get(default: Optional[T] = none) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
+| `err() E` | Return the error payload; fault on success |
+| `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
+| `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
+| `map_error[F: Error](transform: fn(E) F) Result[T, F]` | Transform an error once; preserve a success unchanged |
+| `map[U](transform: fn(T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
+| `and_then[U](transform: fn(T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
 `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
 
@@ -72,7 +72,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() -> Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
 import TextError from "@std/core.ms"
@@ -94,7 +94,7 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ## A common error boundary
 
-Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() -> String`). Standard errors implement it; custom errors declare `impl Error`.
+Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors declare `impl Error`.
 
 ```manuscript
 import Bytes from "@std/bytes.ms"

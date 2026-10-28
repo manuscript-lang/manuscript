@@ -34,7 +34,7 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 
 ## Interpolation
 
-A plain `"..."` literal has no interpolation: braces are ordinary characters. An f-string `f"..."` is the same literal with a prefix, and an unescaped `{` in it opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `f"\{\"a\": 1\}"`, or use a plain literal, which needs no escape: `"{\"a\": 1}"`.
+A plain `"..."` literal has no interpolation: braces are ordinary characters. An f-string `"..."` is the same literal with a prefix, and an unescaped `{` in it opens an embedded [expression](expressions.md) closed by its matching `}`. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`, or use a plain literal, which needs no escape: `"{\"a\": 1}"`.
 
 ```manuscript
 let name = "Ada"
@@ -47,7 +47,7 @@ Embedded expressions evaluate once, left to right, each formatted before the nex
 
 ## Converting values to String
 
-Every value has a built-in `to_string() -> String`, needing no import or bound. A bound method keeps its receiver:
+Every value has a built-in `to_string() String`, needing no import or bound. A bound method keeps its receiver:
 
 ```manuscript
 fn text[T](value: T) String:
@@ -107,11 +107,11 @@ The removed spellings migrate as follows.
 
 | Receiver or constructor | Signature/result |
 | --- | --- |
-| `String` | `byte_length() -> Int`; `to_bytes() -> Bytes`; `parse_int() -> Optional[Int]`; `parse_float() -> Optional[Float]` |
+| `String` | `byte_length() Int`; `to_bytes() Bytes`; `parse_int() Optional[Int]`; `parse_float() Optional[Float]` |
 | `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() -> Int`; `get(index: Int, default: Optional[UInt8] = none) -> UInt8`; `[index] UInt8`; `concat(values: Bytes) -> Bytes` |
-| `Bytes` | `to_string() -> Optional[String]` |
-| `Bytes` | `values() -> List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
+| `Bytes` | `length() Int`; `get(index: Int, default: Optional[UInt8] = none) UInt8`; `[index] UInt8`; `concat(values: Bytes) Bytes` |
+| `Bytes` | `to_string() Optional[String]` |
+| `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
 `to_bytes` encodes UTF-8. `Bytes.to_string` succeeds exactly for valid UTF-8 and returns `none` otherwise. Byte `get(index, default:)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic; negative indexes count from the end, and `[]` faults out of range where `get` takes a default. Bytes are immutable, so `data[i] = v` is rejected.
 
@@ -177,7 +177,7 @@ Formatting never depends on locale or host settings.
 | Type | Formatting |
 | --- | --- |
 | String | Contents unchanged; inserted braces/quotes are ordinary output characters and are not parsed again |
-| Bool | `True` or `False` |
+| Bool | `true` or `false` |
 | Unit | `()` |
 | Int | Base-ten digits, optional leading minus, no separators or leading zeros |
 | Float | Shortest round-trip decimal under the rule below; signed zero retains its sign |

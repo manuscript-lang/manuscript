@@ -21,7 +21,7 @@ var while with
 ```
 
 - `from` starts an import at a module item, `as` appears only in a `with` header, and `bench` starts a benchmark only before a string literal at a module item; all three are contextual, so `let from = 2`, `let as = 1` and `let bench = 3` are valid.
-- Words from other languages (`fn`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) are not syntax and get a targeted diagnostic naming the Manuscript form (`def`, `()`, `try expr`, and so on).
+- Words from other languages (`fn`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `()`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `#` starts a comment through the end of the line.
@@ -60,7 +60,7 @@ No identifier character may follow a numeric token except the `d` suffix. Leadin
 
 Inside a call, list, or grouping, a function expression may have an inline suite (ending at the enclosing comma or closer) or an indented suite, which is the exception to newline suppression. At the header's `:`:
 
-1. Record the delimiter depth and the line's leading indentation (not the column of `lambda`).
+1. Record the delimiter depth and the line's leading indentation (not the column of `fn`).
 2. The next significant line must add exactly four spaces.
 3. Apply normal statement newlines and indentation at that depth; delimiters opened in the body still suppress newlines.
 4. The suite ends when a line returns to the header indentation or less; then the surrounding delimiter rules resume.
@@ -89,7 +89,7 @@ fn example() Int:
     )
 ```
 
-Use `lambda value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
+Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
 fn example() Int:
@@ -163,10 +163,10 @@ FunctionType  = "Callable", "[", "[", [ Type, { ",", Type } ], "]", ",", Type, "
 ```
 
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
-- A result type follows `->` after the parameter list (`def double(value: Int) -> Int:`). A lambda writes parameters without parentheses when none is typed (`lambda value: value * 2`), and with parentheses when it types a parameter or declares a result (`lambda (value: Int) -> Int: value * 2`).
-- Named functions (`def`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
+- A result type follows `->` after the parameter list (`fn double(value: Int) Int:`). A fn writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn (value: Int) Int: value * 2`).
+- Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types and result type match, and calls through function values are positional. No variadics or parameter patterns.
-- A named function or method body may be `...` (`def commands() -> Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
+- A named function or method body may be `...` (`fn commands() Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests, benches, or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
@@ -223,11 +223,11 @@ fn positive(value: Int) Bool:
     else: return false
 ```
 
-- `elif` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
+- `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
 - `match` is an expression even when discarded; loops and `with` are statements, and `if` is a statement. The conditional expression is `a if c else b` (a required `else`; chains nest in the final `else`).
-- Local type, implementation, import, test, and bench declarations are rejected; a local function is a `def` statement, sugar for binding a `lambda` (it cannot call itself).
+- Local type, implementation, import, test, and bench declarations are rejected; a local function is a `fn` statement, sugar for binding a `fn` (it cannot call itself).
 - `with` follows the [cleanup scopes](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
 
 ## Rejected forms

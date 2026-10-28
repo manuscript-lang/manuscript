@@ -28,9 +28,9 @@ See the [suite rules](../basics/grammar.md#statements-and-patterns) for mixing i
 - Conditions must be `Bool`; numbers and text have no truth values.
 - `if` is a statement, not an expression.
 - The condition is evaluated once; at most one branch runs.
-- `elif` and `else` start on their own line, aligned with `if`.
+- `else if` and `else` start on their own line, aligned with `if`.
 - Each branch has its own scope; assignments to an outer `var` persist.
-- An `elif` chain tests in order and stops at the first match.
+- An `else if` chain tests in order and stops at the first match.
 
 ```manuscript
 fn classify(value: Int) String:
@@ -77,7 +77,7 @@ fn port(lookup: Result[Int, TextError]) Int:
 
 `if var name = expression:` binds the payload as a mutable borrow of the value it came from (for example `if var entry = entries.get(key):` then `entry.count = entry.count + 1` changes the value in `entries`). The origin must be `var`, and nothing else may use it until the last use of `name`. The entry is changed in place, not copied, for scalar payloads too: `if var n = counts.get(key): n += 1` updates `counts`. Supported on `get` of a map and on `first`, `last` and `get` of a list.
 
-A present `0`, `False`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
+A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on `some`/`none` (**MSL108**).
 
 ## Validating inputs
 

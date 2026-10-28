@@ -216,7 +216,7 @@ Module-level `let` is a constant used without `()`. Import standard APIs from `@
 
 ## Function types and captures {#closures-and-shared-data}
 
-`Callable[[Int], Int]` names a function that takes an `Int` and returns an `Int`. Use `lambda` to create a callback:
+`fn(Int) Int` names a function that takes an `Int` and returns an `Int`. Use `fn` to create a callback:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -311,7 +311,7 @@ test "own methods":
     try expect_equal(counter.value, 1)
 ```
 
-`Self` names the receiver's type in these signatures, so a method that builds a new value writes `def with_value(value: Int) -> Self` instead of repeating the type.
+`Self` names the receiver's type in these signatures, so a method that builds a new value writes `fn with_value(value: Int) Self` instead of repeating the type.
 
 Use an interface when callers should depend on behavior rather than on the type. Free functions that mutate an argument are called as `reset(var counter)`. See [interfaces and implementations](../core-language/types/contracts.md#explicit-implementations).
 

@@ -9,7 +9,7 @@ Each `.ms` file is a module with its own boundary. `export` makes a declaration 
 
 ## Names and declaration order
 
-Import several symbols with `from "./module.ms" import Name, OtherName`: a nonempty comma-separated list, trailing comma and multiple lines allowed. Single-symbol `from "./module.ms" import Name` also works. Duplicate names and collisions are errors.
+Import several symbols with `import {Name, OtherName} from "./module.ms"`: a nonempty comma-separated list, trailing comma and multiple lines allowed. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
 
 Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
 

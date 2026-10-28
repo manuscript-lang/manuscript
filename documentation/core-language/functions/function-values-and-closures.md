@@ -5,7 +5,7 @@ weight = 2
 
 # Function values and closures
 
-Store a function in a binding or pass it as an argument. Anonymous functions use `lambda`; the type is `Callable[[T], U]`. A closure borrows or owns the bindings it captures.
+Store a function in a binding or pass it as an argument. Anonymous functions use `fn`; the type is `fn(T) U`. A closure borrows or owns the bindings it captures.
 
 ```manuscript
 fn apply(value: Int, transform: fn(Int) Int) Int:
@@ -18,11 +18,11 @@ let decrement = fn(value: Int) Int:
 let result = apply(value: 3, transform: decrement)
 ```
 
-Function types name no parameters. Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A `def` or `lambda` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
+Function types name no parameters. Calls through function values are positional (a label on such a call is an error) and share the suspension and evaluation of declared functions. A named or anonymous `fn` inside a function is a local binding of a function value. Inferred immutable copies keep [default arguments](declarations-and-calls.md#default-arguments); explicit function types require all parameters.
 
 ## Function type compatibility
 
-Parameter types in order and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `def f(amount: Int) -> Int` and `def g(value: Int) -> Int` both fit `Callable[[Int], Int]`. A mismatch needs an explicit adapter function.
+Parameter types in order and the result type are function-type identity, and compatibility is invariant. Parameter names are not part of it: `fn f(amount: Int) Int` and `fn g(value: Int) Int` both fit `fn(Int) Int`. A mismatch needs an explicit adapter function.
 
 ```manuscript
 fn subtract_one(amount: Int) Int:
@@ -35,7 +35,7 @@ fn adapt() Unit:
     let result = apply(value: 3, transform: ok)
 ```
 
-An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `let increment: Callable[[Int], Int] = lambda item: item + 1` is called as `increment(3)`.
+An anonymous function may omit parameter types when context supplies them (argument, annotation, field, collection element, or return type). Parameters match by position: `let increment: fn(Int) Int = fn item: item + 1` is called as `increment(3)`.
 
 - An omitted result type comes from context or the body: returns must share one exact type, fallthrough adds `Unit`, `Never` adds nothing.
 - Without context, callbacks need parameter annotations.

@@ -124,7 +124,7 @@ ms run read.ms -- notes.txt
 
 ## Write a text file
 
-Save as `write.ms`. `replace: False` fails if the file exists.
+Save as `write.ms`. `replace: false` fails if the file exists.
 
 <!-- manuscript-example: {"mode":"run","args":["saved.txt"],"want_files":{"saved.txt":"saved notes\n"},"cases":[{"args":["saved.txt"],"files":{"saved.txt":"keep me"},"want_files":{"saved.txt":"keep me"},"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
@@ -146,7 +146,7 @@ ms run write.ms -- saved.txt
 cat saved.txt
 ```
 
-Use `replace: True` to overwrite. Relative paths use the working directory.
+Use `replace: true` to overwrite. Relative paths use the working directory.
 
 ## Read standard input line by line
 
@@ -262,9 +262,9 @@ ms run config.ms -- '{"name":"Sam"}'
 ```
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
-- Unknown members are ignored unless `ignore_unknown_fields: False`.
+- Unknown members are ignored unless `ignore_unknown_fields: false`.
 - Write `parse[Config]` explicitly after `try`.
-- `stringify` writes fields in declaration order. `strict: True` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` record fields.
+- `stringify` writes fields in declaration order. `strict: true` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` record fields.
 
 ## Make an HTTP GET request
 

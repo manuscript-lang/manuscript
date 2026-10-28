@@ -19,7 +19,7 @@ See [error handling](../core-language/errors/_index.md).
 
 ## Let types describe your data
 
-Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you pass `ignore_unknown_fields: False`. Apply `try` to each assertion so a failed check fails the test:
+Read known JSON shapes with `parse[T]`. Unknown members are ignored unless you pass `ignore_unknown_fields: false`. Apply `try` to each assertion so a failed check fails the test:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

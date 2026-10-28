@@ -170,7 +170,7 @@ Artifact `state` values:
 
 A failed check preserves prior files and creates no capture directory. Only a completed build establishes a valid executable and metadata pair; a partial result identifies any partial output.
 
-A nonzero application exit keeps its status with `completed: True` and `reason: "program_exit"`. A signal-terminated process has `completed: False` and `reason: "interrupted"`. Arguments after `--` pass unchanged, and profiles still require a new directory.
+A nonzero application exit keeps its status with `completed: true` and `reason: "program_exit"`. A signal-terminated process has `completed: false` and `reason: "interrupted"`. Arguments after `--` pass unchanged, and profiles still require a new directory.
 
 ## Machine-readable checks and tests
 
@@ -203,10 +203,10 @@ Test results:
 | `fixture_errors` | Optional file-level lifecycle failures with `file`, `phase`, `failure`, optional `position` |
 | `reason` | Optional `fixture_error`, `fixture_abandoned`, `cancelled`, `listed`, `fail_fast`, `no_tests`, `no_match`, `compile_error`, `build_error`, `execution_error`, or `argument_error` |
 
-- Test `status` is `passed`, `failed`, or `skipped`. Listing sets `listed: True` and leaves selected tests `not_run`; fail-fast leaves the rest `not_run`. Optional `repeat` and `shuffle_seed` describe order.
+- Test `status` is `passed`, `failed`, or `skipped`. Listing sets `listed: true` and leaves selected tests `not_run`; fail-fast leaves the rest `not_run`. Optional `repeat` and `shuffle_seed` describe order.
 - If the process stops early, the active test is `incomplete` and later ones are `not_run`.
 - Outcomes come from a separate result channel, so test output that looks like RUN/PASS/FAIL creates none. Stderr never enters the JSON.
-- No test blocks: exit 0, `reason: "no_tests"`. Unmatched filter: exit 1, `reason: "no_match"`. Test failures exit 1; abrupt native exits keep their status with `completed: False`. `MST001` marks non-source execution, build, or report failures.
+- No test blocks: exit 0, `reason: "no_tests"`. Unmatched filter: exit 1, `reason: "no_match"`. Test failures exit 1; abrupt native exits keep their status with `completed: false`. `MST001` marks non-source execution, build, or report failures.
 
 ## Editor features
 
@@ -232,7 +232,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 | MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
 | MSL110 | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
-| MSL111 | `while True` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
+| MSL111 | `while true` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL113 | `some(x)` where a plain `x` is wrapped to the same Optional (argument, return, binding, assignment, field, default, element); `ms lint --fix` removes the `some(...)`. See [passing optional arguments](../core-language/types/optionals.md#passing-optional-arguments) |
 | MSL114 | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
@@ -253,12 +253,12 @@ Format code as paragraphs: keep related steps together and put space between new
 - Start a paragraph before a leading comment between statements; keep the comment attached to the code it introduces.
 - Give multi-statement callback definitions and calls their own paragraphs, like other substantial blocks. A short callback stays with adjacent work.
 - A guard (`if` without `else` and one `return`, `break`, or `continue`) stays with preceding setup and other guards, then a blank line follows.
-- Keep each `if`/`elif`/`else` family and all match arms together. Inserted breaks go before leading comments.
+- Keep each `if`/`else if`/`else` family and all match arms together. Inserted breaks go before leading comments.
 
 Expression layout uses a soft limit of 88 columns:
 
 - Calls and signatures stay on one line when they fit (including the return type, excluding callback bodies). An anonymous function with a multi-statement suite always expands its call.
-- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(lambda: return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
+- A callback containing one explicit `return` joins its header when it has no nested suites or intervening comments, so short calls such as `queue.enqueue(fn: return 7)` stay compact. A bare call body remains indented because making it inline would implicitly return its value.
 - Lists, grouped imports, and maps stay compact when they fit. Wrapped lists pack simple elements into rows; nested groups, expressions, and commented items get their own lines.
 - When a group expands, each item goes on its own line, indented four spaces, closing delimiter aligned with the opening line. An authored multiline group collapses if it fits and has no comment or suite.
 - Long conditions break at the lowest-precedence logical operator, keeping comparison operands together. Long arithmetic and member chains gain continuation lines, with grouping parentheses where needed.

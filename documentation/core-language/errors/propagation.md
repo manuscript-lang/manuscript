@@ -36,7 +36,7 @@ Omitting `try` discards the Result, which the checker rejects. To ignore it deli
 
 ## Try in a pipe flow
 
-`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `def label(value: Decimal) -> String`, this equals `let value = try discount(...)` then `label(value)`:
+`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
