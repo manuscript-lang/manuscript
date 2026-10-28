@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/io.ms" import stdout
 from "@std/string.ms" import StringBuilder
 from "@std/time.ms" import clock
@@ -6,7 +5,7 @@ from "@std/time.ms" import clock
 # Builds a about 1 MB string from pieces of each size and prints the best of 40 runs per size in microseconds.
 def run(piece: String, count: Int) -> Int:
     var sb = StringBuilder()
-    for i in range(0, count):
+    for i in 0..count:
         sb.append(piece)
     return sb.build().byte_length()
 
@@ -31,7 +30,7 @@ export def main() -> Int:
         var best = 1000000000000
         var checksum = 0
 
-        for rep in range(0, 40):
+        for rep in 0..40:
             let started = clock().now()
             checksum += run(piece, count)
 
@@ -45,7 +44,7 @@ export def main() -> Int:
         var best = 1000000000000
         var checksum = 0
 
-        for rep in range(0, 40):
+        for rep in 0..40:
             let started = clock().now()
             checksum += fill(count)
 

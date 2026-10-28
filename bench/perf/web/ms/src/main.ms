@@ -1,7 +1,6 @@
 # Benchmark server: main <port> <data-dir> [threads]. With threads above 1, that many workers each serve the port from one shared listener. The Go server in ../go answers the same requests.
 from "@std/bytes.ms" import Bytes
 from "@std/fs.ms" import filesystem
-from "@std/collections.ms" import range
 from "@std/http.ms" import headers, HttpRequest, HttpResponse, HttpServerOptions, buffered
 from "@std/net.ms" import network
 from "@std/process.ms" import arguments
@@ -144,7 +143,7 @@ export def main() -> Int:
     with let group = WorkerGroup[Int, Int]():
         var workers: List[Worker[Int, Int]] = []
 
-        for i in range(0, threads):
+        for i in 0..threads:
             var worker = group.spawn(serve_worker).get(none)
             let _ready = worker.channel.receive()
             workers.append(worker)

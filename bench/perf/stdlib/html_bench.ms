@@ -1,5 +1,4 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "./src/harness.ms" import words
 from "@std/string.ms" import StringBuilder
 from "@std/html.ms" import parse, escape, unescape
@@ -7,7 +6,7 @@ from "@std/html.ms" import parse, escape, unescape
 def html_doc(count: Int) -> String:
     var sb = StringBuilder()
     sb.append("<div>")
-    for i in range(0, count):
+    for i in 0..count:
         sb.append(f"<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")
     sb.append("</div>")
     return sb.build()

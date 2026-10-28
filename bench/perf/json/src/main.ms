@@ -1,4 +1,3 @@
-from "@std/collections.ms" import range
 from "@std/fs.ms" import filesystem
 from "@std/io.ms" import stdout
 from "@std/json.ms" import parse, stringify, JsonValue
@@ -35,7 +34,7 @@ type Row:
 
 def row_list() -> List[Row]:
     var rows: List[Row] = []
-    for i in range(0, 10000):
+    for i in 0..10000:
         rows.append(
             Row(
                 id: i, name: f"user{i}", tags: ["a", "b"], score: i.to_float() + 0.5,

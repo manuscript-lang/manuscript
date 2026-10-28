@@ -1,5 +1,4 @@
 from "@std/bench.ms" import keep, measure
-from "@std/collections.ms" import range
 from "@std/channels.ms" import Channel
 from "@std/tasks.ms" import TaskGroup, Task
 from "@std/shared.ms" import share
@@ -7,7 +6,7 @@ from "@std/sync.ms" import lock
 
 def produce(ch: Channel[Int, Unit]) -> Int:
     var c = ch
-    for i in range(0, 100000):
+    for i in 0..100000:
         let _ = c.send(i)
     return 0
 
@@ -26,7 +25,7 @@ def echo(ch: Channel[Int, Int]) -> Int:
 bench "tasks.spawn_results_1000":
     def work() -> Result[Unit, Error]:
         with let g = TaskGroup[Int]():
-            for i in range(0, 1000):
+            for i in 0..1000:
                 g.spawn(lambda ch: i * 2)
 
             let r = g.results().get([])
@@ -38,7 +37,7 @@ bench "tasks.spawn_result_each_1000":
         with let g = TaskGroup[Int]():
             var n = 0
 
-            for i in range(0, 1000):
+            for i in 0..1000:
                 let t = g.spawn(lambda ch: i * 2)
                 n += t.result().get(0)
 
@@ -49,7 +48,7 @@ bench "tasks.spawn_then_result_5000":
     def work() -> Result[Unit, Error]:
         with let g = TaskGroup[Int]():
             var ts: List[Task[Int]] = []
-            for i in range(0, 5000):
+            for i in 0..5000:
                 ts.append(g.spawn(lambda ch: i))
 
             var n = 0
@@ -61,7 +60,7 @@ bench "tasks.spawn_then_result_5000":
 bench "lock.uncontended":
     def work() -> Result[Unit, Error]:
         let box = share(0)
-        for i in range(0, 200000):
+        for i in 0..200000:
             with var g = lock(box):
                 g.value += 1
         with var g = lock(box):
@@ -91,7 +90,7 @@ bench "chan.pingpong_20k":
             var t = g.spawn(lambda ch: echo(ch))
             var n = 0
 
-            for i in range(0, 20000):
+            for i in 0..20000:
                 let _ = t.channel.send(i)
                 n += t.channel.receive().get(none).get(0)
 

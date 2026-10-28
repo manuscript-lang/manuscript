@@ -46,4 +46,4 @@ def filesystem_omitted(fs: FileSystem, data: Bytes) -> Result[Unit, FileSystemEr
 def filesystem_bind(
     fs: FileSystem
 ) -> Callable[[String, Bytes, Bool], Result[Unit, FileSystemError]]:
-    return fs.write_file
+    return fs.write_file_bytes

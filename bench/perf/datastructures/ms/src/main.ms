@@ -4,7 +4,6 @@ from "@std/string.ms" import StringBuilder
 from "@std/bytes.ms" import BytesBuilder
 from "@std/queue.ms" import PriorityQueue
 from "@std/sorted.ms" import SortedMap
-from "@std/collections.ms" import range
 
 type Rec:
     key: Int
@@ -25,21 +24,21 @@ def next_rand(x: Int) -> Int:
 def bench_list_append(n: Int) -> Int:
     let t = clock().now()
     var l: List[Int] = []
-    for i in range(0, n):
+    for i in 0..n:
         l.append(i)
     report("list_append", n, t)
     return l.length()
 
 def bench_list_get(n: Int) -> Int:
     var l: List[Int] = []
-    for i in range(0, n):
+    for i in 0..n:
         l.append(i)
 
     let t = clock().now()
     var x = 1
     var sum = 0
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         sum += l[x % n]
 
@@ -50,7 +49,7 @@ def bench_list_sort(n: Int) -> Int:
     var l: List[Int] = []
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         l.append(x)
 
@@ -63,7 +62,7 @@ def bench_list_sort_cmp(n: Int) -> Int:
     var l: List[Rec] = []
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         l.append(Rec(key: x % 100000, id: i))
 
@@ -77,14 +76,14 @@ def bench_map_int(n: Int) -> Int:
     var m = Map[Int, Int]()
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         m.add(x, i)
 
     var hits = 0
     x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         hits += m.get_or(x, 0)
 
@@ -93,16 +92,16 @@ def bench_map_int(n: Int) -> Int:
 
 def bench_map_str(n: Int) -> Int:
     var keys: List[String] = []
-    for i in range(0, n):
+    for i in 0..n:
         keys.append(f"key{i}")
 
     let t = clock().now()
     var m = Map[String, Int]()
-    for i in range(0, n):
+    for i in 0..n:
         m.add(keys[i].clone(), i)
 
     var hits = 0
-    for i in range(0, n):
+    for i in 0..n:
         hits += m.get_or(keys[i], 0)
     report("map_str_put_get", n * 2, t)
     return hits
@@ -112,14 +111,14 @@ def bench_set(n: Int) -> Int:
     var s = Set[Int]()
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         s.add(x)
 
     var hits = 0
     x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         if s.contains(x):
             hits += 1
@@ -131,7 +130,7 @@ def bench_string(n: Int) -> Int:
     let t = clock().now()
     var sb = StringBuilder()
 
-    for i in range(0, n):
+    for i in 0..n:
         sb.append("word")
         sb.append(" ")
 
@@ -145,7 +144,7 @@ def bench_string(n: Int) -> Int:
 def bench_bytes(n: Int) -> Int:
     let t = clock().now()
     var bb = BytesBuilder()
-    for i in range(0, n):
+    for i in 0..n:
         bb.append((i % 256).to_uint8().get(0))
 
     let b = bb.build()
@@ -157,12 +156,12 @@ def bench_pq(n: Int) -> Int:
     var q = PriorityQueue[Int]()
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         q.enqueue(x)
 
     var sum = 0
-    for i in range(0, n):
+    for i in 0..n:
         sum += q.dequeue().get(0)
     report("pq_int_enqueue_dequeue", n * 2, t)
     return sum
@@ -172,14 +171,14 @@ def bench_sorted_map(n: Int) -> Int:
     var m = SortedMap[Int, Int]()
     var x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         m.add(x, i)
 
     var hits = 0
     x = 1
 
-    for i in range(0, n):
+    for i in 0..n:
         x = next_rand(x)
         if m.contains(x):
             hits += 1
