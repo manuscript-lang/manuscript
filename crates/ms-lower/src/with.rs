@@ -108,6 +108,9 @@ fn emit_parts(b: &mut FuncBuilder<'_>, v: Value, shape: Shape) {
 pub(crate) struct Closer {
     kind: CloseKind,
     handle: ms_mir::ir::Value,
+    /// Set while the binding still holds the resource; a move clears it. Present only for a
+    /// binding some path moves.
+    flag: Option<ms_mir::builder::Var>,
 }
 
 /// Calls the close operation on `v` of type `ty`.
@@ -226,7 +229,14 @@ impl FnLower<'_> {
                 Some(MTy::INT),
             )
             .expect("handle");
-        self.closers.insert(binding.uid, Closer { kind, handle });
+        let flag = self.cx.close_moves.contains_key(&binding.uid).then(|| {
+            let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+            let held = self.b.bconst(true);
+            self.b.def_var(flag, held);
+            flag
+        });
+        self.closers
+            .insert(binding.uid, Closer { kind, handle, flag });
         // A binding that needs no drop is not registered by `bind_local`; closing still runs.
         let scope = self.scopes.last_mut().expect("scope");
         if !scope.contains(&binding.uid) {
@@ -485,6 +495,45 @@ impl FnLower<'_> {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
         close_call(&mut self.b, &closer.kind, old, ty);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
+    }
+
+    /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
+    /// value, so neither the cleanup entry nor the scope end does.
+    pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {
+        let Some(closer) = self.closers.get(&uid).cloned() else {
+            return;
+        };
+        let Some(flag) = closer.flag else {
+            return;
+        };
+        if self.dead
+            || !self
+                .cx
+                .close_moves
+                .get(&uid)
+                .is_some_and(|n| n.contains(&e.id))
+        {
+            return;
+        }
+        let _ = self.call_runtime("msrt_cleanup_discard", &[closer.handle], MTy::UNIT);
+        let gone = self.b.bconst(false);
+        self.b.def_var(flag, gone);
+    }
+
+    /// Leaves the binding `uid` at the end of its scope, closing it unless a move took it.
+    pub(crate) fn close_at_scope_end(&mut self, uid: usize, closer: &Closer) {
+        let Some(flag) = closer.flag else {
+            return self.emit_close(uid, closer);
+        };
+        let held = self.b.use_var(flag);
+        let (close, join) = (self.b.new_block(), self.b.new_block());
+        self.b.br_if(held, close, &[], join, &[]);
+        self.b.seal_block(close);
+        self.b.switch_to(close);
+        self.emit_close(uid, closer);
+        self.b.br(join, &[]);
+        self.b.seal_block(join);
+        self.b.switch_to(join);
     }
 
     /// Closes `v`, a value of the place `place` that the program is about to overwrite or

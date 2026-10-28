@@ -260,6 +260,7 @@ impl<'a> FnLower<'a> {
         match self.hir.resolution(e) {
             Resolution::Local(b) => {
                 let x = self.read_local(&b)?;
+                self.moved_closer(b.uid, e);
                 self.fit_function_value(e, x)
             }
             Resolution::Constant(_) => self.call_expr(e),
