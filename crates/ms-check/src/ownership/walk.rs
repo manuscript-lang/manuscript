@@ -2213,6 +2213,11 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed"),
                 );
+            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read"),
+                );
             } else {
                 self.error_fix(
                     e.pos,

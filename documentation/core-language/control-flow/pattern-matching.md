@@ -64,7 +64,7 @@ fn total(cents: Cents) Result[Int, TextError]:
 
 `return` exits the enclosing function even from inside another expression, running cleanup; `break` and `continue` target the enclosing loop; an anonymous function has its own return boundary.
 
-Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm is `()`; there is no `pass`.
+Short arms put the value after the colon (`none: 0`). End an effect-only arm with `unit` if its last call returns something else. A standalone match discards its result, so arms need not agree; a used result needs every arm to produce it. An empty arm or block is `unit`; there is no `pass`.
 
 ## Payload patterns
 
