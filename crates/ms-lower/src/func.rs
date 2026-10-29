@@ -74,6 +74,8 @@ pub(crate) struct FnLower<'a> {
             ms_mir::builder::Var,
         ),
     >,
+    /// Hidden owned scrutinees whose payload closes when the scope is left, by hidden uid.
+    pub hidden_closers: HashMap<usize, crate::close::CloseKind>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -457,6 +459,7 @@ impl<'a> FnLower<'a> {
             scopes: vec![Vec::new()],
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
+            hidden_closers: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
@@ -781,7 +784,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
-    pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) {
+    pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) -> usize {
         let uid = usize::MAX - self.locals.len();
         self.locals.insert(
             uid,
@@ -794,6 +797,7 @@ impl<'a> FnLower<'a> {
         if self.needs_drop(ty) {
             self.scopes.last_mut().expect("scope").push(uid);
         }
+        uid
     }
 
     /// Declares a borrowed local (a parameter or a borrowing binding): no drop at scope end.
@@ -846,6 +850,10 @@ impl<'a> FnLower<'a> {
                     self.close_at_scope_end(*uid, &closer);
                 }
                 let l = self.locals[uid];
+                if let Some(kind) = self.hidden_closers.get(uid).cloned() {
+                    let v = self.local_get(&l);
+                    self.close_discarded_kind(&kind, v);
+                }
                 if self.needs_drop(l.ty) {
                     let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);

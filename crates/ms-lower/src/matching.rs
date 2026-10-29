@@ -70,7 +70,21 @@ impl FnLower<'_> {
         };
         if hidden {
             let ty = self.b.var_ty(sv);
-            self.adopt_hidden(sv, ty);
+            let uid = self.adopt_hidden(sv, ty);
+            // An owned temporary scrutinee (`match make():`) is the match's own: its payloads
+            // are borrowed by the arms, so it closes when the match is left, `return` included.
+            let sty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
+            let moved = arms.iter().any(|arm| {
+                self.hir
+                    .arm(arm)
+                    .bindings
+                    .iter()
+                    .flatten()
+                    .any(|b| self.cx.moved_payloads.contains(&b.uid))
+            });
+            if !moved && let Some(kind) = self.part_closer(&sty)? {
+                self.hidden_closers.insert(uid, kind);
+            }
         }
         let rty = self.emty(e)?;
         // The returned expression of a lending function hands back the branch values themselves.
@@ -249,13 +263,6 @@ impl FnLower<'_> {
         self.b.seal_block(join);
         self.enter(join);
         self.dead = !live;
-        if live && hidden {
-            // An owned temporary scrutinee (`match make():`) is the match's own: its payloads
-            // are borrowed by the arms, so it closes with the match.
-            let ty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
-            let v = self.b.use_var(sv);
-            self.close_discarded_ty(&ty, v)?;
-        }
         self.pop_scope();
         if !live {
             return Ok(self.dummy(rty));

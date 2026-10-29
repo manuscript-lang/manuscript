@@ -172,6 +172,7 @@ pub struct Cx {
     /// The name expressions that move a closed resource binding, by binding: the scope-end close
     /// runs only on the paths that never reach one.
     pub close_moves: Rc<HashMap<usize, std::collections::HashSet<ms_syntax::ast::NodeId>>>,
+    pub moved_payloads: Rc<std::collections::HashSet<usize>>,
     /// `ref` functions that lend on every path, by module file and node.
     pub lenders: Rc<std::collections::HashSet<(Name, ms_syntax::ast::NodeId)>>,
     /// Captures a non-escaping lambda only reads: the closure points at them instead of copying.
@@ -233,6 +234,7 @@ impl Cx {
             borrows: program.borrows.clone(),
             implicit_closes: program.implicit_closes.clone(),
             close_moves: program.close_moves.clone(),
+            moved_payloads: program.moved_payloads.clone(),
             lenders: program.lenders.clone(),
             borrowed_captures: program.borrowed_captures.clone(),
             consumes: program.consumes.clone(),

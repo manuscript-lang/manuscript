@@ -150,6 +150,8 @@ pub struct CallableOwnership {
     /// For a closed resource binding that is also moved on some paths: the name expressions
     /// that move it. The close at scope end runs only on the paths with no move.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
+    /// Payload bindings of a consumed match scrutinee that some path moves out.
+    pub moved_payloads: HashSet<usize>,
     /// Parameter modes in declaration order.
     pub parameters: Vec<ParamMode>,
     /// The receiver's mode, for a method.
@@ -175,6 +177,8 @@ pub struct Ownership {
     pub closes: HashSet<usize>,
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
+    /// Payload bindings of a consumed match scrutinee that some path moves out.
+    pub moved_payloads: HashSet<usize>,
     /// Calls bound with `var` as a mutable borrow, by module file and node: the fields from the
     /// argument to the part they borrow.
     pub getters: HashMap<(Name, NodeId), Vec<Name>>,
@@ -397,6 +401,7 @@ impl Hir<'_> {
         let mut borrows = HashMap::new();
         let mut closes = HashSet::new();
         let mut close_moves = HashMap::new();
+        let mut moved_payloads = HashSet::new();
         let mut getters = HashMap::new();
         let mut lenders = HashSet::new();
         let mut borrowed_captures = HashSet::new();
@@ -421,6 +426,7 @@ impl Hir<'_> {
             }
             closes.extend(out.facts.implicit_closes.iter().copied());
             close_moves.extend(out.facts.close_moves.iter().map(|(k, v)| (*k, v.clone())));
+            moved_payloads.extend(out.facts.moved_payloads.iter().copied());
             if c.func.func().is_some_and(|f| f.result_ref) && !out.summary.result.owned {
                 lenders.insert((c.module.file, c.id()));
             }
@@ -446,6 +452,7 @@ impl Hir<'_> {
             borrows,
             closes,
             close_moves,
+            moved_payloads,
             getters,
             lenders,
             borrowed_captures,

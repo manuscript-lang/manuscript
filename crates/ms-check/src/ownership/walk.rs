@@ -152,11 +152,13 @@ pub fn analyze(cx: &Context) -> Outcome {
         let_pos: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         resources: Vec::new(),
+        arm_payloads: Vec::new(),
         closed: HashSet::new(),
     };
     w.run();
     w.unclosed_resources();
     w.consumed_param_resources();
+    w.moved_payloads();
     let declared = Summary::declared(&cx.c.func);
     let result = w.result_origin(&declared);
     // A `ref` result is a borrow on every path: a path that hands back an owned value would
@@ -246,6 +248,8 @@ struct Walker<'a> {
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
     resources: Vec<(usize, Name, Pos, bool)>,
+    /// Payload bindings of match arms over a consumed scrutinee.
+    arm_payloads: Vec<usize>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -403,6 +407,21 @@ impl Walker<'_> {
                         "`{name}` is a resource that is never closed: call `{name}.close()`, or return it so the caller owns it"
                     ),
                 );
+            }
+        }
+    }
+
+    /// Records the payloads of a consumed match scrutinee that a path moves out: the new owner
+    /// closes them, so the match must not.
+    fn moved_payloads(&mut self) {
+        for uid in std::mem::take(&mut self.arm_payloads) {
+            let moved = self
+                .facts
+                .uses
+                .values()
+                .any(|u| u.binding == uid && u.access == Access::Move);
+            if moved {
+                self.facts.moved_payloads.insert(uid);
             }
         }
     }
@@ -2812,6 +2831,9 @@ impl Walker<'_> {
             self.active = entry.clone();
             let mark = self.declared.len();
             for b in self.cx.m.arm(arm).bindings.iter().flatten() {
+                if source.owned {
+                    self.arm_payloads.push(b.uid);
+                }
                 self.payload(b, &source, Role::Arm, arm.pos);
             }
             self.block(&arm.body);
