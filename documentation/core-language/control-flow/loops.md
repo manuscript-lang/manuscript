@@ -83,7 +83,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 | `Set[T]` | `T` | Insertion order |
 | `Map[K, V]` | `MapEntry[K, V]` | Key insertion order |
 | `Iterator[T]` implementation | `T` | Order of `next()` results |
-| `Indexed[T]` implementation (`Deque`, `Queue`, `PriorityQueue`) | borrowed `T` | Index order |
+| `Iterable[I]` implementation (`Deque`, `Queue`, `PriorityQueue`) | borrowed `T` | Order of `iter()`'s `next()` results |
 
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
@@ -126,7 +126,9 @@ export fn main() Int:
 
 ## Borrowing containers
 
-A type that implements `Indexed[T]` from `@std/indexed.ms` (`fn length() Int` and `fn at(index: Int) ref Optional[T]`) is iterable without cloning: `for item in container:` is the same as `for i in 0..container.length(): if let item = container.at(i): ...`. `item` borrows the element in place, so `T` needs no `Clonable`, and the usual borrow rules hold: the body cannot change `container` while `item` is still used, and `item` is copied out with `.clone()`. `length()` is read once; if the body shortens the container after the last use of `item`, the indexes past the end are skipped. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back, `Queue` oldest first, and `PriorityQueue` in heap order, not dequeue order. A type that implements both `Iterator` and `Indexed` iterates with `Iterator`.
+A type that implements `Iterable[I]` from `@std/iterable.ms` (`fn iter() I`, where `I` is an `Iterator` that borrows from the container) is iterable without cloning: `for item in container:` is the same as `for item in container.iter():`. `item` borrows the element in place, so `T` needs no `Clonable`, and the usual borrow rules hold: the iterator holds `container` unchanged for the whole loop, and `item` is copied out with `.clone()`. A place is read where it stands, so it need not be `var`; any other expression is held by the loop. `Deque` iterates front to back (`DequeIter`), `Queue` oldest first (`QueueIter`), and `PriorityQueue` in heap order, not dequeue order (`PriorityQueueIter`). A type that implements both `Iterator` and `Iterable` iterates with `Iterator`.
+
+An iterator that borrows is a record with a `ref` field (`source: ref Deque[T]`) whose `next` returns `ref Optional[T]` and lends from that field; `iter()` builds it from the receiver. A record with a `ref` field cannot be moved, cloned, stored in a collection or returned except by constructing it, so build such an iterator in `iter()` and use it in place.
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
