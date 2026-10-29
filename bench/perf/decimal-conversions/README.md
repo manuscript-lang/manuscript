@@ -12,41 +12,47 @@ No representation, public signature, rounding rule, or error behavior changes.
 The baseline runtime is **`4ceb772afe59c6a73305b94c2ab395e60b0611ca`**. The changed
 runtime differs only in `crates/ms-std-decimal/src/lib.rs`. The same compiler and
 workload built both executables, selecting each archive with `MS_RT_LIB`.
-The initial run used default Release selection. Its `.ms-build.json` files report
-`backend: cranelift`, `build_type: Release`, but that label alone does not establish
-the actual optimization path. **The initial run's backend is unverified.** Its
-samples and provisional table below are retained for transparency; a final run
-with explicit `MS_BACKEND=cranelift` is pending. The native runtime was built by
-`cargo xtask runtime` with Cargo release optimization (level 3) and debug
-information disabled. No backend or CPU overrides were set during the initial run.
+Both final executables were built with **`MS_BACKEND=cranelift`** and
+`--build-type Release`. The explicit selector disables the optional LLVM path;
+this is Cranelift with MIR `Level::Speed` and Cranelift `opt_level: speed`.
+The sidecars also report `backend: cranelift`, `build_type: Release`, but the
+explicit selector, rather than that label alone, establishes the backend.
+The native runtime was built by `cargo xtask runtime` with Cargo release
+optimization (level 3) and debug information disabled. `MS_CPU_LEVEL` was unset.
+These final results do not measure LLVM or another platform.
 
 Linux x86_64, kernel 6.18.55, Intel Xeon Platinum 8573C under KVM; five visible
 CPUs, four-CPU cgroup quota, 16 GiB memory limit. Rust 1.99.1
 (`58cf8f9c3 2026-10-13`), num-bigint 0.5.1. No local build or other benchmark ran
 concurrently with the measurements. Shared-VM noise remains visible in the ranges.
 
-Seven paired samples follow a separate warmup for every case, alternating binary
+Eight paired samples follow a separate warmup for every case, alternating binary
 order. The table gives internal **ns/operation, median [minimum–maximum]**;
-[initial raw samples](results-2026-10-29-unverified-backend.jsonl) also retain process wall time and checksums.
+[raw samples](results-2026-10-29-cranelift.jsonl) also retain process wall time and checksums.
 Compilation, input parsing, value setup, output, and process startup are outside
 the internal timer. Loop arithmetic and assignment remain inside it. `stream`
 consumes every conversion by truncating it back to Int and accumulating a checked
 sum; its times include truncation, which this patch does not change.
+`add-round` follows the existing `decimal.add_round` standard-library benchmark:
+convert an integer, add `1.12345d`, round to two places, truncate and accumulate.
+It includes both a 20,000-operation common case and a longer scaling control.
 
 | Operation | Count | Seed | Before ns/op | After ns/op |
 | --- | ---: | ---: | ---: | ---: |
-| Int conversion | 1 | 0 | 127 [107–165] | 155 [112–181] |
-| Int conversion | 10,000 | 0 | 50.19 [41.37–150.89] | 3.25 [3.23–4.64] |
-| Int conversion | 1,000,000 | 0 | 56.68 [54.28–70.15] | 4.20 [3.50–7.14] |
-| Int conversion | 1,000,000 | -1,000,000,000 | 55.71 [46.27–63.04] | 3.90 [3.37–5.02] |
-| Int conversion | 1,000,000 | 9,223,372,036,800,000,000 | 57.11 [51.97–60.09] | 3.96 [3.77–4.22] |
-| UInt64 conversion | 1,000,000 | 0 (UInt64 maximum) | 54.28 [50.21–62.32] | 2.47 [2.28–3.35] |
-| UInt64 conversion | 1,000,001 | 1,000,000,000,000,000,000 | 55.45 [51.37–81.10] | 2.57 [2.18–3.32] |
-| Conversion + truncation stream | 1,000,000 | 0 | 96.22 [89.87–101.69] | 40.16 [38.87–40.96] |
-| Negation | 1 | 0 | 232 [182–245] | 204 [144–220] |
-| Negation | 10,000 | 12,345 | 30.42 [27.40–64.02] | 2.04 [2.03–10.32] |
-| Negation | 1,000,000 | 12,345 | 39.04 [31.19–48.99] | 2.63 [2.19–3.15] |
-| Negation | 1,000,001 | -9,223,372,036,854,775,808 | 34.07 [29.90–58.81] | 2.70 [2.13–3.68] |
+| Int conversion | 1 | 0 | 248 [188–322] | 204 [188–276] |
+| Int conversion | 10,000 | 0 | 46.61 [43.35–123.85] | 3.72 [3.71–15.22] |
+| Int conversion | 1,000,000 | 0 | 58.49 [54.10–70.99] | 4.72 [4.27–6.32] |
+| Int conversion | 1,000,000 | -1,000,000,000 | 57.02 [51.49–73.54] | 4.65 [4.29–6.04] |
+| Int conversion | 1,000,000 | 9,223,372,036,800,000,000 | 60.40 [53.88–78.60] | 4.91 [4.45–8.21] |
+| UInt64 conversion | 1,000,000 | 0 (UInt64 maximum) | 55.64 [51.14–64.77] | 3.80 [3.07–7.23] |
+| UInt64 conversion | 1,000,001 | 1,000,000,000,000,000,000 | 58.71 [51.34–68.48] | 3.74 [3.03–4.47] |
+| Conversion + truncation stream | 1,000,000 | 0 | 99.96 [89.65–122.87] | 42.93 [37.42–51.47] |
+| Add + round + truncate | 20,000 | 0 | 728.70 [595.43–1365.36] | 608.92 [518.75–677.26] |
+| Add + round + truncate | 200,000 | 0 | 691.68 [664.42–784.77] | 622.57 [565.42–725.50] |
+| Negation | 1 | 0 | 367 [319–497] | 326.5 [262–418] |
+| Negation | 10,000 | 12,345 | 29.25 [27.09–58.60] | 2.38 [2.37–2.40] |
+| Negation | 1,000,000 | 12,345 | 42.04 [35.51–50.12] | 2.93 [2.39–3.27] |
+| Negation | 1,000,001 | -9,223,372,036,854,775,808 | 37.66 [34.14–60.76] | 2.90 [2.75–4.04] |
 
 Single-operation timings include timer overhead and do not resolve a useful speed
 difference. Conversion inputs vary over 10,000 consecutive integers, including
@@ -64,15 +70,22 @@ Artifact SHA-256 identities:
 compiler 189e13f1fe20407e4e679fbe64ad2297290500e9a4e3625bc86b78d3289f6ae8
 before runtime b39aa926f2d7b1d0400cf3faddcece7562c5ff91edf9a7885372cfbcc056cf22
 after runtime 788c490c27b04ddb4e169fa2d5802cce13a17b3dae42d41bebc8a1525026ac9d
-measured main.ms e2cd574f5b8c55e618e9b7c5b5cc215df3e1ca3e287bf2055573b30cd70e5b70
-repeat.py d620cf7326db14b72450c8f8b945c45dae91e7a7d5ab75bd748579da702b2534
+measured main.ms dbd95c3f6b03cb4912fdffcd51d4b701372dd3b90b0cc12c1a01e929491514aa
+repeat.py 6731dab6ffd68d6a000e531444d481e30cf23985d8ec303c64f66adb6fd706a1
 ```
 
-The measured source is retained in commit `0748a28e1`; the checked-in `main.ms`
-subsequently received formatter-only layout changes. Executable hashes are in the
-first two raw rows. Archive sizes decreased from 47,033,256 to 47,029,740 bytes.
+Executable hashes are in the first two raw rows. Archive sizes decreased from
+47,033,256 to 47,029,740 bytes.
 No heap-allocation counter or cross-platform performance measurements were taken;
 removal of the temporary BigInts follows directly from the changed code.
+
+An earlier default-Release run is retained separately as
+[unverified-backend raw samples](results-2026-10-29-unverified-backend.jsonl).
+Its backend is unverified and it is not used for the headline claims above.
+That initial source is retained in commit `0748a28e1` (main.ms SHA-256
+`e2cd574f5b8c55e618e9b7c5b5cc215df3e1ca3e287bf2055573b30cd70e5b70`,
+repeat.py `d620cf7326db14b72450c8f8b945c45dae91e7a7d5ab75bd748579da702b2534`).
+The final source also adds the representative add-and-round control.
 
 ## Reproduce
 
@@ -88,7 +101,7 @@ MS_BACKEND=cranelift MS_RT_LIB=/tmp/decimal-before/target/ms-native/libms_native
   target/release/ms build bench/perf/decimal-conversions/main.ms --build-type Release -o /tmp/decimal-before-program
 MS_BACKEND=cranelift MS_RT_LIB="$PWD/target/ms-native/libms_native.a" \
   target/release/ms build bench/perf/decimal-conversions/main.ms --build-type Release -o /tmp/decimal-after-program
-python3 bench/perf/decimal-conversions/repeat.py /tmp/decimal-before-program /tmp/decimal-after-program 7
+python3 bench/perf/decimal-conversions/repeat.py /tmp/decimal-before-program /tmp/decimal-after-program 8
 ```
 
 The explicit Cranelift selector fixes the backend independently of default Release
