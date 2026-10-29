@@ -45,7 +45,9 @@ Intel Xeon Platinum 8573C VM, five exposed CPUs, Linux 6.18.55, Rust 1.99.1,
 static musl runtime with frame pointers, LLVM 23.1.1 Release O3. The runner and
 children used CPU 0, without concurrent builds/tests. Both executable builds
 used the same compiler and identical `ms_rt_hot.ll`; `builds.json` records
-source/patch and binary hashes. Each executable had an unrecorded process
+source/patch and binary hashes. Native baseline and candidate were rebuilt
+from the same primary checkout path, differing only in the runtime patch;
+the baseline String source is pinned to `3c96f0994`. Each executable had an unrecorded process
 warm-up and each case had a checked untimed warm-up.
 
 `samples.csv` retains all 882 rows (63 cases, two variants, seven alternating
@@ -54,12 +56,12 @@ Representative prefix-one results:
 
 | Input | Before median | After median | After range |
 | --- | ---: | ---: | ---: |
-| ASCII, 64 B | 16.3 ns | 14.0 ns | 11.6–26.1 ns |
-| ASCII, 4 KiB | 58.8 ns | 11.4 ns | 11.3–29.1 ns |
-| ASCII, 1 MiB | 22.5 µs | 11.6 ns | 10.7–27.3 ns |
-| Mixed UTF-8, 4095 B | 6.6 µs | 14.9 ns | 14.7–16.1 ns |
-| Mixed UTF-8, 1048572 B | 1.74 ms | 15.7 ns | 14.3–25.5 ns |
-| Four-byte scalars, 1 MiB | 1.40 ms | 16.8 ns | 15.8–63.7 ns |
+| ASCII, 64 B | 17.6 ns | 16.2 ns | 12.8–32.4 ns |
+| ASCII, 4 KiB | 58.5 ns | 11.4 ns | 11.2–20.4 ns |
+| ASCII, 1 MiB | 18.8 µs | 11.5 ns | 11.4–24.1 ns |
+| Mixed UTF-8, 4095 B | 5.8 µs | 14.9 ns | 14.8–21.4 ns |
+| Mixed UTF-8, 1048572 B | 1.68 ms | 15.2 ns | 14.8–15.7 ns |
+| Four-byte scalars, 1 MiB | 1.36 ms | 16.8 ns | 15.6–17.2 ns |
 
 These large prefix gains come from removing the full-input count. Small
 optimized cases use only hundreds or thousands of iterations, so their
@@ -67,20 +69,24 @@ nanosecond values and enormous ratios should not be treated as precise
 cross-machine claims.
 
 Common controls are not uniformly faster. The combined run reports mixed
-4095-byte unlimited splitting about 16.6% slower and mixed 1 MiB unlimited
-splitting about 6.6% slower. In the separate `full-controls.ms` run (six cases,
-nine alternating pairs; 108 rows), those medians are about 4.4% and 1.2%
-slower. The 63-byte mixed unlimited control is about 9.1% slower in isolation,
-while its combined-run median is essentially unchanged. Both sets of
-observations are retained; the focused run does not invalidate the combined
-one. Zero-limit differences are also recorded, including small absolute
-increases. This is a workload-specific improvement, not a universal speedup.
+4095-byte explicit-full and unlimited splitting 13.4% and
+12.2% slower. In the separate `full-controls.ms` run (six cases,
+nine alternating pairs; 108 rows), their medians change by
++4.7% and -0.2%. Both observations remain valid;
+focused runs do not erase combined-run regressions. A 64-byte four-byte-scalar
+full control is 11.8% slower in the combined run, while a separate
+million-iteration control changes by -0.6% (239.4 to 238.0 ns).
+Its 18 rows are in `tiny-full-samples.csv`. Zero-limit differences, including
+small absolute increases, remain in the full table. These results support a
+workload-specific improvement, not a universal speedup.
 
 Run focused controls with `full-controls.ms`,
 `full-control-identities.json`, and `--pairs 9`. Their full distributions are
 in `full-control-samples.csv` and `full-control-summary.csv`.
 
-Exploratory samples and source snapshots remain under `exploratory/` and in
+Earlier pre-integration observations remain in `pre-integration-*.csv` and
+`pre-integration-builds.json`; they are not pooled with the final matched-path
+comparison. Exploratory samples and source snapshots remain under `exploratory/` and in
 the `initial-`, `helper-`, and `bounded-` sample files. They include rejected
 common-case regressions and earlier weaker short controls. They are not
 pooled with the final distributions. Other platforms were not measured.

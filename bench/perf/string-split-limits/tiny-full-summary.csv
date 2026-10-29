@@ -1,0 +1,2 @@
+case,before_median_ns,after_median_ns,before_min_ns,before_max_ns,after_min_ns,after_max_ns,speedup
+w4_n64_limit64,239.4,238.0,230.3,250.3,232.7,240.9,1.006
