@@ -1,4 +1,4 @@
-# conform: tags=alternatives,maps,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
+# conform: tags=alternatives,optional,records,stdlib-json,stdlib-net,testing,tier-io,try-result
 # conform: phase=test
 import expect_equal from "@std/test.ms"
 import {parse, stringify, JsonError} from "@std/json.ms"
@@ -8,41 +8,27 @@ type Color:
     case Red
     case Green
 
-type Palette:
-    weights: Map[Color, Int]
-    names: Map[Int, String]
-    flags: Map[Bool, Int]
+type Swatch:
+    color: Color
+    shade: Optional[Color]
 
 type Endpoint:
     host: IpAddress
     network: Cidr
     fallback: Optional[IpAddress]
 
-test "JSON map keys named by payloadless case round-trip":
-    var weights = Map[Color, Int]()
-    weights.add(Color.Green, 2)
-    weights.add(Color.Red, 1)
+test "JSON payloadless cases are their names and round-trip":
+    let swatch = Swatch(Color.Green, some(Color.Red))
+    let text = try stringify(swatch)
+    try expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")
 
-    var names = Map[Int, String]()
-    names.add(1, "a")
-
-    var flags = Map[Bool, Int]()
-    flags.add(true, 1)
-
-    let palette = Palette(weights, names, flags)
-    let text = try stringify(palette)
-    try expect_equal(
-        text,
-        "\{\"weights\":\{\"Green\":2,\"Red\":1\},\"names\":\{\"1\":\"a\"\},\"flags\":\{\"true\":1\}\}"
-    )
-
-    let back = try parse[Palette](text)
+    let back = try parse[Swatch](text)
     try expect_equal(try stringify(back), text)
 
-test "JSON map keys reject an unknown case name":
-    let invalid: Result[Map[Color, Int], JsonError] = error(JsonError.InvalidData)
-    try expect_equal(parse[Map[Color, Int]]("\{\"Blue\":1\}"), invalid)
-    try expect_equal(parse[Map[Color, Int]]("\{\"Color.Red\":1\}"), invalid)
+test "JSON rejects an unknown case name":
+    let invalid: Result[Color, JsonError] = error(JsonError.InvalidData)
+    try expect_equal(parse[Color]("\"Blue\""), invalid)
+    try expect_equal(parse[Color]("\"Color.Red\""), invalid)
 
 test "JSON writes and reads IpAddress and Cidr as strings":
     let endpoint = Endpoint(

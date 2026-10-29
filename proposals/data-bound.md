@@ -11,7 +11,7 @@
 ## Status
 
 - Implemented in this change, 2026-10-29, against `1cb51434`. Stage 3b (moving the `receiver_requirements` table in `bindings.json` to bounded interfaces) is not done; see Open questions.
-- Direction (Chinmay, 2026-10-29): the resource distinction should cover "files and sockets and streams too, but may be in a negative fashion"; "it needs to be solid for the checker with clear enforceable rules that's easy to understand"; "map keys should be only hashable"; "no i don't want clonable functions, but list of lambda should be possible"; custom `JsonEncode` types are `Data` ("yes"); a map whose key has no JSON text is "an error"; "natives declare properties, let's get more things into manuscript so language is hardened"; "just do one pr".
+- Direction (Chinmay, 2026-10-29): the resource distinction should cover "files and sockets and streams too, but may be in a negative fashion"; "it needs to be solid for the checker with clear enforceable rules that's easy to understand"; "map keys should be only hashable"; "no i don't want clonable functions, but list of lambda should be possible"; custom `JsonEncode` types are `Data` ("yes"); maps and sets are not `Data` ("Only list has a valid JSON representation"); "natives declare properties, let's get more things into manuscript so language is hardened"; "just do one pr".
 - An independent skeptic review of the design (three rounds) shaped the rule: `Instant`, `Unit`, `Never`, recursion, the decoder's real key set, and the `JsonEncode` decode asymmetry (below) came from it.
 
 ## Problem
@@ -30,8 +30,8 @@
 | 2 | type variable | true iff bounded by `Data` |
 | 3 | primitive | true, except `Never`. `Unit` is `Data`: a `Unit` message is not encoded and a `Unit` field is omitted by design |
 | 4 | function, interface value | false: behavior |
-| 5 | `List[A]`, `Set[A]` | `Data(A)` |
-| 5b | `Map[K, V]` | `Data(V)`, and `K` is `String`, `Int`, `Bool`, `Duration`, or an alternative whose cases have no fields (the keys the decoder reads); any other key is an error, not a run-time drop |
+| 5 | `List[A]` | `Data(A)` |
+| 5b | `Map`, `Set` | false: only `List` has a portable form (Chinmay, follow-up to #1905). A JSON object travels as `JsonValue`, which declares `impl Data` in the standard library |
 | 6 | other native | true only with `impl Data for` it in the module that declares it (`Bytes`, `Decimal`, `BigInt`, `Duration`, `Timestamp`, `IpAddress`, `Cidr`); false for `Instant`, `Shared`, `Regex`, file, socket and process handles |
 | 7 | record or alternative that is `Closeable` | false: resource |
 | 8 | record or alternative with a `JsonEncode` impl | true: the codec owns the encoding; row 7 ran first |
@@ -39,7 +39,7 @@
 
 - A record holding a `FileHandle` fails through row 6 on that field; there is no separate "holds resource" analysis.
 - `data_blocker` returns the first failing part and a reason, and builds the message: `Report does not satisfy Data; field log is FileHandle, a resource (Closeable); send a path or an id and reopen it on the other side`.
-- `Data` has no operations. `interface Data: ...` declares a property with no operations; only the standard library may (a user gets "an interface declares at least one operation"). An `impl` with no operations records its own evidence, because there is no method to carry it. `impl Data for X:` is allowed for an extern type in its declaring module and an error on a record or alternative.
+- `Data` has no operations. `interface Data: ...` declares a property with no operations; only the standard library may (a user gets "an interface declares at least one operation"). An `impl` with no operations records its own evidence, because there is no method to carry it. `impl Data for X:` is allowed for an extern type in its declaring module, and for a record or alternative only in the standard library (`JsonValue`); user code gets an error.
 - Not `Data`: `Instant` (monotonic, no JSON form), `Shared` (aliasing: the other side would get a silent copy).
 - Known limit: the decoder reads a `JsonEncode` type structurally from its fields (there is no decode hook), so a codec-only type does not round-trip through `parse`. Row 8 keeps `JsonEncode` types accepted as before; a `JsonDecode` hook is the real fix and is out of scope.
 - Known limit: `jencode_url` can still fail at run time for an unformattable `Url`, so encoding is total except for that case and `Unit`.
@@ -53,7 +53,7 @@
 - Functions are not `Clonable`. A function type does not record what a closure captured, so a copy could duplicate a resource. `List[fn() Int]` still builds, appends, iterates and calls; only `.clone()` on it is refused. `Queue` never cloned, so its bound is dropped; `PriorityQueue.peek` returns `ref Optional[T]` and drops `Clonable`; `Deque.pop_front`/`pop_back` move out with `List.replace`, and `to_list` (the one clone) moves to `interface DequeCopy[T: Clonable]`.
 - `SortedMap`, `SortedSet` and `SortedEntry` still require `Clonable` (they clone keys and values), so a sorted collection of functions no longer compiles; nothing uses one.
 - Natives declare `Data` next to their type: `impl Data for Bytes:`, and the same for `Decimal`, `BigInt`, `Duration`, `Timestamp`, `IpAddress`, `Cidr`. The Rust list of data natives is gone.
-- Fixtures that tested the old lenient behavior changed by design in `tests/e2e/testdata/stdlib/json.ms`: function and `Instant` fields, interface values, `Map[Decimal, Int]`, `Map[Money, Int]`, `parse[fn() Int]` and a record with a function field are now compile errors (reject fixtures `data-*.ms`). `strict` and the `stringify` doc now describe only `Unit` and `none`.
+- Fixtures that tested the old lenient behavior changed by design in `tests/e2e/testdata/stdlib/json.ms`: function and `Instant` fields, interface values, every `Map` and `Set`, `parse[fn() Int]` and a record with a function field are now compile errors (reject fixtures `data-*.ms`). `strict` and the `stringify` doc now describe only `Unit` and `none`.
 
 ## Components touched
 
