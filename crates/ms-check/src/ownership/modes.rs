@@ -25,6 +25,11 @@ pub enum Slot {
     Receiver,
     /// A parameter, by label.
     Param(Name),
+    /// What the receiver, a borrowing value, holds: a part reached through one of its `ref`
+    /// fields. A call lends from the places the receiver binding holds, not from the receiver.
+    HeldReceiver,
+    /// What a parameter that is a borrowing value holds.
+    HeldParam(Name),
 }
 
 /// Where a call's result may come from: a read-only parameter whose part it returns.
@@ -151,10 +156,29 @@ pub fn call_modes(
         pending: false,
     };
     match m.resolution(call) {
-        Resolution::Constructor { .. } => CallModes {
-            arguments: vec![ParamMode::Consume; args.len()],
-            ..borrow_all(None)
-        },
+        Resolution::Constructor { ty, case } => {
+            // A `ref` field borrows its argument, and the constructed value holds it.
+            let refs: Vec<Option<Name>> = (0..args.len())
+                .map(|i| label(i).filter(|l| case.is_none() && crate::types::field_is_ref(&ty, *l)))
+                .collect();
+            CallModes {
+                arguments: refs
+                    .iter()
+                    .map(|r| {
+                        if r.is_some() {
+                            ParamMode::Borrow
+                        } else {
+                            ParamMode::Consume
+                        }
+                    })
+                    .collect(),
+                origin: ResultOrigin {
+                    slots: refs.iter().flatten().map(|l| Slot::Param(*l)).collect(),
+                    ..ResultOrigin::default()
+                },
+                ..borrow_all(None)
+            }
+        }
         Resolution::Function(s) | Resolution::Constant(s) => {
             let source = s
                 .native

@@ -319,7 +319,14 @@ impl Cx {
                 self.tycache.insert(key.to_string(), ty);
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
-                    fields.push((f.name.to_string(), self.lower_ty(m, &f.ty)?));
+                    let ty = self.lower_ty(m, &f.ty)?;
+                    // A `ref` field holds a view of its value: the record never owns it.
+                    let ty = if ct::field_is_ref(t, f.name) {
+                        m.types.view(ty)
+                    } else {
+                        ty
+                    };
+                    fields.push((f.name.to_string(), ty));
                 }
                 m.records[id.index()].fields = fields;
                 Ok(ty)

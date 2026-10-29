@@ -890,6 +890,20 @@ impl Verifier<'_> {
                 m.list_elem(t(0)).ok_or("operand 0 must be a list")?;
                 want(res == Some(t(0)), "yields the shortened list")
             }
+            Op::RefNew => {
+                arity(1)?;
+                want(
+                    res.is_some_and(|r| m.types.kind(r) == &TyKind::Ref(t(0))),
+                    "ref.new yields a view of its operand",
+                )
+            }
+            Op::RefGet => {
+                arity(1)?;
+                want(
+                    matches!(m.types.kind(t(0)), TyKind::Ref(inner) if Some(*inner) == res),
+                    "ref.get reads the value a view borrows",
+                )
+            }
             Op::OptSome | Op::OptView => {
                 arity(1)?;
                 want(

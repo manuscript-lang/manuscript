@@ -812,6 +812,7 @@ impl<'m> Interp<'m> {
             }
             Op::OptSome => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], true, m))))),
             Op::OptView => set!(Val::Opt(Some(Rc::new(arg(f, regs, a[0], false, m))))),
+            Op::RefNew | Op::RefGet => set!(arg(f, regs, a[0], false, m)),
             Op::OptNone => set!(Val::Opt(None)),
             Op::OptIsSome => {
                 let Val::Opt(o) = &regs[a[0].index()] else {

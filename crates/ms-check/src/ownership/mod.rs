@@ -239,7 +239,12 @@ impl Hir<'_> {
             let lends = summaries
                 .get(&(c.module.file, c.id()))
                 .is_some_and(|s| !s.result.slots.is_empty());
-            if lends && !f.result_ref {
+            // A function returning a borrowing value lends without writing `ref`: its type says so.
+            let result_borrows = modules
+                .get(&c.module.file)
+                .and_then(|m| m.type_ref(f.result.id))
+                .is_some_and(|t| borrows(&t));
+            if lends && !f.result_ref && !result_borrows {
                 out.push(insert_ref(
                     diag(
                         c.module.file,

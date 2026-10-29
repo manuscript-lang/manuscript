@@ -297,6 +297,14 @@ impl<'m> Layouts<'m> {
                 }
             }
             TyKind::Alt(a) => self.alt_shape(*a),
+            // A view has the leaves of the value it borrows.
+            TyKind::Ref(inner) => {
+                let s = self.shape(*inner);
+                Shape {
+                    leaves: s.leaves.clone(),
+                    alt: None,
+                }
+            }
         }
     }
 
