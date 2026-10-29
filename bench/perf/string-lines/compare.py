@@ -60,7 +60,7 @@ def main():
             for row in sample(programs[variant]).values():
                 samples.append({"pair": pair, "variant": variant, **row})
     with open(args.output, "w", newline="") as output:
-        writer = csv.DictWriter(output, fieldnames=list(samples[0]))
+        writer = csv.DictWriter(output, fieldnames=list(samples[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(samples)
     print("case,before_median_ns,after_median_ns,before_min_ns,before_max_ns,after_min_ns,after_max_ns,speedup")
