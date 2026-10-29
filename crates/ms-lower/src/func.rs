@@ -64,6 +64,16 @@ pub(crate) struct FnLower<'a> {
     pub scopes: Vec<Vec<usize>>,
     /// Bindings closed at scope end and how each is closed when its scope is left.
     pub closers: HashMap<usize, crate::close::Closer>,
+    /// Loops that own their elements: how an element closes, the list and the loop index, by
+    /// the scope entry that closes the unreached ones when the loop is left.
+    pub rest_closers: HashMap<
+        usize,
+        (
+            crate::close::CloseKind,
+            ms_mir::builder::Var,
+            ms_mir::builder::Var,
+        ),
+    >,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -446,6 +456,7 @@ impl<'a> FnLower<'a> {
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
             closers: HashMap::new(),
+            rest_closers: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
@@ -827,6 +838,10 @@ impl<'a> FnLower<'a> {
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
+                    self.close_rest(&kind, list, idx);
+                    continue;
+                }
                 if let Some(closer) = self.closers.get(uid).cloned() {
                     self.close_at_scope_end(*uid, &closer);
                 }
