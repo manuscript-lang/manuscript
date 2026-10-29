@@ -13,26 +13,26 @@
         "position": {
           "file": "internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
           "line": 11,
-          "column": 26,
-          "offset": 420
+          "column": 21,
+          "offset": 413
         }
       },
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered)",
+        "message": "expected fn(HttpRequest) HttpResponse, found fn(<invalid>) HttpResponse (in argument 'handler' of buffered)",
         "position": {
           "file": "internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
           "line": 15,
           "column": 77,
-          "offset": 592
+          "offset": 582
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:11:26: type: cannot infer callback parameter request; provide a type or a known function context\n    |\n 11 |     let handle = lambda (request) -> HttpResponse:\n    |                          ^\n<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:15:77: type: expected Callable[[HttpRequest], HttpResponse], found Callable[[<invalid>], HttpResponse] (in argument 'handler' of buffered)\n    |\n 15 |     let _server = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle))\n    |                                                                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:11:21: type: cannot infer callback parameter request; provide a type or a known function context\n    |\n 11 |     let handle = fn(request) HttpResponse:\n    |                     ^\n<DIR>/internal-cli-testsafetyadvisoriesdonotbecomecheckerrors-4.ms:15:77: type: expected fn(HttpRequest) HttpResponse, found fn(<invalid>) HttpResponse (in argument 'handler' of buffered)\n    |\n 15 |     let _server = network().serve(address: \"127.0.0.1:0\", handler: buffered(handle))\n    |                                                                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

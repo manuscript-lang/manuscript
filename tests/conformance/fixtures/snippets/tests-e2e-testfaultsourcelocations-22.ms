@@ -1,8 +1,8 @@
 # conform: tags=faults,generics,optional,tier-core
 # conform: phase=run
 # conform: origin=tests/e2e/fault_locations_test.go:172 TestFaultSourceLocations
-def extract[T](value: Optional[T]) -> ref T:
+fn extract[T](value: Optional[T]) ref T:
     return value.get()
 
-export def main() -> Int:
+export fn main() Int:
     return extract[Int](none)

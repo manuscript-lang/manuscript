@@ -9,7 +9,7 @@ Each `.ms` file is a module with its own boundary. `export` makes a declaration 
 
 ## Names and declaration order
 
-Import several symbols with `from "./module.ms" import Name, OtherName`: a nonempty comma-separated list, trailing comma and multiple lines allowed. Single-symbol `from "./module.ms" import Name` also works. Duplicate names and collisions are errors.
+Import several symbols with `import {Name, OtherName} from "./module.ms"`: a nonempty comma-separated list, trailing comma and multiple lines allowed. Single-symbol `import Name from "./module.ms"` also works. Duplicate names and collisions are errors.
 
 Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/records.md#recursive-data).
 
@@ -34,7 +34,7 @@ export let MAX_ITEMS = 100
 let NAMES: List[String] = ["Ada", "Grace"]
 let LIMIT = MAX_ITEMS * 2
 
-def is_full(count: Int) -> Bool:
+fn is_full(count: Int) Bool:
     return count >= LIMIT
 ```
 
@@ -63,7 +63,7 @@ export type CustomerId:
 `src/main.ms` imports it:
 
 ```manuscript
-from "./domain/customers.ms" import CustomerId
+import CustomerId from "./domain/customers.ms"
 ```
 
 Relative imports resolve from the importing file's directory. Paths include `.ms` and name a file exactly; there is no directory or extension lookup.
@@ -77,7 +77,7 @@ type PrivateToken:
     value: String
 
 # Rejected: callers cannot name the internal result type.
-export def issue() -> PrivateToken:
+export fn issue() PrivateToken:
     return PrivateToken("token")
 ```
 
@@ -88,7 +88,7 @@ An `impl` in a source type's defining module is available wherever the type is u
 ## Standard-library imports
 
 ```manuscript
-from "@std/queue.ms" import Queue
+import Queue from "@std/queue.ms"
 ```
 
 `@std` is always available, needs no `[aliases]` entry, and cannot be overridden. Importing one export does not import the other type names in its signature: importing `Queue` does not bring other names from the module into scope (`Result` is in the prelude). Host accessors are imported separately and return services when called.
@@ -98,11 +98,11 @@ from "@std/queue.ms" import Queue
 A project-root `ms.toml` can define file and directory aliases. With `@domain` mapped to `./src/domain` and `@customers` to `./src/domain/customers.ms`, either import selects the same type:
 
 ```manuscript
-from "@domain/customers.ms" import CustomerId
+import CustomerId from "@domain/customers.ms"
 ```
 
 ```manuscript
-from "@customers" import CustomerId
+import CustomerId from "@customers"
 ```
 
 Aliases change only how a path is written; module identity follows the resolved file.

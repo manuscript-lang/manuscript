@@ -15,13 +15,13 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 The reserved words are:
 
 ```manuscript
-and break case continue def elif else export False fixture for if
-impl in interface lambda let match not or ref return self test True try type
-var while
+and break case continue else export extern false fixture fn for if
+impl import in interface let match not or ref return self test true try type
+unit var while
 ```
 
-- `from` starts an import at a module item, and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
-- Words from other languages (`fn`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) are not syntax and get a targeted diagnostic naming the Manuscript form (`def`, `()`, `try expr`, and so on).
+- `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
+- Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
 - Built-in type names and alternative constructors are not keywords.
 - `#` starts a comment through the end of the line.
@@ -60,7 +60,7 @@ No identifier character may follow a numeric token except the `d` suffix. Leadin
 
 Inside a call, list, or grouping, a function expression may have an inline suite (ending at the enclosing comma or closer) or an indented suite, which is the exception to newline suppression. At the header's `:`:
 
-1. Record the delimiter depth and the line's leading indentation (not the column of `lambda`).
+1. Record the delimiter depth and the line's leading indentation (not the column of `fn`).
 2. The next significant line must add exactly four spaces.
 3. Apply normal statement newlines and indentation at that depth; delimiters opened in the body still suppress newlines.
 4. The suite ends when a line returns to the header indentation or less; then the surrounding delimiter rules resume.
@@ -68,11 +68,11 @@ Inside a call, list, or grouping, a function expression may have an inline suite
 A delimiter opened outside the body cannot close at body indentation. Group the function when a following comma belongs to the enclosing arguments:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
         transform: (
-            lambda (value: Int) -> Int:
+            fn(value: Int) Int:
                 return value - 1
         ),
     )
@@ -81,20 +81,20 @@ def example() -> Int:
 The grouping close (eight spaces) ends the function suite before the comma. An ungrouped suite-bodied function can be the final argument:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
         value: 3,
-        transform: lambda (value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
     )
 ```
 
-Use `lambda value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
+Use `fn value: value - 1` when context supplies the parameter type; an inline body returns its value, while indented bodies use explicit returns. To add another argument after an ungrouped indented function, put the comma on its own line at the header's indentation:
 
 ```manuscript
-def example() -> Int:
+fn example() Int:
     return apply(
-        transform: lambda (value: Int) -> Int:
+        transform: fn(value: Int) Int:
             return value - 1
         ,
         value: 3,
@@ -109,9 +109,7 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 
 ```ebnf
 Module        = { Import | Declaration } ;
-Import        = "from", PlainStringLiteral, "import",
-                ( ImportNames, NEWLINE
-                | "(", NEWLINE, INDENT, ImportNames, DEDENT, ")", NEWLINE ) ;
+Import        = "import", ( Name | "{", ImportNames, "}" ), "from", PlainStringLiteral, NEWLINE ;
 ImportNames   = Name, { ",", Name }, [ "," ] ;
 Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
@@ -128,20 +126,20 @@ CaseDeclaration = "case", Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":", NEWLINE,
                        INDENT, ContractBody, DEDENT ;
 ContractBody  = OperationSignature, { OperationSignature } ;
-OperationSignature = "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE ;
-FunctionDeclaration = "def", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
-                      "->", ResultType, FunctionSuite ;
+OperationSignature = "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE ;
+FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
+                      ResultType, FunctionSuite ;
 ResultType    = [ "ref" ], Type ;
 (* `ref` marks a result that lends part of a borrowed parameter or the receiver; see ownership. A function type has no `ref`. *)
 Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
                  [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
 (* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = [ "var" ], "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, FunctionSuite ;
-ExternDeclaration = "extern", "def", Name, "(", [ FunctionParameters ], ")", "->", ResultType, NEWLINE
+MethodDeclaration = [ "var" ], "fn", Name, "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
+ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
 TestDeclaration = "test", PlainStringLiteral, Suite ;
-(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return ()` succeeds; try or return error(...) fails it. *)
+(* A test body behaves as if it returns Result[Unit, Error]: completing, bare return, or `return unit` succeeds; try or return error(...) fails it. *)
 (* Only canonical TestHooks implementations may omit operations; missing hooks are no-ops. *)
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
@@ -159,14 +157,14 @@ Type          = NamedType | FunctionType | "(", Type, ")" ;
 NamedType     = TypePath, [ TypeArguments ] ;
 TypePath      = Name, { ".", Name } ;
 TypeArguments = "[", Type, { ",", Type }, [ "," ], "]" ;
-FunctionType  = "Callable", "[", "[", [ Type, { ",", Type } ], "]", ",", Type, "]" ;
+FunctionType  = "fn", "(", [ Type, { ",", Type } ], ")", Type ;
 ```
 
 - A `type` declares record fields or alternative cases, never both; its methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A nullary case is `case Ready`, without `()`. Names are unique per scope.
-- A result type follows `->` after the parameter list (`def double(value: Int) -> Int:`). A lambda writes parameters without parentheses when none is typed (`lambda value: value * 2`), and with parentheses when it types a parameter or declares a result (`lambda (value: Int) -> Int: value * 2`).
-- Named functions (`def`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
+- A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
+- Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/records.md#construction), and `= none` on Optional interface parameters. Function types and alternative payloads have none. Parameter names in a `Callable` type do not exist: two function types are the same when their parameter types and result type match, and calls through function values are positional. No variadics or parameter patterns.
-- A named function or method body may be `...` (`def commands() -> Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
+- A named function or method body may be `...` (`fn commands() Commands: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. Interface, implementation, test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
 - `export` applies to types, interfaces, and named functions, not tests, benches, or `impl` blocks.
 - `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Every parameter in the signatures must occur in the receiver application, and operations and source methods cannot declare their own. Overlap follows [contracts](../types/contracts.md#generic-implementations).
@@ -189,14 +187,14 @@ CompoundAssignment = Name, { ".", Name }, ( "+=" | "-=" | "*=" | "/=" | "%=" ), 
 ReturnStatement = "return", [ Expression ] ;
 CallStatement = Expression ;
 IfStatement   = "if", [ "let", Name, "=" ], Expression, Suite,
-                { "elif", [ "let", Name, "=" ], Expression, Suite },
+                { "else", "if", [ "let", Name, "=" ], Expression, Suite },
                 [ "else", Suite ] ;
 WhileStatement = "while", Expression, Suite ;
 ForStatement  = "for", Name, "in", Expression, Suite ;
 MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
                  MatchArm, { MatchArm }, DEDENT ;
-MatchArm      = "case", (CasePattern | LiteralPattern | "_"), ArmSuite ;
-LiteralPattern = [ "-" ], Number | String | "True" | "False" ;
+MatchArm      = (CasePattern | LiteralPattern | "_"), ArmSuite ;
+LiteralPattern = [ "-" ], Number | String | "true" | "false" ;
 ArmSuite      = ":", (SimpleStatement | Expression
               | NEWLINE, INDENT, { Statement }, [ Expression, NEWLINE ], DEDENT) ;
 CasePattern   = CasePath, [ "(", PayloadNames, ")" ] ;
@@ -215,26 +213,26 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 
 ```manuscript
-def double(value: Int) -> Int: value * 2
-def positive(value: Int) -> Bool:
-    if value > 0: return True
-    else: return False
+fn double(value: Int) Int: value * 2
+fn positive(value: Int) Bool:
+    if value > 0: return true
+    else: return false
 ```
 
-- `elif` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
+- `else if` and `else` start on their own line at the `if` header's indentation; inline and indented branches may mix.
 - A match arm holds one statement or value inline, or statements then a value when indented.
 - Match patterns use positional payloads, not labels. On a contract view, a pattern names a complete concrete type and one receiver binding, with a final wildcard ([pattern matching](../control-flow/pattern-matching.md)).
-- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `a if c else b` (a required `else`; chains nest in the final `else`).
-- Local type, implementation, import, test, and bench declarations are rejected; a local function is a `def` statement, sugar for binding a `lambda` (it cannot call itself).
+- `match` is an expression even when discarded; loops are statements, and `if` is a statement. The conditional expression is `if c: a else: b` (a required `else:`; chains continue with `else if`). An inline function body that starts with one is parenthesized: `fn x: (if x > 0: 1 else: 0)`.
+- Local type, implementation, import, test, and bench declarations are rejected; a local function is a `fn` statement, sugar for binding a `fn` (it cannot call itself).
 - Resources follow the [scope-end cleanup](../cleanup/scopes.md) contract. There is no move, borrow, spawn, or deferred-call syntax.
 
 ## Rejected forms
 
 ```manuscript
 let count = 3                       # Not a complete module item.
-def wrong() -> Int:
+fn wrong() Int:
   return 1                          # A suite requires four spaces.
-def wrong() -> Int:
+fn wrong() Int:
     let (first, second) = pair       # Parentheses are not a binding pattern.
 ```
 

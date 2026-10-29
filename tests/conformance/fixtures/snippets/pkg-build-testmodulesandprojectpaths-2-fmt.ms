@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/build/compiler_test.go:239 TestModulesAndProjectPaths
-from "@value" import Identity
-from "@domain/value.ms" import read
+import Identity from "@value"
+import read from "@domain/value.ms"
 
-export def main() -> Int:
+export fn main() Int:
     return read(value: Identity(value: 0))

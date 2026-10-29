@@ -1,14 +1,14 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-fs,stdlib-process,tier-io,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/common-tasks.md:94
-from "@std/process.ms" import arguments
-from "@std/fs.ms" import filesystem, FileSystemError
+import arguments from "@std/process.ms"
+import {filesystem, FileSystemError} from "@std/fs.ms"
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let path = try arguments().first().ok_or(FileSystemError.InvalidInput)
-    return filesystem().write_file(path, "saved notes\n", replace: False)
+    return filesystem().write_file(path, "saved notes\n", replace: false)
 
-export def main() -> Int:
+export fn main() Int:
     if run().is_error():
         return 1
 

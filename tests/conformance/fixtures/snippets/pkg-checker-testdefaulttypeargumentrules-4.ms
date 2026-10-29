@@ -2,6 +2,6 @@
 # conform: phase=check
 # conform: origin=pkg/checker/default_type_arguments_test.go:26 TestDefaultTypeArgumentRules
 interface Named:
-    def name() -> String
+    fn name() String
 
-def f[T: Named = Int]() -> Unit: ()
+fn f[T: Named = Int]() Unit: unit

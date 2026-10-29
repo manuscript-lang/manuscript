@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:1: resolution: declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration\n   |\n 4 | type Result[T, E]:\n   | ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:8:1: type: String does not satisfy Error; use a type that implements it\n   |\n 8 | def wrong(value: Result[Int, String]) -> Optional[Int]: value.to_optional()\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:4:1: resolution: declaration Result reuses a prelude name; rename it, because Result always refers to the standard declaration\n   |\n 4 | type Result[T, E]:\n   | ^\n<DIR>/pkg-compiler-testconversionsandqueriesrejectinvalidcontracts-4.ms:8:1: type: String does not satisfy Error; use a type that implements it\n   |\n 8 | fn wrong(value: Result[Int, String]) Optional[Int]: value.to_optional()\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

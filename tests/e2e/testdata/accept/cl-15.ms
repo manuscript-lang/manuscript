@@ -1,13 +1,13 @@
-from "@std/test.ms" import expect_equal, expect_not_equal
-from "@std/decimal.ms" import Decimal
+import {expect_equal, expect_not_equal} from "@std/test.ms"
+import Decimal from "@std/decimal.ms"
 
 type Callback:
-    handler: Callable[[Int], Int]
+    handler: fn(Int) Int
 
-def increment(value: Int) -> Int:
+fn increment(value: Int) Int:
     return value + 1
 
-def preserve_key[K: Hashable](value: K) -> K:
+fn preserve_key[K: Hashable](value: K) K:
     return value
 
 test "derived value equality":

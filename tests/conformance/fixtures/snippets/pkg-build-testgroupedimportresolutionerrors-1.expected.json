@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-build-testgroupedimportresolutionerrors-1.ms",
           "line": 4,
-          "column": 48,
-          "offset": 220
+          "column": 22,
+          "offset": 194
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-1.ms:4:48: resolution: duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them\n   |\n 4 | from \"@std/collections.ms\" import ListBuilder, ListBuilder\n   |                                                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testgroupedimportresolutionerrors-1.ms:4:22: resolution: duplicate or intrinsic name ListBuilder; this name is already declared, imported, or built in, so rename one of them\n   |\n 4 | import {ListBuilder, ListBuilder} from \"@std/collections.ms\"\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

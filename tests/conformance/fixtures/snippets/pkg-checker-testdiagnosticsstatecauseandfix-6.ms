@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/hints_test.go:25 TestDiagnosticsStateCauseAndFix
-def g(a: Int) -> Int:
+fn g(a: Int) Int:
     return a
 
-def f() -> Int:
+fn f() Int:
     return g()

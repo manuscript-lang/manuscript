@@ -14,20 +14,20 @@
           "file": "diag-spelling-double.ms",
           "line": 5,
           "column": 12,
-          "offset": 149
+          "offset": 145
         },
         "fix": {
           "position": {
             "file": "diag-spelling-double.ms",
             "line": 5,
             "column": 12,
-            "offset": 149
+            "offset": 145
           },
           "end": {
             "file": "diag-spelling-double.ms",
             "line": 5,
             "column": 18,
-            "offset": 155
+            "offset": 151
           },
           "replacement": "Float"
         }

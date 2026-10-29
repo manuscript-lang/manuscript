@@ -1,5 +1,8 @@
-diag parse 1:1:0 end=1:7:6 fix=- "imports read: from \x22path.ms\x22 import name, other"
+diag parse 5:26:107 end=5:27:108 fix=- "'()' is not a value; the Unit value is written 'unit'"
 diag parse 6:10:118 end=6:11:119 fix=- "unexpected source character '$'; this character is not part of Manuscript's syntax outside text"
+diag parse 11:5:232 end=- fix=- "unmatched closing delimiter ')'; remove it or add the matching opener before it"
+import 1:1:0 1:8:7 "expect_equal" "@std/test.ms"
+(decl 3:8:48 fn "main" true false 0:0:0 false [] [] [] [] [] (type 3:18:58 "Int" [] [] nil) nil nil [(stmt 4:5:67 bind "" "" true 0:0:0 (pattern 4:9:71 name "number" [] []) nil nil (expr 4:18:80 number "1" nil nil [] [] [] [] [] nil [] []) [] []) (stmt 12:5:238 if "" "" false 0:0:0 nil nil nil (expr 12:14:247 binary "!=" (expr 12:8:241 name "total" nil nil [] [] [] [] [] nil [] []) (expr 12:17:250 number "2" nil nil [] [] [] [] [] nil [] []) [] [] [] [] [] nil [] []) [(stmt 13:9:261 return "" "" false 0:0:0 nil nil nil (expr 13:16:268 number "1" nil nil [] [] [] [] [] nil [] []) [] []) ] []) (stmt 15:5:275 return "" "" false 0:0:0 nil nil nil (expr 15:12:282 number "0" nil nil [] [] [] [] [] nil [] []) [] []) ])
 (decl 17:1:285 test "operands retain evaluation order" false false 0:0:0 false [] [] [] [] [] (type 17:1:285 "Unit" [] [] nil) nil nil [(stmt 18:5:330 call "" "" false 0:0:0 nil nil nil (expr 18:14:339 unary "try" nil (expr 18:18:343 call "" (expr 18:18:343 name "expect_equal" nil nil [] [] [] [] [] nil [] []) nil [(arg 18:5:330 "" (expr 18:5:330 call "" (expr 18:5:330 name "main" nil nil [] [] [] [] [] nil [] []) nil [] [] [] [] [] nil [] [])) (arg 18:31:356 "expected" (expr 18:41:366 number "0" nil nil [] [] [] [] [] nil [] [])) ] [] [] [] [] nil [] []) [] [] [] [] [] nil [] []) [] []) ])
 omitted []
-recovered []
+recovered [41-285 ]

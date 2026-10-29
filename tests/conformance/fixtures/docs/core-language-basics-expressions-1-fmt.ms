@@ -1,7 +1,7 @@
 # conform: tags=formatter,parser,strings,tier-core,try-result
 # conform: phase=parse
 # conform: origin=documentation/core-language/basics/expressions.md:73
-def load(path: String) -> Result[Config, ConfigError]:
+fn load(path: String) Result[Config, ConfigError]:
     let config = try read(path)
         | try parse
         | normalize

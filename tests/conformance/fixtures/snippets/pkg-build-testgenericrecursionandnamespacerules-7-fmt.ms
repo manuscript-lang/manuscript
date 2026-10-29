@@ -2,15 +2,15 @@
 # conform: phase=parse
 # conform: origin=pkg/build/compiler_test.go:262 TestGenericRecursionAndNamespaceRules
 interface Read[T]:
-    def get() -> T
+    fn get() T
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    def get() -> T:
+    fn get() T:
         return self.value
 
 impl Read[Int] for Box[Int]:
-    def get() -> Int:
+    fn get() Int:
         return self.value

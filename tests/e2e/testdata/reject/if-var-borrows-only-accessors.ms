@@ -1,4 +1,4 @@
-export def main() -> Int:
+export fn main() Int:
     var o: Optional[List[String]] = some(["a"])
     var n = 0
     if var l = o:

@@ -2,9 +2,9 @@
 # conform: phase=check
 # conform: origin=pkg/lexer/positions_test.go:14 TestMixedLineEndingPositions
 # é😀
-def value() -> String:
+fn value() String:
     # comment
-    if True:
+    if true:
         return "é😀"
 
     return ""

@@ -2,9 +2,9 @@ type Tree:
     case Leaf
     case Node(left: Tree, value: Int)
 
-def sum(t: Tree) -> Int:
+fn sum(t: Tree) Int:
     match t:
-        case Node(l, v):
+        Node(l, v):
             return sum(l) + v
-        case Leaf:
+        Leaf:
             return 0

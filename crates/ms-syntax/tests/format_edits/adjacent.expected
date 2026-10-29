@@ -1,8 +1,8 @@
-def edited() -> Int:
+fn edited() Int:
     let first = value.one().two()
     let second = value.three().four()
     let text = "λ"
-    consume(lambda: return first)
+    consume(fn: return first)
     return (
         alpha_long_name
         + beta_long_name

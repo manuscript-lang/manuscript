@@ -17,19 +17,19 @@ export type ChannelError:
 
 impl Error for ChannelError:
     # Returns the fixed diagnostic `channel: closed` or `channel: broken: <reason>`.
-    def message() -> String:
+    fn message() String:
         match self:
-            case Closed: return "channel: closed"
-            case Broken(reason): return "channel: broken: " + reason
+            Closed: return "channel: closed"
+            Broken(reason): return "channel: broken: " + reason
 
 # How one end of a channel moves values. Each kind of group provides its own; use `Channel`.
 export interface Transport[In, Out]:
     # Sends `value`, waiting while the other end has too many unread values.
-    var def send(value: In) -> Result[Unit, ChannelError]
+    var fn send(value: In) Result[Unit, ChannelError]
     # Waits for the next value. `ok(none)` means the other end closed and every value was read.
-    var def receive() -> Result[Optional[Out], ChannelError]
+    var fn receive() Result[Optional[Out], ChannelError]
     # Closes this end. Safe to call again.
-    var def close() -> Unit
+    var fn close() Unit
 
 # One end of a two-way channel: sends `In`, receives `Out`. `spawn` makes both ends.
 # A send waits while the other end has many unread values; a receive waits for the next one.
@@ -42,14 +42,14 @@ export type Channel[In, Out]:
 impl Channel[In, Out]:
     # Sends `value` to the other end, waiting while it has many unread values.
     # Gives `Closed` once either end is closed.
-    var def send(value: In) -> Result[Unit, ChannelError]:
+    var fn send(value: In) Result[Unit, ChannelError]:
         return self.transport.send(value)
 
     # Waits for the next value from the other end. Gives `ok(none)` once the other end closed and
     # every value it sent was read, and `Closed` once this end is closed.
-    var def receive() -> Result[Optional[Out], ChannelError]:
+    var fn receive() Result[Optional[Out], ChannelError]:
         return self.transport.receive()
 
     # Closes this end: the other end reads what is left, then `ok(none)`. Safe to call again.
-    var def close() -> Unit:
+    var fn close() Unit:
         self.transport.close()

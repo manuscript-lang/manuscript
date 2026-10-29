@@ -13,26 +13,26 @@
         "position": {
           "file": "pkg-compiler-testboundedmatchselection-2.ms",
           "line": 4,
-          "column": 16,
-          "offset": 157
+          "column": 15,
+          "offset": 156
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testboundedmatchselection-2.ms",
           "line": 4,
-          "column": 38,
-          "offset": 179
+          "column": 34,
+          "offset": 175
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:16: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | def unknown(s: Shape) -> Int: return area(s)\n   |                ^\n<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:38: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'def area(...) -> T:', or import it from a module\n   |\n 4 | def unknown(s: Shape) -> Int: return area(s)\n   |                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:15: resolution: unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |               ^\n<DIR>/pkg-compiler-testboundedmatchselection-2.ms:4:34: resolution: unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

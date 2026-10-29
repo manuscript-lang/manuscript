@@ -4,4 +4,4 @@
 type Wrapped[T]:
     case value(r: Result[T, Error])
 
-def first() -> Wrapped[Int]: Wrapped.value(f())
+fn first() Wrapped[Int]: Wrapped.value(f())

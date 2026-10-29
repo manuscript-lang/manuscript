@@ -51,20 +51,20 @@
 ### Syntax and API
 
 ```manuscript
-from "@std/processes.ms" import ProcessGroup
-from "@std/tasks.ms" import Channel
+import ProcessGroup from "@std/processes.ms"
+import Channel from "@std/tasks.ms"
 
 type HashConfig:
     algorithm: String
 
-def hasher(parent: Channel[String, Bytes], argument: HashConfig):
-    while True:
+fn hasher(parent: Channel[String, Bytes], argument: HashConfig):
+    while true:
         if let chunk = parent.receive():
             parent.send(digest(argument.algorithm, chunk))
         else:
             break
 
-def hash_all(chunks: List[Bytes]) -> List[String]:
+fn hash_all(chunks: List[Bytes]) List[String]:
     var digests = List[String]()
     with let group = ProcessGroup():
         let worker = group.spawn(hasher, HashConfig(algorithm="sha256"))

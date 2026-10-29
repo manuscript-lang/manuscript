@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,match,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lint_program_test.go:110 TestMatchArmPayloadBindingsAreLinted
-def answer() -> Int:
+fn answer() Int:
     match parse("1"):
-        case ok(value): return value
-        case error(_): return 2
+        ok(value): return value
+        error(_): return 2

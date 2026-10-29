@@ -1,10 +1,10 @@
 # conform: tags=control-flow,formatter,interpolation,modules,mutation,parser,stdlib-io,stdlib-time,tier-io
 # conform: phase=parse
 # conform: origin=bench/perf/results/2026-10-18-linux-amd64/dynamic-counter.ms
-from "@std/time.ms" import clock, Instant
-from "@std/io.ms" import stdout
+import {clock, Instant} from "@std/time.ms"
+import stdout from "@std/io.ms"
 
-def measure(start: Int) -> Int:
+fn measure(start: Int) Int:
     let t = clock().now()
     var i = start
     var hits = 0
@@ -14,11 +14,11 @@ def measure(start: Int) -> Int:
         i += 1
 
     let elapsed = clock().now().difference(t).to_nanoseconds()
-    let line = f"{start} {elapsed} {hits}\n"
+    let line = "{start} {elapsed} {hits}\n"
     let ignored = stdout().write(line.to_bytes())
     return hits
 
-export def main() -> Int:
+export fn main() Int:
     measure(-137)
     measure(0)
     measure(5)

@@ -1,15 +1,15 @@
 # conform: tags=closures,diagnostics,faults,generics,interfaces,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/defaults_test.go:67 TestDefaultCapturesShareFreely
-def run[T](operation: Callable[[], T]) -> T:
+fn run[T](operation: fn() T) T:
     return operation()
 
 interface Read:
-    def get() -> Int
+    fn get() Int
 
-def call(view: Read) -> Unit:
-    let callback = lambda (value: Int = view.get()) -> Int:
+fn call(view: Read) Unit:
+    let callback = fn(value: Int = view.get()) Int:
         return value
-    let task = lambda () -> Int:
+    let task = fn() Int:
         return callback()
     let _result = run(task)

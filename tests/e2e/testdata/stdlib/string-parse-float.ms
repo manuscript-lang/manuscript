@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/math.ms" import infinity, parse_float
+import {expect_equal, expect_true} from "@std/test.ms"
+import {infinity, parse_float} from "@std/math.ms"
 
 test "parse_float reads integers decimals and exponents":
     "42".parse_float() | try expect_equal(some(42.0))

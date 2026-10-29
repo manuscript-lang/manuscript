@@ -21,8 +21,14 @@ fn fix_renames_misspellings_and_adds_imports() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "def total(items: List[Int]) -> Int:\n    let sum = 0\n    return sumn\n\n\
-        def main() -> Int:\n    let _ = stdout().write(\"hi\\n\")\n    return total(itemz: [1])\n";
+    let source = "fn total(items: List[Int]) Int:\n\
+        \x20   let sum = 0\n\
+        \x20   return sumn\n\
+        \n\
+        fn main() Int:\n\
+        \x20   let _ = stdout().write(\"hi\\n\")\n\
+        \x20   return total(itemz: [1])\n\
+        ";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
@@ -34,7 +40,7 @@ fn fix_renames_misspellings_and_adds_imports() {
     assert!(text.contains("applied 3 fixes in 1 file"), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(
-        fixed.starts_with("from \"@std/io.ms\" import stdout\n"),
+        fixed.starts_with("import stdout from \"@std/io.ms\"\n"),
         "{fixed}"
     );
     assert!(fixed.contains("return sum\n"), "{fixed}");
@@ -56,22 +62,34 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-habits-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "type Color:\n    case Red\n    case Green\n\n\
-        def pick() -> Color:\n    return Red()\n\n\
-        def main() -> Int:\n    let fixed = 1\n    fixed = 2\n    let _a = Some(1)\n    let _b = true\n    let _d = 1.5d\n    return fixed\n";
+    let source = "type Color:\n\
+        \x20   case Red\n\
+        \x20   case Green\n\
+        \n\
+        fn pick() Color:\n\
+        \x20   return Red()\n\
+        \n\
+        fn main() Int:\n\
+        \x20   let fixed = 1\n\
+        \x20   fixed = 2\n\
+        \x20   let _a = Some(1)\n\
+        \x20   let _b = true\n\
+        \x20   let _d = 1.5d\n\
+        \x20   return fixed\n\
+        ";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
     assert!(
-        fixed.starts_with("from \"@std/decimal.ms\" import Decimal\n"),
+        fixed.starts_with("import Decimal from \"@std/decimal.ms\"\n"),
         "{fixed}"
     );
     assert!(fixed.contains("return Red\n"), "{fixed}");
     assert!(fixed.contains("var fixed = 1"), "{fixed}");
     assert!(fixed.contains("let _a = some(1)"), "{fixed}");
-    assert!(fixed.contains("let _b = True"), "{fixed}");
+    assert!(fixed.contains("let _b = true"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -93,8 +111,19 @@ fn fix_wraps_expressions_to_convert_types() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-wrap-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "def say(text: String) -> Unit:\n    return ()\n\n\
-        export def main() -> Int:\n    let n = 3\n    let m = 4\n    let _a: Float = n\n    let _b: Float = n + m\n    let _d: Float = 7\n    let _e = 1.5 * n\n    say(text: n + 1)\n    return 0\n";
+    let source = "fn say(text: String) Unit:\n\
+        \x20   return unit\n\
+        \n\
+        export fn main() Int:\n\
+        \x20   let n = 3\n\
+        \x20   let m = 4\n\
+        \x20   let _a: Float = n\n\
+        \x20   let _b: Float = n + m\n\
+        \x20   let _d: Float = 7\n\
+        \x20   let _e = 1.5 * n\n\
+        \x20   say(text: n + 1)\n\
+        \x20   return 0\n\
+        ";
     std::fs::write(dir.join("a.ms"), source).unwrap();
 
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
@@ -107,7 +136,7 @@ fn fix_wraps_expressions_to_convert_types() {
     );
     assert!(fixed.contains("let _d: Float = 7.0"), "{fixed}");
     assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
-    assert!(fixed.contains("say(text: f\"{n + 1}\")"), "{fixed}");
+    assert!(fixed.contains("say(text: \"{n + 1}\")"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -159,7 +188,7 @@ fn json_diagnostics_carry_the_sub_code_of_their_cause() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("a.ms"),
-        "export def main() -> Int:\n    let unused = 1\n    return 0\n",
+        "export fn main() Int:\n    let unused = 1\n    return 0\n",
     )
     .unwrap();
     let (status, text) = ms(&["check", "a.ms", "--json"], &dir);
@@ -174,7 +203,7 @@ fn fix_renames_a_misspelled_member() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fix-member-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = "def main() -> Int:\n    let xs = [1, 2]\n    return xs.lenght() + xs.len()\n";
+    let source = "fn main() Int:\n    let xs = [1, 2]\n    return xs.lenght() + xs.len()\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");

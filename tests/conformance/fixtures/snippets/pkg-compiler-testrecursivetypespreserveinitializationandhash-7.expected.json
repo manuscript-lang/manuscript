@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testrecursivetypespreserveinitializationandhash-7.ms",
           "line": 4,
-          "column": 19,
-          "offset": 193
+          "column": 18,
+          "offset": 192
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-7.ms:4:19: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n   |\n 4 | def f(values: Set[Node]) -> Unit: return\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testrecursivetypespreserveinitializationandhash-7.ms:4:18: resolution: unknown type Node; declare it with 'type Node:' / 'interface Node:', declare it as a type parameter, or import it\n   |\n 4 | fn f(values: Set[Node]) Unit: return\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

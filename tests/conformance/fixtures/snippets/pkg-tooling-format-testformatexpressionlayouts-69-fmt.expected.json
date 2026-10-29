@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def work() -> Int:\n    if (\n        tagged_detail(integer) != \"integer 7\"\n        or tagged_detail(text) != \"text diagnostic\"\n    ):\n        return 1\n\n    return 0\n"
+    "fmt": "fn work() Int:\n    if (\n        tagged_detail(integer) != \"integer 7\"\n        or tagged_detail(text) != \"text diagnostic\"\n    ):\n        return 1\n\n    return 0\n"
   }
 }

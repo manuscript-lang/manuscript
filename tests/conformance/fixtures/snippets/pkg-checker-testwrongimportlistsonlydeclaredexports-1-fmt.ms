@@ -4,6 +4,6 @@
 export type MoneyError:
     case Invalid
 
-export def parse_cents() -> Int: 0
+export fn parse_cents() Int: 0
 
-export def format_cents() -> String: "0"
+export fn format_cents() String: "0"

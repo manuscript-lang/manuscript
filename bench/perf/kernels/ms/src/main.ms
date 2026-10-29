@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
 
 type Body:
     x: Float
@@ -19,15 +19,15 @@ type Tree:
     case Leaf
     case Node(left: Tree, right: Tree)
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _ignored = stdout().write(text)
 
-def sieve(n: Int) -> Int:
+fn sieve(n: Int) Int:
     var flags: List[Bool] = List[Bool]()
     var i = 0
 
     while i <= n:
-        flags.append(True)
+        flags.append(true)
         i += 1
 
     var count = 0
@@ -40,14 +40,14 @@ def sieve(n: Int) -> Int:
             var j = i * i
 
             while j <= n:
-                flags.set(j, False)
+                flags.set(j, false)
                 j += i
 
         i += 1
 
     return count
 
-def advance(var bodies: List[Body], steps: Int) -> Float:
+fn advance(var bodies: List[Body], steps: Int) Float:
     let n = bodies.length()
     var s = 0
 
@@ -99,12 +99,12 @@ def advance(var bodies: List[Body], steps: Int) -> Float:
 
     return e
 
-def cell(g: Grid, x: Int, y: Int) -> Int:
+fn cell(g: Grid, x: Int, y: Int) Int:
     let wx = (x + g.width) % g.width
     let wy = (y + g.height) % g.height
     return g.cells.get(wy * g.width + wx)
 
-def neighbors(g: Grid, x: Int, y: Int) -> Int:
+fn neighbors(g: Grid, x: Int, y: Int) Int:
     var n = 0
     var dy = -1
 
@@ -120,7 +120,7 @@ def neighbors(g: Grid, x: Int, y: Int) -> Int:
 
     return n
 
-def step(g: Grid) -> Grid:
+fn step(g: Grid) Grid:
     var next = List[Int]()
     var y = 0
 
@@ -142,7 +142,7 @@ def step(g: Grid) -> Grid:
 
     return Grid(g.width, g.height, next)
 
-def life(gens: Int) -> Int:
+fn life(gens: Int) Int:
     var cells = List[Int]()
     var i = 0
 
@@ -161,9 +161,9 @@ def life(gens: Int) -> Int:
         g = step(g)
         n += 1
 
-    return g.cells.fold(0, lambda (acc: Int, v: Int) -> Int: return acc + v)
+    return g.cells.fold(0, fn(acc: Int, v: Int) Int: return acc + v)
 
-def matmul(n: Int) -> Float:
+fn matmul(n: Int) Float:
     var a = List[List[Float]]()
     var b = List[List[Float]]()
     var i = 0
@@ -203,20 +203,20 @@ def matmul(n: Int) -> Float:
 
     return total
 
-def make(depth: Int) -> Tree:
+fn make(depth: Int) Tree:
     if depth == 0:
         return Leaf
 
     return Node(make(depth - 1), make(depth - 1))
 
-def check(t: Tree) -> Int:
+fn check(t: Tree) Int:
     match t:
-        case Leaf:
+        Leaf:
             return 1
-        case Node(l, r):
+        Node(l, r):
             return 1 + check(l) + check(r)
 
-def trees(rounds: Int) -> Int:
+fn trees(rounds: Int) Int:
     var total = 0
     var r = 0
 
@@ -226,7 +226,7 @@ def trees(rounds: Int) -> Int:
 
     return total
 
-def collatz(limit: Int) -> Int:
+fn collatz(limit: Int) Int:
     var best = 0
     var n = 1
 
@@ -248,7 +248,7 @@ def collatz(limit: Int) -> Int:
 
     return best
 
-def wordfreq(n: Int) -> Int:
+fn wordfreq(n: Int) Int:
     var m = Map[Int, Int]()
     var i = 0
 
@@ -259,17 +259,17 @@ def wordfreq(n: Int) -> Int:
 
     return m.length()
 
-def timed(name: String, run: Callable[[], Int]) -> Unit:
+fn timed(name: String, run: fn() Int) Unit:
     let t = clock().now()
     let r = run()
-    say(f"{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
+    say("{name} {clock().now().difference(t).to_nanoseconds() / 1000} {r}\n")
 
-export def main() -> Int:
-    timed("sieve_5M", lambda () -> Int: return sieve(5000000))
+export fn main() Int:
+    timed("sieve_5M", fn() Int: return sieve(5000000))
 
     timed(
         "nbody_200k",
-        lambda () -> Int:
+        fn() Int:
             var bodies = [
                 Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0),
                 Body(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0),
@@ -280,9 +280,9 @@ export def main() -> Int:
             return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get(0)
     )
 
-    timed("life_128x128_50", lambda () -> Int: return life(50))
-    timed("matmul_200", lambda () -> Int: return matmul(200).truncate_to_int().get(0))
-    timed("trees_d16_x20", lambda () -> Int: return trees(20))
-    timed("collatz_1M", lambda () -> Int: return collatz(1000000))
-    timed("map_count_2M", lambda () -> Int: return wordfreq(2000000))
+    timed("life_128x128_50", fn() Int: return life(50))
+    timed("matmul_200", fn() Int: return matmul(200).truncate_to_int().get(0))
+    timed("trees_d16_x20", fn() Int: return trees(20))
+    timed("collatz_1M", fn() Int: return collatz(1000000))
+    timed("map_count_2M", fn() Int: return wordfreq(2000000))
     return 0

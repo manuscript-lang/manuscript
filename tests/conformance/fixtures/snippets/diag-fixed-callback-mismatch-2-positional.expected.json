@@ -12,27 +12,27 @@
         "message": "cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "diag-fixed-callback-mismatch-2-positional.ms",
-          "line": 6,
-          "column": 25,
-          "offset": 241
+          "line": 8,
+          "column": 21,
+          "offset": 222
         }
       },
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[String], <invalid>], found Callable[[Int], Int] (in argument 'callback' of apply)",
+        "message": "expected fn(String) <invalid>, found fn(Int) Int (in argument 'callback' of apply)",
         "position": {
           "file": "diag-fixed-callback-mismatch-2-positional.ms",
-          "line": 6,
-          "column": 31,
-          "offset": 247
+          "line": 8,
+          "column": 27,
+          "offset": 228
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-fixed-callback-mismatch-2-positional.ms:6:25: type: cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | def exercise() -> Unit: apply(source)\n   |                         ^\n<DIR>/diag-fixed-callback-mismatch-2-positional.ms:6:31: type: expected Callable[[String], <invalid>], found Callable[[Int], Int] (in argument 'callback' of apply)\n   |\n 6 | def exercise() -> Unit: apply(source)\n   |                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-fixed-callback-mismatch-2-positional.ms:8:21: type: cannot infer type argument T for apply; write apply[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 8 | fn exercise() Unit: apply(source)\n   |                     ^\n<DIR>/diag-fixed-callback-mismatch-2-positional.ms:8:27: type: expected fn(String) <invalid>, found fn(Int) Int (in argument 'callback' of apply)\n   |\n 8 | fn exercise() Unit: apply(source)\n   |                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

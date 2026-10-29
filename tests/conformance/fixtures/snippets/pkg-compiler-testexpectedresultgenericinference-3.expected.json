@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
           "line": 4,
-          "column": 30,
-          "offset": 207
+          "column": 26,
+          "offset": 203
         }
       },
       {
@@ -24,21 +24,21 @@
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
           "line": 4,
-          "column": 46,
-          "offset": 223
+          "column": 42,
+          "offset": 219
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
             "line": 4,
-            "column": 46,
-            "offset": 223
+            "column": 42,
+            "offset": 219
           },
           "end": {
             "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
             "line": 4,
-            "column": 53,
-            "offset": 230
+            "column": 49,
+            "offset": 226
           },
           "replacement": "failed"
         }
@@ -50,15 +50,15 @@
         "position": {
           "file": "pkg-compiler-testexpectedresultgenericinference-3.ms",
           "line": 6,
-          "column": 36,
-          "offset": 277
+          "column": 32,
+          "offset": 269
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:4:30: resolution: unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 4 | def failed[T]() -> Result[T, Failure]: error(Failure(\"empty\"))\n   |                              ^\n<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:4:46: resolution: unknown binding Failure; did you mean 'failed'?\n   |\n 4 | def failed[T]() -> Result[T, Failure]: error(Failure(\"empty\"))\n   |                                              ^\n<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:6:36: type: cannot infer type argument T for failed; write failed[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | def first() -> Result[Int, Error]: failed()\n   |                                    ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:4:26: resolution: unknown type Failure; declare it with 'type Failure:' / 'interface Failure:', declare it as a type parameter, or import it\n   |\n 4 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                          ^\n<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:4:42: resolution: unknown binding Failure; did you mean 'failed'?\n   |\n 4 | fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n   |                                          ^\n<DIR>/pkg-compiler-testexpectedresultgenericinference-3.ms:6:32: type: cannot infer type argument T for failed; write failed[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn first() Result[Int, Error]: failed()\n   |                                ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

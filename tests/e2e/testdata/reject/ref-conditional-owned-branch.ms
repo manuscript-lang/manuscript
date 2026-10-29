@@ -2,4 +2,4 @@ type Pair:
     left: String
 
 impl Pair:
-    def pick(first: Bool) -> ref String: self.left if first else "literal"
+    fn pick(first: Bool) ref String: (if first: self.left else: "literal")

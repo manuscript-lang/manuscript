@@ -1,42 +1,42 @@
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
 type DivideError:
     case DivideByZero
     case Overflow
 
 impl Error for DivideError:
-    def message() -> String:
+    fn message() String:
         match self:
-            case DivideByZero: return "divide by zero"
-            case Overflow: return "overflow"
+            DivideByZero: return "divide by zero"
+            Overflow: return "overflow"
 
-extern def greet_divide(left: Int, right: Int) -> Result[Int, DivideError]
+extern fn greet_divide(left: Int, right: Int) Result[Int, DivideError]
 
-extern def greet_shout(name: String) -> Result[String, DivideError]
+extern fn greet_shout(name: String) Result[String, DivideError]
 
-extern def greet_check(value: Int) -> Result[Unit, DivideError]
+extern fn greet_check(value: Int) Result[Unit, DivideError]
 
-extern def greet_double(value: Int) -> Int
+extern fn greet_double(value: Int) Int
 
-extern def greet_scale(value: Float, factor: Float) -> Float
+extern fn greet_scale(value: Float, factor: Float) Float
 
-extern def greet_is_long(name: String, limit: Int) -> Bool
+extern fn greet_is_long(name: String, limit: Int) Bool
 
-extern def greet_hello(name: String) -> String
+extern fn greet_hello(name: String) String
 
-def describe(result: Result[Int, DivideError]) -> String:
+fn describe(result: Result[Int, DivideError]) String:
     if let value = result:
-        return f"ok {value}"
+        return "ok {value}"
 
-    return f"error {result.err().message()}"
+    return "error {result.err().message()}"
 
-def shout(result: Result[String, DivideError]) -> String:
+fn shout(result: Result[String, DivideError]) String:
     if let value = result:
         return value.clone()
 
-    return f"error {result.err().message()}"
+    return "error {result.err().message()}"
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
     let _ = out.write(greet_double(21).to_string() + "\n")
     let _ = out.write(greet_scale(1.5, 4.0).to_string() + "\n")

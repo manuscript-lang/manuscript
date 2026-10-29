@@ -6,14 +6,14 @@ type Counter:
     total: Int
 
 impl Counter:
-    var def bump(by: Int) -> Int:
+    var fn bump(by: Int) Int:
         self.total += by
         return self.total
 
-def add(var xs: List[Int], v: Int) -> Unit:
+fn add(var xs: List[Int], v: Int) Unit:
     xs.append(v)
 
-export def main() -> Int:
+export fn main() Int:
     var c = Counter(total: 1)
     let a = c.bump(4)
     var l = [1]

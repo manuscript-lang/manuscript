@@ -1,9 +1,9 @@
-from "@std/test.ms" import expect_equal, expect_true
+import {expect_equal, expect_true} from "@std/test.ms"
 
 type Plain:
     n: Int
 
-def smallest[T: Comparable & Clonable](values: List[T]) -> Optional[T]:
+fn smallest[T: Comparable & Clonable](values: List[T]) Optional[T]:
     return values.min()
 
 test "List operations written in Manuscript apply without an import":
@@ -14,13 +14,13 @@ test "List operations written in Manuscript apply without an import":
 
 test "a comparator-less call and a comparator call share a name":
     let items = [Plain(3), Plain(1), Plain(2)]
-    let ordered = items.sorted(lambda a, b: a.n - b.n)
-    try expect_equal(ordered.map(lambda p: p.n), [1, 2, 3])
+    let ordered = items.sorted(fn a, b: a.n - b.n)
+    try expect_equal(ordered.map(fn p: p.n), [1, 2, 3])
 
     var numbers = [2, 3, 1]
     numbers.sort()
     try expect_equal(numbers, [1, 2, 3])
-    numbers.sort(lambda a, b: b - a)
+    numbers.sort(fn a, b: b - a)
     try expect_equal(numbers, [3, 2, 1])
 
 test "the bound is carried through a generic function":

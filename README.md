@@ -59,18 +59,18 @@ The standard library is about 14,000 lines of Manuscript across 40+ modules (HTT
 [Get the compiler](documentation/learn/getting-started.md), save this as `config.ms`, run `ms test config.ms`:
 
 ```manuscript
-from "@std/json.ms" import parse
-from "@std/test.ms" import expect_equal
+import parse from "@std/json.ms"
+import expect_equal from "@std/test.ms"
 
 type Config:
     port: Optional[Int]
 
-def port_from(text: String) -> Result[Int, Error]:
+fn port_from(text: String) Result[Int, Error]:
     let config = try parse[Config](text)
     return ok(config.port.get(8080))
 
 test "an unset port uses the default":
-    let port = try port_from("{\"port\":null}")
+    let port = try port_from("\{\"port\":null\}")
     try expect_equal(port, 8080)
 ```
 

@@ -1,39 +1,16 @@
 # conform: tags=aliasing,control-flow,formatter,match,modules,parser,stdlib-bytes,stdlib-crypto,stdlib-encoding,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/crypto.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "@std/crypto.ms" import (
-    sha256,
-    sha384,
-    sha512,
-    derive_key,
-    seal,
-    open,
-    public_key,
-    sign,
-    verify,
-    constant_time_equal,
-    aes_ctr,
-    aes_cbc_encrypt,
-    aes_cbc_decrypt,
-    ecdsa_generate,
-    ecdsa_sign,
-    ecdsa_verify,
-    ecdh_shared_secret,
-    public_key_der,
-    rsa_generate,
-    rsa_sign,
-    rsa_verify,
-    rsa_sign_pss,
-    rsa_verify_pss,
-    rsa_encrypt,
-    rsa_decrypt,
-    Curve,
-    CryptoError,
-    HashAlgorithm
-)
-from "@std/encoding.ms" import hex_encode, hex_decode
-from "@std/bytes.ms" import Bytes
+import {expect_equal, expect_false, expect_true} from "@std/test.ms"
+import {
+    sha256, sha384, sha512, derive_key, seal, open, public_key, sign, verify,
+    constant_time_equal, aes_ctr, aes_cbc_encrypt, aes_cbc_decrypt, ecdsa_generate,
+    ecdsa_sign, ecdsa_verify, ecdh_shared_secret, public_key_der, rsa_generate,
+    rsa_sign, rsa_verify, rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt, Curve,
+    CryptoError, HashAlgorithm
+} from "@std/crypto.ms"
+import {hex_encode, hex_decode} from "@std/encoding.ms"
+import Bytes from "@std/bytes.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":
     try expect_false(
@@ -50,12 +27,8 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
         )
     )
 
-    let mac = (
-        try HashAlgorithm
-        .Sha256
-        .hmac(
-            "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
-        )
+    let mac = try HashAlgorithm.Sha256.hmac(
+        "key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
     )
     try expect_false(
         (
@@ -120,10 +93,8 @@ test "additional hash algorithms match published vectors":
     try expect_equal(HashAlgorithm.Sha3_512.digest(abc).length(), 64)
 
 test "key derivation supports PBKDF2 and HKDF across hashes":
-    let pbkdf2 = (
-        try HashAlgorithm
-        .Sha1
-        .derive_key("password".to_bytes(), "salt".to_bytes(), 1, 20)
+    let pbkdf2 = try HashAlgorithm.Sha1.derive_key(
+        "password".to_bytes(), "salt".to_bytes(), 1, 20
     )
     try expect_equal(hex_encode(pbkdf2), "0c60c80f961f0e71f3a9b524af6012062fe037a6")
 

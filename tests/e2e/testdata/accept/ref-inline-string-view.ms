@@ -1,20 +1,20 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Box:
     name: String
     other: String
 
 impl Box:
-    def short() -> ref String:
+    fn short() ref String:
         return self.name.trim()
 
-def churn(n: Int) -> Int:
+fn churn(n: Int) Int:
     var total = 0
     for i in 0..n:
-        total += f"{i}".length()
+        total += "{i}".length()
     return total
 
-def lend(line: String) -> ref String:
+fn lend(line: String) ref String:
     return line.trim()
 
 test "view of an inline string stays valid across calls":
@@ -22,16 +22,16 @@ test "view of an inline string stays valid across calls":
     let t = lend(line)
     let spent = churn(50)
     try expect_equal(t, "abc")
-    try expect_equal(spent > 0, True)
+    try expect_equal(spent > 0, true)
 
 test "view of an inline string field":
     let b = Box(name: " hi ", other: "x")
     let s = b.short()
-    try expect_equal(churn(20) > 0, True)
+    try expect_equal(churn(20) > 0, true)
     try expect_equal(s, "hi")
     try expect_equal(b.other, "x")
 
-def pressure(a: Int, b: Int, c: Int, d: Int) -> Int:
+fn pressure(a: Int, b: Int, c: Int, d: Int) Int:
     var x = a * 3 + b
     var y = b * 5 + c
     var z = c * 7 + d
@@ -45,14 +45,14 @@ def pressure(a: Int, b: Int, c: Int, d: Int) -> Int:
 
     return x + y + z + w
 
-def built(n: Int) -> String:
-    return f"  {n}  "
+fn built(n: Int) String:
+    return "  {n}  "
 
 test "view of a runtime-built inline string survives register pressure":
     let line = built(42)
     let t = lend(line)
     let spent = pressure(1, 2, 3, 4) + churn(30)
-    try expect_equal(spent > 0, True)
+    try expect_equal(spent > 0, true)
     try expect_equal(t, "42")
     try expect_equal(t.length(), 2)
     try expect_equal(line.length(), 6)
@@ -60,5 +60,5 @@ test "view of a runtime-built inline string survives register pressure":
 test "view of an inline field built at runtime":
     let b = Box(name: built(7), other: "x")
     let s = b.short()
-    try expect_equal(pressure(4, 3, 2, 1) > 0, True)
+    try expect_equal(pressure(4, 3, 2, 1) > 0, true)
     try expect_equal(s, "7")

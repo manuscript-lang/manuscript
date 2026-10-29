@@ -1,31 +1,31 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Point:
     x: Int
 
-def ident[T](x: T) -> T:
+fn ident[T](x: T) T:
     return x
 
-def pick[T](first: Bool, left: T, right: T) -> T:
+fn pick[T](first: Bool, left: T, right: T) T:
     var chosen = left
     if not first:
         chosen = right
     return chosen
 
-def keep[T](value: T) -> T:
+fn keep[T](value: T) T:
     let copy = value
     return copy
 
-def count(value: Int) -> Int:
+fn count(value: Int) Int:
     return value + 1
 
 test "parametric generics keep each instantiation's values":
     try expect_equal(ident(41), 41)
     try expect_equal(ident(1.5), 1.5)
     try expect_equal(ident("go"), "go")
-    try expect_false(not ident(True))
-    try expect_equal(pick(first: True, left: 1, right: 2), 1)
-    try expect_equal(pick(first: False, left: "a", right: "b"), "b")
+    try expect_false(not ident(true))
+    try expect_equal(pick(first: true, left: 1, right: 2), 1)
+    try expect_equal(pick(first: false, left: "a", right: "b"), "b")
     try expect_equal(keep(count(1)), 2)
 
 test "instances copy non-scalar arguments":
@@ -35,7 +35,7 @@ test "instances copy non-scalar arguments":
     try expect_equal(same.x, 4)
     try expect_equal(point.x, 3)
 
-    var alias = pick(first: True, left: point, right: Point(9)).clone()
+    var alias = pick(first: true, left: point, right: Point(9)).clone()
     alias.x = 5
     try expect_equal(alias.x, 5)
     try expect_equal(point.x, 3)

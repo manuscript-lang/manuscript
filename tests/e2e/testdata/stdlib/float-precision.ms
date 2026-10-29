@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal
-from "@std/math.ms" import parse_float
+import expect_equal from "@std/test.ms"
+import parse_float from "@std/math.ms"
 
 test "precision formatting preserves signed zero significant padding and special values":
     try expect_equal((-0.0).to_precision(1), "-0")

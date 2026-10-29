@@ -14,7 +14,7 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
           "line": 7,
           "column": 15,
-          "offset": 261
+          "offset": 257
         }
       },
       {
@@ -24,19 +24,19 @@
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
           "line": 12,
-          "column": 22,
-          "offset": 368
+          "column": 18,
+          "offset": 352
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module",
+        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
           "line": 12,
-          "column": 27,
-          "offset": 373
+          "column": 23,
+          "offset": 357
         }
       },
       {
@@ -47,14 +47,14 @@
           "file": "pkg-compiler-testresultargumentinferencerejects-8.ms",
           "line": 10,
           "column": 1,
-          "offset": 298
+          "offset": 290
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:7:15: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 7 | impl Read for E1:\n   |               ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:22: type: cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n    |\n 12 | def first() -> Unit: read(f())\n    |                      ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:27: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'def f(...) -> T:', or import it from a module\n    |\n 12 | def first() -> Unit: read(f())\n    |                           ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:10:1: type: Read does not satisfy Error; use a type that implements it\n    |\n 10 | def read[T](r: Result[T, Read]) -> Unit: return\n    | ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:7:15: resolution: unknown type E1; declare it with 'type E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 7 | impl Read for E1:\n   |               ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:18: type: cannot infer type argument T for read; write read[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n    |\n 12 | fn first() Unit: read(f())\n    |                  ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:12:23: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n    |\n 12 | fn first() Unit: read(f())\n    |                       ^\n<DIR>/pkg-compiler-testresultargumentinferencerejects-8.ms:10:1: type: Read does not satisfy Error; use a type that implements it\n    |\n 10 | fn read[T](r: Result[T, Read]) Unit: return\n    | ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

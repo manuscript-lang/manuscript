@@ -1,16 +1,16 @@
 interface Shape:
-    def label() -> String
+    fn label() String
 
 type Sq:
     name: String
 
 impl Shape for Sq:
-    def label() -> String:
+    fn label() String:
         return self.name.clone()
 
 type Holder:
     s: Shape
 
-def store(q: Sq) -> String:
+fn store(q: Sq) String:
     let h = Holder(s: q)  # error: moved here but used again
     return h.s.label() + q.name

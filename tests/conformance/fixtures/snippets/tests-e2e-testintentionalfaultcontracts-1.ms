@@ -1,18 +1,18 @@
 # conform: tags=control-flow,faults,modules,stdlib-faults,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/intentional_faults_test.go:12 TestIntentionalFaultContracts
-from "@std/test.ms" import expect_equal
-from "@std/core.ms" import panic
+import expect_equal from "@std/test.ms"
+import panic from "@std/core.ms"
 
-def positive(value: Int) -> Int:
+fn positive(value: Int) Int:
     if value > 0:
         return value
     else:
         panic(message: "positive value required")
 
-def discard(value: Int) -> Unit:
+fn discard(value: Int) Unit:
     return
 
 test "return contracts":
     positive(value: 3) | try expect_equal(expected: 3)
-    discard(value: 1) | try expect_equal(expected: ())
+    discard(value: 1) | try expect_equal(expected: unit)

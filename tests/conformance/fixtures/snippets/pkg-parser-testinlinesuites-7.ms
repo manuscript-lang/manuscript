@@ -1,6 +1,6 @@
 # conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
 # conform: phase=check
 # conform: origin=pkg/parser/parser_test.go:204 TestInlineSuites
-def f() -> Unit:
-    while True: break
+fn f() Unit:
+    while true: break
     for x in values: consume(x)

@@ -14,14 +14,14 @@
           "file": "pkg-tooling-testdropredundantlabels-1.ms",
           "line": 19,
           "column": 1,
-          "offset": 470
+          "offset": 458
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-testdropredundantlabels-1.ms:19:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n    |\n 19 | def use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-testdropredundantlabels-1.ms:19:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n    |\n 19 | fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

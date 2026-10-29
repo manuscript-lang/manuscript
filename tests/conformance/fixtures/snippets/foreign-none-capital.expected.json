@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding None; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)",
+        "position": {
+          "file": "foreign-none-capital.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 145
+        },
+        "fix": {
+          "position": {
+            "file": "foreign-none-capital.ms",
+            "line": 5,
+            "column": 12,
+            "offset": 145
+          },
+          "end": {
+            "file": "foreign-none-capital.ms",
+            "line": 5,
+            "column": 16,
+            "offset": 149
+          },
+          "replacement": "none"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/foreign-none-capital.ms:5:12: resolution: unknown binding None; Manuscript has no null: absence is an Optional, written none, and a present value is some(value)\n   |\n 5 |     return None\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

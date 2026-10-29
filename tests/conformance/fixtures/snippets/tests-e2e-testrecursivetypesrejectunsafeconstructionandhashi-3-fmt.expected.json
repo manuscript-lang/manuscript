@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Grow[T]:\n    next: Callable[[], Grow[List[T]]]\n\nexport def main() -> Int: return 0\n"
+    "fmt": "type Grow[T]:\n    next: fn() Grow[List[T]]\n\nexport fn main() Int: return 0\n"
   }
 }

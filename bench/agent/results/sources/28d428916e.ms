@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # One lexical token: `kind` is "num", "op" (`+ - * /`), "lp", "rp", or "bad".
 type Tok:
@@ -14,9 +14,9 @@ type Res:
     pos: Int
     div0: Bool
 
-def bad() -> Res: Res(ok: False, value: 0, pos: 0, div0: False)
+fn bad() Res: Res(ok: false, value: 0, pos: 0, div0: false)
 
-def tokenize(line: String) -> List[Tok]:
+fn tokenize(line: String) List[Tok]:
     var toks = List[Tok]()
     var digits = ""
 
@@ -34,9 +34,9 @@ def tokenize(line: String) -> List[Tok]:
 
         if "+-*/".contains(c):
             toks.append(Tok(kind: "op", text: c))
-        elif c == "(":
+        else if c == "(":
             toks.append(Tok(kind: "lp", text: c))
-        elif c == ")":
+        else if c == ")":
             toks.append(Tok(kind: "rp", text: c))
         else:
             toks.append(Tok(kind: "bad", text: c))
@@ -45,21 +45,21 @@ def tokenize(line: String) -> List[Tok]:
         toks.append(Tok(kind: "num", text: digits))
     return toks
 
-def has_op(toks: List[Tok], pos: Int, ops: String) -> Bool:
+fn has_op(toks: List[Tok], pos: Int, ops: String) Bool:
     return (
         pos < toks.length()
         and toks[pos].kind == "op"
         and ops.contains(toks[pos].text)
     )
 
-def parse_primary(toks: List[Tok], pos: Int) -> Res:
+fn parse_primary(toks: List[Tok], pos: Int) Res:
     if pos >= toks.length():
         return bad()
 
     let t = toks[pos]
     if t.kind == "num":
         return Res(
-            ok: True, value: t.text.parse_int().get(0), pos: pos + 1, div0: False
+            ok: true, value: t.text.parse_int().get(0), pos: pos + 1, div0: false
         )
 
     if t.kind == "lp":
@@ -67,21 +67,21 @@ def parse_primary(toks: List[Tok], pos: Int) -> Res:
         if not inner.ok or inner.pos >= toks.length() or toks[inner.pos].kind != "rp":
             return bad()
 
-        return Res(ok: True, value: inner.value, pos: inner.pos + 1, div0: inner.div0)
+        return Res(ok: true, value: inner.value, pos: inner.pos + 1, div0: inner.div0)
 
     return bad()
 
-def parse_unary(toks: List[Tok], pos: Int) -> Res:
+fn parse_unary(toks: List[Tok], pos: Int) Res:
     if has_op(toks, pos, "-"):
         let r = parse_unary(toks, pos + 1)
         if not r.ok:
             return r
 
-        return Res(ok: True, value: 0 - r.value, pos: r.pos, div0: r.div0)
+        return Res(ok: true, value: 0 - r.value, pos: r.pos, div0: r.div0)
 
     return parse_primary(toks, pos)
 
-def parse_term(toks: List[Tok], pos: Int) -> Res:
+fn parse_term(toks: List[Tok], pos: Int) Res:
     var cur = parse_unary(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "*/"):
@@ -95,16 +95,16 @@ def parse_term(toks: List[Tok], pos: Int) -> Res:
 
         if op == "*":
             value = cur.value * r.value
-        elif r.value == 0:
-            div0 = True
+        else if r.value == 0:
+            div0 = true
         else:
             value = cur.value / r.value
 
-        cur = Res(ok: True, value: value, pos: r.pos, div0: div0)
+        cur = Res(ok: true, value: value, pos: r.pos, div0: div0)
 
     return cur
 
-def parse_expr(toks: List[Tok], pos: Int) -> Res:
+fn parse_expr(toks: List[Tok], pos: Int) Res:
     var cur = parse_term(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "+-"):
@@ -116,11 +116,11 @@ def parse_expr(toks: List[Tok], pos: Int) -> Res:
         var value = cur.value + r.value
         if op == "-":
             value = cur.value - r.value
-        cur = Res(ok: True, value: value, pos: r.pos, div0: cur.div0 or r.div0)
+        cur = Res(ok: true, value: value, pos: r.pos, div0: cur.div0 or r.div0)
 
     return cur
 
-def evaluate(line: String) -> String:
+fn evaluate(line: String) String:
     let toks = tokenize(line)
     let r = parse_expr(toks, 0)
     if not r.ok or r.pos != toks.length():
@@ -128,9 +128,9 @@ def evaluate(line: String) -> String:
     if r.div0:
         return "error: division by zero"
 
-    return f"{r.value}"
+    return "{r.value}"
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
@@ -138,6 +138,6 @@ export def main() -> Int:
         if text.length() == 0:
             continue
 
-        out.write(f"{evaluate(text)}\n").get()
+        out.write("{evaluate(text)}\n").get()
 
     return 0

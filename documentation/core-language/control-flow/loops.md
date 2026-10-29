@@ -10,7 +10,7 @@ weight = 2
 ## Traversing a list
 
 ```manuscript
-def sum(values: List[Int]) -> Int:
+fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
         total += value
@@ -24,14 +24,14 @@ def sum(values: List[Int]) -> Int:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "sum indexes":
     var total = 0
     for index in 0..5:
         total += index
     if total != 10:
-        return panic(f"Expected 10, got {total}")
+        return panic("Expected 10, got {total}")
 ```
 
 `end <= start` visits nothing. Bounds are evaluated once, in order, before the first iteration. As a plain value, `(0..count)` is a `List[Int]`; over 268,435,456 items faults, so use `range_by(max_items:)` for larger lists.
@@ -40,7 +40,7 @@ Use `while` with a counter for other steps or computed exits:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "five iterations":
     var index = 0
@@ -60,8 +60,8 @@ Increment the counter before any `continue` that would skip its update.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/collections.ms" import range_by
-from "@std/test.ms" import expect_equal
+import range_by from "@std/collections.ms"
+import expect_equal from "@std/test.ms"
 
 test "sum even indexes":
     let indexes = try range_by(start: 0, end: 6, step: 2)
@@ -87,7 +87,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 `MapEntry[K, V]` is a record with `key: K` and `value: V` (constructor from `@std/collections.ms`; iteration needs no import). It is not a positional pair; destructure it in the body. The entry is borrowed from the map, not copied. A loop header `for e in m.entries()`, `m.values()` or `m.keys()` over a map the body does not change walks the map the same way instead of building the list; when the body changes the map, the list is built first, so the loop sees the entries as they were.
 
 ```manuscript
-def total(values: Map[String, Int]) -> Int:
+fn total(values: Map[String, Int]) Int:
     var sum = 0
     for entry in values:
         let {key: _key, value} = entry
@@ -99,26 +99,26 @@ def total(values: Map[String, Int]) -> Int:
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T`. It is the same as `while True:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T`. It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
-from "@std/core.ms" import Iterator
-from "@std/io.ms" import stdout
+import Iterator from "@std/core.ms"
+import stdout from "@std/io.ms"
 
 type Countdown:
     left: Int
 
 impl Iterator[Int] for Countdown:
-    var def next() -> Optional[Int]:
+    var fn next() Optional[Int]:
         if self.left == 0:
             return none
         self.left -= 1
         return self.left + 1
 
-export def main() -> Int:
+export fn main() Int:
     for n in Countdown(3):
-        if stdout().write(f"{n}\n").is_error():
+        if stdout().write("{n}\n").is_error():
             return 1
     return 0
 ```
@@ -126,7 +126,7 @@ export def main() -> Int:
 ## Repeating while a condition holds
 
 ```manuscript
-def count_down(start: Int) -> Int:
+fn count_down(start: Int) Int:
     var remaining = start
     while remaining > 0:
         remaining -= 1
@@ -144,4 +144,4 @@ Each of the three runs cleanup for the scopes it exits. Each iteration is its ow
 
 ## Cancellation
 
-Tasks share one thread and are cancelled at their next wait, so a loop that never waits is not stopped by cancellation or a timeout and keeps other tasks from running. Wait inside the loop, or poll `cancelled()` and return. Lint rule **MSL111** flags a `while True` loop in a module that imports `@std/tasks.ms` when its body neither waits nor exits.
+Tasks share one thread and are cancelled at their next wait, so a loop that never waits is not stopped by cancellation or a timeout and keeps other tasks from running. Wait inside the loop, or poll `cancelled()` and return. Lint rule **MSL111** flags a `while true` loop in a module that imports `@std/tasks.ms` when its body neither waits nor exits.

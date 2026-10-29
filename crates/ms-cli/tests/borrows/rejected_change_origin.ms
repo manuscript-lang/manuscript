@@ -1,4 +1,4 @@
-export def main() -> Int:
+export fn main() Int:
     var m = Map[String, List[Int]]()
     m.add("a", [1])
 

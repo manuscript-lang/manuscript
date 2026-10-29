@@ -1,5 +1,5 @@
-def first[T](_parameters: T) -> T:
+fn first[T](_parameters: T) T:
     return _a0
 
-export def main() -> Int:
+export fn main() Int:
     return first(_arguments)

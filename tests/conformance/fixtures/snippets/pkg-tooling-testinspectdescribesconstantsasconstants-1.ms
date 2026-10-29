@@ -3,5 +3,5 @@
 # conform: origin=pkg/tooling/inspect_constants_test.go:10 TestInspectDescribesConstantsAsConstants
 let LIMIT = 10
 
-def size() -> Int:
+fn size() Int:
     return LIMIT

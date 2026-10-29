@@ -30,12 +30,12 @@ test "struct records read write compare format and clone":
     let copy = a.clone()
     copy.y = 9
     try expect_false(not (a.y == 2 and copy.y == 9))
-    if "{a}" != "Point(x: 1, y: 2)": return fail("format changed: {a}")
+    if "\{a\}" != "Point(x: 1, y: 2)": return fail("format changed: \{a\}")
 
 test "struct records with mixed field types":
     let shape = Shape("disc", 1.5, solid: true, corner: Point(0, 0), tags: ["a"])
     shape.weight *= 2.0
-    shape.name = "{shape.name}!"
+    shape.name = "\{shape.name\}!"
     shape.corner.x = 4
     shape.tags.append("b")
     try expect_false(

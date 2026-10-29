@@ -1,8 +1,11 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-def original(value: Int = 7) -> Int: value + 1
-def replacement(value: Int) -> Int: value + 2
-def choose[T](left: T, right: T) -> T: right
-export def main() -> Int:
+fn original(value: Int = 7) Int: value + 1
+
+fn replacement(value: Int) Int: value + 2
+
+fn choose[T](left: T, right: T) T: right
+
+export fn main() Int:
     let first = choose(original, replacement)(3)
     let second = choose(replacement, original)(3)
     return first + second

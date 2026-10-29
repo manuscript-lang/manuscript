@@ -360,7 +360,7 @@ mod tests {
             entry: None,
             deterministic: true,
         };
-        let text = render_meta(&meta) + "def main() -> Int: ...\n";
+        let text = render_meta(&meta) + "fn main() Int: ...\n";
         let back = parse_meta(&text).unwrap();
         assert_eq!(back.tags, meta.tags);
         assert_eq!(back.phase, meta.phase);

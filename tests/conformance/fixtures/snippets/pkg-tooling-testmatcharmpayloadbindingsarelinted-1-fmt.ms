@@ -1,5 +1,5 @@
 # conform: tags=formatter,parser,strings,tier-core,try-result
 # conform: phase=parse
 # conform: origin=pkg/tooling/lint_program_test.go:105 TestMatchArmPayloadBindingsAreLinted
-def parse(text: String) -> Result[Int, Error]:
+fn parse(text: String) Result[Int, Error]:
     return ok(1)

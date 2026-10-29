@@ -1,15 +1,15 @@
 # conform: tags=control-flow,faults,lists,modules,mutation,stdlib-collections,stdlib-faults,tier-stdlib
 # conform: phase=run
 # conform: origin=bench/language/life.ms
-from "@std/collections.ms" import filled
-from "@std/core.ms" import panic
+import filled from "@std/collections.ms"
+import panic from "@std/core.ms"
 
-def make_cells() -> List[Int]:
+fn make_cells() List[Int]:
     if let values = filled(0, 16384): return values
 
     return panic("fill failure")
 
-export def main() -> Int:
+export fn main() Int:
     var cells = make_cells()
     var next = make_cells()
 
@@ -23,8 +23,8 @@ export def main() -> Int:
             for x in 0..128:
                 var neighbors = 0
 
-                for dy in -1..2:
-                    for dx in -1..2:
+                for dy in - 1..2:
+                    for dx in - 1..2:
                         if dx != 0 or dy != 0:
                             let index = (
                                 (

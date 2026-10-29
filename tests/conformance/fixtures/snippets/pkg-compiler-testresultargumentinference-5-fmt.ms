@@ -4,4 +4,4 @@
 type Holder[T]:
     r: Result[T, Error]
 
-def first() -> Holder[Int]: Holder(f())
+fn first() Holder[Int]: Holder(f())

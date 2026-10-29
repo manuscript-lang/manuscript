@@ -1,22 +1,22 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/math.ms" import BigInt, from_int
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import {BigInt, from_int} from "@std/math.ms"
+import read_lines from "@std/streams.ms"
 
 type Entry:
     category: String
     cents: BigInt
 
-def is_digits(text: String) -> Bool:
-    return text.length() > 0 and text.chars().all(lambda c: "0123456789".contains(c))
+fn is_digits(text: String) Bool:
+    return text.length() > 0 and text.chars().all(fn c: "0123456789".contains(c))
 
-def digits_value(text: String) -> BigInt:
+fn digits_value(text: String) BigInt:
     var total = from_int(0)
     for c in text.chars():
         total = total * from_int(10) + from_int("0123456789".index_of(c).get(0))
     return total
 
 # Converts an amount such as `12`, `12.5` or `0.07` to exact cents.
-def amount_cents(amount: String) -> Optional[BigInt]:
+fn amount_cents(amount: String) Optional[BigInt]:
     let parts = amount.split(".")
     if parts.length() == 1:
         if is_digits(amount):
@@ -33,7 +33,7 @@ def amount_cents(amount: String) -> Optional[BigInt]:
     return some(digits_value(parts[0]) * from_int(100) + digits_value(padded))
 
 # A quoted category may contain commas; an unquoted one ends at the first comma.
-def parse_line(line: String) -> Optional[Entry]:
+fn parse_line(line: String) Optional[Entry]:
     let chars = line.chars()
     var category = ""
     var start = 0
@@ -64,15 +64,15 @@ def parse_line(line: String) -> Optional[Entry]:
         return some(Entry(category: category, cents: cents))
     return none
 
-def format_cents(cents: BigInt) -> String:
+fn format_cents(cents: BigInt) String:
     let hundred = from_int(100)
     let whole = (cents / hundred).to_string_radix(10)
     let fraction = (cents % hundred).to_int().get(0)
     if fraction < 10:
-        return f"{whole}.0{fraction}"
-    return f"{whole}.{fraction}"
+        return "{whole}.0{fraction}"
+    return "{whole}.{fraction}"
 
-export def main() -> Int:
+export fn main() Int:
     var totals = Map[String, BigInt]()
     var skipped = 0
     for line in read_lines(stdin()).get():
@@ -87,8 +87,8 @@ export def main() -> Int:
     var categories = totals.keys()
     categories.sort()
     for category in categories:
-        output += f"{category}: {format_cents(totals.get(category).get(from_int(0)))}\n"
+        output += "{category}: {format_cents(totals.get(category).get(from_int(0)))}\n"
     if skipped > 0:
-        output += f"skipped: {skipped}\n"
+        output += "skipped: {skipped}\n"
     stdout().write(output).get()
     return 0

@@ -5,6 +5,6 @@ type Box[Error: Error]:
     cause: Error
 
 impl Error for Box[Error]:
-    def message() -> String: self.cause.message()
+    fn message() String: self.cause.message()
 
-export def main() -> Int: 0
+export fn main() Int: 0

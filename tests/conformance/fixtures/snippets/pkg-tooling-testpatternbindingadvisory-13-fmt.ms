@@ -6,14 +6,14 @@ type Failure:
     case Denied(reason: String)
 
 impl Error for Failure:
-    def message() -> String: "f"
+    fn message() String: "f"
 
-def failure_code(cause: Failure) -> Int:
+fn failure_code(cause: Failure) Int:
     match cause:
-        case NotFound: return 1
-        case Denied(_): return 2
+        NotFound: return 1
+        Denied(_): return 2
 
-def classify(result: Result[Int, Failure]) -> Int:
+fn classify(result: Result[Int, Failure]) Int:
     match result:
-        case error(cause): return failure_code(cause)
-        case ok(value): return value
+        error(cause): return failure_code(cause)
+        ok(value): return value

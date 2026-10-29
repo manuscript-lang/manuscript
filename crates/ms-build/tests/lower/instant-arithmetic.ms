@@ -3,9 +3,9 @@
 # expect-mir: "msstd_time_instant_difference"
 # expect-mir: "msstd_time_instant_unshift"
 
-from "@std/time.ms" import clock
+import clock from "@std/time.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let a = clock().now()
     let b = a + 5.seconds
     let d = b - a

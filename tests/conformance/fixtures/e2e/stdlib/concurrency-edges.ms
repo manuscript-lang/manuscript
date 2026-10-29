@@ -1,45 +1,45 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-tasks,stdlib-workers,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/tasks.ms" import Task, TaskGroup
-from "@std/test.ms" import expect_equal, expect_true
-from "@std/time.ms" import nanoseconds, sleep
-from "@std/workers.ms" import Worker, WorkerGroup, worker_channel
+import {Channel, ChannelError} from "@std/channels.ms"
+import {Task, TaskGroup} from "@std/tasks.ms"
+import {expect_equal, expect_true} from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
+import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
 
 # Edge behaviour found by probing the concurrency runtime: misuse and limits answer with errors, never a
 # fault or a hang, and every wait here ends on its own.
 
-def quick() -> Int:
+fn quick() Int:
     return 7
 
-def slow() -> Int:
+fn slow() Int:
     sleep(nanoseconds(10000000000))
     return 1
 
-def deaf(ch: Channel[Unit, Int]) -> Int:
+fn deaf(ch: Channel[Unit, Int]) Int:
     sleep(nanoseconds(10000000000))
     return 1
 
-def mute(ch: Channel[Int, Unit]) -> Int:
+fn mute(ch: Channel[Int, Unit]) Int:
     sleep(nanoseconds(10000000000))
     return 1
 
-def waits() -> Unit:
+fn waits() Unit:
     var ch = worker_channel[Int, Int]()
     let _got = ch.receive()
 
-def waiter(t: Task[Int]) -> Int:
+fn waiter(t: Task[Int]) Int:
     let r = t.result()
     if r.is_ok():
         return 0
 
     return r.err().message().length()
 
-def echo(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
+fn echo(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch
     var n = 0
 
-    while True:
+    while true:
         if let v = try c.receive():
             try c.send(v + 1)
             n += 1
@@ -78,7 +78,7 @@ test "creating and closing task groups many times leaves them usable":
 
     for i in 0..2000:
         let group = TaskGroup[Int]()
-        let t = group.spawn(lambda ch: quick())
+        let t = group.spawn(fn ch: quick())
         done += t.result().get(0)
 
     try expect_equal(done, 2000 * 7)
@@ -87,28 +87,28 @@ test "spawning into a closed group never runs the task":
     var group = TaskGroup[Int]()
     group.close()
 
-    var t = group.spawn(lambda ch: quick())
+    var t = group.spawn(fn ch: quick())
     let r = t.result()
-    try expect_equal(r.is_error(), True)
+    try expect_equal(r.is_error(), true)
     try expect_equal(r.err().message(), "task: closed")
-    try expect_equal(t.channel.send(()).is_ok(), False)
+    try expect_equal(t.channel.send(unit).is_ok(), false)
 
 test "a zero timeout cancels the task instead of running it":
     var group = TaskGroup[Int](timeout: some(nanoseconds(0)))
-    let t = group.spawn(lambda ch: quick())
-    try expect_equal(t.result().is_ok(), False)
+    let t = group.spawn(fn ch: quick())
+    try expect_equal(t.result().is_ok(), false)
     group.close()
 
     let group2 = TaskGroup[Int]()
-    let t2 = group2.spawn(lambda ch: quick(), timeout: some(nanoseconds(0)))
-    try expect_equal(t2.result().is_ok(), False)
+    let t2 = group2.spawn(fn ch: quick(), timeout: some(nanoseconds(0)))
+    try expect_equal(t2.result().is_ok(), false)
 
 test "a task waiting on a task of another group sees it time out":
     var seen = 0
     var a = TaskGroup[Int]()
     let b = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
-    let tb = b.spawn(lambda ch: slow())
-    let waiting = a.spawn(lambda ch: waiter(tb))
+    let tb = b.spawn(fn ch: slow())
+    let waiting = a.spawn(fn ch: waiter(tb))
     seen = waiting.result().get(-1)
     a.close()
     try expect_equal(seen, "task: timed out".length())
@@ -117,25 +117,25 @@ test "a send to a task cancelled by its group ends with closed":
     let group = TaskGroup[Int, Int, Unit](timeout: some(nanoseconds(100000000)))
     var t = group.spawn(deaf)
     var sent = 0
-    var stopped = False
+    var stopped = false
 
     while sent < 1000:
         let r = t.channel.send(sent)
 
         if r.is_error():
-            stopped = True
+            stopped = true
             break
 
         sent += 1
 
-    try expect_equal(stopped, True)
+    try expect_equal(stopped, true)
 
 test "a receive from a task cancelled by its group ends with none":
     let group = TaskGroup[Int, Unit, Int](timeout: some(nanoseconds(100000000)))
     var t = group.spawn(mute)
     let r = t.channel.receive()
-    try expect_equal(r.is_ok(), True)
-    try expect_equal(r.get().is_none(), True)
+    try expect_equal(r.is_ok(), true)
+    try expect_equal(r.get().is_none(), true)
 
 test "handles of a closed worker group answer instead of faulting":
     var kept: Optional[Worker[Int, Int]] = none
@@ -145,8 +145,8 @@ test "handles of a closed worker group answer instead of faulting":
 
     if let worker = kept:
         var w = worker
-        try expect_equal(w.wait().is_ok(), False)
-        try expect_equal(w.channel.send(1).is_ok(), False)
+        try expect_equal(w.wait().is_ok(), false)
+        try expect_equal(w.channel.send(1).is_ok(), false)
         w.cancel()
 
 test "the worker limit refuses extra workers and frees slots when they end":
@@ -170,4 +170,4 @@ test "the worker limit refuses extra workers and frees slots when they end":
         let _ended = started[i].wait()
 
     let again = group.spawn(waits)
-    try expect_equal(again.is_ok(), True)
+    try expect_equal(again.is_ok(), true)

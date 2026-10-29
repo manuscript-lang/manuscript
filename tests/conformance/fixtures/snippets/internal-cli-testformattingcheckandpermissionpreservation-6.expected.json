@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding sum; declare it with 'let sum = ...' before use, define 'def sum(...) -> T:', or import it from a module",
+        "message": "unknown binding sum; declare it with 'let sum = ...' before use, define 'fn sum(...) T:', or import it from a module",
         "position": {
           "file": "internal-cli-testformattingcheckandpermissionpreservation-6.ms",
           "line": 5,
           "column": 12,
-          "offset": 184
+          "offset": 180
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testformattingcheckandpermissionpreservation-6.ms:5:12: resolution: unknown binding sum; declare it with 'let sum = ...' before use, define 'def sum(...) -> T:', or import it from a module\n   |\n 5 |     return sum(left: read(1), right: 2)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testformattingcheckandpermissionpreservation-6.ms:5:12: resolution: unknown binding sum; declare it with 'let sum = ...' before use, define 'fn sum(...) T:', or import it from a module\n   |\n 5 |     return sum(left: read(1), right: 2)\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

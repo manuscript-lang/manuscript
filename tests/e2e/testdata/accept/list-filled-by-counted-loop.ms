@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def row(width: Int, seed: Int) -> List[Int]:
+fn row(width: Int, seed: Int) List[Int]:
     var cells = List[Int]()
     cells.append(seed)
 
@@ -16,7 +16,7 @@ def row(width: Int, seed: Int) -> List[Int]:
 
     return cells
 
-def table(n: Int) -> List[Int]:
+fn table(n: Int) List[Int]:
     var prev = List[Int]()
     var j = 0
 

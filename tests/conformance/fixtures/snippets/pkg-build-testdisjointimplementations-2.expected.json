@@ -9,19 +9,19 @@
       {
         "code": "MS3010",
         "phase": "type",
-        "message": "duplicate or overlapping implementation; Read is already implemented for Box[Callable[[Int], Int]] (or an overlapping type), so remove one impl",
+        "message": "duplicate or overlapping implementation; Read is already implemented for Box[fn(Int) Int] (or an overlapping type), so remove one impl",
         "position": {
           "file": "pkg-build-testdisjointimplementations-2.ms",
           "line": 14,
           "column": 1,
-          "offset": 334
+          "offset": 317
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testdisjointimplementations-2.ms:14:1: type: duplicate or overlapping implementation; Read is already implemented for Box[Callable[[Int], Int]] (or an overlapping type), so remove one impl\n    |\n 14 | impl Read for Box[Callable[[Int], Int]]:\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testdisjointimplementations-2.ms:14:1: type: duplicate or overlapping implementation; Read is already implemented for Box[fn(Int) Int] (or an overlapping type), so remove one impl\n    |\n 14 | impl Read for Box[fn(Int) Int]:\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

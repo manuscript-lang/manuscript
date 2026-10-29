@@ -1,12 +1,12 @@
 # conform: tags=diagnostics,closures,stdlib-workers,tier-core
 # conform: phase=check
-from "@std/workers.ms" import WorkerGroup
+import WorkerGroup from "@std/workers.ms"
 
-def work(count: Int) -> Unit:
+fn work(count: Int) Unit:
     return
 
-def start(count: Int) -> Int:
+fn start(count: Int) Int:
     var group = WorkerGroup[Int, Int]()
-    let _ = group.spawn(lambda: work(count))
+    let _ = group.spawn(fn: work(count))
     group.close()
     return 0

@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=documentation/core-language/types/contracts.md:127
-def use_increment(operation: Increment) -> Int:
+fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
 let offset = Offset(2)

@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 11:23:143 "expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"

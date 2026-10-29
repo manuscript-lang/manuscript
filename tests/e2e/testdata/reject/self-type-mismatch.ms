@@ -5,13 +5,13 @@ type Other:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left.equals(right)
 
-export def main() -> Int:
+export fn main() Int:
     let key = Key(1)
     let other = Other(1)
     if key.equals(other):

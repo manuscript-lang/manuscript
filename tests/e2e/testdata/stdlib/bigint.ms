@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/math.ms" import parse, from_int, BigInt, BigIntError
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {parse, from_int, BigInt, BigIntError} from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
@@ -26,10 +26,10 @@ test "big integer budgets exclude at most one leading sign before validation":
 
     for text in ["+-1", "-+1", "++1", "--1"]:
         if parse(text, 10, 1) != limited: return fail(
-            f"second sign must count toward budget: {text}"
+            "second sign must count toward budget: {text}"
         )
         if parse(text, 10, 2) != malformed: return fail(
-            f"second sign must fail syntax validation: {text}"
+            "second sign must fail syntax validation: {text}"
         )
 
     for text in ["1", "+1", "-1"]:

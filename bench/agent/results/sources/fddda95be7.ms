@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Runs are searched over this many days after START, inclusive of START's own day.
 let SEARCH_DAYS = 3000
@@ -23,45 +23,45 @@ type LineError:
     case Bad(text: String)
 
 impl Error for LineError:
-    def message() -> String:
+    fn message() String:
         match self:
-            case Bad(text):
+            Bad(text):
                 return text.clone()
 
-def is_digit(c: String) -> Bool:
+fn is_digit(c: String) Bool:
     return c.length() == 1 and "0123456789".contains(c)
 
 # One or two ASCII digits, no sign.
-def number(text: String) -> Optional[Int]:
+fn number(text: String) Optional[Int]:
     if text.length() < 1 or text.length() > 2: return none
 
     for c in text.chars():
         if not is_digit(c): return none
     return text.parse_int()
 
-def bounded(text: String, lo: Int, hi: Int) -> Optional[Int]:
+fn bounded(text: String, lo: Int, hi: Int) Optional[Int]:
     if let n = number(text):
         if n >= lo and n <= hi: return n
     return none
 
-def is_leap(year: Int) -> Bool:
+fn is_leap(year: Int) Bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-def days_in_month(year: Int, month: Int) -> Int:
+fn days_in_month(year: Int, month: Int) Int:
     let lengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     if month == 2 and is_leap(year): return 29
 
     return lengths[month - 1]
 
 # Sunday is 0. Sakamoto's method.
-def weekday(year: Int, month: Int, day: Int) -> Int:
+fn weekday(year: Int, month: Int, day: Int) Int:
     let offsets = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
 
-    let y = year - 1 if month < 3 else year
+    let y = if month < 3: year - 1 else: year
 
     return (y + y / 4 - y / 100 + y / 400 + offsets[month - 1] + day) % 7
 
-def valid_start(text: String) -> Optional[Moment]:
+fn valid_start(text: String) Optional[Moment]:
     if text.length() != 16: return none
 
     let c = text.chars()
@@ -82,7 +82,7 @@ def valid_start(text: String) -> Optional[Moment]:
     return Moment(year: year, month: month, day: day, hour: hour, minute: minute)
 
 # The values picked out by one comma-separated item, or none if the item is malformed.
-def item_values(item: String, lo: Int, hi: Int) -> Optional[List[Int]]:
+fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
     let parts = item.split("/")
     if parts.length() > 2: return none
 
@@ -129,24 +129,24 @@ def item_values(item: String, lo: Int, hi: Int) -> Optional[List[Int]]:
     return values
 
 # Index i is True when value i is allowed; the list covers 0 through hi.
-def parse_field(text: String, lo: Int, hi: Int) -> Optional[List[Bool]]:
+fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
     var allowed = List[Bool](reserve: hi + 1)
     for i in 0..hi + 1:
-        allowed.append(False)
+        allowed.append(false)
 
     for item in text.split(","):
         if let values = item_values(item, lo, hi):
             for v in values:
-                allowed[v] = True
+                allowed[v] = true
         else:
             return none
 
     return allowed
 
-def two(n: Int) -> String:
-    return f"{n}".pad_start(2, "0")
+fn two(n: Int) String:
+    return "{n}".pad_start(2, "0")
 
-def search(start: Moment, count: Int, plan: Schedule) -> List[String]:
+fn search(start: Moment, count: Int, plan: Schedule) List[String]:
     var runs = List[String]()
     let start_hour = start.hour
     let start_minute = start.minute
@@ -173,7 +173,7 @@ def search(start: Moment, count: Int, plan: Schedule) -> List[String]:
 
                     if plan.minutes[minute] and runs.length() < count:
                         runs.append(
-                            f"{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
+                            "{year}-{two(month)}-{two(day)} {two(hour)}:{two(minute)}"
                         )
 
         day += 1
@@ -190,7 +190,7 @@ def search(start: Moment, count: Int, plan: Schedule) -> List[String]:
 
     return runs
 
-def describe(line_number: Int, line: String) -> Result[String, LineError]:
+fn describe(line_number: Int, line: String) Result[String, LineError]:
     let tokens = line.split(" ")
     if tokens.length() != 7: return error(Bad("bad line"))
 
@@ -205,11 +205,11 @@ def describe(line_number: Int, line: String) -> Result[String, LineError]:
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
     let runs = search(start, count, plan)
-    if runs.length() == 0: return ok(f"line {line_number}: never")
+    if runs.length() == 0: return ok("line {line_number}: never")
 
-    return ok(f"line {line_number}: {runs.length()} runs\n" + runs.join("\n"))
+    return ok("line {line_number}: {runs.length()} runs\n" + runs.join("\n"))
 
-export def main() -> Int:
+export fn main() Int:
     var line_number = 0
 
     for line in read_lines(stdin()).get():
@@ -217,7 +217,7 @@ export def main() -> Int:
         if line.replace(" ", "").is_empty(): continue
 
         let text = describe(line_number, line).get_or_else(
-            lambda e: f"line {line_number}: error: {e.message()}"
+            fn e: "line {line_number}: error: {e.message()}"
         )
         stdout().write(text + "\n").get()
 

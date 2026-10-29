@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def helper() -> Int: 1\n\nlet (\n    A = 1\n    B: Int = A + 1\n)\n\ndef main() -> Unit:\n    let x = 1\n    var (\n        a = 10\n        b = lambda (x: Int) -> Int:\n            return x + 1\n    )\n    let (\n        c = 11\n        d = \"Hi\"\n    )\n    a += x + b(c)\n"
+    "fmt": "fn helper() Int: 1\n\nlet (\n    A = 1\n    B: Int = A + 1\n)\n\nfn main() Unit:\n    let x = 1\n    var (\n        _a = 10\n        b = fn(y: Int) Int:\n            return y + 1\n    )\n    let (\n        c = 11\n        _d = \"Hi\"\n    )\n    _a += x + b(c)\n"
   }
 }

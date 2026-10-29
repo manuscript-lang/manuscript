@@ -1,5 +1,5 @@
 # conform: tags=closures,formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/parser/result_type_test.go:11 TestResultTypeFollowsParametersWithoutArrow
-def f(g: Callable[[Int], Int]) -> Callable[[Int], Int]:
+fn f(g: fn(Int) Int) fn(Int) Int:
     return g

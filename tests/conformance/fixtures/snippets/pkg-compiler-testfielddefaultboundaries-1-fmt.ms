@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/compiler/field_defaults_test.go:11 TestFieldDefaultBoundaries
 type Options:
-    count: Int = True
+    count: Int = true

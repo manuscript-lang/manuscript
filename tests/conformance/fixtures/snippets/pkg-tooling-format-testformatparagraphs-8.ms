@@ -1,12 +1,12 @@
 # conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
 # conform: phase=check
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:101 TestFormatParagraphs
-def work(enabled: Bool) -> Int:
+fn work(enabled: Bool) Int:
     let count = 2
 
     if enabled:
         run(count)
-    elif count > 0: run(1)
+    else if count > 0: run(1)
     else:
         run(0)
 

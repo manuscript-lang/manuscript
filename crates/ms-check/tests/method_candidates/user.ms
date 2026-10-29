@@ -1,5 +1,5 @@
-from "owner.ms" import Item
-from "local.ms" import local
+import Item from "owner.ms"
+import local from "local.ms"
 
-def exercise(x: Item) -> Int:
+fn exercise(x: Item) Int:
     return x.owned() + local(x)

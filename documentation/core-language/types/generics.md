@@ -35,13 +35,13 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
-        return True
+    fn equals(other: Key) Bool:
+        return true
 
-def accepts(value: Equal) -> Unit:
+fn accepts(value: Equal) Unit:
     return
 
-def use_view() -> Unit:
+fn use_view() Unit:
     accepts(Equal(Key(1)))
 ```
 
@@ -51,10 +51,10 @@ def use_view() -> Unit:
 type Box[T]:
     value: T
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def same[T: Equal](left: T, right: T) -> Bool:
+fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
 let box = Box[Int](1)
@@ -77,7 +77,7 @@ type Pair[A, B = A]:
     first: A
     second: B
 
-def parse[T = String](text: String) -> Optional[T]:
+fn parse[T = String](text: String) Optional[T]:
     return none
 
 let same: Pair[Int] = Pair[Int](1, 2)    # Pair[Int, Int]
@@ -91,7 +91,7 @@ Inference runs first; a parameter it leaves undetermined takes its default, for 
 A call may omit type arguments when its arguments and expected result uniquely determine every parameter. Evidence is gathered in order: independently typed arguments, then the expected result, then callbacks with known inputs. Repeated occurrences must agree. Bounds are checked after substitution. No common supertype, union, or numeric widening is inferred.
 
 ```manuscript
-def choose[T](first: T, second: T) -> T:
+fn choose[T](first: T, second: T) T:
     return first
 
 let value = choose(1, 2)  # T = Int
@@ -102,10 +102,10 @@ let mixed = choose(1, 2.0)
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
 
 ```manuscript
-from "@std/core.ms" import TextError
-def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
+import TextError from "@std/core.ms"
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-def first() -> Result[Int, TextError]: fail("empty")  # T = Int
+fn first() Result[Int, TextError]: fail("empty")  # T = Int
 let failed: Result[Int, TextError] = fail("empty")
 ```
 
@@ -114,7 +114,7 @@ Matching adds no numeric conversions, interface conversions, or `Optional` wrapp
 Empty lists, `none`, and similar expressions give no evidence of their own; once other evidence fixes the parameters, the substituted types give them context. For a standard `Optional[T]` parameter, inference first matches an existing optional, then a plain payload ([optional arguments](optionals.md#passing-optional-arguments)). Evaluation order is unchanged.
 
 ```manuscript
-def count[T](values: List[T]) -> Int:
+fn count[T](values: List[T]) Int:
     return 0
 
 let known = count[Int]([])
@@ -130,7 +130,7 @@ A generic body is checked once against its declared bounds, which expose only th
 
 ```manuscript
 # Rejected at declaration: missing Equal bound.
-def unchecked_same[T](left: T, right: T) -> Bool:
+fn unchecked_same[T](left: T, right: T) Bool:
     return left == right
 
 type Keys[T: Hashable]:
@@ -148,10 +148,10 @@ A generic implementation is likewise checked once under its inherited bounds. Ma
 Generic function calls and specialized function values follow the same rule across the module graph: a recursive cycle must preserve the starting type parameters one-to-one. Nonrecursive calls may use other arguments. Expanding specialization is rejected before code generation, even if unreachable.
 
 ```manuscript
-def repeat[T](value: T) -> Never:
+fn repeat[T](value: T) Never:
     return repeat[T](value)  # Regular specialization; allowed.
 
-def grow[T](value: T) -> Never:
+fn grow[T](value: T) Never:
     return grow[List[T]]([value])  # Rejected: expanding specialization.
 ```
 

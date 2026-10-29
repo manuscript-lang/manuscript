@@ -1,6 +1,6 @@
 # conform: tags=formatter,lists,maps,modules,parser,sets,stdlib-collections,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/compiler/collection_prelude_imports_test.go:157 TestPreludeImportPolicyUsesResolvedIdentity
-from "@std/collections.ms" import List, Map, Set
+import {List, Map, Set} from "@std/collections.ms"
 
-def get() -> Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()
+fn get() Int: List[Int]().length() + Map[Int, Int]().length() + Set[Int]().length()

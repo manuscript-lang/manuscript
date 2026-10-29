@@ -1,10 +1,10 @@
-from "./harness.ms" import bench, words
+import {bench, words} from "./harness.ms"
 
-export def bench_map_set() -> Unit:
+export fn bench_map_set() Unit:
     bench(
         "map.int_put_get",
         200000,
-        lambda () -> Int:
+        fn() Int:
             var m = Map[Int, Int]()
             for i in 0..100000:
                 m.add(i, i * 2)
@@ -18,7 +18,7 @@ export def bench_map_set() -> Unit:
     bench(
         "map.string_put_get",
         100000,
-        lambda () -> Int:
+        fn() Int:
             let keys = words(50000)
             var m = Map[String, Int]()
             for k in keys:
@@ -33,7 +33,7 @@ export def bench_map_set() -> Unit:
     bench(
         "map.iterate_entries",
         100000,
-        lambda () -> Int:
+        fn() Int:
             var m = Map[Int, Int]()
             for i in 0..100000:
                 m.add(i, i)
@@ -47,7 +47,7 @@ export def bench_map_set() -> Unit:
     bench(
         "set.add_contains",
         200000,
-        lambda () -> Int:
+        fn() Int:
             var s = Set[Int]()
             for i in 0..100000:
                 s.add(i)

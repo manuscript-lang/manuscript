@@ -1,12 +1,12 @@
 # conform: tags=control-flow,faults,interfaces,modules,records,stdlib-http,stdlib-io,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-upload.ms
-from "@std/test.ms" import expect_equal
-from "@std/http.ms" import headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered
-from "@std/io.ms" import IoError, ReadStream, read_all
-from "@std/sse.ms" import body_stream
-from "@std/net.ms" import network
-from "@std/bytes.ms" import Bytes
+import expect_equal from "@std/test.ms"
+import {headers, HttpClientOptions, HttpMethod, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
+import {IoError, ReadStream, read_all} from "@std/io.ms"
+import body_stream from "@std/sse.ms"
+import network from "@std/net.ms"
+import Bytes from "@std/bytes.ms"
 
 # Hands out its parts one chunk at a time, then reports the end of the stream.
 type Chunks:
@@ -15,20 +15,20 @@ type Chunks:
     failure: Optional[String] = none
 
 impl ReadStream for Chunks:
-    def close() -> Unit:
-        return ()
+    fn close() Unit:
+        return unit
 
-    var def read(max_bytes: Optional[Int] = none) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
         if self.next == self.parts.length():
             match self.failure:
-                case some(message): return error(IoError.Failed(message.clone()))
-                case none: return ok(none)
+                some(message): return error(IoError.Failed(message.clone()))
+                none: return ok(none)
 
         let chunk = self.parts[self.next]
         self.next += 1
         return ok(some(chunk.to_bytes()))
 
-def echo(request: HttpRequest) -> HttpResponse:
+fn echo(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
 
 test "request_stream uploads each chunk of a ReadStream":
@@ -36,7 +36,7 @@ test "request_stream uploads each chunk of a ReadStream":
     let client = try network().http_client(HttpClientOptions())
     let upload = Chunks(parts: ["alpha ", "beta ", "gamma"])
     let response = try client.request_stream(
-        HttpMethod.Post, f"http://{server.address()}/", headers(), upload
+        HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )
     try expect_equal(response.metadata().status, 200)
 
@@ -48,6 +48,6 @@ test "request_stream reports a failing ReadStream":
     let client = try network().http_client(HttpClientOptions())
     let upload = Chunks(parts: ["partial"], failure: some("disk gone"))
     let sent = client.request_stream(
-        HttpMethod.Post, f"http://{server.address()}/", headers(), upload
+        HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )
-    try expect_equal(sent.is_error(), True)
+    try expect_equal(sent.is_error(), true)

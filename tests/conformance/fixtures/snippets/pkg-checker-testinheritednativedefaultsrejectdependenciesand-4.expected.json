@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms",
           "line": 4,
-          "column": 14,
-          "offset": 187
+          "column": 13,
+          "offset": 186
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms",
           "line": 4,
-          "column": 40,
-          "offset": 213
+          "column": 36,
+          "offset": 209
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:14: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def f(value: Bytes = \"\".to_bytes()) -> Bytes: ...\n   |              ^\n<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:40: resolution: unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 4 | def f(value: Bytes = \"\".to_bytes()) -> Bytes: ...\n   |                                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:13: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn f(value: Bytes = \"\".to_bytes()) Bytes: ...\n   |             ^\n<DIR>/pkg-checker-testinheritednativedefaultsrejectdependenciesand-4.ms:4:36: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn f(value: Bytes = \"\".to_bytes()) Bytes: ...\n   |                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

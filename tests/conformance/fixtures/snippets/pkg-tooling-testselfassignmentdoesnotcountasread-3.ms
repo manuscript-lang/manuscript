@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,mutation,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lint_program_test.go:95 TestSelfAssignmentDoesNotCountAsRead
-def answer() -> Int:
+fn answer() Int:
     var total = 0
     var other = 0
     other = total + 1

@@ -1,6 +1,6 @@
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var sum = 0
     for i in 0..5000000:
         if i % 100 >= 48: sum += 1

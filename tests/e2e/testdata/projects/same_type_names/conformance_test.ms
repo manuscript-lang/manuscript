@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal
-from "./other.ms" import flip, shifted
+import expect_equal from "@std/test.ms"
+import {flip, shifted} from "./other.ms"
 
 # The same type names in two modules lower to distinct Go types.
 type Point:
@@ -14,5 +14,5 @@ test "same-named records and alternatives stay distinct":
     try expect_equal(shifted(), 11)
 
     match Mode.On:
-        case Mode.On: try expect_equal(flip(), 2)
-        case _: try expect_equal(True, False)
+        Mode.On: try expect_equal(flip(), 2)
+        _: try expect_equal(true, false)

@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3.ms:4:1: resolution: cannot find module ../src/value.ms (looked for <SCRATCH>/src); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | from \"../src/value.ms\" import value\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-lsp-testsnapshotlibrarydiscoverstests-3.ms:4:1: resolution: cannot find module ../src/value.ms (looked for <SCRATCH>/src); check the spelling, make sure the file exists, and that the path is relative to the importing file\n   |\n 4 | import value from \"../src/value.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

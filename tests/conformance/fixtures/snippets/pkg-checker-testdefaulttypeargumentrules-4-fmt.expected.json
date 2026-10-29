@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Named:\n    def name() -> String\n\ndef f[T: Named = Int]() -> Unit: ()\n"
+    "fmt": "interface Named:\n    fn name() String\n\nfn f[T: Named = Int]() Unit: unit\n"
   }
 }

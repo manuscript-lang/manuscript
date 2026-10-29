@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/layout_diagnostics_test.go:39 TestRecursiveDataAndFiniteTypeApplications
 interface Grow[T]:
-    def next() -> Grow[List[T]]
+    fn next() Grow[List[T]]

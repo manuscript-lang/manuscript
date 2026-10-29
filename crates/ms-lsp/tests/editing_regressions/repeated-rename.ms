@@ -1,2 +1,2 @@
-def repeat(value: String) -> String:
-    return f"😀:{value}:{value}"
+fn repeat(value: String) String:
+    return "😀:{value}:{value}"

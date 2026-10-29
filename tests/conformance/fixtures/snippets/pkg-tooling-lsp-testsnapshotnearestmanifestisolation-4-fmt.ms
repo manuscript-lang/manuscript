@@ -1,6 +1,6 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/snapshot_test.go:256 TestSnapshotNearestManifestIsolation
-from "@local/value.ms" import value
+import value from "@local/value.ms"
 
-export def use() -> Int: value()
+export fn use() Int: value()

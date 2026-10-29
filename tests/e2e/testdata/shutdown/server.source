@@ -1,10 +1,10 @@
-from "@std/core.ms" import Closeable
-from "@std/io.ms" import stdout
-from "@std/net.ms" import network, Listener, Connection
-from "@std/process.ms" import control
-from "@std/time.ms" import sleep
+import Closeable from "@std/core.ms"
+import stdout from "@std/io.ms"
+import {network, Listener, Connection} from "@std/net.ms"
+import control from "@std/process.ms"
+import sleep from "@std/time.ms"
 
-def say(text: String) -> Unit:
+fn say(text: String) Unit:
     let _written = stdout().write(text)
 
     # Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
@@ -14,51 +14,50 @@ type WorkerCleanup:
     label: String
 
 impl Closeable for WorkerCleanup:
-    def close() -> Unit:
-        say(f"{self.label} stopped\n")
+    fn close() Unit:
+        say("{self.label} stopped\n")
 
 type Server:
     listener: Listener
     client: Connection
-    closed: Bool = False
+    closed: Bool = false
 
 impl Closeable for Server:
-    var def close() -> Unit:
+    var fn close() Unit:
         if self.closed:
             return
 
-        self.closed = True
+        self.closed = true
         self.listener.close()
         sleep(10.milliseconds)
 
         let farewell = self.client.write("farewell\n", timeout: 1.seconds)
 
         if farewell.is_error():
-            say(f"farewell failed: {farewell.err().message()}\n")
+            say("farewell failed: {farewell.err().message()}\n")
         else:
             say("farewell sent\n")
 
         self.client.close()
 
-def serve() -> Result[Unit, Error]:
+fn serve() Result[Unit, Error]:
     let signals = try control().watch_signals([2, 15])
     let listener = try network().listen("127.0.0.1:0")
-    say(f"{listener.address()}\n")
+    say("{listener.address()}\n")
 
     let client = try listener.accept()
-
     let _server = Server(listener: listener, client: client)
     let _cleanup = WorkerCleanup(label: "worker")
     say("ready\n")
 
     let _observed = signals.next()
-    return ok(())
+    return ok(unit)
 
-export def main() -> Int:
+export fn main() Int:
     let served = serve()
 
     if served.is_error():
-        say(f"{served.err().message()}\n")
+        say("{served.err().message()}\n")
         return 1
 
     return 0

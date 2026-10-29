@@ -1,4 +1,4 @@
-from "@std/io.ms" import read_all, stdin, stdout
+import {read_all, stdin, stdout} from "@std/io.ms"
 
 type Entry:
     timestamp: String
@@ -8,14 +8,14 @@ type Entry:
     status: String
     latency: Int
 
-def is_digits(text: String) -> Bool:
-    if text.is_empty(): return False
+fn is_digits(text: String) Bool:
+    if text.is_empty(): return false
 
     for i in 0..text.length():
-        if not "0123456789".contains(text.get(i)): return False
-    return True
+        if not "0123456789".contains(text.get(i)): return false
+    return true
 
-def parse_line(line: String) -> Optional[Entry]:
+fn parse_line(line: String) Optional[Entry]:
     let fields = line.split(" ")
     if fields.length() != 6: return none
 
@@ -35,7 +35,7 @@ def parse_line(line: String) -> Optional[Entry]:
         path: path.clone(), status: status.clone(), latency: latency.parse_int().get(0)
     )
 
-export def main() -> Int:
+export fn main() Int:
     let text = read_all(stdin()).get().decode_utf8().get("")
     var valid = List[Entry]()
     var malformed = 0
@@ -49,28 +49,28 @@ export def main() -> Int:
             malformed += 1
 
     var out = List[String]()
-    out.append(f"valid: {valid.length()}")
-    out.append(f"malformed: {malformed}")
+    out.append("valid: {valid.length()}")
+    out.append("malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append(f"{level}: {valid.filter(lambda e: e.level == level).length()}")
+        out.append("{level}: {valid.filter(fn e: e.level == level).length()}")
 
-    let class_2xx = valid.filter(lambda e: e.status.get(0) == "2").length()
-    let class_3xx = valid.filter(lambda e: e.status.get(0) == "3").length()
-    let class_4xx = valid.filter(lambda e: e.status.get(0) == "4").length()
-    let class_5xx = valid.filter(lambda e: e.status.get(0) == "5").length()
+    let class_2xx = valid.filter(fn e: e.status.get(0) == "2").length()
+    let class_3xx = valid.filter(fn e: e.status.get(0) == "3").length()
+    let class_4xx = valid.filter(fn e: e.status.get(0) == "4").length()
+    let class_5xx = valid.filter(fn e: e.status.get(0) == "5").length()
     let other = valid.length() - class_2xx - class_3xx - class_4xx - class_5xx
     out.append(
-        f"status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={other}"
+        "status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={other}"
     )
 
     let n = valid.length()
     var p95 = 0
 
     if n > 0:
-        let sorted = valid.map(lambda e: e.latency).sorted()
+        let sorted = valid.map(fn e: e.latency).sorted()
         p95 = sorted[(95 * n + 99) / 100 - 1]
 
-    out.append(f"p95: {p95}")
+    out.append("p95: {p95}")
 
     if n > 0:
         var slowest = 0
@@ -78,7 +78,7 @@ export def main() -> Int:
             if valid[i].latency > valid[slowest].latency: slowest = i
 
         let s = valid[slowest]
-        out.append(f"slowest: {s.latency} {s.method} {s.path} {s.timestamp}")
+        out.append("slowest: {s.latency} {s.method} {s.path} {s.timestamp}")
 
     out.append("top:")
 
@@ -90,12 +90,12 @@ export def main() -> Int:
         totals.add(e.path.clone(), totals.get_or(e.path, 0) + e.latency)
 
     let ranked = counts.entries().sorted(
-        lambda a, b: b.value - a.value if a.value != b.value else a.key.compare(b.key)
+        fn a, b: (if a.value != b.value: b.value - a.value else: a.key.compare(b.key))
     )
 
-    for i in 0..(3 if ranked.length() > 3 else ranked.length()):
+    for i in 0..(if ranked.length() > 3: 3 else: ranked.length()):
         let row = ranked[i]
-        out.append(f"{row.key} {row.value} avg={totals.get_or(row.key, 0) / row.value}")
+        out.append("{row.key} {row.value} avg={totals.get_or(row.key, 0) / row.value}")
 
     stdout().write(out.join("\n") + "\n").get()
     return 0

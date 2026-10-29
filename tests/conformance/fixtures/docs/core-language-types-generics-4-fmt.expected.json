@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Pair[A, B = A]:\n    first: A\n    second: B\n\ndef parse[T = String](text: String) -> Optional[T]:\n    return none\n\nlet same: Pair[Int] = Pair[Int](1, 2)  # Pair[Int, Int]\nlet mixed = Pair[Int, String](1, \"x\")\n"
+    "fmt": "type Pair[A, B = A]:\n    first: A\n    second: B\n\nfn parse[T = String](text: String) Optional[T]:\n    return none\n\nlet same: Pair[Int] = Pair[Int](1, 2)  # Pair[Int, Int]\nlet mixed = Pair[Int, String](1, \"x\")\n"
   }
 }

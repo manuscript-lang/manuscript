@@ -1,42 +1,40 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 
-def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-def fail_cause[T, E: Error](cause: E) -> Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 
-def absent[T]() -> Optional[T]: none
+fn absent[T]() Optional[T]: none
 
-def identity[T](value: T) -> T: value
+fn identity[T](value: T) T: value
 
-def from_callback[T](factory: Callable[[], T]) -> T: factory()
+fn from_callback[T](factory: fn() T) T: factory()
 
-def transform[T, U](callback: Callable[[T], U]) -> Callable[[T], U]: callback
+fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 
 type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> String: self.detail.clone()
+    fn message() String: self.detail.clone()
 
-def first() -> Result[List[Int], TextError]: fail("empty")
+fn first() Result[List[Int], TextError]: fail("empty")
 
-def failed() -> Result[Int, Error]: fail_cause(Failure("domain"))
+fn failed() Result[Int, Error]: fail_cause(Failure("domain"))
 
-def forward[T]() -> Optional[T]: absent()
+fn forward[T]() Optional[T]: absent()
 
-def consume(value: Optional[Int]) -> Int: value.get(0)
+fn consume(value: Optional[Int]) Int: value.get(0)
 
 type Events:
     values: List[Int]
 
-def record[T](var events: Events, value: Int) -> Optional[T]:
+fn record[T](var events: Events, value: Int) Optional[T]:
     events.values.append(value)
     return none
 
-def combine[T](var events: Events, first: Optional[T], second: Optional[T]) -> Optional[
-    T
-]:
+fn combine[T](var events: Events, first: Optional[T], second: Optional[T]) Optional[T]:
     events.values.append(3)
     return first
 
@@ -52,16 +50,14 @@ test "expected generic results preserve behavior and call order":
     let empty: Optional[Int] = forward()
     try expect_false(not empty.is_none())
 
-    let values: List[Optional[Int]] = [1, 2].map(lambda item: absent())
+    let values: List[Optional[Int]] = [1, 2].map(fn item: absent())
     try expect_equal(values.length(), 2)
     try expect_false(not values.get(0).is_none())
 
-    let callback: Callable[[Int], String] = transform(lambda item: item.to_string())
+    let callback: fn(Int) String = transform(fn item: item.to_string())
     try expect_equal(callback(7), "7")
 
-    let defaulted: Callable[[Int], Int] = from_callback(
-        lambda: lambda (value: Int = 4): (value + 1)
-    )
+    let defaulted: fn(Int) Int = from_callback(fn: fn(value: Int = 4): (value + 1))
     try expect_equal(defaulted(8), 9)
     try expect_equal(consume(identity(5)), 5)
 

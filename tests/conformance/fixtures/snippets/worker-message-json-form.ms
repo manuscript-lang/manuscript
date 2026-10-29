@@ -1,23 +1,23 @@
 # conform: tags=diagnostics,stdlib-workers,tier-core
 # conform: phase=check
-from "@std/io.ms" import ReadStream
-from "@std/workers.ms" import worker_channel
+import ReadStream from "@std/io.ms"
+import worker_channel from "@std/workers.ms"
 
 type Job:
     id: Int
-    run: Callable[[Int], Int]
+    run: fn(Int) Int
 
-def sink() -> Unit:
+fn sink() Unit:
     var ch = worker_channel[Int, Job]()
     let got = ch.receive()
 
-def stream() -> Unit:
+fn stream() Unit:
     var ch = worker_channel[ReadStream, Int]()
     let got = ch.receive()
 
-def plain() -> Unit:
+fn plain() Unit:
     var ch = worker_channel[Map[Int, List[String]], Optional[Float]]()
     let got = ch.receive()
 
-export def main() -> Int:
+export fn main() Int:
     return 0

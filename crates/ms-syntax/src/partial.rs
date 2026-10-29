@@ -226,7 +226,7 @@ fn is_declaration_line(line: &str) -> bool {
     [
         "import ",
         "export ",
-        "def ",
+        "fn ",
         "extern ",
         "let ",
         "let(",
@@ -237,26 +237,16 @@ fn is_declaration_line(line: &str) -> bool {
     ]
     .iter()
     .any(|k| trimmed.starts_with(k))
-        || is_from_import(trimmed)
 }
 
 /// Only a bound for optimistic parsing, never a recovery boundary. Includes
 /// constants and token boundaries such as `import{` and `let(`; malformed input
 /// still synchronizes using the original rules.
-/// `from` begins an import only before a module path; elsewhere it is an ordinary name.
-fn is_from_import(line: &str) -> bool {
-    line.strip_prefix("from")
-        .is_some_and(|rest| rest.trim_start().starts_with('"'))
-}
-
 fn partial_root_start(source: &str) -> bool {
-    if source.starts_with("from") {
-        return is_from_import(source);
-    }
     for keyword in [
         "import",
         "export",
-        "def",
+        "fn",
         "extern",
         "type",
         "interface",
@@ -413,7 +403,7 @@ fn declared_name(chunk: &str) -> Option<String> {
         }
         let rest = trimmed.strip_prefix("export ").unwrap_or(trimmed);
         let fields: Vec<&str> = rest.split_whitespace().collect();
-        if fields.len() < 2 || !matches!(fields[0], "def" | "type" | "interface") {
+        if fields.len() < 2 || !matches!(fields[0], "fn" | "type" | "interface") {
             return None;
         }
         return fields[1]
@@ -439,7 +429,7 @@ mod continuation_tests {
             "    1,\n2,\n    [3],\n",
             "1,\n]\n[\n2,\n",
             "1,\n@\n2,\n",
-            "f\"{value}\",\n2,\n",
+            "\"{value}\",\n2,\n",
         ];
         for ending in ["\n", "\r\n"] {
             for body in bodies {

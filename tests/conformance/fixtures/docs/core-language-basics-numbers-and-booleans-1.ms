@@ -4,4 +4,4 @@
 let count = 3
 let ratio = 0.5
 let price = 12.50d
-let active = True
+let active = true

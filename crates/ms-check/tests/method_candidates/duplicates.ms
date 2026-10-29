@@ -2,9 +2,9 @@ type Item:
     value: Int
 
 impl Item:
-    def read() -> Int:
+    fn read() Int:
         return self.value
 
 impl Item:
-    def read() -> Int:
+    fn read() Int:
         return 2

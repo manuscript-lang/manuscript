@@ -4,6 +4,6 @@
 type Point:
     x: Int
 
-def f() -> Int:
+fn f() Int:
     Point = 2
     return 0

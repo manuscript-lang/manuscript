@@ -1,5 +1,5 @@
 # conform: tags=diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/prelude_test.go:79 TestCollectionPreludeAndShadowing
-def f() -> Unit:
+fn f() Unit:
     let values = Set()

@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal, expect_true
+import {expect_equal, expect_true} from "@std/test.ms"
 
 # Each lending function here hands back a part reached through a match, a loop or a `let`.
 # Lowering must read those parts in place: a copy would be freed before the caller reads it.
@@ -15,58 +15,58 @@ type Holder:
     items: List[Item]
     racks: List[Shelf]
 
-def either(a: Shelf, b: Shelf, flag: Bool) -> ref List[String]:
+fn either(a: Shelf, b: Shelf, flag: Bool) ref List[String]:
     if flag:
         return a.names
 
     return b.names
 
-def stocked(h: Holder) -> ref Optional[Shelf]:
+fn stocked(h: Holder) ref Optional[Shelf]:
     match h.item:
-        case Stocked(shelf): return some(shelf)
-        case Plain: return none
+        Stocked(shelf): return some(shelf)
+        Plain: return none
 
-def first_stocked(h: Holder) -> ref Optional[Shelf]:
+fn first_stocked(h: Holder) ref Optional[Shelf]:
     match h.items[0]:
-        case Stocked(shelf): return some(shelf)
-        case Plain: return none
+        Stocked(shelf): return some(shelf)
+        Plain: return none
 
-def last_name(h: Holder) -> ref String:
+fn last_name(h: Holder) ref String:
     for name in h.racks[0].names:
         if name.starts_with("g"):
             return name
     return h.racks[0].names[0]
 
-def chosen(a: Shelf, b: Shelf) -> ref String:
-    for name in either(a, b, False):
+fn chosen(a: Shelf, b: Shelf) ref String:
+    for name in either(a, b, false):
         return name
     return a.names[0]
 
-def chosen_let(a: Shelf, b: Shelf) -> ref String:
-    let names = either(a, b, True)
+fn chosen_let(a: Shelf, b: Shelf) ref String:
+    let names = either(a, b, true)
     for name in names:
         return name
     return a.names[0]
 
-def chosen_list(a: Shelf, b: Shelf) -> ref List[String]:
-    let names = either(a, b, False)
+fn chosen_list(a: Shelf, b: Shelf) ref List[String]:
+    let names = either(a, b, false)
     return names
 
-def first_name(s: Shelf) -> ref Optional[String]:
+fn first_name(s: Shelf) ref Optional[String]:
     let name = s.names.first()
     return name
 
-def last_of(s: Shelf) -> ref Optional[String]:
+fn last_of(s: Shelf) ref Optional[String]:
     return s.names.last()
 
-def age(s: Shelf, key: String) -> ref Optional[String]:
+fn age(s: Shelf, key: String) ref Optional[String]:
     let found = s.ages.get(key)
     return found
 
-def shelf(names: List[String]) -> Shelf:
+fn shelf(names: List[String]) Shelf:
     return Shelf(names: names, ages: {"ada": "36"})
 
-def holder() -> Holder:
+fn holder() Holder:
     let s = shelf(["ada", "grace"])
     return Holder(
         item: Item.Stocked(s.clone()), items: [Item.Stocked(s.clone()), Item.Plain],
@@ -104,7 +104,7 @@ test "let bindings of lending calls and accessors are lent":
     try expect_equal(age(a, "ada"), some("36"))
     try expect_true(age(a, "grace").is_none())
 
-def find(items: List[Shelf], first: String) -> ref Optional[Shelf]:
+fn find(items: List[Shelf], first: String) ref Optional[Shelf]:
     for s in items:
         if s.names[0] == first:
             return some(s)

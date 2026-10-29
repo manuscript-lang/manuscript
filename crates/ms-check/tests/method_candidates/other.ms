@@ -1,11 +1,11 @@
-from "owner.ms" import Item
+import Item from "owner.ms"
 
 interface Read:
-    def read() -> Int
+    fn read() Int
 
 impl Read for Item:
-    def read() -> Int:
+    fn read() Int:
         return self.value
 
-export def local(x: Item) -> Int:
+export fn local(x: Item) Int:
     return x.read() + x.owned()

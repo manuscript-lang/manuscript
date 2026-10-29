@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type DiscountError:\n    case InvalidPrice\n    case InvalidPercent\n\nimpl Error for DiscountError:\n    def message() -> String:\n        match self:\n            case InvalidPrice: return \"invalid price\"\n            case InvalidPercent: return \"invalid percent\"\n\ndef discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))\n"
+    "fmt": "type DiscountError:\n    case InvalidPrice\n    case InvalidPercent\n\nimpl Error for DiscountError:\n    fn message() String:\n        match self:\n            InvalidPrice: return \"invalid price\"\n            InvalidPercent: return \"invalid percent\"\n\nfn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    if price < 0d:\n        return error(InvalidPrice)\n    if percent < 0d or percent > 100d:\n        return error(InvalidPercent)\n\n    return ok(price * (1d - percent / 100d))\n"
   }
 }

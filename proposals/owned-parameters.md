@@ -31,10 +31,10 @@ type Tree:
     case Leaf
     case Node(l: Tree, v: Int, r: Tree)
 
-def insert(t: Tree, x: Int) -> Tree:
+fn insert(t: Tree, x: Int) Tree:
     match t:
-        case Leaf: return Node(Leaf, x, Leaf)
-        case Node(l, v, r):
+        Leaf: return Node(Leaf, x, Leaf)
+        Node(l, v, r):
             if x < v: return Node(insert(l, x), v, r)
             return Node(l, v, insert(r, x))
 ```

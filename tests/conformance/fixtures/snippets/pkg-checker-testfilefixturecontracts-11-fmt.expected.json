@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface TestHooks:\n    def after_all() -> Unit\n\ntype State:\n    value: Int\n\nimpl TestHooks for State:\n    def after_all() -> Unit:\n        return\n\ndef make_fixture() -> State:\n    return State(1)\n\ntest \"test\":\n    return\n"
+    "fmt": "interface TestHooks:\n    fn after_all() Unit\n\ntype State:\n    value: Int\n\nimpl TestHooks for State:\n    fn after_all() Unit:\n        return\n\nfn make_fixture() State:\n    return State(1)\n\ntest \"test\":\n    return\n"
   }
 }

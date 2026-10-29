@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'nonlocal' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly",
+        "message": "'nonlocal' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly",
         "position": {
           "file": "foreign-nonlocal.ms",
           "line": 5,
           "column": 5,
-          "offset": 134
+          "offset": 130
         },
         "end": {
           "file": "foreign-nonlocal.ms",
           "line": 5,
           "column": 13,
-          "offset": 142
+          "offset": 138
         }
       }
     ],

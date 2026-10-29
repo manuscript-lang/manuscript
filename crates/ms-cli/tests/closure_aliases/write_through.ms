@@ -1,6 +1,6 @@
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def invoke(f: Callable[[], Unit]) -> Unit:
+fn invoke(f: fn() Unit) Unit:
     f()
 
 type Box:
@@ -12,83 +12,83 @@ type Pair:
     right: List[Int]
 
 impl Box:
-    var def bump() -> Unit:
+    var fn bump() Unit:
         self.count += 1
 
-def add(var values: List[Int]) -> Unit:
+fn add(var values: List[Int]) Unit:
     values.append(12)
 
-def next(var count: Int) -> Int:
+fn next(var count: Int) Int:
     let result = count
     count += 1
     return result
 
-def branch(var box: Box, take: Bool) -> Unit:
+fn branch(var box: Box, take: Bool) Unit:
     if take:
         var _count = box.count
-        invoke(lambda: _count += 3)
+        invoke(fn: _count += 3)
 
     box.count += 1
 
-def contents(box: Box) -> ref List[List[Int]]:
+fn contents(box: Box) ref List[List[Int]]:
     return box.items
 
-export def main() -> Int:
+export fn main() Int:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
-    let append = lambda: first.append(9)
+    let append = fn: first.append(9)
     append()
     append()
 
-    let _ = stdout().write(f"{calls} {rows}\n")
+    let _ = stdout().write("{calls} {rows}\n")
     var box = Box(count: 1, items: [[3], [4]])
-    branch(var box, False)
-    branch(var box, True)
+    branch(var box, false)
+    branch(var box, true)
 
-    let _ = stdout().write(f"{box.count}\n")
+    let _ = stdout().write("{box.count}\n")
     var items = box.items
     var inner = items[1]
-    invoke(lambda: invoke(lambda: inner.append(8)))
+    invoke(fn: invoke(fn: inner.append(8)))
 
-    let _ = stdout().write(f"{box.items}\n")
+    let _ = stdout().write("{box.items}\n")
     var entries = Map[String, List[Int]]()
     entries.add("dynamic-1", [5])
-    if var value = entries.get(f"dynamic-{calls}"):
-        invoke(lambda: value.append(value.length()))
+    if var value = entries.get("dynamic-{calls}"):
+        invoke(fn: value.append(value.length()))
 
-    let _ = stdout().write(f"{entries}\n")
+    let _ = stdout().write("{entries}\n")
     var pair = Pair(left: [1], right: [2])
     var left = pair.left
     var right = pair.right
 
     invoke(
-        lambda:
+        fn:
             left.append(3)
             right.append(4)
     )
 
-    let _ = stdout().write(f"{pair}\n")
+    let _ = stdout().write("{pair}\n")
     var local_rows = [[10]]
 
     invoke(
-        lambda:
+        fn:
             var local = local_rows[0]
-            invoke(lambda: local.append(11))
+            invoke(fn: local.append(11))
     )
 
-    let _ = stdout().write(f"{local_rows}\n")
+    let _ = stdout().write("{local_rows}\n")
     var via_getter = contents(box)
-    invoke(lambda: via_getter.append([6]))
+    invoke(fn: via_getter.append([6]))
 
-    let _ = stdout().write(f"{box.items}\n")
+    let _ = stdout().write("{box.items}\n")
     var boxes = [Box(count: 20, items: [])]
     var stored = boxes[0]
-    invoke(lambda: stored.bump())
+    invoke(fn: stored.bump())
 
-    let _ = stdout().write(f"{boxes}\n")
+    let _ = stdout().write("{boxes}\n")
     var target = rows[1]
-    invoke(lambda: add(var target))
+    invoke(fn: add(var target))
 
-    let _ = stdout().write(f"{rows}\n")
+    let _ = stdout().write("{rows}\n")
     return 0

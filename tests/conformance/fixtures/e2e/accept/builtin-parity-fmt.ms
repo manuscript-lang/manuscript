@@ -1,32 +1,32 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interpolation,lists,maps,match,modules,optional,parser,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-numbers,stdlib-regex,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/builtin-parity.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
-from "@std/math.ms" import from_int
-from "@std/string.ms" import compile
-from "@std/collections.ms" import filled, range_by, map_from_entries
-from "@std/bytes.ms" import Bytes
-from "@std/string.ms" import StringError
+import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
+import from_int from "@std/math.ms"
+import compile from "@std/string.ms"
+import {filled, range_by, map_from_entries} from "@std/collections.ms"
+import Bytes from "@std/bytes.ms"
+import StringError from "@std/string.ms"
 
-def positive(value: Int) -> Bool:
+fn positive(value: Int) Bool:
     return value > 0
 
-def negative(value: Int) -> Bool:
+fn negative(value: Int) Bool:
     return value < 0
 
-def stringify(value: Int) -> String:
+fn stringify(value: Int) String:
     return value.to_string_radix(radix: 10)
 
-def expand(value: Int) -> List[String]:
+fn expand(value: Int) List[String]:
     return [stringify(value: value), "x"]
 
-def total(accumulator: Int, value: Int) -> Int:
+fn total(accumulator: Int, value: Int) Int:
     return accumulator + value
 
-def ordered(accumulator: String, value: Int) -> String:
-    return f"{accumulator}{value}"
+fn ordered(accumulator: String, value: Int) String:
+    return "{accumulator}{value}"
 
-def compare(left: Int, right: Int) -> Int:
+fn compare(left: Int, right: Int) Int:
     if left < right:
         return -1
     if left > right:
@@ -34,14 +34,14 @@ def compare(left: Int, right: Int) -> Int:
 
     return 0
 
-def common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
-        case ok(value):
+        ok(value):
             return ok(value)
-        case error(cause):
+        error(cause):
             return error(cause)
 
-def checked_expansion() -> Result[Unit, Error]:
+fn checked_expansion() Result[Unit, Error]:
     (
         not (
             try common_result(
@@ -77,7 +77,7 @@ def checked_expansion() -> Result[Unit, Error]:
     (try common_result(result: "é".repeat(count: 3, max_bytes: 6))) | try expect_equal(
         "ééé"
     )
-    return ok(())
+    return ok(unit)
 
 test "list methods mutate explicit clones and remain typed":
     let original = [3, 1, 2, 1]
@@ -137,7 +137,7 @@ test "list methods mutate explicit clones and remain typed":
 
     var observed_original: List[Int] = []
     original.for_each(
-        lambda (value) -> Unit:
+        fn(value) Unit:
             observed_original.append(value)
     )
     observed_original | try expect_equal(original)
@@ -184,9 +184,7 @@ test "list methods mutate explicit clones and remain typed":
     original.keys() | try expect_equal([0, 1, 2, 3])
     original.entries().get(index: 0) | try expect_equal(ListEntry(index: 0, value: 3))
     original.to_set().values() | try expect_equal([3, 1, 2])
-    try expect_equal(
-        [[1, 2], [], [3]].flat_map(transform: lambda value: value), [1, 2, 3]
-    )
+    try expect_equal([[1, 2], [], [3]].flat_map(transform: fn value: value), [1, 2, 3])
     alias | try expect_equal([3, 1, 2, 1])
 
 test "map enumeration, merge, and clear preserve insertion order":
@@ -225,7 +223,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     var observed_values: List[Int] = []
 
     merged.for_each(
-        lambda key,
+        fn key,
         value:
             observed_keys.append(key)
             observed_values.append(value)
@@ -264,7 +262,7 @@ test "set algebra and enumeration preserve source values":
 
     var observed_left: List[Int] = []
     left.for_each(
-        lambda (value) -> Unit:
+        fn(value) Unit:
             observed_left.append(value)
     )
     observed_left | try expect_equal(left.values())
@@ -309,9 +307,9 @@ test "string methods use Unicode scalars":
     strip() | try expect_equal("hello")
 
     match checked_expansion():
-        case ok(_):
-            let _completed = ()
-        case error(cause):
+        ok(_):
+            let _completed = unit
+        error(cause):
             return fail(message: cause.message())
 
 test "bytes have analogous immutable operations":
@@ -352,10 +350,10 @@ test "growth limits and invalid inputs return values":
     range_by(start: 0, end: 4, step: 0, max_items: 3) | try expect_equal(list_invalid)
     filled(value: 1, count: 2, max_items: 1) | try expect_equal(list_limit)
 
-def parity(value: Int) -> Int:
+fn parity(value: Int) Int:
     return value % 2
 
-def default_value(key: String) -> Int:
+fn default_value(key: String) Int:
     if key != "c": return -1
 
     return 3
@@ -375,7 +373,7 @@ test "grouping and lazy map defaults":
 
     var calls: List[Int] = []
 
-    let create = lambda (key: String):
+    let create = fn(key: String):
         calls.append(1)
         return 0
 
@@ -392,7 +390,7 @@ test "grouping and lazy map defaults":
     original.values() | try expect_equal([1])
     calls.length() | try expect_equal(0)
 
-def verify_text_and_numbers() -> Result[Unit, Error]:
+fn verify_text_and_numbers() Result[Unit, Error]:
     (try common_result(result: "é".normalize(form: "NFC", max_bytes: 2))) | try expect_equal(
         "é"
     )
@@ -418,13 +416,13 @@ def verify_text_and_numbers() -> Result[Unit, Error]:
     1.5.to_precision(precision: 4) | try expect_equal("1.500")
     12345.0.to_precision(precision: 3) | try expect_equal("1.23e+4")
     0.000001.to_precision(precision: 2) | try expect_equal("0.0000010")
-    return ok(())
+    return ok(unit)
 
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
-        case ok(_):
-            let _completed = ()
-        case error(cause):
+        ok(_):
+            let _completed = unit
+        error(cause):
             return fail(message: cause.message())
 
     "é🙂".split(separator: "", max_parts: 8) | try expect_equal(["é", "🙂"])
@@ -440,7 +438,7 @@ test "normalization, empty separators, and precision formatting":
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 
-def verify_bigint_and_regex() -> Result[Unit, Error]:
+fn verify_bigint_and_regex() Result[Unit, Error]:
     let a = from_int(value: 12)
     let b = from_int(value: 5)
     a.add(other: b).to_string_radix(radix: 10) | try expect_equal("17")
@@ -473,13 +471,13 @@ def verify_bigint_and_regex() -> Result[Unit, Error]:
             ) == "axbx"
         )
     ) | try expect_false
-    return ok(())
+    return ok(unit)
 
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
-        case ok(_):
-            let _completed = ()
-        case error(cause):
+        ok(_):
+            let _completed = unit
+        error(cause):
             return fail(message: cause.message())
 
 test "generic native methods accept omitted single-parameter labels":
@@ -494,7 +492,7 @@ test "generic native methods accept omitted single-parameter labels":
 
     var observed_values: List[Int] = []
     values.for_each(
-        lambda (value) -> Unit:
+        fn(value) Unit:
             observed_values.append(value)
     )
     observed_values | try expect_equal(values)

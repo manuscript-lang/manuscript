@@ -1,20 +1,20 @@
 # conform: tags=control-flow,formatter,interpolation,match,modules,optional,parser,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/direct-calls-fill-omitted-defaults.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def scaled(base: Int, factor: Int = 2, label: String = "x") -> String: f"{label}{base * factor}"
+fn scaled(base: Int, factor: Int = 2, label: String = "x") String: "{label}{base * factor}"
 
-def chained(base: Int, plus: Int = base + 1) -> Int: base + plus
+fn chained(base: Int, plus: Int = base + 1) Int: base + plus
 
-def maybe(value: Int, extra: Optional[Int] = none) -> Int:
+fn maybe(value: Int, extra: Optional[Int] = none) Int:
     match extra:
-        case some(number):
+        some(number):
             return value + number
-        case none:
+        none:
             return value
 
-def countdown(n: Int, step: Int = 1) -> Int:
+fn countdown(n: Int, step: Int = 1) Int:
     if n <= 0:
         return 0
 

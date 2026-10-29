@@ -51,13 +51,13 @@ Methods come from `impl Type:` or `impl Interface for Type:` ([explicit implemen
 
 ```manuscript
 interface Counter:
-    var def increment() -> Unit
+    var fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.val = self.val + 1
 ```
 
@@ -97,16 +97,16 @@ Records and alternatives may refer to themselves or each other directly, with no
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
 
-def evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
-        case Num(value): return value
-        case Add(left, right): return evaluate(left) + evaluate(right)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
     let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
@@ -118,7 +118,7 @@ A linked record ends with an absent successor; a link owns its successor, so a c
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 type Node:
     value: Int

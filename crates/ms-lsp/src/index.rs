@@ -133,9 +133,9 @@ pub fn expr_text(e: &Expr) -> Option<&'static str> {
     match &e.kind {
         ExprKind::Name(s) | ExprKind::Number(s) => Some(s.as_str()),
         ExprKind::Member { name, .. } => Some(name.as_str()),
-        ExprKind::Bool(true) => Some("True"),
-        ExprKind::Bool(false) => Some("False"),
-        ExprKind::Unit => Some("()"),
+        ExprKind::Bool(true) => Some("true"),
+        ExprKind::Bool(false) => Some("false"),
+        ExprKind::Unit => Some("unit"),
         ExprKind::List(_) => Some("["),
         ExprKind::Map(_) => Some("{"),
         ExprKind::Match { .. } => Some("match"),

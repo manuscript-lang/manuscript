@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export type Point:\n    x: Int\n\nexport type Mode:\n    case Off\n    case On\n\nexport def shifted() -> Int:\n    return Point(10).x + 1\n\nexport def flip() -> Int:\n    match Mode.Off:\n        case Mode.Off: return 2\n        case _: return 0\n"
+    "fmt": "export type Point:\n    x: Int\n\nexport type Mode:\n    case Off\n    case On\n\nexport fn shifted() Int:\n    return Point(10).x + 1\n\nexport fn flip() Int:\n    match Mode.Off:\n        Mode.Off: return 2\n        _: return 0\n"
   }
 }

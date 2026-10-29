@@ -13,14 +13,14 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
           "line": 4,
-          "column": 35,
-          "offset": 208
+          "column": 8,
+          "offset": 181
         },
         "end": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
           "line": 4,
-          "column": 38,
-          "offset": 211
+          "column": 11,
+          "offset": 184
         },
         "fix": {
           "position": {
@@ -31,9 +31,9 @@
           },
           "end": {
             "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
-            "line": 4,
-            "column": 27,
-            "offset": 200
+            "line": 5,
+            "column": 1,
+            "offset": 212
           },
           "replacement": ""
         }
@@ -45,14 +45,14 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
           "line": 5,
-          "column": 35,
-          "offset": 246
+          "column": 8,
+          "offset": 219
         },
         "end": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
           "line": 5,
-          "column": 38,
-          "offset": 249
+          "column": 11,
+          "offset": 222
         },
         "fix": {
           "position": {
@@ -63,9 +63,9 @@
           },
           "end": {
             "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
-            "line": 5,
-            "column": 27,
-            "offset": 238
+            "line": 6,
+            "column": 1,
+            "offset": 250
           },
           "replacement": ""
         }
@@ -77,15 +77,15 @@
         "position": {
           "file": "pkg-compiler-testcollectionpreludeandshadowing-18.ms",
           "line": 5,
-          "column": 35,
-          "offset": 246
+          "column": 8,
+          "offset": 219
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:4:35: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | from \"@std/collections.ms\" import Set\n   |                                   ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:5:35: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 5 | from \"@std/collections.ms\" import Set\n   |                                   ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:5:35: resolution: duplicate or intrinsic name Set; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | from \"@std/collections.ms\" import Set\n   |                                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:4:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 4 | import Set from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:5:8: resolution: redundant prelude import Set; remove Set from this import and use its prelude declaration directly\n   |\n 5 | import Set from \"@std/collections.ms\"\n   |        ^^^\n<DIR>/pkg-compiler-testcollectionpreludeandshadowing-18.ms:5:8: resolution: duplicate or intrinsic name Set; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | import Set from \"@std/collections.ms\"\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

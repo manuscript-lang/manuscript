@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def first_copy[T: Clonable](xs: List[T]) -> Optional[T]:
+fn first_copy[T: Clonable](xs: List[T]) Optional[T]:
     return some(xs[0].clone())
 
 test "min and max keep the element width":

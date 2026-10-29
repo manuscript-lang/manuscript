@@ -1,9 +1,9 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def apply(value: Int, action: Callable[[Int], Int]) -> Int:
+fn apply(value: Int, action: fn(Int) Int) Int:
     return action(value)
 
-def countdown[T](value: T, count: Int) -> T:
+fn countdown[T](value: T, count: Int) T:
     if count == 0:
         return value
 
@@ -13,10 +13,10 @@ test "closures borrow the variable and shadowing":
     var offset = 1
     offset = 10
 
-    let action = lambda (value: Int):
+    let action = fn(value: Int):
         return value + offset
 
-    if True:
+    if true:
         var local = 20
         local = 30
         try expect_equal(action(local), 40)
@@ -25,8 +25,8 @@ test "closures borrow the variable and shadowing":
     try expect_equal(offset, 10)
     try expect_equal(countdown("ready", 4), "ready")
 
-    let factory = lambda (value: Int) -> Callable[[Int], Int]:
-        return lambda inner:
+    let factory = fn(value: Int) fn(Int) Int:
+        return fn inner:
             return inner + offset
     let nested = factory(value: 99)
     offset = 100

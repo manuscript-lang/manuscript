@@ -1,10 +1,10 @@
 # conform: tags=formatter,modules,parser,stdlib-errors,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=internal/cli/advisory_lint_test.go:18 TestSafetyAdvisoriesDoNotBecomeCheckErrors
-from "@std/core.ms" import TextError
+import TextError from "@std/core.ms"
 
-def fail() -> Result[Int, TextError]:
+fn fail() Result[Int, TextError]:
     return error(TextError("boom"))
 
-def use() -> Unit:
+fn use() Unit:
     let _ = fail()

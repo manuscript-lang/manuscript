@@ -1,2 +1,2 @@
-export def leaf(value: Int) -> Int:
+export fn leaf(value: Int) Int:
     return value + 1

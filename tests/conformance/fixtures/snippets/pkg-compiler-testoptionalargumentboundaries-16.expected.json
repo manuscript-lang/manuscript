@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-16.ms",
           "line": 6,
-          "column": 26,
-          "offset": 222
+          "column": 22,
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-16.ms:6:26: type: duplicate argument value; pass each argument once\n   |\n 6 | def call() -> Unit: f(4, value: 5)\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-16.ms:6:22: type: duplicate argument value; pass each argument once\n   |\n 6 | fn call() Unit: f(4, value: 5)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

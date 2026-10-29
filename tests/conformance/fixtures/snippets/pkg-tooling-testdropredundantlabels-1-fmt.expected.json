@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Point:\n    x: Int\n    y: Int\n\ndef bump(map: Int, key: Int, step: Int = 1) -> Int: map + key + step\n\ntype Counter:\n    total: Int\n\ninterface Adder:\n    def add(amount: Int, extra: Int) -> Int\n\nimpl Adder for Counter:\n    def add(amount: Int, extra: Int) -> Int: self.total + amount + extra\n\ndef use(map: Int, key: Int, y: Int, x: Int, counter: Counter) -> Int: ...\n"
+    "fmt": "type Point:\n    x: Int\n    y: Int\n\nfn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step\n\ntype Counter:\n    total: Int\n\ninterface Adder:\n    fn add(amount: Int, extra: Int) Int\n\nimpl Adder for Counter:\n    fn add(amount: Int, extra: Int) Int: self.total + amount + extra\n\nfn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...\n"
   }
 }

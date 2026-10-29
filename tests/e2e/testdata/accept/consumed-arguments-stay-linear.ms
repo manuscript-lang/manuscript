@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 # Each rebuild hands the old value to a callee that stores it. A callee that copies its
 # argument makes the loop quadratic, so these sizes finish only when the argument moves.
@@ -6,11 +6,11 @@ type Node:
     val: Int
     kids: List[Node]
 
-def wrap(n: Node, i: Int) -> Node:
+fn wrap(n: Node, i: Int) Node:
     return Node(i, [n])
 
 impl Node:
-    def up(i: Int) -> Node:
+    fn up(i: Int) Node:
         return Node(i, [self])
 
 test "a consumed function argument moves":

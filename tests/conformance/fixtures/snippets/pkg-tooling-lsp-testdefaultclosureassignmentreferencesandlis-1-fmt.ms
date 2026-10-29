@@ -1,16 +1,16 @@
 # conform: tags=closures,formatter,mutation,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/defaults_test.go:9 TestDefaultClosureAssignmentReferencesAndListHints
-def answer(
+fn answer(
     value: Int = (
-        lambda () -> Int:
+        fn() Int:
             var current = 0
             current = current + 1
             return current
     )()
-) -> Int:
+) Int:
     let callbacks = [
-        lambda () -> Int:
+        fn() Int:
             let nested = 1
             return nested
     ]

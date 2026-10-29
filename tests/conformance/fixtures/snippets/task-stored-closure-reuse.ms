@@ -1,9 +1,9 @@
 # conform: tags=diagnostics,closures,stdlib-tasks,tier-core
 # conform: phase=check
-from "@std/channels.ms" import Channel
-from "@std/tasks.ms" import TaskGroup
+import Channel from "@std/channels.ms"
+import TaskGroup from "@std/tasks.ms"
 
-def start(entry: Callable[[Channel[Unit, Unit]], Int]) -> Int:
+fn start(entry: fn(Channel[Unit, Unit]) Int) Int:
     var group = TaskGroup[Int]()
     group.spawn(entry)
     group.spawn(entry)

@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_contains, expect_fault
-from "@std/bytes.ms" import Bytes, BytesBuilder, BinaryError
+import {expect_equal, expect_contains, expect_fault} from "@std/test.ms"
+import {Bytes, BytesBuilder, BinaryError} from "@std/bytes.ms"
 
 test "integers round-trip in both byte orders":
     var out = BytesBuilder()

@@ -4,5 +4,5 @@
 type Other:
     case some(value: Int)
 
-def f() -> Optional[Int]:
+fn f() Optional[Int]:
     return some(value: 1)

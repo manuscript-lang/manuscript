@@ -11,7 +11,7 @@ Strings, records, lists, maps, sets, and alternatives are values. Scalars and re
 
 A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. `ref` is written in one place, before a function's result type, never in a binding, field, element, type argument, function type or escaping closure.
 
-- A function that returns part of a parameter or the receiver declares it: `def list() -> ref List[Int]`, `def trim() -> ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. Every path of a `ref` function returns such a part (or `none`): returning a new value, a `try` failure, a part converted to an interface, a `get` with a fallback (`o.get(default)` copies), or a borrow of a temporary built inside the function is rejected, because the caller would hold a borrow of something freed when the function returns. Drop `ref` to return owned values. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
+- A function that returns part of a parameter or the receiver declares it: `fn list() ref List[Int]`, `fn trim() ref String`. Without `ref` the function is rejected; return `.clone()` to own the value instead. Every path of a `ref` function returns such a part (or `none`): returning a new value, a `try` failure, a part converted to an interface, a `get` with a fallback (`o.get(default)` copies), or a borrow of a temporary built inside the function is rejected, because the caller would hold a borrow of something freed when the function returns. Drop `ref` to return owned values. A call site needs no marker: `let t = s.trim()` holds a shared borrow of `s`, and `var ys = b.list()` writes through to `b` when `list` returns one plain field path of its only argument. Any other `var` binding of a `ref` call is rejected; `.clone()` it or bind it with `let`.
 - A binding of a place (`let x = a.b`, `var x = xs[i]`), a loop variable and a match payload borrow without a marker; `let ref`, `for ref` and `match ref` are rejected.
 - A `ref` result freezes every borrowable argument of the call until its last use, not only the one it came from.
 - An interface operation declares `ref` when its implementations lend: every implementation of a `ref` operation returns `ref`, and an owning operation cannot be implemented by a lender. A scalar result (`Int`, `Bool`, `Optional[Float]`) is the same lent or owned, so an implementation may compute it; a `Shared` handle still refers to storage, so it is not exempt. A call through the interface lends too: `view.label()` borrows from `view`, so keeping the result past `view`, or returning it from a function without `ref`, needs `.clone()`.
@@ -21,10 +21,10 @@ type Box:
     items: List[Int]
 
 impl Box:
-    def list() -> ref List[Int]:
+    fn list() ref List[Int]:
         return self.items
 
-def grow(var b: Box) -> Int:
+fn grow(var b: Box) Int:
     var xs = b.list()
     xs.append(1)
     return b.items.length()
@@ -53,18 +53,18 @@ To change the value, lock it with `lock(box)` from `@std/sync.ms` into a `var` b
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/shared.ms" import share, Shared
-from "@std/sync.ms" import lock
-from "@std/test.ms" import expect_equal
+import {share, Shared} from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import expect_equal from "@std/test.ms"
 
 type Counter:
     values: List[Int]
 
 impl Counter:
-    var def bump() -> Unit:
+    var fn bump() Unit:
         self.values.append(1)
 
-def bump(shared: Shared[Counter]) -> Unit:
+fn bump(shared: Shared[Counter]) Unit:
     var guard = lock(shared)
     guard.value.bump()
 

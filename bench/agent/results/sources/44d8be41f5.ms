@@ -1,11 +1,11 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
-def say(msg: String) -> Int:
-    stdout().write(f"{msg}\n").get()
+fn say(msg: String) Int:
+    stdout().write("{msg}\n").get()
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     let rows = read_lines(stdin()).get()
     var n = rows.length()
 
@@ -23,7 +23,7 @@ export def main() -> Int:
         for c in 0..grid[r].length():
             let ch = grid[r][c]
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
-                return say(f"error: bad character at {r + 1},{c + 1}")
+                return say("error: bad character at {r + 1},{c + 1}")
 
     let width = grid[0].length()
     for r in 0..n:
@@ -42,7 +42,7 @@ export def main() -> Int:
             if ch == "S":
                 starts += 1
                 s = r * width + c
-            elif ch == "E":
+            else if ch == "E":
                 ends += 1
                 e = r * width + c
 
@@ -91,4 +91,4 @@ export def main() -> Int:
     if dist[e] < 0:
         return say("no path")
 
-    return say(f"{dist[e]}")
+    return say("{dist[e]}")

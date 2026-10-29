@@ -2,11 +2,11 @@
 # conform: phase=check
 # conform: origin=pkg/build/compiler_test.go:546 TestImplementationDeclarationParameters
 interface Read[V]:
-    def get() -> V
+    fn get() V
 
 type Box[T]:
     value: T
 
 impl Read[U] for Box[U]:
-    def get() -> U:
+    fn get() U:
         return self.value

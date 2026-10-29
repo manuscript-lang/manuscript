@@ -1,25 +1,25 @@
 # conform: tags=closures,control-flow,interfaces,lists,modules,mutation,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/closed-record-int-bounds.ms
-from "@std/test.ms" import expect_contains, expect_equal, expect_fault
+import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
 
 interface Counter:
-    var def bump(by: Int) -> Int
-    var def lower(by: Int) -> Int
+    var fn bump(by: Int) Int
+    var fn lower(by: Int) Int
 
 type Cell:
     total: Int
 
 impl Counter for Cell:
-    var def bump(by: Int) -> Int:
+    var fn bump(by: Int) Int:
         self.total += by
         return self.total
 
-    var def lower(by: Int) -> Int:
+    var fn lower(by: Int) Int:
         self.total -= by
         return self.total
 
-def sum() -> Int:
+fn sum() Int:
     var cell = Cell(0)
     var i = 0
 
@@ -30,7 +30,7 @@ def sum() -> Int:
 
     return cell.total
 
-def prefix() -> Int:
+fn prefix() Int:
     var cell = Cell(9223372036854775807)
     var i = 0
 
@@ -41,7 +41,7 @@ def prefix() -> Int:
 
     return cell.total
 
-def peer() -> Int:
+fn peer() Int:
     var cell = Cell(9223372036854775807)
     var other = Cell(0)
     var i = 0
@@ -53,7 +53,7 @@ def peer() -> Int:
 
     return cell.total
 
-def scalar_peer() -> Int:
+fn scalar_peer() Int:
     var cell = Cell(9223372036854775807)
     var sum = 0
     var i = 0
@@ -65,7 +65,7 @@ def scalar_peer() -> Int:
 
     return cell.total
 
-def reset() -> Int:
+fn reset() Int:
     var cell = Cell(0)
     var i = 0
 
@@ -76,11 +76,11 @@ def reset() -> Int:
 
     return cell.total
 
-def effect(var visits: List[Int]) -> Int:
+fn effect(var visits: List[Int]) Int:
     visits.append(7)
     return 1
 
-def eager(var visits: List[Int]) -> Int:
+fn eager(var visits: List[Int]) Int:
     var cell = Cell(0)
     cell.bump(effect(var visits))
     return cell.total
@@ -89,22 +89,18 @@ test "closed cell updates preserve each operation":
     sum() | try expect_equal(1000)
 
 test "closed cells retain prefix overflow":
-    (try expect_fault(lambda: let _ignored = prefix())) | try expect_contains(
+    (try expect_fault(fn: let _ignored = prefix())) | try expect_contains(
         "Int overflow"
     )
 
 test "peer cells and scalar carries are not initial invariants":
-    (try expect_fault(lambda: let _ignored = peer())) | try expect_contains(
-        "Int overflow"
-    )
-    (try expect_fault(lambda: let _ignored = scalar_peer())) | try expect_contains(
+    (try expect_fault(fn: let _ignored = peer())) | try expect_contains("Int overflow")
+    (try expect_fault(fn: let _ignored = scalar_peer())) | try expect_contains(
         "Int overflow"
     )
 
 test "field resets keep ordinary overflow checks":
-    (try expect_fault(lambda: let _ignored = reset())) | try expect_contains(
-        "Int overflow"
-    )
+    (try expect_fault(fn: let _ignored = reset())) | try expect_contains("Int overflow")
 
 test "record arguments execute exactly once before the update":
     var visits: List[Int] = []

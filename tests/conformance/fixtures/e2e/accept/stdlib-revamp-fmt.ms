@@ -1,24 +1,24 @@
 # conform: tags=control-flow,faults,formatter,interfaces,maps,match,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/io.ms" import ReadStream, IoError, read_line
-from "@std/bytes.ms" import Bytes
-from "@std/queue.ms" import PriorityQueue
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {ReadStream, IoError, read_line} from "@std/io.ms"
+import Bytes from "@std/bytes.ms"
+import PriorityQueue from "@std/queue.ms"
 
 type Key:
     id: Int
     label: String
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.id == other.id
 
 impl Hashable for Key:
-    def hash() -> Int: self.id
+    fn hash() Int: self.id
 
 impl Comparable for Key:
-    def compare(other: Key) -> Int:
+    fn compare(other: Key) Int:
         return self.id - other.id
 
 test "domain equality and hashing select interfaces":
@@ -66,13 +66,13 @@ type EchoReader:
     unused: Int
 
 impl ReadStream for EchoReader:
-    var def read(max_bytes: Optional[Int]) -> Result[Optional[Bytes], IoError]:
+    var fn read(max_bytes: Optional[Int]) Result[Optional[Bytes], IoError]:
         let requested = max_bytes.get(0)
         if requested == 1: return error(IoError.InvalidInput)
 
         return ok(some(Bytes([requested.to_uint8().get(0)])))
 
-    def close() -> Unit: ()
+    fn close() Unit: unit
 
 test "native compositions preserve Optional arguments for source implementations":
     var stream: ReadStream = EchoReader(0)

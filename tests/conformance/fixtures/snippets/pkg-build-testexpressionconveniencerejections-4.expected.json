@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-build-testexpressionconveniencerejections-4.ms",
           "line": 4,
-          "column": 24,
-          "offset": 183
+          "column": 20,
+          "offset": 179
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-4.ms:4:24: type: indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types\n   |\n 4 | def f() -> Int: return 1 [0]\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-4.ms:4:20: type: indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types\n   |\n 4 | fn f() Int: return 1 [0]\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

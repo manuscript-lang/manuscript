@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "tests-e2e-testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
           "column": 17,
-          "offset": 235
+          "offset": 231
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes",
+        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
         "position": {
           "file": "tests-e2e-testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
           "column": 34,
-          "offset": 252
+          "offset": 248
         },
         "fix": {
           "position": {
@@ -55,14 +55,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/bytes.ms\" import Bytes\n"
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                 ^\n<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: from \"@std/bytes.ms\" import Bytes\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                 ^\n<DIR>/tests-e2e-testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

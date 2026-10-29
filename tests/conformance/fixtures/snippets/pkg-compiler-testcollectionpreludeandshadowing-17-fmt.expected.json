@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def f() -> Unit:\n    let values = Set()\n"
+    "fmt": "fn f() Unit:\n    let values = Set()\n"
   }
 }

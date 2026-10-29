@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def failed[T]() -> Result[T, Failure]: error(Failure(\"empty\"))\n\ndef first() -> Result[Int, Error]: failed()\n"
+    "fmt": "fn failed[T]() Result[T, Failure]: error(Failure(\"empty\"))\n\nfn first() Result[Int, Error]: failed()\n"
   }
 }

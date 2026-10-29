@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let K_END = -1
 let K_OPEN = 0
@@ -137,32 +137,32 @@ type Tracker:
 
 # ---------- output and scalar helpers ----------
 
-def emit(line: String) -> Unit:
+fn emit(line: String) Unit:
     stdout().write(line + "\n").get()
 
-def sub(s: String, a: Int, b: Int) -> String:
+fn sub(s: String, a: Int, b: Int) String:
     return s.slice_scalars(a, b).get()
 
-def is_ws(c: Int) -> Bool:
+fn is_ws(c: Int) Bool:
     return c == 32 or c == 9
 
-def is_lower(c: Int) -> Bool:
+fn is_lower(c: Int) Bool:
     return c >= 97 and c <= 122
 
-def is_digit(c: Int) -> Bool:
+fn is_digit(c: Int) Bool:
     return c >= 48 and c <= 57
 
-def all_digits(s: String) -> Bool:
+fn all_digits(s: String) Bool:
     if s.scalar_length() == 0:
-        return False
+        return false
 
     for i in 0..s.scalar_length():
         if not is_digit(s.scalar_at(i)):
-            return False
-    return True
+            return false
+    return true
 
 # Saturates well above the 1000000 limit so huge values stay comparable.
-def to_num(s: String) -> Int:
+fn to_num(s: String) Int:
     var n = 0
 
     for i in 0..s.scalar_length():
@@ -173,51 +173,51 @@ def to_num(s: String) -> Int:
     return n
 
 # Integer rule: decimal digits, no sign, no leading zeros, at most 1000000.
-def int_rule(s: String) -> Bool:
+fn int_rule(s: String) Bool:
     if not all_digits(s):
-        return False
+        return false
     if s.scalar_length() > 1 and s.scalar_at(0) == 48:
-        return False
+        return false
 
     return to_num(s) <= 1000000
 
-def valid_state(s: String) -> Bool:
+fn valid_state(s: String) Bool:
     let n = s.scalar_length()
     if n == 0 or not is_lower(s.scalar_at(0)):
-        return False
+        return false
 
     for i in 1..n:
         let c = s.scalar_at(i)
         if not (is_lower(c) or is_digit(c) or c == 95):
-            return False
+            return false
 
-    return True
+    return true
 
-def valid_view_name(s: String) -> Bool:
+fn valid_view_name(s: String) Bool:
     let n = s.scalar_length()
     if n == 0 or not is_lower(s.scalar_at(0)):
-        return False
+        return false
 
     for i in 1..n:
         let c = s.scalar_at(i)
         if not (is_lower(c) or is_digit(c) or c == 95 or c == 45):
-            return False
+            return false
 
-    return True
+    return true
 
-def valid_label(s: String) -> Bool:
+fn valid_label(s: String) Bool:
     let n = s.scalar_length()
     if n == 0:
-        return False
+        return false
 
     for i in 0..n:
         let c = s.scalar_at(i)
         if not (is_lower(c) or is_digit(c) or c == 95 or c == 45):
-            return False
+            return false
 
-    return True
+    return true
 
-def days_in(month: Int, year: Int) -> Int:
+fn days_in(month: Int, year: Int) Int:
     if month == 2:
         if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0:
             return 29
@@ -229,28 +229,28 @@ def days_in(month: Int, year: Int) -> Int:
 
     return 31
 
-def valid_date(s: String) -> Bool:
+fn valid_date(s: String) Bool:
     if s.scalar_length() != 10:
-        return False
+        return false
 
     for i in 0..10:
         let c = s.scalar_at(i)
 
         if i == 4 or i == 7:
             if c != 45:
-                return False
-        elif not is_digit(c):
-            return False
+                return false
+        else if not is_digit(c):
+            return false
 
     let year = to_num(sub(s, 0, 4))
     let month = to_num(sub(s, 5, 7))
     let day = to_num(sub(s, 8, 10))
     if year < 1 or month < 1 or month > 12:
-        return False
+        return false
 
     return day >= 1 and day <= days_in(month, year)
 
-def cmp_int(a: Int, b: Int) -> Int:
+fn cmp_int(a: Int, b: Int) Int:
     if a < b:
         return -1
     if a > b:
@@ -258,7 +258,7 @@ def cmp_int(a: Int, b: Int) -> Int:
 
     return 0
 
-def cmp_str(a: String, b: String) -> Int:
+fn cmp_str(a: String, b: String) Int:
     if a < b:
         return -1
     if a > b:
@@ -266,7 +266,7 @@ def cmp_str(a: String, b: String) -> Int:
 
     return 0
 
-def words(s: String) -> List[String]:
+fn words(s: String) List[String]:
     var res = List[String]()
     let n = s.scalar_length()
     var i = 0
@@ -283,7 +283,7 @@ def words(s: String) -> List[String]:
     return res
 
 # Skips n whitespace-separated words and returns the rest, leading blanks removed.
-def after_words(s: String, n: Int) -> String:
+fn after_words(s: String, n: Int) String:
     let len = s.scalar_length()
     var i = 0
     var k = 0
@@ -299,37 +299,37 @@ def after_words(s: String, n: Int) -> String:
         i += 1
     return sub(s, i, len)
 
-def rest_list(items: List[String], k: Int) -> List[String]:
+fn rest_list(items: List[String], k: Int) List[String]:
     var res = List[String]()
     for i in k..items.length():
         res.append(items[i].clone())
     return res
 
-def strip_cr(s: String) -> String:
+fn strip_cr(s: String) String:
     let n = s.scalar_length()
     if n > 0 and s.scalar_at(n - 1) == 13:
         return sub(s, 0, n - 1)
 
     return s
 
-def first_eq(s: String) -> Int:
+fn first_eq(s: String) Int:
     for i in 0..s.scalar_length():
         if s.scalar_at(i) == 61:
             return i
     return -1
 
-def field_of(tok: String) -> String:
+fn field_of(tok: String) String:
     return sub(tok, 0, first_eq(tok))
 
-def value_of(tok: String) -> String:
+fn value_of(tok: String) String:
     return sub(tok, first_eq(tok) + 1, tok.scalar_length())
 
 # Splits on whitespace where a double quote opens a quoted section inside a token.
-def split_tokens(s: String) -> Toks:
+fn split_tokens(s: String) Toks:
     var items = List[String]()
     var cur = ""
-    var started = False
-    var quoted = False
+    var started = false
+    var quoted = false
     let n = s.scalar_length()
     var i = 0
 
@@ -338,8 +338,8 @@ def split_tokens(s: String) -> Toks:
 
         if quoted:
             if c == 34:
-                quoted = False
-            elif (
+                quoted = false
+            else if (
                 c == 92
                 and i + 1 < n
                 and (
@@ -351,32 +351,32 @@ def split_tokens(s: String) -> Toks:
                 cur = cur + sub(s, i, i + 1)
             else:
                 cur = cur + sub(s, i, i + 1)
-        elif c == 34:
-            quoted = True
-            started = True
-        elif is_ws(c):
+        else if c == 34:
+            quoted = true
+            started = true
+        else if is_ws(c):
             if started:
                 items.append(cur)
                 cur = ""
-                started = False
+                started = false
         else:
-            started = True
+            started = true
             cur = cur + sub(s, i, i + 1)
 
         i += 1
 
     if quoted:
-        return Toks(items: items, ok: False)
+        return Toks(items: items, ok: false)
 
     if started:
         items.append(cur)
-    return Toks(items: items, ok: True)
+    return Toks(items: items, ok: true)
 
 # Finds the standalone word `where` outside quotes; returns its start or -1.
-def find_where(s: String) -> Int:
+fn find_where(s: String) Int:
     let n = s.scalar_length()
     var i = 0
-    var quoted = False
+    var quoted = false
     var start = -1
 
     while i < n:
@@ -392,9 +392,9 @@ def find_where(s: String) -> Int:
                 )
             ):
                 i += 1
-            elif c == 34:
-                quoted = False
-        elif is_ws(c):
+            else if c == 34:
+                quoted = false
+        else if is_ws(c):
             if start >= 0 and sub(s, start, i) == "where":
                 return start
 
@@ -403,7 +403,7 @@ def find_where(s: String) -> Int:
             if start < 0:
                 start = i
             if c == 34:
-                quoted = True
+                quoted = true
 
         i += 1
 
@@ -413,7 +413,7 @@ def find_where(s: String) -> Int:
     return -1
 
 # Reads a quoted section starting at the opening quote index `start`.
-def read_quoted(s: String, start: Int) -> Quoted:
+fn read_quoted(s: String, start: Int) Quoted:
     let n = s.scalar_length()
     var i = start + 1
     var out = ""
@@ -421,7 +421,7 @@ def read_quoted(s: String, start: Int) -> Quoted:
     while i < n:
         let c = s.scalar_at(i)
         if c == 34:
-            return Quoted(value: out, next: i + 1, ok: True)
+            return Quoted(value: out, next: i + 1, ok: true)
 
         if (
             c == 92
@@ -434,11 +434,11 @@ def read_quoted(s: String, start: Int) -> Quoted:
             out = out + sub(s, i, i + 1)
             i += 1
 
-    return Quoted(value: out, next: n, ok: False)
+    return Quoted(value: out, next: n, ok: false)
 
 # ---------- field validation and values ----------
 
-def is_known_field(f: String) -> Bool:
+fn is_known_field(f: String) Bool:
     return (
         f == "title"
         or f == "priority"
@@ -449,7 +449,7 @@ def is_known_field(f: String) -> Bool:
         or f == "reporter"
     )
 
-def check_field(tok: String) -> String:
+fn check_field(tok: String) String:
     let p = first_eq(tok)
     if p <= 0:
         return "expected field=value, got '" + tok + "'"
@@ -465,7 +465,7 @@ def check_field(tok: String) -> String:
     if field == "title":
         if value.trim() == "":
             return "empty title"
-    elif field == "priority":
+    else if field == "priority":
         if not (
             value == "low"
             or value == "medium"
@@ -473,94 +473,94 @@ def check_field(tok: String) -> String:
             or value == "critical"
         ):
             return "bad priority '" + value + "'"
-    elif field == "points":
+    else if field == "points":
         if not clear and not int_rule(value):
             return "bad points '" + value + "'"
-    elif field == "due":
+    else if field == "due":
         if not clear and not valid_date(value):
             return "bad date '" + value + "'"
-    elif field == "labels":
+    else if field == "labels":
         if not clear:
             for part in value.split(","):
                 let lab = part.lower()
                 if not valid_label(lab):
                     return "bad label '" + lab + "'"
-    elif field == "assignee":
+    else if field == "assignee":
         if not clear and value.trim() == "":
             return "empty assignee"
-    elif field == "reporter":
+    else if field == "reporter":
         if not clear and value.trim() == "":
             return "empty reporter"
 
     return ""
 
-def opt_str(o: Optional[String]) -> String:
+fn opt_str(o: Optional[String]) String:
     return o.get("")
 
-def opt_int(o: Optional[Int]) -> Int:
+fn opt_int(o: Optional[Int]) Int:
     return o.get(-1)
 
-def show_text(o: Optional[String]) -> String:
+fn show_text(o: Optional[String]) String:
     let v = opt_str(o)
     if v == "":
         return "-"
 
     return v
 
-def show_points(o: Optional[Int]) -> String:
+fn show_points(o: Optional[Int]) String:
     let v = opt_int(o)
     if v < 0:
         return "-"
 
     return v.to_string()
 
-def labels_text(labels: List[String], sep: String) -> String:
+fn labels_text(labels: List[String], sep: String) String:
     if labels.length() == 0:
         return "-"
 
     return labels.join(sep)
 
-def normalize_labels(items: List[String]) -> List[String]:
+fn normalize_labels(items: List[String]) List[String]:
     var seen = Set[String]()
     for l in items:
         seen.add(l.lower())
     return seen.values().sorted()
 
 impl Issue:
-    var def set_field(field: String, value: String) -> Unit:
+    var fn set_field(field: String, value: String) Unit:
         let clear = value == "none"
 
         if field == "title":
             self.title = value
-        elif field == "priority":
+        else if field == "priority":
             self.priority = value
-        elif field == "assignee":
+        else if field == "assignee":
             if clear:
                 self.assignee = none
             else:
                 self.assignee = value
-        elif field == "points":
+        else if field == "points":
             if clear:
                 self.points = none
             else:
                 self.points = to_num(value)
-        elif field == "due":
+        else if field == "due":
             if clear:
                 self.due = none
             else:
                 self.due = value
-        elif field == "labels":
+        else if field == "labels":
             if clear:
                 self.labels = List[String]()
             else:
                 self.labels = normalize_labels(value.split(","))
-        elif field == "reporter":
+        else if field == "reporter":
             if clear:
                 self.reporter = none
             else:
                 self.reporter = value
 
-def diff_issue(a: Issue, b: Issue) -> List[String]:
+fn diff_issue(a: Issue, b: Issue) List[String]:
     var res = List[String]()
     if a.title != b.title:
         res.append("title: " + a.title + " -> " + b.title)
@@ -590,7 +590,7 @@ def diff_issue(a: Issue, b: Issue) -> List[String]:
         )
     return res
 
-def parse_id(tok: String) -> Int:
+fn parse_id(tok: String) Int:
     var s = tok
     if s.starts_with("#"):
         s = sub(s, 1, s.scalar_length())
@@ -603,21 +603,21 @@ def parse_id(tok: String) -> Int:
 
     return v
 
-def unmet_guards(iss: Issue, guards: List[String]) -> List[String]:
+fn unmet_guards(iss: Issue, guards: List[String]) List[String]:
     var res = List[String]()
 
     for g in guards:
-        var ok = True
+        var ok = true
 
         if g == "assignee":
             ok = opt_str(iss.assignee) != ""
-        elif g == "points":
+        else if g == "points":
             ok = opt_int(iss.points) >= 0
-        elif g == "due":
+        else if g == "due":
             ok = opt_str(iss.due) != ""
-        elif g == "labels":
+        else if g == "labels":
             ok = iss.labels.length() > 0
-        elif g == "reporter":
+        else if g == "reporter":
             ok = opt_str(iss.reporter) != ""
 
         if not ok:
@@ -627,11 +627,11 @@ def unmet_guards(iss: Issue, guards: List[String]) -> List[String]:
 
 # ---------- workflow definition ----------
 
-def add_state(var states: List[String], name: String) -> Unit:
+fn add_state(var states: List[String], name: String) Unit:
     if not states.contains(name):
         states.append(name)
 
-def guard_ok(g: String) -> Bool:
+fn guard_ok(g: String) Bool:
     return (
         g == "assignee"
         or g == "points"
@@ -640,15 +640,15 @@ def guard_ok(g: String) -> Bool:
         or g == "reporter"
     )
 
-def wf_fail(msg: String) -> WfParse:
+fn wf_fail(msg: String) WfParse:
     return WfParse(err: msg, wf: empty_workflow())
 
-def parse_workflow(block: List[String]) -> WfParse:
+fn parse_workflow(block: List[String]) WfParse:
     var states = List[String]()
     var finals = List[String]()
     var trans = List[Transition]()
     var initial = ""
-    var has_initial = False
+    var has_initial = false
     var err = ""
 
     for raw in block:
@@ -676,14 +676,14 @@ def parse_workflow(block: List[String]) -> WfParse:
     )
 
 # Applies one non-blank, non-comment workflow line; returns an error message or "".
-def wf_line(
+fn wf_line(
     line: String,
     var states: List[String],
     var finals: List[String],
     var trans: List[Transition],
     var initial: String,
     var has_initial: Bool
-) -> String:
+) String:
     if line.starts_with("initial:"):
         let name = sub(line, 8, line.scalar_length()).trim()
         if not valid_state(name):
@@ -691,7 +691,7 @@ def wf_line(
         if has_initial:
             return "workflow: initial state defined twice"
 
-        has_initial = True
+        has_initial = true
         initial = name.clone()
         add_state(var states, name)
         return ""
@@ -726,7 +726,7 @@ def wf_line(
 
             if ws.length() == 1:
                 dst = ws[0].clone()
-            elif ws.length() == 3 and ws[1] == "requires":
+            else if ws.length() == 3 and ws[1] == "requires":
                 dst = ws[0].clone()
                 guards = ws[2].split("+")
             else:
@@ -745,7 +745,7 @@ def wf_line(
 
     return "workflow: bad line '" + line + "'"
 
-def empty_workflow() -> Workflow:
+fn empty_workflow() Workflow:
     return Workflow(
         initial: "", states: List[String](), finals: List[String](),
         transitions: List[Transition]()
@@ -753,14 +753,14 @@ def empty_workflow() -> Workflow:
 
 # ---------- query language ----------
 
-def ident_end(s: String, i: Int) -> Int:
+fn ident_end(s: String, i: Int) Int:
     var j = i
     let n = s.scalar_length()
     while j < n and (is_lower(s.scalar_at(j)) or s.scalar_at(j) == 95):
         j += 1
     return j
 
-def op_at(s: String, i: Int) -> String:
+fn op_at(s: String, i: Int) String:
     let n = s.scalar_length()
 
     if i + 1 < n:
@@ -775,7 +775,7 @@ def op_at(s: String, i: Int) -> String:
 
     return ""
 
-def word_kind(raw: String) -> Int:
+fn word_kind(raw: String) Int:
     if raw == "AND":
         return K_AND
     if raw == "OR":
@@ -785,7 +785,7 @@ def word_kind(raw: String) -> Int:
 
     return K_WORD
 
-def lex_filter(s: String) -> QLex:
+fn lex_filter(s: String) QLex:
     var toks = List[QTok]()
     let n = s.scalar_length()
     var i = 0
@@ -795,13 +795,13 @@ def lex_filter(s: String) -> QLex:
 
         if is_ws(c):
             i += 1
-        elif c == 40 or c == 41:
+        else if c == 40 or c == 41:
             var kind = K_OPEN
             if c == 41:
                 kind = K_CLOSE
             toks.append(
                 QTok(
-                    kind: kind, text: sub(s, i, i + 1), field: "", op: "", quoted: False
+                    kind: kind, text: sub(s, i, i + 1), field: "", op: "", quoted: false
                 )
             )
             i += 1
@@ -821,7 +821,7 @@ def lex_filter(s: String) -> QLex:
                     toks.append(
                         QTok(
                             kind: K_TERM, text: q.value.clone(), field: field, op: op,
-                            quoted: True
+                            quoted: true
                         )
                     )
                     i = q.next
@@ -837,7 +837,7 @@ def lex_filter(s: String) -> QLex:
                     toks.append(
                         QTok(
                             kind: K_TERM, text: sub(s, vstart, j), field: field, op: op,
-                            quoted: False
+                            quoted: false
                         )
                     )
                     i = j
@@ -863,7 +863,7 @@ def lex_filter(s: String) -> QLex:
                 toks.append(
                     QTok(
                         kind: word_kind(raw), text: raw, field: "", op: "",
-                        quoted: False
+                        quoted: false
                     )
                 )
                 i = j
@@ -871,7 +871,7 @@ def lex_filter(s: String) -> QLex:
     return QLex(toks: toks, err: "")
 
 # Names of the views a stored query references through `view:` terms.
-def collect_refs(text: String) -> List[String]:
+fn collect_refs(text: String) List[String]:
     var res = List[String]()
     let lx = lex_filter(split_query(text).filter)
     for t in lx.toks:
@@ -879,7 +879,7 @@ def collect_refs(text: String) -> List[String]:
             res.append(t.text.clone())
     return res
 
-def op_allowed(field: String, op: String) -> Bool:
+fn op_allowed(field: String, op: String) Bool:
     if field == "text":
         return op == "~"
     if field == "state":
@@ -896,7 +896,7 @@ def op_allowed(field: String, op: String) -> Bool:
 
     return op != "~"
 
-def known_field(field: String) -> Bool:
+fn known_field(field: String) Bool:
     return (
         field == "id"
         or field == "created"
@@ -915,7 +915,7 @@ def known_field(field: String) -> Bool:
         or field == "view"
     )
 
-def priority_rank(p: String) -> Int:
+fn priority_rank(p: String) Int:
     if p == "low":
         return 0
     if p == "medium":
@@ -926,34 +926,34 @@ def priority_rank(p: String) -> Int:
     return 3
 
 impl Parser:
-    def kind() -> Int:
+    fn kind() Int:
         if self.pos >= self.toks.length():
             return K_END
 
         return self.toks[self.pos].kind
 
-    def value_error(field: String, op: String, v: String) -> String:
+    fn value_error(field: String, op: String, v: String) String:
         let bad = "query: bad value '" + v + "' for field '" + field + "'"
 
         if field == "id" or field == "created" or field == "updated":
             if not int_rule(v):
                 return bad
-        elif field == "points":
+        else if field == "points":
             if not ((v == "none" and (op == ":" or op == "!=")) or int_rule(v)):
                 return bad
-        elif field == "due":
+        else if field == "due":
             if not ((v == "none" and (op == ":" or op == "!=")) or valid_date(v)):
                 return bad
-        elif field == "priority":
+        else if field == "priority":
             if not (v == "low" or v == "medium" or v == "high" or v == "critical"):
                 return bad
-        elif field == "state":
+        else if field == "state":
             if not self.states.contains(v):
                 return bad
-        elif field == "is":
+        else if field == "is":
             if not (v == "open" or v == "final" or v == "overdue" or v == "unassigned"):
                 return bad
-        elif field == "has":
+        else if field == "has":
             if not (
                 v == "assignee"
                 or v == "due"
@@ -963,13 +963,13 @@ impl Parser:
                 or v == "reporter"
             ):
                 return bad
-        elif field == "view":
+        else if field == "view":
             if not self.views.contains(v):
                 return "query: unknown view '" + v + "'"
 
         return ""
 
-    var def term(tok: QTok) -> Expr:
+    var fn term(tok: QTok) Expr:
         var field = tok.field.clone()
         if field == "label":
             field = "labels"
@@ -1018,7 +1018,7 @@ impl Parser:
 
         return Cmp(field: field, op: op.clone(), values: values)
 
-    var def parse_unary() -> Expr:
+    var fn parse_unary() Expr:
         let k = self.kind()
 
         if k == K_END:
@@ -1057,11 +1057,11 @@ impl Parser:
         self.err = "query: unexpected token '" + self.toks[self.pos].text + "'"
         return Everything
 
-    def starts_operand() -> Bool:
+    fn starts_operand() Bool:
         let k = self.kind()
         return k == K_AND or k == K_NOT or k == K_OPEN or k == K_TERM or k == K_WORD
 
-    var def parse_and() -> Expr:
+    var fn parse_and() Expr:
         var left = self.parse_unary()
 
         while self.err == "" and self.starts_operand():
@@ -1073,7 +1073,7 @@ impl Parser:
 
         return left
 
-    var def parse_or() -> Expr:
+    var fn parse_or() Expr:
         var left = self.parse_and()
 
         while self.err == "" and self.kind() == K_OR:
@@ -1084,11 +1084,7 @@ impl Parser:
 
         return left
 
-def parse_filter(
-    text: String,
-    states: List[String],
-    views: Map[String, String]
-) -> ParseOut:
+fn parse_filter(text: String, states: List[String], views: Map[String, String]) ParseOut:
     let lx = lex_filter(text)
     if lx.err != "":
         return ParseOut(expr: Everything, err: lx.err.clone())
@@ -1101,7 +1097,7 @@ def parse_filter(
         p.err = "query: unexpected token '" + lx.toks[p.pos].text + "'"
     return ParseOut(expr: e, err: p.err.clone())
 
-def last_space(s: String) -> Int:
+fn last_space(s: String) Int:
     var i = s.scalar_length() - 1
 
     while i >= 0:
@@ -1113,10 +1109,10 @@ def last_space(s: String) -> Int:
     return -1
 
 # Splits a query into filter, sort clause and limit clause (textual, as the spec says).
-def split_query(raw: String) -> Parts:
+fn split_query(raw: String) Parts:
     let text = raw.trim()
     var filter = text.clone()
-    var has_limit = False
+    var has_limit = false
     var limit = ""
     let n = text.scalar_length()
     let w = last_space(text)
@@ -1131,11 +1127,11 @@ def split_query(raw: String) -> Parts:
             and sub(prefix, m - 5, m) == "limit"
             and (m == 5 or is_ws(prefix.scalar_at(m - 6)))
         ):
-            has_limit = True
+            has_limit = true
             limit = arg
             filter = sub(prefix, 0, m - 5).trim_end()
 
-    var has_sort = False
+    var has_sort = false
     var sort = ""
     let fl = filter.scalar_length()
     var i = 0
@@ -1146,7 +1142,7 @@ def split_query(raw: String) -> Parts:
             and (i == 0 or is_ws(filter.scalar_at(i - 1)))
             and is_ws(filter.scalar_at(i + 4))
         ):
-            has_sort = True
+            has_sort = true
             sort = sub(filter, i + 4, fl).trim()
             filter = sub(filter, 0, i).trim_end()
             break
@@ -1158,7 +1154,7 @@ def split_query(raw: String) -> Parts:
         limit: limit
     )
 
-def sort_field_ok(name: String) -> Bool:
+fn sort_field_ok(name: String) Bool:
     return (
         name == "id"
         or name == "created"
@@ -1172,15 +1168,15 @@ def sort_field_ok(name: String) -> Bool:
         or name == "due"
     )
 
-def parse_sort(text: String) -> SortParse:
+fn parse_sort(text: String) SortParse:
     var keys = List[SortKey]()
 
     for w in words(text.replace(",", " ")):
         var name = w.clone()
-        var desc = False
+        var desc = false
 
         if w.starts_with("-"):
-            desc = True
+            desc = true
             name = sub(w, 1, w.scalar_length())
 
         if not sort_field_ok(name):
@@ -1190,13 +1186,13 @@ def parse_sort(text: String) -> SortParse:
 
     return SortParse(err: "", keys: keys)
 
-def eval_text(a: String, v: String, op: String) -> Bool:
+fn eval_text(a: String, v: String, op: String) Bool:
     if op == "~":
         return a.lower().contains(v.lower())
 
     return a.lower() == v.lower()
 
-def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool:
+fn eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) Bool:
     if field == "id":
         return cmp_op(iss.id, to_num(v), op)
     if field == "created":
@@ -1208,7 +1204,7 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
         if v == "none":
             return opt_int(iss.points) < 0 and op == ":"
         if opt_int(iss.points) < 0:
-            return False
+            return false
 
         return cmp_op(opt_int(iss.points), to_num(v), op)
 
@@ -1216,7 +1212,7 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
         if v == "none":
             return opt_str(iss.due) == "" and op == ":"
         if opt_str(iss.due) == "":
-            return False
+            return false
 
         return cmp_op_str(opt_str(iss.due), v, op)
 
@@ -1241,8 +1237,8 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
         if op == "~":
             for l in iss.labels:
                 if l.contains(v.lower()):
-                    return True
-            return False
+                    return true
+            return false
 
         if v == "none":
             return iss.labels.length() == 0
@@ -1251,12 +1247,12 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
 
     if field == "text":
         if iss.title.lower().contains(v.lower()):
-            return True
+            return true
 
         for c in iss.comments:
             if c.text.lower().contains(v.lower()):
-                return True
-        return False
+                return true
+        return false
 
     if field == "state":
         return iss.state == v
@@ -1275,7 +1271,7 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
         if v == "unassigned":
             return opt_str(iss.assignee) == ""
 
-        return False
+        return false
 
     if field == "has":
         if v == "assignee":
@@ -1291,9 +1287,9 @@ def eval_alt(field: String, op: String, v: String, iss: Issue, env: Env) -> Bool
         if v == "reporter":
             return opt_str(iss.reporter) != ""
 
-    return False
+    return false
 
-def cmp_op(a: Int, b: Int, op: String) -> Bool:
+fn cmp_op(a: Int, b: Int, op: String) Bool:
     if op == ":":
         return a == b
     if op == "<":
@@ -1307,7 +1303,7 @@ def cmp_op(a: Int, b: Int, op: String) -> Bool:
 
     return a != b
 
-def cmp_op_str(a: String, b: String, op: String) -> Bool:
+fn cmp_op_str(a: String, b: String, op: String) Bool:
     if op == ":":
         return a == b
     if op == "<":
@@ -1321,47 +1317,41 @@ def cmp_op_str(a: String, b: String, op: String) -> Bool:
 
     return a != b
 
-def eval_cmp(
-    field: String,
-    op: String,
-    values: List[String],
-    iss: Issue,
-    env: Env
-) -> Bool:
+fn eval_cmp(field: String, op: String, values: List[String], iss: Issue, env: Env) Bool:
     if op == "!=":
         for v in values:
             if eval_alt(field, ":", v, iss, env):
-                return False
-        return True
+                return false
+        return true
 
     if op == "<" or op == "<=" or op == ">" or op == ">=":
         return eval_alt(field, op, values[0], iss, env)
 
     for v in values:
         if eval_alt(field, op, v, iss, env):
-            return True
-    return False
+            return true
+    return false
 
-def eval_expr(e: Expr, iss: Issue, env: Env) -> Bool:
+fn eval_expr(e: Expr, iss: Issue, env: Env) Bool:
     match e:
-        case Cmp(field, op, values):
+        Cmp(field, op, values):
             return eval_cmp(field, op, values, iss, env)
-        case Both(left, right):
+        Both(left, right):
             return eval_expr(left, iss, env) and eval_expr(right, iss, env)
-        case Either(left, right):
+        Either(left, right):
             return eval_expr(left, iss, env) or eval_expr(right, iss, env)
-        case Negate(inner):
+        Negate(inner):
             return not eval_expr(inner, iss, env)
-        case Everything:
-            return True
+        Everything:
+            return true
 
-def index_in(items: List[String], value: String) -> Int:
+fn index_in(items: List[String], value: String) Int:
     for i in 0..items.length():
         if items[i] == value:
             return i
     return -1
 
-def field_cmp(a: Issue, b: Issue, name: String, env: Env) -> Int:
+fn field_cmp(a: Issue, b: Issue, name: String, env: Env) Int:
     if name == "id":
         return cmp_int(a.id, b.id)
     if name == "created":
@@ -1412,7 +1402,7 @@ def field_cmp(a: Issue, b: Issue, name: String, env: Env) -> Int:
 
     return 0
 
-def compare_issues(a: Issue, b: Issue, keys: List[SortKey], env: Env) -> Int:
+fn compare_issues(a: Issue, b: Issue, keys: List[SortKey], env: Env) Int:
     for k in keys:
         let c = field_cmp(a, b, k.name, env)
 
@@ -1424,7 +1414,7 @@ def compare_issues(a: Issue, b: Issue, keys: List[SortKey], env: Env) -> Int:
 
     return cmp_int(a.id, b.id)
 
-def issue_line(iss: Issue) -> String:
+fn issue_line(iss: Issue) String:
     return (
         "#"
         + iss.id.to_string()
@@ -1444,13 +1434,13 @@ def issue_line(iss: Issue) -> String:
         + iss.title
     )
 
-def count_word(n: Int, one: String, many: String) -> String:
+fn count_word(n: Int, one: String, many: String) String:
     if n == 1:
         return "1 " + one
 
     return n.to_string() + " " + many
 
-def compare_group(a: Group, b: Group) -> Int:
+fn compare_group(a: Group, b: Group) Int:
     if a.points != b.points:
         return cmp_int(b.points, a.points)
     if a.count != b.count:
@@ -1458,13 +1448,13 @@ def compare_group(a: Group, b: Group) -> Int:
 
     return cmp_str(a.key, b.key)
 
-def compare_label(a: LabelCount, b: LabelCount) -> Int:
+fn compare_label(a: LabelCount, b: LabelCount) Int:
     if a.count != b.count:
         return cmp_int(b.count, a.count)
 
     return cmp_str(a.name, b.name)
 
-def period_line(state: String, from: Int, to: Int) -> String:
+fn period_line(state: String, from: Int, to: Int) String:
     return (
         state
         + ": t="
@@ -1479,38 +1469,38 @@ def period_line(state: String, from: Int, to: Int) -> String:
 # ---------- the tracker ----------
 
 impl Tracker:
-    def index_of(id: Int) -> Int:
+    fn index_of(id: Int) Int:
         for i in 0..self.issues.length():
             if self.issues[i].id == id:
                 return i
         return -1
 
-    def is_final(state: String) -> Bool:
+    fn is_final(state: String) Bool:
         return self.wf.finals.contains(state)
 
-    def env() -> Env:
+    fn env() Env:
         return Env(
             today: self.today.clone(), finals: self.wf.finals.clone(),
             states: self.wf.states.clone()
         )
 
-    var def log_add(id: Int, detail: String) -> Unit:
+    var fn log_add(id: Int, detail: String) Unit:
         self.log.append(
             LogEntry(
                 t: self.clock, actor: self.actor.clone(), id: id, detail: detail
             )
         )
 
-    def reaches(from: String, target: String) -> Bool:
+    fn reaches(from: String, target: String) Bool:
         if not self.views.contains(from):
-            return False
+            return false
 
         for r in collect_refs(self.views.get(from).get("")):
             if r == target or self.reaches(r, target):
-                return True
-        return False
+                return true
+        return false
 
-    def plan(parts: Parts) -> Plan:
+    fn plan(parts: Parts) Plan:
         if parts.has_limit and not all_digits(parts.limit):
             return Plan(
                 err: "bad limit '" + parts.limit + "'", expr: Everything,
@@ -1541,14 +1531,14 @@ impl Tracker:
 
         return Plan(err: "", expr: pr.expr.clone(), keys: keys, limit: limit)
 
-    def run(plan: Plan) -> List[Issue]:
+    fn run(plan: Plan) List[Issue]:
         let env = self.env()
         var res = List[Issue]()
         for iss in self.issues:
             if eval_expr(plan.expr, iss, env):
                 res.append(iss.clone())
         if plan.keys.length() > 0:
-            res = res.sorted(lambda a, b: compare_issues(a, b, plan.keys, env))
+            res = res.sorted(fn a, b: compare_issues(a, b, plan.keys, env))
 
         if plan.limit >= 0 and plan.limit < res.length():
             var cut = List[Issue]()
@@ -1558,15 +1548,15 @@ impl Tracker:
 
         return res
 
-    def print_issues(found: List[Issue]) -> Unit:
+    fn print_issues(found: List[Issue]) Unit:
         for iss in found:
             self.out(issue_line(iss))
         self.out("(" + count_word(found.length(), "issue", "issues") + ")")
 
-    def out(line: String) -> Unit:
+    fn out(line: String) Unit:
         emit(line)
 
-    var def define_workflow(block: List[String]) -> Unit:
+    var fn define_workflow(block: List[String]) Unit:
         if self.next_id > 1:
             self.out("error: workflow: cannot redefine after issues were created")
             return
@@ -1580,7 +1570,7 @@ impl Tracker:
         let n_states = parsed.wf.states.length()
         let n_trans = parsed.wf.transitions.length()
         self.wf = parsed.wf.clone()
-        self.has_wf = True
+        self.has_wf = true
         self.out(
             "workflow ok: "
             + n_states.to_string()
@@ -1589,7 +1579,7 @@ impl Tracker:
             + " transitions"
         )
 
-    var def commit(idx: Int, next: Issue) -> String:
+    var fn commit(idx: Int, next: Issue) String:
         let diffs = diff_issue(self.issues[idx], next)
         let id = next.id
 
@@ -1607,7 +1597,7 @@ impl Tracker:
         self.out("updated #" + id.to_string())
         return ""
 
-    var def edit_fields(id: Int, fields: List[String]) -> String:
+    var fn edit_fields(id: Int, fields: List[String]) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1632,7 +1622,7 @@ impl Tracker:
             iss.set_field(field_of(f), value_of(f))
         return self.commit(idx, iss)
 
-    var def label_issue(id: Int, ops: List[String]) -> String:
+    var fn label_issue(id: Int, ops: List[String]) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1670,7 +1660,7 @@ impl Tracker:
         iss.labels = cur.values().sorted()
         return self.commit(idx, iss)
 
-    var def move_issue(id: Int, target: String, comment: String) -> String:
+    var fn move_issue(id: Int, target: String, comment: String) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1683,18 +1673,18 @@ impl Tracker:
         if cur == target:
             return "already in state '" + target + "'"
 
-        var allowed = False
-        var seen = False
+        var allowed = false
+        var seen = false
         var best = List[String]()
 
         for t in self.wf.transitions:
             if t.src == cur and t.dst == target:
-                seen = True
+                seen = true
 
                 let m = unmet_guards(self.issues[idx], t.guards.clone())
 
                 if m.length() == 0:
-                    allowed = True
+                    allowed = true
                     break
 
                 if best.length() == 0:
@@ -1730,7 +1720,7 @@ impl Tracker:
             self.log_add(id, "comment: " + comment)
         return ""
 
-    var def comment_issue(id: Int, text: String) -> String:
+    var fn comment_issue(id: Int, text: String) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1749,7 +1739,7 @@ impl Tracker:
         self.out("commented #" + id.to_string())
         return ""
 
-    var def delete_issue(id: Int) -> String:
+    var fn delete_issue(id: Int) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1760,7 +1750,7 @@ impl Tracker:
         self.out("deleted #" + id.to_string())
         return ""
 
-    var def create_issue(rest: String) -> Unit:
+    var fn create_issue(rest: String) Unit:
         if not self.has_wf:
             self.out("error: no workflow defined")
             return
@@ -1809,7 +1799,7 @@ impl Tracker:
             self.log_add(id, d)
         self.out("created #" + id.to_string())
 
-    var def show_issue(id: Int) -> String:
+    var fn show_issue(id: Int) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -1834,7 +1824,7 @@ impl Tracker:
             self.out("    [t=" + c.t.to_string() + " " + c.actor + "] " + c.text)
         return ""
 
-    var def show_log(id: Int, tail: Int) -> Unit:
+    var fn show_log(id: Int, tail: Int) Unit:
         var sel = List[LogEntry]()
         for e in self.log:
             if id == 0 or e.id == id:
@@ -1861,7 +1851,7 @@ impl Tracker:
                 + e.detail
             )
 
-    var def report_summary() -> Unit:
+    var fn report_summary() Unit:
         var open_n = 0
         var final_n = 0
         var unassigned = 0
@@ -1911,17 +1901,17 @@ impl Tracker:
         self.out("overdue: " + overdue.to_string())
         self.out("open points: " + open_points.to_string())
 
-    var def report_workload() -> Unit:
+    var fn report_workload() Unit:
         var groups = List[Group]()
         var un_count = 0
         var un_points = 0
-        var any_open = False
+        var any_open = false
 
         for iss in self.issues:
             if self.is_final(iss.state):
                 continue
 
-            any_open = True
+            any_open = true
 
             var pts = opt_int(iss.points)
             if pts < 0:
@@ -1952,7 +1942,7 @@ impl Tracker:
             self.out("(no open issues)")
             return
 
-        groups = groups.sorted(lambda x, y: compare_group(x, y))
+        groups = groups.sorted(fn x, y: compare_group(x, y))
         for g in groups:
             self.out(
                 g.name + ": " + count_word(
@@ -1966,7 +1956,7 @@ impl Tracker:
                 ) + ", " + un_points.to_string() + " points"
             )
 
-    var def report_labels(filter: String) -> Unit:
+    var fn report_labels(filter: String) Unit:
         let pr = parse_filter(filter, self.wf.states.clone(), self.views.clone())
 
         if pr.err != "":
@@ -1981,14 +1971,14 @@ impl Tracker:
                 continue
 
             for l in iss.labels:
-                var found = False
+                var found = false
 
                 for i in 0..counts.length():
                     if counts[i].name == l:
                         var c = counts[i].clone()
                         c.count += 1
                         counts[i] = c
-                        found = True
+                        found = true
 
                 if not found:
                     counts.append(LabelCount(name: l.clone(), count: 1))
@@ -1997,10 +1987,10 @@ impl Tracker:
             self.out("(no labels)")
             return
 
-        for c in counts.sorted(lambda x, y: compare_label(x, y)):
+        for c in counts.sorted(fn x, y: compare_label(x, y)):
             self.out(c.name + ": " + c.count.to_string())
 
-    var def report_timeline(id: Int) -> String:
+    var fn report_timeline(id: Int) String:
         let idx = self.index_of(id)
         if idx < 0:
             return "no such issue #" + id.to_string()
@@ -2019,7 +2009,7 @@ impl Tracker:
         self.out(period_line(cur, from, self.clock))
         return ""
 
-    var def cmd_report(rest: String) -> Unit:
+    var fn cmd_report(rest: String) Unit:
         let ws = words(rest)
         let usage = "error: usage: report summary|workload|labels|timeline"
 
@@ -2031,11 +2021,11 @@ impl Tracker:
 
         if kind == "summary":
             self.report_summary()
-        elif kind == "workload":
+        else if kind == "workload":
             self.report_workload()
-        elif kind == "labels":
+        else if kind == "labels":
             self.report_labels(after_words(rest, 1))
-        elif kind == "timeline":
+        else if kind == "timeline":
             if ws.length() != 2:
                 self.out("error: usage: report timeline ID")
                 return
@@ -2052,7 +2042,7 @@ impl Tracker:
         else:
             self.out(usage)
 
-    var def cmd_log(rest: String) -> Unit:
+    var fn cmd_log(rest: String) Unit:
         let ws = words(rest)
         var k = 0
         var id = 0
@@ -2075,7 +2065,7 @@ impl Tracker:
                 return
 
             tail = to_num(ws[k + 1].clone())
-        elif rem != 0:
+        else if rem != 0:
             self.out("error: usage: log [ID] [tail N]")
             return
 
@@ -2085,7 +2075,7 @@ impl Tracker:
 
         self.show_log(id, tail)
 
-    var def cmd_bulk(rest: String) -> Unit:
+    var fn cmd_bulk(rest: String) Unit:
         let at = find_where(rest)
 
         if at < 0:
@@ -2112,15 +2102,15 @@ impl Tracker:
             if items.length() != 2:
                 self.out("error: usage: bulk move STATE where QUERY")
                 return
-        elif kind == "assign":
+        else if kind == "assign":
             if items.length() != 2:
                 self.out("error: usage: bulk assign NAME where QUERY")
                 return
-        elif kind == "label":
+        else if kind == "label":
             if items.length() < 2:
                 self.out("error: usage: bulk label +label... where QUERY")
                 return
-        elif kind == "set":
+        else if kind == "set":
             if items.length() < 2:
                 self.out("error: usage: bulk set field=value... where QUERY")
                 return
@@ -2148,9 +2138,9 @@ impl Tracker:
 
             if kind == "move":
                 e = self.move_issue(id, items[1], "")
-            elif kind == "assign":
+            else if kind == "assign":
                 e = self.edit_fields(id, ["assignee=" + items[1]])
-            elif kind == "label":
+            else if kind == "label":
                 e = self.label_issue(id, rest_list(items, 1))
             else:
                 e = self.edit_fields(id, rest_list(items, 1))
@@ -2163,7 +2153,7 @@ impl Tracker:
 
         self.out("bulk: " + ok.to_string() + " ok, " + failed.to_string() + " failed")
 
-    var def cmd_view(rest: String) -> Unit:
+    var fn cmd_view(rest: String) Unit:
         let ws = words(rest)
 
         if ws.length() == 0:
@@ -2197,7 +2187,7 @@ impl Tracker:
 
             self.views[name.clone()] = query
             self.out("saved view " + name)
-        elif verb == "run":
+        else if verb == "run":
             if ws.length() < 2:
                 self.out("error: usage: view run NAME [sort FIELDS] [limit N]")
                 return
@@ -2226,11 +2216,11 @@ impl Tracker:
             )
 
             if given.has_sort:
-                eff.has_sort = True
+                eff.has_sort = true
                 eff.sort = given.sort.clone()
 
             if given.has_limit:
-                eff.has_limit = True
+                eff.has_limit = true
                 eff.limit = given.limit.clone()
 
             let plan = self.plan(eff)
@@ -2240,7 +2230,7 @@ impl Tracker:
                 return
 
             self.print_issues(self.run(plan))
-        elif verb == "list":
+        else if verb == "list":
             let names = self.views.keys().sorted()
 
             if names.length() == 0:
@@ -2249,7 +2239,7 @@ impl Tracker:
 
             for n in names:
                 self.out(n + ": " + self.views.get(n).get(""))
-        elif verb == "show":
+        else if verb == "show":
             if ws.length() != 2:
                 self.out("error: usage: view show NAME")
                 return
@@ -2259,7 +2249,7 @@ impl Tracker:
                 return
 
             self.out(ws[1].clone() + ": " + self.views.get(ws[1].clone()).get(""))
-        elif verb == "delete":
+        else if verb == "delete":
             if ws.length() != 2:
                 self.out("error: usage: view delete NAME")
                 return
@@ -2280,7 +2270,7 @@ impl Tracker:
         else:
             self.out("error: usage: view save|run|list|show|delete")
 
-    var def dispatch(cmd: String, rest: String) -> Unit:
+    var fn dispatch(cmd: String, rest: String) Unit:
         if cmd == "actor":
             let ws = words(rest)
 
@@ -2290,7 +2280,7 @@ impl Tracker:
 
             self.actor = ws[0].clone()
             self.out("actor is " + ws[0].clone())
-        elif cmd == "today":
+        else if cmd == "today":
             let ws = words(rest)
 
             if ws.length() != 1:
@@ -2303,9 +2293,9 @@ impl Tracker:
 
             self.today = ws[0].clone()
             self.out("today is " + ws[0].clone())
-        elif cmd == "create":
+        else if cmd == "create":
             self.create_issue(rest)
-        elif cmd == "edit":
+        else if cmd == "edit":
             let tk = split_tokens(rest)
 
             if not tk.ok:
@@ -2325,7 +2315,7 @@ impl Tracker:
             let e = self.edit_fields(id, rest_list(tk.items, 1))
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "assign":
+        else if cmd == "assign":
             let tk = split_tokens(rest)
 
             if not tk.ok:
@@ -2345,7 +2335,7 @@ impl Tracker:
             let e = self.edit_fields(id, ["assignee=" + tk.items[1]])
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "label":
+        else if cmd == "label":
             let tk = split_tokens(rest)
 
             if not tk.ok:
@@ -2365,7 +2355,7 @@ impl Tracker:
             let e = self.label_issue(id, rest_list(tk.items, 1))
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "move":
+        else if cmd == "move":
             let ws = words(rest)
 
             if ws.length() < 2:
@@ -2381,7 +2371,7 @@ impl Tracker:
             let e = self.move_issue(id, ws[1].clone(), after_words(rest, 2))
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "comment":
+        else if cmd == "comment":
             let ws = words(rest)
 
             if ws.length() < 2:
@@ -2397,7 +2387,7 @@ impl Tracker:
             let e = self.comment_issue(id, after_words(rest, 1))
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "delete":
+        else if cmd == "delete":
             let ws = words(rest)
 
             if ws.length() != 1:
@@ -2413,7 +2403,7 @@ impl Tracker:
             let e = self.delete_issue(id)
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "show":
+        else if cmd == "show":
             let ws = words(rest)
 
             if ws.length() != 1:
@@ -2429,7 +2419,7 @@ impl Tracker:
             let e = self.show_issue(id)
             if e != "":
                 self.out("error: " + e)
-        elif cmd == "list":
+        else if cmd == "list":
             let plan = self.plan(split_query(rest))
 
             if plan.err != "":
@@ -2437,22 +2427,22 @@ impl Tracker:
                 return
 
             self.print_issues(self.run(plan))
-        elif cmd == "log":
+        else if cmd == "log":
             self.cmd_log(rest)
-        elif cmd == "view":
+        else if cmd == "view":
             self.cmd_view(rest)
-        elif cmd == "bulk":
+        else if cmd == "bulk":
             self.cmd_bulk(rest)
-        elif cmd == "report":
+        else if cmd == "report":
             self.cmd_report(rest)
         else:
             self.out("error: unknown command '" + cmd + "'")
 
-export def main() -> Int:
+export fn main() Int:
     let raw = read_lines(stdin()).get()
     let n = raw.length()
     var tr = Tracker(
-        wf: empty_workflow(), has_wf: False, issues: List[Issue](), next_id: 1,
+        wf: empty_workflow(), has_wf: false, issues: List[Issue](), next_id: 1,
         clock: 0, actor: "system", today: "1970-01-01", log: List[LogEntry](),
         views: Map[String, String]()
     )
@@ -2473,14 +2463,14 @@ export def main() -> Int:
 
         if cmd == "workflow":
             var block = List[String]()
-            var closed = False
+            var closed = false
 
             while idx < n and not closed:
                 let b = strip_cr(raw[idx].clone())
                 idx += 1
 
                 if b.trim() == "end":
-                    closed = True
+                    closed = true
                 else:
                     block.append(b)
 

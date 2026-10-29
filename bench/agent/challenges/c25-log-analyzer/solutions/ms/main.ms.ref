@@ -1,25 +1,25 @@
-from "@std/io.ms" import stdin, stdout, read_all
+import {stdin, stdout, read_all} from "@std/io.ms"
 
-def all_digits(s: String) -> Bool:
+fn all_digits(s: String) Bool:
     if s.is_empty():
-        return False
+        return false
 
     for c in s.scalar_values():
         if c < 48 or c > 57:
-            return False
-    return True
+            return false
+    return true
 
-def is_level(s: String) -> Bool:
+fn is_level(s: String) Bool:
     return s == "DEBUG" or s == "INFO" or s == "WARN" or s == "ERROR"
 
-def is_method(s: String) -> Bool:
+fn is_method(s: String) Bool:
     return s == "GET" or s == "POST" or s == "PUT" or s == "DELETE"
 
 type Stat:
     count: Int
     total: Int
 
-def run() -> Result[Unit, Error]:
+fn run() Result[Unit, Error]:
     let data = try read_all(input: stdin())
     let text = data.decode_utf8().get("")
     var valid = 0
@@ -78,7 +78,7 @@ def run() -> Result[Unit, Error]:
 
         if lat > slowest:
             slowest = lat
-            slowest_text = f"{lat} {f.get(2)} {path} {f.get(0)}"
+            slowest_text = "{lat} {f.get(2)} {path} {f.get(0)}"
 
         let old = stats.get_or(key: path, fallback: Stat(count: 0, total: 0))
         stats.add(
@@ -86,33 +86,33 @@ def run() -> Result[Unit, Error]:
         )
 
     var out = List[String]()
-    out.append(f"valid: {valid}")
-    out.append(f"malformed: {malformed}")
+    out.append("valid: {valid}")
+    out.append("malformed: {malformed}")
     for level in ["DEBUG", "INFO", "WARN", "ERROR"]:
-        out.append(f"{level}: {levels.get_or(key: level, fallback: 0)}")
+        out.append("{level}: {levels.get_or(key: level, fallback: 0)}")
 
     let sorted_lat = latencies.sorted(
-        compare: lambda (left: Int, right: Int) -> Int: return left - right
+        compare: fn(left: Int, right: Int) Int: return left - right
     )
     var p95 = 0
     if sorted_lat.length() > 0:
         p95 = sorted_lat.get((95 * sorted_lat.length() + 99) / 100 - 1)
     out.append(
-        f"status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
+        "status: 2xx={classes.get(0)} 3xx={classes.get(1)} 4xx={classes.get(2)} 5xx={classes.get(3)} other={classes.get(4)}"
     )
-    out.append(f"p95: {p95}")
+    out.append("p95: {p95}")
     if slowest >= 0:
-        out.append(f"slowest: {slowest_text}")
+        out.append("slowest: {slowest_text}")
     out.append("top:")
 
     let ranked = (
         stats
         .entries()
         .sorted(
-            compare: lambda (
+            compare: fn(
                 left: MapEntry[String, Stat],
                 right: MapEntry[String, Stat]
-            ) -> Int:
+            ) Int:
                 if left.value.count != right.value.count:
                     return right.value.count - left.value.count
 
@@ -126,13 +126,13 @@ def run() -> Result[Unit, Error]:
         if shown >= 3:
             break
 
-        out.append(f"{e.key} {e.value.count} avg={e.value.total / e.value.count}")
+        out.append("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
         shown = shown + 1
 
-    try stdout().write(f"{out.join("\n")}\n")
+    try stdout().write("{out.join("\n")}\n")
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

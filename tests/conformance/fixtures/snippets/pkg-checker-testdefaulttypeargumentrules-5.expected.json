@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-testdefaulttypeargumentrules-5.ms",
           "line": 7,
-          "column": 12,
-          "offset": 211
+          "column": 11,
+          "offset": 210
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaulttypeargumentrules-5.ms:7:12: type: Trio takes 2 to 3 type arguments, found 1; write Trio[T1, T2, T3]\n   |\n 7 | def use(t: Trio[Int]) -> Unit: ()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaulttypeargumentrules-5.ms:7:11: type: Trio takes 2 to 3 type arguments, found 1; write Trio[T1, T2, T3]\n   |\n 7 | fn use(t: Trio[Int]) Unit: unit\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -3,7 +3,7 @@ import {expect_equal, expect_false} from "@std/test.ms"
 let LIMIT = 10
 let DOUBLE = LIMIT * 2
 let NAMES: List[String] = ["a", "b"]
-let GREETING = "limit {LIMIT}"
+let GREETING = "limit \{LIMIT\}"
 let NOTHING: Optional[Int] = none
 let from = 4
 
@@ -38,7 +38,7 @@ fn phase_name(phase: Phase) String:
         Idle:
             eturn "idle"
         Active(count):
-            return "active {count}"
+            return "active \{count\}"
 
 test "a qualified payloadless case is a constant":
     try expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))

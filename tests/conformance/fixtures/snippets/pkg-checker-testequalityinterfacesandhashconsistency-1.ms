@@ -5,6 +5,6 @@ type Key:
     id: Int
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool: return True
+    fn equals(other: Key) Bool: return true
 
-def keys() -> Map[Key, Int]: return Map[Key, Int]()
+fn keys() Map[Key, Int]: return Map[Key, Int]()

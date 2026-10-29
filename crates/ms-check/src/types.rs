@@ -117,19 +117,18 @@ impl fmt::Debug for Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.kind == Kind::Function {
-            f.write_str("Callable[[")?;
+            f.write_str("fn(")?;
             for (i, a) in self.params.iter().enumerate() {
                 if i > 0 {
                     f.write_str(", ")?;
                 }
                 write!(f, "{}", a.ty)?;
             }
-            f.write_str("], ")?;
-            match &self.result {
-                Some(r) => write!(f, "{r}")?,
-                None => f.write_str("<unknown>")?,
-            }
-            return f.write_char(']');
+            f.write_str(") ")?;
+            return match &self.result {
+                Some(r) => write!(f, "{r}"),
+                None => f.write_str("<unknown>"),
+            };
         }
         f.write_str(self.name.as_str())?;
         if !self.args.is_empty() {

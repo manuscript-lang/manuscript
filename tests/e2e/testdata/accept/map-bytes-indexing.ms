@@ -1,9 +1,9 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def total(scores: Map[String, Int]) -> Int:
+fn total(scores: Map[String, Int]) Int:
     return scores["a"] + scores["b"]
 
-def sizes(var table: Map[Int, String]) -> Int:
+fn sizes(var table: Map[Int, String]) Int:
     table[1] = "one"
     return table[1].length()
 

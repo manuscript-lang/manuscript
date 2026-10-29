@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Optional[T]:\n    case some(value: T)\n    case none\n\nimpl Optional[T]:\n    def is_some() -> Bool: ...\n\n    def is_none() -> Bool: ...\n\n    def get(default: Optional[T] = none) -> T: ...\n\n    def map[U](transform: Callable[[T], U]) -> Optional[U]: ...\n\n    def and_then[U](transform: Callable[[T], Optional[U]]) -> Optional[U]: ...\n\n    def or_else(create: Callable[[], Optional[T]]) -> Optional[T]: ...\n\n    def ok_or[E: Error = MissingValue](cause: Optional[E] = none) -> Result[T, E]: ...\n\n    def ok_or_else[E: Error](create: Callable[[], E]) -> Result[T, E]: ...\n"
+    "fmt": "type Optional[T]:\n    case some(value: T)\n    case none\n\nimpl Optional[T]:\n    fn is_some() Bool: ...\n\n    fn is_none() Bool: ...\n\n    fn get(default: Optional[T] = none) T: ...\n\n    fn map[U](transform: fn(T) U) Optional[U]: ...\n\n    fn and_then[U](transform: fn(T) Optional[U]) Optional[U]: ...\n\n    fn or_else(create: fn() Optional[T]) Optional[T]: ...\n\n    fn ok_or[E: Error = MissingValue](cause: Optional[E] = none) Result[T, E]: ...\n\n    fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...\n"
   }
 }

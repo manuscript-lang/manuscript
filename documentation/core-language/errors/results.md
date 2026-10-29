@@ -17,12 +17,12 @@ type DiscountError:
     case InvalidPercent
 
 impl Error for DiscountError:
-    def message() -> String:
+    fn message() String:
         match self:
-            case InvalidPrice: return "invalid price"
-            case InvalidPercent: return "invalid percent"
+            InvalidPrice: return "invalid price"
+            InvalidPercent: return "invalid percent"
 
-def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:
+fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:
     if price < 0d:
         return error(InvalidPrice)
     if percent < 0d or percent > 100d:
@@ -38,9 +38,9 @@ The function validates inputs, returns an explicit error for each failure, and w
 This continues the declarations above:
 
 ```manuscript
-def discount_message(price: Decimal, percent: Decimal) -> String:
+fn discount_message(price: Decimal, percent: Decimal) String:
     if let value = discount(price, percent):
-        return f"Discounted price: {value}"
+        return "Discounted price: {value}"
     return "Discount could not be calculated."
 ```
 
@@ -51,13 +51,13 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 | Method | Behavior |
 | --- | --- |
 | `is_ok()`, `is_error()` | Test the case, including successful zero, false, or Unit values |
-| `get(default: Optional[T] = none) -> T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
-| `err() -> E` | Return the error payload; fault on success |
-| `get_or_else(create: Callable[[E], T]) -> T` | Return the successful payload, or call `create` once with the original error on failure |
-| `or_else(create: Callable[[E], Result[T, E]]) -> Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
-| `map_error[F: Error](transform: Callable[[E], F]) -> Result[T, F]` | Transform an error once; preserve a success unchanged |
-| `map[U](transform: Callable[[T], U]) -> Result[U, E]` | Transform success once; preserve an error unchanged |
-| `and_then[U](transform: Callable[[T], Result[U, E]]) -> Result[U, E]` | On success, return the callback's Result; preserve an existing error |
+| `get(default: Optional[T] = none) T` | Return the successful payload, or `default` on an error; without a default, [fault](faults.md) on an error |
+| `err() E` | Return the error payload; fault on success |
+| `get_or_else(create: fn(E) T) T` | Return the successful payload, or call `create` once with the original error on failure |
+| `or_else(create: fn(E) Result[T, E]) Result[T, E]` | Keep a success, or call `create` once with the original error and return its Result |
+| `map_error[F: Error](transform: fn(E) F) Result[T, F]` | Transform an error once; preserve a success unchanged |
+| `map[U](transform: fn(T) U) Result[U, E]` | Transform success once; preserve an error unchanged |
+| `and_then[U](transform: fn(T) Result[U, E]) Result[U, E]` | On success, return the callback's Result; preserve an existing error |
 
 `map` wraps the callback's value in `ok`, even if it is a Result or Optional. `and_then` requires the same `E`; translate unrelated errors with ordinary functions.
 
@@ -65,18 +65,18 @@ This fragment uses `discount` above:
 
 ```manuscript
 let price = discount(price: 20d, percent: 10d).get(0d)
-let text = discount(price: 20d, percent: 10d).map(lambda value: value.to_string())
+let text = discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` reports `called Result.get() on error`; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
 
 ## Converting success to an Optional
 
-`to_optional() -> Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
+`to_optional() Optional[T]` returns `some` with the original payload, or `none` on error. It does not clone or flatten the payload, and does not turn faults or cancellation into absence.
 
 ```manuscript
-from "@std/core.ms" import TextError
-def successful_price(outcome: Result[Decimal, TextError]) -> Optional[Decimal]:
+import TextError from "@std/core.ms"
+fn successful_price(outcome: Result[Decimal, TextError]) Optional[Decimal]:
     return outcome.to_optional()
 ```
 
@@ -94,13 +94,13 @@ The initializer still runs and the outcome is dropped unread. Several `let _` ma
 
 ## A common error boundary
 
-Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() -> String`). Standard errors implement it; custom errors declare `impl Error`.
+Usually keep the concrete domain error type. To accept several error types, use the prelude `Error` interface (`message() String`). Standard errors implement it; custom errors declare `impl Error`.
 
 ```manuscript
-from "@std/bytes.ms" import Bytes
-from "@std/encoding.ms" import hex_decode
+import Bytes from "@std/bytes.ms"
+import hex_decode from "@std/encoding.ms"
 
-def decode(text: String) -> Result[Bytes, Error]:
+fn decode(text: String) Result[Bytes, Error]:
     let bytes = try hex_decode(text)
     return ok(bytes)
 ```

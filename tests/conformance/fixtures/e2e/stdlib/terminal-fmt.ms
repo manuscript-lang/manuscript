@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,modules,parser,stdlib-terminal,stdlib-testing,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/terminal.ms
-from "@std/test.ms" import expect_equal, expect_false, fail
-from "@std/io.ms" import terminal, TerminalError
+import {expect_equal, expect_false, fail} from "@std/test.ms"
+import {terminal, TerminalError} from "@std/io.ms"
 
 test "redirected streams report no terminal and refuse raw mode":
     let capabilities = terminal().capabilities()
@@ -11,7 +11,7 @@ test "redirected streams report no terminal and refuse raw mode":
     try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
     try expect_false(capabilities.resize_events)
 
-    let raw = terminal().raw_mode(alternate_screen: False)
+    let raw = terminal().raw_mode(alternate_screen: false)
 
     if let active = raw:
         active.close()

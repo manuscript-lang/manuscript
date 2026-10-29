@@ -9,41 +9,41 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module",
+        "message": "unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 24,
-          "offset": 175
+          "column": 23,
+          "offset": 174
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module",
+        "message": "unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 35,
-          "offset": 186
+          "column": 34,
+          "offset": 185
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module",
+        "message": "unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a module",
         "position": {
           "file": "pkg-tooling-format-testformatexpressionlayouts-61.ms",
           "line": 4,
-          "column": 47,
-          "offset": 198
+          "column": 46,
+          "offset": 197
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:24: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'def active(...) -> T:', or import it from a module\n   |\n 4 | def work(value: Bool = active and allowed and remaining > 0) -> Bool: return value\n   |                        ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:35: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'def allowed(...) -> T:', or import it from a module\n   |\n 4 | def work(value: Bool = active and allowed and remaining > 0) -> Bool: return value\n   |                                   ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:47: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'def remaining(...) -> T:', or import it from a module\n   |\n 4 | def work(value: Bool = active and allowed and remaining > 0) -> Bool: return value\n   |                                               ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:23: resolution: unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                       ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:34: resolution: unknown binding allowed; declare it with 'let allowed = ...' before use, define 'fn allowed(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                                  ^\n<DIR>/pkg-tooling-format-testformatexpressionlayouts-61.ms:4:46: resolution: unknown binding remaining; declare it with 'let remaining = ...' before use, define 'fn remaining(...) T:', or import it from a module\n   |\n 4 | fn work(value: Bool = active and allowed and remaining > 0) Bool: return value\n   |                                              ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

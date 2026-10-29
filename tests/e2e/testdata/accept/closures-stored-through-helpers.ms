@@ -1,63 +1,63 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def store(var fs: List[Callable[[], Int]], f: Callable[[], Int]) -> Unit:
+fn store(var fs: List[fn() Int], f: fn() Int) Unit:
     fs.append(f)
 
-def relay(var fs: List[Callable[[], Int]], f: Callable[[], Int]) -> Unit:
+fn relay(var fs: List[fn() Int], f: fn() Int) Unit:
     store(var fs, f)
 
-def deep(var fs: List[Callable[[], Int]], f: Callable[[], Int], n: Int) -> Unit:
+fn deep(var fs: List[fn() Int], f: fn() Int, n: Int) Unit:
     if n == 0:
         relay(var fs, f)
         return
 
     deep(var fs, f, n - 1)
 
-def keep[T](var xs: List[T], x: T) -> Unit:
+fn keep[T](var xs: List[T], x: T) Unit:
     xs.append(x)
 
-def sum(fs: List[Callable[[], Int]]) -> Int:
+fn sum(fs: List[fn() Int]) Int:
     var t = 0
     for f in fs:
         t += f()
     return t
 
-def d1(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn d1(text: String) Int:
+    var fs: List[fn() Int] = []
     for p in text.split(","):
-        relay(var fs, lambda () -> Int: return p.length())
+        relay(var fs, fn() Int: return p.length())
     return sum(fs)
 
-def d2(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn d2(text: String) Int:
+    var fs: List[fn() Int] = []
     for p in text.split(","):
-        deep(var fs, lambda () -> Int: return p.length(), 3)
+        deep(var fs, fn() Int: return p.length(), 3)
     return sum(fs)
 
-def d3(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn d3(text: String) Int:
+    var fs: List[fn() Int] = []
     for p in text.split(","):
-        keep(var fs, lambda () -> Int: return p.length())
+        keep(var fs, fn() Int: return p.length())
     return sum(fs)
 
-def d4(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn d4(text: String) Int:
+    var fs: List[fn() Int] = []
     var i = 0
 
     for p in text.split(","):
         let n = p.length()
-        let g = lambda () -> Int: return n + i
+        let g = fn() Int: return n + i
         relay(var fs, g)
         i += 1
 
     return sum(fs)
 
-def d5(text: String) -> Int:
-    var fs: List[Callable[[], Int]] = []
+fn d5(text: String) Int:
+    var fs: List[fn() Int] = []
 
     for p in text.split(","):
-        let g = lambda () -> Int: return p.length()
-        let h = lambda () -> Int: return g() + 1
+        let g = fn() Int: return p.length()
+        let h = fn() Int: return g() + 1
         relay(var fs, h)
 
     return sum(fs)

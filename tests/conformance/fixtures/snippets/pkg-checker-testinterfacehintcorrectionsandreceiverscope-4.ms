@@ -5,6 +5,6 @@ type E:
     text: String
 
 impl Error for E:
-    def message() -> String: self.text.clone()
+    fn message() String: self.text.clone()
 
-def error_value() -> Error: E("bad input")
+fn error_value() Error: E("bad input")

@@ -52,7 +52,7 @@ Omit a section by saying in one line why it does not apply. Add nothing beyond t
 Every `.ms` example must pass `ms check` against current main before the proposal is committed.
 
 - Build `ms` from main (`cargo build --release --locked -p ms-cli`), put each example in a scratch project, and run `ms check`.
-- For APIs or syntax the proposal adds, check against stubs: write the declaration as a stdlib-style `def` with a placeholder body so the call sites type-check. Mark only the stubbed lines.
+- For APIs or syntax the proposal adds, check against stubs: write the declaration as a stdlib-style `fn` with a placeholder body so the call sites type-check. Mark only the stubbed lines.
 - A rejected example must fail with the quoted diagnostic. Paste real output, not recollection.
 - If an example needs syntax that does not check, it is a language change: say so in Summary and Open questions.
 

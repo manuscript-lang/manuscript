@@ -118,7 +118,7 @@ fn rejected_programs_report_exactly_the_marked_lines() {
 fn facts_expose_moves_modes_and_drops() {
     use ms_check::ownership::{Access, ParamMode};
     run_on_big_stack(|| {
-        let source = "def take(xs: List[Int]) -> List[Int]:\n    return xs\n\ndef grow(var xs: List[Int]) -> Unit:\n    xs.append(1)\n\ndef f() -> Int:\n    var a = [1]\n    grow(var a)\n    let b = take(a)\n    a = [2]\n    return b.length() + a.length()\n";
+        let source = "fn take(xs: List[Int]) List[Int]:\n    return xs\n\nfn grow(var xs: List[Int]) Unit:\n    xs.append(1)\n\nfn f() Int:\n    var a = [1]\n    grow(var a)\n    let b = take(a)\n    a = [2]\n    return b.length() + a.length()\n";
         let file: Arc<str> = Arc::from("t.ms");
         let module = ms_syntax::parser::parse(&file, source).expect("parses");
         let program = ms_check::check(

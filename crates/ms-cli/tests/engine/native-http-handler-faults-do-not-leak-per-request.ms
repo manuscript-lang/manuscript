@@ -1,16 +1,16 @@
-from "@std/http.ms" import buffered, headers, HttpRequest, HttpResponse
-from "@std/net.ms" import network
-from "@std/io.ms" import stdout
+import {buffered, headers, HttpRequest, HttpResponse} from "@std/http.ms"
+import network from "@std/net.ms"
+import stdout from "@std/io.ms"
 
-def handle(request: HttpRequest) -> HttpResponse:
+fn handle(request: HttpRequest) HttpResponse:
     let xs: List[Int] = []
     let i = request.path.length()
-    return HttpResponse(200, headers(), f"{xs[i]}".to_bytes())
+    return HttpResponse(200, headers(), "{xs[i]}".to_bytes())
 
-export def main() -> Int:
+export fn main() Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
         let server = acquired
-        stdout().write(f"{server.address()}\n").get()
+        stdout().write("{server.address()}\n").get()
         stdout().flush().get()
 
         let _ignored = server.wait()

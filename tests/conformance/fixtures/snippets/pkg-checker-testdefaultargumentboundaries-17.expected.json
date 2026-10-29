@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-testdefaultargumentboundaries-17.ms",
           "line": 4,
-          "column": 39,
-          "offset": 188
+          "column": 38,
+          "offset": 187
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-17.ms:4:39: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 4 | def grow[T](value: T, optional: Int = grow(value: [value])) -> Int:\n   |                                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-17.ms:4:38: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 4 | fn grow[T](value: T, optional: Int = grow(value: [value])) Int:\n   |                                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -14,7 +14,7 @@
           "file": "core-language-types-generics-7.ms",
           "line": 7,
           "column": 13,
-          "offset": 208
+          "offset": 204
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-types-generics-7.ms",
           "line": 9,
           "column": 15,
-          "offset": 286
+          "offset": 282
         }
       }
     ],

@@ -5,7 +5,7 @@ test "bare":
     return
 
 test "unit":
-    return ()
+    return unit
 
 test "fall":
     let _x = 1

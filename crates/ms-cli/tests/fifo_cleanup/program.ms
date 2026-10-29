@@ -1,22 +1,22 @@
-from "@std/fs.ms" import filesystem
-from "@std/process.ms" import arguments
-from "@std/tasks.ms" import TaskGroup
-from "@std/io.ms" import stdout
+import filesystem from "@std/fs.ms"
+import arguments from "@std/process.ms"
+import TaskGroup from "@std/tasks.ms"
+import stdout from "@std/io.ms"
 
-def read_pipe(path: String) -> Int:
+fn read_pipe(path: String) Int:
     let _data = filesystem().read_file(path)
     return 1
 
-def cancel_read(path: String) -> Int:
+fn cancel_read(path: String) Int:
     var group = TaskGroup[Int](timeout: 10.milliseconds)
-    let task = group.spawn(lambda ch: read_pipe(path.clone()))
+    let task = group.spawn(fn ch: read_pipe(path.clone()))
     if task.result().is_error():
         return 1
 
     group.close()
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     let path = arguments() [0].clone()
     if cancel_read(path.clone()) != 1:
         return 1
@@ -27,5 +27,5 @@ export def main() -> Int:
         cancelled += cancel_read(path.clone())
 
     let after = filesystem().list("/proc/self/fd").get().length()
-    stdout().write(f"{cancelled} {before} {after}\n").get()
+    stdout().write("{cancelled} {before} {after}\n").get()
     return 0

@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type RoundingCase:
     input: Int
     expected: Float
 
-def convert(value: Int) -> Float32:
+fn convert(value: Int) Float32:
     return value.to_float32()
 
 test "integer to Float32 rounds once at binary32 midpoints":

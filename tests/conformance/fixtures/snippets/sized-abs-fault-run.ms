@@ -1,9 +1,9 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=run
 # conform: origin=sized numeric types stage 4
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let m: Int8 = -128
-    let _ = stdout().write(f"{m.abs()}\n")
+    let _ = stdout().write("{m.abs()}\n")
     return 0

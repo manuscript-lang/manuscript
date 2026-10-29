@@ -136,11 +136,11 @@ fn import_insertion(source: &str, statement: &str) -> (Position, String) {
     let mut last = None;
     while at < lines.len() {
         let line = lines[at].trim();
-        if line.starts_with("from \"") {
-            let mut open = line.contains('(') && !line.contains(')');
+        if line.starts_with("import ") {
+            let mut open = line.contains('{') && !line.contains('}');
             at += 1;
             while open && at < lines.len() {
-                open = !lines[at].contains(')');
+                open = !lines[at].contains('}');
                 at += 1;
             }
             last = Some(at - 1);
@@ -234,7 +234,7 @@ pub fn editor_actions(
         let mut statements: Vec<String> = exports
             .iter()
             .filter(|(exported, _)| exported == name)
-            .map(|(_, path)| format!("from \"{path}\" import {name}"))
+            .map(|(_, path)| format!("import {name} from \"{path}\""))
             .collect();
         // A project declaration is preferred over a standard-library one.
         let standard = ms_check::hints::import_hint(name);
@@ -321,7 +321,7 @@ pub fn editor_actions(
     let lines: Vec<&str> = d.text.split_inclusive('\n').collect();
     let mut edits = Vec::new();
     let mut at = 0;
-    let is_import = |line: &str| line.trim().starts_with("from \"");
+    let is_import = |line: &str| line.trim().starts_with("import ");
     while at < lines.len() {
         if !is_import(lines[at]) {
             at += 1;
@@ -330,19 +330,23 @@ pub fn editor_actions(
         let start = at;
         let mut block: Vec<String> = Vec::new();
         while at < lines.len() && is_import(lines[at]) {
-            // A parenthesized import continues until the line with its `)`.
+            // A braced import continues until the line with its `}`.
             let mut declaration = lines[at].to_string();
-            let mut open = lines[at].contains('(') && !lines[at].contains(')');
+            let mut open = lines[at].contains('{') && !lines[at].contains('}');
             at += 1;
             while open && at < lines.len() {
-                open = !lines[at].contains(')');
+                open = !lines[at].contains('}');
                 declaration.push_str(lines[at]);
                 at += 1;
             }
             block.push(declaration);
         }
         let before = block.concat();
-        block.sort();
+        // Group by module path, the part of the statement after `from`.
+        block.sort_by_key(|statement| {
+            let path = statement.rsplit_once(" from ").map_or("", |(_, path)| path);
+            (path.trim().to_string(), statement.clone())
+        });
         let after = block.concat();
         if before != after {
             let range = Range {
@@ -401,15 +405,12 @@ fn unused_import_edits(d: &Document, module: &ModRef, offset: usize) -> (Vec<Jso
         .filter(|i| i.pos.offset == selected.pos.offset)
         .count();
     if count == 1 {
-        // The declaration ends at the name, or at the `)` closing a group.
         let mut end_line = selected.name_pos.line;
-        let after = tokens
-            .iter()
-            .position(|t| t.pos.offset as usize == offset)
-            .map_or(tokens.len(), |at| at + 1);
-        let mut rest = tokens[after..].iter().filter(|t| t.kind != Tok::Comma);
-        if let Some(close) = rest.next().filter(|t| t.kind == Tok::RParen) {
-            end_line = close.pos.line;
+        for token in &tokens {
+            if token.pos.offset >= selected.pos.offset && token.kind == Tok::String {
+                end_line = token.pos.line;
+                break;
+            }
         }
         let r = Range {
             start: line_range(&d.text, selected.pos.line as usize - 1).start,

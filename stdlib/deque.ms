@@ -11,15 +11,15 @@ export type Deque[T: Clonable]:
 
 impl Deque[T]:
     # Returns the number of values in the deque.
-    def length() -> Int:
+    fn length() Int:
         return self.size
 
     # Reports whether the deque holds no values.
-    def is_empty() -> Bool:
+    fn is_empty() Bool:
         return self.size == 0
 
     # Doubles the ring buffer, unwrapping values so the front lands at index 0.
-    var def grow() -> Unit:
+    var fn grow() Unit:
         let capacity = self.slots.length()
         var next = capacity * 2
         if next == 0:
@@ -35,7 +35,7 @@ impl Deque[T]:
             self.slots.append(none)
 
     # Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
-    def slot_of(offset: Int) -> Int:
+    fn slot_of(offset: Int) Int:
         let at = self.start + offset
         let capacity = self.slots.length()
         if at >= capacity:
@@ -44,14 +44,14 @@ impl Deque[T]:
         return at
 
     # Adds a value after the last one.
-    var def push_back(value: T) -> Unit:
+    var fn push_back(value: T) Unit:
         if self.size == self.slots.length():
             self.grow()
         self.slots.set(self.slot_of(self.size), value)
         self.size += 1
 
     # Adds a value before the first one.
-    var def push_front(value: T) -> Unit:
+    var fn push_front(value: T) Unit:
         if self.size == self.slots.length():
             self.grow()
         if self.start == 0:
@@ -61,7 +61,7 @@ impl Deque[T]:
         self.size += 1
 
     # Removes and returns the first value, or `none` when empty.
-    var def pop_front() -> Optional[T]:
+    var fn pop_front() Optional[T]:
         if self.size == 0:
             return none
 
@@ -74,7 +74,7 @@ impl Deque[T]:
         return value
 
     # Removes and returns the last value, or `none` when empty.
-    var def pop_back() -> Optional[T]:
+    var fn pop_back() Optional[T]:
         if self.size == 0:
             return none
 
@@ -85,14 +85,14 @@ impl Deque[T]:
         return value
 
     # Returns the first value without removing it, or `none` when empty.
-    def front() -> ref Optional[T]:
+    fn front() ref Optional[T]:
         if self.size == 0:
             return none
 
         return self.slots.get(self.start)
 
     # Returns the last value without removing it, or `none` when empty.
-    def back() -> ref Optional[T]:
+    fn back() ref Optional[T]:
         if self.size == 0:
             return none
 
@@ -100,20 +100,20 @@ impl Deque[T]:
 
     # Returns the value at `index` counted from the front, or `none` when out of range.
     # Negative indexes are out of range.
-    def at(index: Int) -> ref Optional[T]:
+    fn at(index: Int) ref Optional[T]:
         if index < 0 or index >= self.size:
             return none
 
         return self.slots.get(self.slot_of(index))
 
     # Removes every value and releases the storage.
-    var def clear() -> Unit:
+    var fn clear() Unit:
         self.slots = []
         self.start = 0
         self.size = 0
 
     # Returns a new list of the values from front to back.
-    def to_list() -> List[T]:
+    fn to_list() List[T]:
         var out: List[T] = []
         for index in 0..self.size:
             if let value = self.slots.get(self.slot_of(index)):

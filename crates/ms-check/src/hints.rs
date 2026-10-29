@@ -143,7 +143,7 @@ pub fn import_hint(name: &str) -> String {
     }
     for module in stdlib::standard_module_names() {
         if stdlib::standard_exports(module).contains_key(&n(name)) {
-            return format!("; add: from \"{module}\" import {name}");
+            return format!("; add: import {name} from \"{module}\"");
         }
     }
     String::new()
@@ -237,7 +237,7 @@ pub fn signature_text(t: &Ty) -> String {
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    format!("({}) -> {}", parts.join(", "), t.result_ty())
+    format!("({}) {}", parts.join(", "), t.result_ty())
 }
 
 /// The builtin type other languages call by this name.
@@ -276,7 +276,7 @@ pub fn number_conversion_hint(actual: &Ty, expected: &Ty) -> String {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
         ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Optional[Int], so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
-            "{actual} does not convert to String implicitly; interpolate it into text, e.g. f\"{{value}}\""
+            "{actual} does not convert to String implicitly; interpolate it into text, e.g. \"{{value}}\""
         ),
         _ => String::new(),
     }
@@ -323,7 +323,7 @@ pub fn arity_mismatch_hint(actual: &Ty, expected: &Ty) -> String {
     }
     let (have, want) = (actual.params.len(), expected.params.len());
     format!(
-        "the function takes {have} {} but this position expects {want}; pass a function with {want} {}, or wrap it in a lambda that supplies the rest",
+        "the function takes {have} {} but this position expects {want}; pass a function with {want} {}, or wrap it in a closure that supplies the rest",
         plural(have, "parameter"),
         plural(want, "parameter")
     )
@@ -414,7 +414,7 @@ impl Checker {
         }
         if name == "pass" {
             return format!(
-                "{message}; 'pass' is not a keyword, so write '()' for an empty block or match arm"
+                "{message}; 'pass' is not a keyword, so write 'unit' for an empty block or match arm"
             );
         }
         match name.as_str() {
@@ -441,8 +441,8 @@ impl Checker {
                     "{message}; write error(cause) for a failed Result, where cause is a value implementing Error"
                 );
             }
-            "true" | "false" => {
-                return format!("{message}; booleans are capitalized: True and False");
+            "True" | "False" => {
+                return format!("{message}; booleans are lowercase: write true and false");
             }
             "len" => {
                 return format!(
@@ -451,7 +451,7 @@ impl Checker {
             }
             "str" | "toString" | "repr" | "sprintf" => {
                 return format!(
-                    "{message}; to make text, interpolate: f\"{{value}}\", or call value.to_string()"
+                    "{message}; to make text, interpolate: \"{{value}}\", or call value.to_string()"
                 );
             }
             "int" | "parseInt" | "atoi" | "Number" | "parse_int" => {
@@ -461,7 +461,7 @@ impl Checker {
             }
             "float" | "parseFloat" | "parse_float" => {
                 return format!(
-                    "{message}; parse text with parse_float (from \"@std/math.ms\" import parse_float), which returns a Result; an Int converts with value.to_float()"
+                    "{message}; parse text with parse_float (import parse_float from \"@std/math.ms\"), which returns a Result; an Int converts with value.to_float()"
                 );
             }
             "Object" | "Array" | "dict" | "list" => {
@@ -481,7 +481,7 @@ impl Checker {
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(lambda ch: work(), timeout: some(nanoseconds(...)))"
+                    "{message}; there is no free {name}: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))"
                 );
             }
             "print" | "println" | "printf" | "puts" | "echo" => {
@@ -500,7 +500,7 @@ impl Checker {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'let {name} = ...' before use, define 'def {name}(...) -> T:', or import it from a module"
+            "{message}; declare it with 'let {name} = ...' before use, define 'fn {name}(...) T:', or import it from a module"
         )
     }
 
@@ -633,7 +633,7 @@ impl Checker {
         }
         if receiver.is_std("List") && name == "join" {
             return format!(
-                "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: lambda value: f\"{{value}}\").join(separator: \",\")"
+                "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn value: \"{{value}}\").join(separator: \",\")"
             );
         }
         let hint = synonym_hint(name.as_str(), &available);
@@ -676,6 +676,11 @@ impl Checker {
         let hint = import_hint(name.as_str());
         if !hint.is_empty() {
             return format!("{message}{hint}");
+        }
+        if matches!(name.as_str(), "Callable" | "Function" | "Func" | "Fn") {
+            return format!(
+                "{message}; function types are written fn(Int) Int: parameter types in parentheses, then the result type"
+            );
         }
         if let Some(builtin) = type_alias(name.as_str()) {
             return format!("{message}; did you mean '{builtin}'?");
@@ -739,7 +744,7 @@ impl Checker {
             );
         }
         format!(
-            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'from \"{path}\" import Name, OtherName'",
+            "{message}; {path} exports: {}; namespace imports are unsupported, so import individual exports with 'import {{Name, OtherName}} from \"{path}\"'",
             list(&exports, 12)
         )
     }
@@ -767,7 +772,7 @@ impl Checker {
         }
         if crate::contracts::has_generic_operation(expected) {
             return format!(
-                "{message}; {expected} declares an operation with type parameters of its own, so it bounds a type parameter (`def f[T: {expected}](x: T)`) but cannot type a value"
+                "{message}; {expected} declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: {expected}](x: T)`) but cannot type a value"
             );
         }
         if self.implements(actual, expected) {
@@ -815,9 +820,9 @@ pub fn int_float_mix_hint(a: &Ty, b: &Ty) -> String {
 /// Names the real conversion for a built-in type called like a constructor.
 pub fn builtin_constructor_hint(typ: &Ty) -> String {
     match typ.to_string().as_str() {
-        "String" => "; make text with interpolation f\"{value}\" or value.to_string()".to_string(),
+        "String" => "; make text with interpolation \"{value}\" or value.to_string()".to_string(),
         "Int" => "; parse text with text.parse_int() (Optional[Int]); Float has truncate_to_int()".to_string(),
-        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (from \"@std/math.ms\" import parse_float)".to_string(),
+        "Float" => "; convert an Int with value.to_float(); parse text with parse_float (import parse_float from \"@std/math.ms\")".to_string(),
         _ => String::new(),
     }
 }

@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding g; declare it with 'let g = ...' before use, define 'def g(...) -> T:', or import it from a module",
+        "message": "unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module",
         "position": {
           "file": "pkg-parser-testpipecontinuationlines-1.ms",
           "line": 8,
           "column": 11,
-          "offset": 211
+          "offset": 207
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testpipecontinuationlines-1.ms:8:11: resolution: unknown binding g; declare it with 'let g = ...' before use, define 'def g(...) -> T:', or import it from a module\n   |\n 8 |         | g(a: 1)\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testpipecontinuationlines-1.ms:8:11: resolution: unknown binding g; declare it with 'let g = ...' before use, define 'fn g(...) T:', or import it from a module\n   |\n 8 |         | g(a: 1)\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

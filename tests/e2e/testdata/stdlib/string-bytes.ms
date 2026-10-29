@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/string.ms" import from_scalars, StringError, StringBuilder
-from "@std/bytes.ms" import Bytes, BytesBuilder, values
+import {expect_equal, expect_false} from "@std/test.ms"
+import {from_scalars, StringError, StringBuilder} from "@std/string.ms"
+import {Bytes, BytesBuilder, values} from "@std/bytes.ms"
 
 test "Unicode scalar indexing differs from byte length":
     let text = "aé🙂"
@@ -56,7 +56,7 @@ test "Bytes values direct bound and free calls return independent lists":
     let data = Bytes(input.clone())
     input.set(0, 42)
 
-    let extract: Callable[[], List[UInt8]] = data.values
+    let extract: fn() List[UInt8] = data.values
     try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
     var direct = data.values()
@@ -109,7 +109,7 @@ test "empty text splits into one part and case mapping is full Unicode":
     try expect_equal("ß".upper(), "SS")
     try expect_equal("ﬁ".upper(), "FI")
     try expect_equal("ΑΣ".lower(), "ας")
-    try expect_equal("İ".lower(), f"i\u{307}")
+    try expect_equal("İ".lower(), "i\u{307}")
     try expect_equal("Maße".upper(), "MASSE")
 
 test "scalar reads alternating between long strings match grouped reads":
@@ -180,13 +180,13 @@ test "builder appends literals of every short length across growth":
     try expect_equal(sb.build(), want.build())
 
 test "builder appends variable text of every length across growth":
-    let unit = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
+    let base = "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
     var sb = StringBuilder()
     var want = 0
 
     for round in 0..3:
         for n in 0..70:
-            let piece = try unit.slice(0, n)
+            let piece = try base.slice(0, n)
             sb.append(piece)
             want += n
 

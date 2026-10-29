@@ -1,4 +1,4 @@
-from "./leaf.ms" import leaf
+import leaf from "./leaf.ms"
 
-export def middle(value: Int) -> Int:
+export fn middle(value: Int) Int:
     return leaf(value)

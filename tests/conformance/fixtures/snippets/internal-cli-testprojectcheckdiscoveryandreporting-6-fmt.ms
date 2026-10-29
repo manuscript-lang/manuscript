@@ -1,4 +1,4 @@
 # conform: tags=formatter,parser,tier-core
 # conform: phase=parse
 # conform: origin=internal/cli/project_check_test.go:73 TestProjectCheckDiscoveryAndReporting
-def broken() -> Int: return "bad"
+fn broken() Int: return "bad"

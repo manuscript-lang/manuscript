@@ -5,5 +5,5 @@ type B:
     x: Int
 
 impl B:
-    def m[U](u: U) -> U:
+    fn m[U](u: U) U:
         return u

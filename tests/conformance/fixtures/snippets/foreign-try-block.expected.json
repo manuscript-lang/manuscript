@@ -12,13 +12,13 @@
           "file": "foreign-try-block.ms",
           "line": 5,
           "column": 8,
-          "offset": 137
+          "offset": 133
         },
         "end": {
           "file": "foreign-try-block.ms",
           "line": 5,
           "column": 9,
-          "offset": 138
+          "offset": 134
         }
       }
     ],

@@ -1,54 +1,54 @@
 # conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
-from "@std/channels.ms" import Channel
-from "@std/io.ms" import stdout
-from "@std/tasks.ms" import TaskGroup
-from "@std/time.ms" import nanoseconds, sleep
+import Channel from "@std/channels.ms"
+import stdout from "@std/io.ms"
+import TaskGroup from "@std/tasks.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
 # A task cancelled while parked in a channel send or receive must not drop the channel end twice:
 # the receiver `var def` takes it out of the caller's slot, and the frames above own the same memory.
 # Later allocations expose the corrupted heap.
 
-def receiver(ch: Channel[Int, Int]) -> Int:
+fn receiver(ch: Channel[Int, Int]) Int:
     var c = ch
     if let _got = c.receive():
         return 1
 
     return 0
 
-def sender(ch: Channel[Int, Int]) -> Int:
+fn sender(ch: Channel[Int, Int]) Int:
     var c = ch
     for i in 0..100:
         let _ = c.send(i)
     return 0
 
-def cancel_receiver() -> Unit:
+fn cancel_receiver() Unit:
     let group = TaskGroup[Int, Int, Int]()
     group.spawn(receiver)
     sleep(nanoseconds(1000000))
 
-def cancel_sender() -> Unit:
+fn cancel_sender() Unit:
     let group = TaskGroup[Int, Int, Int]()
     group.spawn(sender)
     sleep(nanoseconds(1000000))
 
-def timeout_receiver() -> Unit:
+fn timeout_receiver() Unit:
     let group = TaskGroup[Int, Int, Int]()
     let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
     let _ = task.result()
 
-def churn() -> Int:
+fn churn() Int:
     var total = 0
 
     for round in 0..20:
         let group = TaskGroup[String]()
         for i in 0..5:
-            group.spawn(lambda ch: f"task {i}")
+            group.spawn(fn ch: "task {i}")
         total += group.results().get([]).length()
 
     return total
 
-export def main() -> Int:
+export fn main() Int:
     var total = 0
 
     for round in 0..3:
@@ -59,5 +59,5 @@ export def main() -> Int:
         timeout_receiver()
         total += churn()
 
-    stdout().write(f"survived {total}\n").get()
+    stdout().write("survived {total}\n").get()
     return 0

@@ -63,7 +63,7 @@ fn cheatsheet_claims_match_the_compiler() {
     let check = |body: &str| {
         issues(
             "claim.ms",
-            &format!("export def main() -> Int:\n{body}    return 0\n"),
+            &format!("export fn main() Int:\n{body}    return 0\n"),
         )
     };
     for body in [
@@ -72,7 +72,7 @@ fn cheatsheet_claims_match_the_compiler() {
         "    var n = 1\n    n = 2\n",
         "    var n = 1\n    n += 2\n    n %= 2\n",
         "    let o: Optional[Int] = none\n    let v = o.get(3)\n",
-        "    let name = \"x\"\n    let text = f\"hi {name}\"\n",
+        "    let name = \"x\"\n    let text = \"hi {name}\"\n",
         "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m.get(\"k\"):\n        n += 1\n",
     ] {
         let found = check(body);
@@ -89,7 +89,7 @@ fn cheatsheet_claims_match_the_compiler() {
     ] {
         assert!(!check(body).is_empty(), "claim should be rejected:\n{body}");
     }
-    let inherent = "type T:\n    a: Int\n\nimpl T:\n    def f(self) -> Int:\n        return 1\n\nexport def main() -> Int:\n    return 0\n";
+    let inherent = "type T:\n    a: Int\n\nimpl T:\n    fn f(self) Int:\n        return 1\n\nexport fn main() Int:\n    return 0\n";
     assert!(
         !issues("claim.ms", inherent).is_empty(),
         "`impl T:` should be rejected"
@@ -153,7 +153,7 @@ fn std_pages_resolve_forms() {
     assert!(
         page("json")
             .unwrap()
-            .contains("from \"@std/json.ms\" import Name")
+            .contains("import Name from \"@std/json.ms\"")
     );
     for path in ["nope", "json.nope", "prelude.List.nope"] {
         let error = page(path).unwrap_err();
@@ -268,7 +268,7 @@ fn common_mistakes_match_the_compiler() {
         let program = |text: &str| {
             let filled = m.body.replace("{}", text).replace(";;", "\n    ");
             let setup = m.setup.replace(";;", "\n");
-            format!("{setup}\nexport def main() -> Int:\n    {filled}\n    return 0\n")
+            format!("{setup}\nexport fn main() Int:\n    {filled}\n    return 0\n")
         };
         let wrong = issues("mistake.ms", &program(&m.wrong));
         match &m.diagnostic {

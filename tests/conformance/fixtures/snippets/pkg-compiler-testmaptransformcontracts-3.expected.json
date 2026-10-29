@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)",
+        "message": "expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)",
         "position": {
           "file": "pkg-compiler-testmaptransformcontracts-3.ms",
           "line": 6,
-          "column": 69,
-          "offset": 279
+          "column": 65,
+          "offset": 271
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:6:69: type: expected Callable[[String, Int], Int], found Callable[[Int, String], Int] (in argument 'transform' of values.map)\n   |\n 6 | def wrong(values: Map[String, Int]) -> Map[String, Int]: values.map(transform)\n   |                                                                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testmaptransformcontracts-3.ms:6:65: type: expected fn(String, Int) Int, found fn(Int, String) Int (in argument 'transform' of values.map)\n   |\n 6 | fn wrong(values: Map[String, Int]) Map[String, Int]: values.map(transform)\n   |                                                                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

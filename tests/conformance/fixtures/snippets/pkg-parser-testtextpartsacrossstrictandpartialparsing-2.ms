@@ -2,5 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/parser/text_test.go:22 TestTextPartsAcrossStrictAndPartialParsing
 # prefix
-def value() -> String:
+fn value() String:
     return

@@ -1,19 +1,19 @@
 # conform: tags=control-flow,formatter,interfaces,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/testing-fixture.ms
-from "@std/test.ms" import TestHooks, expect_equal
+import {TestHooks, expect_equal} from "@std/test.ms"
 
 type Counter:
     value: Int
 
-def make_fixture() -> Counter:
+fn make_fixture() Counter:
     return Counter(0)
 
 impl TestHooks for Counter:
-    var def before_each() -> Unit:
+    var fn before_each() Unit:
         self.value = 1
 
-    var def after_each() -> Unit:
+    var fn after_each() Unit:
         self.value = 10
 
 test "first fixture use":

@@ -1,9 +1,9 @@
 # conform: tags=formatter,match,modules,parser,stdlib-fs,strings,tier-io
 # conform: phase=parse
 # conform: origin=pkg/tooling/pattern_lint_test.go:143 TestInferredStandardErrorPayload
-from "@std/fs.ms" import filesystem
+import filesystem from "@std/fs.ms"
 
-def classify(path: String) -> String:
-    match filesystem().stat(path: path, follow_links: True):
-        case error(NotFound): return "missing"
-        case ok(_): return "exists"
+fn classify(path: String) String:
+    match filesystem().stat(path: path, follow_links: true):
+        error(NotFound): return "missing"
+        ok(_): return "exists"

@@ -1,13 +1,13 @@
 # conform: tags=closures,stdlib-tasks,tier-stdlib
 # conform: phase=run
-from "@std/channels.ms" import Channel
-from "@std/io.ms" import stdout
-from "@std/tasks.ms" import TaskGroup
+import Channel from "@std/channels.ms"
+import stdout from "@std/io.ms"
+import TaskGroup from "@std/tasks.ms"
 
-def entry(ch: Channel[Unit, Unit]) -> Int:
+fn entry(ch: Channel[Unit, Unit]) Int:
     return 6
 
-export def main() -> Int:
+export fn main() Int:
     var g = TaskGroup[Int]()
     g.spawn(entry)
     g.spawn(entry)

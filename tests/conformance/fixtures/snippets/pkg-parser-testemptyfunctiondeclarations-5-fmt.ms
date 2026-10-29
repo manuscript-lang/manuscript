@@ -2,4 +2,4 @@
 # conform: phase=parse
 # conform: origin=pkg/parser/empty_declarations_test.go:15 TestEmptyFunctionDeclarations
 interface Read:
-    def read(limit: Optional[Int] = none) -> Int
+    fn read(limit: Optional[Int] = none) Int

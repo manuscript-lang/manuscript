@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-types-contracts-8.ms",
           "line": 4,
-          "column": 15,
-          "offset": 153
+          "column": 14,
+          "offset": 152
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 7,
           "column": 21,
-          "offset": 248
+          "offset": 244
         }
       },
       {
@@ -36,25 +36,25 @@
           "file": "core-language-types-contracts-8.ms",
           "line": 8,
           "column": 17,
-          "offset": 279
+          "offset": 275
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Increment; declare it with 'let Increment = ...' before use, define 'def Increment(...) -> T:', or import it from a module",
+        "message": "unknown binding Increment; declare it with 'let Increment = ...' before use, define 'fn Increment(...) T:', or import it from a module",
         "position": {
           "file": "core-language-types-contracts-8.ms",
           "line": 5,
           "column": 12,
-          "offset": 197
+          "offset": 193
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-contracts-8.ms:4:15: resolution: unknown type Increment; declare it with 'type Increment:' / 'interface Increment:', declare it as a type parameter, or import it\n   |\n 4 | def invoke[T: Increment](operation: T) -> Int:\n   |               ^\n<DIR>/core-language-types-contracts-8.ms:7:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | let from_concrete = invoke(offset)\n   |                     ^\n<DIR>/core-language-types-contracts-8.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | let from_view = invoke(view)\n   |                 ^\n<DIR>/core-language-types-contracts-8.ms:5:12: resolution: unknown binding Increment; declare it with 'let Increment = ...' before use, define 'def Increment(...) -> T:', or import it from a module\n   |\n 5 |     return Increment(operation).apply(1)\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-contracts-8.ms:4:14: resolution: unknown type Increment; declare it with 'type Increment:' / 'interface Increment:', declare it as a type parameter, or import it\n   |\n 4 | fn invoke[T: Increment](operation: T) Int:\n   |              ^\n<DIR>/core-language-types-contracts-8.ms:7:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | let from_concrete = invoke(offset)\n   |                     ^\n<DIR>/core-language-types-contracts-8.ms:8:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | let from_view = invoke(view)\n   |                 ^\n<DIR>/core-language-types-contracts-8.ms:5:12: resolution: unknown binding Increment; declare it with 'let Increment = ...' before use, define 'fn Increment(...) T:', or import it from a module\n   |\n 5 |     return Increment(operation).apply(1)\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

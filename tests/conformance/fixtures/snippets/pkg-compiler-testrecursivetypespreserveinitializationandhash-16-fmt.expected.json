@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[T]:\n    value: T\n\ndef hash(box: Box[Box[Int]]) -> Int: return box.hash()\n"
+    "fmt": "type Box[T]:\n    value: T\n\nfn hash(box: Box[Box[Int]]) Int: return box.hash()\n"
   }
 }

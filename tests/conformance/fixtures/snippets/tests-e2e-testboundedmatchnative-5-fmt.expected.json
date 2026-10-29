@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export def main() -> Int:\n    let shapes = [Shape.Circle(2)]\n    var sum = 9223372036854775807\n    var i = 0\n\n    while i < 2:\n        sum += area(shapes.get(0))\n        i += 1\n\n    return sum\n"
+    "fmt": "export fn main() Int:\n    let shapes = [Shape.Circle(2)]\n    var sum = 9223372036854775807\n    var i = 0\n\n    while i < 2:\n        sum += area(shapes.get(0))\n        i += 1\n\n    return sum\n"
   }
 }

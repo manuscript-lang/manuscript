@@ -1,12 +1,12 @@
 # Binding identities are unique across the standard library and the program: an `if var` borrow
 # here once shared an identity with a plain `let` in `@std/deque.ms` and failed to lower there.
-from "@std/io.ms" import stdout
-from "@std/deque.ms" import Deque
+import stdout from "@std/io.ms"
+import Deque from "@std/deque.ms"
 
-def say(s: String) -> Unit:
-    stdout().write(f"{s}\n").get()
+fn say(s: String) Unit:
+    stdout().write("{s}\n").get()
 
-export def main() -> Int:
+export fn main() Int:
     var a = "hello"
     var b = a.clone()
     var m = Map[String, String]()
@@ -21,8 +21,8 @@ export def main() -> Int:
     var d = Deque[String]()
     for i in 0..50:
         if i % 2 == 0:
-            d.push_back(f"b{i}")
+            d.push_back("b{i}")
     b += "!"
     m.add(a, b)
-    say(f"{cnt.get("a")} {d.length()} {m.get("hello")}")
+    say("{cnt.get("a")} {d.length()} {m.get("hello")}")
     return 0

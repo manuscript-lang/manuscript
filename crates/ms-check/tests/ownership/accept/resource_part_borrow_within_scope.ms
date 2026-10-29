@@ -1,4 +1,4 @@
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Res:
     name: String
@@ -8,16 +8,16 @@ type Holder:
     all: List[Res]
 
 impl Closeable for Res:
-    var def close() -> Unit:
-        return ()
+    var fn close() Unit:
+        return unit
 
 # Parts are closed at scope end; borrows of them used before then are fine.
-def held() -> Int:
+fn held() Int:
     let r = Res("c")
     let n = r.name
     return n.length()
 
-def composite() -> Int:
+fn composite() Int:
     let h = Holder(Res("a"), [Res("b")])
     let n = h.inner.name
     let m = h.all[0].name

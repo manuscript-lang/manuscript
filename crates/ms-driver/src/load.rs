@@ -460,7 +460,7 @@ mod tests {
             for i in 0..64 {
                 std::fs::write(
                     format!("{root}/m{i}.ms"),
-                    format!("from \"./m{}.ms\" import value\n", i + 1),
+                    format!("import value from \"./m{}.ms\"\n", i + 1),
                 )
                 .unwrap();
             }
@@ -490,7 +490,7 @@ mod tests {
             let file = format!("{root}/bad.ms");
             std::fs::write(
                 &file,
-                "def first() -> Int:\n    return +\n\ndef second() -> Int:\n    return +\n",
+                "fn first() Int:\n    return +\n\nfn second() Int:\n    return +\n",
             )
             .unwrap();
             let first = loader.visit(&file).err().unwrap();
@@ -509,8 +509,8 @@ mod tests {
     #[test]
     fn cycle_failures_keep_the_current_closing_edge() {
         with_loader(|loader, root| {
-            std::fs::write(format!("{root}/a.ms"), "from \"./b.ms\" import b\n").unwrap();
-            std::fs::write(format!("{root}/b.ms"), "from \"./a.ms\" import a\n").unwrap();
+            std::fs::write(format!("{root}/a.ms"), "import b from \"./b.ms\"\n").unwrap();
+            std::fs::write(format!("{root}/b.ms"), "import a from \"./a.ms\"\n").unwrap();
             for (entry, closing) in [("a", "b"), ("b", "a")] {
                 let d = loader
                     .visit(&format!("{root}/{entry}.ms"))
@@ -528,10 +528,9 @@ mod tests {
         with_loader(|loader, root| {
             for i in 0..16 {
                 let source = if i == 15 {
-                    "def first() -> Int:\n    return +\n\ndef second() -> Int:\n    return +\n"
-                        .to_string()
+                    "fn first() Int:\n    return +\n\nfn second() Int:\n    return +\n".to_string()
                 } else {
-                    format!("from \"./m{}.ms\" import value\n", i + 1)
+                    format!("import value from \"./m{}.ms\"\n", i + 1)
                 };
                 std::fs::write(format!("{root}/m{i}.ms"), source).unwrap();
             }
@@ -555,7 +554,7 @@ mod tests {
     fn import(loader: &mut Loader<'_>, importer: &str, path: &str) -> Result<Name, Failure> {
         let file: Arc<str> = Arc::from(pathops::rel(&loader.config.root, importer).unwrap());
         let module =
-            ms_syntax::parser::parse(&file, &format!("from \"{path}\" import value\n")).unwrap();
+            ms_syntax::parser::parse(&file, &format!("import value from \"{path}\"\n")).unwrap();
         loader.import_module(importer, &file, &module.imports[0])
     }
 
@@ -566,7 +565,7 @@ mod tests {
             for dir in [root.to_string(), format!("{root}/nested")] {
                 std::fs::write(
                     format!("{dir}/leaf.ms"),
-                    "export def value() -> Int: return 1\n",
+                    "export fn value() Int: return 1\n",
                 )
                 .unwrap();
             }
@@ -598,7 +597,7 @@ mod tests {
             assert!(loader.resolved.is_empty());
             std::fs::write(
                 format!("{root}/new.ms"),
-                "export def value() -> Int: return 1\n",
+                "export fn value() Int: return 1\n",
             )
             .unwrap();
             assert!(import(loader, &format!("{root}/a.ms"), "./new.ms").is_ok());

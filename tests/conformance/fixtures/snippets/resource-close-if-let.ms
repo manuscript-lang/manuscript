@@ -1,30 +1,30 @@
 # conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=an if let payload resource closes when its branch ends
-from "@std/io.ms" import stdout
-from "@std/core.ms" import Closeable, TextError
+import stdout from "@std/io.ms"
+import {Closeable, TextError} from "@std/core.ms"
 
-def say(s: String) -> Unit:
+fn say(s: String) Unit:
     stdout().write(s + "\n").get()
 
 type Res:
     name: String
 
 impl Closeable for Res:
-    var def close() -> Unit:
-        say(f"close {self.name}")
+    var fn close() Unit:
+        say("close {self.name}")
 
-def maybe(name: String, present: Bool) -> Optional[Res]:
-    return some(Res(name)) if present else none
+fn maybe(name: String, present: Bool) Optional[Res]:
+    return if present: some(Res(name)) else: none
 
-def make(name: String) -> Result[Res, TextError]:
+fn make(name: String) Result[Res, TextError]:
     return ok(Res(name))
 
-def keep(r: Res) -> Res:
+fn keep(r: Res) Res:
     return r
 
-def early_return() -> Int:
-    if let r = maybe("early", True):
+fn early_return() Int:
+    if let r = maybe("early", true):
         if r.name.length() > 1:
             return 1
 
@@ -32,40 +32,40 @@ def early_return() -> Int:
 
     return 0
 
-def local_optional() -> Unit:
-    let o = maybe("local", True)
+fn local_optional() Unit:
+    let o = maybe("local", true)
     if let r = o:
-        say(f"body {r.name}")
+        say("body {r.name}")
     say("after local")
 
-def absent() -> Unit:
-    if let r = maybe("absent", False):
-        say(f"body {r.name}")
+fn absent() Unit:
+    if let r = maybe("absent", false):
+        say("body {r.name}")
     else:
         say("else branch")
 
-def moved_on() -> Res:
-    if let r = maybe("moved", True):
+fn moved_on() Res:
+    if let r = maybe("moved", true):
         return keep(r)
 
     return Res("fallback")
 
-def with_else_err() -> Unit:
+fn with_else_err() Unit:
     if let r = make("ok-result"):
-        say(f"body {r.name}")
+        say("body {r.name}")
 
-def var_payload() -> Unit:
-    if var r = maybe("var", True):
+fn var_payload() Unit:
+    if var r = maybe("var", true):
         r = Res("var-reassigned")
-        say(f"body {r.name}")
+        say("body {r.name}")
 
-export def main() -> Int:
+export fn main() Int:
     early_return()
     local_optional()
     absent()
 
     let m = moved_on()
-    say(f"moved_on got {m.name}")
+    say("moved_on got {m.name}")
     with_else_err()
     var_payload()
     say("end")

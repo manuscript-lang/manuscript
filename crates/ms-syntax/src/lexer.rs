@@ -449,13 +449,6 @@ impl Scanner<'_> {
                         "tabs and lone carriage returns are not allowed in code; use spaces, and line endings of LF or CRLF",
                     );
                 }
-                if b == b'f' && self.at(self.offset + 1) == Some(b'"') {
-                    let start = self.offset;
-                    self.advance();
-                    self.scan_string(true)?;
-                    self.emit(Tok::String, start, self.offset, p);
-                    continue;
-                }
                 if letter(b) {
                     let start = self.offset;
                     let mut i = start;
@@ -465,7 +458,7 @@ impl Scanner<'_> {
                     self.column += (i - start) as u32;
                     self.offset = i;
                     let kind = Tok::from_word(&self.text[start..i]);
-                    if kind == Tok::Lambda || kind == Tok::Match {
+                    if kind == Tok::Fn || kind == Tok::Match {
                         self.function_depths.push(self.delimiters.len());
                     }
                     self.emit(kind, start, i, p);
@@ -477,7 +470,7 @@ impl Scanner<'_> {
                 }
                 if b == b'"' {
                     let start = self.offset;
-                    self.scan_string(false)?;
+                    self.scan_string()?;
                     self.emit(Tok::String, start, self.offset, p);
                     continue;
                 }
@@ -822,7 +815,7 @@ impl Scanner<'_> {
         Ok(())
     }
 
-    fn scan_string(&mut self, fstring: bool) -> PResult<()> {
+    fn scan_string(&mut self) -> PResult<()> {
         let start = self.offset;
         if let Some(end) = self
             .cached
@@ -888,13 +881,7 @@ impl Scanner<'_> {
                         return self.fail("invalid Unicode scalar escape; use 1 to 6 hexadecimal digits for a value up to 10FFFF that is not a surrogate (D800-DFFF)");
                     }
                     self.advance();
-                } else if !(if fstring {
-                    &b"\"\\nrt{}"[..]
-                } else {
-                    &b"\"\\nrt"[..]
-                })
-                .contains(&c)
-                {
+                } else if !b"\"\\nrt{}".contains(&c) {
                     let escape = if c.is_ascii_graphic() {
                         format!(" \\{}", char::from(c))
                     } else {
@@ -903,9 +890,9 @@ impl Scanner<'_> {
                     };
                     return self.fail_at(backslash, format!("unknown text escape{escape}; valid escapes are \\n \\t \\r \\\\ \\\" \\{{ \\}} and \\u{{H}}"));
                 }
-            } else if fstring && b == b'{' {
+            } else if b == b'{' {
                 self.scan_interpolation()?;
-            } else if fstring && b == b'}' {
+            } else if b == b'}' {
                 return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
             }
         }
@@ -950,12 +937,7 @@ impl Scanner<'_> {
                 );
             }
             if b == b'"' {
-                self.scan_string(false)?;
-                continue;
-            }
-            if b == b'f' && self.at(self.offset + 1) == Some(b'"') {
-                self.advance();
-                self.scan_string(true)?;
+                self.scan_string()?;
                 continue;
             }
             self.advance();
@@ -1002,9 +984,7 @@ impl Scanner<'_> {
         if first.pos.line != last.end.line
             || !matches!(
                 first.kind,
-                Tok::Def
-                    | Tok::Lambda
-                    | Tok::Elif
+                Tok::Fn
                     | Tok::If
                     | Tok::Else
                     | Tok::For

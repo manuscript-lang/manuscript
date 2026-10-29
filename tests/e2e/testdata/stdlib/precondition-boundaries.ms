@@ -1,8 +1,8 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/bytes.ms" import Bytes, BytesBuilder
-from "@std/queue.ms" import PriorityQueue, Queue
-from "@std/math.ms" import from_int
-from "@std/math.ms" import parse_int, NumberError
+import {expect_equal, expect_false} from "@std/test.ms"
+import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import {PriorityQueue, Queue} from "@std/queue.ms"
+import from_int from "@std/math.ms"
+import {parse_int, NumberError} from "@std/math.ms"
 
 test "byte updates retain relative bounds and immutable storage":
     let bytes = Bytes([0, 255])

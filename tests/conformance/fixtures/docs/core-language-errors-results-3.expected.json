@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-3.ms:4:48: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let price = discount(price: 20d, percent: 10d).get(0d)\n   |                                                ^\n<DIR>/core-language-errors-results-3.ms:5:47: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let text = discount(price: 20d, percent: 10d).map(lambda value: value.to_string())\n   |                                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-3.ms:4:48: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | let price = discount(price: 20d, percent: 10d).get(0d)\n   |                                                ^\n<DIR>/core-language-errors-results-3.ms:5:47: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | let text = discount(price: 20d, percent: 10d).map(fn value: value.to_string())\n   |                                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

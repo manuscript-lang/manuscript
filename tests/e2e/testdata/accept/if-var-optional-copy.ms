@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def grown() -> Int:
+fn grown() Int:
     var o: Optional[List[String]] = some(["a"])
 
     if var l = o:

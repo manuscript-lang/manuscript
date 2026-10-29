@@ -2,7 +2,7 @@ type P:
     xs: List[Int]
     ys: List[Int]
 
-def f() -> Int:
+fn f() Int:
     var p = P(xs: [], ys: [])
     var a = p.xs
     var b = p.ys

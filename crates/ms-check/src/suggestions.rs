@@ -1,7 +1,7 @@
 //! Machine-applicable fixes for diagnostics whose message names one concrete edit.
 //!
 //! A misspelled name carries `; did you mean 'x'?` and an unresolved standard
-//! name carries `; add: from "module" import x`. When exactly one edit is named,
+//! name carries `; add: import x from "module"`. When exactly one edit is named,
 //! the diagnostic also carries it as a `DiagnosticFix`.
 
 use crate::checker::Checker;
@@ -15,16 +15,16 @@ fn single_suggestion(message: &str) -> Option<&str> {
     (tail == "?" && !name.is_empty()).then_some(name)
 }
 
-/// The import statement an `add: from` hint names.
+/// The import statement an `add: import` hint names.
 fn import_statement(message: &str) -> Option<&str> {
     let rest = message.split_once("; add: ")?.1;
     let end = rest.find('\n').unwrap_or(rest.len());
     let statement = rest[..end].trim_end();
-    statement.starts_with("from ").then_some(statement)
+    statement.starts_with("import ").then_some(statement)
 }
 
 /// The single spelling an `unknown binding` hint names for a habit from
-/// another language (`Some`, `Ok`, `Err`, `true`, `null`, `this`).
+/// another language (`Some`, `Ok`, `Err`, `True`, `null`, `this`).
 fn habit_replacement(message: &str) -> Option<&'static str> {
     let rest = message.strip_prefix("unknown binding ")?;
     let (name, hint) = rest.split_once("; ")?;
@@ -32,8 +32,8 @@ fn habit_replacement(message: &str) -> Option<&'static str> {
         "Some" => Some("some"),
         "Ok" => Some("ok"),
         "Err" | "err" | "Error" => Some("error"),
-        "true" => Some("True"),
-        "false" => Some("False"),
+        "True" => Some("true"),
+        "False" => Some("false"),
         "nil" | "null" | "None" | "undefined" => Some("none"),
         "this" if hint.ends_with("write self instead of this") => Some("self"),
         _ => None,
@@ -151,7 +151,7 @@ pub(crate) fn append_call(source: &str, e: &Expr, call: &str) -> Option<Diagnost
 /// `f"{value}"` for the expression `e`, unless its text would not nest.
 pub(crate) fn interpolate(source: &str, e: &Expr) -> Option<DiagnosticFix> {
     rewrite_expr(source, e, |text, _| {
-        (!text.contains(['"', '{', '}', '\n'])).then(|| format!("f\"{{{text}}}\""))
+        (!text.contains(['"', '{', '}', '\n'])).then(|| format!("\"{{{text}}}\""))
     })
 }
 
@@ -272,9 +272,9 @@ mod tests {
 
     #[test]
     fn import_hint_inserts_at_file_start() {
-        let message = "unknown binding stdout; add: from \"@std/io\" import stdout";
+        let message = "unknown binding stdout; add: import stdout from \"@std/io\"";
         let fix = fix_for(message, Pos::new(40, 3, 1), 6).unwrap();
         assert_eq!(fix.pos.offset, 0);
-        assert_eq!(fix.replacement, "from \"@std/io\" import stdout\n");
+        assert_eq!(fix.replacement, "import stdout from \"@std/io\"\n");
     }
 }

@@ -2,8 +2,8 @@
 # conform: phase=parse
 # conform: origin=pkg/checker/diagnostic_fixes_test.go:22 TestDiagnosticFixes
 impl Error for Result[Int]:
-    def message() -> String:
+    fn message() String:
         return "x"
 
-def f(x: Result[Int]) -> Result[Int, Error]:
+fn f(x: Result[Int]) Result[Int, Error]:
     return error(x)

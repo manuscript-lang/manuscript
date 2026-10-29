@@ -2,5 +2,5 @@
 # conform: phase=check
 # conform: origin=pkg/parser/partial_test.go:24 FuzzParsePartial
 # 😀
-def read() -> Int:
+fn read() Int:
     return 2

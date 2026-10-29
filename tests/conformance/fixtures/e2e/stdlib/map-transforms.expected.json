@@ -27,22 +27,22 @@
           "message": "cannot move `k.label` out of `k`: only a whole variable can move; take an owned copy with `k.label.clone()`",
           "position": {
             "file": "map-transforms.ms",
-            "line": 106,
-            "column": 52,
-            "offset": 3394
+            "line": 95,
+            "column": 48,
+            "offset": 3255
           },
           "fix": {
             "position": {
               "file": "map-transforms.ms",
-              "line": 106,
-              "column": 57,
-              "offset": 3399
+              "line": 95,
+              "column": 53,
+              "offset": 3260
             },
             "end": {
               "file": "map-transforms.ms",
-              "line": 106,
-              "column": 57,
-              "offset": 3399
+              "line": 95,
+              "column": 53,
+              "offset": 3260
             },
             "replacement": ".clone()"
           }
@@ -50,25 +50,25 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`k` is moved here but used again at 201:24; a value has one owner, so pass `k.clone()` to keep the original, or move it only at its last use",
+          "message": "`k` is moved here but used again at 188:24; a value has one owner, so pass `k.clone()` to keep the original, or move it only at its last use",
           "position": {
             "file": "map-transforms.ms",
-            "line": 200,
+            "line": 187,
             "column": 29,
-            "offset": 6178
+            "offset": 5993
           },
           "fix": {
             "position": {
               "file": "map-transforms.ms",
-              "line": 200,
+              "line": 187,
               "column": 30,
-              "offset": 6179
+              "offset": 5994
             },
             "end": {
               "file": "map-transforms.ms",
-              "line": 200,
+              "line": 187,
               "column": 30,
-              "offset": 6179
+              "offset": 5994
             },
             "replacement": ".clone()"
           }
@@ -79,22 +79,22 @@
           "message": "cannot move `v.label` out of `v`: only a whole variable can move; take an owned copy with `v.label.clone()`",
           "position": {
             "file": "map-transforms.ms",
-            "line": 227,
+            "line": 214,
             "column": 27,
-            "offset": 6920
+            "offset": 6731
           },
           "fix": {
             "position": {
               "file": "map-transforms.ms",
-              "line": 227,
+              "line": 214,
               "column": 32,
-              "offset": 6925
+              "offset": 6736
             },
             "end": {
               "file": "map-transforms.ms",
-              "line": 227,
+              "line": 214,
               "column": 32,
-              "offset": 6925
+              "offset": 6736
             },
             "replacement": ".clone()"
           }

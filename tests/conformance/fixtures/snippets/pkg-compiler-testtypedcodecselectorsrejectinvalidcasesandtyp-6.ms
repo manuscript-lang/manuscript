@@ -1,10 +1,10 @@
 # conform: tags=diagnostics,modules,stdlib-crypto,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/compiler/codec_selectors_test.go:32 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
-from "@std/crypto.ms" import HashAlgorithm
+import HashAlgorithm from "@std/crypto.ms"
 
-def choose(algorithm: HashAlgorithm) -> Unit:
-    return ()
+fn choose(algorithm: HashAlgorithm) Unit:
+    return unit
 
-def wrong() -> Unit:
+fn wrong() Unit:
     choose("sha256")

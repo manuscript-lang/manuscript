@@ -1,9 +1,9 @@
 # conform: tags=diagnostics,modules,stdlib-compress,tier-stdlib
 # conform: phase=check
 # conform: origin=pkg/compiler/compression_defaults_test.go:36 TestCompressionExplicitLevelsKeepDirectDispatch
-from "@std/archive.ms" import compress, CompressionFormat
+import {compress, CompressionFormat} from "@std/archive.ms"
 
-def explicit() -> Unit:
+fn explicit() Unit:
     let data = "".to_bytes()
     let _ = compress(data, "gzip", 6)
     let _ = compress(data, "zlib", 0, max_bytes: none)

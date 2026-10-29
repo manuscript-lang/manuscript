@@ -2076,7 +2076,7 @@ impl Walker<'_> {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed"),
+                    format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed"),
                 );
             } else {
                 self.error_fix(
@@ -2650,7 +2650,7 @@ impl Walker<'_> {
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
-                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `def` instead"),
+                    format!("this closure outlives the statement, so it takes `{name}` with it, but `{name}` is used again{later}; a function value cannot be cloned, so declare a named `fn` instead"),
                 );
             } else {
                 self.error_fix_opt(

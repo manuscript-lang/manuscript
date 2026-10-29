@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 67,
     "stdout": "f1 = -31521776818582.684\ns3 = [日本語-22:a]\nf4 = -31221776817308.43\nl5 = [14] len 1\ns6 = [日本語-22:a日本語-22:a]\nfact(17) = 355687428096000\ns7 = [21860374:gammams日本語-22:a日本語-22:a]\nf8 = -8.44298754941023e-9\n0 3 true sum 3\ni9 = 47\n50 35 false sum 85\ns10 = [日本語-22:a日本語-22:a]\nl11 = [98] len 1\ni12 = 65\nl13 = [14] len 1\nl14 = [98] len 1\ns15 = [brace{s}]\n",
-    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0275.ms:69 in main\n"
+    "stderr": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at seed-0275.ms:67 in main\n"
   }
 }

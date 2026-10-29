@@ -1,31 +1,17 @@
 # conform: tags=closures,diagnostics,faults,interfaces,maps,modules,sets,stdlib-testing,testing,tier-core,try-result
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/core_parity/conformance_test.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_true
-from "./first.ms" import (
-    first_mapped,
-    first_bound_map,
-    first_generic_map,
-    first_lookup,
-    first_failure,
-    first_queries,
-    first_converted,
-    first_folded,
-    first_key_transform,
-    first_bound_keys,
+import {expect_equal, expect_false, expect_true} from "@std/test.ms"
+import {
+    first_mapped, first_bound_map, first_generic_map, first_lookup, first_failure,
+    first_queries, first_converted, first_folded, first_key_transform, first_bound_keys,
     first_value_transform
-)
-from "./second.ms" import (
-    second_mapped,
-    second_failure,
-    second_queries,
-    second_converted,
-    second_folded,
-    second_key_transform,
-    second_bound_keys,
-    second_value_transform
-)
-from "./domain.ms" import Key, Cause
+} from "./first.ms"
+import {
+    second_mapped, second_failure, second_queries, second_converted, second_folded,
+    second_key_transform, second_bound_keys, second_value_transform
+} from "./second.ms"
+import {Key, Cause} from "./domain.ms"
 
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()
@@ -34,7 +20,7 @@ test "mapped output keeps lexical Hashable and Equal evidence":
     by_id.values().get(0).label | try expect_equal("1")
 
     let bound = first_bound_map()
-    let mapped = bound(lambda n: Key(0, n.to_string()))
+    let mapped = bound(fn n: Key(0, n.to_string()))
     mapped.length() | try expect_equal(1)
 
     let input = Set[Int]([1, 2])
@@ -83,6 +69,6 @@ test "Map transformations preserve input and output equality evidence":
 
     let bound_one = first_bound_keys()
     let bound_two = second_bound_keys()
-    try expect_equal(bound_one(lambda key, value: Key(0, key.to_string())).length(), 1)
-    try expect_equal(bound_two(lambda key, value: Key(0, key.to_string())).length(), 2)
+    try expect_equal(bound_one(fn key, value: Key(0, key.to_string())).length(), 1)
+    try expect_equal(bound_two(fn key, value: Key(0, key.to_string())).length(), 2)
     (first_value_transform() != 3 or second_value_transform() != 0) | try expect_false

@@ -127,7 +127,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL111",
         family: "Loop that never waits or exits",
         severity: Severity::Error,
-        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is True",
+        repair: "wait inside the loop (sleep or a channel call), or return once `cancelled()` is true",
     },
     Rule {
         code: "MSL112",

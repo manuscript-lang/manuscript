@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 test "string and float members":
     let text = "héllo"

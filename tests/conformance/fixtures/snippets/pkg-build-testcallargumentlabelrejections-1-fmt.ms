@@ -1,19 +1,19 @@
 # conform: tags=alternatives,closures,control-flow,formatter,generics,interfaces,parser,records,tier-core
 # conform: phase=parse
 # conform: origin=pkg/build/compiler_test.go:33 TestCallArgumentLabelRejections
-def one(value: Int) -> Int:
+fn one(value: Int) Int:
     return value
 
-def two(left: Int, right: Int) -> Int:
+fn two(left: Int, right: Int) Int:
     return left - right
 
-def zero() -> Unit:
+fn zero() Unit:
     return
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def apply(transform: Callable[[Int], Int]) -> Int:
+fn apply(transform: fn(Int) Int) Int:
     return transform(1)
 
 type Box:
@@ -23,8 +23,8 @@ type Choice:
     case Payload(value: Int)
 
 interface Read:
-    def get() -> Int
+    fn get() Int
 
 impl Read for Box:
-    def get() -> Int:
+    fn get() Int:
         return self.value

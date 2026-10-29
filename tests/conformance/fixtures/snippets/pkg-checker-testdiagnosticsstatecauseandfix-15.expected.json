@@ -14,20 +14,20 @@
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-15.ms",
           "line": 5,
           "column": 12,
-          "offset": 191
+          "offset": 187
         },
         "fix": {
           "position": {
             "file": "pkg-checker-testdiagnosticsstatecauseandfix-15.ms",
             "line": 5,
             "column": 12,
-            "offset": 191
+            "offset": 187
           },
           "end": {
             "file": "pkg-checker-testdiagnosticsstatecauseandfix-15.ms",
             "line": 5,
             "column": 18,
-            "offset": 197
+            "offset": 193
           },
           "replacement": "remove"
         }

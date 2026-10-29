@@ -1,21 +1,21 @@
 # conform: tags=formatter,modules,parser,stdlib-encoding,stdlib-json,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=pkg/build/library_test.go:173 TestCommonErrorAcceptsSpecificErrors
-from "@std/json.ms" import JsonError
-from "@std/encoding.ms" import hex_decode
+import JsonError from "@std/json.ms"
+import hex_decode from "@std/encoding.ms"
 
-def general(cause: JsonError) -> Error:
+fn general(cause: JsonError) Error:
     return cause
 
-def failed() -> Result[Unit, JsonError]:
+fn failed() Result[Unit, JsonError]:
     return error(cause: JsonError.InvalidData)
 
-def forwarded() -> Result[Unit, Error]:
+fn forwarded() Result[Unit, Error]:
     return failed()
 
-def propagated() -> Result[Unit, Error]:
+fn propagated() Result[Unit, Error]:
     let _bytes = try hex_decode(text: "zz")
-    return ok(value: ())
+    return ok(value: unit)
 
-def constructed() -> Result[Unit, Error]:
+fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)

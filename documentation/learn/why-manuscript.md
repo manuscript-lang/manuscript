@@ -9,15 +9,15 @@ Manuscript is a ground-up attempt to build the right language for a world where 
 
 This page is the short version of the case. Every number has a script in the repository that reproduces it; links go to the result pages.
 
-## Reads like Python, runs like native code
+## Familiar to read, native to run
 
-Agents already write `def`, four-space blocks, `lambda`, `for i in 0..n`, f-strings and `True`/`False` fluently, so that is the surface. Manuscript adds static types inferred where they are clear, `Optional` and `Result` with `try`, nominal records and alternatives with exhaustive `match`, and ownership checked by the compiler. It compiles ahead of time, through Cranelift for fast debug builds and LLVM for release, into one static executable with no runtime to install.
+The surface is four-space blocks, `fn`, `for i in 0..n`, interpolated `"{name}"` strings and `true`/`false`. It is deliberately not Python: an agent that writes `def`, `lambda`, `True` or `elif` out of habit gets a diagnostic naming the Manuscript spelling instead of code that merely looks right. Manuscript adds static types inferred where they are clear, `Optional` and `Result` with `try`, nominal records and alternatives with exhaustive `match`, and ownership checked by the compiler. It compiles ahead of time, through Cranelift for fast debug builds and LLVM for release, into one static executable with no runtime to install.
 
 In the recorded seven-kernel run, Manuscript took less time than Go on all seven and was within 6% of or faster than overflow-checked Rust on five. The slowest ratio against checked Rust was n-body at 1.23x. In the ten-workload run, eight cases were faster than Go and six were within 1% of or faster than Rust. These are measurements of particular revisions and machines; see the [kernel](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/kernels/README.md) and [workload](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workloads/results.md) results and reproduction commands.
 
 ## Feedback an agent can act on
 
-Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `name.toUpperCase()`, `fn`, `async` or `except`, the message names the Manuscript spelling instead of reporting a bare syntax error. When the repair is mechanical, the JSON diagnostic carries a byte-exact `fix` and `ms check --fix` applies it. A runtime fault from `ms run --json` or `ms test --json` is a document with a kind, a message that includes the remedy, a position and a trace, so the agent reads data rather than scraping stderr.
+Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `name.toUpperCase()`, `def`, `async` or `except`, the message names the Manuscript spelling instead of reporting a bare syntax error. When the repair is mechanical, the JSON diagnostic carries a byte-exact `fix` and `ms check --fix` applies it. A runtime fault from `ms run --json` or `ms test --json` is a document with a kind, a message that includes the remedy, a position and a trace, so the agent reads data rather than scraping stderr.
 
 `ms guide` prints a compact language cheat sheet, `ms search_symbol <words>` finds project and standard-library APIs with bounded output, and `ms verify` folds check, format, lint and test into one exit status. See [commands for agents](../developer-tooling/implementation.md#commands-for-agents) and [diagnostics](../developer-tooling/source/diagnostics.md).
 

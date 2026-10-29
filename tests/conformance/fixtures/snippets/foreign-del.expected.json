@@ -12,13 +12,13 @@
           "file": "foreign-del.ms",
           "line": 5,
           "column": 5,
-          "offset": 134
+          "offset": 130
         },
         "end": {
           "file": "foreign-del.ms",
           "line": 5,
           "column": 8,
-          "offset": 137
+          "offset": 133
         }
       }
     ],

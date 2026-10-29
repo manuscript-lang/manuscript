@@ -1,17 +1,17 @@
 # conform: tags=control-flow,formatter,interfaces,match,modules,parser,sets,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/preferred_names/second.ms
-from "./domain.ms" import Key
-from "./helpers.ms" import add_generic, remove_generic
+import Key from "./domain.ms"
+import {add_generic, remove_generic} from "./helpers.ms"
 
 impl Equal for Key:
-    def equals(other: Key) -> Bool:
+    fn equals(other: Key) Bool:
         return self.label == other.label
 
 impl Hashable for Key:
-    def hash() -> Int: self.label.scalar_length()
+    fn hash() Int: self.label.scalar_length()
 
-export def second_run() -> Set[Key]:
+export fn second_run() Set[Key]:
     var items = Set[Key]([Key(1, "original")])
     let add = items.add
     let remove = items.remove

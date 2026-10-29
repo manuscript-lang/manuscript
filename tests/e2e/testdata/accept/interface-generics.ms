@@ -1,27 +1,27 @@
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 interface Read[V]:
-    def get() -> ref V
+    fn get() ref V
 
 interface Same[V: Equal]:
-    def same(other: V) -> Bool
+    fn same(other: V) Bool
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    def get() -> ref T:
+    fn get() ref T:
         return self.value
 
 impl Same[T] for Box[T]:
-    def same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
 type Matching[T: Equal]:
     value: T
 
 impl Same[T] for Matching[T]:
-    def same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 
 type Pair[A, B: Read[A]]:
@@ -29,13 +29,13 @@ type Pair[A, B: Read[A]]:
     right: B
 
 impl Read[Int] for Pair[Int, B]:
-    def get() -> Int:
+    fn get() Int:
         return self.right.get()
 
-def identity(value: Int) -> Int:
+fn identity(value: Int) Int:
     return value
 
-def read[T](box: Box[T]) -> ref T:
+fn read[T](box: Box[T]) ref T:
     return box.get()
 
 test "parameters and bounds belong to interfaces and types":

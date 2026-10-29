@@ -1,26 +1,26 @@
-from "./harness.ms" import bench
-from "@std/string.ms" import StringBuilder
-from "@std/yaml.ms" import parse, stringify, YamlValue
+import bench from "./harness.ms"
+import StringBuilder from "@std/string.ms"
+import {parse, stringify, YamlValue} from "@std/yaml.ms"
 
-def yaml_doc(count: Int) -> String:
+fn yaml_doc(count: Int) String:
     var sb = StringBuilder()
     for i in 0..count:
-        sb.append(f"- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
+        sb.append("- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n")
     return sb.build()
 
-def yaml_length(value: YamlValue) -> Int:
+fn yaml_length(value: YamlValue) Int:
     if let text = stringify(value):
         return text.length()
 
     return 0
 
-export def bench_yaml() -> Unit:
+export fn bench_yaml() Unit:
     let yaml = yaml_doc(2000)
 
     bench(
         "yaml.parse",
         2000,
-        lambda () -> Int:
+        fn() Int:
             if parse(yaml).is_ok():
                 return 1
 
@@ -30,7 +30,7 @@ export def bench_yaml() -> Unit:
     bench(
         "yaml.roundtrip",
         2000,
-        lambda () -> Int:
+        fn() Int:
             if let v = parse(yaml):
                 return yaml_length(v)
 

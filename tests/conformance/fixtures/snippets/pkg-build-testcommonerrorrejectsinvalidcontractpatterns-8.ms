@@ -4,5 +4,5 @@
 type Impostor:
     detail: String
 
-def wrong(value: Impostor) -> Error:
+fn wrong(value: Impostor) Error:
     return Error(value: value)

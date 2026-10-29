@@ -1,8 +1,8 @@
 # conform: tags=formatter,generics,modules,parser,stdlib-errors,strings,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=pkg/checker/inference_hints_test.go:29 TestReturnOnlyTypeParameterContext
-from "@std/core.ms" import TextError
+import TextError from "@std/core.ms"
 
-def fail[T](message: String) -> Result[T, TextError]: error(TextError(message))
+fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 
-def first() -> Result[Int, TextError]: ...
+fn first() Result[Int, TextError]: ...

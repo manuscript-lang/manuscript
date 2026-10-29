@@ -1,6 +1,6 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=tests/e2e/library_project_test.go:81 TestLibraryProjectCommandsAndCache
-from "@lib/value.ms" import value
+import value from "@lib/value.ms"
 
-export def main() -> Int: return value() - 3
+export fn main() Int: return value() - 3

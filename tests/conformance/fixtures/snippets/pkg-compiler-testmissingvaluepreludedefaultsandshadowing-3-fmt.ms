@@ -4,4 +4,4 @@
 type Other:
     case Missing(value: Int)
 
-def get() -> Other: Missing(1)
+fn get() Other: Missing(1)

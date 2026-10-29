@@ -26,7 +26,7 @@ Measured with `bench/perf/listloops/run.sh` (one core, 4096 elements, best of 5 
 | base `w[base + i] * x[i]` | 1.63 | 6.48 | 6.06 |
 
 ```ms
-def fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) -> Unit:
+fn fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
         out[i] = a[i] * b[i] + 1.5
 ```

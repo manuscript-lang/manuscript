@@ -1,7 +1,7 @@
-from "@std/test.ms" import expect_ok
-from "@std/core.ms" import TextError
-from "@std/net.ms" import network
-from "@std/time.ms" import sleep
+import expect_ok from "@std/test.ms"
+import TextError from "@std/core.ms"
+import network from "@std/net.ms"
+import sleep from "@std/time.ms"
 
 # A write to a peer that has gone away must return an error. Without SIGPIPE ignored the
 # whole process dies with the signal instead.
@@ -22,7 +22,7 @@ test "writing to a closed connection returns an error":
         if let _sent = written:
             attempts += 0
         else:
-            return ok(())
+            return ok(unit)
 
         attempts += 1
 

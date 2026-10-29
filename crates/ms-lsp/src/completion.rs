@@ -227,9 +227,9 @@ impl Completer<'_> {
             item.additional = vec![text_edit(
                 Range::at(Position::default()),
                 &format!(
-                    "from {} import {}\n",
-                    ms_driver::project::quoting::quote(path),
-                    s.name
+                    "import {} from {}\n",
+                    s.name,
+                    ms_driver::project::quoting::quote(path)
                 ),
             )];
         }
@@ -464,16 +464,15 @@ impl Completer<'_> {
         let line_start = text[..c.start].rfind('\n').map_or(0, |at| at + 1);
         if text[line_start..c.start].trim().is_empty() {
             let mut words: Vec<&str> = vec![
-                "let", "var", "if", "elif", "else", "for", "while", "match", "return", "break",
-                "continue",
+                "let", "var", "if", "else", "for", "while", "match", "return", "break", "continue",
             ];
             if line_start == c.start {
                 words = vec![
-                    "def",
+                    "fn",
                     "type",
                     "interface",
                     "impl",
-                    "from",
+                    "import",
                     "export",
                     "extern",
                     "test",
@@ -501,7 +500,7 @@ impl Completer<'_> {
             }
         }
         if !c.type_context {
-            for word in ["True", "False", "lambda", "not", "try"] {
+            for word in ["true", "false", "unit", "fn", "not", "try"] {
                 self.add(word, 14, None, 5, word, Json::Null);
             }
         }
@@ -593,14 +592,13 @@ impl Completer<'_> {
 
 fn keyword_template(word: &str) -> Option<&'static str> {
     Some(match word {
-        "interface" => "interface ${1:Name}:\n    ${0:def operation() -> Unit}",
-        "def" => "def ${1:name}(${2}) -> ${3:Unit}:\n    ${0:return ()}",
-        "from" => "from \"${1:path}\" import ${0:name}",
+        "interface" => "interface ${1:Name}:\n    ${0:fn operation() Unit}",
+        "fn" => "fn ${1:name}(${2}) ${3:Unit}:\n    ${0:return unit}",
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "test" => "test \"${1:name}\":\n    ${0:return ()}",
-        "bench" => "bench \"${1:name}\":\n    ${0:return ()}",
+        "test" => "test \"${1:name}\":\n    ${0:return unit}",
+        "bench" => "bench \"${1:name}\":\n    ${0:return unit}",
         _ => return None,
     })
 }
@@ -677,67 +675,46 @@ fn simple_item(name: &str, detail: &str, kind: i64, range: Range, text: &str) ->
 
 /// Completion inside an `import` declaration, or `None` outside one.
 fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Option<Vec<Item>> {
-    // Token context handles multiline groups without mistaking comments or
-    // strings for an import declaration.
-    let (mut start, mut parens) = (None::<usize>, 0i32);
-    let (mut quote, mut import_end) = (None::<usize>, None::<usize>);
+    // Token context handles compact imports and multiline groups without
+    // mistaking comments or strings for an import declaration.
+    let (mut start, mut braces, mut grouped) = (None::<usize>, 0i32, false);
     for token in text::editor_tokens(&d.text[..c.offset]) {
-        let Some(before) = d.text.get(..token.start) else {
-            continue;
-        };
-        let line_start = before.rfind('\n').map_or(0, |at| at + 1);
-        if token.is_name("from") && token.end <= c.start && before[line_start..].trim().is_empty() {
-            (start, parens, quote, import_end) = (Some(token.start), 0, None, None);
+        if token.is_name("import") && token.end <= c.start {
+            (start, braces, grouped) = (Some(token.start), 0, false);
             continue;
         }
         if start.is_none() {
             continue;
         }
         match token.kind {
-            EditorKind::Str if quote.is_none() => quote = Some(token.start),
-            EditorKind::Name if token.text == "import" && quote.is_some() => {
-                import_end = Some(token.end)
+            EditorKind::Char(b'{') => {
+                braces += 1;
+                grouped = true;
             }
-            EditorKind::Char(b'(') => parens += 1,
-            EditorKind::Char(b')') => parens -= 1,
-            EditorKind::Char(b'\n') if parens <= 0 => start = None,
+            EditorKind::Char(b'}') => braces -= 1,
+            EditorKind::Char(b'\n') if braces <= 0 => start = None,
             _ => {}
         }
     }
-    start?;
+    let start = start?;
+    let line = &d.text[start..c.offset];
     let mut imported: HashSet<String> = HashSet::new();
-    if let Some(from) = import_end {
-        let mut depth = parens;
-        let mut end = d.text.len();
-        for token in text::editor_tokens(&d.text[c.end..]) {
-            match token.kind {
-                EditorKind::Char(b'(') => depth += 1,
-                EditorKind::Char(b')') => depth -= 1,
-                EditorKind::Char(b'\n') if depth <= 0 => {
-                    end = c.end + token.start;
-                    break;
-                }
-                _ => {}
-            }
-        }
-        for token in text::editor_tokens(&d.text[from..end.max(from)]) {
-            let (token_start, token_end) = (from + token.start, from + token.end);
-            if token.kind == EditorKind::Name && (token_end <= c.start || token_start >= c.end) {
+    if grouped {
+        let end = d.text[start..].find('}').unwrap_or(d.text.len() - start);
+        for token in text::editor_tokens(&d.text[start..start + end]) {
+            if token.kind == EditorKind::Name
+                && token.text != "import"
+                && (start + token.end <= c.start || start + token.start >= c.end)
+            {
                 imported.insert(token.text.to_string());
             }
         }
     }
-    let quote_text = quote.map(|at| {
-        let rest = &d.text[at..];
-        text::editor_tokens(rest)
-            .first()
-            .map_or(String::new(), |t| t.text.to_string())
-    });
     let mut items: Vec<Item> = Vec::new();
-    let quote = quote
-        .filter(|_| import_end.is_none())
-        .map(|at| at - start.unwrap_or(0));
-    let start = start.unwrap_or(0);
+    let quote = text::editor_tokens(line)
+        .into_iter()
+        .find(|t| t.kind == EditorKind::Str)
+        .map(|t| t.start);
     if let Some(quote) = quote {
         let path_start = start + quote + 1;
         let prefix = &d.text[path_start..c.offset];
@@ -818,10 +795,26 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         sort(&mut items);
         return Some(items);
     }
-    // Symbol completion in `from "..." import Name` uses only exported declarations.
-    let path = import_end
-        .and(quote_text)
-        .and_then(|t| ms_driver::project::quoting::unquote(&t));
+    // Symbol completion in `import Name from "..."` uses only exported declarations.
+    let rest = text::editor_tokens(&d.text[c.end..]);
+    let mut path: Option<String> = None;
+    for (at, token) in rest.iter().enumerate() {
+        if (token.is(b'\n') && braces <= 0) || token.is_name("import") {
+            break; // Do not borrow a module path from a later declaration.
+        }
+        match token.kind {
+            EditorKind::Char(b'{') => braces += 1,
+            EditorKind::Char(b'}') => braces -= 1,
+            _ => {}
+        }
+        if braces == 0
+            && token.is_name("from")
+            && rest.get(at + 1).is_some_and(|t| t.kind == EditorKind::Str)
+        {
+            path = ms_driver::project::quoting::unquote(rest[at + 1].text);
+            break;
+        }
+    }
     let range = Range {
         start: text::position(&d.text, c.start),
         end: text::position(&d.text, c.end),
@@ -889,6 +882,25 @@ fn import_completion(d: &Document, docs: &Documents, c: &CursorContext) -> Optio
         sort(&mut items);
         return Some(items);
     }
+    for (path, exports) in standard_export_inventory() {
+        for s in exports {
+            if !is_prelude_symbol(&s)
+                && !imported.contains(s.name.as_str())
+                && name_matches(s.name.as_str(), &c.prefix)
+            {
+                let text = if grouped {
+                    s.name.as_str().to_string()
+                } else {
+                    format!(
+                        "{} from {}",
+                        s.name,
+                        ms_driver::project::quoting::quote(&path)
+                    )
+                };
+                items.push(simple_item(s.name.as_str(), &path, 7, range, &text));
+            }
+        }
+    }
     sort(&mut items);
     Some(items)
 }
@@ -928,7 +940,7 @@ pub fn signature_help(d: &Document, docs: &Documents, p: Position) -> Result<Jso
         }
     }
     let result = t.result.as_ref().map(|r| r.to_string()).unwrap_or_default();
-    let label = format!("{name}({}) -> {result}", labels.join(", "));
+    let label = format!("{name}({}) {result}", labels.join(", "));
     let mut documentation = Json::Null;
     if let (Some(module), ms_syntax::ast::ExprKind::Call { callee, .. }) = (&a.module, &call.kind) {
         let files = DeclFiles::new(&a.result.source_modules());
@@ -978,7 +990,7 @@ fn signature_arguments(d: &Document, c: &mut CursorContext) -> Vec<Option<String
         let at = open + 1 + token.start;
         if at > c.offset
             && d.text.as_bytes().get(at - 1) == Some(&b'\n')
-            && matches!(token.text, "def" | "export" | "type" | "test" | "from")
+            && matches!(token.text, "fn" | "export" | "type" | "test" | "import")
         {
             break;
         }
@@ -997,7 +1009,7 @@ fn signature_arguments(d: &Document, c: &mut CursorContext) -> Vec<Option<String
             depth += 1;
         } else if token.is(b')') || token.is(b']') || token.is(b'}') {
             depth = (depth - 1).max(0);
-        } else if depth == 0 && token.is_name("lambda") {
+        } else if depth == 0 && token.is_name("fn") {
             lambda_parameters = true;
         } else if depth == 0 && token.is(b':') {
             lambda_parameters = false;
@@ -1027,7 +1039,7 @@ fn signature_arguments(d: &Document, c: &mut CursorContext) -> Vec<Option<String
 fn argument_label(tokens: &[text::EditorToken<'_>]) -> Option<String> {
     (tokens.len() >= 2
         && tokens[0].kind == EditorKind::Name
-        && !tokens[0].is_name("lambda")
+        && !tokens[0].is_name("fn")
         && tokens[1].is(b':'))
     .then(|| tokens[0].text.to_string())
 }

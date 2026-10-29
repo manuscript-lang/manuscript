@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/test.ms\" import expect_false\nfrom \"@std/math.ms\" import parse\nfrom \"@std/math.ms\" import BigInt\nfrom \"@std/math.ms\" import BigIntError\n\ndef verify_bigint() -> Result[Unit, Error]:\n    let large = try parse(text: \"18446744073709551616\", radix: 10, max_digits: 30)\n    (\n        not (\n            ((large).multiply(other: large)).to_string_radix(\n                radix: 10\n            ) == \"340282366920938463463374607431768211456\"\n        )\n    ) | try expect_false\n    return ok(())\n\ntest \"large integers are exact\":\n    try verify_bigint()\n"
+    "fmt": "import expect_false from \"@std/test.ms\"\nimport parse from \"@std/math.ms\"\nimport BigInt from \"@std/math.ms\"\nimport BigIntError from \"@std/math.ms\"\n\nfn verify_bigint() Result[Unit, Error]:\n    let large = try parse(text: \"18446744073709551616\", radix: 10, max_digits: 30)\n    (\n        not (\n            ((large).multiply(other: large)).to_string_radix(\n                radix: 10\n            ) == \"340282366920938463463374607431768211456\"\n        )\n    ) | try expect_false\n    return ok(unit)\n\ntest \"large integers are exact\":\n    try verify_bigint()\n"
   }
 }

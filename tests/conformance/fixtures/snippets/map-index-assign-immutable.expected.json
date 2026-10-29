@@ -14,20 +14,20 @@
           "file": "map-index-assign-immutable.ms",
           "line": 6,
           "column": 5,
-          "offset": 157
+          "offset": 153
         },
         "fix": {
           "position": {
             "file": "map-index-assign-immutable.ms",
             "line": 5,
             "column": 5,
-            "offset": 131
+            "offset": 127
           },
           "end": {
             "file": "map-index-assign-immutable.ms",
             "line": 5,
             "column": 8,
-            "offset": 134
+            "offset": 130
           },
           "replacement": "var"
         }

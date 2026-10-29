@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Items:
     count: Int
@@ -6,10 +6,10 @@ type Items:
 type Outcome:
     case Value(value: Int)
 
-def compute(value: Int) -> Int:
+fn compute(value: Int) Int:
     return value
 
-def ordinary() -> Outcome:
+fn ordinary() Outcome:
     return Outcome.Value(compute(3))
 
 test "non-prelude spellings are ordinary names":
@@ -19,5 +19,5 @@ test "non-prelude spellings are ordinary names":
     try expect_equal(forward(4), 4)
 
     match ordinary():
-        case Value(value):
+        Value(value):
             try expect_equal(value, 3)

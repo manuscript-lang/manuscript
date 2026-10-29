@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,faults,mutation,tier-core
 # conform: phase=check
 # conform: origin=tests/e2e/match_bounds_test.go:79 TestBoundedMatchNative
-export def main() -> Int:
+export fn main() Int:
     let shapes = [Shape.Circle(2)]
     var sum = 9223372036854775807
     var i = 0

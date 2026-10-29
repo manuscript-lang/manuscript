@@ -9,19 +9,19 @@
       {
         "code": "MS3050",
         "phase": "type",
-        "message": "non-exhaustive match; missing cases: none, or add a final 'case _:' arm; add the arms 'case none:'",
+        "message": "non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'case none:'",
         "position": {
           "file": "pkg-build-testexpressionconveniencerejections-9.ms",
           "line": 5,
           "column": 12,
-          "offset": 218
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-9.ms:5:12: type: non-exhaustive match; missing cases: none, or add a final 'case _:' arm; add the arms 'case none:'\n   |\n 5 |     return match x:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-build-testexpressionconveniencerejections-9.ms:5:12: type: non-exhaustive match; missing cases: none, or add a final '_:' arm; add the arms 'case none:'\n   |\n 5 |     return match x:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

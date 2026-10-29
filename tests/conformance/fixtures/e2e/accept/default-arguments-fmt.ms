@@ -1,70 +1,70 @@
 # conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,lists,modules,mutation,optional,parser,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/default-arguments.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Cell:
     value: Int
 
-def increment(value: Int = 3) -> Int:
+fn increment(value: Int = 3) Int:
     return value + 1
 
-def combine(first: Int = 2, second: Int, third: Int = first + second) -> Int:
+fn combine(first: Int = 2, second: Int, third: Int = first + second) Int:
     return first + second + third
 
-def identity[T](value: T, fallback: T = value) -> T:
+fn identity[T](value: T, fallback: T = value) T:
     return fallback
 
-def ordered(
+fn ordered(
     seed: Int,
     first: Int = seed * 10 + 3,
     second: Int = first * 10 + 4,
     third: Int = 0
-) -> Int:
+) Int:
     return second * 10 + 5 + third
 
-def unit_default() -> Unit:
-    return ()
+fn unit_default() Unit:
+    return unit
 
-def unit_value(value: Unit = unit_default()) -> Unit:
+fn unit_value(value: Unit = unit_default()) Unit:
     return value
 
-def optional(value: Optional[Int] = some(3)) -> Optional[Int]:
+fn optional(value: Optional[Int] = some(3)) Optional[Int]:
     return value
 
-def fail() -> Result[Int, TextError]:
+fn fail() Result[Int, TextError]:
     return error(TextError("default failure"))
 
-def propagate(value: Int = try fail()) -> Result[Int, TextError]:
+fn propagate(value: Int = try fail()) Result[Int, TextError]:
     return ok(value)
 
 interface Add:
-    def add(value: Int) -> Int
+    fn add(value: Int) Int
 
 type Offset:
     value: Int
 
 impl Add for Offset:
-    def add(value: Int = self.value) -> Int:
+    fn add(value: Int = self.value) Int:
         return self.value + value
 
 interface Read[T]:
-    def read(value: T) -> T
+    fn read(value: T) T
 
 type Box[T]:
     value: T
 
 impl Read[T] for Box[T]:
-    def read(value: T = self.value) -> T:
+    fn read(value: T = self.value) T:
         return value
 
 test "omitted and explicit defaults":
     (increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | try expect_false
     (combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5) | try expect_false
     (identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
-    unit_value(()) | try expect_equal(())
-    unit_value() | try expect_equal(())
+    unit_value(unit) | try expect_equal(unit)
+    unit_value() | try expect_equal(unit)
     (optional(value: none) != Optional[Int].none or optional() != some(3)) | try expect_false
     (
         (
@@ -87,15 +87,15 @@ test "function values and captures":
     let copied = copy
     copied() | try expect_equal(4)
 
-    let typed: Callable[[Int], Int] = increment
+    let typed: fn(Int) Int = increment
     typed(2) | try expect_equal(3)
 
     let offset = 5
-    let callback = lambda (value: Int = offset):
+    let callback = fn(value: Int = offset):
         return value
     (callback() != 5 or callback(0) != 0) | try expect_false
 
-    let nested = lambda (first: Int = 6, second: Int = first + 1):
+    let nested = fn(first: Int = 6, second: Int = first + 1):
         return second
     nested() | try expect_equal(7)
 

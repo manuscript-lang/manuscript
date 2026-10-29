@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding panic; add: from \"@std/core.ms\" import panic",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
         "position": {
           "file": "pkg-tooling-testpatternbindingadvisory-12.ms",
           "line": 7,
-          "column": 27,
-          "offset": 292
+          "column": 22,
+          "offset": 278
         },
         "fix": {
           "position": {
@@ -29,14 +29,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/core.ms\" import panic\n"
+          "replacement": "import panic from \"@std/core.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-tooling-testpatternbindingadvisory-12.ms:7:27: resolution: unknown binding panic; add: from \"@std/core.ms\" import panic\n   |\n 7 |         case none: return panic(message: \"empty\")\n   |                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-tooling-testpatternbindingadvisory-12.ms:7:22: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 7 |         none: return panic(message: \"empty\")\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

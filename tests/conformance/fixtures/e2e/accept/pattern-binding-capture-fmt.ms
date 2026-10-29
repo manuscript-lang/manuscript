@@ -1,40 +1,40 @@
 # conform: tags=alternatives,control-flow,formatter,generics,interfaces,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/pattern-binding-capture.ms
-from "@std/test.ms" import expect_equal, expect_false
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Failure[T]:
     case NotFound
     case Denied(reason: T)
 
 impl Error for Failure[T]:
-    def message() -> String: "Failure"
+    fn message() String: "Failure"
 
 # An advisory preserves the semantics of this fresh, capitalized binding.
-def captured[T](result: Result[Int, Failure[T]]) -> Int:
+fn captured[T](result: Result[Int, Failure[T]]) Int:
     match result:
-        case error(NotFound): return 1
-        case ok(value): return value
+        error(NotFound): return 1
+        ok(value): return value
 
-def failure_code[T](cause: Failure[T]) -> Int:
+fn failure_code[T](cause: Failure[T]) Int:
     match cause:
-        case NotFound: return 1
-        case Denied(_): return 2
+        NotFound: return 1
+        Denied(_): return 2
 
-def precise[T](result: Result[Int, Failure[T]]) -> Int:
+fn precise[T](result: Result[Int, Failure[T]]) Int:
     match result:
-        case error(cause): return failure_code(cause)
-        case ok(value): return value
+        error(cause): return failure_code(cause)
+        ok(value): return value
 
-def failure_reason(cause: Failure[String]) -> String:
+fn failure_reason(cause: Failure[String]) String:
     match cause:
-        case NotFound: return "missing"
-        case Denied(reason): return reason
+        NotFound: return "missing"
+        Denied(reason): return reason
 
-def deliberate(result: Result[Int, Failure[String]]) -> String:
+fn deliberate(result: Result[Int, Failure[String]]) String:
     match result:
-        case error(cause): return failure_reason(cause)
-        case ok(_): return "ok"
+        error(cause): return failure_reason(cause)
+        ok(_): return "ok"
 
 test "a payload identifier binds every alternative without changing semantics":
     let denied: Result[Int, Failure[String]] = error(

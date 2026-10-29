@@ -5,7 +5,7 @@ let (
     HIGH: Int = LOW + 9
 )
 export let (
-    LABEL = "range {LOW}..{HIGH}"
+    LABEL = "range \{LOW\}..\{HIGH\}"
 )
 
 test "a constant group declares each constant":

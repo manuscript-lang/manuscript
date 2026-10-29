@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,parser,stdlib-toml,stdlib-yaml,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/checker/standard_lazy_test.go:46 TestBundledSourceModulesCheckOnceConcurrently
-from "@std/toml.ms" import TomlValue
-from "@std/yaml.ms" import YamlValue
+import TomlValue from "@std/toml.ms"
+import YamlValue from "@std/yaml.ms"
 
-def one() -> Int:
+fn one() Int:
     return 1

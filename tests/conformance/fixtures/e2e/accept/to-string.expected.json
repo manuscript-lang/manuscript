@@ -5,57 +5,49 @@
   "expected": {
     "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "to-string.ms::every scalar has to_string",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "to-string.ms::records alternatives and collections convert",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "to-string.ms::generics views bound methods functions and resources",
-          "status": "failed",
-          "failure": "expected [object], received Queue(capacity: Optional.some(1), head: 0, items: [])\n  at to-string.ms:35:27",
-          "position": {
-            "file": "to-string.ms",
-            "line": 35,
-            "column": 27,
-            "offset": 0
-          }
-        },
-        {
-          "index": 3,
-          "name": "to-string.ms::interpolation and bound conversion evaluate each receiver once",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 3,
-        "failed": 1,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
+        "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
+      "completed": false,
       "exit_code": 1,
-      "stdout": "RUN to-string.ms::every scalar has to_string\nPASS to-string.ms::every scalar has to_string\nRUN to-string.ms::records alternatives and collections convert\nPASS to-string.ms::records alternatives and collections convert\nRUN to-string.ms::generics views bound methods functions and resources\nFAIL to-string.ms::generics views bound methods functions and resources: expected [object], received Queue(capacity: Optional.some(1), head: 0, items: [])\n  at to-string.ms:35:27\nRUN to-string.ms::interpolation and bound conversion evaluate each receiver once\nPASS to-string.ms::interpolation and bound conversion evaluate each receiver once\n4 tests, 1 failed\n",
-      "diagnostics": []
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "Named is an interface and cannot be constructed; a type with 'impl Named for <Type>:' passes wherever Named is expected, so pass the value directly",
+          "position": {
+            "file": "to-string.ms",
+            "line": 114,
+            "column": 16,
+            "offset": 4022
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -66,17 +58,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].failure",
-      "tests[].index",
-      "tests[].name",
-      "tests[].position",
-      "tests[].position.column",
-      "tests[].position.file",
-      "tests[].position.line",
-      "tests[].position.offset",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

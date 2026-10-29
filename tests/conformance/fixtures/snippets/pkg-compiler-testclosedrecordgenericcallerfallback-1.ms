@@ -1,7 +1,7 @@
 # conform: tags=control-flow,diagnostics,generics,mutation,strings,tier-core
 # conform: phase=check
 # conform: origin=pkg/compiler/record_bounds_test.go:102 TestClosedRecordGenericCallerFallback
-def count[T](value: T) -> Int:
+fn count[T](value: T) Int:
     let cell = Cell(0)
     var i = 0
 
@@ -11,4 +11,4 @@ def count[T](value: T) -> Int:
 
     return cell.total
 
-def probe() -> Int: return count[String]("unused")
+fn probe() Int: return count[String]("unused")

@@ -1,4 +1,4 @@
-def main(xs: List[Int]) -> Int:
+fn main(xs: List[Int]) Int:
     for ref x in xs:
         return x
     return 0

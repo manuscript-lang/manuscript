@@ -1,11 +1,11 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
-def emit(text: String) -> Int:
-    stdout().write(f"{text}\n").get()
+fn emit(text: String) Int:
+    stdout().write("{text}\n").get()
     return 0
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     var rows = lines.length()
 
@@ -24,7 +24,7 @@ export def main() -> Int:
         for c in 0..grid[r].length():
             let ch = grid[r][c]
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
-                return emit(f"error: bad character at {r + 1},{c + 1}")
+                return emit("error: bad character at {r + 1},{c + 1}")
 
     let width = grid[0].length()
     for r in 0..rows:
@@ -41,7 +41,7 @@ export def main() -> Int:
             if grid[r][c] == "S":
                 starts += 1
                 start = r * width + c
-            elif grid[r][c] == "E":
+            else if grid[r][c] == "E":
                 ends += 1
                 end = r * width + c
 
@@ -81,9 +81,9 @@ export def main() -> Int:
 
             if k == 0:
                 nr -= 1
-            elif k == 1:
+            else if k == 1:
                 nr += 1
-            elif k == 2:
+            else if k == 2:
                 nc -= 1
             else:
                 nc += 1
@@ -101,4 +101,4 @@ export def main() -> Int:
     if dist[end] < 0:
         return emit("no path")
 
-    return emit(f"{dist[end]}")
+    return emit("{dist[end]}")

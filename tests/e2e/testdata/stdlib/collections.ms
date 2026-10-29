@@ -1,23 +1,17 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/collections.ms" import (
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range_by,
-    filled,
-    map_from_entries,
-    flatten
-)
+import {expect_equal, expect_false} from "@std/test.ms"
+import {
+    ListBuilder, MapBuilder, SetBuilder, range_by, filled, map_from_entries, flatten
+} from "@std/collections.ms"
 
-def positive(value: Int) -> Bool: value > 0
+fn positive(value: Int) Bool: value > 0
 
-def twice(value: Int) -> Int: value * 2
+fn twice(value: Int) Int: value * 2
 
-def duplicate(value: Int) -> List[Int]: [value, value]
+fn duplicate(value: Int) List[Int]: [value, value]
 
-def sum(accumulator: Int, value: Int) -> Int: accumulator + value
+fn sum(accumulator: Int, value: Int) Int: accumulator + value
 
-def parity(value: Int) -> Int: value % 2
+fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
     let list = [-1, 2, 0, 3]
@@ -43,7 +37,7 @@ test "list search callbacks empty identities and folding":
 
 test "group_by keeps first-seen key order and element order across few and many buckets":
     let values = 0..600
-    let few = values.group_by(lambda (x: Int) -> Int: x % 3)
+    let few = values.group_by(fn(x: Int) Int: x % 3)
     try expect_equal(few.keys(), [0, 1, 2])
 
     var total = 0
@@ -58,12 +52,12 @@ test "group_by keeps first-seen key order and element order across few and many 
 
     try expect_equal(total, 599 * 600 / 2)
 
-    let words = ["b", "a", "b", "c", "a", "b"].group_by(lambda (w: String) -> String: w)
+    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w)
     try expect_equal(words.keys(), ["b", "a", "c"])
     try expect_equal(words.get("b"), some(["b", "b", "b"]))
     try expect_equal(words.get("c"), some(["c"]))
 
-    let unique = values.group_by(lambda (x: Int) -> Int: x)
+    let unique = values.group_by(fn(x: Int) Int: x)
     try expect_equal(unique.length(), 600)
     try expect_equal(unique.get(599), some([599]))
 
@@ -173,10 +167,10 @@ test "for over range counts without a list":
 
     try expect_equal(skipped, 16)
 
-    var callbacks: List[Callable[[], Int]] = []
+    var callbacks: List[fn() Int] = []
     for index in 0..3:
-        callbacks.append(lambda: index)
-    try expect_equal(callbacks.map(lambda call: call()), [0, 1, 2])
+        callbacks.append(fn: index)
+    try expect_equal(callbacks.map(fn call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
     let limited: Result[List[Int], CollectionError] = error(

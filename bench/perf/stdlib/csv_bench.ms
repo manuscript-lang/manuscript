@@ -1,12 +1,12 @@
-from "@std/bench.ms" import keep, measure
-from "@std/csv.ms" import parse, stringify
+import {keep, measure} from "@std/bench.ms"
+import {parse, stringify} from "@std/csv.ms"
 
 bench "csv.stringify":
     var rows: List[List[String]] = []
     for i in 0..5000:
-        rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+        rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if let s = stringify(rows):
             return keep(s.length())
 
@@ -17,11 +17,11 @@ bench "csv.stringify":
 bench "csv.parse":
     var rows: List[List[String]] = []
     for i in 0..5000:
-        rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+        rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
     let csv_text = stringify(rows).get("")
 
-    def work() -> Result[Unit, Error]:
+    fn work() Result[Unit, Error]:
         if let r = parse(csv_text):
             return keep(r.length())
 

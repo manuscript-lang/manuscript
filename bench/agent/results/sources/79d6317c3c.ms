@@ -1,6 +1,6 @@
-from "@std/io.ms" import read_all, stdin, stdout
-from "@std/string.ms" import from_scalars
-from "@std/collections.ms" import range
+import {read_all, stdin, stdout} from "@std/io.ms"
+import from_scalars from "@std/string.ms"
+import range from "@std/collections.ms"
 
 # Code points used by the scanners. The input is ASCII, so SENT (a private-use
 # character) can only come from the converter itself: it marks a two-space hard break.
@@ -78,7 +78,7 @@ type Tail:
     title: Optional[String]
     end: Int
 
-export def main() -> Int:
+export fn main() Int:
     let input = read_all(stdin()).get()
     let text = input.decode_utf8().get()
     var lines = text.split("\n")
@@ -91,28 +91,28 @@ export def main() -> Int:
     return 0
 
 # ---------------------------------------------------------------- helpers
-def at(cs: List[Int], i: Int) -> Int:
+fn at(cs: List[Int], i: Int) Int:
     if i < 0 or i >= cs.length():
         return 0
 
     return cs.get(i)
 
-def at_or_space(cs: List[Int], i: Int) -> Int:
+fn at_or_space(cs: List[Int], i: Int) Int:
     if i < 0 or i >= cs.length():
         return SP
 
     return cs.get(i)
 
-def to_str(cs: List[Int]) -> String:
+fn to_str(cs: List[Int]) String:
     return from_scalars(cs).get()
 
-def sent_str() -> String:
+fn sent_str() String:
     return to_str([SENT])
 
-def is_ws(c: Int) -> Bool:
+fn is_ws(c: Int) Bool:
     return c == SP or c == NL or c == SENT
 
-def is_punct(c: Int) -> Bool:
+fn is_punct(c: Int) Bool:
     return (
         (c >= 33 and c <= 47)
         or (c >= 58 and c <= 64)
@@ -120,53 +120,53 @@ def is_punct(c: Int) -> Bool:
         or (c >= 123 and c <= 126)
     )
 
-def is_digit(c: Int) -> Bool:
+fn is_digit(c: Int) Bool:
     return c >= 48 and c <= 57
 
-def esc(s: String) -> String:
+fn esc(s: String) String:
     let a = s.replace_all("&", "&amp;").get()
     let b = a.replace_all("<", "&lt;").get()
     let c = b.replace_all(">", "&gt;").get()
     return c.replace_all("\"", "&quot;").get()
 
-def run_length(cs: List[Int], i: Int, c: Int) -> Int:
+fn run_length(cs: List[Int], i: Int, c: Int) Int:
     var k = i
     while at(cs, k) == c:
         k += 1
     return k - i
 
-def indent_of(line: String) -> Int:
+fn indent_of(line: String) Int:
     let cs = line.scalar_values()
     var k = 0
     while at(cs, k) == SP:
         k += 1
     return k
 
-def is_blank(line: String) -> Bool:
+fn is_blank(line: String) Bool:
     return indent_of(line) == line.length()
 
-def drop_cols(line: String, k: Int) -> String:
+fn drop_cols(line: String, k: Int) String:
     let n = line.length()
     if k >= n:
         return ""
 
     return line.slice_scalars(k, n).get()
 
-def strip_upto(line: String, k: Int) -> String:
+fn strip_upto(line: String, k: Int) String:
     let ind = indent_of(line)
     if ind < k:
         return drop_cols(line, ind)
 
     return drop_cols(line, k)
 
-def rtrim_sp(s: String) -> String:
+fn rtrim_sp(s: String) String:
     let cs = s.scalar_values()
     var b = cs.length()
     while b > 0 and cs.get(b - 1) == SP:
         b -= 1
     return to_str(cs.slice(0, b).get())
 
-def trim_sp(s: String) -> String:
+fn trim_sp(s: String) String:
     let cs = s.scalar_values()
     var a = 0
     while at(cs, a) == SP:
@@ -177,27 +177,27 @@ def trim_sp(s: String) -> String:
         b -= 1
     return to_str(cs.slice(a, b).get())
 
-def has_hard_end(line: String) -> Bool:
+fn has_hard_end(line: String) Bool:
     let cs = line.scalar_values()
     let n = cs.length()
     return at(cs, n - 1) == SP and at(cs, n - 2) == SP
 
 # ---------------------------------------------------------------- blocks
-def parse_blocks(lines: List[String]) -> Parsed:
+fn parse_blocks(lines: List[String]) Parsed:
     var blocks: List[Block] = []
-    var loose = False
-    var blank = False
+    var loose = false
+    var blank = false
     var i = 0
     let n = lines.length()
 
     while i < n:
         if is_blank(lines.get(i)):
-            blank = True
+            blank = true
             i += 1
         else:
             if blank and blocks.length() > 0:
-                loose = True
-            blank = False
+                loose = true
+            blank = false
 
             let step = parse_block(lines.clone(), i)
             blocks.append(step.block)
@@ -205,26 +205,26 @@ def parse_blocks(lines: List[String]) -> Parsed:
 
     return Parsed(blocks: blocks, loose: loose)
 
-def render_blocks(blocks: List[Block]) -> String:
+fn render_blocks(blocks: List[Block]) String:
     var out = ""
 
     for b in blocks:
         match b:
-            case Html(text):
+            Html(text):
                 out = out.concat(text)
-            case Para(html):
+            Para(html):
                 out = out.concat("<p>").concat(html).concat("</p>\n")
 
     return out
 
-def parse_block(lines: List[String], i: Int) -> Step:
+fn parse_block(lines: List[String], i: Int) Step:
     let line = lines.get(i)
     if let f = fence_of(line):
         return fence_block(lines.clone(), i, f)
     if let h = heading_of(line):
         return Step(
             block: Html(
-                text: f"<h{h.level}>{inline(h.content)}</h{h.level}>\n"
+                text: "<h{h.level}>{inline(h.content)}</h{h.level}>\n"
             ),
             next: i + 1
         )
@@ -241,7 +241,7 @@ def parse_block(lines: List[String], i: Int) -> Step:
 
     return paragraph(lines.clone(), i)
 
-def fence_of(line: String) -> Optional[Fence]:
+fn fence_of(line: String) Optional[Fence]:
     let cs = line.scalar_values()
     let ind = indent_of(line)
     if ind > 3:
@@ -261,27 +261,27 @@ def fence_of(line: String) -> Optional[Fence]:
 
     return some(Fence(ch: c, len: run, indent: ind, info: info))
 
-def fence_close(line: String, f: Fence) -> Bool:
+fn fence_close(line: String, f: Fence) Bool:
     let ind = indent_of(line)
     if ind > 3:
-        return False
+        return false
 
     let cs = line.scalar_values()
     let run = run_length(cs, ind, f.ch)
     if run < f.len:
-        return False
+        return false
 
     var k = ind + run
 
     while k < cs.length():
         if cs.get(k) != SP:
-            return False
+            return false
 
         k += 1
 
-    return True
+    return true
 
-def fence_block(lines: List[String], i: Int, f: Fence) -> Step:
+fn fence_block(lines: List[String], i: Int, f: Fence) Step:
     var body = ""
     var j = i + 1
     let n = lines.length()
@@ -298,13 +298,13 @@ def fence_block(lines: List[String], i: Int, f: Fence) -> Step:
 
     if f.info.length() > 0:
         let word = f.info.split(" ").get(0)
-        open = f"<pre><code class=\"language-{esc(word)}\">"
+        open = "<pre><code class=\"language-{esc(word)}\">"
 
     return Step(
         block: Html(text: open.concat(body).concat("</code></pre>\n")), next: next
     )
 
-def heading_of(line: String) -> Optional[Heading]:
+fn heading_of(line: String) Optional[Heading]:
     let cs = line.scalar_values()
     let ind = indent_of(line)
     if ind > 3:
@@ -329,9 +329,9 @@ def heading_of(line: String) -> Optional[Heading]:
         text = rtrim_sp(to_str(ccs.slice(0, k).get()))
     return some(Heading(level: h, content: text))
 
-def hr_line(line: String) -> Bool:
+fn hr_line(line: String) Bool:
     if indent_of(line) > 3:
-        return False
+        return false
 
     var kind = 0
     var count = 0
@@ -341,23 +341,23 @@ def hr_line(line: String) -> Bool:
             if kind == 0:
                 kind = c
             if c != kind:
-                return False
+                return false
 
             count += 1
 
     return (kind == STAR or kind == DASH or kind == UNDER) and count >= 3
 
-def is_quote_line(line: String) -> Bool:
+fn is_quote_line(line: String) Bool:
     let ind = indent_of(line)
     return ind <= 3 and at(line.scalar_values(), ind) == GT
 
-def strip_quote(line: String) -> String:
+fn strip_quote(line: String) String:
     var p = indent_of(line) + 1
     if at(line.scalar_values(), p) == SP:
         p += 1
     return drop_cols(line, p)
 
-def quote_block(lines: List[String], i: Int) -> Step:
+fn quote_block(lines: List[String], i: Int) Step:
     var inner: List[String] = []
     var j = i
 
@@ -371,7 +371,7 @@ def quote_block(lines: List[String], i: Int) -> Step:
     ).concat("</blockquote>\n")
     return Step(block: Html(text: html), next: j)
 
-def indented_code(lines: List[String], i: Int) -> Step:
+fn indented_code(lines: List[String], i: Int) Step:
     let n = lines.length()
     var last = i
     var j = i
@@ -394,7 +394,7 @@ def indented_code(lines: List[String], i: Int) -> Step:
         next: last + 1
     )
 
-def paragraph(lines: List[String], i: Int) -> Step:
+fn paragraph(lines: List[String], i: Int) Step:
     let n = lines.length()
     var j = i + 1
     while j < n and para_continues(lines.get(j)):
@@ -418,32 +418,32 @@ def paragraph(lines: List[String], i: Int) -> Step:
 
     return Step(block: Para(html: inline(text)), next: j)
 
-def starts_block(line: String) -> Bool:
+fn starts_block(line: String) Bool:
     return fence_of(line).is_some() or heading_of(line).is_some()
 
-def para_continues(line: String) -> Bool:
+fn para_continues(line: String) Bool:
     if is_blank(line):
-        return False
+        return false
     if starts_block(line):
-        return False
+        return false
     if hr_line(line) or is_quote_line(line):
-        return False
+        return false
 
     if let m = list_marker(line):
         if not m.empty and (not m.ordered or m.num == 1):
-            return False
-    return True
+            return false
+    return true
 
-def row_continues(line: String) -> Bool:
+fn row_continues(line: String) Bool:
     if is_blank(line):
-        return False
+        return false
     if starts_block(line):
-        return False
+        return false
 
     return not hr_line(line) and not is_quote_line(line)
 
 # ---------------------------------------------------------------- lists
-def list_marker(line: String) -> Optional[Marker]:
+fn list_marker(line: String) Optional[Marker]:
     let cs = line.scalar_values()
     let n = cs.length()
     let ind = indent_of(line)
@@ -451,7 +451,7 @@ def list_marker(line: String) -> Optional[Marker]:
         return none
 
     var p = ind
-    var ordered = False
+    var ordered = false
     var num = 0
     var ch = at(cs, p)
 
@@ -468,7 +468,7 @@ def list_marker(line: String) -> Optional[Marker]:
         if ch != DOT and ch != RPAREN:
             return none
 
-        ordered = True
+        ordered = true
         p += 1
 
     if p < n and cs.get(p) != SP:
@@ -486,25 +486,25 @@ def list_marker(line: String) -> Optional[Marker]:
     let empty = is_blank(drop_cols(line, width))
     return some(Marker(ordered: ordered, ch: ch, num: num, width: width, empty: empty))
 
-def run_digits(cs: List[Int], i: Int) -> Int:
+fn run_digits(cs: List[Int], i: Int) Int:
     var k = i
     while is_digit(at(cs, k)):
         k += 1
     return k - i
 
-def same_list(line: String, first: Marker) -> Bool:
+fn same_list(line: String, first: Marker) Bool:
     if let m = list_marker(line):
         return not hr_line(line) and m.ordered == first.ordered and m.ch == first.ch
 
-    return False
+    return false
 
-def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
+fn parse_list(lines: List[String], i0: Int, first: Marker) Step:
     let n = lines.length()
     var items: List[List[Block]] = []
-    var loose = False
+    var loose = false
     var i = i0
     var m = first
-    var go = True
+    var go = true
     var stop = i0 + 1
 
     while go:
@@ -532,7 +532,7 @@ def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
 
         let parsed = parse_blocks(item)
         if parsed.loose:
-            loose = True
+            loose = true
         items.append(parsed.blocks.clone())
         stop = end
 
@@ -542,11 +542,11 @@ def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
 
         if k < n and same_list(lines.get(k), first):
             if k > end:
-                loose = True
+                loose = true
             i = k
             m = list_marker(lines.get(k)).get()
         else:
-            go = False
+            go = false
 
     var body = ""
     for blocks in items:
@@ -560,34 +560,34 @@ def parse_list(lines: List[String], i0: Int, first: Marker) -> Step:
     if first.ordered:
         open = "<ol>\n"
         if first.num != 1:
-            open = f"<ol start=\"{first.num}\">\n"
+            open = "<ol start=\"{first.num}\">\n"
         close = "</ol>\n"
 
     return Step(block: Html(text: open.concat(body).concat(close)), next: stop)
 
-def item_html(blocks: List[Block], tight: Bool) -> String:
+fn item_html(blocks: List[Block], tight: Bool) String:
     var body = ""
 
     for b in blocks:
         match b:
-            case Para(html):
+            Para(html):
                 if tight:
                     body = body.concat(html)
                 else:
                     body = separate(body).concat("<p>").concat(html).concat("</p>\n")
-            case Html(text):
+            Html(text):
                 body = separate(body).concat(text)
 
     return body
 
-def separate(body: String) -> String:
+fn separate(body: String) String:
     if body.ends_with("\n"):
         return body
 
     return body.concat("\n")
 
 # ---------------------------------------------------------------- tables
-def split_cells(line: String) -> List[String]:
+fn split_cells(line: String) List[String]:
     var cs = trim_sp(line).scalar_values()
     if at(cs, 0) == PIPE and cs.length() > 0:
         cs = cs.drop(1)
@@ -611,7 +611,7 @@ def split_cells(line: String) -> List[String]:
     cells.append(trim_sp(to_str(cur)))
     return cells
 
-def is_delim_cell(cell: String) -> Bool:
+fn is_delim_cell(cell: String) Bool:
     let cs = cell.scalar_values()
     let n = cs.length()
     var a = 0
@@ -622,14 +622,14 @@ def is_delim_cell(cell: String) -> Bool:
     if b - 1 >= a and at(cs, b - 1) == COLON:
         b -= 1
     if b - a < 1:
-        return False
+        return false
 
     for k in range(a, b):
         if cs.get(k) != DASH:
-            return False
-    return True
+            return false
+    return true
 
-def align_of(cell: String) -> String:
+fn align_of(cell: String) String:
     let cs = cell.scalar_values()
     let left = at(cs, 0) == COLON
     let right = at(cs, cs.length() - 1) == COLON
@@ -642,13 +642,13 @@ def align_of(cell: String) -> String:
 
     return ""
 
-def align_attr(align: String) -> String:
+fn align_attr(align: String) String:
     if align == "":
         return ""
 
-    return f" align=\"{align}\""
+    return " align=\"{align}\""
 
-def table_at(lines: List[String], i: Int) -> Optional[Step]:
+fn table_at(lines: List[String], i: Int) Optional[Step]:
     let n = lines.length()
     if i + 1 >= n:
         return none
@@ -707,10 +707,10 @@ def table_at(lines: List[String], i: Int) -> Optional[Step]:
     return some(Step(block: Html(text: html), next: j))
 
 # ---------------------------------------------------------------- inline
-def inline(text: String) -> String:
+fn inline(text: String) String:
     return render_nodes(scan(text))
 
-def scan(text: String) -> List[Node]:
+fn scan(text: String) List[Node]:
     let cs = text.scalar_values()
     let n = cs.length()
     var nodes: List[Node] = []
@@ -723,7 +723,7 @@ def scan(text: String) -> List[Node]:
             let nx = at(cs, i + 1)
 
             if i + 1 < n and nx == NL:
-                nodes.append(Break(hard: True))
+                nodes.append(Break(hard: true))
                 i += 2
             else:
                 if i + 1 < n and is_punct(nx):
@@ -732,13 +732,13 @@ def scan(text: String) -> List[Node]:
                 else:
                     nodes.append(Text(value: "\\"))
                     i += 1
-        elif c == NL:
-            nodes.append(Break(hard: False))
+        else if c == NL:
+            nodes.append(Break(hard: false))
             i += 1
-        elif c == SENT:
-            nodes.append(Break(hard: True))
+        else if c == SENT:
+            nodes.append(Break(hard: true))
             i += 1
-        elif c == BT:
+        else if c == BT:
             let run = run_length(cs.clone(), i, BT)
             let close = find_run(cs.clone(), i + run, run, BT)
 
@@ -748,7 +748,7 @@ def scan(text: String) -> List[Node]:
             else:
                 nodes.append(Code(value: code_span(cs.clone(), i + run, close)))
                 i = close + run
-        elif c == STAR or c == UNDER:
+        else if c == STAR or c == UNDER:
             let run = run_length(cs.clone(), i, c)
             let flags = run_flags(
                 c, at_or_space(cs.clone(), i - 1), at_or_space(cs.clone(), i + run)
@@ -760,13 +760,13 @@ def scan(text: String) -> List[Node]:
                 )
             )
             i += run
-        elif c == BANG and at(cs, i + 1) == LBRACK:
-            nodes.append(Opener(image: True, active: True))
+        else if c == BANG and at(cs, i + 1) == LBRACK:
+            nodes.append(Opener(image: true, active: true))
             i += 2
-        elif c == LBRACK:
-            nodes.append(Opener(image: False, active: True))
+        else if c == LBRACK:
+            nodes.append(Opener(image: false, active: true))
             i += 1
-        elif c == RBRACK:
+        else if c == RBRACK:
             let step = close_bracket(cs.clone(), nodes, i)
             nodes = step.nodes.clone()
             i = step.next
@@ -779,7 +779,7 @@ def scan(text: String) -> List[Node]:
         out.append(opener_to_text(node))
     return resolve(out)
 
-def find_run(cs: List[Int], from: Int, len: Int, c: Int) -> Int:
+fn find_run(cs: List[Int], from: Int, len: Int, c: Int) Int:
     var j = from
 
     while j < cs.length():
@@ -794,7 +794,7 @@ def find_run(cs: List[Int], from: Int, len: Int, c: Int) -> Int:
 
     return -1
 
-def code_span(cs: List[Int], a: Int, b: Int) -> String:
+fn code_span(cs: List[Int], a: Int, b: Int) String:
     var codes: List[Int] = []
 
     for k in range(a, b):
@@ -806,16 +806,16 @@ def code_span(cs: List[Int], a: Int, b: Int) -> String:
             codes.append(c)
 
     let n = codes.length()
-    var all_space = True
+    var all_space = true
     for c in codes:
         if c != SP:
-            all_space = False
+            all_space = false
     if n >= 2 and not all_space and codes.get(0) == SP and codes.get(n - 1) == SP:
         return to_str(codes.slice(1, n - 1).get())
 
     return to_str(codes)
 
-def run_flags(c: Int, prev: Int, next: Int) -> Flags:
+fn run_flags(c: Int, prev: Int, next: Int) Flags:
     let left = not is_ws(next) and (not is_punct(next) or is_ws(prev) or is_punct(prev))
     let right = (
         not is_ws(prev)
@@ -828,7 +828,7 @@ def run_flags(c: Int, prev: Int, next: Int) -> Flags:
     let close = right and (not left or is_punct(next))
     return Flags(can_open: open, can_close: close)
 
-def close_bracket(cs: List[Int], nodes: List[Node], i: Int) -> Scan:
+fn close_bracket(cs: List[Int], nodes: List[Node], i: Int) Scan:
     var list = nodes
     let k = last_opener(list.clone())
 
@@ -864,23 +864,23 @@ def close_bracket(cs: List[Int], nodes: List[Node], i: Int) -> Scan:
     list.append(Text(value: "]"))
     return Scan(nodes: list, next: i + 1)
 
-def deactivate_openers(nodes: List[Node]) -> List[Node]:
+fn deactivate_openers(nodes: List[Node]) List[Node]:
     var out: List[Node] = []
     for node in nodes:
         out.append(deactivate(node))
     return out
 
-def deactivate(node: Node) -> Node:
+fn deactivate(node: Node) Node:
     match node:
-        case Opener(image, _):
+        Opener(image, _):
             if not image:
-                return Opener(image: False, active: False)
+                return Opener(image: false, active: false)
 
             return node
-        case _:
+        _:
             return node
 
-def last_opener(nodes: List[Node]) -> Int:
+fn last_opener(nodes: List[Node]) Int:
     var k = nodes.length() - 1
 
     while k >= 0:
@@ -891,38 +891,38 @@ def last_opener(nodes: List[Node]) -> Int:
 
     return -1
 
-def is_opener(node: Node) -> Bool:
+fn is_opener(node: Node) Bool:
     match node:
-        case Opener(_, _):
-            return True
-        case _:
-            return False
+        Opener(_, _):
+            return true
+        _:
+            return false
 
-def opener_image(node: Node) -> Bool:
+fn opener_image(node: Node) Bool:
     match node:
-        case Opener(image, _):
+        Opener(image, _):
             return image
-        case _:
-            return False
+        _:
+            return false
 
-def opener_active(node: Node) -> Bool:
+fn opener_active(node: Node) Bool:
     match node:
-        case Opener(_, active):
+        Opener(_, active):
             return active
-        case _:
-            return False
+        _:
+            return false
 
-def opener_to_text(node: Node) -> Node:
+fn opener_to_text(node: Node) Node:
     match node:
-        case Opener(image, _):
+        Opener(image, _):
             if image:
                 return Text(value: "![")
 
             return Text(value: "[")
-        case _:
+        _:
             return node
 
-def parse_tail(cs: List[Int], start: Int) -> Optional[Tail]:
+fn parse_tail(cs: List[Int], start: Int) Optional[Tail]:
     let n = cs.length()
     if start >= n or cs.get(start) != LPAREN:
         return none
@@ -985,7 +985,7 @@ def parse_tail(cs: List[Int], start: Int) -> Optional[Tail]:
         p += 1
 
         var t: List[Int] = []
-        var closed = False
+        var closed = false
 
         while p < n and not closed:
             let c = cs.get(p)
@@ -995,7 +995,7 @@ def parse_tail(cs: List[Int], start: Int) -> Optional[Tail]:
                 p += 2
             else:
                 if c == DQ:
-                    closed = True
+                    closed = true
                 else:
                     t.append(c)
 
@@ -1012,70 +1012,70 @@ def parse_tail(cs: List[Int], start: Int) -> Optional[Tail]:
 
     return some(Tail(dest: to_str(dest), title: title, end: p + 1))
 
-def skip_ws(cs: List[Int], p: Int) -> Int:
+fn skip_ws(cs: List[Int], p: Int) Int:
     var k = p
     while k < cs.length() and is_ws(cs.get(k)):
         k += 1
     return k
 
 # Emphasis resolution (rule set from the spec): pairs the closest opener for each closer.
-def delim_ch(node: Node) -> String:
+fn delim_ch(node: Node) String:
     match node:
-        case Delim(ch, _, _, _, _):
+        Delim(ch, _, _, _, _):
             return ch
-        case _:
+        _:
             return ""
 
-def delim_count(node: Node) -> Int:
+fn delim_count(node: Node) Int:
     match node:
-        case Delim(_, count, _, _, _):
+        Delim(_, count, _, _, _):
             return count
-        case _:
+        _:
             return 0
 
-def delim_orig(node: Node) -> Int:
+fn delim_orig(node: Node) Int:
     match node:
-        case Delim(_, _, orig, _, _):
+        Delim(_, _, orig, _, _):
             return orig
-        case _:
+        _:
             return 0
 
-def delim_open(node: Node) -> Bool:
+fn delim_open(node: Node) Bool:
     match node:
-        case Delim(_, _, _, can_open, _):
+        Delim(_, _, _, can_open, _):
             return can_open
-        case _:
-            return False
+        _:
+            return false
 
-def delim_close(node: Node) -> Bool:
+fn delim_close(node: Node) Bool:
     match node:
-        case Delim(_, _, _, _, can_close):
+        Delim(_, _, _, _, can_close):
             return can_close
-        case _:
-            return False
+        _:
+            return false
 
-def with_count(node: Node, count: Int) -> Node:
+fn with_count(node: Node, count: Int) Node:
     match node:
-        case Delim(ch, _, orig, can_open, can_close):
+        Delim(ch, _, orig, can_open, can_close):
             return Delim(
                 ch: ch, count: count, orig: orig, can_open: can_open,
                 can_close: can_close
             )
-        case _:
+        _:
             return node
 
-def as_text(node: Node) -> Node:
+fn as_text(node: Node) Node:
     match node:
-        case Delim(ch, count, _, _, _):
+        Delim(ch, count, _, _, _):
             return Text(value: ch.repeat(count).get())
-        case _:
+        _:
             return node
 
-def pair_ok(op: Node, cl: Node) -> Bool:
+fn pair_ok(op: Node, cl: Node) Bool:
     if delim_ch(op.clone()) != delim_ch(cl.clone()):
-        return False
+        return false
     if not delim_open(op.clone()) or delim_count(op.clone()) == 0:
-        return False
+        return false
 
     if delim_close(op.clone()) or delim_open(cl.clone()):
         let sum = delim_orig(op.clone()) + delim_orig(cl.clone())
@@ -1086,11 +1086,11 @@ def pair_ok(op: Node, cl: Node) -> Bool:
                 and delim_orig(cl.clone()) % 3 == 0
             )
         ):
-            return False
+            return false
 
-    return True
+    return true
 
-def resolve(nodes: List[Node]) -> List[Node]:
+fn resolve(nodes: List[Node]) List[Node]:
     var list = nodes
     var c = 0
 
@@ -1132,31 +1132,31 @@ def resolve(nodes: List[Node]) -> List[Node]:
         out.append(as_text(node.clone()))
     return out
 
-def render_nodes(nodes: List[Node]) -> String:
+fn render_nodes(nodes: List[Node]) String:
     var out = ""
     for node in nodes:
         out = out.concat(render_node(node.clone()))
     return out
 
-def render_node(node: Node) -> String:
+fn render_node(node: Node) String:
     match node:
-        case Text(value):
+        Text(value):
             return esc(value)
-        case Break(hard):
+        Break(hard):
             if hard:
                 return "<br />\n"
 
             return "\n"
-        case Code(value):
+        Code(value):
             return "<code>".concat(esc(value)).concat("</code>")
-        case Emph(strong, children):
+        Emph(strong, children):
             if strong:
                 return "<strong>".concat(
                     render_nodes(children.clone())
                 ).concat("</strong>")
 
             return "<em>".concat(render_nodes(children.clone())).concat("</em>")
-        case Link(image, dest, title, children):
+        Link(image, dest, title, children):
             if image:
                 let alt = esc(plain(children.clone()))
                 return "<img src=\"".concat(
@@ -1172,36 +1172,36 @@ def render_node(node: Node) -> String:
             ).concat(
                 title_attr(title)
             ).concat(">").concat(render_nodes(children.clone())).concat("</a>")
-        case _:
+        _:
             return esc(plain_one(node))
 
-def title_attr(title: Optional[String]) -> String:
+fn title_attr(title: Optional[String]) String:
     if let t = title:
         return " title=\"".concat(esc(t)).concat("\"")
 
     return ""
 
-def plain(nodes: List[Node]) -> String:
+fn plain(nodes: List[Node]) String:
     var out = ""
     for node in nodes:
         out = out.concat(plain_one(node.clone()))
     return out
 
-def plain_one(node: Node) -> String:
+fn plain_one(node: Node) String:
     match node:
-        case Text(value):
+        Text(value):
             return value
-        case Code(value):
+        Code(value):
             return value
-        case Break(_):
+        Break(_):
             return " "
-        case Emph(_, children):
+        Emph(_, children):
             return plain(children)
-        case Link(_, _, _, children):
+        Link(_, _, _, children):
             return plain(children)
-        case Delim(ch, count, _, _, _):
+        Delim(ch, count, _, _, _):
             return ch.repeat(count).get()
-        case Opener(image, _):
+        Opener(image, _):
             if image:
                 return "!["
 

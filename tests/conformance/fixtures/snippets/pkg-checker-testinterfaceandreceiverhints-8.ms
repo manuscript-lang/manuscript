@@ -5,4 +5,4 @@ type E:
     text: String
 
 impl Error for E:
-    def message() -> String: this.text
+    fn message() String: this.text

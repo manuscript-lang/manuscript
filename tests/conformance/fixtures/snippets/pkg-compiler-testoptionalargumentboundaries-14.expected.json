@@ -9,19 +9,19 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback')",
+        "message": "expected fn(Optional[Int]) Int, found fn(Int) Int (in the initializer of 'callback')",
         "position": {
           "file": "pkg-compiler-testoptionalargumentboundaries-14.ms",
           "line": 7,
-          "column": 52,
-          "offset": 272
+          "column": 43,
+          "offset": 255
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-14.ms:7:52: type: expected Callable[[Optional[Int]], Int], found Callable[[Int], Int] (in the initializer of 'callback')\n   |\n 7 |     let callback: Callable[[Optional[Int]], Int] = f\n   |                                                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-14.ms:7:43: type: expected fn(Optional[Int]) Int, found fn(Int) Int (in the initializer of 'callback')\n   |\n 7 |     let callback: fn(Optional[Int]) Int = f\n   |                                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

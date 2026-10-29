@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def f[T](value: T, copy: T = value) -> T:\n    return copy\n\ndef call() -> Int:\n    return f()\n"
+    "fmt": "fn f[T](value: T, copy: T = value) T:\n    return copy\n\nfn call() Int:\n    return f()\n"
   }
 }

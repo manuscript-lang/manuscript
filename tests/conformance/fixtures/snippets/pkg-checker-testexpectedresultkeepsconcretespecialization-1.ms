@@ -5,8 +5,8 @@ type Failure:
     detail: String
 
 impl Error for Failure:
-    def message() -> String: self.detail.clone()
+    fn message() String: self.detail.clone()
 
-def fail_cause[T, E: Error](cause: E) -> Result[T, E]: error(cause)
+fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 
-def first() -> Result[Int, Error]: fail_cause(Failure("empty"))
+fn first() Result[Int, Error]: fail_cause(Failure("empty"))

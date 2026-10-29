@@ -4,7 +4,7 @@
 type Box[T]:
     value: T
 
-def use[T](value: Optional[Box[T]]) -> T:
+fn use[T](value: Optional[Box[T]]) T:
     match value:
-        case some(Box): return Box.value
-        case none: return panic(message: "empty")
+        some(Box): return Box.value
+        none: return panic(message: "empty")

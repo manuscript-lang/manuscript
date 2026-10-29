@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-testdefaultargumentboundaries-7.ms",
           "line": 4,
-          "column": 21,
-          "offset": 170
+          "column": 20,
+          "offset": 169
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-7.ms:4:21: type: expected T, found Int\n   |\n 4 | def f[T](value: T = 3) -> T:\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdefaultargumentboundaries-7.ms:4:20: type: expected T, found Int\n   |\n 4 | fn f[T](value: T = 3) T:\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

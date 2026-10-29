@@ -451,11 +451,11 @@ impl Checker {
                 && method.mutating
                 && !contract_mutates
             {
-                let (have, want) = ("var def", "def");
+                let (have, want) = ("var fn", "fn");
                 self.type_error(
                     method.pos,
                     format!(
-                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var def` in the interface too",
+                        "implementation of {} is declared {have} but {contract} declares it {want}; an operation that changes its receiver is declared `var fn` in the interface too",
                         method.func.name
                     ),
                 );

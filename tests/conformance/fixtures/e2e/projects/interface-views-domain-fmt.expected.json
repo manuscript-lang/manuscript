@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export interface Read:\n    def read() -> Int\n\nexport type Reader:\n    operation: Callable[[], Int]\n\nexport def invoke[T: Read](value: T) -> Int: value.read()\n"
+    "fmt": "export interface Read:\n    fn read() Int\n\nexport type Reader:\n    operation: fn() Int\n\nexport fn invoke[T: Read](value: T) Int: value.read()\n"
   }
 }

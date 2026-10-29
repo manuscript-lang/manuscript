@@ -1,10 +1,10 @@
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false} from "@std/test.ms"
 
 type Input:
     names: List[Optional[String]]
 
-def outcome_value(outcome: Result[Int, TextError]) -> Int:
+fn outcome_value(outcome: Result[Int, TextError]) Int:
     return outcome.get(-1)
 
 test "data constructor context":
@@ -22,7 +22,7 @@ type Box[T]:
 type Request:
     box: Box[Optional[Int]]
 
-def select[T](first: T, second: T) -> T:
+fn select[T](first: T, second: T) T:
     return first
 
 test "nested constructor arguments receive inferred context":

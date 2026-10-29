@@ -1,9 +1,8 @@
-from "@std/process.ms" import control
+import control from "@std/process.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let _outcome = control().replace(
-        program: "/bin/sh",
-        arguments: ["sh", "-c", "echo replaced $MS_REPLACED"],
+        program: "/bin/sh", arguments: ["sh", "-c", "echo replaced $MS_REPLACED"],
         environment: {"MS_REPLACED": "yes"}
     )
     return 1

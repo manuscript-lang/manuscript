@@ -1,8 +1,8 @@
-from "@std/io.ms" import stdout, stdin
-from "@std/streams.ms" import read_lines
+import {stdout, stdin} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # Parses `digits[.d]` or `digits[.dd]` into cents; none if the text does not match.
-def parse_amount(text: String) -> Optional[Int]:
+fn parse_amount(text: String) Optional[Int]:
     let parts = text.split(".")
     if parts.length() > 2: return none
     let whole = parts[0]
@@ -27,7 +27,7 @@ type Record:
     cents: Int
 
 # Returns the category and cents of a record line, or none if the line is invalid.
-def parse_record(line: String) -> Optional[Record]:
+fn parse_record(line: String) Optional[Record]:
     var category = ""
     var amount = ""
     if line.starts_with("\""):
@@ -47,12 +47,12 @@ def parse_record(line: String) -> Optional[Record]:
         return Record(category, cents)
     return none
 
-def format_cents(cents: Int) -> String:
+fn format_cents(cents: Int) String:
     let frac = cents % 100
-    let pad = "0" if frac < 10 else ""
-    return f"{cents / 100}.{pad}{frac}"
+    let pad = if frac < 10: "0" else: ""
+    return "{cents / 100}.{pad}{frac}"
 
-export def main() -> Int:
+export fn main() Int:
     var totals = Map[String, Int]()
     var skipped = 0
     if let lines = read_lines(stdin()):
@@ -65,8 +65,8 @@ export def main() -> Int:
                 skipped += 1
     var out = ""
     for category in totals.keys().sorted():
-        out += f"{category}: {format_cents(totals.get(category).get(0))}\n"
+        out += "{category}: {format_cents(totals.get(category).get(0))}\n"
     if skipped > 0:
-        out += f"skipped: {skipped}\n"
+        out += "skipped: {skipped}\n"
     stdout().write(out).get()
     return 0

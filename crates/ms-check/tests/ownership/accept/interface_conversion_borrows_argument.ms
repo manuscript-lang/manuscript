@@ -1,17 +1,17 @@
 interface Shape:
-    def label() -> String
+    fn label() String
 
 type Sq:
     name: String
 
 impl Shape for Sq:
-    def label() -> String:
+    fn label() String:
         return self.name.clone()
 
-def describe(s: Shape) -> String:
+fn describe(s: Shape) String:
     return s.label()
 
-def use_twice(q: Sq) -> String:
+fn use_twice(q: Sq) String:
     let a = describe(q)
     let b = describe(q)
     return a + b + q.name
@@ -19,5 +19,5 @@ def use_twice(q: Sq) -> String:
 type Holder:
     s: Shape
 
-def store(q: Sq) -> Holder:
+fn store(q: Sq) Holder:
     return Holder(s: q)

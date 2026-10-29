@@ -1,12 +1,12 @@
-from "@std/collections.ms" import filled
-from "@std/core.ms" import panic
+import filled from "@std/collections.ms"
+import panic from "@std/core.ms"
 
-def make_cells() -> List[Int]:
+fn make_cells() List[Int]:
     if let values = filled(0, 16384): return values
 
     return panic("fill failure")
 
-export def main() -> Int:
+export fn main() Int:
     var cells = make_cells()
     var next = make_cells()
 

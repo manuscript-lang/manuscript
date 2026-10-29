@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-18.ms",
           "line": 6,
-          "column": 14,
-          "offset": 213
+          "column": 9,
+          "offset": 204
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "pkg-checker-testdiagnosticsstatecauseandfix-18.ms",
           "line": 8,
-          "column": 14,
-          "offset": 256
+          "column": 9,
+          "offset": 242
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:6:14: resolution: unknown case Some of Optional; cases: none, some; did you mean 'some'?\n   |\n 6 |         case Some(v):\n   |              ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:8:14: resolution: unknown case None of Optional; cases: none, some; did you mean 'none'?\n   |\n 8 |         case None:\n   |              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:6:9: resolution: unknown case Some of Optional; cases: none, some; did you mean 'some'?\n   |\n 6 |         Some(v):\n   |         ^\n<DIR>/pkg-checker-testdiagnosticsstatecauseandfix-18.ms:8:9: resolution: unknown case None of Optional; cases: none, some; did you mean 'none'?\n   |\n 8 |         None:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

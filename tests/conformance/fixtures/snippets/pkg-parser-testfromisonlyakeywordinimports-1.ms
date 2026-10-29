@@ -1,8 +1,8 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/parser/hints_test.go:71 TestFromIsOnlyAKeywordInImports
-from "./x.ms" import a
+import a from "./x.ms"
 
-def f(from: Int) -> Int:
+fn f(from: Int) Int:
     let to = from + 1
     return to

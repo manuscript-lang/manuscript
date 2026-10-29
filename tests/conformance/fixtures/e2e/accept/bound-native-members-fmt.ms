@@ -1,22 +1,22 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,generics,interfaces,lists,modules,optional,parser,records,sets,stdlib-collections,stdlib-math,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/bound-native-members.ms
-from "@std/test.ms" import expect_contains, expect_fault, expect_true
-from "@std/string.ms" import StringBuilder
-from "@std/collections.ms" import MapBuilder, SetBuilder
+import {expect_contains, expect_fault, expect_true} from "@std/test.ms"
+import StringBuilder from "@std/string.ms"
+import {MapBuilder, SetBuilder} from "@std/collections.ms"
 
 type Folded:
     name: String
 
 impl Equal for Folded:
-    def equals(other: Folded) -> Bool:
-        return True
+    fn equals(other: Folded) Bool:
+        return true
 
 impl Hashable for Folded:
-    def hash() -> Int:
+    fn hash() Int:
         return 1
 
-def replace_first[T](var xs: List[T], value: T) -> List[T]:
+fn replace_first[T](var xs: List[T], value: T) List[T]:
     xs.set(index: 0, value: value)
     return xs
 
@@ -37,9 +37,7 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
 
-    let mapped = a.map(
-        transform: lambda (value: Folded) -> Folded: return Folded(name: "z")
-    )
+    let mapped = a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
     (mapped.length() == 1) | try expect_true
 
 test "builder":
@@ -57,25 +55,23 @@ test "sealed builder":
     let append = sb.append
     sb.build()
 
-    let message = try expect_fault(lambda: append(""))
+    let message = try expect_fault(fn: append(""))
     message | try expect_contains("builder is sealed")
 
 test "sealed map and set builders fault through every spelling":
     let map_builder = MapBuilder[String, Int]()
     let map_add = map_builder.add
     let map_sealed = map_builder.build()
-    (try expect_fault(lambda: map_add("a", 1))) | try expect_contains(
-        "builder is sealed"
-    )
-    (try expect_fault(lambda: map_builder.add("a", 1))) | try expect_contains(
+    (try expect_fault(fn: map_add("a", 1))) | try expect_contains("builder is sealed")
+    (try expect_fault(fn: map_builder.add("a", 1))) | try expect_contains(
         "builder is sealed"
     )
 
     let set_builder = SetBuilder[Int]()
     let alias = set_builder
     let set_sealed = set_builder.build()
-    (try expect_fault(lambda: alias.add(1))) | try expect_contains("builder is sealed")
-    (try expect_fault(lambda: set_builder.add(1))) | try expect_contains(
+    (try expect_fault(fn: alias.add(1))) | try expect_contains("builder is sealed")
+    (try expect_fault(fn: set_builder.add(1))) | try expect_contains(
         "builder is sealed"
     )
 
@@ -89,14 +85,14 @@ test "unsealed set builder continues":
 test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
-        lambda:
+        fn:
             let ignored = smallest.abs()
     )
     message | try expect_contains("Int overflow")
 
 test "negative split cap faults":
     let message = try expect_fault(
-        lambda:
+        fn:
             let ignored = "a,b".split(separator: ",", max_parts: some(0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")

@@ -1,7 +1,7 @@
 # conform: tags=numbers,types,tier-core
 # conform: phase=check
 # conform: origin=unsigned integer types stage 2
-export def main() -> Int:
+export fn main() Int:
     let too_big: UInt64 = 18446744073709551616
     let negative: UInt64 = -1
     let mixed: UInt64 = 5

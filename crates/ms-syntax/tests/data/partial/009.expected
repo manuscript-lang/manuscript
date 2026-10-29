@@ -1,6 +1,6 @@
-diag parse 1:1:0 end=1:7:6 fix=- "imports read: from \x22path.ms\x22 import name, other"
-diag parse 4:5:68 end=4:7:70 fix=- "a type has only fields or cases; an interface has only operation signatures; declare fields as 'name: Type' in a type, and put method bodies in an 'impl' block"
-diag parse 9:9:131 end=9:9:131 fix=- "expected ':', found end of line; block headers (def, if, elif, else, for, while, match, case, with, type, impl, test) end with ':' before their indented body"
+diag parse 9:9:131 end=9:9:131 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
+import 1:1:0 1:9:8 "expect_equal" "@std/test.ms"
+(decl 3:1:43 interface "Increment" false false 0:0:0 false [] [] [] [(decl 4:8:71 fn "apply" false false 0:0:0 false [] [] [] [] [(param 4:14:77 "value" (type 4:21:84 "Int" [] [] nil) nil) ] (type 4:26:89 "Int" [] [] nil) nil nil []) ] [] nil nil nil [])
 (decl 6:1:94 record "Offset" false false 0:0:0 false [] [(param 7:5:111 "delta" (type 7:12:118 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])
-omitted ["Increment" ]
+omitted []
 recovered []

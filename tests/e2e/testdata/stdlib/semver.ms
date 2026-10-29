@@ -1,11 +1,11 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_ok, fail
-from "@std/core.ms" import TextError
-from "@std/semver.ms" import parse, format, compare, Version, SemverError
+import {expect_equal, expect_false, expect_ok, fail} from "@std/test.ms"
+import TextError from "@std/core.ms"
+import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
 
-def failure(result: Result[Version, SemverError]) -> Result[SemverError, Error]:
+fn failure(result: Result[Version, SemverError]) Result[SemverError, Error]:
     match result:
-        case ok(_): return error(TextError("accepted"))
-        case error(cause): return ok(cause)
+        ok(_): return error(TextError("accepted"))
+        error(cause): return ok(cause)
 
 test "semver parses and formats every component":
     let version = (parse(text: "1.2.3-alpha.1+build.5") | try expect_ok)
@@ -22,7 +22,7 @@ test "semver rejects malformed text":
     ]
     for text in bad:
         if (try failure(parse(text: text))) != SemverError.InvalidData: return fail(
-            f"category {text}"
+            "category {text}"
         )
 
 test "semver reports numbers beyond Int":
@@ -53,7 +53,7 @@ test "semver orders by precedence":
                     left: (parse(text: left) | try expect_ok),
                     right: (parse(text: right) | try expect_ok)
                 ) != expected
-            ): return fail(f"order {left} {right}")
+            ): return fail("order {left} {right}")
 
             j = j + 1
 

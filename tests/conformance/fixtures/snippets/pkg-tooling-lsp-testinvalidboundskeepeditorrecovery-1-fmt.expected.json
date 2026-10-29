@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Box[Error: Error]:\n    cause: Error\n\nimpl Error for Box[Error]:\n    def message() -> String: self.cause.message()\n\ntype Neighbor:\n    value: Int\n\ndef read(item: Neighbor) -> Int: item.value\n"
+    "fmt": "type Box[Error: Error]:\n    cause: Error\n\nimpl Error for Box[Error]:\n    fn message() String: self.cause.message()\n\ntype Neighbor:\n    value: Int\n\nfn read(item: Neighbor) Int: item.value\n"
   }
 }

@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 test "omitted and supplied caps":
     try expect_true(("a,b,c".split(separator: ",").length() == 3))

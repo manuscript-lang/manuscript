@@ -82,7 +82,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn program(exit: i32) -> String {
-    format!("export def main() -> Int:\n    return {exit}\n")
+    format!("export fn main() Int:\n    return {exit}\n")
 }
 
 /// Rewrite after a pause, so the new modification time differs on coarse file systems.
@@ -100,7 +100,7 @@ fn run_restarts_after_each_change_and_survives_a_broken_edit() {
     watch.until("ms: started run");
     watch.until("ms: exited with status 3; waiting for changes");
 
-    save(&source, "export def main() -> Int:\n    return \"x\"\n");
+    save(&source, "export fn main() Int:\n    return \"x\"\n");
     watch.until("expected Int, found String");
     watch.until("ms: waiting for changes");
 
@@ -117,7 +117,7 @@ fn test_reruns_after_each_change() {
     let source = dir.join("sample_test.ms");
     let tests = |expected: i32| {
         format!(
-            "from \"@std/test.ms\" import expect_equal\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
+            "import expect_equal from \"@std/test.ms\"\n\ntest \"adds\":\n    try expect_equal(1 + 1, {expected})\n"
         )
     };
     std::fs::write(&source, tests(3)).unwrap();

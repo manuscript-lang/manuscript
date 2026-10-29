@@ -5,11 +5,11 @@ type Choice[T]:
     case Found(value: T)
     case Missing
 
-def f(c: Choice[Int], o: Optional[Int]) -> Int:
+fn f(c: Choice[Int], o: Optional[Int]) Int:
     match o:
-        case Optional.some(n): return n
-        case Optional.none: return 0
+        Optional.some(n): return n
+        Optional.none: return 0
 
     match c:
-        case Choice.Found(v): return v
-        case Choice.Missing: return 0
+        Choice.Found(v): return v
+        Choice.Missing: return 0

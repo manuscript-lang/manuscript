@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
-def first(amount: Int) -> Int: amount + 1
+fn first(amount: Int) Int: amount + 1
 
-def second(value: Int) -> Int: value + 2
+fn second(value: Int) Int: value + 2
 
-def choose[T](left: T, right: T) -> T: left
+fn choose[T](left: T, right: T) T: left
 
 type Pair[T]:
     left: T
@@ -27,11 +27,11 @@ test "callable identity uses ordered types rather than parameter names":
     callback = second
     try expect_equal(callback(3), 5)
 
-    let factory = lambda (flag: Bool):
+    let factory = fn(flag: Bool):
         if flag:
             return first
 
         return second
 
-    try expect_equal(factory(True)(3), 4)
-    try expect_equal(factory(False)(3), 5)
+    try expect_equal(factory(true)(3), 4)
+    try expect_equal(factory(false)(3), 5)

@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 31,
-          "offset": 243
+          "column": 30,
+          "offset": 242
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 49,
-          "offset": 261
+          "column": 48,
+          "offset": 260
         },
         "fix": {
           "position": {
@@ -55,18 +55,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-faults-1.ms",
           "line": 6,
-          "column": 61,
-          "offset": 273
+          "column": 57,
+          "offset": 269
         },
         "fix": {
           "position": {
@@ -81,14 +81,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:31: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def discount_validated(price: Decimal, percent: Decimal) -> Decimal:\n   |                               ^\n<DIR>/core-language-errors-faults-1.ms:6:49: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def discount_validated(price: Decimal, percent: Decimal) -> Decimal:\n   |                                                 ^\n<DIR>/core-language-errors-faults-1.ms:6:61: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n   |\n 6 | def discount_validated(price: Decimal, percent: Decimal) -> Decimal:\n   |                                                             ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-faults-1.ms:6:30: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                              ^\n<DIR>/core-language-errors-faults-1.ms:6:48: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                ^\n<DIR>/core-language-errors-faults-1.ms:6:57: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n   |\n 6 | fn discount_validated(price: Decimal, percent: Decimal) Decimal:\n   |                                                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

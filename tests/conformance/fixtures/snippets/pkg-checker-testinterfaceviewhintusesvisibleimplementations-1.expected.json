@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testinterfaceviewhintusesvisibleimplementations-1.ms:4:1: resolution: imports require a relative path or alias; write \"./data.ms\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml\n   |\n 4 | from \"data.ms\" import Sq\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testinterfaceviewhintusesvisibleimplementations-1.ms:4:1: resolution: imports require a relative path or alias; write \"./data.ms\" for a file next to this one, \"@std/name.ms\" for the standard library, or declare an alias under [aliases] in ms.toml\n   |\n 4 | import Sq from \"data.ms\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

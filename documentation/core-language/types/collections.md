@@ -71,15 +71,15 @@ Maps and sets iterate in insertion order, with a [for loop](../control-flow/loop
 `xs.entries()` pairs each element with its index, and `a.zip(b)` pairs two lists by position. Neither needs a nested index loop:
 
 ```ms
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let names = ["ann", "bo", "cy"]
     let scores = [90, 72]
     for pair in names.zip(scores):
-        stdout().write(f"{pair.first}: {pair.second}\n")
+        stdout().write("{pair.first}: {pair.second}\n")
     for part in [1, 2, 3, 4, 5].chunks(2):
-        stdout().write(f"{part.length()}\n")
+        stdout().write("{part.length()}\n")
     return 0
 ```
 
@@ -161,34 +161,34 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
 | `List[T](reserve: Optional[Int] = none)` | Empty `List[T]` with room for `reserve` items |
-| `List[T]` | `length() -> Int`; `get(index: Int, default: Optional[T] = none) -> T`; `[index] T` |
-| `List[T]` | `append(value: T) -> Unit`; `concat(values: List[T]) -> List[T]` |
-| `List[T]` | `set(index: Int, value: T) -> Unit` (also `xs[index] = value`); `remove(index: Int) -> Unit` |
-| `List[T]` | `insert(index: Int, value: T) -> Unit`; `pop() -> Optional[T]` |
+| `List[T]` | `length() Int`; `get(index: Int, default: Optional[T] = none) T`; `[index] T` |
+| `List[T]` | `append(value: T) Unit`; `concat(values: List[T]) List[T]` |
+| `List[T]` | `set(index: Int, value: T) Unit` (also `xs[index] = value`); `remove(index: Int) Unit` |
+| `List[T]` | `insert(index: Int, value: T) Unit`; `pop() Optional[T]` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() -> Int`; `get(key: K) -> Optional[V]`; `contains(key: K) -> Bool`; `[key] V` faults with `map key not found: <key>` when absent |
-| `Map[K, V]` | `is_empty() -> Bool`; `get_or(key: K, fallback: V) -> V` |
-| `Map[K, V]` | `filter(predicate: Callable[[K, V], Bool]) -> Map[K, V]` |
-| `Map[K, V]` | `map[W](transform: Callable[[K, V], W]) -> Map[K, W]` |
-| `Map[K, V]` | `map_keys[W: Hashable](transform: Callable[[K, V], W]) -> Map[W, V]` |
-| `Map[K, V]` | `fold[A](initial: A, step: Callable[[A, K, V], A]) -> A` |
+| `Map[K, V]` | `length() Int`; `get(key: K) Optional[V]`; `contains(key: K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
+| `Map[K, V]` | `is_empty() Bool`; `get_or(key: K, fallback: V) V` |
+| `Map[K, V]` | `filter(predicate: fn(K, V) Bool) Map[K, V]` |
+| `Map[K, V]` | `map[W](transform: fn(K, V) W) Map[K, W]` |
+| `Map[K, V]` | `map_keys[W: Hashable](transform: fn(K, V) W) Map[W, V]` |
+| `Map[K, V]` | `fold[A](initial: A, step: fn(A, K, V) A) A` |
 | `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Map[K, V]` | `find(predicate: Callable[[K, V], Bool]) -> Optional[MapEntry[K, V]]` |
+| `Map[K, V]` | `find(predicate: fn(K, V) Bool) Optional[MapEntry[K, V]]` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
-| `Map[K, V]` | `any(predicate: Callable[[K, V], Bool]) -> Bool`; `all` uses the same predicate |
-| `Map[K, V]` | `add(key: K, value: V) -> Unit`; `remove(key: K) -> Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
-| `Map[K, V]` | `update(key: K, initial: V, change: Callable[[V], V]) -> Unit` stores `change` applied to the stored value, or to `initial` when absent (`counts.update(word, 0, lambda n: n + 1)`); needs `var m` and a cloneable key |
+| `Map[K, V]` | `any(predicate: fn(K, V) Bool) Bool`; `all` uses the same predicate |
+| `Map[K, V]` | `add(key: K, value: V) Unit`; `remove(key: K) Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
+| `Map[K, V]` | `update(key: K, initial: V, change: fn(V) V) Unit` stores `change` applied to the stored value, or to `initial` when absent (`counts.update(word, 0, fn n: n + 1)`); needs `var m` and a cloneable key |
 | `Set[T]()` | Empty `Set[T]` |
 | `Set[T](values)` | `Set[T]` of the distinct elements of the `List[T]` in first-seen order; `Set([1, 2])` infers `T` |
-| `Set[T]` | `length() -> Int`; `contains(value: T) -> Bool` |
-| `Set[T]` | `is_empty() -> Bool`; `filter(predicate: Callable[[T], Bool]) -> Set[T]` |
-| `Set[T]` | `map[U: Hashable](transform: Callable[[T], U]) -> Set[U]` |
-| `Set[T]` | `add(value: T) -> Unit`; `remove(value: T) -> Unit` |
-| `Set[T]` | `fold[A](initial: A, step: Callable[[A, T], A]) -> A` |
+| `Set[T]` | `length() Int`; `contains(value: T) Bool` |
+| `Set[T]` | `is_empty() Bool`; `filter(predicate: fn(T) Bool) Set[T]` |
+| `Set[T]` | `map[U: Hashable](transform: fn(T) U) Set[U]` |
+| `Set[T]` | `add(value: T) Unit`; `remove(value: T) Unit` |
+| `Set[T]` | `fold[A](initial: A, step: fn(A, T) A) A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Set[T]` | `find(predicate: Callable[[T], Bool]) -> Optional[T]` |
+| `Set[T]` | `find(predicate: fn(T) Bool) Optional[T]` |
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
-| `Set[T]` | `any(predicate: Callable[[T], Bool]) -> Bool`; `all` uses the same predicate |
+| `Set[T]` | `any(predicate: fn(T) Bool) Bool`; `all` uses the same predicate |
 
 An empty constructor needs explicit type arguments or a complete expected application, and creates fresh storage. `values[index]` equals `values.get(index)`: the element at an index, where negative indexes count from the end. An index out of range faults. Pass a default to avoid the fault: `values.get(0, default: 0)` needs no length check. Bytes and String `get` work the same way, and a String element is a one-scalar String. A size above the maximum `Int` faults.
 
@@ -203,7 +203,7 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 | List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `none`; these searches require `Equal` elements. |
 | List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `none`. `find` and `find_last` return the matching value instead. |
 | List `count(predicate:)` | Number of elements whose predicate returns true, calling it once per element in order. |
-| List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `False` and `True`. |
+| List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `false` and `true`. |
 | List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | A new list of indexes, or `List[ListEntry[T]]` records containing `index` and `value`. |
@@ -217,16 +217,16 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 
 Enumeration returns owned results. Callbacks borrow the receiver for the traversal; they cannot mutate it.
 
-List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: lambda a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
+List `sorted()` returns a new list in ascending natural order and `sort()` orders the list in place; both are stable. Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with `impl Comparable`), and Float orders NaN above every other value. Pass `compare: fn a, b: ...` to order by anything else; a negative result puts the first argument first. `sum()` adds Int, Float, or sized numeric elements with `+` (Int overflow faults; an empty list sums to zero). `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list, the first of equal elements, or `none` for an empty list.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "sorting and aggregates":
     var scores = [3, 1, 2]
     if scores.sorted() != [1, 2, 3]:
         return panic("check failed")
-    scores.sort(lambda a, b: b - a)
+    scores.sort(fn a, b: b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
     if scores.sum() != 6 or scores.max() != some(3) or List[Int]().min() != none:
@@ -236,10 +236,10 @@ test "sorting and aggregates":
 Set `union`, `intersection`, `difference`, and `symmetric_difference` (values in exactly one operand) return new sets and leave both operands unchanged. `is_subset_of`, `is_superset_of`, and `is_disjoint_from` test the obvious relations; the empty set is a subset of, and disjoint from, every set.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 
-def positives(values: List[Int]) -> List[Int]:
+fn positives(values: List[Int]) List[Int]:
     var result: List[Int] = []
     for value in values:
         if value > 0:
@@ -269,8 +269,8 @@ Map `get_or` evaluates its fallback eagerly and never inserts. Map and Set `filt
 `map` transforms values and keeps keys; `map_keys` transforms keys (outputs must be `Hashable`) and keeps values. Callbacks receive `key` and `value`, borrow the receiver, and return an owned Map. Equal transformed keys keep the first key and position, and later entries replace the value, as in ordinary insertion. Optional and Result values are not flattened, and output values need not be `Hashable`.
 
 ```manuscript
-def increment_scores(scores: Map[String, Int]) -> Map[String, Int]:
-    return scores.map(lambda name, score: score + 1)
+fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
+    return scores.map(fn name, score: score + 1)
 ```
 
 ## Reducing and querying

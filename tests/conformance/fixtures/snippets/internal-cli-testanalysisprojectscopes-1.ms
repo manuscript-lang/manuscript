@@ -1,7 +1,7 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=internal/cli/analysis_test.go:167 TestAnalysisProjectScopes
-from "@lib" import value
+import value from "@lib"
 
-export def main() -> Int:
+export fn main() Int:
     return value()

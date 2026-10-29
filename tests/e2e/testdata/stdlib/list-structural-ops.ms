@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "zip pairs by position and stops at the shorter list":
     let numbers = [1, 2, 3]
@@ -22,15 +22,15 @@ test "windows overlap and a short list has none":
     try expect_equal(["a", "b", "c"].windows(3), [["a", "b", "c"]])
 
 test "partition splits by predicate keeping order":
-    let split = [1, 2, 3, 4, 5].partition(lambda x: x % 2 == 0)
+    let split = [1, 2, 3, 4, 5].partition(fn x: x % 2 == 0)
     try expect_equal(split.matching, [2, 4])
     try expect_equal(split.rest, [1, 3, 5])
 
-    let none_split = List[Int]().partition(lambda x: x > 0)
+    let none_split = List[Int]().partition(fn x: x > 0)
     try expect_equal(none_split.matching.length(), 0)
     try expect_equal(none_split.rest.length(), 0)
 
 test "flat_map infers its element type from list literals returned by a callback":
-    try expect_equal([1, 2].flat_map(lambda x: [x, x * 10]), [1, 10, 2, 20])
-    try expect_equal(["a"].flat_map(lambda s: [s + "!"]), ["a!"])
-    try expect_equal([1, 2].flat_map(lambda x: ([x] if x > 1 else [])), [2])
+    try expect_equal([1, 2].flat_map(fn x: [x, x * 10]), [1, 10, 2, 20])
+    try expect_equal(["a"].flat_map(fn s: [s + "!"]), ["a!"])
+    try expect_equal([1, 2].flat_map(fn x: (if x > 1: [x] else: [])), [2])

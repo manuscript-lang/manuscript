@@ -4,5 +4,5 @@
 type Map[K, V]:
     value: V
 
-def f(m: Map[String, Int]) -> Unit:
+fn f(m: Map[String, Int]) Unit:
     m.add("a", 1)

@@ -1,10 +1,10 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let DIGITS = "0123456789"
 
 # Splits one line into number tokens and operator tokens; `none` means an unknown character.
-def tokenize(line: String) -> Optional[List[String]]:
+fn tokenize(line: String) Optional[List[String]]:
     var tokens = List[String]()
     var digits = ""
 
@@ -38,12 +38,12 @@ type Parser:
     div_zero: Bool
 
 impl Parser:
-    def peek() -> String:
+    fn peek() String:
         if self.pos < self.tokens.length(): return self.tokens[self.pos].clone()
 
         return ""
 
-    var def expr() -> Int:
+    var fn expr() Int:
         var value = self.term()
 
         while self.peek() == "+" or self.peek() == "-":
@@ -52,11 +52,11 @@ impl Parser:
 
             let rhs = self.term()
 
-            value = value + rhs if op == "+" else value - rhs
+            value = if op == "+": value + rhs else: value - rhs
 
         return value
 
-    var def term() -> Int:
+    var fn term() Int:
         var value = self.unary()
 
         while self.peek() == "*" or self.peek() == "/":
@@ -67,22 +67,22 @@ impl Parser:
 
             if op == "*":
                 value = value * rhs
-            elif rhs == 0:
-                self.div_zero = True
+            else if rhs == 0:
+                self.div_zero = true
                 value = 0
             else:
                 value = value / rhs
 
         return value
 
-    var def unary() -> Int:
+    var fn unary() Int:
         if self.peek() == "-":
             self.pos += 1
             return -self.unary()
 
         return self.primary()
 
-    var def primary() -> Int:
+    var fn primary() Int:
         let tok = self.peek()
 
         if tok == "(":
@@ -93,7 +93,7 @@ impl Parser:
             if self.peek() == ")":
                 self.pos += 1
             else:
-                self.failed = True
+                self.failed = true
 
             return value
 
@@ -101,26 +101,26 @@ impl Parser:
             self.pos += 1
             return tok.parse_int().get(0)
 
-        self.failed = True
+        self.failed = true
         return 0
 
 # Returns the output line for one tokenized input line.
-def evaluate(tokens: List[String]) -> String:
+fn evaluate(tokens: List[String]) String:
     let count = tokens.length()
-    var parser = Parser(tokens: tokens, pos: 0, failed: False, div_zero: False)
+    var parser = Parser(tokens: tokens, pos: 0, failed: false, div_zero: false)
     let value = parser.expr()
     if parser.failed or parser.pos != count:
         return "error: syntax"
     if parser.div_zero:
         return "error: division by zero"
 
-    return f"{value}"
+    return "{value}"
 
-export def main() -> Int:
+export fn main() Int:
     for line in read_lines(stdin()).get():
         if let tokens = tokenize(line):
             if tokens.length() > 0:
-                stdout().write(f"{evaluate(tokens)}\n").get()
+                stdout().write("{evaluate(tokens)}\n").get()
         else:
             stdout().write("error: syntax\n").get()
 

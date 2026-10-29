@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\n\nimpl Error for Failure[T]:\n    def message() -> String: \"f\"\n\ndef use[T](value: Result[Int, Failure[T]]) -> Int:\n    match value:\n        case error(NotFound): return 1\n        case ok(value): return value\n"
+    "fmt": "type Failure[T]:\n    case NotFound\n    case Denied(reason: T)\n\nimpl Error for Failure[T]:\n    fn message() String: \"f\"\n\nfn use[T](value: Result[Int, Failure[T]]) Int:\n    match value:\n        error(NotFound): return 1\n        ok(inner): return inner\n"
   }
 }

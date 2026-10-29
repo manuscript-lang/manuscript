@@ -13,8 +13,8 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 6,
-          "column": 41,
-          "offset": 282
+          "column": 33,
+          "offset": 273
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
           "line": 7,
-          "column": 22,
-          "offset": 318
+          "column": 19,
+          "offset": 305
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it",
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 13,
-          "column": 56,
-          "offset": 489
+          "line": 12,
+          "column": 63,
+          "offset": 456
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "expected Int, found String (in the initializer of 'unrelated')",
         "position": {
           "file": "pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms",
-          "line": 17,
+          "line": 14,
           "column": 26,
-          "offset": 569
+          "offset": 514
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:6:41: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     step: Callable[[T], Result[List[U], MissingError]]\n   |                                         ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:22: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 7 | ) -> Result[List[U], MissingError]:\n   |                      ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:13:56: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 13 |         step: lambda (value: Int) -> Result[List[Int], MissingError]: ok(\n    |                                                        ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:17:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 17 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:6:33: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 6 |     step: fn(T) Result[List[U], MissingError]\n   |                                 ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:7:19: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n   |\n 7 | ) Result[List[U], MissingError]:\n   |                   ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:12:63: resolution: unknown type MissingError; declare it with 'type MissingError:' / 'interface MissingError:', declare it as a type parameter, or import it\n    |\n 12 |         items: [1, 2], step: fn(value: Int) Result[List[Int], MissingError]: ok([value])\n    |                                                               ^\n<DIR>/pkg-checker-testunknowntypedoesnotcascadeintoinference-1.ms:14:26: type: expected Int, found String (in the initializer of 'unrelated')\n    |\n 14 |     let unrelated: Int = \"wrong\"\n    |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

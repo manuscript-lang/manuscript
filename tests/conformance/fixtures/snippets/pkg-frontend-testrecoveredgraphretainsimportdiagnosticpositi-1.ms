@@ -1,6 +1,6 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/frontend/source_test.go:58 TestRecoveredGraphRetainsImportDiagnosticPosition
-from "./missing.ms" import missing
+import missing from "./missing.ms"
 
-def value() -> Int: return 3
+fn value() Int: return 3

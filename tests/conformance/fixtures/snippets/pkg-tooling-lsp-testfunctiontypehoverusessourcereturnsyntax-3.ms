@@ -1,6 +1,6 @@
 # conform: tags=closures,diagnostics,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/lsp/function_type_hover_test.go:26 TestFunctionTypeHoverUsesSourceReturnSyntax
-def identity(callback: Callable[[Int], Int]) -> Callable[[Int], Int]: callback
+fn identity(callback: fn(Int) Int) fn(Int) Int: callback
 
-def use(callback: Callable[[Int], Int]) -> Int: identity(callback)(2)
+fn use(callback: fn(Int) Int) Int: identity(callback)(2)

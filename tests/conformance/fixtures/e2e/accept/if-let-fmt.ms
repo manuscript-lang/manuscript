@@ -1,25 +1,25 @@
 # conform: tags=control-flow,formatter,interpolation,lists,modules,mutation,optional,parser,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/if-let.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_true, fail
+import TextError from "@std/core.ms"
+import {expect_true, fail} from "@std/test.ms"
 
-def describe(name: Optional[String]) -> String:
+fn describe(name: Optional[String]) String:
     if let value = name:
         return "Hello, " + value
     else:
         return "Hello!"
 
-def total(items: List[Optional[Int]]) -> Int:
+fn total(items: List[Optional[Int]]) Int:
     var sum = 0
     for item in items:
         if let value = item:
             sum = sum + value
     return sum
 
-def check(value: Bool, message: String) -> Result[Unit, Error]:
+fn check(value: Bool, message: String) Result[Unit, Error]:
     (value) | try expect_true
-    return ok(())
+    return ok(unit)
 
 test "if let unwraps a present optional":
     if let value = [4, 5].first():
@@ -35,9 +35,9 @@ test "if let takes else when absent and keeps falsy payloads":
     (try check(value: total(items) == 3, message: "total"))
 
     let empty: List[Int] = []
-    if let value = empty.first(): return fail(message: f"unexpected {value}")
+    if let value = empty.first(): return fail(message: "unexpected {value}")
 
-def parse(text: String) -> Result[Int, TextError]:
+fn parse(text: String) Result[Int, TextError]:
     if text == "":
         return error(TextError("empty"))
 
@@ -50,6 +50,6 @@ test "if let unwraps an ok result and takes else on error":
         try fail(message: "expected ok")
 
     if let value = parse(""):
-        try fail(message: f"unexpected {value}")
+        try fail(message: "unexpected {value}")
     else:
-        (try check(value: True, message: "error branch"))
+        (try check(value: true, message: "error branch"))

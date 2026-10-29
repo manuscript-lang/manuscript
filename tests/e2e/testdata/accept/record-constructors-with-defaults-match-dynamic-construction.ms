@@ -1,6 +1,6 @@
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
-def twice(n: Int) -> Int: n * 2
+fn twice(n: Int) Int: n * 2
 
 type Options:
     count: Int

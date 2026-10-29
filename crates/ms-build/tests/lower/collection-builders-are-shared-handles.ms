@@ -3,9 +3,9 @@
 # expect-mir: "shared.addr"
 # expect-mir: "builder is sealed"
 
-from "@std/collections.ms" import ListBuilder
+import ListBuilder from "@std/collections.ms"
 
-export def main() -> Int:
+export fn main() Int:
     var b = ListBuilder[Int]()
     b.append(1)
     b.append(2)

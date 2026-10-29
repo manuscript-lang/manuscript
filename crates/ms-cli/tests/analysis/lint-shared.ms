@@ -1,4 +1,4 @@
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-export def value() -> Int:
+export fn value() Int:
     return 2

@@ -14,20 +14,20 @@
           "file": "pkg-compiler-testmutationrejections-11.ms",
           "line": 6,
           "column": 11,
-          "offset": 189
+          "offset": 185
         },
         "fix": {
           "position": {
             "file": "pkg-compiler-testmutationrejections-11.ms",
             "line": 6,
             "column": 5,
-            "offset": 183
+            "offset": 179
           },
           "end": {
             "file": "pkg-compiler-testmutationrejections-11.ms",
             "line": 6,
             "column": 10,
-            "offset": 188
+            "offset": 184
           },
           "replacement": "value.to_float()"
         }

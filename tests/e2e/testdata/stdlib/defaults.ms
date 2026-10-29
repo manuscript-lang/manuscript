@@ -1,58 +1,58 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/csv.ms" import parse, stringify, CsvOptions, CsvError
-from "@std/encoding.ms" import base64_encode, base64_decode, EncodingError
-from "@std/process.ms" import Commands, Subprocess, CommandOutput, CommandError, commands, Stdio
-from "@std/bytes.ms" import Bytes
+import {expect_equal, expect_false} from "@std/test.ms"
+import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
+import {base64_encode, base64_decode, EncodingError} from "@std/encoding.ms"
+import {Commands, Subprocess, CommandOutput, CommandError, commands, Stdio} from "@std/process.ms"
+import Bytes from "@std/bytes.ms"
 
-def forward[T](item: T) -> T: item
+fn forward[T](item: T) T: item
 
 type Capture:
     tag: Bytes
 
 impl Commands for Capture:
-    def run(
+    fn run(
         program: String,
         arguments: List[String],
         input: Bytes,
         max_output_bytes: Optional[Int],
         timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+    ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(
+    fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
         stderr: Stdio
-    ) -> Result[Subprocess, CommandError]:
+    ) Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
-from "@std/time.ms" import Duration
+import Duration from "@std/time.ms"
 
-def generic_run[T: Commands](service: T) -> Result[Bytes, Error]:
+fn generic_run[T: Commands](service: T) Result[Bytes, Error]:
     return ok((try service.run("fake", [])).stdout)
 
 type Override:
     input: Bytes
 
 impl Commands for Override:
-    def run(
+    fn run(
         program: String,
         arguments: List[String],
         input: Bytes = self.input,
         max_output_bytes: Optional[Int] = none,
         timeout: Optional[Duration]
-    ) -> Result[CommandOutput, CommandError]:
+    ) Result[CommandOutput, CommandError]:
         return ok(CommandOutput(0, input, "".to_bytes()))
 
-    def spawn(
+    fn spawn(
         program: String,
         arguments: List[String],
         stdin: Stdio,
         stdout: Stdio,
         stderr: Stdio
-    ) -> Result[Subprocess, CommandError]:
+    ) Result[Subprocess, CommandError]:
         return error(CommandError.Unavailable)
 
 test "concrete implementation defaults and interface defaults stay distinct":
@@ -108,21 +108,21 @@ test "Base64 defaults support stored functions and explicit alphabets":
     try expect_false(
         (
             base64_encode(bytes) != "/w=="
-            or base64_encode(bytes, False) != "/w=="
+            or base64_encode(bytes, false) != "/w=="
         )
     )
-    try expect_equal(base64_encode(bytes, True), "_w==")
+    try expect_equal(base64_encode(bytes, true), "_w==")
 
     let encode = base64_encode
     let copied = base64_encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: Callable[[Bytes, Bool], String] = encode
-    try expect_equal(typed(bytes, False), "/w==")
+    let typed: fn(Bytes, Bool) String = encode
+    try expect_equal(typed(bytes, false), "/w==")
     try expect_false(
         (
             (try base64_decode("/w==")) != bytes
-            or (try base64_decode("_w==", True)) != bytes
+            or (try base64_decode("_w==", true)) != bytes
         )
     )
 

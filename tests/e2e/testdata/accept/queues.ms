@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
-from "@std/queue.ms" import Queue
+import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
+import Queue from "@std/queue.ms"
 
 test "omitted capacity creates an unbounded queue":
     var queue = Queue[Int]()
@@ -39,11 +39,11 @@ test "a copy is an independent queue":
     queue.dequeue() | try expect_equal(second)
 
 test "queue elements include ordinary functions":
-    var queue = Queue[Callable[[], Int]](1)
-    queue.enqueue(lambda: return 7)
+    var queue = Queue[fn() Int](1)
+    queue.enqueue(fn: return 7)
 
     match queue.dequeue():
-        case some(callback):
+        some(callback):
             try expect_equal(callback(), 7)
-        case none:
+        none:
             return fail("callback missing")

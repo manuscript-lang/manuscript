@@ -1,5 +1,5 @@
-from "@std/core.ms" import TextError
-from "@std/io.ms" import stdin, stdout, read_line
+import TextError from "@std/core.ms"
+import {stdin, stdout, read_line} from "@std/io.ms"
 
 type Parser:
     chars: List[Int]
@@ -7,7 +7,7 @@ type Parser:
     div_zero: Bool
 
 # Skips blanks and returns the next character code, or 0 at the end of the line.
-def peek(var p: Parser) -> Int:
+fn peek(var p: Parser) Int:
     while p.pos < p.chars.length():
         let c = p.chars.get(p.pos)
         if c != 32 and c != 9:
@@ -17,7 +17,7 @@ def peek(var p: Parser) -> Int:
 
     return 0
 
-def atom(var p: Parser) -> Result[Int, TextError]:
+fn atom(var p: Parser) Result[Int, TextError]:
     let c = peek(var p)
 
     if c >= 48 and c <= 57:
@@ -45,7 +45,7 @@ def atom(var p: Parser) -> Result[Int, TextError]:
 
     return error(TextError("syntax"))
 
-def unary(var p: Parser) -> Result[Int, TextError]:
+fn unary(var p: Parser) Result[Int, TextError]:
     if peek(var p) == 45:
         p.pos = p.pos + 1
 
@@ -54,10 +54,10 @@ def unary(var p: Parser) -> Result[Int, TextError]:
 
     return atom(var p)
 
-def term(var p: Parser) -> Result[Int, TextError]:
+fn term(var p: Parser) Result[Int, TextError]:
     var value = try unary(var p)
 
-    while True:
+    while true:
         let op = peek(var p)
         if op != 42 and op != 47:
             break
@@ -68,18 +68,18 @@ def term(var p: Parser) -> Result[Int, TextError]:
 
         if op == 42:
             value = value * right
-        elif right == 0:
-            p.div_zero = True
+        else if right == 0:
+            p.div_zero = true
             value = 0
         else:
             value = value / right
 
     return ok(value)
 
-def expr(var p: Parser) -> Result[Int, TextError]:
+fn expr(var p: Parser) Result[Int, TextError]:
     var value = try term(var p)
 
-    while True:
+    while true:
         let op = peek(var p)
         if op != 43 and op != 45:
             break
@@ -95,22 +95,22 @@ def expr(var p: Parser) -> Result[Int, TextError]:
 
     return ok(value)
 
-def evaluate(line: String) -> String:
-    var p = Parser(chars: line.scalar_values(), pos: 0, div_zero: False)
+fn evaluate(line: String) String:
+    var p = Parser(chars: line.scalar_values(), pos: 0, div_zero: false)
 
     match expr(var p):
-        case ok(value):
+        ok(value):
             if peek(var p) != 0:
                 return "error: syntax"
             if p.div_zero:
                 return "error: division by zero"
 
-            return f"{value}"
-        case error(_):
+            return "{value}"
+        error(_):
             return "error: syntax"
 
-def run() -> Result[Unit, Error]:
-    while True:
+fn run() Result[Unit, Error]:
+    while true:
         let next = try read_line(input: stdin(), max_bytes: 1048576)
         if next.is_none():
             break
@@ -119,11 +119,11 @@ def run() -> Result[Unit, Error]:
         if line.trim().is_empty():
             continue
 
-        try stdout().write(f"{evaluate(line)}\n")
+        try stdout().write("{evaluate(line)}\n")
 
     return stdout().flush()
 
-export def main() -> Int:
+export fn main() Int:
     match run():
-        case ok(_): return 0
-        case error(_): return 1
+        ok(_): return 0
+        error(_): return 1

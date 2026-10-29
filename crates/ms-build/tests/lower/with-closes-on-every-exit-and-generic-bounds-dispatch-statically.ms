@@ -2,16 +2,16 @@
 # expect-mir: "cleanup.push"
 # expect-mir-count: 4 "call @Res.close"
 
-from "@std/core.ms" import Closeable
+import Closeable from "@std/core.ms"
 
 type Res:
     n: Int
 
 impl Closeable for Res:
-    def close() -> Unit:
+    fn close() Unit:
         let _x = self.n
 
-def run[T: Closeable](r: T, early: Bool) -> Int:
+fn run[T: Closeable](r: T, early: Bool) Int:
     var _it = r
     if early:
         return 1
@@ -19,7 +19,7 @@ def run[T: Closeable](r: T, early: Bool) -> Int:
     _it.close()
     return 2
 
-export def main() -> Int:
+export fn main() Int:
     var i = 0
 
     while i < 3:
@@ -30,4 +30,4 @@ export def main() -> Int:
 
         break
 
-    return run(r: Res(1), early: True) + i
+    return run(r: Res(1), early: true) + i

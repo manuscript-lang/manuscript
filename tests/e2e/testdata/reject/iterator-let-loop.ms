@@ -1,6 +1,6 @@
-from "@std/io.ms" import lines, stdin
+import {lines, stdin} from "@std/io.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let reader = lines(stdin())
     for line in reader:
         if line == "":

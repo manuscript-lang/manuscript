@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 5:17:114 "expected an expression, found end of line; write a value, name, call, or literal here"

@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/time.ms" import nanoseconds, clock, wall_clock, timestamp, parse_timestamp, TimeError
+import {expect_equal, expect_false} from "@std/test.ms"
+import {nanoseconds, clock, wall_clock, timestamp, parse_timestamp, TimeError} from "@std/time.ms"
 
 test "duration arithmetic and conversion":
     let interval = nanoseconds(1500000000)

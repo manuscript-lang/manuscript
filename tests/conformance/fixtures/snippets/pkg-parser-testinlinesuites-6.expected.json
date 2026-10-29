@@ -9,30 +9,30 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding use; declare it with 'let use = ...' before use, define 'def use(...) -> T:', or import it from a module",
+        "message": "unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...) T:', or import it from a module",
         "position": {
           "file": "pkg-parser-testinlinesuites-6.ms",
           "line": 6,
           "column": 5,
-          "offset": 201
+          "offset": 189
         }
       },
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Callable[[], Unit], found Callable[[], Int] (in entry 2 of the literal, whose entries share one type)",
+        "message": "expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)",
         "position": {
           "file": "pkg-parser-testinlinesuites-6.ms",
           "line": 8,
-          "column": 42,
-          "offset": 291
+          "column": 34,
+          "offset": 263
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-parser-testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'let use = ...' before use, define 'def use(...) -> T:', or import it from a module\n   |\n 6 |     use(lambda (x: Int) -> Int: return x, other: 1)\n   |     ^\n<DIR>/pkg-parser-testinlinesuites-6.ms:8:42: type: expected Callable[[], Unit], found Callable[[], Int] (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     let gs = [lambda () -> Unit: return, lambda () -> Int: return 2]\n   |                                          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-parser-testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...) T:', or import it from a module\n   |\n 6 |     use(fn(x: Int) Int: return x, other: 1)\n   |     ^\n<DIR>/pkg-parser-testinlinesuites-6.ms:8:34: type: expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     let gs = [fn() Unit: return, fn() Int: return 2]\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

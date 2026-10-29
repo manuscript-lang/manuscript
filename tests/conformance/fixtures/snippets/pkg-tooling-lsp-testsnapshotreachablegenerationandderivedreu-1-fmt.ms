@@ -1,6 +1,6 @@
 # conform: tags=formatter,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/tooling/lsp/snapshot_test.go:165 TestSnapshotReachableGenerationAndDerivedReuse
-from "./dep.ms" import value
+import value from "./dep.ms"
 
-export def main() -> Int: value()
+export fn main() Int: value()

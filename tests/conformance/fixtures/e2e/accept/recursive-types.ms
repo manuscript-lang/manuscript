@@ -1,19 +1,19 @@
 # conform: tags=alternatives,control-flow,faults,generics,interfaces,maps,match,modules,optional,records,sets,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/recursive-types.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, fail
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false, fail} from "@std/test.ms"
 
 type Expr:
     case Num(value: Int)
     case Add(left: Expr, right: Expr)
     case Neg(inner: Expr)
 
-def evaluate(expr: Expr) -> Int:
+fn evaluate(expr: Expr) Int:
     match expr:
-        case Num(value): return value
-        case Add(left, right): return evaluate(left) + evaluate(right)
-        case Neg(inner): return -evaluate(inner)
+        Num(value): return value
+        Add(left, right): return evaluate(left) + evaluate(right)
+        Neg(inner): return -evaluate(inner)
 
 type Tree[T]:
     case Leaf(value: T)
@@ -40,11 +40,11 @@ type Link:
     next: Optional[Link]
 
 impl Equal for Link:
-    def equals(other: Link) -> Bool:
+    fn equals(other: Link) Bool:
         return self.value == other.value
 
 impl Hashable for Link:
-    def hash() -> Int: return self.value
+    fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
     let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
@@ -58,9 +58,9 @@ test "recursive alternatives construct match compare and clone":
     let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
-        case More(first):
+        More(first):
             ((first.value != 3 or first.rest != Forest.Empty) | try expect_false)
-        case Empty: return fail("lost mutual tree")
+        Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
     let child = Node(value: 2, next: none)
@@ -152,19 +152,19 @@ test "finite nested generic composition constructs and extracts values":
     let optional = NestedOptional.Value(some(some(4)))
 
     match optional:
-        case Value(value):
+        Value(value):
             try expect_equal(value.get().get(), 4)
 
     let result = NestedResult(ok(ok(5)))
 
     let inner = match result.value:
-        case ok(inner): inner.clone()
-        case error(_): return fail("unexpected outer result error")
+        ok(inner): inner.clone()
+        error(_): return fail("unexpected outer result error")
 
     match inner:
-        case ok(value):
+        ok(value):
             try expect_equal(value, 5)
-        case error(_): return fail("unexpected inner result error")
+        error(_): return fail("unexpected inner result error")
 
     let box = Box(Box(6))
     box.value.value | try expect_equal(6)

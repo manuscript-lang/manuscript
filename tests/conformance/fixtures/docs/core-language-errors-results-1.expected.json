@@ -9,12 +9,12 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-1.ms",
           "line": 14,
-          "column": 21,
-          "offset": 485
+          "column": 20,
+          "offset": 470
         },
         "fix": {
           "position": {
@@ -29,18 +29,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-1.ms",
           "line": 14,
-          "column": 39,
-          "offset": 503
+          "column": 38,
+          "offset": 488
         },
         "fix": {
           "position": {
@@ -55,18 +55,18 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal",
+        "message": "unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"",
         "position": {
           "file": "core-language-errors-results-1.ms",
           "line": 14,
-          "column": 58,
-          "offset": 522
+          "column": 54,
+          "offset": 504
         },
         "fix": {
           "position": {
@@ -81,14 +81,14 @@
             "column": 1,
             "offset": 0
           },
-          "replacement": "from \"@std/decimal.ms\" import Decimal\n"
+          "replacement": "import Decimal from \"@std/decimal.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-1.ms:14:21: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                     ^\n<DIR>/core-language-errors-results-1.ms:14:39: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                                       ^\n<DIR>/core-language-errors-results-1.ms:14:58: resolution: unknown type Decimal; add: from \"@std/decimal.ms\" import Decimal\n    |\n 14 | def discount(price: Decimal, percent: Decimal) -> Result[Decimal, DiscountError]:\n    |                                                          ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-1.ms:14:20: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                    ^\n<DIR>/core-language-errors-results-1.ms:14:38: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                                      ^\n<DIR>/core-language-errors-results-1.ms:14:54: resolution: unknown type Decimal; add: import Decimal from \"@std/decimal.ms\"\n    |\n 14 | fn discount(price: Decimal, percent: Decimal) Result[Decimal, DiscountError]:\n    |                                                      ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

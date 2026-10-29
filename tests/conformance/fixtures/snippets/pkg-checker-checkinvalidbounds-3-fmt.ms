@@ -1,4 +1,4 @@
 # conform: tags=formatter,generics,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/checker/bound_recovery_test.go:41 checkInvalidBounds
-def mutual[T: U, U: T](value: T) -> Unit: return
+fn mutual[T: U, U: T](value: T) Unit: return

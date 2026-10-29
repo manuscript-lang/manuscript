@@ -1,18 +1,18 @@
-from "@std/io.ms" import stdout
-from "@std/shared.ms" import Shared, share
-from "@std/sync.ms" import lock
-from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal
-from "@std/time.ms" import nanoseconds, sleep
+import stdout from "@std/io.ms"
+import {Shared, share} from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import TaskGroup from "@std/tasks.ms"
+import expect_equal from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def hold(box: Shared[List[Int]]) -> Int:
+fn hold(box: Shared[List[Int]]) Int:
     var guard = lock(box)
     guard.value.append(2)
     sleep(nanoseconds(5000000000))
     guard.close()
     return 0
 
-def add_slowly(box: Shared[List[Int]]) -> Int:
+fn add_slowly(box: Shared[List[Int]]) Int:
     var guard = lock(box)
     guard.value.append(1)
     sleep(nanoseconds(2000000))
@@ -20,7 +20,7 @@ def add_slowly(box: Shared[List[Int]]) -> Int:
     guard.close()
     return 0
 
-def add(box: Shared[List[Int]], value: Int) -> Int:
+fn add(box: Shared[List[Int]], value: Int) Int:
     var guard = lock(box)
     guard.value.append(value)
     guard.close()
@@ -30,7 +30,7 @@ test "a task cancelled while holding the lock puts the payload back":
     let box: Shared[List[Int]] = share([1])
     let mine = box
     var group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
-    group.spawn(lambda ch: hold(mine))
+    group.spawn(fn ch: hold(mine))
 
     let _ignored = group.wait()
     group.close()
@@ -46,8 +46,8 @@ test "a second lock waits for the first guard":
     let first = box
     let second = box
     var group = TaskGroup[Int]()
-    let a = group.spawn(lambda ch: add_slowly(first))
-    let b = group.spawn(lambda ch: add(second, 3))
+    let a = group.spawn(fn ch: add_slowly(first))
+    let b = group.spawn(fn ch: add(second, 3))
     let _first_done = try a.result()
     let _second_done = try b.result()
     group.close()

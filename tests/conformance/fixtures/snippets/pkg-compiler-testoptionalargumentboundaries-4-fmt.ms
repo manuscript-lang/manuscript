@@ -1,5 +1,5 @@
 # conform: tags=aliasing,formatter,optional,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/optional_test.go:27 TestOptionalArgumentBoundaries
-def call() -> Unit:
+fn call() Unit:
     let _value: Optional[Int] = 4

@@ -9,12 +9,12 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)",
+        "message": "operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)",
         "position": {
           "file": "sized-mixed-operands.ms",
           "line": 7,
           "column": 19,
-          "offset": 201
+          "offset": 197
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "sized-mixed-operands.ms",
           "line": 9,
           "column": 22,
-          "offset": 249
+          "offset": 245
         }
       },
       {
@@ -36,14 +36,14 @@
           "file": "sized-mixed-operands.ms",
           "line": 11,
           "column": 19,
-          "offset": 300
+          "offset": 296
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/sized-mixed-operands.ms:7:19: type: operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with f\"{value}\", or convert between Int and Float)\n   |\n 7 |     let mixed = a + b\n   |                   ^\n<DIR>/sized-mixed-operands.ms:9:22: type: expected Int8, found Int (in the initializer of 'both')\n   |\n 9 |     let both: Int8 = plain\n   |                      ^\n<DIR>/sized-mixed-operands.ms:11:19: type: remainder requires integer operands, found Float32; convert to Int or use math functions\n    |\n 11 |     let bad = rem % rem\n    |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/sized-mixed-operands.ms:7:19: type: operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n   |\n 7 |     let mixed = a + b\n   |                   ^\n<DIR>/sized-mixed-operands.ms:9:22: type: expected Int8, found Int (in the initializer of 'both')\n   |\n 9 |     let both: Int8 = plain\n   |                      ^\n<DIR>/sized-mixed-operands.ms:11:19: type: remainder requires integer operands, found Float32; convert to Int or use math functions\n    |\n 11 |     let bad = rem % rem\n    |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

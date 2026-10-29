@@ -14,9 +14,9 @@ export type Customer:
     name: String
     active: Bool
 
-export def welcome(customer: Customer) -> String:
+export fn welcome(customer: Customer) String:
     if customer.active:
-        return f"Welcome, {customer.name}!"
+        return "Welcome, {customer.name}!"
 
     return "Your account is inactive."
 ```
@@ -32,7 +32,7 @@ Expressions inside parentheses, brackets, or braces can span lines:
 ```manuscript
 let customer = Customer(
     name: "Ada",
-    active: True,
+    active: true,
 )
 ```
 
@@ -48,7 +48,7 @@ let count = 3
 A file's resolved path identifies its module. `export` makes a declaration visible to other modules:
 
 ```manuscript
-from "./greeting.ms" import Customer
+import Customer from "./greeting.ms"
 ```
 
 Relative imports resolve from the importing file's directory. `ms.toml` configures the source directory, entry file, and import aliases; see [modules and capabilities](../modules/_index.md) and [project configuration](../../developer-tooling/builds/project-configuration.md).

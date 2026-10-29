@@ -1,8 +1,9 @@
-from "@std/string.ms" import NormalizationForm
-from "@std/math.ms" import (
+import NormalizationForm from "@std/string.ms"
+import {
     sqrt,
-)
+} from "@std/math.ms"
 
-def root(value: Float, form: NormalizationForm) -> Float:
+fn root(value: Float, form: NormalizationForm) Float:
     if form == NormalizationForm.Nfc: return sqrt(value)
+
     return value

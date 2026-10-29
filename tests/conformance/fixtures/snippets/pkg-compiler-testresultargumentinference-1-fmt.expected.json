@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def first() -> Int:\n    let r: Result[Int, Error] = f()\n    return h(r)\n"
+    "fmt": "fn first() Int:\n    let r: Result[Int, Error] = f()\n    return h(r)\n"
   }
 }

@@ -13,26 +13,26 @@
         "position": {
           "file": "pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms",
           "line": 4,
-          "column": 35,
-          "offset": 239
+          "column": 31,
+          "offset": 235
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Cause; declare it with 'let Cause = ...' before use, define 'def Cause(...) -> T:', or import it from a module",
+        "message": "unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a module",
         "position": {
           "file": "pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms",
           "line": 7,
           "column": 13,
-          "offset": 295
+          "offset": 291
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms:4:35: resolution: unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n   |\n 4 | def affine(n: Int) -> Result[Int, Cause]:\n   |                                   ^\n<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms:7:13: resolution: unknown binding Cause; declare it with 'let Cause = ...' before use, define 'def Cause(...) -> T:', or import it from a module\n   |\n 7 |             Cause(\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms:4:31: resolution: unknown type Cause; declare it with 'type Cause:' / 'interface Cause:', declare it as a type parameter, or import it\n   |\n 4 | fn affine(n: Int) Result[Int, Cause]:\n   |                               ^\n<DIR>/pkg-compiler-testsuccessfulresultboundsrejectdifferentreturn-5.ms:7:13: resolution: unknown binding Cause; declare it with 'let Cause = ...' before use, define 'fn Cause(...) T:', or import it from a module\n   |\n 7 |             Cause(\n   |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

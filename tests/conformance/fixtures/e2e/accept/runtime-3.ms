@@ -1,48 +1,48 @@
 # conform: tags=closures,control-flow,generics,interfaces,interpolation,match,modules,records,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/runtime-3.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_true, fail
+import TextError from "@std/core.ms"
+import {expect_equal, expect_true, fail} from "@std/test.ms"
 
-def identity[T](value: T) -> T:
+fn identity[T](value: T) T:
     return value
 
-def probe() -> Result[Unit, Error]:
-    let first = lambda () -> Result[Int, TextError]:
+fn probe() Result[Unit, Error]:
+    let first = fn() Result[Int, TextError]:
         return ok(3)
-    let second = lambda:
-        return True
+    let second = fn:
+        return true
     let number = identity(first)()
     let flag = second()
     (flag) | try expect_true
 
     match number:
-        case ok(value):
+        ok(value):
             try expect_equal(value, 3)
-        case error(_):
+        error(_):
             return fail(message: "Unexpected case")
 
-    return ok(())
+    return ok(unit)
 
 test "typed callback helper":
     match probe():
-        case ok(_):
-            let _completed = ()
-        case error(_):
+        ok(_):
+            let _completed = unit
+        error(_):
             return fail(message: "Unexpected case")
 
 type Code:
     number: Int
 
 impl Error for Code:
-    def message() -> String: f"code {self.number}"
+    fn message() String: "code {self.number}"
 
-def describe(outcome: Result[Int, Code]) -> Result[Int, TextError]:
+fn describe(outcome: Result[Int, Code]) Result[Int, TextError]:
     match outcome:
-        case ok(value):
+        ok(value):
             return ok(value)
-        case error(cause):
-            return error(TextError(f"Error {cause.number}"))
+        error(cause):
+            return error(TextError("Error {cause.number}"))
 
 test "explicit error conversion":
     let failed: Result[Int, Code] = error(Code(7))

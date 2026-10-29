@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def later() -> Int: ...\n"
+    "fmt": "fn later() Int: ...\n"
   }
 }

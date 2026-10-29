@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def subtract_one(amount: Int) -> Int:\n    return amount - 1\n\ndef adapt() -> Unit:\n    # Rejected: amount and value are different function-type labels.\n    let invalid: Callable[[Int], Int] = subtract_one\n    let renamed = lambda (value: Int) -> Int:\n        return subtract_one(amount: value)\n    let result = apply(value: 3, transform: renamed)\n"
+    "fmt": "fn subtract_one(amount: Int) Int:\n    return amount - 1\n\nfn adapt() Unit:\n    # Rejected: amount and value are different function-type labels.\n    let invalid: fn(Int) Int = subtract_one\n    let renamed = fn(value: Int) Int:\n        return subtract_one(amount: value)\n    let result = apply(value: 3, transform: renamed)\n"
   }
 }

@@ -1,5 +1,5 @@
-from "@std/core.ms" import panic
-from "@std/math.ms" import bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zeros
+import panic from "@std/core.ms"
+import {bit_and, bit_or, bit_xor, bit_not, shift_left, count_ones, trailing_zeros} from "@std/math.ms"
 
 # A set of small non-negative integers stored one bit each: 8 bytes per 64 candidates, with O(1) add, remove and contains.
 # Indexes must be 0 through 1073741823 (a 128 MiB bitmap); other indexes fault, so the set never grows without bound by accident.
@@ -11,9 +11,9 @@ export type BitSet:
 
 impl BitSet:
     # Adds an index; faults when it is negative or above 1073741823.
-    var def add(index: Int) -> Unit:
+    var fn add(index: Int) Unit:
         if index < 0 or index > 1073741823:
-            panic(f"BitSet: index must be between 0 and 1073741823, found {index}")
+            panic("BitSet: index must be between 0 and 1073741823, found {index}")
 
         let word = index / 64
         while self.words.length() <= word:
@@ -21,7 +21,7 @@ impl BitSet:
         self.words.set(word, bit_or(self.words.get(word), shift_left(1, index % 64)))
 
     # Removes an index; absent and out-of-range indexes change nothing.
-    var def remove(index: Int) -> Unit:
+    var fn remove(index: Int) Unit:
         if index < 0 or index / 64 >= self.words.length():
             return
 
@@ -34,32 +34,32 @@ impl BitSet:
         )
 
     # Reports whether the index is a member; out-of-range indexes are not members.
-    def contains(index: Int) -> Bool:
+    fn contains(index: Int) Bool:
         if index < 0 or index / 64 >= self.words.length():
-            return False
+            return false
 
         return bit_and(self.words.get(index / 64), shift_left(1, index % 64)) != 0
 
     # Returns the number of members.
-    def length() -> Int:
+    fn length() Int:
         var total = 0
         for word in self.words:
             total += count_ones(word)
         return total
 
     # Reports whether the set has no members.
-    def is_empty() -> Bool:
+    fn is_empty() Bool:
         for word in self.words:
             if word != 0:
-                return False
-        return True
+                return false
+        return true
 
     # Removes every member and releases the bitmap.
-    var def clear() -> Unit:
+    var fn clear() Unit:
         self.words = []
 
     # Returns the smallest member that is at least `from`, or `none` when there is none.
-    def next(from: Int = 0) -> Optional[Int]:
+    fn next(from: Int = 0) Optional[Int]:
         var start = from
         if start < 0:
             start = 0
@@ -70,7 +70,7 @@ impl BitSet:
 
         var bits = bit_and(self.words.get(word), shift_left(-1, start % 64))
 
-        while True:
+        while true:
             if bits != 0:
                 return word * 64 + trailing_zeros(bits)
 
@@ -83,7 +83,7 @@ impl BitSet:
         return none
 
     # Returns a new list of the members in ascending order.
-    def values() -> List[Int]:
+    fn values() List[Int]:
         var out: List[Int] = []
 
         for word in 0..self.words.length():
@@ -97,23 +97,23 @@ impl BitSet:
         return out
 
     # Returns a new set of the members of either set.
-    def union(other: BitSet) -> BitSet:
+    fn union(other: BitSet) BitSet:
         return self.combine(other, 0)
 
     # Returns a new set of the members of both sets.
-    def intersection(other: BitSet) -> BitSet:
+    fn intersection(other: BitSet) BitSet:
         return self.combine(other, 1)
 
     # Returns a new set of the members of this set that are not in `other`.
-    def difference(other: BitSet) -> BitSet:
+    fn difference(other: BitSet) BitSet:
         return self.combine(other, 2)
 
     # Returns a new set of the members of exactly one of the sets.
-    def symmetric_difference(other: BitSet) -> BitSet:
+    fn symmetric_difference(other: BitSet) BitSet:
         return self.combine(other, 3)
 
     # Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
-    def combine(other: BitSet, mode: Int) -> BitSet:
+    fn combine(other: BitSet, mode: Int) BitSet:
         var out: List[Int] = []
         var count = self.words.length()
         if other.words.length() > count:
@@ -140,13 +140,13 @@ impl BitSet:
         return BitSet(words: out)
 
     # Reports whether every member of this set is in `other`.
-    def is_subset_of(other: BitSet) -> Bool:
+    fn is_subset_of(other: BitSet) Bool:
         return self.difference(other).is_empty()
 
     # Reports whether every member of `other` is in this set.
-    def is_superset_of(other: BitSet) -> Bool:
+    fn is_superset_of(other: BitSet) Bool:
         return other.difference(self).is_empty()
 
     # Reports whether the sets share no member.
-    def is_disjoint_from(other: BitSet) -> Bool:
+    fn is_disjoint_from(other: BitSet) Bool:
         return self.intersection(other).is_empty()

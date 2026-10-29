@@ -1,4 +1,4 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "a list zipped with itself pairs each element with itself":
     var names: List[String] = ["a", "b"]

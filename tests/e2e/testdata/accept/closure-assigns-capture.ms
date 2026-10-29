@@ -1,10 +1,10 @@
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 test "a closure that only assigns a captured variable changes it":
     var xs = ["a", "b"]
     var n = 0
 
-    let reset = lambda:
+    let reset = fn:
         xs = ["c"]
         n = 7
 

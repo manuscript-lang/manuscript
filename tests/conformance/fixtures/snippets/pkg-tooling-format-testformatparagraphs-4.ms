@@ -1,9 +1,9 @@
 # conform: tags=diagnostics,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:44 TestFormatParagraphs
-def first() -> Int: return 1
+fn first() Int: return 1
 
-from "./value.ms" import Value
-from "./other.ms" import Other
+import Value from "./value.ms"
+import Other from "./other.ms"
 
-def last() -> Int: return 2
+fn last() Int: return 2

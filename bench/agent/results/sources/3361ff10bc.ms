@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 let FEE = 5
 
@@ -15,30 +15,30 @@ type Ledger:
     fees: Int
 
 # Parses a non-empty run of ASCII digits; anything else is none.
-def digits(text: String) -> Optional[Int]:
+fn digits(text: String) Optional[Int]:
     for c in text.chars():
         if not "0123456789".contains(c):
             return none
     return text.parse_int()
 
 # Returns the value of a digit-only text, or 0 when it is not a valid amount (0 is never a valid amount).
-def amount(text: String) -> Int:
+fn amount(text: String) Int:
     return digits(text).get(0)
 
-def tokenize(line: String) -> List[String]:
-    return line.replace("\t", " ").split(" ").filter(lambda t: t.byte_length() > 0)
+fn tokenize(line: String) List[String]:
+    return line.replace("\t", " ").split(" ").filter(fn t: t.byte_length() > 0)
 
-def emit(text: String) -> Unit:
+fn emit(text: String) Unit:
     stdout().write(text + "\n").get()
 
-def unknown(id: String) -> String:
+fn unknown(id: String) String:
     return "error: unknown account " + id
 
-def empty_account() -> Account:
-    return Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: False)
+fn empty_account() Account:
+    return Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false)
 
 # Records a rejection against the account that the error message names.
-def blame(var ledger: Ledger, id: String, message: String) -> String:
+fn blame(var ledger: Ledger, id: String, message: String) String:
     if let acct = ledger.accounts.get(id):
         var copy = acct
         copy.rejected += 1
@@ -46,17 +46,17 @@ def blame(var ledger: Ledger, id: String, message: String) -> String:
 
     return message
 
-def is_frozen(ledger: Ledger, id: String) -> Bool:
+fn is_frozen(ledger: Ledger, id: String) Bool:
     return ledger.accounts.get(id).get(empty_account()).frozen
 
 # The overdraft fee applies when a debit takes a non-negative balance below zero.
-def fee_due(balance: Int, debit: Int) -> Int:
+fn fee_due(balance: Int, debit: Int) Int:
     if balance >= 0 and balance < debit:
         return FEE
 
     return 0
 
-def open_account(var ledger: Ledger, id: String, limit_text: String) -> String:
+fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
     let limit = digits(limit_text).get(-1)
     if limit < 0:
         return "error: invalid limit"
@@ -64,11 +64,11 @@ def open_account(var ledger: Ledger, id: String, limit_text: String) -> String:
         return "error: account exists " + id
 
     ledger.accounts.add(
-        id, Account(balance: 0, limit: limit, ops: 0, rejected: 0, frozen: False)
+        id, Account(balance: 0, limit: limit, ops: 0, rejected: 0, frozen: false)
     )
     return "ok"
 
-def set_frozen(var ledger: Ledger, id: String, frozen: Bool) -> String:
+fn set_frozen(var ledger: Ledger, id: String, frozen: Bool) String:
     if let acct = ledger.accounts.get(id):
         var copy = acct
         copy.frozen = frozen
@@ -77,7 +77,7 @@ def set_frozen(var ledger: Ledger, id: String, frozen: Bool) -> String:
 
     return unknown(id)
 
-def deposit(var ledger: Ledger, id: String, text: String) -> String:
+fn deposit(var ledger: Ledger, id: String, text: String) String:
     if not ledger.accounts.contains(id):
         return unknown(id)
 
@@ -93,7 +93,7 @@ def deposit(var ledger: Ledger, id: String, text: String) -> String:
     ledger.accounts.add(id.clone(), acct.clone())
     return "ok " + acct.balance.to_string()
 
-def withdraw(var ledger: Ledger, id: String, text: String) -> String:
+fn withdraw(var ledger: Ledger, id: String, text: String) String:
     if not ledger.accounts.contains(id):
         return unknown(id)
 
@@ -118,7 +118,7 @@ def withdraw(var ledger: Ledger, id: String, text: String) -> String:
 
     return "ok " + new.to_string()
 
-def transfer(var ledger: Ledger, from: String, to: String, text: String) -> String:
+fn transfer(var ledger: Ledger, from: String, to: String, text: String) String:
     if not ledger.accounts.contains(from):
         return unknown(from)
     if not ledger.accounts.contains(to):
@@ -157,7 +157,7 @@ def transfer(var ledger: Ledger, from: String, to: String, text: String) -> Stri
 
     return line
 
-def handle(var ledger: Ledger, t: List[String]) -> String:
+fn handle(var ledger: Ledger, t: List[String]) String:
     let n = t.length()
     let cmd = t[0].clone()
     if cmd == "open" and n == 3:
@@ -169,13 +169,13 @@ def handle(var ledger: Ledger, t: List[String]) -> String:
     if cmd == "transfer" and n == 4:
         return transfer(var ledger, t[1].clone(), t[2].clone(), t[3].clone())
     if cmd == "freeze" and n == 2:
-        return set_frozen(var ledger, t[1].clone(), True)
+        return set_frozen(var ledger, t[1].clone(), true)
     if cmd == "unfreeze" and n == 2:
-        return set_frozen(var ledger, t[1].clone(), False)
+        return set_frozen(var ledger, t[1].clone(), false)
 
     return "error: bad command"
 
-def report(ledger: Ledger) -> Unit:
+fn report(ledger: Ledger) Unit:
     var total = 0
 
     for id in ledger.accounts.keys().sorted():
@@ -201,7 +201,7 @@ def report(ledger: Ledger) -> Unit:
 
     emit("total balance=" + total.to_string() + " fees=" + ledger.fees.to_string())
 
-export def main() -> Int:
+export fn main() Int:
     var ledger = Ledger(accounts: Map[String, Account](), fees: 0)
 
     if let lines = read_lines(stdin()):
@@ -210,7 +210,7 @@ export def main() -> Int:
 
             if t.length() == 1 and t[0] == "report":
                 report(ledger)
-            elif t.length() > 0:
+            else if t.length() > 0:
                 emit(handle(var ledger, t))
 
     return 0

@@ -1,5 +1,5 @@
-from "@std/io.ms" import read_line, stdin, stdout
-from "@std/collections.ms" import range
+import {read_line, stdin, stdout} from "@std/io.ms"
+import range from "@std/collections.ms"
 
 type Entry:
     timestamp: String
@@ -14,19 +14,19 @@ type PathStat:
     count: Int
     total: Int
 
-def out(text: String) -> Unit:
+fn out(text: String) Unit:
     stdout().write(text).get()
 
-def is_digits(text: String, min_len: Int, max_len: Int) -> Bool:
+fn is_digits(text: String, min_len: Int, max_len: Int) Bool:
     if text.length() < min_len or text.length() > max_len:
-        return False
+        return false
 
     for c in text.chars():
         if not "0123456789".contains(c):
-            return False
-    return True
+            return false
+    return true
 
-def parse_entry(line: String) -> Optional[Entry]:
+fn parse_entry(line: String) Optional[Entry]:
     let fields = line.split(" ")
     if fields.length() != 6:
         return none
@@ -57,23 +57,23 @@ def parse_entry(line: String) -> Optional[Entry]:
         )
     )
 
-def compare_int(left: Int, right: Int) -> Int:
+fn compare_int(left: Int, right: Int) Int:
     return left - right
 
-def compare_paths(left: PathStat, right: PathStat) -> Int:
+fn compare_paths(left: PathStat, right: PathStat) Int:
     if left.count != right.count:
         return right.count - left.count
 
     return left.path.compare(right.path)
 
-def p95(latencies: List[Int]) -> Int:
+fn p95(latencies: List[Int]) Int:
     if latencies.is_empty():
         return 0
 
     let rank = (95 * latencies.length() + 99) / 100
     return latencies.get(rank - 1)
 
-def report(entries: List[Entry], malformed: Int) -> Unit:
+fn report(entries: List[Entry], malformed: Int) Unit:
     var debug = 0
     var info = 0
     var warn = 0
@@ -91,9 +91,9 @@ def report(entries: List[Entry], malformed: Int) -> Unit:
     for entry in entries:
         if entry.level == "DEBUG":
             debug += 1
-        elif entry.level == "INFO":
+        else if entry.level == "INFO":
             info += 1
-        elif entry.level == "WARN":
+        else if entry.level == "WARN":
             warn += 1
         else:
             error += 1
@@ -102,11 +102,11 @@ def report(entries: List[Entry], malformed: Int) -> Unit:
 
         if digit == "2":
             status_2xx += 1
-        elif digit == "3":
+        else if digit == "3":
             status_3xx += 1
-        elif digit == "4":
+        else if digit == "4":
             status_4xx += 1
-        elif digit == "5":
+        else if digit == "5":
             status_5xx += 1
         else:
             status_other += 1
@@ -117,20 +117,20 @@ def report(entries: List[Entry], malformed: Int) -> Unit:
         counts.add(entry.path, counts.get_or(entry.path, 0) + 1)
         totals.add(entry.path, totals.get_or(entry.path, 0) + entry.latency)
 
-    out(f"valid: {entries.length()}\n")
-    out(f"malformed: {malformed}\n")
-    out(f"DEBUG: {debug}\n")
-    out(f"INFO: {info}\n")
-    out(f"WARN: {warn}\n")
-    out(f"ERROR: {error}\n")
+    out("valid: {entries.length()}\n")
+    out("malformed: {malformed}\n")
+    out("DEBUG: {debug}\n")
+    out("INFO: {info}\n")
+    out("WARN: {warn}\n")
+    out("ERROR: {error}\n")
     out(
-        f"status: 2xx={status_2xx} 3xx={status_3xx} 4xx={status_4xx} 5xx={status_5xx} other={status_other}\n"
+        "status: 2xx={status_2xx} 3xx={status_3xx} 4xx={status_4xx} 5xx={status_5xx} other={status_other}\n"
     )
-    out(f"p95: {p95(latencies.sorted(compare_int))}\n")
+    out("p95: {p95(latencies.sorted(compare_int))}\n")
 
     if slowest.is_some():
         let slow = slowest.get()
-        out(f"slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
+        out("slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
 
     var stats: List[PathStat] = []
     for path in counts.keys():
@@ -148,18 +148,18 @@ def report(entries: List[Entry], malformed: Int) -> Unit:
             break
 
         let stat = ranked.get(i)
-        out(f"{stat.path} {stat.count} avg={stat.total / stat.count}\n")
+        out("{stat.path} {stat.count} avg={stat.total / stat.count}\n")
 
-export def main() -> Int:
+export fn main() Int:
     var entries: List[Entry] = []
     var malformed = 0
-    var reading = True
+    var reading = true
 
     while reading:
         let read = read_line(stdin()).get()
 
         if read.is_none():
-            reading = False
+            reading = false
         else:
             let line = read.get()
             if line.trim().is_empty():

@@ -1,2 +1,2 @@
-def main() -> Unit:
+fn main() Unit:
     fo

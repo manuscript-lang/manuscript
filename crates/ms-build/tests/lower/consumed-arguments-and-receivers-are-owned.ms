@@ -5,14 +5,14 @@ type Node:
     val: Int
     kids: List[Node]
 
-def wrap(n: Node, i: Int) -> Node:
+fn wrap(n: Node, i: Int) Node:
     return Node(i, [n])
 
 impl Node:
-    def up(i: Int) -> Node:
+    fn up(i: Int) Node:
         return Node(i, [self])
 
-export def main() -> Int:
+export fn main() Int:
     var nd = Node(0, List[Node]())
     nd = wrap(nd, 1)
     nd = nd.up(2)

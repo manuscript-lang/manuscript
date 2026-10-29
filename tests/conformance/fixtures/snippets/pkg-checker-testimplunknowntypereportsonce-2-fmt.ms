@@ -5,4 +5,4 @@ type S:
     x: Int
 
 impl Missing for S:
-    def m() -> Int: return 1
+    fn m() Int: return 1

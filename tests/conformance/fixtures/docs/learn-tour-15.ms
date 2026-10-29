@@ -1,13 +1,13 @@
 # conform: tags=interfaces,modules,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=documentation/learn/tour.md:292
-from "@std/test.ms" import expect_equal
+import expect_equal from "@std/test.ms"
 
 type Counter:
     value: Int
 
 impl Counter:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.value = self.value + 1
 
 test "own methods":

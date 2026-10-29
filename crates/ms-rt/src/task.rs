@@ -1331,7 +1331,7 @@ crate::isolate_static! {
 
 // ---- closure tasks (`@std/tasks.ms`) ----
 
-/// Entry of a task that runs a `Callable[[], Unit]`: calls the closure with itself as its
+/// Entry of a task that runs a `fn() Unit`: calls the closure with itself as its
 /// environment, as every closure call does.
 unsafe extern "C-unwind" fn closure_entry(arg: *mut u8) {
     let closure = arg as *mut ms_rt_abi::Closure;

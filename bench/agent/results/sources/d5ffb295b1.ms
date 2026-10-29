@@ -1,18 +1,18 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 # kind 0 is an unchanged line, 1 a deletion from A, 2 an insertion from B
 type Edit:
     kind: Int
     text: String
 
-def line_at(lines: List[String], k: Int) -> String:
+fn line_at(lines: List[String], k: Int) String:
     if k < lines.length():
         return lines[k].clone()
 
     return ""
 
-def edit_script(a: List[String], b: List[String]) -> List[Edit]:
+fn edit_script(a: List[String], b: List[String]) List[Edit]:
     let n = a.length()
     let m = b.length()
     let w = m + 1
@@ -33,7 +33,7 @@ def edit_script(a: List[String], b: List[String]) -> List[Edit]:
             else:
                 let down = lcs[(i + 1) * w + j]
                 let right = lcs[i * w + j + 1]
-                lcs[i * w + j] = down if down >= right else right
+                lcs[i * w + j] = if down >= right: down else: right
 
     var out = List[Edit]()
     var i = 0
@@ -44,7 +44,7 @@ def edit_script(a: List[String], b: List[String]) -> List[Edit]:
             out.append(Edit(kind: 0, text: a[i].clone()))
             i += 1
             j += 1
-        elif j == m or (i < n and lcs[(i + 1) * w + j] >= lcs[i * w + j + 1]):
+        else if j == m or (i < n and lcs[(i + 1) * w + j] >= lcs[i * w + j + 1]):
             out.append(Edit(kind: 1, text: a[i].clone()))
             i += 1
         else:
@@ -53,13 +53,13 @@ def edit_script(a: List[String], b: List[String]) -> List[Edit]:
 
     return out
 
-def span(start: Int, length: Int) -> String:
+fn span(start: Int, length: Int) String:
     if length == 1:
-        return f"{start}"
+        return "{start}"
 
-    return f"{start},{length}"
+    return "{start},{length}"
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     let header = lines[0].split(" ")
     let name_a = header[0].clone()
@@ -100,8 +100,8 @@ export def main() -> Int:
             cb += 1
 
     var out = List[String]()
-    out.append(f"--- {name_a}")
-    out.append(f"+++ {name_b}")
+    out.append("--- {name_a}")
+    out.append("+++ {name_b}")
 
     var g = 0
 
@@ -130,8 +130,8 @@ export def main() -> Int:
             if edits[e].kind != 1:
                 lb += 1
 
-        let sa = a_before[start] + (1 if la > 0 else 0)
-        let sb = b_before[start] + (1 if lb > 0 else 0)
+        let sa = a_before[start] + (if la > 0: 1 else: 0)
+        let sb = b_before[start] + (if lb > 0: 1 else: 0)
         out.append("@@ -" + span(sa, la) + " +" + span(sb, lb) + " @@")
 
         for e in start..stop + 1:
@@ -139,7 +139,7 @@ export def main() -> Int:
 
             if edits[e].kind == 1:
                 prefix = "-"
-            elif edits[e].kind == 2:
+            else if edits[e].kind == 2:
                 prefix = "+"
 
             out.append(prefix + edits[e].text)

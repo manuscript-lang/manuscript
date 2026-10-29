@@ -105,22 +105,18 @@ fn methods_constructors_generics_and_nested_delimiters() {
             1,
         ),
         ("combine(\"😀\".length(),| 2)", "combine(", 1),
-        ("combine(f\"{combine(1,| 2)}\".length(), 3)", "combine(", 1),
+        ("combine(\"{combine(1,| 2)}\".length(), 3)", "combine(", 1),
         (
             "combine(\n        1, # ignored ,):\n        |2\n    )",
             "combine(",
             1,
         ),
-        ("invoke(lambda a,| b: a + b, 1)", "invoke(", 0),
-        ("invoke(lambda a, b: a + b,| 1)", "invoke(", 1),
-        ("invoke_empty(lambda: 1,| 2)", "invoke_empty(", 1),
-        ("invoke_empty(lambda: 1, 2|)", "invoke_empty(", 1),
-        ("invoke_empty(callback: lambda: 1,| 2)", "invoke_empty(", 1),
-        (
-            "invoke(lambda (a: Int, b: Int) -> Int: a + b,| 1)",
-            "invoke(",
-            1,
-        ),
+        ("invoke(fn a,| b: a + b, 1)", "invoke(", 0),
+        ("invoke(fn a, b: a + b,| 1)", "invoke(", 1),
+        ("invoke_empty(fn: 1,| 2)", "invoke_empty(", 1),
+        ("invoke_empty(fn: 1, 2|)", "invoke_empty(", 1),
+        ("invoke_empty(callback: fn: 1,| 2)", "invoke_empty(", 1),
+        ("invoke(fn(a: Int, b: Int) Int: a + b,| 1)", "invoke(", 1),
     ] {
         check(expression, name, active, true);
     }
@@ -137,7 +133,7 @@ fn incomplete_calls_keep_the_current_slot() {
         ("combine(right:|", 1),
         ("combine(1,|)", 1),
         (
-            "combine(1,|\n\ndef neighbor() -> Int:\n    return combine(3, 4)",
+            "combine(1,|\n\nfn neighbor() Int:\n    return combine(3, 4)",
             1,
         ),
     ] {

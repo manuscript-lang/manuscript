@@ -1,10 +1,10 @@
 # conform: tags=control-flow,diagnostics,interfaces,modules,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/interface_hints_test.go:79 TestInterfaceViewHintUsesVisibleImplementations
-from "data.ms" import Sq
+import Sq from "data.ms"
 
 export interface Shape:
-    def area() -> Int
+    fn area() Int
 
 impl Shape for Sq:
-    def area() -> Int: self.s * self.s
+    fn area() Int: self.s * self.s

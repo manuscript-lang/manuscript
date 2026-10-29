@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def display_name(name: Optional[String]) -> String:\n    return name.get(\"Anonymous\")\n"
+    "fmt": "fn display_name(name: Optional[String]) String:\n    return name.get(\"Anonymous\")\n"
   }
 }

@@ -29,7 +29,22 @@
             "file": "bound-native-members.ms",
             "line": 21,
             "column": 12,
-            "offset": 760
+            "offset": 749
+          },
+          "fix": {
+            "position": {
+              "file": "bound-native-members.ms",
+              "line": 21,
+              "column": 14,
+              "offset": 751
+            },
+            "end": {
+              "file": "bound-native-members.ms",
+              "line": 21,
+              "column": 14,
+              "offset": 751
+            },
+            "replacement": ".clone()"
           }
         },
         {
@@ -38,22 +53,22 @@
           "message": "cannot change `sb`: `sb` is declared with let, which is immutable including its contents; declare it `var sb` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 49,
+            "line": 47,
             "column": 20,
-            "offset": 1615
+            "offset": 1582
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 46,
+              "line": 44,
               "column": 5,
-              "offset": 1522
+              "offset": 1489
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 46,
+              "line": 44,
               "column": 8,
-              "offset": 1525
+              "offset": 1492
             },
             "replacement": "var"
           }
@@ -61,12 +76,12 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "cannot change `sb` while `append` borrows it (method value, at 57:21); finish using `append` before this, or give `append` its own value by ending its initializer with `.clone()`",
+          "message": "cannot change `sb` while `append` borrows it (method value, at 55:21); finish using `append` before this, or give `append` its own value by ending its initializer with `.clone()`",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 58,
+            "line": 56,
             "column": 5,
-            "offset": 1826
+            "offset": 1793
           }
         },
         {
@@ -75,22 +90,85 @@
           "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 65,
+            "line": 63,
             "column": 31,
-            "offset": 2092
+            "offset": 2055
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 64,
+              "line": 62,
               "column": 5,
-              "offset": 2018
+              "offset": 1981
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 64,
+              "line": 62,
               "column": 8,
-              "offset": 2021
+              "offset": 1984
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
+          "position": {
+            "file": "bound-native-members.ms",
+            "line": 64,
+            "column": 22,
+            "offset": 2080
+          },
+          "fix": {
+            "position": {
+              "file": "bound-native-members.ms",
+              "line": 62,
+              "column": 5,
+              "offset": 1981
+            },
+            "end": {
+              "file": "bound-native-members.ms",
+              "line": 62,
+              "column": 8,
+              "offset": 1984
+            },
+            "replacement": "var"
+          }
+        },
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `map_builder` while `map_add` borrows it (method value, at 63:31); finish using `map_add` before this, or give `map_add` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "bound-native-members.ms",
+            "line": 64,
+            "column": 22,
+            "offset": 2080
+          }
+        },
+        {
+          "code": "MS3060",
+          "phase": "type",
+          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
+          "position": {
+            "file": "bound-native-members.ms",
+            "line": 66,
+            "column": 23,
+            "offset": 2209
+          },
+          "fix": {
+            "position": {
+              "file": "bound-native-members.ms",
+              "line": 62,
+              "column": 5,
+              "offset": 1981
+            },
+            "end": {
+              "file": "bound-native-members.ms",
+              "line": 62,
+              "column": 8,
+              "offset": 1984
             },
             "replacement": "var"
           }
@@ -102,84 +180,21 @@
           "position": {
             "file": "bound-native-members.ms",
             "line": 66,
-            "column": 22,
-            "offset": 2117
+            "column": 27,
+            "offset": 2213
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 64,
+              "line": 62,
               "column": 5,
-              "offset": 2018
+              "offset": 1981
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 64,
+              "line": 62,
               "column": 8,
-              "offset": 2021
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3000",
-          "phase": "type",
-          "message": "cannot change `map_builder` while `map_add` borrows it (method value, at 65:31); finish using `map_add` before this, or give `map_add` its own value by ending its initializer with `.clone()`",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 66,
-            "column": 22,
-            "offset": 2117
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 70,
-            "column": 23,
-            "offset": 2264
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 64,
-              "column": 5,
-              "offset": 2018
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 64,
-              "column": 8,
-              "offset": 2021
-            },
-            "replacement": "var"
-          }
-        },
-        {
-          "code": "MS3060",
-          "phase": "type",
-          "message": "cannot change `map_builder`: `map_builder` is declared with let, which is immutable including its contents; declare it `var map_builder` to change it",
-          "position": {
-            "file": "bound-native-members.ms",
-            "line": 70,
-            "column": 31,
-            "offset": 2272
-          },
-          "fix": {
-            "position": {
-              "file": "bound-native-members.ms",
-              "line": 64,
-              "column": 5,
-              "offset": 2018
-            },
-            "end": {
-              "file": "bound-native-members.ms",
-              "line": 64,
-              "column": 8,
-              "offset": 2021
+              "offset": 1984
             },
             "replacement": "var"
           }
@@ -190,22 +205,22 @@
           "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 76,
+            "line": 72,
             "column": 22,
-            "offset": 2445
+            "offset": 2386
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 5,
-              "offset": 2360
+              "offset": 2301
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 8,
-              "offset": 2363
+              "offset": 2304
             },
             "replacement": "var"
           }
@@ -216,22 +231,22 @@
           "message": "cannot change `alias`: `alias` is declared with let, which is immutable including its contents; declare it `var alias` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 77,
+            "line": 73,
             "column": 23,
-            "offset": 2487
+            "offset": 2428
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 75,
+              "line": 71,
               "column": 5,
-              "offset": 2400
+              "offset": 2341
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 75,
+              "line": 71,
               "column": 8,
-              "offset": 2403
+              "offset": 2344
             },
             "replacement": "var"
           }
@@ -242,22 +257,22 @@
           "message": "cannot change `alias`: `alias` is declared with let, which is immutable including its contents; declare it `var alias` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 77,
-            "column": 31,
-            "offset": 2495
+            "line": 73,
+            "column": 27,
+            "offset": 2432
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 75,
+              "line": 71,
               "column": 5,
-              "offset": 2400
+              "offset": 2341
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 75,
+              "line": 71,
               "column": 8,
-              "offset": 2403
+              "offset": 2344
             },
             "replacement": "var"
           }
@@ -268,22 +283,22 @@
           "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 78,
+            "line": 74,
             "column": 23,
-            "offset": 2575
+            "offset": 2512
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 5,
-              "offset": 2360
+              "offset": 2301
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 8,
-              "offset": 2363
+              "offset": 2304
             },
             "replacement": "var"
           }
@@ -294,22 +309,22 @@
           "message": "cannot change `set_builder`: `set_builder` is declared with let, which is immutable including its contents; declare it `var set_builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 78,
-            "column": 31,
-            "offset": 2583
+            "line": 74,
+            "column": 27,
+            "offset": 2516
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 5,
-              "offset": 2360
+              "offset": 2301
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 74,
+              "line": 70,
               "column": 8,
-              "offset": 2363
+              "offset": 2304
             },
             "replacement": "var"
           }
@@ -320,22 +335,22 @@
           "message": "cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 84,
+            "line": 80,
             "column": 5,
-            "offset": 2741
+            "offset": 2674
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 83,
+              "line": 79,
               "column": 5,
-              "offset": 2705
+              "offset": 2638
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 83,
+              "line": 79,
               "column": 8,
-              "offset": 2708
+              "offset": 2641
             },
             "replacement": "var"
           }
@@ -346,22 +361,22 @@
           "message": "cannot change `builder`: `builder` is declared with let, which is immutable including its contents; declare it `var builder` to change it",
           "position": {
             "file": "bound-native-members.ms",
-            "line": 86,
+            "line": 82,
             "column": 18,
-            "offset": 2774
+            "offset": 2707
           },
           "fix": {
             "position": {
               "file": "bound-native-members.ms",
-              "line": 83,
+              "line": 79,
               "column": 5,
-              "offset": 2705
+              "offset": 2638
             },
             "end": {
               "file": "bound-native-members.ms",
-              "line": 83,
+              "line": 79,
               "column": 8,
-              "offset": 2708
+              "offset": 2641
             },
             "replacement": "var"
           }

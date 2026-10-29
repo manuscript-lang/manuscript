@@ -1,22 +1,22 @@
-from "@std/io.ms" import stdout
-from "@std/string.ms" import StringBuilder
-from "@std/time.ms" import clock
-from "@std/toml.ms" import parse
+import stdout from "@std/io.ms"
+import StringBuilder from "@std/string.ms"
+import clock from "@std/time.ms"
+import parse from "@std/toml.ms"
 
-def document(count: Int) -> String:
+fn document(count: Int) String:
     var sb = StringBuilder()
     for i in 0..count:
-        sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
+        sb.append("[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
     return sb.build()
 
-def parse_ok(text: String) -> Int:
+fn parse_ok(text: String) Int:
     if parse(text).is_ok():
         return 1
 
     return 0
 
 # Parses the document 200 times and prints the best run in microseconds.
-export def main() -> Int:
+export fn main() Int:
     let text = document(2000)
     var best = 1000000000000
     var ok = 0
@@ -29,6 +29,6 @@ export def main() -> Int:
         if elapsed < best: best = elapsed
 
     let _ignored = stdout().write(
-        f"ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
+        "ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
     )
     return 0

@@ -1,23 +1,15 @@
 # conform: tags=aliasing,control-flow,faults,interpolation,match,modules,optional,records,stdlib-bytes,stdlib-http,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/http-headers.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_ok, expect_true, fail
-from "@std/http.ms" import (
-    buffered,
-    headers,
-    HttpHeaders,
-    HttpMethod,
-    HttpRequest,
-    HttpResponse,
-    HttpExchange,
-    HttpError,
-    HttpClientOptions,
-    HttpServerOptions
-)
-from "@std/net.ms" import network
-from "@std/bytes.ms" import Bytes
+import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
+import {
+    buffered, headers, HttpHeaders, HttpMethod, HttpRequest, HttpResponse, HttpExchange,
+    HttpError, HttpClientOptions, HttpServerOptions
+} from "@std/http.ms"
+import network from "@std/net.ms"
+import Bytes from "@std/bytes.ms"
 
-def repeated_headers() -> Result[HttpHeaders, Error]:
+fn repeated_headers() Result[HttpHeaders, Error]:
     let fields = headers()
     let _first = fields.append("x-dup", "first") | try expect_ok
     let _second = fields.append("X-Dup", "second") | try expect_ok
@@ -27,10 +19,10 @@ def repeated_headers() -> Result[HttpHeaders, Error]:
     let _other = fields.append("set-cookie", "b=2") | try expect_ok
     return ok(fields)
 
-def header_failure(message: String) -> HttpResponse:
+fn header_failure(message: String) HttpResponse:
     return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
 
-def handle_headers(request: HttpRequest) -> HttpResponse:
+fn handle_headers(request: HttpRequest) HttpResponse:
     if request.method != HttpMethod.Get: return header_failure("typed request method")
 
     let received = request.headers.values("X-DUP")
@@ -39,8 +31,8 @@ def handle_headers(request: HttpRequest) -> HttpResponse:
     )
 
     let fields = match repeated_headers():
-        case ok(found): found
-        case error(cause): return header_failure(cause.message())
+        ok(found): found
+        error(cause): return header_failure(cause.message())
 
     return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
@@ -50,7 +42,7 @@ test "one header type preserves repeated values through buffered requests":
         options: HttpServerOptions(max_requests: 2)
     ) | try expect_ok
     let response = network().request(
-        method: HttpMethod.Get, url: f"http://{server.address()}/",
+        method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers()), body: ""
     ) | try expect_ok
     let metadata = response.metadata()
@@ -73,7 +65,7 @@ test "one header type preserves repeated values through buffered requests":
         )
     )
 
-def echo_headers(exchange: HttpExchange) -> Result[Unit, HttpError]:
+fn echo_headers(exchange: HttpExchange) Result[Unit, HttpError]:
     let received = exchange.headers()
     if received.values("X-DUP") != ["first", "second"]: return error(
         HttpError.InvalidData
@@ -90,7 +82,7 @@ test "streaming proxy uses the same byte-valued header type":
         options: HttpServerOptions(tls: none)
     ) | try expect_ok
     let response = network().request(
-        method: HttpMethod.Get, url: f"http://{server.address()}/",
+        method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers()), body: ""
     ) | try expect_ok
     try expect_false(
@@ -123,8 +115,8 @@ test "string lookup leaves out values that are not UTF-8":
     fields.values_bytes("RAW").get().length() | try expect_equal(2)
 
     match fields.append("bad name", "value"):
-        case ok(_): return fail("malformed name accepted")
-        case error(cause):
+        ok(_): return fail("malformed name accepted")
+        error(cause):
             try expect_equal(cause, HttpError.InvalidInput)
 
 test "empty options and an omitted request body use checked defaults":
@@ -137,7 +129,7 @@ test "empty options and an omitted request body use checked defaults":
     ) | try expect_ok
     let client = network().http_client(options: HttpClientOptions()) | try expect_ok
     let response = client.request(
-        method: HttpMethod.Get, url: f"http://{server.address()}/",
+        method: HttpMethod.Get, url: "http://{server.address()}/",
         headers: (try repeated_headers())
     ) | try expect_ok
     response.metadata().status | try expect_equal(200)

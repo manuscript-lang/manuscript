@@ -43,7 +43,7 @@ fn for_snippet_inserts_a_checked_loop() {
             .expect("snippet")
             .replace("${1:item}", "item")
             .replace("${2:items}", "[1, 2]")
-            .replace("$0", "return ()")
+            .replace("$0", "return unit")
             .replace('\n', "\n    ");
         document.text.replace_range(start..end, &insertion);
         let checked = analyze(&document, &Documents::new());
@@ -60,7 +60,7 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
     let path = workspace.path(name);
     let stale = "not valid Manuscript\n";
     std::fs::write(&path, stale).expect("disk source");
-    let source = "def value() -> Int:\n    return 7\n";
+    let source = "fn value() Int:\n    return 7\n";
     for source in [source.to_string(), source.replace('\n', "\r\n")] {
         let document = Document::new(workspace.uri(name), source);
         assert!(Path::new(&document.path()).is_absolute());

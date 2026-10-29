@@ -1,4 +1,4 @@
-export def main() -> Int:
+export fn main() Int:
     var reserved = List[Int](reserve: 1000)
     if reserved.length() != 0: return 1
 

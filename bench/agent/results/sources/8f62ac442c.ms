@@ -1,13 +1,13 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/math.ms" import max, min
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import {max, min} from "@std/math.ms"
+import read_lines from "@std/streams.ms"
 
 type Item:
     weight: Int
     value: Int
 
 # Parses a decimal number of 1 to 6 digits that is at least `floor`.
-def parse_num(text: String, floor: Int) -> Optional[Int]:
+fn parse_num(text: String, floor: Int) Optional[Int]:
     if text.length() < 1 or text.length() > 6: return none
 
     for c in text.chars():
@@ -16,7 +16,7 @@ def parse_num(text: String, floor: Int) -> Optional[Int]:
         if num >= floor: return some(num)
     return none
 
-def parse_nums(tokens: List[String], first: Int, floor: Int) -> Optional[List[Int]]:
+fn parse_nums(tokens: List[String], first: Int, floor: Int) Optional[List[Int]]:
     var nums = List[Int]()
 
     for i in first..tokens.length():
@@ -27,7 +27,7 @@ def parse_nums(tokens: List[String], first: Int, floor: Int) -> Optional[List[In
 
     return some(nums)
 
-def parse_item(token: String) -> Optional[Item]:
+fn parse_item(token: String) Optional[Item]:
     let parts = token.split(":")
     if parts.length() != 2: return none
 
@@ -36,7 +36,7 @@ def parse_item(token: String) -> Optional[Item]:
             return some(Item(weight: weight, value: value))
     return none
 
-def parse_items(tokens: List[String]) -> Optional[List[Item]]:
+fn parse_items(tokens: List[String]) Optional[List[Item]]:
     var items = List[Item]()
 
     for i in 2..tokens.length():
@@ -47,7 +47,7 @@ def parse_items(tokens: List[String]) -> Optional[List[Item]]:
 
     return some(items)
 
-def lcs(a: String, b: String) -> Int:
+fn lcs(a: String, b: String) Int:
     let x = a.to_bytes()
     let y = b.to_bytes()
     var prev = List[Int]()
@@ -68,7 +68,7 @@ def lcs(a: String, b: String) -> Int:
 
     return prev.get(y.length())
 
-def edit(a: String, b: String) -> Int:
+fn edit(a: String, b: String) Int:
     let x = a.to_bytes()
     let y = b.to_bytes()
     var prev = List[Int]()
@@ -80,7 +80,7 @@ def edit(a: String, b: String) -> Int:
         cur.append(i + 1)
 
         for j in 0..y.length():
-            let cost = 0 if x.get(i) == y.get(j) else 1
+            let cost = if x.get(i) == y.get(j): 0 else: 1
 
             cur.append(
                 min(
@@ -92,7 +92,7 @@ def edit(a: String, b: String) -> Int:
 
     return prev.get(y.length())
 
-def knap(cap: Int, items: List[Item]) -> Int:
+fn knap(cap: Int, items: List[Item]) Int:
     var best = List[Int]()
     for c in 0..(cap + 1):
         best.append(0)
@@ -106,7 +106,7 @@ def knap(cap: Int, items: List[Item]) -> Int:
     return best.get(cap)
 
 # Fewest coins summing to `amount`, or -1 when no combination works.
-def fewest_coins(amount: Int, denoms: List[Int]) -> Int:
+fn fewest_coins(amount: Int, denoms: List[Int]) Int:
     var best = List[Int]()
     best.append(0)
 
@@ -122,35 +122,35 @@ def fewest_coins(amount: Int, denoms: List[Int]) -> Int:
 
     return best.get(amount)
 
-def run(line: String) -> String:
+fn run(line: String) String:
     let tokens = line.split(" ")
     let cmd = tokens.get(0)
     if cmd == "lcs" and tokens.length() == 3:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
-            return f"{lcs(tokens.get(1), tokens.get(2))}"
+            return "{lcs(tokens.get(1), tokens.get(2))}"
     if cmd == "edit" and tokens.length() == 3:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
-            return f"{edit(tokens.get(1), tokens.get(2))}"
+            return "{edit(tokens.get(1), tokens.get(2))}"
     if cmd == "knap" and tokens.length() >= 2:
         if let cap = parse_num(tokens.get(1), 0):
             if let items = parse_items(tokens):
-                return f"{knap(cap, items)}"
+                return "{knap(cap, items)}"
 
     if cmd == "coins" and tokens.length() >= 3:
         if let amount = parse_num(tokens.get(1), 0):
             if let denoms = parse_nums(tokens, 2, 1):
                 let fewest = fewest_coins(amount, denoms)
 
-                return "impossible" if fewest < 0 else f"{fewest}"
+                return if fewest < 0: "impossible" else: "{fewest}"
 
     return "error: bad command"
 
-def is_blank(line: String) -> Bool:
-    return line.chars().all(lambda c: c == " ")
+fn is_blank(line: String) Bool:
+    return line.chars().all(fn c: c == " ")
 
-export def main() -> Int:
+export fn main() Int:
     var out = stdout()
     for line in read_lines(stdin()).get():
         if not is_blank(line):
-            out.write(f"{run(line)}\n").get()
+            out.write("{run(line)}\n").get()
     return 0

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/fs.ms\" import filesystem\n\ndef use(path: String) -> Int:\n    match filesystem().stat(path: path, follow_links: True):\n        case error(NotFound): return 1\n        case ok(_): return 0\n"
+    "fmt": "import filesystem from \"@std/fs.ms\"\n\nfn use(path: String) Int:\n    match filesystem().stat(path: path, follow_links: true):\n        error(NotFound): return 1\n        ok(_): return 0\n"
   }
 }

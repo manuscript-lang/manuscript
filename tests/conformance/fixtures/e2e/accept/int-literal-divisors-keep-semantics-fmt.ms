@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,modules,mutation,parser,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/int-literal-divisors-keep-semantics.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 test "literal divisors":
     let n = -7

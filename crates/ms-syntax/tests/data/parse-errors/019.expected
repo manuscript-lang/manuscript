@@ -1,1 +1,1 @@
-error parse 1:1:0 "imports read: from \x22path.ms\x22 import name, other"
+error parse 1:22:21 "expected 'from', found end of line; imports read: import name from \x22path.ms\x22"

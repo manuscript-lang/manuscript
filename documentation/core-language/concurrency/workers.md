@@ -9,20 +9,20 @@ A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS thre
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/test.ms" import expect_equal, expect_ok
-from "@std/workers.ms" import WorkerGroup, worker_channel
+import {Channel, ChannelError} from "@std/channels.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
+import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
-def serve(var ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
-    while True:
+fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+    while true:
         if let n = try ch.receive():
             try ch.send(n * n)
         else:
-            return ok(())
+            return ok(unit)
 
-    return ok(())
+    return ok(unit)
 
-def squares() -> Unit:
+fn squares() Unit:
     var ch = worker_channel[Int, Int]()
     let _finished = serve(var ch)
 
@@ -37,11 +37,11 @@ test "a worker answers over its channel":
 
 ## How workers run
 
-- `spawn(entry)` starts `entry`, the name of a top-level `def` that takes no arguments and returns `Unit`, and returns a `Result[Worker[In, Out], WorkerError]`. A lambda, a local function or a captured value is a compile error: a worker shares no memory with its starter, so there is nothing to capture. Send what the worker needs through the channel.
+- `spawn(entry)` starts `entry`, the name of a top-level `fn` that takes no arguments and returns `Unit`, and returns a `Result[Worker[In, Out], WorkerError]`. A closure, a local function or a captured value is a compile error: a worker shares no memory with its starter, so there is nothing to capture. Send what the worker needs through the channel.
 - The worker takes its end of the channel with `worker_channel[Send, Receive]()`; the starter holds the other in `worker.channel`. A `WorkerGroup[In, Out]` sends `In` to its workers and receives `Out` from them.
 - When the starter and its workers all wait on each other (the starter in `receive` or `result()`, a worker in `receive`, with no timer, descriptor wait or blocking call pending anywhere), the program stops with a deadlock fault on the main isolate instead of hanging, as it does within one isolate.
 - Every worker has its own memory (2 GiB of address space, reserved lazily), scheduler and task tree. Tasks inside a worker run cooperatively, as in the main program.
-- Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: True` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
+- Every message is encoded as JSON and decoded on the other side, so message types are the ones `@std/json.ms` reads and writes. Transport uses ordinary `stringify`, not its opt-in `strict: true` mode; a typed channel does not guarantee a lossless JSON representation for every type. Use plain serializable data and check send/receive errors. `send` waits while the other side has 16 unread messages.
 - `worker.wait()` closes the starter's end, waits for the worker to end, and returns `Result[Unit, WorkerError]`. A worker that is reading ends when its input closes. `worker.cancel()` stops one that is not.
 - Manuscript faults caught by the worker runtime are reported through `wait()` as `WorkerError.Faulted(report)`, with the fault's message and stack. Worker threads are not a process-crash isolation boundary. A cancelled worker gives `WorkerError.Cancelled`.
 - Leaving the scope of the group binding cancels workers that are still running, closes their channels and waits for them.
@@ -55,12 +55,12 @@ Send plain serializable data. Messages reconstruct values through JSON; acceptan
 
 ## Serving on several cores
 
-Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: True)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
+Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: true)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
 
 ```manuscript
-def serve_loop() -> Unit:
+fn serve_loop() Unit:
     var ch = worker_channel[Int, Int]()
-    let options = HttpServerOptions(shared: True)
+    let options = HttpServerOptions(shared: true)
     if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
         let server = acquired
         let _stopped = server.wait()

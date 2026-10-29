@@ -1,30 +1,30 @@
 # conform: tags=control-flow,diagnostics,faults,generics,match,modules,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
-from "@std/test.ms" import expect_equal, expect_false, expect_true, fail
-from "@std/process.ms" import control
-from "@std/process.ms" import arguments
-from "@std/random.ms" import entropy
-from "@std/fs.ms" import filesystem
-from "@std/process.ms" import system
-from "@std/time.ms" import wall_clock
-from "@std/random.ms" import uuid_v4
-from "@std/random.ms" import secure_int
-from "@std/time.ms" import parse_timestamp
-from "@std/fs.ms" import posix
-from "@std/fs.ms" import win32
+import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
+import control from "@std/process.ms"
+import arguments from "@std/process.ms"
+import entropy from "@std/random.ms"
+import filesystem from "@std/fs.ms"
+import system from "@std/process.ms"
+import wall_clock from "@std/time.ms"
+import uuid_v4 from "@std/random.ms"
+import secure_int from "@std/random.ms"
+import parse_timestamp from "@std/time.ms"
+import posix from "@std/fs.ms"
+import win32 from "@std/fs.ms"
 
-def common_result[T, E: Error](result: Result[T, E]) -> Result[T, Error]:
+fn common_result[T, E: Error](result: Result[T, E]) Result[T, Error]:
     match result:
-        case ok(value):
+        ok(value):
             return ok(value)
-        case error(cause):
+        error(cause):
             return error(cause)
 
-def exercise(path: String) -> Result[Unit, Error]:
+fn exercise(path: String) Result[Unit, Error]:
     let _written = try common_result(
         result: filesystem().write_file(
-            path: path, data: "hello", replace: False
+            path: path, data: "hello", replace: false
         )
     )
     try expect_false(
@@ -36,7 +36,7 @@ def exercise(path: String) -> Result[Unit, Error]:
     )
 
     let info = try common_result(
-        result: filesystem().stat(path: path, follow_links: True)
+        result: filesystem().stat(path: path, follow_links: true)
     )
     info.size | try expect_equal(5)
     (not info.directory) | try expect_true
@@ -77,7 +77,7 @@ def exercise(path: String) -> Result[Unit, Error]:
 
     var watcher = try common_result(
         result: filesystem().watch_native(
-            path: path, recursive: False, max_entries: 4, max_events: 16,
+            path: path, recursive: false, max_entries: 4, max_events: 16,
             overflow: "error"
         )
     )
@@ -109,16 +109,16 @@ def exercise(path: String) -> Result[Unit, Error]:
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(
-        result: filesystem().remove(path: path, recursive: False)
+        result: filesystem().remove(path: path, recursive: false)
     )
-    return ok(())
+    return ok(unit)
 
-export def main() -> Int:
+export fn main() Int:
     let path = arguments().get(index: 0, default: "")
     if path == "": return 2
 
     match exercise(path: path):
-        case ok(_):
+        ok(_):
             return 0
-        case error(_):
+        error(_):
             return 1

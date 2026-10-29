@@ -12,7 +12,7 @@ Core-language fixtures in `tests/e2e/testdata/accept/` (`cl-*.ms`) hold independ
 Tests use `test "name":` blocks and ordinary `if`/`return` guards. Import `panic` from `@std/core.ms` and return `panic(message: ...)` on failure; a bare `return` passes a `Unit` test. Control fake I/O and virtual clocks around runtime transitions.
 
 ```manuscript
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "checked decrement":
     let value = 3

@@ -4,8 +4,8 @@
 export type Value:
     value: Int
 
-export def read(value: Value) -> Int:
+export fn read(value: Value) Int:
     return value.value
 
-def hidden() -> Int:
+fn hidden() Int:
     return 1

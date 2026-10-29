@@ -13,15 +13,15 @@
         "position": {
           "file": "pkg-checker-checkinvalidbounds-2.ms",
           "line": 4,
-          "column": 18,
-          "offset": 162
+          "column": 17,
+          "offset": 161
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-checker-checkinvalidbounds-2.ms:4:18: type: a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | def recursive[T: T](value: T) -> Unit: return\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-checker-checkinvalidbounds-2.ms:4:17: type: a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interface\n   |\n 4 | fn recursive[T: T](value: T) Unit: return\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

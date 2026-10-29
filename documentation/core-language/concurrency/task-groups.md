@@ -9,22 +9,22 @@ A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its sc
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal, expect_ok
+import TaskGroup from "@std/tasks.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
 
-def square(n: Int) -> Int:
+fn square(n: Int) Int:
     return n * n
 
 test "a group collects its results in start order":
     let group = TaskGroup[Int]()
     for n in [1, 2, 3]:
-        group.spawn(lambda ch: square(n))
+        group.spawn(fn ch: square(n))
     group.results() | try expect_ok | try expect_equal([1, 4, 9])
 ```
 
 ## How tasks run
 
-- `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. A task that sends no messages ignores its channel: `lambda ch: square(n)`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
+- `spawn(entry)` starts `entry`, a function that takes the task's end of its channel and returns `T`, and returns a `Task[T]`. A task that sends no messages ignores its channel: `fn ch: square(n)`. The task first runs when the caller waits, in `result()`, `results()`, `wait()` or any call that suspends (sleeping, I/O).
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
@@ -32,7 +32,7 @@ test "a group collects its results in start order":
 - A task cancelled before it first ran never starts.
 - Files, connections and other resources bound inside a task close when the task leaves their scope. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
-- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: True`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
+- A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: true`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
 - A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `worker.wait()`. This does not isolate native crashes from the rest of the process.
 
 ## Timeouts
@@ -41,12 +41,12 @@ A task has no time limit unless you give one. `spawn(entry, timeout: nanoseconds
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/channels.ms" import Channel
-from "@std/tasks.ms" import TaskError, TaskGroup
-from "@std/test.ms" import expect_equal, expect_error
-from "@std/time.ms" import nanoseconds, sleep
+import Channel from "@std/channels.ms"
+import {TaskError, TaskGroup} from "@std/tasks.ms"
+import {expect_equal, expect_error} from "@std/test.ms"
+import {nanoseconds, sleep} from "@std/time.ms"
 
-def wait_a_minute(ch: Channel[Unit, Unit]) -> Int:
+fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
     sleep(nanoseconds(60000000000))
     return 1
 
@@ -56,7 +56,7 @@ test "a task that passes its timeout is cancelled":
     task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
-`cancelled()` from `@std/tasks.ms` returns `True` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `True` inside scope-end cleanups.
+`cancelled()` from `@std/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside scope-end cleanups.
 
 ## What a task may use
 
@@ -70,18 +70,18 @@ Values reach a task by being captured or sent on its channel, and come back as m
 
 <!-- manuscript-example: test -->
 ```manuscript
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/tasks.ms" import TaskGroup
-from "@std/test.ms" import expect_equal, expect_ok
+import {Channel, ChannelError} from "@std/channels.ms"
+import TaskGroup from "@std/tasks.ms"
+import {expect_equal, expect_ok} from "@std/test.ms"
 
-def square_all(ch: Channel[Int, Int]) -> Result[Unit, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch
-    while True:
+    while true:
         if let n = try c.receive():
             try c.send(n * n)
         else:
-            return ok(())
-    return ok(())
+            return ok(unit)
+    return ok(unit)
 
 test "a task answers messages on its channel":
     let group = TaskGroup[Result[Unit, ChannelError], Int, Int]()

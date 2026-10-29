@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "from \"@std/archive.ms\" import compress, CompressionFormat, CompressionError\nfrom \"@std/bytes.ms\" import Bytes\n\ndef forward[T](item: T) -> T: item\n"
+    "fmt": "import {compress, CompressionFormat, CompressionError} from \"@std/archive.ms\"\nimport Bytes from \"@std/bytes.ms\"\n\nfn forward[T](item: T) T: item\n"
   }
 }

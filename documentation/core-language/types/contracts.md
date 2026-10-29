@@ -9,35 +9,35 @@ An interface is an operation contract: implementations must supply the declared 
 
 ```manuscript
 interface Payments:
-    def charge(amount: Money) -> Result[Receipt, PaymentError]
+    fn charge(amount: Money) Result[Receipt, PaymentError]
 ```
 
 ## Explicit implementations
 
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `def reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see the [counter example](../../learn/tour.md#behavior-on-types). The relationship is always declared, never inferred from matching names.
 
 `impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
 
 ```manuscript
 interface Increment:
-    def apply(value: Int) -> Int
+    fn apply(value: Int) Int
 
 type Offset:
     delta: Int
 
 impl Increment for Offset:
-    def apply(value: Int) -> Int:
+    fn apply(value: Int) Int:
         return value + self.delta
 ```
 
 `self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var def` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
+After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; labels and order are part of [function identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
 
 ```manuscript
 # Rejected: amount does not match the contract's value label.
 impl Increment for Offset:
-    def apply(amount: Int) -> Int:
+    fn apply(amount: Int) Int:
         return amount + self.delta
 ```
 
@@ -53,16 +53,16 @@ export type Offset:
 Another module can add its own implementation:
 
 ```text
-from "./offset.ms" import Offset
+import Offset from "./offset.ms"
 
 export interface Double:
-    def doubled() -> Int
+    fn doubled() Int
 
 impl Double for Offset:
-    def doubled() -> Int:
+    fn doubled() Int:
         return self.delta * 2
 
-export def double_view(value: Offset) -> Double:
+export fn double_view(value: Offset) Double:
     return value
 ```
 
@@ -83,13 +83,13 @@ An implementation uses its receiver declaration's generic parameters; only those
 
 ```manuscript
 interface ReadValue[T]:
-    def get() -> ref T
+    fn get() ref T
 
 type Box[T]:
     value: T
 
 impl ReadValue[T] for Box[T]:
-    def get() -> ref T:
+    fn get() ref T:
         return self.value
 ```
 
@@ -99,10 +99,10 @@ Interface parameter bounds can restrict an implementation without restricting th
 
 ```manuscript
 interface SameValue[T: Equal]:
-    def same(other: T) -> Bool
+    fn same(other: T) Bool
 
 impl SameValue[T] for Box[T]:
-    def same(other: T) -> Bool:
+    fn same(other: T) Bool:
         return self.value == other
 ```
 
@@ -113,7 +113,7 @@ Two blocks overlap if their receiver and contract applications can match the sam
 ```manuscript
 # Rejected alongside the generic block above: both apply to Box[Int].
 impl ReadValue[Int] for Box[Int]:
-    def get() -> Int:
+    fn get() Int:
         return self.value
 ```
 
@@ -125,10 +125,10 @@ An interface operation, an implementation method and an inherent method may decl
 
 ```manuscript
 interface Ranked[T]:
-    def best_by[K: Comparable](key: Callable[[T], K]) -> Optional[T]
+    fn best_by[K: Comparable](key: fn(T) K) Optional[T]
 
 impl Ranked[Int] for Scores:
-    def best_by[K: Comparable](key: Callable[[Int], K]) -> Optional[Int]:
+    fn best_by[K: Comparable](key: fn(Int) K) Optional[Int]:
         ...
 ```
 
@@ -141,7 +141,7 @@ A value whose type has a declared implementation of an interface converts implic
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (record field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. The interface value owns a copy when the operand is borrowed.
 
 ```manuscript
-def use_increment(operation: Increment) -> Int:
+fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
 let offset = Offset(2)
@@ -159,7 +159,7 @@ A receiver or generic parameter may call an operation directly when exactly one 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
-def invoke[T: Increment](operation: T) -> Int:
+fn invoke[T: Increment](operation: T) Int:
     let view: Increment = operation
     return view.apply(1)
 

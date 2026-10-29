@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def probe(flag: Bool) -> Unit:\n    var i = 0\n    if flag:\n        while i < 1000:\n            i += 1\n"
+    "fmt": "fn probe(flag: Bool) Unit:\n    var i = 0\n    if flag:\n        while i < 1000:\n            i += 1\n"
   }
 }

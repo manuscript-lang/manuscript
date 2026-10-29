@@ -1,35 +1,35 @@
 # conform: tags=records,interfaces,mutation,stdlib-shared,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-from "@std/shared.ms" import share, Shared
-from "@std/sync.ms" import lock
-from "@std/test.ms" import expect_equal, expect_fault
+import {share, Shared} from "@std/shared.ms"
+import lock from "@std/sync.ms"
+import {expect_equal, expect_fault} from "@std/test.ms"
 
 type Config:
     name: String
     tags: List[String]
 
 interface Speaker:
-    def say() -> String
+    fn say() String
 
 type Dog:
     name: String
 
 impl Speaker for Dog:
-    def say() -> String:
+    fn say() String:
         return self.name + " says woof"
 
 type Holder:
     config: Shared[Config]
     speaker: Shared[Speaker]
 
-def make(name: String) -> Holder:
+fn make(name: String) Holder:
     let config = share(
         Config(name.clone(), ["a-tag-long-enough-for-the-heap", "second"])
     )
     let speaker = share[Speaker](Dog(name))
     return Holder(config, speaker)
 
-def child(holder: Holder) -> Holder:
+fn child(holder: Holder) Holder:
     return Holder(holder.config, holder.speaker)
 
 test "copies of a shared value read the same payload":
@@ -50,10 +50,10 @@ type Counter:
     values: List[Int]
 
 impl Counter:
-    var def bump() -> Unit:
+    var fn bump() Unit:
         self.values.append(1)
 
-def bump(shared: Shared[Counter]) -> Unit:
+fn bump(shared: Shared[Counter]) Unit:
     var guard = lock(shared)
     guard.value.bump()
 
@@ -68,7 +68,7 @@ test "a read while the payload is locked faults":
     let shared = share(Counter([]))
     var held = lock(shared)
     let message = try expect_fault(
-        lambda () -> Unit:
+        fn() Unit:
             let _length = shared.get().values.length()
     )
     try expect_equal(message, "shared value is in use")
@@ -76,11 +76,11 @@ test "a read while the payload is locked faults":
     held.close()
     try expect_equal(shared.get().values.length(), 1)
 
-def append_seven(shared: Shared[List[Int]]) -> Unit:
+fn append_seven(shared: Shared[List[Int]]) Unit:
     var items = lock(shared)
     items.value.append(7)
 
-def drop_while_locked() -> Unit:
+fn drop_while_locked() Unit:
     let shared: Shared[List[Int]] = share([])
     append_seven(shared)
 

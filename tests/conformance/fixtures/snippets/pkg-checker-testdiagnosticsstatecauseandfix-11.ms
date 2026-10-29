@@ -4,5 +4,5 @@
 type Optional:
     x: Int
 
-def f(o: Optional[Int]) -> Int:
+fn f(o: Optional[Int]) Int:
     return 0

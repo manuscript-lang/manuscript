@@ -1,5 +1,5 @@
-from "@std/test.ms" import expect_equal, expect_false
-from "@std/string.ms" import compile, RegexError
+import {expect_equal, expect_false} from "@std/test.ms"
+import {compile, RegexError} from "@std/string.ms"
 
 test "regex receivers execute matching replacement and empty results":
     let regex = try compile("[0-9]+")
@@ -22,13 +22,13 @@ test "regex rejects invalid expressions and exhausted budgets":
     try expect_equal(regex.replace_all("1", "long", 3), output_limit)
 
 test "regex captures groups spans and splits":
-    let date = try compile("(?P<y>[0-9]{4})-(?P<m>[0-9]{2})")
+    let date = try compile("(?P<y>[0-9]\{4\})-(?P<m>[0-9]\{2\})")
     try expect_equal(date.captures("on 2026-10 ok"), ["2026-10", "2026", "10"])
     try expect_equal(date.captures("none"), [])
     try expect_equal(date.named_captures("2026-10") ["y"], "2026")
-    try expect_equal(date.named_captures("none").is_empty(), True)
+    try expect_equal(date.named_captures("none").is_empty(), true)
     try expect_equal(date.find_span("on 2026-10").get(), [3, 10])
-    try expect_equal(date.find_span("none").is_none(), True)
+    try expect_equal(date.find_span("none").is_none(), true)
     try expect_equal(
         (try date.captures_all("2026-10 2027-11")),
         [["2026-10", "2026", "10"], ["2027-11", "2027", "11"]]
@@ -40,7 +40,7 @@ test "regex captures groups spans and splits":
 
     let swap = try compile("(\\w+)@(?P<host>\\w+)")
     try expect_equal(
-        (try swap.replace_template("me@home x@y", "${host}:$1 $$")), "home:me $ y:x $"
+        (try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
     )
 
     let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)

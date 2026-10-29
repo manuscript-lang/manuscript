@@ -1,4 +1,4 @@
-def f() -> Int:
+fn f() Int:
     var rows = [[1], [2]]
     var a = rows[0]
     var b = rows[1]  # error: cannot borrow mutably

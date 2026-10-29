@@ -14,7 +14,7 @@
           "file": "pkg-compiler-testoptionalmethodsrejectinvalidcontracts-3.ms",
           "line": 5,
           "column": 18,
-          "offset": 246
+          "offset": 242
         }
       },
       {
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-3.ms:5:18: resolution: unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional\n   |\n 5 |     return value.is_some()\n   |                  ^\n<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-3.ms:4:1: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | def wrong(value: Result[Int, String]) -> Bool:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-3.ms:5:18: resolution: unknown or ambiguous member is_some on Result[Int, String]; did you mean 'is_ok'?; available: and_then, err, get, get_or_else, is_error, is_ok, map, map_error, or_else, to_optional\n   |\n 5 |     return value.is_some()\n   |                  ^\n<DIR>/pkg-compiler-testoptionalmethodsrejectinvalidcontracts-3.ms:4:1: type: String does not satisfy Error; use a type that implements it\n   |\n 4 | fn wrong(value: Result[Int, String]) Bool:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

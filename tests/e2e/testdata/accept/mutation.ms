@@ -1,31 +1,31 @@
-from "@std/test.ms" import expect_equal, expect_false, expect_not_equal, fail
+import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
 
 interface Counter:
-    var def increment() -> Unit
+    var fn increment() Unit
 
 type Val:
     val: Int
 
 impl Counter for Val:
-    var def increment() -> Unit:
+    var fn increment() Unit:
         self.val += 1
 
 type Box[T]:
     value: T
     child: Val
 
-def replace[T](var box: Box[T], value: T) -> Unit:
+fn replace[T](var box: Box[T], value: T) Unit:
     box.value = value
 
-def receiver(var log: List[Int], value: Val) -> Val:
+fn receiver(var log: List[Int], value: Val) Val:
     log.append(1)
     return value
 
-def replacement(var log: List[Int]) -> Int:
+fn replacement(var log: List[Int]) Int:
     log.append(2)
     return 7
 
-def bump(var value: Val) -> Unit:
+fn bump(var value: Val) Unit:
     value.val += 1
 
 test "record fields mutate through methods views and var parameters":
@@ -95,7 +95,7 @@ test "for loop iterates a snapshot while the source changes":
 
 test "callbacks over a snapshot leave the source writable":
     var values = [1, 2, 3]
-    let result = values.clone().map(lambda value: return value + 1)
+    let result = values.clone().map(fn value: return value + 1)
     values.fill(9, 0, 3)
     try expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))
 
@@ -189,15 +189,15 @@ test "alternative clones retain tags and payloads":
     let copy = original.clone()
 
     match copy:
-        case Choice.Present(value):
+        Choice.Present(value):
             try expect_equal(value.val, 1)
-        case Choice.Missing:
+        Choice.Missing:
             return fail("clone changed the alternative tag")
 
     match original:
-        case Choice.Present(value):
+        Choice.Present(value):
             try expect_equal(value.val, 1)
-        case Choice.Missing:
+        Choice.Missing:
             return fail("clone changed the original alternative")
 
     let missing = Choice.Missing.clone()

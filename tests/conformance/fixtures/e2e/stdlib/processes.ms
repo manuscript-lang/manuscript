@@ -1,21 +1,21 @@
 # conform: tags=closures,scope-cleanup,stdlib-channels,stdlib-processes,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
-from "@std/channels.ms" import Channel, ChannelError
-from "@std/core.ms" import panic
-from "@std/io.ms" import read_line, stderr, stdin, stdout
-from "@std/process.ms" import Stdio
-from "@std/processes.ms" import ProcessError, ProcessGroup
-from "@std/test.ms" import expect_equal, expect_error, expect_ok
+import {Channel, ChannelError} from "@std/channels.ms"
+import panic from "@std/core.ms"
+import {read_line, stderr, stdin, stdout} from "@std/io.ms"
+import Stdio from "@std/process.ms"
+import {ProcessError, ProcessGroup} from "@std/processes.ms"
+import {expect_equal, expect_error, expect_ok} from "@std/test.ms"
 
 type Job:
     name: String
     sizes: List[Int]
 
-def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
+fn square_all(ch: Channel[Int, Int]) Result[Int, ChannelError]:
     var c = ch
     var count = 0
 
-    while True:
+    while true:
         if let n = try c.receive():
             try c.send(n * n)
             count += 1
@@ -24,15 +24,15 @@ def square_all(ch: Channel[Int, Int]) -> Result[Int, ChannelError]:
 
     return ok(count)
 
-def describe(ch: Channel[Unit, Unit]) -> Job:
+fn describe(ch: Channel[Unit, Unit]) Job:
     return Job(name: "child", sizes: [1, 2, 3])
 
-def quiet(ch: Channel[Unit, Unit]) -> Unit:
-    return ()
+fn quiet(ch: Channel[Unit, Unit]) Unit:
+    return unit
 
-def shout(ch: Channel[Unit, Unit]) -> Int:
+fn shout(ch: Channel[Unit, Unit]) Int:
     match read_line(stdin()):
-        case ok(next):
+        ok(next):
             let text = next.get("")
             if stdout().write(text + "!\n").is_error():
                 return -1
@@ -40,21 +40,21 @@ def shout(ch: Channel[Unit, Unit]) -> Int:
                 return -2
 
             return text.length()
-        case error(_):
+        error(_):
             return -3
 
     return -4
 
-def crash(ch: Channel[Unit, Unit]) -> Unit:
+fn crash(ch: Channel[Unit, Unit]) Unit:
     panic("the child faults on purpose")
 
-def echo_jobs(ch: Channel[Job, Job]) -> Int:
+fn echo_jobs(ch: Channel[Job, Job]) Int:
     var c = ch
     var count = 0
 
-    while True:
+    while true:
         match c.receive():
-            case ok(next):
+            ok(next):
                 if let job = next:
                     if c.send(
                         Job(
@@ -66,12 +66,12 @@ def echo_jobs(ch: Channel[Job, Job]) -> Int:
                     count += 1
                 else:
                     return count
-            case error(_):
+            error(_):
                 return -2
 
     return count
 
-def report(ch: Channel[Int, Unit]) -> Int:
+fn report(ch: Channel[Int, Unit]) Int:
     var c = ch
     for n in [10, 20, 30]:
         if c.send(n).is_error():
@@ -148,7 +148,7 @@ test "a child that faults is data, not a parent fault":
     var child = group.spawn(crash, stderr: Stdio.Null) | try expect_ok
     child.result() | try expect_error | try expect_equal(ProcessError.Exited(67))
 
-    let _refused = child.channel.send(()) | try expect_error
+    let _refused = child.channel.send(unit) | try expect_error
 
 test "piped standard streams reach the parent":
     let group = ProcessGroup[Int]()
@@ -168,8 +168,8 @@ test "piped standard streams reach the parent":
 test "a stream that is not piped is closed":
     let group = ProcessGroup[Unit]()
     var child = group.spawn(quiet, stdout: Stdio.Null) | try expect_ok
-    try expect_equal(child.stdout().read().is_ok(), False)
-    try expect_equal(child.stdin().write("x").is_ok(), False)
+    try expect_equal(child.stdout().read().is_ok(), false)
+    try expect_equal(child.stdin().write("x").is_ok(), false)
     child.result() | try expect_ok
 
 test "process errors describe themselves":

@@ -1,15 +1,15 @@
 # conform: tags=lists,faults,perf,tier-core
 # conform: phase=run
 # conform: origin=range pass: relational bounds proofs
-from "@std/io.ms" import stdout
+import stdout from "@std/io.ms"
 
-def next_sum(a: List[Int]) -> Int:
+fn next_sum(a: List[Int]) Int:
     var t = 0
     for i in 0..a.length() - 1:
         t = t + a[i + 1]
     return t
 
-def mirror(a: List[Int]) -> Int:
+fn mirror(a: List[Int]) Int:
     var b = a.clone()
 
     for i in 0..b.length() / 2:
@@ -20,13 +20,13 @@ def mirror(a: List[Int]) -> Int:
 
     return b[0] * 100 + b[b.length() - 1]
 
-def stride(a: List[Int]) -> Int:
+fn stride(a: List[Int]) Int:
     var t = 0
     for i in 0..a.length() / 3:
         t = t + a[i * 3] + a[i * 3 + 2]
     return t
 
-def search(a: List[Int], want: Int) -> Int:
+fn search(a: List[Int], want: Int) Int:
     var lo = 0
     var hi = a.length() - 1
 
@@ -42,26 +42,26 @@ def search(a: List[Int], want: Int) -> Int:
 
     return -1
 
-def nested(g: List[List[Int]]) -> Int:
+fn nested(g: List[List[Int]]) Int:
     var t = 0
     for i in 0..g.length():
         for j in 0..g[i].length():
             t = t + g[i][j]
     return t
 
-def checked(a: List[Int], i: Int) -> Int:
+fn checked(a: List[Int], i: Int) Int:
     return a.get(index: i, default: -1)
 
-export def main() -> Int:
+export fn main() Int:
     let a = [3, 1, 4, 1, 5, 9, 2, 6]
     let _ = stdout().write(
-        f"{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
+        "{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
     )
     let _ = stdout().write(
-        f"{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
+        "{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
     )
-    let _ = stdout().write(f"{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
+    let _ = stdout().write("{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
     let _ = stdout().write(
-        f"{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
+        "{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
     )
     return 0

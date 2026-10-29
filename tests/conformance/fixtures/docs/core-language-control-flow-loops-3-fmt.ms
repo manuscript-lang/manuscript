@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,modules,mutation,parser,stdlib-faults,testing,tier-stdlib
 # conform: phase=parse
 # conform: origin=documentation/core-language/control-flow/loops.md:43
-from "@std/core.ms" import panic
+import panic from "@std/core.ms"
 
 test "five iterations":
     var index = 0

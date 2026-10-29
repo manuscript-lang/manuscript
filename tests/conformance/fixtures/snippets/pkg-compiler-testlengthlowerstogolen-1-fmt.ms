@@ -1,7 +1,7 @@
 # conform: tags=formatter,lists,modules,parser,stdlib-bytes,tier-stdlib
 # conform: phase=parse
 # conform: origin=pkg/compiler/lower_length_test.go:12 TestLengthLowersToGoLen
-from "@std/bytes.ms" import Bytes
+import Bytes from "@std/bytes.ms"
 
-def count(items: List[Int], data: Bytes) -> Int:
+fn count(items: List[Int], data: Bytes) Int:
     return items.length() + data.length()

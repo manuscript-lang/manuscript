@@ -1,9 +1,9 @@
 interface Names:
-    def names() -> ref List[String]
+    fn names() ref List[String]
 
 type Holder:
     source: Names
 
 impl Holder:
-    def listed() -> ref List[String]:
+    fn listed() ref List[String]:
         return self.source.names()

@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interfaces,modules,parser,tier-core
 # conform: phase=parse
 # conform: origin=pkg/compiler/match_bounds_test.go:146 TestBoundedMatchRejectsLocalEvidence
-from "./domain.ms" import Shape, Tag
+import {Shape, Tag} from "./domain.ms"
 
 impl Tag for Shape:
-    def tag() -> Int: return 0
+    fn tag() Int: return 0

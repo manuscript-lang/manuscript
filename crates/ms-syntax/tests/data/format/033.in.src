@@ -5,10 +5,10 @@ export type Mode:
     case Off
     case On
     
-export def shifted() -> Int:
+export fn shifted() Int:
     return Point(10).x + 1
 
-export def flip() -> Int:
+export fn flip() Int:
     match Mode.Off:
-        case Mode.Off: return 2
-        case _: return 0
+        Mode.Off: return 2
+        _: return 0

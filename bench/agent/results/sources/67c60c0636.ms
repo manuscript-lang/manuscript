@@ -1,5 +1,5 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
 
 type Record:
     timestamp: String
@@ -15,10 +15,10 @@ type PathStat:
     count: Int
     total: Int
 
-def is_digits(text: String) -> Bool:
-    return text.length() > 0 and text.chars().all(lambda c: "0123456789".contains(c))
+fn is_digits(text: String) Bool:
+    return text.length() > 0 and text.chars().all(fn c: "0123456789".contains(c))
 
-def parse(line: String) -> Optional[Record]:
+fn parse(line: String) Optional[Record]:
     let fields = line.split(" ")
     if fields.length() != 6: return none
 
@@ -43,12 +43,12 @@ def parse(line: String) -> Optional[Record]:
         )
     )
 
-def rank(a: PathStat, b: PathStat) -> Int:
+fn rank(a: PathStat, b: PathStat) Int:
     if a.count != b.count: return b.count - a.count
 
     return a.path.compare(b.path)
 
-export def main() -> Int:
+export fn main() Int:
     var records = List[Record]()
     var malformed = 0
     var levels = Map[String, Int]()
@@ -57,7 +57,7 @@ export def main() -> Int:
         if line.trim().is_empty(): continue
 
         if let record = parse(line):
-            levels.update(record.level.clone(), 0, lambda n: n + 1)
+            levels.update(record.level.clone(), 0, fn n: n + 1)
             records.append(record)
         else:
             malformed += 1
@@ -72,34 +72,34 @@ export def main() -> Int:
         let bucket = r.status / 100
 
         if bucket == 2: s2 += 1
-        elif bucket == 3: s3 += 1
-        elif bucket == 4: s4 += 1
-        elif bucket == 5: s5 += 1
+        else if bucket == 3: s3 += 1
+        else if bucket == 4: s4 += 1
+        else if bucket == 5: s5 += 1
         else: s_other += 1
 
     var lines = List[String]()
-    lines.append(f"valid: {records.length()}")
-    lines.append(f"malformed: {malformed}")
-    lines.append(f"DEBUG: {levels.get_or("DEBUG", 0)}")
-    lines.append(f"INFO: {levels.get_or("INFO", 0)}")
-    lines.append(f"WARN: {levels.get_or("WARN", 0)}")
-    lines.append(f"ERROR: {levels.get_or("ERROR", 0)}")
-    lines.append(f"status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}")
+    lines.append("valid: {records.length()}")
+    lines.append("malformed: {malformed}")
+    lines.append("DEBUG: {levels.get_or("DEBUG", 0)}")
+    lines.append("INFO: {levels.get_or("INFO", 0)}")
+    lines.append("WARN: {levels.get_or("WARN", 0)}")
+    lines.append("ERROR: {levels.get_or("ERROR", 0)}")
+    lines.append("status: 2xx={s2} 3xx={s3} 4xx={s4} 5xx={s5} other={s_other}")
 
     if records.length() == 0:
         lines.append("p95: 0")
     else:
-        let sorted_records = records.sorted(lambda a, b: a.latency - b.latency)
+        let sorted_records = records.sorted(fn a, b: a.latency - b.latency)
         let n = sorted_records.length()
         let rank_index = (95 * n + 99) / 100 - 1
-        lines.append(f"p95: {sorted_records[rank_index].latency_text}")
+        lines.append("p95: {sorted_records[rank_index].latency_text}")
 
         var slowest = 0
         for i in 0..records.length():
             if records[i].latency > records[slowest].latency: slowest = i
 
         let s = records[slowest]
-        lines.append(f"slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
+        lines.append("slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
 
     lines.append("top:")
 
@@ -108,8 +108,8 @@ export def main() -> Int:
         var totals = Map[String, Int]()
 
         for r in records:
-            counts.update(r.path, 0, lambda n: n + 1)
-            totals.update(r.path, 0, lambda t: t + r.latency)
+            counts.update(r.path, 0, fn n: n + 1)
+            totals.update(r.path, 0, fn t: t + r.latency)
 
         var stats = List[PathStat]()
         for p in counts.keys():
@@ -121,11 +121,11 @@ export def main() -> Int:
             )
         stats.sort(rank)
 
-        let shown = stats.length() if stats.length() < 3 else 3
+        let shown = if stats.length() < 3: stats.length() else: 3
 
         for i in 0..shown:
             let s = stats[i]
-            lines.append(f"{s.path} {s.count} avg={s.total / s.count}")
+            lines.append("{s.path} {s.count} avg={s.total / s.count}")
 
     stdout().write(lines.join("\n") + "\n").get()
     return 0

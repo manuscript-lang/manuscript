@@ -1,12 +1,12 @@
 # conform: tags=diagnostics,match,optional,tier-core
 # conform: phase=check
 # conform: origin=pkg/tooling/nested_match_lint_test.go:28 TestNestedMatchLint
-def inner(value: Optional[Int]) -> Int:
+fn inner(value: Optional[Int]) Int:
     return match value:
-        case some(n): n
-        case none: 0
+        some(n): n
+        none: 0
 
-def use(value: Optional[Int]) -> Int:
+fn use(value: Optional[Int]) Int:
     return match value:
-        case some(_): inner(value)
-        case none: 0
+        some(_): inner(value)
+        none: 0

@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a module",
+        "message": "unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a module",
         "position": {
           "file": "internal-cli-testtestjsoncompilefailureandunsupportedmodes-1.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/internal-cli-testtestjsoncompilefailureandunsupportedmodes-1.ms:5:13: resolution: unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'def unknown_name(...) -> T:', or import it from a module\n   |\n 5 |     let x = unknown_name\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/internal-cli-testtestjsoncompilefailureandunsupportedmodes-1.ms:5:13: resolution: unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a module\n   |\n 5 |     let x = unknown_name\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

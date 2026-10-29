@@ -7,18 +7,18 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'global' is not a keyword; a def sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly",
+        "message": "'global' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly",
         "position": {
           "file": "foreign-global.ms",
           "line": 5,
           "column": 5,
-          "offset": 134
+          "offset": 130
         },
         "end": {
           "file": "foreign-global.ms",
           "line": 5,
           "column": 11,
-          "offset": 140
+          "offset": 136
         }
       }
     ],

@@ -1,8 +1,8 @@
 # conform: tags=aliasing,faults,formatter,modules,parser,stdlib-net,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/net.ms
-from "@std/test.ms" import expect_equal, expect_error, expect_false
-from "@std/net.ms" import network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily
+import {expect_equal, expect_error, expect_false} from "@std/test.ms"
+import {network, parse_ip, parse_cidr, contains_ip, NetworkError, IpFamily} from "@std/net.ms"
 
 test "IP parsing CIDR normalization and containment":
     try expect_equal((try parse_ip("2001:0db8::1")).text(), "2001:db8::1")
@@ -49,7 +49,7 @@ test "UDP loopback preserves datagram data and sender":
     )
 
 test "network restriction denies admission and close rejects acquisitions":
-    let restricted = try network().restrict([], [], allow_listen: False)
+    let restricted = try network().restrict([], [], allow_listen: false)
     var _scoped = restricted
     try expect_false(
         (
@@ -76,6 +76,6 @@ test "typed addresses preserve normalization and reject zones":
     try expect_ip_error("fe80::1%eth0")
     try expect_false((try contains_ip(try parse_cidr("::ffff:192.0.2.0/120"), ip)))
 
-def expect_ip_error(input: String) -> Result[Unit, Error]:
+fn expect_ip_error(input: String) Result[Unit, Error]:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
-    return ok(())
+    return ok(unit)

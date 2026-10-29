@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "def entries(values: List[Int]) -> List[ListEntry[Int]]: values.entries()\n\ndef pairs(values: Map[String, Int]) -> List[MapEntry[String, Int]]: values.entries()\n\ndef cut(values: List[Int]) -> Result[List[Int], CollectionError]: values.slice(0, 1)\n"
+    "fmt": "fn entries(values: List[Int]) List[ListEntry[Int]]: values.entries()\n\nfn pairs(values: Map[String, Int]) List[MapEntry[String, Int]]: values.entries()\n\nfn cut(values: List[Int]) Result[List[Int], CollectionError]: values.slice(0, 1)\n"
   }
 }

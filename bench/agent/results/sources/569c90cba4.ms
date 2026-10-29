@@ -1,34 +1,34 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/streams.ms" import read_lines
-from "@std/string.ms" import from_scalars
+import {stdin, stdout} from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import from_scalars from "@std/string.ms"
 
-def is_upper(c: Int) -> Bool: c >= 65 and c <= 90
+fn is_upper(c: Int) Bool: c >= 65 and c <= 90
 
-def is_lower(c: Int) -> Bool: c >= 97 and c <= 122
+fn is_lower(c: Int) Bool: c >= 97 and c <= 122
 
-def is_letter(c: Int) -> Bool: is_upper(c) or is_lower(c)
+fn is_letter(c: Int) Bool: is_upper(c) or is_lower(c)
 
 # Index 0 for 'A'/'a' through 25 for 'Z'/'z'; only valid for ASCII letters.
-def letter_index(c: Int) -> Int:
+fn letter_index(c: Int) Int:
     if is_lower(c): return c - 97
 
     return c - 65
 
-def wrap(n: Int) -> Int: (n % 26 + 26) % 26
+fn wrap(n: Int) Int: (n % 26 + 26) % 26
 
 # Shifts one scalar within its ASCII case; every other scalar is returned unchanged.
-def rotate(c: Int, shift: Int) -> Int:
+fn rotate(c: Int, shift: Int) Int:
     if is_upper(c): return 65 + wrap(c - 65 + shift)
     if is_lower(c): return 97 + wrap(c - 97 + shift)
 
     return c
 
 # Parses an optional '-' followed by 1 through 7 ASCII digits.
-def caesar_key(key: String) -> Optional[Int]:
+fn caesar_key(key: String) Optional[Int]:
     let codes = key.scalar_values()
     let negative = codes.length() > 0 and codes[0] == 45
 
-    let start = 1 if negative else 0
+    let start = if negative: 1 else: 0
 
     let digits = codes.length() - start
     if digits < 1 or digits > 7: return none
@@ -41,24 +41,24 @@ def caesar_key(key: String) -> Optional[Int]:
 
         value = value * 10 + c - 48
 
-    return -value if negative else value
+    return if negative: -value else: value
 
-def is_key_word(codes: List[Int]) -> Bool:
-    if codes.length() == 0: return False
+fn is_key_word(codes: List[Int]) Bool:
+    if codes.length() == 0: return false
 
     for c in codes:
-        if not is_letter(c): return False
-    return True
+        if not is_letter(c): return false
+    return true
 
-def caesar(text: String, key: Int, decrypt: Bool) -> String:
-    let shift = -key if decrypt else key
+fn caesar(text: String, key: Int, decrypt: Bool) String:
+    let shift = if decrypt: -key else: key
 
     var out = List[Int]()
     for c in text.scalar_values():
         out.append(rotate(c, shift))
     return from_scalars(out).get()
 
-def vigenere(text: String, key: String, decrypt: Bool) -> String:
+fn vigenere(text: String, key: String, decrypt: Bool) String:
     let key_codes = key.scalar_values()
     var out = List[Int]()
     var k = 0
@@ -66,14 +66,14 @@ def vigenere(text: String, key: String, decrypt: Bool) -> String:
     for c in text.scalar_values():
         if is_letter(c):
             let s = letter_index(key_codes[k % key_codes.length()])
-            out.append(rotate(c, -s if decrypt else s))
+            out.append(rotate(c, if decrypt: -s else: s))
             k += 1
         else:
             out.append(c)
 
     return from_scalars(out).get()
 
-def run(line: String) -> String:
+fn run(line: String) String:
     let parts = line.split(" ")
     if parts.length() < 4: return "error: bad command"
 
@@ -98,9 +98,9 @@ def run(line: String) -> String:
 
     return vigenere(text, key, decrypt)
 
-def is_blank(line: String) -> Bool: line.split(" ").join("").is_empty()
+fn is_blank(line: String) Bool: line.split(" ").join("").is_empty()
 
-export def main() -> Int:
+export fn main() Int:
     for line in read_lines(stdin()).get():
         if not is_blank(line):
             stdout().write(run(line) + "\n").get()

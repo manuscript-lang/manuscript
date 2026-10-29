@@ -14,20 +14,20 @@
           "file": "diag-idiom-err-capital.ms",
           "line": 5,
           "column": 13,
-          "offset": 150
+          "offset": 146
         },
         "fix": {
           "position": {
             "file": "diag-idiom-err-capital.ms",
             "line": 5,
             "column": 13,
-            "offset": 150
+            "offset": 146
           },
           "end": {
             "file": "diag-idiom-err-capital.ms",
             "line": 5,
             "column": 16,
-            "offset": 153
+            "offset": 149
           },
           "replacement": "error"
         }

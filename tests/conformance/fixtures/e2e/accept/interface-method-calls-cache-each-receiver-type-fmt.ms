@@ -1,10 +1,10 @@
 # conform: tags=control-flow,formatter,interfaces,lists,modules,mutation,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/interface-method-calls-cache-each-receiver-type.ms
-from "@std/test.ms" import expect_true
+import expect_true from "@std/test.ms"
 
 interface Shape:
-    def area(scale: Int) -> Int
+    fn area(scale: Int) Int
 
 type Sq:
     side: Int
@@ -18,21 +18,18 @@ type Tri:
     h: Int
 
 impl Shape for Sq:
-    def area(scale: Int) -> Int: self.side * self.side * scale
+    fn area(scale: Int) Int: self.side * self.side * scale
 
 impl Shape for Rect:
-    def area(scale: Int) -> Int: self.w * self.h * scale
+    fn area(scale: Int) Int: self.w * self.h * scale
 
 impl Shape for Tri:
-    def area(scale: Int) -> Int: self.b * self.h * scale / 2
+    fn area(scale: Int) Int: self.b * self.h * scale / 2
 
-def measure(shape: Shape, scale: Int) -> Int: shape.area(scale: scale)
+fn measure(shape: Shape, scale: Int) Int: shape.area(scale: scale)
 
 test "three receiver types alternate at one site":
-    let shapes: List[Shape] = [
-        Sq(side: 3), Rect(w: 2, h: 5),
-        Tri(b: 4, h: 5)
-    ]
+    let shapes: List[Shape] = [Sq(side: 3), Rect(w: 2, h: 5), Tri(b: 4, h: 5)]
     var total = 0
     var round = 0
 

@@ -1,72 +1,72 @@
 # conform: tags=control-flow,faults,formatter,interpolation,modules,mutation,numbers,optional,parser,stdlib-collections,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
-from "@std/core.ms" import TextError
-from "@std/test.ms" import expect_equal, expect_false, fail
+import TextError from "@std/core.ms"
+import {expect_equal, expect_false, fail} from "@std/test.ms"
 
-def checked(n: Int) -> Result[Int, TextError]:
+fn checked(n: Int) Result[Int, TextError]:
     if n < 0:
         return error(TextError("negative"))
 
     return ok(n + 1)
 
-def chain(n: Int) -> Result[Int, TextError]:
+fn chain(n: Int) Result[Int, TextError]:
     let v = try checked(n)
     return ok(v * 2)
 
-def deeper(n: Int) -> Result[Int, TextError]:
+fn deeper(n: Int) Result[Int, TextError]:
     let a = try chain(n)
     let b = try chain(a)
     return ok(a + b)
 
-def expression_try(n: Int) -> Result[Int, TextError]:
+fn expression_try(n: Int) Result[Int, TextError]:
     let x = (try checked(n)) + 100
     return ok(x)
 
-def passthrough(n: Int) -> Result[Int, TextError]:
+fn passthrough(n: Int) Result[Int, TextError]:
     return checked(n)
 
-def through_local(n: Int) -> Result[Int, TextError]:
+fn through_local(n: Int) Result[Int, TextError]:
     let r = checked(n)
     return r
 
-def halve(n: Int) -> Optional[Int]:
+fn halve(n: Int) Optional[Int]:
     if n % 2 != 0:
         return none
 
     return some(n / 2)
 
-def word(n: Int) -> Result[String, TextError]:
+fn word(n: Int) Result[String, TextError]:
     if n == 0:
         return error(TextError("zero"))
 
-    return ok(f"w{n}")
+    return ok("w{n}")
 
-def ratio(n: Int) -> Result[Float, TextError]:
+fn ratio(n: Int) Result[Float, TextError]:
     return ok(1.5)
 
-def nothing(flag: Bool) -> Result[Unit, TextError]:
+fn nothing(flag: Bool) Result[Unit, TextError]:
     if flag:
-        return ok(())
+        return ok(unit)
 
     return error(TextError("no"))
 
-def nested(n: Int) -> Optional[Optional[Int]]:
+fn nested(n: Int) Optional[Optional[Int]]:
     if n == 0:
         return none
 
     return some(halve(n))
 
-def matched_value(n: Int) -> Int:
+fn matched_value(n: Int) Int:
     return checked(n).get(-1)
 
-def closure_return(n: Int) -> Result[Int, TextError]:
+fn closure_return(n: Int) Result[Int, TextError]:
     if let y = halve(n):
         return ok(y)
 
     return error(TextError("odd"))
 
-def sum_all(count: Int) -> Result[Int, TextError]:
+fn sum_all(count: Int) Result[Int, TextError]:
     var total = 0
 
     for i in 0..count:
@@ -85,7 +85,7 @@ test "result matching":
 
 test "try chains":
     let v = deeper(1).get()
-    if not (v == 4 + 10): return fail(f"deeper {v}")
+    if not (v == 4 + 10): return fail("deeper {v}")
 
     let deeper_failure = deeper(-5)
     try expect_false(not deeper_failure.is_error())
@@ -96,10 +96,10 @@ test "try chains":
     try expect_false(not expression_try(-4).is_error())
 
     let total = sum_all(5).get()
-    if not (total == 15): return fail(f"sum {total}")
+    if not (total == 15): return fail("sum {total}")
 
 test "boxed consumers":
-    try expect_equal(f"{checked(2)}", f"{passthrough(2)}")
+    try expect_equal("{checked(2)}", "{passthrough(2)}")
     try expect_equal(checked(2), through_local(2))
     try expect_equal(checked(-2), passthrough(-2))
 
@@ -122,7 +122,7 @@ test "optional and payload kinds":
 
     let r = ratio(1).get()
     try expect_equal(r, 1.5)
-    nothing(True).get()
+    nothing(true).get()
 
     if let inner = nested(4):
         try expect_equal(inner, some(2))

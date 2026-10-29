@@ -1,6 +1,6 @@
 //! Import suggestions for unresolved names that a project module exports.
 //!
-//! The checker only knows standard modules, so its `add: from "@std/..."` hint
+//! The checker only knows standard modules, so its `add: import ... from "@std/..."` hint
 //! cannot name a sibling file nobody imported yet. This pass scans the project's
 //! `.ms` files for top-level `export` declarations and, for an unknown name one
 //! of them exports, replaces the hint with that file's import (preferred over a
@@ -27,7 +27,7 @@ pub fn exported_names(source: &str) -> Vec<String> {
         let Some((keyword, rest)) = rest.split_once(' ') else {
             continue;
         };
-        if !matches!(keyword, "def" | "type" | "interface" | "let") {
+        if !matches!(keyword, "fn" | "type" | "interface" | "let") {
             continue;
         }
         let name: String = rest
@@ -128,7 +128,7 @@ pub fn suggest_project_imports(diagnostics: &mut [Diagnostic], source_root: &str
         match paths.as_slice() {
             [] => {}
             [path] => {
-                let statement = format!("from \"{path}\" import {name}");
+                let statement = format!("import {name} from \"{path}\"");
                 d.message = format!("{head}; add: {statement}");
                 let start = Pos::new(0, 1, 1);
                 d.fix = Some(DiagnosticFix {
@@ -158,7 +158,7 @@ mod tests {
             file: file.into(),
             pos: Pos::new(12, 1, 13),
             phase: Phase::Resolution,
-            message: "unknown type Bytes; add: from \"@std/bytes.ms\" import Bytes".into(),
+            message: "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"".into(),
             end: None,
             fix: None,
         }
@@ -180,18 +180,18 @@ mod tests {
         suggest_project_imports(&mut found, &root);
         assert_eq!(
             found[0].message,
-            "unknown type Bytes; add: from \"./lib/blobs.ms\" import Bytes"
+            "unknown type Bytes; add: import Bytes from \"./lib/blobs.ms\""
         );
         assert_eq!(
             found[0].fix.as_ref().unwrap().replacement,
-            "from \"./lib/blobs.ms\" import Bytes\n"
+            "import Bytes from \"./lib/blobs.ms\"\n"
         );
         let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
     fn exports_are_read_from_top_level_lines() {
-        let source = "export type A:\n    x: Int\nexport extern def b() -> Int: ...\nexport let C = 1\ndef d() -> Int:\n    return 0\n";
+        let source = "export type A:\n    x: Int\nexport extern fn b() Int: ...\nexport let C = 1\nfn d() Int:\n    return 0\n";
         assert_eq!(exported_names(source), ["A", "b", "C"]);
     }
 }

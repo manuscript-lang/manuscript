@@ -1,19 +1,19 @@
-from "@std/io.ms" import stdin, stdout
-from "@std/math.ms" import BigInt, parse
-from "@std/streams.ms" import read_lines
+import {stdin, stdout} from "@std/io.ms"
+import {BigInt, parse} from "@std/math.ms"
+import read_lines from "@std/streams.ms"
 
 # True when `text` is one or more ASCII digits.
-def is_digits(text: String) -> Bool:
+fn is_digits(text: String) Bool:
     if text.length() == 0:
-        return False
+        return false
 
     for c in text.chars():
         if c.compare("0") < 0 or c.compare("9") > 0:
-            return False
-    return True
+            return false
+    return true
 
 # Converts a valid amount such as `12.5` into whole cents, or none when it does not match the spec.
-def amount_cents(text: String) -> Optional[BigInt]:
+fn amount_cents(text: String) Optional[BigInt]:
     let parts = text.split(".")
     if parts.length() > 2 or not is_digits(parts[0]):
         return none
@@ -32,7 +32,7 @@ def amount_cents(text: String) -> Optional[BigInt]:
     return parse(parts[0].concat(frac), 10).get()
 
 # Splits a line into its category and amount text, or none when the line is invalid.
-def split_record(line: String) -> Optional[List[String]]:
+fn split_record(line: String) Optional[List[String]]:
     if line.starts_with("\""):
         # A quoted category: the only quotes allowed are the two wrapping it.
         let quoted = line.split("\"")
@@ -51,7 +51,7 @@ def split_record(line: String) -> Optional[List[String]]:
 
     return fields
 
-export def main() -> Int:
+export fn main() Int:
     let lines = read_lines(stdin()).get()
     let zero = parse("0", 10).get()
     let hundred = parse("100", 10).get()
@@ -59,14 +59,14 @@ export def main() -> Int:
     var skipped = 0
 
     for raw in lines:
-        let line = raw.slice(0, -1).get() if raw.ends_with("\r") else raw
+        let line = if raw.ends_with("\r"): raw.slice(0, -1).get() else: raw
 
         if line.length() == 0:
             continue
 
         if let fields = split_record(line):
             if let cents = amount_cents(fields[1]):
-                totals.update(fields[0].clone(), zero, lambda sum: sum + cents)
+                totals.update(fields[0].clone(), zero, fn sum: sum + cents)
                 continue
 
         skipped += 1
@@ -77,12 +77,12 @@ export def main() -> Int:
         let total = totals.get_or(category, zero)
         let frac = (total % hundred).to_string_radix(10)
 
-        let padded = "0".concat(frac) if frac.length() < 2 else frac
+        let padded = if frac.length() < 2: "0".concat(frac) else: frac
 
-        out.append(f"{category}: {(total / hundred).to_string_radix(10)}.{padded}")
+        out.append("{category}: {(total / hundred).to_string_radix(10)}.{padded}")
 
     if skipped > 0:
-        out.append(f"skipped: {skipped}")
+        out.append("skipped: {skipped}")
     if out.length() > 0:
         stdout().write(out.join("\n").concat("\n")).get()
     return 0

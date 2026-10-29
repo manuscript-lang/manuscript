@@ -1,7 +1,7 @@
 # conform: tags=functions,tier-core
 # conform: phase=run
 # conform: origin=tests/e2e/list_parity_test.go:12 TestListInsertFaultLocations
-export def main() -> Int:
+export fn main() Int:
     var values = [1, 2]
     values.insert(3, 9)
     return values.length()

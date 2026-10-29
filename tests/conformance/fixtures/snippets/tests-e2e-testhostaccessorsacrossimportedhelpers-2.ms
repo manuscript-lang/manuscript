@@ -1,11 +1,11 @@
 # conform: tags=control-flow,diagnostics,match,modules,stdlib-io,stdlib-time,tier-io
 # conform: phase=check
 # conform: origin=tests/e2e/e2e_test.go:444 TestHostAccessorsAcrossImportedHelpers
-from "./helper.ms" import now, close_output
-from "@std/io.ms" import stdout
-from "@std/time.ms" import clock
+import {now, close_output} from "./helper.ms"
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
 
-export def main() -> Int:
+export fn main() Int:
     let before = now()
     if clock().now() - before < 0.milliseconds:
         return 1
@@ -13,12 +13,12 @@ export def main() -> Int:
     close_output()
 
     let cause = match stdout().write(""):
-        case ok(_):
+        ok(_):
             return 3
-        case error(cause): cause
+        error(cause): cause
 
     match cause:
-        case Closed:
+        Closed:
             return 0
-        case _:
+        _:
             return 4

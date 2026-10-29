@@ -1,27 +1,27 @@
-from "./domain.ms" import DomainFailure, BoxFailure
+import {DomainFailure, BoxFailure} from "./domain.ms"
 
 impl Error for DomainFailure:
-    def message() -> String:
-        return f"first {self.code}"
+    fn message() String:
+        return "first {self.code}"
 
-export def first_error(cause: DomainFailure) -> Error:
+export fn first_error(cause: DomainFailure) Error:
     return cause
 
-def failure(cause: DomainFailure) -> Result[Unit, DomainFailure]:
+fn failure(cause: DomainFailure) Result[Unit, DomainFailure]:
     return error(cause)
 
-export def first_result(cause: DomainFailure) -> Result[Unit, Error]:
+export fn first_result(cause: DomainFailure) Result[Unit, Error]:
     return failure(cause)
 
-export def first_propagated(cause: DomainFailure) -> Result[Unit, Error]:
+export fn first_propagated(cause: DomainFailure) Result[Unit, Error]:
     try failure(cause)
-    return ok(())
+    return ok(unit)
 
-def generic[T: Error](cause: T) -> Error:
+fn generic[T: Error](cause: T) Error:
     return cause
 
-export def first_generic(cause: DomainFailure) -> Error:
+export fn first_generic(cause: DomainFailure) Error:
     return generic(cause)
 
-export def first_box(cause: DomainFailure) -> Error:
+export fn first_box(cause: DomainFailure) Error:
     return BoxFailure(cause)

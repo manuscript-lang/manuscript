@@ -19,8 +19,8 @@ fn chain() {
     // never reported: 1600 links took 1.7 s, 4800 about 15 s.
     let links = 4_800;
     let source = format!(
-        "def f() -> Int:\n    let x = [1]{}\n    return x[0]\n",
-        ".map(lambda v: v + 1)".repeat(links)
+        "fn f() Int:\n    let x = [1]{}\n    return x[0]\n",
+        ".map(fn v: v + 1)".repeat(links)
     );
     let file: Arc<str> = Arc::from("chain.ms");
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");
@@ -43,9 +43,9 @@ fn a_match_over_many_cases_checks_in_linear_time() {
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
     }
-    source.push_str("\ndef g(e: E) -> Int:\n    match e:\n");
+    source.push_str("\nfn g(e: E) Int:\n    match e:\n");
     for i in 0..cases {
-        source.push_str(&format!("        case C{i}(x): return x + {i}\n"));
+        source.push_str(&format!("        C{i}(x): return x + {i}\n"));
     }
     let file: Arc<str> = Arc::from("cases.ms");
     let module = ms_syntax::parser::parse(&file, &source).expect("parses");

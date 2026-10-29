@@ -4,9 +4,9 @@
 type Flag:
     case Ready
 
-def use(value: Optional[Int]) -> Int:
+fn use(value: Optional[Int]) Int:
     let _Flag = 2
 
     match value:
-        case some(Ready): return Ready
-        case none: return 0
+        some(Ready): return Ready
+        none: return 0

@@ -4,10 +4,10 @@
 type Other:
     case OutOfRange
 
-def other() -> Other: Other.OutOfRange
+fn other() Other: Other.OutOfRange
 
-def standard() -> CollectionError: CollectionError.OutOfRange
+fn standard() CollectionError: CollectionError.OutOfRange
 
-def recognize(value: Other) -> Int:
+fn recognize(value: Other) Int:
     match value:
-        case OutOfRange: return 1
+        OutOfRange: return 1

@@ -1,12 +1,12 @@
 # conform: tags=diagnostics,generics,tier-core
 # conform: phase=check
 # conform: origin=pkg/checker/defaults_test.go:26 TestDefaultArgumentBoundaries
-def f(value: Int = 1) -> Int:
+fn f(value: Int = 1) Int:
     return value
 
-def forward[T](value: T) -> T:
+fn forward[T](value: T) T:
     return value
 
-def call() -> Int:
+fn call() Int:
     let copy = forward(f)
     return copy()
