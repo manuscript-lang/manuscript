@@ -2500,7 +2500,14 @@ impl<'a> Parser<'a> {
         let result: PResult<Expr> = (|| {
             let value = nested.expression(0)?;
             nested.newlines();
-            nested.need(Tok::Eof)?;
+            if nested.kind() != Tok::Eof {
+                let at = nested.peek();
+                let found = describe(source, at);
+                return nested.fail(
+                    at,
+                    format!("an interpolation holds one expression, found {found} after it; close the brace after the expression, or bind the rest to a name first"),
+                );
+            }
             Ok(value)
         })();
         self.next_id = nested.next_id;
