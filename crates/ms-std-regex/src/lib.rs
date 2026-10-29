@@ -143,20 +143,29 @@ impl Regex {
         if spans.len() > n {
             return Err(Fail::LimitExceeded);
         }
+        if spans.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut locations = self.pattern.capture_locations();
         Ok(spans
             .into_iter()
-            .filter_map(|(a, b)| self.captures_at(text, a, b))
+            .filter_map(|(a, b)| self.captures_at(&mut locations, text, a, b))
             .collect())
     }
 
     /// Captures of the match spanning exactly `a..b`, found by re-matching from `a`.
-    fn captures_at(&self, text: &str, a: usize, b: usize) -> Option<Vec<String>> {
-        let c = self.pattern.captures_at(text, a)?;
-        let whole = c.get(0)?;
+    fn captures_at(
+        &self,
+        locations: &mut regex::CaptureLocations,
+        text: &str,
+        a: usize,
+        b: usize,
+    ) -> Option<Vec<String>> {
+        let whole = self.pattern.captures_read_at(locations, text, a)?;
         debug_assert_eq!((whole.start(), whole.end()), (a, b));
         Some(
-            c.iter()
-                .map(|g| g.map_or("", |m| m.as_str()).into())
+            (0..locations.len())
+                .map(|group| locations.get(group).map_or("", |(a, b)| &text[a..b]).into())
                 .collect(),
         )
     }
@@ -168,10 +177,11 @@ impl Regex {
         };
         self.pattern
             .capture_names()
-            .flatten()
-            .filter_map(|n| {
-                c.name(n)
-                    .map(|m| (n.as_bytes().to_vec(), m.as_str().as_bytes().to_vec()))
+            .enumerate()
+            .filter_map(|(index, name)| {
+                let name = name?;
+                c.get(index)
+                    .map(|m| (name.as_bytes().to_vec(), m.as_str().as_bytes().to_vec()))
             })
             .collect()
     }
@@ -222,21 +232,27 @@ impl Regex {
     ) -> Result<String, Fail> {
         let max = limit(max)?;
         let mut out = String::new();
+        let mut needs_expansion = None;
         let mut at = 0;
         for (a, b) in self.spans_iter(text) {
             if a - at > max - out.len() {
                 return Err(Fail::LimitExceeded);
             }
             out.push_str(&text[at..a]);
-            let Some(c) = self.pattern.captures_at(text, a) else {
-                continue;
-            };
-            let mut piece = String::new();
-            c.expand(template, &mut piece);
-            if piece.len() > max - out.len() {
+            if *needs_expansion.get_or_insert_with(|| template.contains('$')) {
+                let Some(c) = self.pattern.captures_at(text, a) else {
+                    continue;
+                };
+                c.expand(template, &mut out);
+            } else {
+                if template.len() > max - out.len() {
+                    return Err(Fail::LimitExceeded);
+                }
+                out.push_str(template);
+            }
+            if out.len() > max {
                 return Err(Fail::LimitExceeded);
             }
-            out.push_str(&piece);
             at = b;
         }
         if text.len() - at > max - out.len() {
@@ -346,6 +362,95 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn captures_all_preserves_absent_groups_and_match_budgets() {
+        let re = compile("(a)|(b+)").unwrap();
+        let expected = alloc::vec![
+            alloc::vec!["a".into(), "a".into(), "".into()],
+            alloc::vec!["bbb".into(), "".into(), "bbb".into()],
+            alloc::vec!["a".into(), "a".into(), "".into()],
+        ];
+        assert_eq!(re.captures_all("a bbb a", None), Ok(expected.clone()));
+        assert_eq!(re.captures_all("a bbb a", Some(3)), Ok(expected));
+        assert_eq!(
+            re.captures_all("a bbb a", Some(2)),
+            Err(Fail::LimitExceeded)
+        );
+        assert_eq!(re.captures_all("a", Some(0)), Err(Fail::LimitExceeded));
+        assert_eq!(re.captures_all("", Some(0)), Ok(Vec::new()));
+        assert_eq!(re.captures_all("a", Some(-1)), Err(Fail::InvalidInput));
+
+        for pattern in ["", "a*", "(a)?", "(é)|(🙂)", "\\b(a)\\b"] {
+            let re = compile(pattern).unwrap();
+            for text in ["", "a🙂a", "é🙂é", "ba a"] {
+                let expected: Vec<Vec<String>> = re
+                    .spans_iter(text)
+                    .map(|(a, _)| {
+                        re.pattern
+                            .captures_at(text, a)
+                            .unwrap()
+                            .iter()
+                            .map(|group| group.map_or("", |m| m.as_str()).into())
+                            .collect()
+                    })
+                    .collect();
+                assert_eq!(
+                    re.captures_all(text, None),
+                    Ok(expected),
+                    "{pattern:?} {text:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn template_expands_repeated_matches_with_strict_byte_limits() {
+        let re = compile("(?P<a>a+)|(b+)").unwrap();
+        assert_eq!(
+            re.replace_template("aaaaaaaa b a", "${a}:${2}$$", None),
+            Ok("aaaaaaaa:$ :b$ a:$".into())
+        );
+        assert_eq!(
+            re.replace_template("a b", "${1}x:$1x:$missing", None),
+            Ok("ax:: x::".into())
+        );
+        assert_eq!(re.replace_template("a b", "", None), Ok(" ".into()));
+        assert_eq!(
+            re.replace_template("a b", "xy", Some(5)),
+            Ok("xy xy".into())
+        );
+        assert_eq!(
+            re.replace_template("a b", "xy", Some(4)),
+            Err(Fail::LimitExceeded)
+        );
+        assert_eq!(re.replace_template("a b", "$$", Some(3)), Ok("$ $".into()));
+        assert_eq!(
+            re.replace_template("a b", "$$", Some(2)),
+            Err(Fail::LimitExceeded)
+        );
+    }
+
+    #[test]
+    fn named_captures_preserve_indices_absence_and_empty_groups() {
+        let re = compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)").unwrap();
+        assert_eq!(
+            re.named_captures("ce"),
+            alloc::vec![
+                (b"empty".to_vec(), Vec::new()),
+                (b"last".to_vec(), b"e".to_vec())
+            ]
+        );
+        assert_eq!(
+            re.named_captures("abcde"),
+            alloc::vec![
+                (b"first".to_vec(), b"b".to_vec()),
+                (b"empty".to_vec(), b"d".to_vec()),
+                (b"last".to_vec(), b"e".to_vec()),
+            ]
+        );
+        assert!(re.named_captures("xyz").is_empty());
     }
 
     #[test]
