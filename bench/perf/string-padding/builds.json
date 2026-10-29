@@ -1,0 +1,132 @@
+{
+  "recorded_at": "2026-10-29T15:26:23.967832+00:00",
+  "classification": "rejected: repeated common no-op costs unresolved after one focused comparison; productive and some large controls reversed original slowdowns",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "candidate": "baseline plus exploratory/runtime.patch (archived, not applied)",
+  "baseline_runtime_source_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+  "candidate_runtime_source_sha256": "8fdd9fd23052a9df5072bf359d635e63b7e82a852b5533792222c362bab54ba9",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "build_configuration": {
+    "build_type": "Release",
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629",
+    "explicit_other_backend_override": "none supplied by recorded build commands",
+    "companion_metadata_backend_label": "cranelift",
+    "effective_backend": "unverified beyond recorded configuration; no backend probes performed"
+  },
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "full_matrix": {
+    "cases": 98,
+    "pairs": 7,
+    "raw_rows": 1372,
+    "affinity": "CPU0 inherited by producers",
+    "warmups": 2,
+    "recorded_producer_runs": 14,
+    "all_producer_exits": "zero, checked by strict runner",
+    "identity_and_exact_output_checks": "all passed",
+    "timed_work": "padding plus full-output equality and result release",
+    "changing_rows": "128 pad operations;32 cycles of4;reported per operation"
+  },
+  "focused_matrix": {
+    "cases": 50,
+    "status": "completed",
+    "iterations": "1000000 below4KiB;65536 at4KiB/12KiB;256 forapprox1MiB",
+    "pairs": 9,
+    "raw_rows": 900,
+    "affinity": "CPU0 inherited by producers",
+    "warmups": 2,
+    "recorded_producer_runs": 18,
+    "all_producer_exits": "zero, checked by strict runner",
+    "identity_and_exact_output_checks": "all passed",
+    "comparison_scope": "separate processes omit full matrix allocation phase; does not replace original98 rows"
+  },
+  "correctness": {
+    "source_release": "4 tests,0failed",
+    "source_debug": "4 tests,0failed",
+    "string_unit": "20passed,133skipped byfilter",
+    "frontend_fmt": "both sourcefiles plus Rustformatting passed"
+  },
+  "files_sha256": {
+    "generate.py": "ff8df09c2abc2cc32783e24e50ccb8503b2629e7399157432662761898ae3925",
+    "main.ms": "475e623e46542498444633a1481276d81f642a0fa10050e240002f6aed22b869",
+    "identities.json": "5d8166a04d188343c60d67c2c53e7c2c1d254e8332562712990bb4bc3107c375",
+    "oracle.json": "53795f7f08a2597fa567e87dc2130167a28f998c6df8d5051539996ea146e3b1",
+    "samples.csv": "a41166cdd49a6d3d54707837340802bfd8d9de8c5c2926b8664d5f817834ba1d",
+    "summary.csv": "00719bfa789e543aaa8870893f521f5d5d5a7bdcf12b7ffa9174de35bdd8fba9",
+    "paired.csv": "f34a6cbb01181844273206e5217316227aabf30bc6de513a9fc75803a1ceee60",
+    "paired-samples.csv": "f86b3f9de1cfe7921f54e819aeb9a259efbec0b7d2a2f5d99faaa8b8e3dab80a",
+    "focused-controls.ms": "f2608b8ca7a639cb718dbfacf7f0ec2dc96091b69bf5ff144e0e7e03e3622c5e",
+    "focused-identities.json": "8955b27a89c3f8cf34d0bbc820dfa32a32c85c021c91c6b2f612f069c3e5d1c8",
+    "build-metadata/full-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/focused-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/focused-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "checks/source-release.txt": "0f854059197ca6e8f0d041a780133ce8300bc01a0a4677817cd54a75e2cafc87",
+    "checks/source-debug.txt": "0f854059197ca6e8f0d041a780133ce8300bc01a0a4677817cd54a75e2cafc87",
+    "checks/string-unit.txt": "1cb31dbb71998c78ee6c4c78bff9a6515c980fa1eb67891ab25054b4276a8353",
+    "exploratory/runtime.patch": "75a74d47206622615c4ee0cdab5fb9e06d8a41c6041b8dca35a30dbf05a374ab",
+    "focused-samples.csv": "37dd02a5345589796513992562f77f650fa7a75c81831c253786554d0614fbf8",
+    "focused-summary.csv": "5e1892ac8d14d002e536d5f9f2ea97c620001648b2ef25f7d46b67400ff1c6a2",
+    "focused-paired.csv": "01e133fb59847d1ee8b28a99666c925b98dac886bc8987279e8e5d381d59c367",
+    "focused-paired-samples.csv": "60c8202d3136306375374ea00bd2b9fcb1c393f80c72d4a1745c6eef34c0c1be"
+  },
+  "fixture": {
+    "path": "bench/perf/string-padding/exploratory/source-tests.ms",
+    "sha256": "586d9d5424642c41d9a20c5f6fee3e11064aa8ad39417475e928bc8b17d022f7"
+  },
+  "shared_runner": {
+    "path": "bench/perf/string-lines/compare.py",
+    "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "artifacts": {
+    "before": {
+      "archive": {
+        "path": "/tmp/string-round2/before/libms_native.a",
+        "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-round2/before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/padding-before-program",
+        "sha256": "2657094c3ed213b0d4179b8f7545d229227574bc7f0470b79674c3593418cab9"
+      },
+      "focused_program": {
+        "path": "/tmp/string-round2/padding-before-focused",
+        "sha256": "ccf9b7e03e0ebe48062e7a1286ecae4ad9dcb3d68f2233071c0940b48e261835"
+      }
+    },
+    "after": {
+      "archive": {
+        "path": "/tmp/string-round2/padding-after/libms_native.a",
+        "sha256": "3958e8cca1250b18061c9d0a1cd5de49a03b3fe28f45768d8f4ead2eb286220f"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-round2/padding-after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/padding-after-program",
+        "sha256": "29b03366a652413e69366db25b0207ce7a15a74529264e18bd23c52e2e0e21fd"
+      },
+      "focused_program": {
+        "path": "/tmp/string-round2/padding-after-focused",
+        "sha256": "190b9dbe82ac847be9d2883af22d3925a33fe2fb42308fe09b2aaa9773eab543"
+      }
+    }
+  },
+  "runtime_restored_to_baseline": true,
+  "runtime_restored_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+}

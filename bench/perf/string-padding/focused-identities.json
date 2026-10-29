@@ -1,0 +1,252 @@
+{
+  "start_byte_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "start_byte_target2": [
+    1,
+    1000000,
+    19000000
+  ],
+  "start_ascii_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "start_ascii_target17": [
+    1,
+    1000000,
+    34000000
+  ],
+  "start_unicode_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "start_unicode_target17": [
+    1,
+    1000000,
+    66000000
+  ],
+  "start_noop_empty_negative": [
+    0,
+    1000000,
+    17000000
+  ],
+  "start_noop_empty_empty_padding": [
+    0,
+    1000000,
+    17000000
+  ],
+  "start_noop_tiny_negative": [
+    9,
+    1000000,
+    26000000
+  ],
+  "start_noop_tiny_empty_padding": [
+    9,
+    1000000,
+    26000000
+  ],
+  "start_noop_long_ascii_negative": [
+    1048576,
+    256,
+    268439808
+  ],
+  "start_noop_long_ascii_empty_padding": [
+    1048576,
+    256,
+    268439808
+  ],
+  "start_noop_long_unicode_negative": [
+    1048572,
+    256,
+    268438784
+  ],
+  "start_noop_long_unicode_empty_padding": [
+    1048572,
+    256,
+    268438784
+  ],
+  "start_positive_shorter": [
+    9,
+    1000000,
+    26000000
+  ],
+  "start_empty_text_byte": [
+    0,
+    1000000,
+    18000000
+  ],
+  "start_empty_text_unicode_small": [
+    0,
+    1000000,
+    19000000
+  ],
+  "start_empty_text_unicode_heap": [
+    0,
+    1000000,
+    67000000
+  ],
+  "start_mixed_text_unicode_target4": [
+    9,
+    1000000,
+    28000000
+  ],
+  "start_mixed_text_unicode_target5": [
+    9,
+    1000000,
+    32000000
+  ],
+  "start_mixed_text_unicode_target17": [
+    9,
+    1000000,
+    68000000
+  ],
+  "start_mixed_text_ascii_target4": [
+    9,
+    1000000,
+    27000000
+  ],
+  "start_nul_target1": [
+    0,
+    1000000,
+    18000000
+  ],
+  "start_nul_target2": [
+    0,
+    1000000,
+    19000000
+  ],
+  "end_byte_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "end_byte_target2": [
+    1,
+    1000000,
+    19000000
+  ],
+  "end_ascii_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "end_ascii_target17": [
+    1,
+    1000000,
+    34000000
+  ],
+  "end_ascii_target4096": [
+    1,
+    65536,
+    269549568
+  ],
+  "end_unicode_target1": [
+    1,
+    1000000,
+    18000000
+  ],
+  "end_unicode_target17": [
+    1,
+    1000000,
+    66000000
+  ],
+  "end_unicode_target4096": [
+    1,
+    65536,
+    806223872
+  ],
+  "end_noop_empty_negative": [
+    0,
+    1000000,
+    17000000
+  ],
+  "end_noop_empty_empty_padding": [
+    0,
+    1000000,
+    17000000
+  ],
+  "end_noop_tiny_negative": [
+    9,
+    1000000,
+    26000000
+  ],
+  "end_noop_tiny_empty_padding": [
+    9,
+    1000000,
+    26000000
+  ],
+  "end_noop_long_ascii_negative": [
+    1048576,
+    256,
+    268439808
+  ],
+  "end_noop_long_ascii_empty_padding": [
+    1048576,
+    256,
+    268439808
+  ],
+  "end_noop_long_unicode_negative": [
+    1048572,
+    256,
+    268438784
+  ],
+  "end_noop_long_unicode_empty_padding": [
+    1048572,
+    256,
+    268438784
+  ],
+  "end_positive_shorter": [
+    9,
+    1000000,
+    26000000
+  ],
+  "end_empty_text_byte": [
+    0,
+    1000000,
+    18000000
+  ],
+  "end_empty_text_unicode_small": [
+    0,
+    1000000,
+    19000000
+  ],
+  "end_empty_text_unicode_heap": [
+    0,
+    1000000,
+    67000000
+  ],
+  "end_mixed_text_unicode_target4": [
+    9,
+    1000000,
+    28000000
+  ],
+  "end_mixed_text_unicode_target5": [
+    9,
+    1000000,
+    32000000
+  ],
+  "end_mixed_text_unicode_target17": [
+    9,
+    1000000,
+    68000000
+  ],
+  "end_mixed_text_ascii_target4": [
+    9,
+    1000000,
+    27000000
+  ],
+  "end_nul_target1": [
+    0,
+    1000000,
+    18000000
+  ],
+  "end_nul_target16": [
+    0,
+    1000000,
+    33000000
+  ]
+}

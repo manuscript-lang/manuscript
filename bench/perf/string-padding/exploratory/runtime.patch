@@ -1,0 +1,32 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index 0627f7af6..a9046a8a2 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1523,8 +1523,11 @@ unsafe fn pad(
+         }
+         let total = total as usize;
+         let pad_len = total - text.len();
+-        let mut b = Vec::<u8>::with_capacity(total);
+-        let dst = b.as_mut_ptr();
++        let mut small = [0u8; STR_INLINE_MAX];
++        let heap = (total > STR_INLINE_MAX).then(|| alloc_str(total));
++        let dst = heap
++            .as_ref()
++            .map_or(small.as_mut_ptr(), |value| value.ptr_word);
+         let pad_dst = if atstart { dst } else { dst.add(text.len()) };
+         if atstart {
+             core::ptr::copy_nonoverlapping(text.as_ptr(), dst.add(pad_len), text.len());
+@@ -1533,8 +1536,11 @@ unsafe fn pad(
+         }
+         fill_repeated(pad_dst, padb, cycles * padb.len());
+         core::ptr::copy_nonoverlapping(padb.as_ptr(), pad_dst.add(cycles * padb.len()), prefix_end);
+-        b.set_len(total);
+-        from_buf(b).write_to(out)
++        match heap {
++            Some(value) => value,
++            None => from_bytes(&small[..total]),
++        }
++        .write_to(out)
+     }
+ }
+ 

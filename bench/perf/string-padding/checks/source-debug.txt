@@ -1,0 +1,9 @@
+RUN string-padding.ms::padding exact outputs cross cache and inline boundaries
+PASS string-padding.ms::padding exact outputs cross cache and inline boundaries
+RUN string-padding.ms::padding no-op cases preserve text
+PASS string-padding.ms::padding no-op cases preserve text
+RUN string-padding.ms::large padding and small growth preserve exact bytes
+PASS string-padding.ms::large padding and small growth preserve exact bytes
+RUN string-padding.ms::padding over the string limit faults before allocation
+PASS string-padding.ms::padding over the string limit faults before allocation
+4 tests, 0 failed
