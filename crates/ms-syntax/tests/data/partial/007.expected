@@ -1,4 +1,4 @@
-diag parse 30:7:725 end=30:7:725 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body"
+diag parse 30:7:725 end=30:7:725 fix=- "expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body"
 import 1:1:0 1:9:8 "expect_equal" "@std/test.ms"
 import 1:1:0 1:23:22 "expect_false" "@std/test.ms"
 import 2:1:56 2:9:64 "Item" "./domain.ms"

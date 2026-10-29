@@ -98,7 +98,7 @@ const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by
 
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
-        ":" => "; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body".into(),
+        ":" => "; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body".into(),
         ")" => "; close the parenthesis, separating items with commas".into(),
         "]" => "; close the bracket, separating items with commas".into(),
         "}" => "; close the brace, separating items with commas".into(),
@@ -126,7 +126,9 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
                 "; give it a name, e.g. fn add(a: Int, b: Int) Int:".into()
             } else if found_text == "_" {
                 "; '_' is a reserved word and cannot be used as a name: loops, parameters and bindings need a real name such as item, unused or ignored".into()
-            } else if found.as_str() == found_text {
+            } else if found == Tok::Ref {
+                "; 'ref' appears only before a function's result type or on a record field's type (name: ref T); it cannot mark a parameter or a type nested inside another type".into()
+            } else if found.as_str() == found_text && found_text.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 format!("; '{}' is a reserved word and cannot be used as a name", found_text)
             } else {
                 String::new()

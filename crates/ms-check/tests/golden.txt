@@ -592,7 +592,7 @@ resolution	3	16	107	unknown binding FileSystem; add: import FileSystem from "@st
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport %s from "@std/%s.ms"
 test "reject":
     let value = %s()
-parse	1	8	7	expected a name, found '%'; '%' is a reserved word and cannot be used as a namefn wrong() Result[Unit, JsonError]:
+parse	1	8	7	expected a name, found '%'fn wrong() Result[Unit, JsonError]:
     return error(cause: EncodingError.InvalidData)
 resolution	1	25	24	unknown type JsonError; add: import JsonError from "@std/json.ms"
 resolution	2	25	60	unknown binding EncodingError; add: import EncodingError from "@std/encoding.ms"fn wrong() JsonError:
@@ -701,7 +701,7 @@ fn constructed() Result[Unit, Error]:
     return cause.message()
 fn view(cause: %s) Error:
     return cause
-parse	1	22	21	expected a name, found '%'; '%' is a reserved word and cannot be used as a nametest "native module identity":
+parse	1	22	21	expected a name, found '%'test "native module identity":
     let value = 1
 type	2	9	39	local binding value is never read; remove it, use it, or name it with a leading '_' to ignore itfn poll_literal_up(log: List[Int], start: Int) Unit:
     var i = -137
@@ -1667,12 +1667,12 @@ type	3	32	69	recursive generic applications must preserve their parameters in Tr
 type Layer%d[T]:
     left: Layer%d[T]
     right: Layer%d[T]
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype Layer0:
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Layer0:
     value: Int
 type Layer%d:
     left: Layer%d
     right: Layer%d
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodyfn hash(value: Layer32) Int: return value.hash()
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn hash(value: Layer32) Int: return value.hash()
 resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn equal(left: Layer32, right: Layer32) Bool: return left == right
 resolution	1	16	15	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import it
 resolution	1	32	31	unknown type Layer32; declare it with 'type Layer32:' / 'interface Layer32:', declare it as a type parameter, or import itfn f[T](a: T) T:
@@ -3150,7 +3150,7 @@ fn probe() Int:
     value: Int
 impl Tag for Key%d:
     fn tag() Int: self.value
-parse	1	9	8	expected ':', found '%'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodyfn probe() Int: ...
+parse	1	9	8	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn probe() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let map%d = Map[Int, Int]()
     map%d.add(1, 2)
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn affine%d(value: Int) Result[Int, TextError]:
@@ -3183,7 +3183,7 @@ fn probe() Int:
     for x%d in values:
         sum += x%d
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with ittype Shape%d:
-parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodyfn area%d(s: Shape%d) Int:
+parse	1	11	10	expected ':', found '%'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn area%d(s: Shape%d) Int:
     var out = 0
     match s:
 parse	1	8	7	expected '(', found '%'; a call or parameter list starts with '('    return out
@@ -3282,10 +3282,10 @@ impl Counter:
 # empty body
 fn answer() Int: return 3
 export fn commands() Commands
-parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype List[T]:
+parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype List[T]:
 impl List[T]:
     fn get() T
-parse	3	15	42	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype List[T]:
+parse	3	15	42	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype List[T]:
     fn get() T:
 parse	2	5	18	a type declares only fields or cases; write its methods in an 'impl List[T]:' block, or implement an interface with 'impl <Interface> for List[T]:'type A:
     x: Int
@@ -3293,8 +3293,8 @@ impl List[T]:
         return x
 parse	3	5	23	a type declares only fields or cases; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'impl Show Point:
     fn show() String:
-parse	1	11	10	expected ':', found name 'Point'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype Duration
-parse	1	14	13	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodynative fn commands() Commands
+parse	1	11	10	expected ':', found name 'Point'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Duration
+parse	1	14	13	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodynative fn commands() Commands
 parse	1	1	0	expected a module declaration or import, found name 'native'; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fnfn f() Unit:
     if true:
 parse	3	1	26	suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declarationfn f() Unit:
@@ -3394,7 +3394,7 @@ fn g() Int: return 1
 parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.valuefn f() Int:
     let n = [1].map(fn(x) => x + 1)
     return 0
-parse	2	27	38	expected a name, found '='; '=' is a reserved word and cannot be used as a namefn f() Int:
+parse	2	27	38	expected a name, found '='fn f() Int:
     let n = [1].map(x x + 1)
     return 0
 parse	2	23	34	expected ')', found name 'x'; close the parenthesis, separating items with commasfn g(x: Int) Int:
@@ -3489,7 +3489,7 @@ test "bad":
 parse	2	20	31	expected ']', found ','; close the bracket, separating items with commasfn f() Unit:
     for [key, value] in entries:
         return
-parse	2	9	21	expected a name, found '['; '[' is a reserved word and cannot be used as a namefn f() String:
+parse	2	9	21	expected a name, found '['fn f() String:
     return "\{1 # comment\}"
 fn f() Unit:
     consume(transform: fn() Unit:
@@ -3572,10 +3572,10 @@ type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, who
         return value + other
     )
 resolution	2	5	17	unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...) T:', or import it from a modulefn f(value) Int: value
-parse	1	11	10	expected ':', found ')'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodyfn f(transform: fn(value) Int) Unit: return
+parse	1	11	10	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn f(transform: fn(value) Int) Unit: return
 resolution	1	20	19	unknown type value; declare it with 'type value:' / 'interface value:', declare it as a type parameter, or import ittype Choice:
     case Payload(value)
-parse	2	23	35	expected ':', found ')'; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodyfn f() Int:
+parse	2	23	35	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodyfn f() Int:
     1
 parse	2	5	16	only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     if true: 1
@@ -3689,7 +3689,7 @@ fn later(values: List[Int]) Unit:
     return 1
 fn ok() Int:
     return 2
-parse	1	14	13	expected a name, found ')'; ')' is a reserved word and cannot be used as a namefn a() Int:
+parse	1	14	13	expected a name, found ')'fn a() Int:
     if true:
         let y = = 3
     return 1
@@ -3920,7 +3920,7 @@ fn two() Int:
 parse	3	1	28	unexpected source character '@'; this character is not part of Manuscript's syntax outside textfn a() Int:
     return 0
 fn example(value: String) Bool
-parse	1	31	30	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body
+parse	1	31	30	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body
 type parameters: ...type Data:
     value: Int
 type State:
@@ -4736,7 +4736,7 @@ type	4	8	75	extra operation message; Error declares:  (remove it or add it to th
 resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsinterface Compare[T]:
     fn compare(other: T) Int
 fn compare[T: Compare[T]](first: T, second: T) Int: first.|
-parse	3	59	109	expected a name, found '|'; '|' is a reserved word and cannot be used as a nametype Item:
+parse	3	59	109	expected a name, found '|'type Item:
     value: Int
 
 fn first() Int: 1
@@ -4773,19 +4773,19 @@ fn compare[T: Compare[T]](first: T, second: T) Int: first.|
     return 0
 parse	4	9	61	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn count(items: List[Int]) Int:
     return items.|
-parse	2	18	49	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn count(items: Set[Int]) Int:
+parse	2	18	49	expected a name, found '|'fn count(items: Set[Int]) Int:
     return items.|
-parse	2	18	48	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn size(text: String) Int:
+parse	2	18	48	expected a name, found '|'fn size(text: String) Int:
     return text.byte_|
 parse	2	23	49	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'type Point:
     x: Int
     y: String
 fn read(point: Point) Int:
     return point.|
-parse	5	18	81	expected a name, found '|'; '|' is a reserved word and cannot be used as a nameimport Queue from "@std/queues.ms"
+parse	5	18	81	expected a name, found '|'import Queue from "@std/queues.ms"
 fn read(queue: Queue[Int]) Unit:
     queue.|
-parse	3	11	78	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn sum(left: Int, right: Int) Int:
+parse	3	11	78	expected a name, found '|'fn sum(left: Int, right: Int) Int:
     return left + right
 fn answer() Int:
     return sum(le|
@@ -4806,11 +4806,11 @@ fn answer(input: Int) Int:
     return "Que|"
 fn work(value: Optional[Int]) Int:
     return value.|
-parse	2	18	52	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn work() Optional[Int]:
+parse	2	18	52	expected a name, found '|'fn work() Optional[Int]:
     return Optional[Int].|
-parse	2	26	50	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn work() Result[Int, Error]:
+parse	2	26	50	expected a name, found '|'fn work() Result[Int, Error]:
     return Result[Int, Error].|
-parse	2	31	60	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn count(items: List[String]) Unit:
+parse	2	31	60	expected a name, found '|'fn count(items: List[String]) Unit:
     items.ap|
 parse	2	14	49	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'fn answer(input: Int) Int:
     return inp|
@@ -4843,31 +4843,31 @@ export fn main() Int:
     fn read() String
 fn answer[T: Reader](reader: T) String:
     return reader.|
-parse	4	19	97	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn text(value: Bool) String:
+parse	4	19	97	expected a name, found '|'fn text(value: Bool) String:
     return value.|
-parse	2	18	46	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn text[T](value: T) String:
+parse	2	18	46	expected a name, found '|'fn text[T](value: T) String:
     return value.|
-parse	2	18	46	expected a name, found '|'; '|' is a reserved word and cannot be used as a nameinterface Named:
+parse	2	18	46	expected a name, found '|'interface Named:
     fn name() String
 fn text(value: Named) String:
     return value.|
-parse	4	18	85	expected a name, found '|'; '|' is a reserved word and cannot be used as a nametype Item:
+parse	4	18	85	expected a name, found '|'type Item:
     value: Int
 fn text(value: Item) String:
     return value.|
-parse	4	18	72	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn text(value: fn() Int) String:
+parse	4	18	72	expected a name, found '|'fn text(value: fn() Int) String:
     return value.|
-parse	2	18	50	expected a name, found '|'; '|' is a reserved word and cannot be used as a nameimport Queue from "@std/queues.ms"
+parse	2	18	50	expected a name, found '|'import Queue from "@std/queues.ms"
 fn text(value: Queue[Int]) String:
     return value.|
-parse	3	18	87	expected a name, found '|'; '|' is a reserved word and cannot be used as a namefn answer(items: List[String]) Int:
+parse	3	18	87	expected a name, found '|'fn answer(items: List[String]) Int:
     return items.
 parse	2	18	53	expected a name, found end of linefn size(text: String) Int:
     return text.bl|
 parse	2	20	46	a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'import HttpClient from "@std/http.ms"
 fn work(client: HttpClient) Unit:
     client.|
-parse	3	12	83	expected a name, found '|'; '|' is a reserved word and cannot be used as a name from "@std/time.ms"
+parse	3	12	83	expected a name, found '|' from "@std/time.ms"
 fn work(value: parse	1	2	1	indentation must be a multiple of four spaces, found 1; use 0 or 4fn use(values: List[Int], entries: Map[String, Int], unique: Set[Int]) Unit:
     entries.add("a", 1)
 type	2	5	81	cannot change `entries`: parameter `entries` is not declared var; write `var entries: <Type>` in the signature and pass `var` at every callfn use(entries: Map[String, Int]) Unit:
@@ -4882,7 +4882,7 @@ fn make_fixture() State:
 impl TestHooks for State:
 test "one":
     fixture.|
-parse	8	13	159	expected a name, found '|'; '|' is a reserved word and cannot be used as a name# max items
+parse	8	13	159	expected a name, found '|'# max items
 export let MAX_ITEMS = 100
 let NAMES: List[String] = ["a"]
 let LIMIT = MAX_ITEMS * 2
@@ -5644,7 +5644,7 @@ impl Data:
 type	4	8	48	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)type Data:
 impl Data:
     fn read() Int
-parse	3	18	39	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented bodytype Data:
+parse	3	18	39	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented bodytype Data:
     fn read() Int:
 parse	2	5	15	a type declares only fields or cases; write its methods in an 'impl Data:' block, or implement an interface with 'impl <Interface> for Data:'type Data:
     count Int
@@ -5685,7 +5685,7 @@ resolution	5	6	125	unknown type Closeable; add: import Closeable from "@std/core
             b.append(%s)
             i += 1
     return b.freeze()
-parse	1	4	3	expected a name, found '%'; '%' is a reserved word and cannot be used as a namefn %s(visits: List[Int], scoped: Bool) Int:
+parse	1	4	3	expected a name, found '%'fn %s(visits: List[Int], scoped: Bool) Int:
     let values: List[Int] = [%s]
     var sum = 0
     if scoped:
@@ -5696,7 +5696,7 @@ resolution	5	6	125	unknown type Closeable; add: import Closeable from "@std/core
         for x in values:
             sum %s x
     return sum
-parse	1	4	3	expected a name, found '%'; '%' is a reserved word and cannot be used as a nameimport StringBuilder from "@std/string.ms"
+parse	1	4	3	expected a name, found '%'import StringBuilder from "@std/string.ms"
 fn probe() String:
     let b = StringBuilder()
     var i = 0
@@ -5831,7 +5831,7 @@ export fn main() Int:
     let values = %s
     let result = values.%s(%s)
     return 0
-parse	1	10	9	expected a name, found '%'; '%' is a reserved word and cannot be used as a nameimport TextError from "@std/errors.ms"
+parse	1	10	9	expected a name, found '%'import TextError from "@std/errors.ms"
 fn crash() TextError:
     return TextError((1 / 0).to_string())
 export fn main() Int:
@@ -5873,7 +5873,7 @@ resolution	4	6	91	unknown type Closeable; add: import Closeable from "@std/core.
             %s
             i += 1
     return %s
-parse	1	4	3	expected a name, found '%'; '%' is a reserved word and cannot be used as a namefn probe() Int:
+parse	1	4	3	expected a name, found '%'fn probe() Int:
     var sum = 0
     var i = 0
     while i < 321:
