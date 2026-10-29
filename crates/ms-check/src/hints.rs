@@ -571,10 +571,49 @@ impl Checker {
         )
     }
 
+    /// Explains a member that exists for the receiver's type constructor but
+    /// whose implementation requires a bound the receiver's arguments lack.
+    fn unmet_member_bound(&self, receiver: &Ty, name: Name) -> Option<String> {
+        for m in self.p.methods.iter() {
+            if m.name() != Some(name) || !self.method_visible(m) {
+                continue;
+            }
+            let mut s = Subst::new();
+            let (shared, _) = m.split_variables();
+            if !unify(&m.receiver, receiver, &variable_set(shared), &mut s) {
+                continue;
+            }
+            for v in shared {
+                let Some(actual) = s.get(&v.id) else {
+                    continue;
+                };
+                for b in v.bounds() {
+                    let bound = sub(&b, &s);
+                    if !self.satisfies(actual, &bound) {
+                        let fix = if actual.kind == Kind::Variable {
+                            format!("declare {actual}: {bound} on the enclosing function")
+                        } else {
+                            self.unsatisfied_message(
+                                actual,
+                                &bound,
+                                "use a type that implements it",
+                            )
+                        };
+                        return Some(format!("{name} requires {actual} to be {bound}; {fix}"));
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// Explains an unknown member.
     pub(crate) fn unknown_member(&mut self, receiver: &Ty, name: Name) -> String {
         self.unknown_type = true;
         let message = format!("unknown or ambiguous member {name} on {receiver}");
+        if let Some(reason) = self.unmet_member_bound(receiver, name) {
+            return format!("{message}; {reason}");
+        }
         let available = self.member_names(receiver);
         if receiver.kind != Kind::Record {
             for f in fields(receiver) {
