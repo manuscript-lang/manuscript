@@ -2,6 +2,10 @@
 
 `programs/` measures one operation per loop and several of its results come from proofs that fit those exact loops. These kernels are ordinary programs written the way a user would write them (no attempt to match a compiler proof), each compared with hand-written Go that uses a slice, struct or map directly. Every sample must report the same checksum. Reproduce with `MS=./target/release/ms GO=go sh bench/perf/kernels/run.sh 5`; compare only runs from the same machine.
 
+The current runner reports the minimum of N rotating runs. It checks each producer's exit status and requires all seven kernels exactly once per successful trial, all requested versions, exactly N trials, nonnegative integer microseconds, and matching checksums before printing any comparison. `ABLATE=1` requires the four additional C variants too. A sub-two-microsecond time is displayed as `folded`, including zero from clock resolution. Build time and process startup are outside the kernels' internal timers. The shared reporter applies the same checks to `competence/` with its fourteen kernels. Run its regression tests without native toolchains with `python3 -m unittest discover -s bench/perf -p test_kernel_trials.py`.
+
+Record the source revision, machine, tool versions, build type and effective backend when publishing timings. `ms build` defaults to Release; a release-built compiler binary alone does not establish LLVM use. `MS_BACKEND=cranelift` opts out of LLVM, and unavailable LLVM tools can also cause a fallback. This validation change does not rerun or change the historical results below.
+
 ## main at c1b81215 (2026-10-25)
 
 linux/amd64, four cores, Go 1.24.7, rustc 1.99.1, `ms` Release build with LLVM; median of 5, microseconds. "c" is the same algorithm in C at `-O3`; "c-ms" is the C a no-GC Manuscript backend would emit, with bounds, overflow and poll checks.

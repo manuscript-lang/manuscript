@@ -41,7 +41,8 @@ while [ "$i" -lt "$N" ]; do
   for v in $order; do
     "$W/$v/bench" > "$W/sample.txt"
     sed "s/^/$v /" "$W/sample.txt" >> "$W/raw.txt"
+    printf '%s # end\n' "$v" >> "$W/raw.txt"
   done
   i=$((i + 1))
 done
-python3 "$HERE/../table.py" "$W/raw.txt"
+python3 "$HERE/../table.py" "$W/raw.txt" kernels "$N" "$versions"
