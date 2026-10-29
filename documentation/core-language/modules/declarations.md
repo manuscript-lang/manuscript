@@ -81,7 +81,7 @@ export fn issue() PrivateToken:
     return PrivateToken("token")
 ```
 
-Exporting a record exposes every field and its constructor; an alternative, every case and payload; an `interface`, every operation. Opaque exports and selective visibility are unsupported ([public data surfaces](../types/records.md#public-data-surfaces)).
+Exporting a record exposes every field and its constructor; an alternative, every case and payload; an `interface`, every operation. `export opaque type` hides the fields or cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/records.md#public-data-surfaces)).
 
 An `impl` in a source type's defining module is available wherever the type is used. An `impl` for an imported type stays local to the declaring module. Both follow the [coherence and visibility rules](../types/contracts.md#coherence-and-visibility).
 
