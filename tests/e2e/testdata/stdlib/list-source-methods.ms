@@ -26,3 +26,8 @@ test "a comparator-less call and a comparator call share a name":
 test "the bound is carried through a generic function":
     try expect_equal(smallest(["b", "a"]), some("a"))
     try expect_true(smallest(List[Int]()).is_none())
+
+test "keys of a temporary list is built and released once":
+    try expect_equal([7, 8, 9].keys(), [0, 1, 2])
+    try expect_equal(["a", "b"].keys().length() + ["c"].keys().length(), 3)
+    try expect_equal(List[Int]().keys(), List[Int]())

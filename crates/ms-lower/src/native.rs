@@ -1796,12 +1796,14 @@ impl<'a> FnLower<'a> {
         recv: Val,
         result: MTy,
     ) -> Result<Val, Error> {
-        let r = self.borrow(recv);
-        let n = self.b.list_len(r);
+        let (lv, hidden) = self.list_source(recv_expr, recv)?;
+        let n = {
+            let l = self.b.use_var(lv);
+            self.b.list_len(l)
+        };
         let acc = self.fresh_var(result);
         let first = self.b.list_new(MTy::INT, n);
         self.b.def_var(acc, first);
-        let (lv, hidden) = self.list_source(recv_expr, recv)?;
         self.each_element(lv, &mut |s, i, _| {
             let cur = s.b.use_var(acc);
             let next = s.b.list_push(cur, i);
