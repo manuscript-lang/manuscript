@@ -58,7 +58,7 @@ fn next_count(count: Int, elapsed: Int, target: Int) Int:
 # A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
 #   bench "sorts":
 #       let data = ints(100000)
-#       try measure(100000, lambda: keep(data.sorted().length()))
+#       try measure(100000, fn: keep(data.sorted().length()))
 # Everything the body does before `measure` runs once, untimed.
 export fn measure(operations: Int, work: fn() Result[Unit, Error]) Result[Unit, Error]:
     let body = work

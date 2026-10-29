@@ -10,7 +10,7 @@ export type EncodingError:
     # The decoded byte count exceeds the supplied output budget.
     case LimitExceeded
 
-# Decodes standard Base64 by default; set `url_safe: True` for the URL-safe alphabet.
+# Decodes standard Base64 by default; set `url_safe: true` for the URL-safe alphabet.
 export fn base64_decode(
     text: String,
     url_safe: Bool = false,
@@ -94,7 +94,7 @@ fn budget(max_bytes: Optional[Int]) Int:
 
     return 9223372036854775807
 
-# Encodes bytes as standard Base64 by default; set `url_safe: True` for URL-safe text.
+# Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text.
 export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     var out = StringBuilder()
     let table = base64_table(url_safe)
@@ -175,7 +175,7 @@ impl Error for EncodingError:
             InvalidData: return "encoding: invalid data"
             LimitExceeded: return "encoding: limit exceeded"
 
-# Encodes text as UTF-16 code units, little-endian unless `little_endian` is False (Node `utf16le`).
+# Encodes text as UTF-16 code units, little-endian unless `little_endian` is false (Node `utf16le`).
 # No byte order mark is written.
 export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
     var out = BytesBuilder()
@@ -215,7 +215,7 @@ fn text_of(scalars: List[Int]) String:
 
     return ""
 
-# Decodes UTF-16 bytes, little-endian unless `little_endian` is False.
+# Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
 # An odd length or an unpaired surrogate returns InvalidData; a negative `max_bytes` returns InvalidInput, and decoded text longer than `max_bytes` UTF-8 bytes returns LimitExceeded.
 export fn utf16_decode(
     data: Bytes,

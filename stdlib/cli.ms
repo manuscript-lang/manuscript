@@ -6,24 +6,24 @@
 # and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
 # `process.arguments()` from `main`.
 #
-# ```
-# from "@std/cli.ms" import Arg, Command, Flag, FlagKind, command
-# from "@std/process.ms" import arguments
+# ```manuscript
+# import {Arg, Command, Flag, FlagKind, command} from "@std/cli.ms"
+# import arguments from "@std/process.ms"
 #
 # type Greeting:
 #     name: String
 #     shout: Bool
 #
-# def greet(options: Greeting) -> Result[Int, Error]:
+# fn greet(options: Greeting) Result[Int, Error]:
 #     return ok(0)
 #
-# def main() -> Int:
+# export fn main() Int:
 #     let greeting = command[Greeting](
 #         name: "greet",
 #         about: "Print a greeting",
 #         flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
 #         args: [Arg("name", help: "Who to greet")],
-#         run: lambda options: greet(options)
+#         run: fn options: greet(options)
 #     )
 #     return Command(name: "tool", children: [greeting]).execute(arguments())
 # ```
