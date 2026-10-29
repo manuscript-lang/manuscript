@@ -50,9 +50,11 @@ export fn main() Int:
                 if size == 64: iterations = 100000
 
                 if limit < 0:
-                    iterations = 64
+                    iterations = 1024
+                    if size == 64: iterations = 100000
                     if size == 1048576: iterations = 8
 
+                if limit == 0: iterations = 1000000
                 if (
                     measure(
                         "w{width}_n{size}_limit{limit}", text, parts * (17 + width),
