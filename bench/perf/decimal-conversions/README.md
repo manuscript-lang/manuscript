@@ -12,11 +12,13 @@ No representation, public signature, rounding rule, or error behavior changes.
 The baseline runtime is **`4ceb772afe59c6a73305b94c2ab395e60b0611ca`**. The changed
 runtime differs only in `crates/ms-std-decimal/src/lib.rs`. The same compiler and
 workload built both executables, selecting each archive with `MS_RT_LIB`.
-Both `.ms-build.json` files report `backend: cranelift`, `build_type: Release`.
-Release uses MIR `Level::Speed` and Cranelift `opt_level: speed`; the native runtime
-was built by `cargo xtask runtime` with Cargo release optimization (level 3) and
-debug information disabled. These are **not LLVM measurements**. No backend or
-CPU overrides were set during the recorded run.
+The initial run used default Release selection. Its `.ms-build.json` files report
+`backend: cranelift`, `build_type: Release`, but that label alone does not establish
+the actual optimization path. **The initial run's backend is unverified.** Its
+samples and provisional table below are retained for transparency; a final run
+with explicit `MS_BACKEND=cranelift` is pending. The native runtime was built by
+`cargo xtask runtime` with Cargo release optimization (level 3) and debug
+information disabled. No backend or CPU overrides were set during the initial run.
 
 Linux x86_64, kernel 6.18.55, Intel Xeon Platinum 8573C under KVM; five visible
 CPUs, four-CPU cgroup quota, 16 GiB memory limit. Rust 1.99.1
@@ -25,7 +27,7 @@ concurrently with the measurements. Shared-VM noise remains visible in the range
 
 Seven paired samples follow a separate warmup for every case, alternating binary
 order. The table gives internal **ns/operation, median [minimum–maximum]**;
-[raw samples](results-2026-10-29.jsonl) also retain process wall time and checksums.
+[initial raw samples](results-2026-10-29-unverified-backend.jsonl) also retain process wall time and checksums.
 Compilation, input parsing, value setup, output, and process startup are outside
 the internal timer. Loop arithmetic and assignment remain inside it. `stream`
 consumes every conversion by truncating it back to Int and accumulating a checked
@@ -89,7 +91,7 @@ MS_BACKEND=cranelift MS_RT_LIB="$PWD/target/ms-native/libms_native.a" \
 python3 bench/perf/decimal-conversions/repeat.py /tmp/decimal-before-program /tmp/decimal-after-program 7
 ```
 
-The explicit Cranelift selector reproduces the backend reported by the recorded
-artifacts; ordinary Release builds may select LLVM when its tools are available.
+The explicit Cranelift selector fixes the backend independently of default Release
+selection or the sidecar label; ordinary Release builds may select LLVM when its tools are available.
 Run measurements without concurrent builds. This is a profiling guide, not a CI
 timing gate or a claim about every numeric workload.

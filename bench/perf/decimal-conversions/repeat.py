@@ -22,7 +22,7 @@ def run(binary, operation, count, seed):
     )
     wall = time.perf_counter_ns() - begin
     match = re.fullmatch(
-        r"operation=(\w+) count=(\d+) seed=(-?\d+) ns=(\d+) result=(\S+)\n",
+        r"operation=([\w-]+) count=(\d+) seed=(-?\d+) ns=(\d+) result=(\S+)\n",
         result.stdout,
     )
     if not match or result.stderr or match.group(1, 2, 3) != (
@@ -34,9 +34,11 @@ def run(binary, operation, count, seed):
         expected = Decimal(seed + last)
     elif operation == "uint":
         expected = Decimal((seed or (1 << 64) - 1) - last)
-    elif operation == "stream":
+    elif operation in ("stream", "add-round"):
         complete, remainder = divmod(count, 10000)
         expected = Decimal(complete * 49995000 + remainder * (remainder - 1) // 2)
+        if operation == "add-round":
+            expected += count
     else:
         expected = Decimal(seed) / 100 * (-1 if count % 2 else 1)
     if Decimal(match[5]) != expected:
@@ -61,6 +63,7 @@ def main():
         ("uint", 1000000, 0),
         ("uint", 1000001, 1000000000000000000),
         ("stream", 1000000, 0),
+        ("add-round", 20000, 0),
         ("negate", 1, 0),
         ("negate", 10000, 12345),
         ("negate", 1000000, 12345),

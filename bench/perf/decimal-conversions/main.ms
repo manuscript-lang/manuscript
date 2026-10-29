@@ -9,6 +9,7 @@ export fn main() Int:
     let count = args[1].parse_int().get()
     let seed = args[2].parse_int().get()
     let timer = clock()
+    let rate = 1.12345d
     var result = seed.to_decimal() / 100d
     var unsigned: UInt64 = 18446744073709551615
     if operation == "uint" and seed != 0:
@@ -26,6 +27,13 @@ export fn main() Int:
         var total = 0
         for i in 0..count:
             total += (i % 10000).to_decimal().truncate_to_int().get()
+        result = total.to_decimal()
+    else if operation == "add-round":
+        var total = 0
+        for i in 0..count:
+            total += ((i % 10000).to_decimal() + rate).round(
+                2
+            ).get().truncate_to_int().get()
         result = total.to_decimal()
     else if operation == "negate":
         for i in 0..count:
@@ -54,10 +62,12 @@ export fn main() Int:
 
         return 0
 
-    if operation == "stream":
+    if operation == "stream" or operation == "add-round":
         let complete = count / 10000
         let remainder = count % 10000
-        let expected = complete * 49995000 + remainder * (remainder - 1) / 2
+        var expected = complete * 49995000 + remainder * (remainder - 1) / 2
+        if operation == "add-round":
+            expected += count
         if result != expected.to_decimal():
             return 1
 
