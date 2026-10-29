@@ -15,3 +15,10 @@ test('strings scope escapes and nest interpolation with nested strings', () => {
   assert.equal(interpolation.end, '\\}');
   assert.ok(interpolation.patterns.some(p => p.include === '$self'));
 });
+
+test('opaque is a keyword only before type', () => {
+  const rule = grammar.patterns.find(p => p.name === 'keyword.control.manuscript' && p.match.startsWith('\\bopaque'));
+  const opaque = new RegExp(rule.match);
+  assert.ok(opaque.test('export opaque type Token:'));
+  assert.ok(!opaque.test('fn opaque(x: Int) Int:'));
+});
