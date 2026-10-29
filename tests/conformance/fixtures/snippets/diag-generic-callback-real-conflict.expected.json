@@ -7,17 +7,6 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3080",
-        "phase": "type",
-        "message": "conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)",
-        "position": {
-          "file": "diag-generic-callback-real-conflict.ms",
-          "line": 8,
-          "column": 34,
-          "offset": 268
-        }
-      },
-      {
         "code": "MS3001",
         "phase": "type",
         "message": "expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
@@ -47,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-generic-callback-real-conflict.ms:8:34: type: conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)\n   |\n 8 | fn exercise() Int: apply(source, 3)\n   |                                  ^\n<DIR>/diag-generic-callback-real-conflict.ms:8:34: type: expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 8 | fn exercise() Int: apply(source, 3)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-generic-callback-real-conflict.ms:8:34: type: expected String, found Int (in argument 'value' of apply); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 8 | fn exercise() Int: apply(source, 3)\n   |                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

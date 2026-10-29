@@ -272,3 +272,22 @@ fn interface_parameter_inference_failure_is_one_clear_error() {
         p.diagnostics
     );
 }
+
+#[test]
+fn generic_argument_conflict_is_reported_once() {
+    let p = Checker::new(&CheckOptions::default()).check_modules(
+        vec![module(
+            "conflict.ms",
+            include_str!("../tests/method_candidates/conflict.ms"),
+        )],
+        None,
+    );
+    assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
+    assert!(
+        p.diagnostics[0]
+            .message
+            .starts_with("expected Int, found String (in argument 'b' of pair)"),
+        "{:?}",
+        p.diagnostics
+    );
+}

@@ -220,6 +220,8 @@ pub struct Checker {
     pub(crate) reported_bounds: HashSet<String>,
     pub(crate) in_declaration_checks: bool,
     pub(crate) label_mismatch: bool,
+    /// Arguments whose generic-inference conflict is already reported, so the final argument check stays quiet.
+    pub(crate) conflicted_arguments: HashSet<ms_syntax::ast::NodeId>,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
     pub(crate) captures: HashMap<usize, HashMap<usize, BindingRef>>,
@@ -263,6 +265,7 @@ impl Checker {
             reported_bounds: HashSet::new(),
             in_declaration_checks: false,
             label_mismatch: false,
+            conflicted_arguments: HashSet::new(),
             call_name: String::new(),
             call_pos: None,
             captures: HashMap::new(),
