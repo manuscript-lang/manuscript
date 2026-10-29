@@ -28,3 +28,17 @@ fn punctuation_is_not_called_a_reserved_word() {
         error.message
     );
 }
+
+#[test]
+fn misplaced_opaque_says_where_it_goes() {
+    let file = Arc::from("opaque.ms");
+    for source in [
+        "opaque fn g() Int:\n    return 1\n",
+        "opaque interface I:\n    fn f() Int\n",
+        "opaque export type T:\n    x: Int\n",
+        "opaque\ntype T:\n    x: Int\n",
+    ] {
+        let error = ms_syntax::parser::parse(&file, source).unwrap_err();
+        assert!(error.message.contains("opaque type"), "{}", error.message);
+    }
+}

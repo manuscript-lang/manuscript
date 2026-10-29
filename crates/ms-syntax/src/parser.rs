@@ -1106,6 +1106,14 @@ impl<'a> Parser<'a> {
                         "",
                     );
                 }
+                if token.kind == Tok::Name && self.text(token) == "opaque" {
+                    let advice = if self.ahead(1).kind == Tok::Export {
+                        "write 'export opaque type Name:', with export first"
+                    } else {
+                        "'opaque' applies only to a record or alternative type: write 'opaque type Name:' or 'export opaque type Name:'"
+                    };
+                    return self.fail(token, format!("misplaced 'opaque'; {advice}"));
+                }
                 let msg = format!(
                     "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
                     describe(self.src, token)
