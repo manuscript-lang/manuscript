@@ -1,0 +1,128 @@
+[
+  {
+    "size": 0,
+    "label": "before",
+    "calls": 20,
+    "instructions": 1880,
+    "per_call": 94.0
+  },
+  {
+    "size": 0,
+    "label": "after",
+    "calls": 20,
+    "instructions": 1900,
+    "per_call": 95.0
+  },
+  {
+    "size": 1,
+    "label": "before",
+    "calls": 20,
+    "instructions": 7187,
+    "per_call": 359.35
+  },
+  {
+    "size": 1,
+    "label": "after",
+    "calls": 20,
+    "instructions": 6307,
+    "per_call": 315.35
+  },
+  {
+    "size": 2,
+    "label": "before",
+    "calls": 20,
+    "instructions": 7267,
+    "per_call": 363.35
+  },
+  {
+    "size": 2,
+    "label": "after",
+    "calls": 20,
+    "instructions": 6427,
+    "per_call": 321.35
+  },
+  {
+    "size": 3,
+    "label": "before",
+    "calls": 20,
+    "instructions": 7307,
+    "per_call": 365.35
+  },
+  {
+    "size": 3,
+    "label": "after",
+    "calls": 20,
+    "instructions": 6507,
+    "per_call": 325.35
+  },
+  {
+    "size": 4,
+    "label": "before",
+    "calls": 20,
+    "instructions": 8867,
+    "per_call": 443.35
+  },
+  {
+    "size": 4,
+    "label": "after",
+    "calls": 20,
+    "instructions": 7207,
+    "per_call": 360.35
+  },
+  {
+    "size": 16,
+    "label": "before",
+    "calls": 20,
+    "instructions": 16620,
+    "per_call": 831.0
+  },
+  {
+    "size": 16,
+    "label": "after",
+    "calls": 20,
+    "instructions": 11840,
+    "per_call": 592.0
+  },
+  {
+    "size": 32,
+    "label": "before",
+    "calls": 20,
+    "instructions": 25680,
+    "per_call": 1284.0
+  },
+  {
+    "size": 32,
+    "label": "after",
+    "calls": 20,
+    "instructions": 17040,
+    "per_call": 852.0
+  },
+  {
+    "size": 1024,
+    "label": "before",
+    "calls": 20,
+    "instructions": 623760,
+    "per_call": 31188.0
+  },
+  {
+    "size": 1024,
+    "label": "after",
+    "calls": 20,
+    "instructions": 356900,
+    "per_call": 17845.0
+  },
+  {
+    "size": 65536,
+    "label": "before",
+    "calls": 20,
+    "instructions": 41086380,
+    "per_call": 2054319.0
+  },
+  {
+    "size": 65536,
+    "label": "after",
+    "calls": 20,
+    "instructions": 24046400,
+    "per_call": 1202320.0
+  }
+]

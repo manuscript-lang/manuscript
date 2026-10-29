@@ -1,0 +1,226 @@
+[
+  {
+    "size": 0,
+    "shape": "valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3367,
+    "per_call": 1122.3333333333333
+  },
+  {
+    "size": 0,
+    "shape": "valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 3367,
+    "per_call": 1122.3333333333333
+  },
+  {
+    "size": 16,
+    "shape": "valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3647,
+    "per_call": 1215.6666666666667
+  },
+  {
+    "size": 16,
+    "shape": "valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 3647,
+    "per_call": 1215.6666666666667
+  },
+  {
+    "size": 1024,
+    "shape": "valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 6923,
+    "per_call": 2307.6666666666665
+  },
+  {
+    "size": 1024,
+    "shape": "valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 6923,
+    "per_call": 2307.6666666666665
+  },
+  {
+    "size": 0,
+    "shape": "typed-valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 2594,
+    "per_call": 864.6666666666666
+  },
+  {
+    "size": 0,
+    "shape": "typed-valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2594,
+    "per_call": 864.6666666666666
+  },
+  {
+    "size": 16,
+    "shape": "typed-valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3095,
+    "per_call": 1031.6666666666667
+  },
+  {
+    "size": 16,
+    "shape": "typed-valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 3095,
+    "per_call": 1031.6666666666667
+  },
+  {
+    "size": 1024,
+    "shape": "typed-valid",
+    "label": "before",
+    "calls": 3,
+    "instructions": 6959,
+    "per_call": 2319.6666666666665
+  },
+  {
+    "size": 1024,
+    "shape": "typed-valid",
+    "label": "after",
+    "calls": 3,
+    "instructions": 6959,
+    "per_call": 2319.6666666666665
+  },
+  {
+    "size": 16,
+    "shape": "plain",
+    "label": "before",
+    "calls": 3,
+    "instructions": 2935,
+    "per_call": 978.3333333333334
+  },
+  {
+    "size": 16,
+    "shape": "plain",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2737,
+    "per_call": 912.3333333333334
+  },
+  {
+    "size": 65536,
+    "shape": "plain",
+    "label": "before",
+    "calls": 3,
+    "instructions": 211969,
+    "per_call": 70656.33333333333
+  },
+  {
+    "size": 65536,
+    "shape": "plain",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2926,
+    "per_call": 975.3333333333334
+  },
+  {
+    "size": 16,
+    "shape": "escaped",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3556,
+    "per_call": 1185.3333333333333
+  },
+  {
+    "size": 16,
+    "shape": "escaped",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2737,
+    "per_call": 912.3333333333334
+  },
+  {
+    "size": 65536,
+    "shape": "escaped",
+    "label": "before",
+    "calls": 3,
+    "instructions": 2362465,
+    "per_call": 787488.3333333334
+  },
+  {
+    "size": 65536,
+    "shape": "escaped",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2926,
+    "per_call": 975.3333333333334
+  },
+  {
+    "size": 16,
+    "shape": "typed-plain",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3172,
+    "per_call": 1057.3333333333333
+  },
+  {
+    "size": 16,
+    "shape": "typed-plain",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2974,
+    "per_call": 991.3333333333334
+  },
+  {
+    "size": 65536,
+    "shape": "typed-plain",
+    "label": "before",
+    "calls": 3,
+    "instructions": 414604,
+    "per_call": 138201.33333333334
+  },
+  {
+    "size": 65536,
+    "shape": "typed-plain",
+    "label": "after",
+    "calls": 3,
+    "instructions": 205561,
+    "per_call": 68520.33333333333
+  },
+  {
+    "size": 16,
+    "shape": "typed-escaped",
+    "label": "before",
+    "calls": 3,
+    "instructions": 3793,
+    "per_call": 1264.3333333333333
+  },
+  {
+    "size": 16,
+    "shape": "typed-escaped",
+    "label": "after",
+    "calls": 3,
+    "instructions": 2974,
+    "per_call": 991.3333333333334
+  },
+  {
+    "size": 65536,
+    "shape": "typed-escaped",
+    "label": "before",
+    "calls": 3,
+    "instructions": 2565100,
+    "per_call": 855033.3333333334
+  },
+  {
+    "size": 65536,
+    "shape": "typed-escaped",
+    "label": "after",
+    "calls": 3,
+    "instructions": 205561,
+    "per_call": 68520.33333333333
+  }
+]

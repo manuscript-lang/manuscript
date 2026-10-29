@@ -1,0 +1,4 @@
+[project]
+name = "json-failure-bench"
+source = "."
+entry = "./main.ms"

@@ -1,0 +1,19 @@
+import hashlib,json,statistics,subprocess
+from pathlib import Path
+root=Path('/workspace/manuscript/.artifacts/codecs-pass2');rows=[]
+cases=[(s,1000,4000) for s in [0,1,2,3,4,16,32]]+[(s,1,2000000) for s in [0,1,2,3,4,32]]+[(1024,1,100000),(65536,1,1000)]
+for size,count,rounds in cases:
+ selected=[]
+ for repeat in range(-1,9):
+  for label in (['before','groups'] if repeat%2==0 else ['groups','before']):
+   p=subprocess.run([str(root/'encode'/f'{label}-cpu'),str(size),str(count),str(rounds)],text=True,capture_output=True,check=True)
+   out=list(map(int,p.stdout.split()));expected=(((size+2)//3*4)*count+max(0,count-1)+count*2+2)*rounds
+   assert len(out)==6 and out[:4]==[size,count,rounds,expected] and out[4]>0 and out[5]>0,out
+   r=dict(size=size,count=count,rounds=rounds,repeat=repeat,label=label,checksum=out[3],wall_ns=out[4]/rounds,cpu_ns=out[5]/rounds);selected.append(r);rows.append(r)
+ for key in ['wall_ns','cpu_ns']:
+  b=[r[key] for r in selected if r['repeat']>=0 and r['label']=='before'];a=[r[key] for r in selected if r['repeat']>=0 and r['label']=='groups']
+  pairs=[next(r[key] for r in selected if r['repeat']==i and r['label']=='groups')/next(r[key] for r in selected if r['repeat']==i and r['label']=='before') for i in range(9)]
+  print(size,count,rounds,key,'before',round(statistics.median(b),3),'after',round(statistics.median(a),3),'ratio',round(statistics.median(a)/statistics.median(b),4),'paired',round(statistics.median(pairs),4),'range',tuple(round(x,3) for x in [min(b),max(b),min(a),max(a)]),flush=True)
+ (root/'groups-samples.json').write_text(json.dumps(rows,indent=2)+'\n')
+paths=[root/'encode'/'before-cpu',root/'encode'/'groups-cpu',root/'encode'/'main-cpu.ms',root/'cpu.c',root/'cpu.o',root/'compare-cpu.py']
+(root/'groups-identities.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},indent=2)+'\n')
