@@ -1264,10 +1264,11 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
 
 // ---- Set algebra (all produce fresh sets in left order) ----
 
-unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
-    // SAFETY: `p` is a live key slot.
+/// Copies a key, checking for a duplicate unless its caller already knows the output is unique.
+unsafe fn add_copy<const CHECK: bool>(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
+    // SAFETY: `p` is a live key slot; insert consumes its fresh copy.
     unsafe {
-        if contains_key(m, kd, None, p) {
+        if CHECK && contains_key(m, kd, None, p) {
             return;
         }
         let mut buf = [0u64; 8];
@@ -1317,7 +1318,7 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(
 ) {
     let kd = key_desc(m, kd);
     // SAFETY: caller contract.
-    unsafe { add_copy(&mut *m, &*kd, key) }
+    unsafe { add_copy::<true>(&mut *m, &*kd, key) }
 }
 
 #[unsafe(no_mangle)]
@@ -1332,7 +1333,7 @@ pub unsafe extern "C-unwind" fn msrt_set_union(
     unsafe {
         let kd = &*kd;
         copy_map(a, kd, None, out);
-        each_key(&*b, kd, |k| add_copy(&mut *out, kd, k));
+        each_key(&*b, kd, |k| add_copy::<true>(&mut *out, kd, k));
     }
 }
 
@@ -1348,7 +1349,8 @@ unsafe fn filter_into(
         (*out).desc = a.desc;
         each_key(a, kd, |k| {
             if keep(k) {
-                add_copy(&mut *out, kd, k);
+                // A is already unique, and this output starts empty.
+                add_copy::<false>(&mut *out, kd, k);
             }
         });
     }
@@ -1398,7 +1400,7 @@ pub unsafe extern "C-unwind" fn msrt_set_symmetric_difference(
         filter_into(&*a, kd, out, |k| !contains_key(&*b, kd, None, k));
         each_key(&*b, kd, |k| {
             if !contains_key(&*a, kd, None, k) {
-                add_copy(&mut *out, kd, k);
+                add_copy::<true>(&mut *out, kd, k);
             }
         });
     }
@@ -1500,6 +1502,55 @@ mod tests {
         eq: Some(counted_eq),
         hash: Some(counted_hash),
     };
+
+    #[test]
+    fn set_algebra_does_not_recheck_unique_output_keys() {
+        let _g = testutil::lock();
+        // SAFETY: sets contain live i64 keys of the counted descriptor.
+        unsafe {
+            let before = alloc::live_blocks();
+            let kd = &COUNTED_KEY;
+            let mut a = empty();
+            let mut b = empty();
+            for i in 0..32i64 {
+                let mut x = i;
+                let mut y = i + 32;
+                insert(
+                    &mut a,
+                    kd,
+                    None,
+                    (&mut x as *mut i64).cast(),
+                    core::ptr::null_mut(),
+                );
+                insert(
+                    &mut b,
+                    kd,
+                    None,
+                    (&mut y as *mut i64).cast(),
+                    core::ptr::null_mut(),
+                );
+            }
+            let mut output = empty();
+            HASH_CALLS.store(0, Ordering::Relaxed);
+            msrt_set_intersection(&a, &a, kd, &mut output);
+            assert_eq!(output.len, 32);
+            assert_eq!(HASH_CALLS.load(Ordering::Relaxed), 64);
+            drop_map(&mut output, kd, None);
+            HASH_CALLS.store(0, Ordering::Relaxed);
+            msrt_set_difference(&a, &b, kd, &mut output);
+            assert_eq!(output.len, 32);
+            assert_eq!(HASH_CALLS.load(Ordering::Relaxed), 64);
+            drop_map(&mut output, kd, None);
+            HASH_CALLS.store(0, Ordering::Relaxed);
+            msrt_set_symmetric_difference(&a, &b, kd, &mut output);
+            assert_eq!(output.len, 64);
+            assert_eq!(HASH_CALLS.load(Ordering::Relaxed), 160);
+            drop_map(&mut output, kd, None);
+            drop_map(&mut a, kd, None);
+            drop_map(&mut b, kd, None);
+            assert_eq!(alloc::live_blocks(), before);
+        }
+    }
 
     #[test]
     fn compaction_after_a_large_drop_shrinks_to_the_live_size() {
