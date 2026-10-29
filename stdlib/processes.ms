@@ -201,7 +201,7 @@ type ProcessTransport[In: Data, Out: Data]:
     inbox: Shared[Inbox]
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
-    var fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Result[Unit, ChannelError]:
         let state = self.inbox.get()
         if state.closed or state.finished:
             return error(ChannelError.Closed)
@@ -212,7 +212,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
         return ok(unit)
 
-    var fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Optional[Out], ChannelError]:
         let state = self.inbox.get()
         if state.closed:
             return error(ChannelError.Closed)
