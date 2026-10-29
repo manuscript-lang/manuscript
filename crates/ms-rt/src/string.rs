@@ -1747,7 +1747,8 @@ pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut Ve
         let text = bytes(s);
         let mut v = EMPTY_VEC;
         let mut start = 0;
-        while let Some(p) = text[start..].iter().position(|&c| c == b'\n') {
+        let newline = Needle::Byte(b'\n');
+        while let Some(p) = newline.find(&text[start..]) {
             let mut end = start + p;
             if end > start && text[end - 1] == b'\r' {
                 end -= 1;
