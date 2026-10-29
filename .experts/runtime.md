@@ -190,17 +190,24 @@ Apply when: adding collection constructors or writing fixtures that need a popul
 Evidence: [Set declaration](../stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.
 
-### Forked fault assertions need their own cleanup boundary
+### Fault assertions need their own cleanup boundary
 
 Verified: Unix `expect_fault` children inherit the caller's cleanup stack and guard targets.
 Running them can delete a still-live parent's external resources or jump to an inherited
 callback guard. Clear cleanup records, guards, active fault reports and equality recursion
 state in the child before the assertion runs; preserve cancellation, shielding and stack limits.
 
+Verified: Windows trap entry saves its cleanup boundary before returning to the generated
+caller, which then discards transient per-call cleanup registrations. Lower the trap's saved
+base when that discard removes caller entries; otherwise newly registered operation cleanups
+can lie below the stale base and never run. Ordinary guard boundaries do not move.
+
 Apply when: changing fault assertions, fork boundaries or cleanup contexts.
-Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
+Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [Windows trap entry](../crates/ms-rt/src/trap_windows.rs), [discard-boundary regression](../crates/ms-rt/src/fault.rs) (`trap_cleanup_boundary_tracks_discarded_caller_temporaries`), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
 Verify: child faults leave parent cleanup pending, child cleanup runs LIFO, nested assertions
 and assertions during fault cleanup retain their own report and cleanup boundaries.
+Run [implicit-close-shielded.ms](../tests/e2e/testdata/accept/implicit-close-shielded.ms) on both
+Windows architectures to cover the generated caller, trap and scope-close path together.
 
 ### Reactor progress must not depend on the scheduler going idle
 
