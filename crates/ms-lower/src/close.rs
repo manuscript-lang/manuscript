@@ -199,6 +199,16 @@ impl FnLower<'_> {
         cleanup: Option<&ct::MethodRef>,
     ) -> Result<(), Error> {
         let kind = self.closer_for(cleanup, &binding.ty)?;
+        self.bind_closing_kind(binding, x, kind)
+    }
+
+    /// [`Self::bind_closing`] with the close operation already chosen.
+    pub(crate) fn bind_closing_kind(
+        &mut self,
+        binding: &ct::BindingRef,
+        x: crate::func::Val,
+        kind: CloseKind,
+    ) -> Result<(), Error> {
         // A `var` binding that changes lives in memory, so a fault or cancellation closes its
         // value at that moment and not the one it started with.
         if binding.mutable {
