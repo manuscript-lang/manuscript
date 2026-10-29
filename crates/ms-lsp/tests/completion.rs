@@ -74,3 +74,46 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
         assert_eq!(std::fs::read_to_string(&path).unwrap(), stale);
     }
 }
+
+#[test]
+fn an_opaque_record_offers_no_fields_outside_its_file() {
+    let workspace = Workspace::new("completion-opaque");
+    std::fs::write(
+        workspace.path("gate.ms"),
+        include_str!("completion/opaque-gate.ms"),
+    )
+    .expect("gate source");
+    let labels = |name: &str, source: &str, line: usize, character: usize| {
+        let document = Document::new(workspace.uri(name), source.to_string());
+        completion_at(
+            &document,
+            &Documents::new(),
+            Position { line, character },
+            false,
+        )
+        .expect("completion")
+        .into_iter()
+        .filter_map(|item| {
+            item.json()
+                .get("label")
+                .and_then(|j| j.as_str())
+                .map(str::to_string)
+        })
+        .collect::<Vec<_>>()
+    };
+    let outside = labels(
+        "main.ms",
+        include_str!("completion/opaque-outside.ms"),
+        4,
+        14,
+    );
+    assert!(outside.contains(&"show".to_string()), "{outside:?}");
+    assert!(!outside.contains(&"id".to_string()), "{outside:?}");
+    let inside = labels(
+        "gate.ms",
+        include_str!("completion/opaque-inside.ms"),
+        5,
+        20,
+    );
+    assert!(inside.contains(&"id".to_string()), "{inside:?}");
+}
