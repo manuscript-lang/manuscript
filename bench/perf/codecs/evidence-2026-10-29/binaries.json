@@ -1,0 +1,10 @@
+{
+  "before": {
+    "path": "/workspace/manuscript/.artifacts/codecs/before",
+    "sha256": "ff1c5f667a4993967c8c6285bd43de4dc5814381f3041a06a0b2eb657b3ff20b"
+  },
+  "after": {
+    "path": "/workspace/manuscript/.artifacts/codecs/after",
+    "sha256": "b4b476c387330d4cfa267674fd85481f9e79390cd85407c15d105bbe5b17e41b"
+  }
+}
