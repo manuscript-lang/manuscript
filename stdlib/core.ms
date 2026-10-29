@@ -179,7 +179,7 @@ export interface Clonable:
 # anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
 # message types of processes, workers, tasks and channels require `T: Data`.
 # There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
-# only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type; `JsonValue`
+# only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
 # is `Data` by declaration, so a JSON object travels as a `JsonValue`.
 export interface Data: ...
 

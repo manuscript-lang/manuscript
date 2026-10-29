@@ -361,6 +361,18 @@ impl Checker {
         self.error(pos, Phase::Type, message);
     }
 
+    /// Reports `what` when `t` is an `opaque type` declared in another file; true when it did.
+    pub(crate) fn opaque_denied(&mut self, pos: Pos, t: &Ty, what: &str) -> bool {
+        let Some(module) = t.opaque_module().filter(|m| *m != self.current_file()) else {
+            return false;
+        };
+        self.type_error(
+            pos,
+            format!("{t} is opaque outside {module}: {what}; use the functions {module} exports"),
+        );
+        true
+    }
+
     /// A resolution-phase diagnostic.
     pub(crate) fn res_error(&mut self, pos: Pos, message: impl Into<String>) {
         self.error(pos, Phase::Resolution, message);

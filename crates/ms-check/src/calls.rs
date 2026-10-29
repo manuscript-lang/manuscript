@@ -178,6 +178,7 @@ impl Checker {
                 );
                 return i;
             }
+            self.opaque_denied(e.pos, &typ, "it cannot be constructed here");
             let mut fields = constructor_signature(&typ).params.clone();
             if [
                 "BigInt",
@@ -269,6 +270,11 @@ impl Checker {
             cs = case;
         }
         if let (Some(alt), Some(cs)) = (alternative, cs) {
+            self.opaque_denied(
+                e.pos,
+                &alt,
+                &format!("case {} cannot be built here", cs.name),
+            );
             if cs.fields.is_empty() {
                 let fix =
                     suggestions::drop_case_parens(&self.m().source, callee.pos, cs.name.as_str());

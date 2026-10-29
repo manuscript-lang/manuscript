@@ -273,6 +273,17 @@ pub(crate) fn build_format(
     let x = b.params()[0];
     let depth = b.params()[1];
     match b.m.types.kind(t).clone() {
+        TyKind::Rec(_) | TyKind::Alt(_) if cx.opaque_tys.contains(&t) => {
+            // An opaque value shows its type name only, never its hidden fields.
+            let name = match b.m.types.kind(t).clone() {
+                TyKind::Rec(r) => b.m.records[r.index()].name.clone(),
+                TyKind::Alt(a) => b.m.alts[a.index()].name.clone(),
+                _ => String::new(),
+            };
+            let acc = start(&mut b, &name);
+            let out = finish(&mut b, acc);
+            b.ret(Some(out));
+        }
         TyKind::List(elem) => {
             let acc = start(&mut b, "[");
             append_items(cx, &mut b, acc, x, elem, repr, depth);

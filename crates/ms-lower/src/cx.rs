@@ -141,6 +141,8 @@ pub struct Cx {
     pub insts: HashMap<String, FuncId>,
     /// Bodies waiting to be lowered.
     pub queue: Vec<Job>,
+    /// Records and alternatives declared `opaque type`; their text form is the type name.
+    pub opaque_tys: std::collections::HashSet<MTy>,
     /// Alternatives declared by the standard library.
     pub std_alts: std::collections::HashSet<usize>,
     /// Helper functions (formatting, equality, ...) by key.
@@ -221,6 +223,7 @@ impl Cx {
             tycache: HashMap::new(),
             insts: HashMap::new(),
             queue: Vec::new(),
+            opaque_tys: Default::default(),
             std_alts: Default::default(),
             helpers: HashMap::new(),
             vtables: HashMap::new(),
@@ -317,6 +320,9 @@ impl Cx {
             Kind::Record => {
                 let (id, ty) = m.add_record(&t.to_string(), Vec::new());
                 self.tycache.insert(key.to_string(), ty);
+                if t.opaque_module().is_some() {
+                    self.opaque_tys.insert(ty);
+                }
                 let mut fields = Vec::new();
                 for f in ct::fields(t) {
                     let ty = self.lower_ty(m, &f.ty)?;
@@ -334,6 +340,9 @@ impl Cx {
             Kind::Alternative => {
                 let (id, ty) = m.add_alt(&t.to_string(), Vec::new());
                 self.tycache.insert(key.to_string(), ty);
+                if t.opaque_module().is_some() {
+                    self.opaque_tys.insert(ty);
+                }
                 if t.symbol()
                     .is_some_and(|s| s.module.as_str().starts_with("@std/"))
                 {
