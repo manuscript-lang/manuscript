@@ -1,4 +1,4 @@
-import Indexed from "@std/core.ms"
+import Indexed from "@std/indexed.ms"
 
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.

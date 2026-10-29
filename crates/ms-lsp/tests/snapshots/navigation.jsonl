@@ -726,14 +726,14 @@
 {"id":725,"jsonrpc":"2.0","result":null}
 {"id":726,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":15,"line":29},"start":{"character":11,"line":29}}}]}
 {"id":727,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nOptional: Optional[Int]\n```\n\nRepresents a value that may be absent: `some(value)` or `none`."},"range":{"end":{"character":26,"line":29},"start":{"character":18,"line":29}}}}
-{"id":728,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":728,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":730,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":730,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":731,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":26,"line":29},"start":{"character":18,"line":29}}},{"kind":2,"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}]}
 {"id":732,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nOptional: Optional[Int]\n```\n\nRepresents a value that may be absent: `some(value)` or `none`."},"range":{"end":{"character":26,"line":29},"start":{"character":18,"line":29}}}}
-{"id":733,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":733,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":735,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":735,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":736,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":26,"line":29},"start":{"character":18,"line":29}}},{"kind":2,"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}]}
 {"id":737,"jsonrpc":"2.0","result":null}
 {"id":738,"jsonrpc":"2.0","result":null}
@@ -776,14 +776,14 @@
 {"id":775,"jsonrpc":"2.0","result":null}
 {"id":776,"jsonrpc":"2.0","result":[]}
 {"id":777,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nnone: Optional[Int]\n```"},"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}}}}
-{"id":778,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":91},"start":{"character":9,"line":91}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":778,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":81},"start":{"character":9,"line":81}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":779,"jsonrpc":"2.0","result":[{"range":{"end":{"character":35,"line":103},"start":{"character":31,"line":103}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":131},"start":{"character":19,"line":131}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":137},"start":{"character":19,"line":137}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":66,"line":143},"start":{"character":62,"line":143}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":44,"line":144},"start":{"character":40,"line":144}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":42,"line":329},"start":{"character":38,"line":329}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":42,"line":332},"start":{"character":38,"line":332}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":43,"line":36},"start":{"character":39,"line":36}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":576},"start":{"character":19,"line":576}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":588},"start":{"character":19,"line":588}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":606},"start":{"character":19,"line":606}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":625},"start":{"character":19,"line":625}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":47,"line":68},"start":{"character":43,"line":68}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":88},"start":{"character":31,"line":88}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":95},"start":{"character":31,"line":95}},"uri":"manuscript-stdlib:///io.ms"}]}
-{"id":780,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":780,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":781,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}}}]}
 {"id":782,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nnone: Optional[Int]\n```"},"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}}}}
-{"id":783,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":91},"start":{"character":9,"line":91}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":783,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":81},"start":{"character":9,"line":81}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":784,"jsonrpc":"2.0","result":[{"range":{"end":{"character":35,"line":103},"start":{"character":31,"line":103}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":131},"start":{"character":19,"line":131}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":137},"start":{"character":19,"line":137}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":66,"line":143},"start":{"character":62,"line":143}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":44,"line":144},"start":{"character":40,"line":144}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":42,"line":329},"start":{"character":38,"line":329}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":42,"line":332},"start":{"character":38,"line":332}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":43,"line":36},"start":{"character":39,"line":36}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":23,"line":576},"start":{"character":19,"line":576}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":588},"start":{"character":19,"line":588}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":606},"start":{"character":19,"line":606}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":23,"line":625},"start":{"character":19,"line":625}},"uri":"manuscript-stdlib:///collections.ms"},{"range":{"end":{"character":47,"line":68},"start":{"character":43,"line":68}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":88},"start":{"character":31,"line":88}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":35,"line":95},"start":{"character":31,"line":95}},"uri":"manuscript-stdlib:///io.ms"}]}
-{"id":785,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":785,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":786,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":35,"line":30},"start":{"character":31,"line":30}}}]}
 {"id":787,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nself: Counter\n```"},"range":{"end":{"character":12,"line":32},"start":{"character":8,"line":32}}}}
 {"id":788,"jsonrpc":"2.0","result":[{"range":{"end":{"character":11,"line":29},"start":{"character":11,"line":29}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
@@ -811,14 +811,14 @@
 {"id":810,"jsonrpc":"2.0","result":null}
 {"id":811,"jsonrpc":"2.0","result":[]}
 {"id":812,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nsome: Optional[Int]\n```"},"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}}
-{"id":813,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":86},"start":{"character":9,"line":86}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":813,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":76},"start":{"character":9,"line":76}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":814,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":36,"line":335},"start":{"character":32,"line":335}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":16,"line":337},"start":{"character":12,"line":337}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":16,"line":346},"start":{"character":12,"line":346}},"uri":"manuscript-stdlib:///io.ms"}]}
-{"id":815,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":815,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":816,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}]}
 {"id":817,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nsome: Optional[Int]\n```"},"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}}
-{"id":818,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":86},"start":{"character":9,"line":86}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":818,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":76},"start":{"character":9,"line":76}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":819,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":36,"line":335},"start":{"character":32,"line":335}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":16,"line":337},"start":{"character":12,"line":337}},"uri":"manuscript-stdlib:///io.ms"},{"range":{"end":{"character":16,"line":346},"start":{"character":12,"line":346}},"uri":"manuscript-stdlib:///io.ms"}]}
-{"id":820,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":84},"start":{"character":12,"line":84}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":820,"jsonrpc":"2.0","result":[{"range":{"end":{"character":20,"line":74},"start":{"character":12,"line":74}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":821,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":33},"start":{"character":15,"line":33}}}]}
 {"id":822,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nself: Counter\n```"},"range":{"end":{"character":24,"line":33},"start":{"character":20,"line":33}}}}
 {"id":823,"jsonrpc":"2.0","result":[{"range":{"end":{"character":11,"line":29},"start":{"character":11,"line":29}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
@@ -1338,7 +1338,7 @@
 {"id":1337,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\n_: Result[Unit, Error]\n```"},"range":{"end":{"character":13,"line":56},"start":{"character":12,"line":56}}}}
 {"id":1338,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":56},"start":{"character":12,"line":56}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1339,"jsonrpc":"2.0","result":[]}
-{"id":1340,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1340,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1341,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":56},"start":{"character":12,"line":56}}}]}
 {"id":1342,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nsay: fn(String) Result[Unit, Error]\n```"},"range":{"end":{"character":19,"line":56},"start":{"character":16,"line":56}}}}
 {"id":1343,"jsonrpc":"2.0","result":[{"range":{"end":{"character":6,"line":63},"start":{"character":3,"line":63}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
@@ -1408,7 +1408,7 @@
 {"id":1407,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\n_: Result[Unit, Error]\n```"},"range":{"end":{"character":13,"line":58},"start":{"character":12,"line":58}}}}
 {"id":1408,"jsonrpc":"2.0","result":[{"range":{"end":{"character":13,"line":58},"start":{"character":12,"line":58}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1409,"jsonrpc":"2.0","result":[]}
-{"id":1410,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1410,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1411,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":58},"start":{"character":12,"line":58}}}]}
 {"id":1412,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nsay: fn(String) Result[Unit, Error]\n```"},"range":{"end":{"character":19,"line":58},"start":{"character":16,"line":58}}}}
 {"id":1413,"jsonrpc":"2.0","result":[{"range":{"end":{"character":6,"line":63},"start":{"character":3,"line":63}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
@@ -1516,14 +1516,14 @@
 {"id":1515,"jsonrpc":"2.0","result":null}
 {"id":1516,"jsonrpc":"2.0","result":[]}
 {"id":1517,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":27,"line":63},"start":{"character":21,"line":63}}}}
-{"id":1518,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1518,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":1520,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1520,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1521,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":27,"line":63},"start":{"character":21,"line":63}}}]}
 {"id":1522,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nResult: Result[Unit, Error]\n```\n\nHolds either a successful value (`ok`) or an expected failure (`error`)."},"range":{"end":{"character":27,"line":63},"start":{"character":21,"line":63}}}}
-{"id":1523,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1523,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 #large
-{"id":1525,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":124},"start":{"character":12,"line":124}},"uri":"manuscript-stdlib:///core.ms"}]}
+{"id":1525,"jsonrpc":"2.0","result":[{"range":{"end":{"character":18,"line":114},"start":{"character":12,"line":114}},"uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1526,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":27,"line":63},"start":{"character":21,"line":63}}}]}
 {"id":1527,"jsonrpc":"2.0","result":null}
 {"id":1528,"jsonrpc":"2.0","result":null}

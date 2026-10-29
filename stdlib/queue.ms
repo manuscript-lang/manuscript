@@ -1,4 +1,5 @@
-import {Indexed, panic} from "@std/core.ms"
+import panic from "@std/core.ms"
+import Indexed from "@std/indexed.ms"
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.

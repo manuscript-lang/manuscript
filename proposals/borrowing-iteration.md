@@ -5,7 +5,7 @@
 - Problem: `Iterator[T].next()` returns an owned `Optional[T]`, so a container that iterates through it must clone each item and needs `T: Clonable`. `Deque`, `Queue` and `PriorityQueue` have no `for` support at all; the only way to read them is `to_list()` (clones) or indexed `at`.
 - Change: one new standard interface `Indexed[T]` (`length()` and `at(index) ref Optional[T]`). `for x in c:` over an `Indexed` binds `x` as a shared borrow of the item. No new syntax, keyword or runtime entry point.
 - `Iterator[T]` stays for sources that produce values (`LineReader`, generators); borrowing is for containers that already hold the items.
-- Cost: one interface in `stdlib/core.ms`, one checker expansion (a sibling of `check_iterator_for`), `impl Indexed` on three containers, docs and tests. No MIR, lowering, runtime or ABI change.
+- Cost: one interface in `stdlib/indexed.ms`, one checker expansion (a sibling of `check_iterator_for`), `impl Indexed` on three containers, docs and tests. No MIR, lowering, runtime or ABI change.
 - Decision requested: approve `Indexed` as the borrowing protocol and the name.
 
 ## Status
@@ -64,7 +64,7 @@ Implementations (all in Manuscript):
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `stdlib/core.ms` | `Indexed[T]` interface | doc generation |
+| `stdlib/indexed.ms` | `Indexed[T]` interface (a new module: `core.ms` and `collections.ms` export lists are quoted by frozen diagnostics fixtures) | doc generation |
 | `stdlib/deque.ms`, `queue.ms` | `impl Indexed`, `Queue.at`, `PriorityQueue.at` | e2e: iterate, break, continue, empty |
 | `crates/ms-check/src/stmts.rs` | `indexed_item`, expansion in `check_for`, diagnostic | accept/reject cases, borrow rejection |
 | `crates/ms-check/src/ownership` | unchanged: runs on the expansion | reject: mutate while borrowed |
