@@ -1766,14 +1766,13 @@ pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut Ve
 /// A scalar prefix also avoids vector-search setup for ordinary short lines in a long text.
 #[inline]
 fn find_newline(text: &[u8]) -> Option<usize> {
-    let near = text.len().min(SHORT_HAY);
-    if let Some(at) = text[..near].iter().position(|&c| c == b'\n') {
+    if text.len() <= SHORT_HAY {
+        return text.iter().position(|&c| c == b'\n');
+    }
+    if let Some(at) = text[..SHORT_HAY].iter().position(|&c| c == b'\n') {
         return Some(at);
     }
-    if near == text.len() {
-        return None;
-    }
-    memchr(b'\n', &text[near..]).map(|at| at + near)
+    memchr(b'\n', &text[SHORT_HAY..]).map(|at| at + SHORT_HAY)
 }
 
 #[unsafe(no_mangle)]
