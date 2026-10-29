@@ -156,6 +156,7 @@ pub fn analyze(cx: &Context) -> Outcome {
     };
     w.run();
     w.unclosed_resources();
+    w.consumed_param_resources();
     let declared = Summary::declared(&cx.c.func);
     let result = w.result_origin(&declared);
     // A `ref` result is a borrow on every path: a path that hands back an owned value would
@@ -400,6 +401,28 @@ impl Walker<'_> {
                     ),
                 );
             }
+        }
+    }
+
+    /// Closes at scope end a resource parameter the callee keeps on some path: the caller
+    /// handed it over, so the paths that do not move it on close it.
+    fn consumed_param_resources(&mut self) {
+        for b in self.cx.c.parameters.iter() {
+            let tracked = self.consumed.contains(&b.uid)
+                && self.cx.classes.class(&b.ty) == Class::Resource
+                && matches!(b.ty.kind, Kind::Record | Kind::Alternative | Kind::Native);
+            if !tracked {
+                continue;
+            }
+            let moves: HashSet<NodeId> = self
+                .facts
+                .uses
+                .values()
+                .filter(|u| u.binding == b.uid && u.access == Access::Move)
+                .map(|u| u.node)
+                .collect();
+            self.facts.implicit_closes.insert(b.uid);
+            self.facts.close_moves.insert(b.uid, moves);
         }
     }
 

@@ -960,6 +960,14 @@ impl<'a> FnLower<'a> {
             }
             if owned_mask.as_ref().is_some_and(|mask| mask[i]) && self.needs_drop(self.ty_of(v)) {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
+                if self.cx.implicit_closes.contains(&b.uid) {
+                    // A resource the callee keeps on some path closes on the others.
+                    let ty = ct::sub(&b.ty, &self.subst);
+                    if let Some(kind) = self.part_closer(&ty)? {
+                        self.bind_closing_kind(b, Val { v, own: true }, kind)?;
+                        continue;
+                    }
+                }
                 let ty = self.ty_of(v);
                 let var = self.b.declare_var(ty, Mode::Own);
                 self.b.def_var(var, v);
