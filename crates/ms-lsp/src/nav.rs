@@ -158,6 +158,10 @@ pub fn navigation(
         {
             shown = value;
         }
+        // A name whose type did not resolve has nothing useful to show.
+        if ms_check::types::invalid_ty(&shown) {
+            return Json::Null;
+        }
         let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
         let docs = hover_documentation(analysis, &info);
         if !docs.is_empty() {
