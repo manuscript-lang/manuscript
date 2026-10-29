@@ -16,7 +16,7 @@ case "$MS" in /*) ;; *) MS="$(pwd)/$MS";; esac
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 (cd "$HERE/ms" && "$MS" build ms.toml -o "$W/ms" >/dev/null)
-(cd "$HERE/go" && CGO_ENABLED=0 go build -o "$W/go" .)
+(cd "$HERE/go" && CGO_ENABLED=0 go build -buildvcs=false -o "$W/go" .)
 rustc --edition 2021 -C opt-level=3 -C codegen-units=1 -o "$W/rs" "$HERE/rust/main.rs"
 i=0
 : > "$W/raw.txt"
