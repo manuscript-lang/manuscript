@@ -40,6 +40,10 @@
     },
     {
       "name": "keyword.control.manuscript",
+      "match": "\\bopaque(?=[ \\t]+type\\b)"
+    },
+    {
+      "name": "keyword.control.manuscript",
       "match": "\\b(fn|type|interface|impl|import|export|extern|ref|let|var|if|else|for|in|while|match|case|return|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
