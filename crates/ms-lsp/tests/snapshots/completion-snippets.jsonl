@@ -370,7 +370,7 @@
 {"id":369,"jsonrpc":"2.0","result":null}
 #large
 {"id":371,"jsonrpc":"2.0","result":null}
-{"id":372,"jsonrpc":"2.0","result":[{"detail":"Iterator[T]","documentation":{"kind":"markdown","value":"A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.\n`for item in source:` calls `next` until `none`; a variable or field path advances in place and\nkeeps its final state, while any other expression is held by the loop alone. `next` should keep\nreturning `none` after the end."},"filterText":"Iterator","insertTextFormat":1,"kind":7,"label":"Iterator","sortText":"02_Iterator","textEdit":{"newText":"Iterator","range":{"end":{"character":13,"line":28},"start":{"character":5,"line":28}}}}]}
+{"id":372,"jsonrpc":"2.0","result":[{"detail":"Iterator[T]","documentation":{"kind":"markdown","value":"A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.\n`for item in source:` calls `next` until `none`; a variable or field path advances in place and\nkeeps its final state, while any other expression is held by the loop alone. `next` should keep\nreturning `none` after the end. The item is a borrow: it stays valid, and the iterator\nunchanged, until the loop body ends; clone it to keep it."},"filterText":"Iterator","insertTextFormat":1,"kind":7,"label":"Iterator","sortText":"02_Iterator","textEdit":{"newText":"Iterator","range":{"end":{"character":13,"line":28},"start":{"character":5,"line":28}}}}]}
 {"id":373,"jsonrpc":"2.0","result":null}
 #large
 {"id":375,"jsonrpc":"2.0","result":null}

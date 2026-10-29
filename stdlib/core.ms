@@ -66,10 +66,12 @@ export interface Closeable:
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and
 # keeps its final state, while any other expression is held by the loop alone. `next` should keep
-# returning `none` after the end.
+# returning `none` after the end. The item is a borrow: it stays valid, and the iterator
+# unchanged, until the loop body ends; clone it to keep it.
 export interface Iterator[T]:
-    # Returns the next item, or none when no items remain.
-    var fn next() Optional[T]
+    # Returns the next item, or none when no items remain. The item borrows from the iterator
+    # (an iterator over a container borrows from the container instead).
+    var fn next() ref Optional[T]
 
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:

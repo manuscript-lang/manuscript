@@ -7,7 +7,7 @@ fn collect(text: String, max_bytes: Optional[Int] = none) Result[List[String], I
     var reader = lines(MemoryStream(text.to_bytes(), 0, closed: false), max_bytes)
     var seen: List[String] = []
     for line in reader:
-        seen.append(line)
+        seen.append(line.clone())
     if let failure = reader.error():
         return error(failure)
 
@@ -28,7 +28,7 @@ test "an over-budget line stops the loop and sets the error":
     )
     var seen: List[String] = []
     for line in reader:
-        seen.append(line)
+        seen.append(line.clone())
     try expect_equal(seen, ["ok"])
     try expect_equal(reader.error(), some(IoError.LimitExceeded))
 
@@ -50,7 +50,7 @@ test "break and continue work in an iterator loop":
         if line == "4":
             break
 
-        seen.append(line)
+        seen.append(line.clone())
 
     try expect_equal(seen, ["1", "3"])
 
