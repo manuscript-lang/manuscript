@@ -65,12 +65,20 @@ pub fn parse(text: &[u8], radix: i64, max_digits: Option<i64>) -> Result<BigInt,
     {
         return Err(STATUS_INVALID_DATA);
     }
-    let values: alloc::vec::Vec<u8> = digits
+    let mut values: alloc::vec::Vec<u8> = digits
         .iter()
         .map(|&b| digit(b).unwrap_or(0) as u8)
         .collect();
-    let magnitude =
-        num_bigint::BigUint::from_radix_be(&values, radix as u32).ok_or(STATUS_INVALID_DATA)?;
+    let radix = radix as u32;
+    let magnitude = if radix.is_power_of_two() {
+        // The big-endian constructor clones and reverses power-base digits.
+        // This vector is owned scratch, so reverse it in place instead.
+        values.reverse();
+        num_bigint::BigUint::from_radix_le(&values, radix)
+    } else {
+        num_bigint::BigUint::from_radix_be(&values, radix)
+    }
+    .ok_or(STATUS_INVALID_DATA)?;
     let sign = if text.first() == Some(&b'-') {
         Sign::Minus
     } else {
@@ -296,6 +304,122 @@ mod tests {
         assert_eq!(parse(b"1", 10, Some(0)), Err(STATUS_LIMIT_EXCEEDED));
         assert_eq!(parse(b"zZ", 36, None).unwrap(), BigInt::from(35 * 36 + 35));
         assert_eq!(parse(b"-ff", 16, None).unwrap(), BigInt::from(-255));
+    }
+
+    #[test]
+    fn parsing_all_radices_matches_arithmetic_at_digit_boundaries() {
+        const LENGTHS: &[usize] = &[
+            1, 2, 7, 8, 9, 12, 13, 14, 15, 16, 17, 21, 22, 23, 31, 32, 33, 63, 64, 65, 127, 128,
+            129, 255, 256, 257,
+        ];
+        for radix in 2u32..=36 {
+            for &length in LENGTHS {
+                for zero in [false, true] {
+                    let mut expected = BigInt::zero();
+                    let mut digits = alloc::vec::Vec::with_capacity(length);
+                    for index in 0..length {
+                        let value = if zero {
+                            0
+                        } else {
+                            (index as u32 * 17 + 11) % radix
+                        };
+                        expected *= radix;
+                        expected += value;
+                        digits.push(b"0123456789abcdefghijklmnopqrstuvwxyz"[value as usize]);
+                    }
+                    for uppercase in [false, true] {
+                        for leading_zeros in [0, 3] {
+                            for sign in [b"".as_slice(), b"+", b"-"] {
+                                let mut text = sign.to_vec();
+                                text.extend(core::iter::repeat_n(b'0', leading_zeros));
+                                text.extend(digits.iter().map(|&byte| {
+                                    if uppercase {
+                                        byte.to_ascii_uppercase()
+                                    } else {
+                                        byte
+                                    }
+                                }));
+                                let wanted = if sign == b"-" {
+                                    -expected.clone()
+                                } else {
+                                    expected.clone()
+                                };
+                                let digit_count = (length + leading_zeros) as i64;
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), None),
+                                    Ok(wanted.clone())
+                                );
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), Some(digit_count)),
+                                    Ok(wanted)
+                                );
+                                assert_eq!(
+                                    parse(&text, i64::from(radix), Some(digit_count - 1)),
+                                    Err(STATUS_LIMIT_EXCEEDED)
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn parsing_keeps_strict_data_and_limit_error_precedence() {
+        let malformed: &[&[u8]] = &[
+            b"",
+            b"+",
+            b"-",
+            b"++1",
+            b"+-1",
+            b"--1",
+            b"-+1",
+            b"1-",
+            b"_1",
+            b"1_0",
+            b"1_",
+            b" 1",
+            b"1 ",
+            b"\t0",
+            b"1\n",
+            b"1\0",
+            "é".as_bytes(),
+            "١".as_bytes(),
+        ];
+        for radix in 2..=36 {
+            for &text in malformed {
+                assert_eq!(parse(text, radix, None), Err(STATUS_INVALID_DATA));
+                let signed = matches!(text.first(), Some(b'+' | b'-'));
+                let count = text.len() - usize::from(signed);
+                assert_eq!(
+                    parse(text, radix, Some(count as i64)),
+                    Err(STATUS_INVALID_DATA)
+                );
+                if count > 0 {
+                    assert_eq!(
+                        parse(text, radix, Some(count as i64 - 1)),
+                        Err(STATUS_LIMIT_EXCEEDED)
+                    );
+                }
+                assert_eq!(parse(text, radix, Some(-1)), Err(STATUS_INVALID_INPUT));
+            }
+            let invalid_digit = if radix == 36 {
+                b'!'
+            } else {
+                b"0123456789abcdefghijklmnopqrstuvwxyz"[radix as usize]
+            };
+            assert_eq!(
+                parse(&[invalid_digit], radix, None),
+                Err(STATUS_INVALID_DATA)
+            );
+        }
+        for radix in [i64::MIN, -1, 0, 1, 37, i64::MAX] {
+            for text in [b"".as_slice(), b"0", b"+-1", b"1_0"] {
+                assert_eq!(parse(text, radix, None), Err(STATUS_INVALID_INPUT));
+                assert_eq!(parse(text, radix, Some(-1)), Err(STATUS_INVALID_INPUT));
+            }
+        }
     }
 
     #[test]
