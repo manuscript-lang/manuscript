@@ -49,6 +49,15 @@ Evidence: [collection-copy measurements and rejected variants](../bench/perf/lis
 Verify: paired unique/duplicate and small/large workloads, exact producer status
 and checksums, whole-producer instruction counts, and the Set hash-count regression.
 
+Verified (2026-10-29, BitSet predicates): Boolean relation queries previously
+built a full temporary algebra result before checking emptiness. Direct word
+comparisons preserve arbitrary exposed word arrays and allow early exit. Keep
+the algebra methods' representations intact: shortening their output can change
+observable `words`, even when set membership is unchanged. The
+[BitSet report](../bench/perf/bitset-relations/README.md) records full-scan,
+early-answer and empty/small controls; the source fixture compares against the
+unchanged algebra across unequal lengths, trailing zeros and signed high bits.
+
 ### Consume library checksums and separate allocation phase from local cost
 
 Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`). Changing an earlier allocating workload can move later allocation costs, so an apparent unrelated regression in a full-suite run may not reproduce when the same cases run repeatedly in separate focused processes. Keep both results and state the distinction; do not silently replace the full run.

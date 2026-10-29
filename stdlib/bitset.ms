@@ -141,12 +141,23 @@ impl BitSet:
 
     # Reports whether every member of this set is in `other`.
     fn is_subset_of(other: BitSet) Bool:
-        return self.difference(other).is_empty()
+        for word in 0..self.words.length():
+            let right = other.words.get(word, 0)
+            if bit_and(self.words[word], bit_not(right)) != 0:
+                return false
+
+        return true
 
     # Reports whether every member of `other` is in this set.
     fn is_superset_of(other: BitSet) Bool:
-        return other.difference(self).is_empty()
+        return other.is_subset_of(self)
 
     # Reports whether the sets share no member.
     fn is_disjoint_from(other: BitSet) Bool:
-        return self.intersection(other).is_empty()
+        var count = self.words.length()
+        if other.words.length() < count:
+            count = other.words.length()
+        for word in 0..count:
+            if bit_and(self.words[word], other.words[word]) != 0:
+                return false
+        return true
