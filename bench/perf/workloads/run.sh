@@ -8,23 +8,23 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 MS=${MS:-$ROOT/target/release/ms}
 N=${1:-3}
-W=$(mktemp -d)
-trap 'rm -rf "$W"' EXIT
-now() { date +%s%N; }
-best() { # best <dir> <input>: min of N runs in ms, output kept in <dir>/out
-	b=999999999
-	i=0
-	while [ "$i" -lt "$N" ]; do
-		s=$(now)
-		(cd "$1" && ./app <"$2" >out)
-		e=$(now)
-		t=$(((e - s) / 1000000))
-		[ "$t" -lt "$b" ] && b=$t
-		i=$((i + 1))
-	done
-	echo "$b"
-}
-printf '%-24s %8s %8s %8s %8s %8s\n' program 'ms ms' 'go ms' 'rust ms' 'ms/go' 'ms/rust'
+case "$N" in ''|*[!0-9]*) echo 'repeats must be a positive integer' >&2; exit 2;; esac
+if ! [ "$N" -gt 0 ] 2>/dev/null; then
+	echo 'repeats must be a positive integer' >&2
+	exit 2
+fi
+MS=$(command -v "$MS")
+case "$MS" in /*) ;; *) MS="$(pwd)/$MS";; esac
+if [ -n "${BENCH_OUTPUT:-}" ]; then
+	mkdir -p "$BENCH_OUTPUT"
+	W=$(mktemp -d "$BENCH_OUTPUT/workloads.XXXXXX")
+	W=$(cd "$W" && pwd)
+	printf 'Workload evidence: %s\n' "$W" >&2
+else
+	W=$(mktemp -d)
+	trap 'rm -rf "$W"' EXIT HUP INT TERM
+fi
+printf '%-24s %8s %8s %8s %8s %8s\n' program 'ms ms' 'go ms' 'rust ms' 'ms/go' 'ms/rust' > "$W/table.pending"
 for dir in "$ROOT"/bench/agent/challenges/c[0-4]*; do
 	name=$(basename "$dir")
 	mkdir -p "$W/$name/ms/src" "$W/$name/go" "$W/$name/rs"
@@ -32,8 +32,8 @@ for dir in "$ROOT"/bench/agent/challenges/c[0-4]*; do
 	cp "$dir/solutions/ms/main.ms.ref" "$W/$name/ms/src/main.ms"
 	cp "$dir/solutions/go/main.go.ref" "$W/$name/go/main.go"
 	cp "$dir/solutions/rust/main.rs.ref" "$W/$name/rs/main.rs"
-	(cd "$W/$name/go" && go mod init x >/dev/null 2>&1 && go build -o app .)
-	(cd "$W/$name/rs" && rustc -O -o app main.rs 2>/dev/null)
+	(cd "$W/$name/go" && go mod init x >/dev/null 2>&1 && go build -buildvcs=false -o app .)
+	(cd "$W/$name/rs" && rustc -O -o app main.rs)
 	(cd "$W/$name/ms" && "$MS" build ms.toml -o app >/dev/null)
 	python3 - "$dir/hidden/cases.json" "$W/$name/in" <<'PY'
 import json, sys
@@ -41,11 +41,7 @@ cases = sorted(json.load(open(sys.argv[1])), key=lambda c: -len(c["stdin"]))
 s = cases[0]["stdin"]
 open(sys.argv[2], "w").write(s * max(1, 3_000_000 // max(1, len(s))))
 PY
-	m=$(best "$W/$name/ms" "$W/$name/in")
-	g=$(best "$W/$name/go" "$W/$name/in")
-	r=$(best "$W/$name/rs" "$W/$name/in")
-	same=""
-	cmp -s "$W/$name/ms/out" "$W/$name/go/out" || same=" OUTPUT DIFFERS"
-	printf '%-24s %8s %8s %8s %8s %8s%s\n' "$name" "$m" "$g" "$r" \
-		"$(awk "BEGIN{printf \"%.2fx\", $m/($g?$g:1)}")" "$(awk "BEGIN{printf \"%.2fx\", $m/($r?$r:1)}")" "$same"
+	python3 "$ROOT/bench/perf/workloads/measure.py" "$W/$name" "$N" "$name" >> "$W/table.pending"
 done
+mv "$W/table.pending" "$W/table.txt"
+cat "$W/table.txt"

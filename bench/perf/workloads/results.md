@@ -2,6 +2,21 @@
 
 Ordinary agent-style programs (the reference solutions of the small agent challenges in `bench/agent/challenges`) on about 3 MB of stdin each, built with `ms build` (Release, LLVM), `go build` and `rustc -O`. Outputs are compared byte for byte; the time is the best wall time of 3 runs in milliseconds. Reproduce with `MS=./target/release/ms sh bench/perf/workloads/run.sh 3`; compare only runs from one machine.
 
+The current runner checks every language's output in an untimed warm-up and every
+timed trial, rotates version order, and rejects any nonzero producer status or
+output mismatch before publishing a table. It uses a monotonic clock with
+sub-millisecond precision. Times exclude compilation and validation but include
+process startup, stdin and stdout. Go builds disable VCS stamping. With
+`BENCH_OUTPUT=.artifacts/workloads`, each run retains its sources, binaries, inputs,
+expected output and `samples.json` (raw nanoseconds and input/output/binary hashes).
+A failed suite leaves no final `table.txt`; a pending table is incomplete evidence.
+Run the regression tests with
+`python3 -m unittest discover -s bench/perf/workloads -p test_measure.py`.
+The [2026-10-29 validation controls](validation-2026-10-29.md) record the failure
+reproductions, release settings and paired native samples. Historical results
+below retain their original measurement method; this validation fix makes no
+generated-program speedup claim.
+
 ## main at c1b81215 (2026-10-25)
 
 linux/amd64, four cores, Go 1.24.7, rustc 1.99.1.

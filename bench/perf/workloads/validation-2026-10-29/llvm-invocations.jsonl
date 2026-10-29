@@ -1,0 +1,24 @@
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-12759-1793286473462257520/m.ll", "/tmp/ms-llvm-12759-1793286473462257520/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-12759-1793286473462257520/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-12759-1793286473462257520/linked.bc", "-o", "/tmp/ms-llvm-12759-1793286473462257520/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-12759-1793286473462257520/m.bc", "-o", "/tmp/ms-llvm-12759-1793286473462257520/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-12841-1793286499729473166/m.ll", "/tmp/ms-llvm-12841-1793286499729473166/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-12841-1793286499729473166/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-12841-1793286499729473166/linked.bc", "-o", "/tmp/ms-llvm-12841-1793286499729473166/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-12841-1793286499729473166/m.bc", "-o", "/tmp/ms-llvm-12841-1793286499729473166/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-12927-1793286573962954815/m.ll", "/tmp/ms-llvm-12927-1793286573962954815/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-12927-1793286573962954815/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-12927-1793286573962954815/linked.bc", "-o", "/tmp/ms-llvm-12927-1793286573962954815/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-12927-1793286573962954815/m.bc", "-o", "/tmp/ms-llvm-12927-1793286573962954815/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-13762-1793286662099986748/m.ll", "/tmp/ms-llvm-13762-1793286662099986748/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-13762-1793286662099986748/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-13762-1793286662099986748/linked.bc", "-o", "/tmp/ms-llvm-13762-1793286662099986748/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-13762-1793286662099986748/m.bc", "-o", "/tmp/ms-llvm-13762-1793286662099986748/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-13801-1793286714963974525/m.ll", "/tmp/ms-llvm-13801-1793286714963974525/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-13801-1793286714963974525/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-13801-1793286714963974525/linked.bc", "-o", "/tmp/ms-llvm-13801-1793286714963974525/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-13801-1793286714963974525/m.bc", "-o", "/tmp/ms-llvm-13801-1793286714963974525/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-13897-1793286779001878550/m.ll", "/tmp/ms-llvm-13897-1793286779001878550/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-13897-1793286779001878550/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-13897-1793286779001878550/linked.bc", "-o", "/tmp/ms-llvm-13897-1793286779001878550/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-13897-1793286779001878550/m.bc", "-o", "/tmp/ms-llvm-13897-1793286779001878550/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-15001-1793286790279007118/m.ll", "/tmp/ms-llvm-15001-1793286790279007118/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-15001-1793286790279007118/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-15001-1793286790279007118/linked.bc", "-o", "/tmp/ms-llvm-15001-1793286790279007118/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-15001-1793286790279007118/m.bc", "-o", "/tmp/ms-llvm-15001-1793286790279007118/llvm.o", "-align-loops=32"]}
+{"tool": "llvm-link", "args": ["--only-needed", "--internalize", "/tmp/ms-llvm-15507-1793286842138247903/m.ll", "/tmp/ms-llvm-15507-1793286842138247903/ms_rt_hot.ll", "-o", "/tmp/ms-llvm-15507-1793286842138247903/linked.bc"]}
+{"tool": "opt", "args": ["-passes=default<O3>", "/tmp/ms-llvm-15507-1793286842138247903/linked.bc", "-o", "/tmp/ms-llvm-15507-1793286842138247903/m.bc"]}
+{"tool": "llc", "args": ["-O3", "-filetype=obj", "-relocation-model=pic", "-profile-guided-section-prefix=false", "/tmp/ms-llvm-15507-1793286842138247903/m.bc", "-o", "/tmp/ms-llvm-15507-1793286842138247903/llvm.o", "-align-loops=32"]}
