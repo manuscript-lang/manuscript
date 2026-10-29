@@ -35,6 +35,7 @@ fn opaque_types_reject_outside_use() {
         ("parse", "Approved does not satisfy Data; it is opaque"),
         ("stringify", "Approved does not satisfy Data; it is opaque"),
         ("generic", "T does not satisfy Data"),
+        ("hash", "its hash would reveal the hidden fields"),
     ];
     for (name, message) in cases {
         let out = ms(&["check", &fixture(name)]);

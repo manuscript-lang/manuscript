@@ -232,3 +232,43 @@ fn unmet_list_element_bound_names_the_bound() {
         p.diagnostics
     );
 }
+
+#[test]
+fn self_referential_bound_is_not_an_arity_error() {
+    let p = Checker::new(&CheckOptions::default()).check_modules(
+        vec![module(
+            "selfbound.ms",
+            "type B[T: B[T]]:\n    v: T\nexport fn main() Int: 0\n",
+        )],
+        None,
+    );
+    assert!(
+        p.diagnostics
+            .iter()
+            .all(|d| !d.message.contains("type arguments")),
+        "{:?}",
+        p.diagnostics
+    );
+    assert!(
+        p.diagnostics
+            .iter()
+            .any(|d| d.message.starts_with("a bound must be an interface")),
+        "{:?}",
+        p.diagnostics
+    );
+}
+
+#[test]
+fn interface_parameter_inference_failure_is_one_clear_error() {
+    let source = "type P[T]:\n    v: T\ninterface Get[T]:\n    fn get() T\nimpl Get[T] for P[T]:\n    fn get() T: self.v\nfn f[T](g: Get[T]) T: g.get()\nexport fn main() Int:\n    return f(P(1))\n";
+    let p = Checker::new(&CheckOptions::default())
+        .check_modules(vec![module("iface_infer.ms", source)], None);
+    assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
+    assert!(
+        p.diagnostics[0]
+            .message
+            .starts_with("cannot infer Get[T] from P[Int]"),
+        "{:?}",
+        p.diagnostics
+    );
+}

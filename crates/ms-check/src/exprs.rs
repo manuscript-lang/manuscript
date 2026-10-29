@@ -627,6 +627,10 @@ impl Checker {
             false => name,
         };
         let mut methods = self.methods(&rt, name);
+        if name == "hash" && methods.iter().all(|m| m.id.as_str().is_empty()) {
+            // The structural hash is a function of the hidden fields.
+            self.opaque_denied(e.pos, &rt, "its hash would reveal the hidden fields");
+        }
         // Operations that share a name are told apart by how many arguments the call passes.
         if let Some(count) = arity {
             let fitting = |candidates: &[MethodRef]| -> Vec<MethodRef> {

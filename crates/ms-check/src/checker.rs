@@ -1119,6 +1119,18 @@ impl Checker {
         }
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
+                // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
+                if let TypeKind::Named { name, .. } = &b.kind
+                    && !self.scope.types.borrow().contains_key(name)
+                    && let Some(s) = self.sym(*name).filter(|s| s.kind == SymKind::Type)
+                    && !matches!(s.ty().kind, Kind::Contract | Kind::Variable)
+                {
+                    self.type_error(
+                        b.pos,
+                        "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
+                    );
+                    continue;
+                }
                 let t = self.resolve(Some(b));
                 if t.kind != Kind::Contract {
                     if t.kind == Kind::Variable {
