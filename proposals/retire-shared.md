@@ -12,6 +12,8 @@
 
 Proposal, 2026-10-29, checked against `origin/main` at `69d78f65`. Direction (Chinmay): "shared was meant as way to share data between threads, i'm not sure if it's addressing that use case correctly now"; then "can we address those use cases with better abstraction and get rid of shared?" and "write up a proposal and do skeptic review". Supersedes `shared-guard-consuming-close.md`, whose skeptic review (2026-10-29) found a consuming close does not move the binding in the checker and the clone-then-drop rewrite is unsound across a faulting `put`. Nothing implemented.
 
+**Skeptic review (2026-10-29): do not build.** The central claim is false: guards are held across parking calls in `workers.ms:179-190` and `244-250` (join), `processes.ms:453-462` (child close), `log.ms:204-205`, `248-249` (transport write, which serializes concurrent records) and `tasks.ms:429`. Contention is live in the library, so `lock` is a real cooperative mutex. Stage 2 is also not small: about 600-900 lines of Rust (generic queued `T` with descriptor drop, registries that must call back into Manuscript `close`) to remove about 120 lines of `.ms`, against the Manuscript-first rule. Stage 3 has no sharing-free form for the shared log transport, and removing public `lock` breaks docs (`references.md`, `scopes.md`), about 67 test files and user-defined recording transports. Recommendation: keep `Shared`/`lock`; fix only the guard-close hygiene (#1422) as a separate, smaller change. Corrected count: 33 `= lock(` sites.
+
 ## Problem
 
 Verified inventory (`grep` of `Shared[` / `lock(`):
