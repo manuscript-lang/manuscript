@@ -100,7 +100,7 @@ fn total(values: Map[String, Int]) Int:
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T`. It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as a borrow of the iterator (`next` is declared `var fn next() ref Optional[T]`): the iterator stays unchanged until the end of the iteration, and `item.clone()` keeps an item. It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript

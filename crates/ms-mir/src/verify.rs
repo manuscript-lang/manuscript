@@ -1563,37 +1563,58 @@ fn sources(m: &Module, f: &Func, masks: &std::collections::HashMap<usize, u128>)
         for b in &f.blocks {
             for i in &b.insts {
                 let Some(r) = i.res else { continue };
-                let x = match m.result_mode(f, i) {
-                    None | Some(Mode::Var) => 0,
-                    Some(Mode::Own) => OWNED,
-                    Some(Mode::Borrow) => match (i.op, i.imm) {
-                        // A lending call's result comes from the arguments its callee lends from.
-                        (Op::Call, Imm::Func(g)) => {
-                            let mask = masks.get(&g.index()).copied().unwrap_or(EVERY_PARAM);
-                            i.args
-                                .iter()
-                                .enumerate()
-                                .filter(|(j, a)| mask & param_bit(*j) != 0 && rc(**a))
-                                .fold(0, |acc, (_, a)| acc | src[a.index()])
-                        }
-                        // A lending interface operation may lend from any of its operands.
-                        (Op::CallMethod, _) => i
-                            .args
+                // A `var` parameter is taken out of its pointer, updated and put back, so the
+                // value and its updates are the parameter's own storage.
+                let threaded = match i.op {
+                    Op::Take => i.args.first().and_then(|a| {
+                        f.blocks[0]
+                            .params
                             .iter()
-                            .filter(|a| rc(**a))
-                            .fold(0, |acc, a| acc | src[a.index()]),
-                        (
-                            Op::RecGet
-                            | Op::AltGet
-                            | Op::ListGet
-                            | Op::ListGetNn
-                            | Op::ListGetU
-                            | Op::OptGet
-                            | Op::OptView,
-                            _,
-                        ) => i.args.first().map_or(0, |a| src[a.index()]),
-                        _ => 0,
-                    },
+                            .position(|p| p.value == *a)
+                            .map(param_bit)
+                    }),
+                    Op::RecSet | Op::RecFill => i
+                        .args
+                        .first()
+                        .map(|a| src[a.index()])
+                        .filter(|s| s & OWNED == 0 && *s != 0),
+                    _ => None,
+                };
+                let x = if let Some(t) = threaded {
+                    t
+                } else {
+                    match m.result_mode(f, i) {
+                        None | Some(Mode::Var) => 0,
+                        Some(Mode::Own) => OWNED,
+                        Some(Mode::Borrow) => match (i.op, i.imm) {
+                            // A lending call's result comes from the arguments its callee lends from.
+                            (Op::Call, Imm::Func(g)) => {
+                                let mask = masks.get(&g.index()).copied().unwrap_or(EVERY_PARAM);
+                                i.args
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(j, a)| mask & param_bit(*j) != 0 && rc(**a))
+                                    .fold(0, |acc, (_, a)| acc | src[a.index()])
+                            }
+                            // A lending interface operation may lend from any of its operands.
+                            (Op::CallMethod, _) => i
+                                .args
+                                .iter()
+                                .filter(|a| rc(**a))
+                                .fold(0, |acc, a| acc | src[a.index()]),
+                            (
+                                Op::RecGet
+                                | Op::AltGet
+                                | Op::ListGet
+                                | Op::ListGetNn
+                                | Op::ListGetU
+                                | Op::OptGet
+                                | Op::OptView,
+                                _,
+                            ) => i.args.first().map_or(0, |a| src[a.index()]),
+                            _ => 0,
+                        },
+                    }
                 };
                 if x & !src[r.index()] != 0 {
                     src[r.index()] |= x;

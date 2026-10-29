@@ -539,7 +539,10 @@ impl Walker<'_> {
     /// The slot of a read-only parameter or receiver, which may lend its parts to a result.
     fn slot_of(&self, root: usize) -> Option<Slot> {
         let m = self.meta.get(&root)?;
-        if m.perm != Perm::Immutable {
+        // A `var` receiver or parameter lends too: the caller's result holds it unchanged, so it
+        // cannot advance (or change in any way) until the result's last use.
+        let declared_ref = self.cx.c.func.func().is_some_and(|f| f.result_ref);
+        if m.perm != Perm::Immutable && !(m.perm == Perm::Mutable && declared_ref) {
             return None;
         }
         if m.is_receiver {
