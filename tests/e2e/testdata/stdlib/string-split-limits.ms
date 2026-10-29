@@ -6,9 +6,14 @@ test "empty separator respects scalar limits on ASCII and mixed UTF8":
     try expect_equal("abcd".split("", max_parts: 2), ["a", "b"])
     try expect_equal("abcd".split("", max_parts: 10), ["a", "b", "c", "d"])
     try expect_equal("aé日😀".split("", max_parts: 1), ["a"])
+    try expect_equal("aaa😀".split("", max_parts: 1), ["a"])
     try expect_equal("aé日😀".split("", max_parts: 2), ["a", "é"])
     try expect_equal("aé日😀".split("", max_parts: 3), ["a", "é", "日"])
     try expect_equal("aé日😀".split("", max_parts: 10), ["a", "é", "日", "😀"])
+    try expect_equal(
+        "aé日😀".split("", max_parts: 9223372036854775807), ["a", "é", "日", "😀"]
+    )
+    try expect_equal("a\u{0}😀".split("", max_parts: 2), ["a", "\u{0}"])
     try expect_equal("".split("", max_parts: 1), [])
     try expect_equal("x".split("", max_parts: 1), ["x"])
 

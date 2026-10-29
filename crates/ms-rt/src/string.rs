@@ -1834,7 +1834,17 @@ unsafe fn split_into(
         }
         if sepb.is_empty() {
             // Split after each scalar: the piece count is known, so the list is sized once.
-            let n = capped_scalar_count(text, limit);
+            // The first `limit` complete scalars fit in at most `4 * limit` bytes. Counting
+            // beyond that prefix cannot change the capped result, even if its end cuts a scalar.
+            let mut count_bytes = text.len().min(limit.saturating_mul(4));
+            // Finish a partial scalar so valid text keeps the counter's valid-UTF8 fast path.
+            for _ in 0..3 {
+                if count_bytes == text.len() || text[count_bytes] & 0xC0 != 0x80 {
+                    break;
+                }
+                count_bytes += 1;
+            }
+            let n = utf8::count(&text[..count_bytes]).min(limit);
             if n > 0 {
                 v.ptr = alloc::alloc(n * ELEM);
                 v.cap = n;
@@ -1863,16 +1873,6 @@ unsafe fn split_into(
         }
         *out = v;
     }
-}
-
-/// Exact scalar count up to a cap. Keep counting separate from the scalar-copying loop.
-#[inline(never)]
-fn capped_scalar_count(text: &[u8], limit: usize) -> usize {
-    // A decoded scalar uses at most four bytes, including invalid bytes, which use one.
-    if limit <= text.len() / 4 {
-        return limit;
-    }
-    utf8::count(text).min(limit)
 }
 
 /// The state of `for piece in text.split(separator)` that does not build the list.
