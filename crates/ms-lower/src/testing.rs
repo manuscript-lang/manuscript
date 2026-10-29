@@ -4,7 +4,8 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use crate::text::runtime_fn;
 use ms_check::hir::CallView;
-use ms_mir::ir::{Cc, Imm, Op, Value};
+use ms_mir::builder::FuncBuilder;
+use ms_mir::ir::{Cc, FuncId, Imm, InlineHint, Linkage, Mode, Op, Param, Value};
 use ms_mir::types::{AltId, Ty as MTy, TyKind};
 use ms_syntax::ast::Expr;
 
@@ -267,23 +268,61 @@ impl FnLower<'_> {
         }
     }
 
-    /// Runs `operation` in a forked child and reports the fault message it ends with.
+    /// Keeps the trap in a frame that owns none of the caller's values. Windows faults jump
+    /// back into this frame: inlining it before unwind lowering would register drops for
+    /// caller locals inside the operation, then resume the caller after freeing those locals.
+    fn fault_trap(&mut self, operation_ty: MTy) -> FuncId {
+        let key = format!("testing.trap:{}", operation_ty.0);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let begin = runtime_fn(self.b.m, "msrt_trap_begin", &[], MTy::BOOL);
+        let end = runtime_fn(self.b.m, "msrt_trap_end", &[], MTy::UNIT);
+        let wait = runtime_fn(self.b.m, "msrt_trap_wait", &[MTy::PTR], MTy::BOOL);
+        let mut b = FuncBuilder::new(
+            self.b.m,
+            "test.trap",
+            vec![
+                Param {
+                    ty: operation_ty,
+                    mode: Mode::Borrow,
+                },
+                Param {
+                    ty: MTy::PTR,
+                    mode: Mode::Borrow,
+                },
+            ],
+            MTy::BOOL,
+        );
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().inline = InlineHint::Never;
+        let params = b.params();
+        let parent_side = b.call_rt(begin, &[]);
+        let (child, parent) = (b.new_block(), b.new_block());
+        b.br_if(parent_side, parent, &[], child, &[]);
+        b.seal_block(child);
+        b.seal_block(parent);
+        b.switch_to(child);
+        b.call_ind(params[0], &[]);
+        b.call_rt(end, &[]);
+        b.unreachable();
+        b.switch_to(parent);
+        let faulted = b.call_rt(wait, &[params[1]]);
+        b.ret(Some(faulted));
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
+    /// Runs `operation` behind the platform's fault trap and reports its fault message.
     fn expect_fault(&mut self, rty: MTy, operation: Value) -> Result<Val, Error> {
-        let parent_side = self.call_runtime("msrt_trap_begin", &[], MTy::BOOL)?;
-        let (child, parent) = (self.b.new_block(), self.b.new_block());
-        self.b.br_if(parent_side, parent, &[], child, &[]);
-        self.b.seal_block(child);
-        self.b.seal_block(parent);
-        self.enter(child);
-        self.b.call_ind(operation, &[]);
-        self.call_runtime("msrt_trap_end", &[], MTy::UNIT)?;
-        self.b.unreachable();
-        self.enter(parent);
+        let trap = self.fault_trap(self.ty_of(operation));
         let slot = self
             .b
             .emit(Op::Slot, &[], Imm::Ty(MTy::STR), Some(MTy::PTR))
             .expect("slot");
-        let faulted = self.call_runtime("msrt_trap_wait", &[slot], MTy::BOOL)?;
+        let faulted = self.b.call(trap, &[operation, slot]);
         self.two_ways(
             faulted,
             rty,
