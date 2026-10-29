@@ -866,3 +866,15 @@ fn native_sigterm_lets_in_flight_requests_finish_within_grace() {
     assert!(reply.ends_with("done"), "{reply}");
     assert_eq!(status.code(), Some(143), "{status:?} {:?}", status.signal());
 }
+
+/// A module without `bench` blocks says so instead of failing to lower the bench driver.
+#[test]
+fn bench_without_bench_blocks_reports_none() {
+    let dir = scratch("native-no-bench");
+    let source = write(&dir, "plain.ms", include_str!("engine/no-benches.ms"));
+    let backend = Engine::new(Native);
+    let (status, stdout, err) = ms(&backend, &["bench", &source]);
+    assert_eq!(status, 0, "{err}");
+    assert!(stdout.contains("no bench blocks found"), "{stdout}");
+    assert!(!err.contains("bench driver"), "{err}");
+}

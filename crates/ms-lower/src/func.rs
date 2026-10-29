@@ -333,7 +333,7 @@ pub(crate) fn lower_tests(
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
-    if bench {
+    if bench && !tests.is_empty() {
         // Each bench runs under the standard driver, which repeats and times its body.
         let driver = cx
             .callables
