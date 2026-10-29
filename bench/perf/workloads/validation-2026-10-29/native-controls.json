@@ -1,0 +1,1460 @@
+{
+  "baseline": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "compiler_sha256": "d1767f5fb967bab6c8aa14590875b81b3750c257295393b622a4acd4bd3617b9",
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "go": "go version go1.24.7 linux/amd64",
+  "backend": "LLVM",
+  "opt_flags": "default<O3>",
+  "llc_flags": "-O3 -align-loops=32",
+  "repeats": 7,
+  "cases": [
+    {
+      "program": "c03-csv-group-sum",
+      "groups": 1,
+      "input_bytes": 44,
+      "input_sha256": "b8d5b52577dcd80210cb0a998cc6ac7e4a16e5a6371f86bdfbfcecaf54eb48c1",
+      "output_sha256": "8ffc3d9397afb808de6495e643efda9bb74cdfaa5636809ae8984db2cc961120",
+      "binaries_sha256": {
+        "explicit": "acfc42a252875f20ff8162665ddc65fb6993801d15ba6eaba3d83294ad723674",
+        "default": "8753628e1ab70e6c6b25d4228f78e1a71f425df81e7fbbde38cb532351b03a40",
+        "go": "4068c5d7d3c6f90d903141b1236c81961fab943a291d92ab63c6453be9f5bf08",
+        "rust": "0146ca3060af3d18cdbd80957ad3a5e1d1950cc5423b8e578329caf06bddb895"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 0.669039,
+          "median_ms": 0.80005,
+          "max_ms": 1.817717
+        },
+        "default": {
+          "min_ms": 0.847882,
+          "median_ms": 1.028498,
+          "max_ms": 1.926418
+        },
+        "go": {
+          "min_ms": 1.232922,
+          "median_ms": 2.336726,
+          "max_ms": 3.971853
+        },
+        "rust": {
+          "min_ms": 1.803727,
+          "median_ms": 2.19059,
+          "max_ms": 2.487025
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 669039
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 854183
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 1632480
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 1938736
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 1257013
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 3202378
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 1803727
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 981552
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 3165277
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 1905489
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 1817717
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 959801
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 2207521
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 800050
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 1439546
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 2336726
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 773897
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 1028498
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 3971853
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 2190590
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 1926418
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 1767873
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 2367867
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 910746
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 1232922
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 2487025
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 797889
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 847882
+        }
+      ]
+    },
+    {
+      "program": "c03-csv-group-sum",
+      "groups": 1000,
+      "input_bytes": 44000,
+      "input_sha256": "306981d18dc9aa3e8ca3edbccb77bca9a90ab9fb63d084dc94a02d1dbd4cb685",
+      "output_sha256": "fc427e29f623875135c1198524abaecbd2ccae8298c8c6193485ce07d1b2e207",
+      "binaries_sha256": {
+        "explicit": "acfc42a252875f20ff8162665ddc65fb6993801d15ba6eaba3d83294ad723674",
+        "default": "8753628e1ab70e6c6b25d4228f78e1a71f425df81e7fbbde38cb532351b03a40",
+        "go": "4068c5d7d3c6f90d903141b1236c81961fab943a291d92ab63c6453be9f5bf08",
+        "rust": "0146ca3060af3d18cdbd80957ad3a5e1d1950cc5423b8e578329caf06bddb895"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 1.560037,
+          "median_ms": 2.381152,
+          "max_ms": 4.137157
+        },
+        "default": {
+          "min_ms": 1.606489,
+          "median_ms": 2.378168,
+          "max_ms": 51.787751
+        },
+        "go": {
+          "min_ms": 1.860891,
+          "median_ms": 2.309871,
+          "max_ms": 4.12599
+        },
+        "rust": {
+          "min_ms": 1.782553,
+          "median_ms": 2.46286,
+          "max_ms": 3.727549
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 1560037
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 1606489
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 1860891
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 2462860
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 2378168
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 1875150
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 2084015
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 1961696
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 2309871
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 1896308
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 4137157
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 4289112
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 2620218
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 2607447
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 1794481
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 2517354
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 2138099
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 1680354
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 2036221
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 1782553
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 2636223
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 2606200
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 3105007
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 2381152
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 4125990
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 3727549
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 2442191
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 51787751
+        }
+      ]
+    },
+    {
+      "program": "c03-csv-group-sum",
+      "groups": 10000,
+      "input_bytes": 440000,
+      "input_sha256": "58b99fe343e75a18da3c2fa15b20d11e5879fcf8a76e22c0cc12a509f1f3f407",
+      "output_sha256": "08ad38d9b7f9b6c70086906837626071ef8e7e967ec0f9643c4dd3dcfaf5c04c",
+      "binaries_sha256": {
+        "explicit": "acfc42a252875f20ff8162665ddc65fb6993801d15ba6eaba3d83294ad723674",
+        "default": "8753628e1ab70e6c6b25d4228f78e1a71f425df81e7fbbde38cb532351b03a40",
+        "go": "4068c5d7d3c6f90d903141b1236c81961fab943a291d92ab63c6453be9f5bf08",
+        "rust": "0146ca3060af3d18cdbd80957ad3a5e1d1950cc5423b8e578329caf06bddb895"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 9.100166,
+          "median_ms": 10.542172,
+          "max_ms": 15.13727
+        },
+        "default": {
+          "min_ms": 9.298228,
+          "median_ms": 12.038844,
+          "max_ms": 70.387976
+        },
+        "go": {
+          "min_ms": 6.204842,
+          "median_ms": 10.037536,
+          "max_ms": 14.685843
+        },
+        "rust": {
+          "min_ms": 4.514977,
+          "median_ms": 5.113674,
+          "max_ms": 9.701788
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 10685865
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 11192363
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 14355258
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 4514977
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 13794318
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 9936590
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 4750138
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 10542172
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 14685843
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 5113674
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 15137270
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 9298228
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 4648779
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 9868089
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 70387976
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 8120860
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 9100166
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 9945263
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 6204842
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 6777723
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 25304346
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 10366771
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 9701788
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 9959834
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 10037536
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 5366956
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 11076818
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 12038844
+        }
+      ]
+    },
+    {
+      "program": "c03-csv-group-sum",
+      "groups": 100000,
+      "input_bytes": 4400000,
+      "input_sha256": "71600430d3b77231cae395ba8e2db98f5f47068a980028d554d58511378cf309",
+      "output_sha256": "f7a5c5af9ee17e55e83e8bc03da4e1fa62dfa00961c5a1fafa7e70f0f9173a8e",
+      "binaries_sha256": {
+        "explicit": "acfc42a252875f20ff8162665ddc65fb6993801d15ba6eaba3d83294ad723674",
+        "default": "8753628e1ab70e6c6b25d4228f78e1a71f425df81e7fbbde38cb532351b03a40",
+        "go": "4068c5d7d3c6f90d903141b1236c81961fab943a291d92ab63c6453be9f5bf08",
+        "rust": "0146ca3060af3d18cdbd80957ad3a5e1d1950cc5423b8e578329caf06bddb895"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 91.554928,
+          "median_ms": 99.113994,
+          "max_ms": 143.737649
+        },
+        "default": {
+          "min_ms": 91.583932,
+          "median_ms": 101.797421,
+          "max_ms": 104.79
+        },
+        "go": {
+          "min_ms": 61.678626,
+          "median_ms": 67.187178,
+          "max_ms": 88.448695
+        },
+        "rust": {
+          "min_ms": 28.890296,
+          "median_ms": 33.183559,
+          "max_ms": 39.664254
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 93705789
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 99414827
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 66287968
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 39664254
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 101797421
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 69155014
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 38459155
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 91554928
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 88448695
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 31168555
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 143737649
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 104790000
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 33012423
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 109997112
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 91583932
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 67187178
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 99113994
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 104632163
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 61678626
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 28890296
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 95899182
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 80998715
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 33183559
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 98868214
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 67058322
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 33236337
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 117250901
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 102620225
+        }
+      ]
+    },
+    {
+      "program": "c05-calculator",
+      "groups": 1,
+      "input_bytes": 27,
+      "input_sha256": "847b66bdeeed8574d27f200874c03e5f137f081101cc384861ca7bb1eec7b252",
+      "output_sha256": "6f5778a8e7505fecf5d67ad60759bff1dc81019404f1d1b70ebc7a1fcf4e30e1",
+      "binaries_sha256": {
+        "explicit": "e161e8aeeec2aafd6b14093a3116426944baca88d59b6c12ca5a8610fabcce8d",
+        "default": "f0c8f3dffb3e73bb067dff9528f91c837afd8cba33a61e07e70dcc5248d2f5b6",
+        "go": "36420c59bf540cdbacf686a72ba32ef96306e6dbebec5b9f4706ea58026fd25d",
+        "rust": "ff7adfe99e499b644764dfa7d029c8e03a32d6d46f0a1e4c45f103ee4254b563"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 0.607026,
+          "median_ms": 1.394369,
+          "max_ms": 2.183819
+        },
+        "default": {
+          "min_ms": 0.778103,
+          "median_ms": 0.939621,
+          "max_ms": 1.281735
+        },
+        "go": {
+          "min_ms": 1.280537,
+          "median_ms": 1.86834,
+          "max_ms": 2.741784
+        },
+        "rust": {
+          "min_ms": 1.809874,
+          "median_ms": 2.490136,
+          "max_ms": 3.297273
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 1175073
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 939621
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 2170842
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 2084862
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 883741
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 1862869
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 2824973
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 1394369
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 1280537
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 2724717
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 1723876
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 963927
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 1809874
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 1739982
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 1281735
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 1868340
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 607026
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 778103
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 1975827
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 2490136
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 805948
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 1711426
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 2438214
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 739156
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 2741784
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 3297273
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 2183819
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 1064024
+        }
+      ]
+    },
+    {
+      "program": "c05-calculator",
+      "groups": 1000,
+      "input_bytes": 27000,
+      "input_sha256": "422cff3ecb3160c4fd8c7c95607156ada919f03c1bee94d6cbf97a91ba4cd428",
+      "output_sha256": "98d130073b9908648292406e621851c8168ec27b28507b433c0d1d5e6bc7170a",
+      "binaries_sha256": {
+        "explicit": "e161e8aeeec2aafd6b14093a3116426944baca88d59b6c12ca5a8610fabcce8d",
+        "default": "f0c8f3dffb3e73bb067dff9528f91c837afd8cba33a61e07e70dcc5248d2f5b6",
+        "go": "36420c59bf540cdbacf686a72ba32ef96306e6dbebec5b9f4706ea58026fd25d",
+        "rust": "ff7adfe99e499b644764dfa7d029c8e03a32d6d46f0a1e4c45f103ee4254b563"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 1.609737,
+          "median_ms": 1.972606,
+          "max_ms": 6.74211
+        },
+        "default": {
+          "min_ms": 1.582407,
+          "median_ms": 1.862275,
+          "max_ms": 19.83899
+        },
+        "go": {
+          "min_ms": 2.665072,
+          "median_ms": 3.353593,
+          "max_ms": 4.338344
+        },
+        "rust": {
+          "min_ms": 5.056132,
+          "median_ms": 6.006857,
+          "max_ms": 19.355298
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 2043454
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 19838990
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 3590422
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 19355298
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 1582407
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 3056329
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 5056132
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 1609737
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 4338344
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 5681023
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 1900529
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 1749956
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 5089566
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 6742110
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 1913704
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 2930108
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 3466685
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 1862275
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 3408752
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 6126646
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 1964086
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 3353593
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 7953545
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 1972606
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 2665072
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 6006857
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 1797656
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 1657200
+        }
+      ]
+    },
+    {
+      "program": "c05-calculator",
+      "groups": 10000,
+      "input_bytes": 270000,
+      "input_sha256": "b877da321424965654a5fce68c0bbc79b56cb0c317af1e85d1a1517d9a8eef33",
+      "output_sha256": "c7d9447128105b89755dd3bc1cbdb95cd814627e49c2fd8ebfb750b9b0fca375",
+      "binaries_sha256": {
+        "explicit": "e161e8aeeec2aafd6b14093a3116426944baca88d59b6c12ca5a8610fabcce8d",
+        "default": "f0c8f3dffb3e73bb067dff9528f91c837afd8cba33a61e07e70dcc5248d2f5b6",
+        "go": "36420c59bf540cdbacf686a72ba32ef96306e6dbebec5b9f4706ea58026fd25d",
+        "rust": "ff7adfe99e499b644764dfa7d029c8e03a32d6d46f0a1e4c45f103ee4254b563"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 9.66901,
+          "median_ms": 11.283825,
+          "max_ms": 15.057168
+        },
+        "default": {
+          "min_ms": 8.706045,
+          "median_ms": 10.894211,
+          "max_ms": 15.888058
+        },
+        "go": {
+          "min_ms": 15.108508,
+          "median_ms": 18.243886,
+          "max_ms": 24.857152
+        },
+        "rust": {
+          "min_ms": 37.023049,
+          "median_ms": 40.892038,
+          "max_ms": 50.863432
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 12067575
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 8706045
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 15108508
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 39449113
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 10843375
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 24857152
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 37257508
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 15057168
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 19414689
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 40892038
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 9669010
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 14425603
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 50863432
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 11283825
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 11085556
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 19165492
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 12348619
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 15888058
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 17490203
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 37023049
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 10894211
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 17659787
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 50157363
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 10665144
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 18243886
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 41847295
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 10695123
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 10322438
+        }
+      ]
+    },
+    {
+      "program": "c05-calculator",
+      "groups": 100000,
+      "input_bytes": 2700000,
+      "input_sha256": "eaa9dfd3de167fb7bb502c65c02da88b72f6935bca648bb46636ccb5749d5eb3",
+      "output_sha256": "0786dd0ae88ea979222ae6924ccc30bda6ba353e1ba33681c4b153410be967cb",
+      "binaries_sha256": {
+        "explicit": "e161e8aeeec2aafd6b14093a3116426944baca88d59b6c12ca5a8610fabcce8d",
+        "default": "f0c8f3dffb3e73bb067dff9528f91c837afd8cba33a61e07e70dcc5248d2f5b6",
+        "go": "36420c59bf540cdbacf686a72ba32ef96306e6dbebec5b9f4706ea58026fd25d",
+        "rust": "ff7adfe99e499b644764dfa7d029c8e03a32d6d46f0a1e4c45f103ee4254b563"
+      },
+      "stats": {
+        "explicit": {
+          "min_ms": 94.538749,
+          "median_ms": 98.50431,
+          "max_ms": 122.506484
+        },
+        "default": {
+          "min_ms": 83.013,
+          "median_ms": 111.792689,
+          "max_ms": 245.468626
+        },
+        "go": {
+          "min_ms": 137.322888,
+          "median_ms": 159.892983,
+          "max_ms": 264.90098
+        },
+        "rust": {
+          "min_ms": 372.298991,
+          "median_ms": 449.824837,
+          "max_ms": 833.453073
+        }
+      },
+      "samples": [
+        {
+          "trial": 0,
+          "version": "explicit",
+          "elapsed_ns": 122506484
+        },
+        {
+          "trial": 0,
+          "version": "default",
+          "elapsed_ns": 90455194
+        },
+        {
+          "trial": 0,
+          "version": "go",
+          "elapsed_ns": 182219795
+        },
+        {
+          "trial": 0,
+          "version": "rust",
+          "elapsed_ns": 833453073
+        },
+        {
+          "trial": 1,
+          "version": "default",
+          "elapsed_ns": 141091120
+        },
+        {
+          "trial": 1,
+          "version": "go",
+          "elapsed_ns": 207471506
+        },
+        {
+          "trial": 1,
+          "version": "rust",
+          "elapsed_ns": 663873088
+        },
+        {
+          "trial": 1,
+          "version": "explicit",
+          "elapsed_ns": 94538749
+        },
+        {
+          "trial": 2,
+          "version": "go",
+          "elapsed_ns": 264900980
+        },
+        {
+          "trial": 2,
+          "version": "rust",
+          "elapsed_ns": 521769947
+        },
+        {
+          "trial": 2,
+          "version": "explicit",
+          "elapsed_ns": 119826921
+        },
+        {
+          "trial": 2,
+          "version": "default",
+          "elapsed_ns": 245468626
+        },
+        {
+          "trial": 3,
+          "version": "rust",
+          "elapsed_ns": 401099301
+        },
+        {
+          "trial": 3,
+          "version": "explicit",
+          "elapsed_ns": 98518471
+        },
+        {
+          "trial": 3,
+          "version": "default",
+          "elapsed_ns": 111792689
+        },
+        {
+          "trial": 3,
+          "version": "go",
+          "elapsed_ns": 159892983
+        },
+        {
+          "trial": 4,
+          "version": "explicit",
+          "elapsed_ns": 97404983
+        },
+        {
+          "trial": 4,
+          "version": "default",
+          "elapsed_ns": 92101262
+        },
+        {
+          "trial": 4,
+          "version": "go",
+          "elapsed_ns": 137322888
+        },
+        {
+          "trial": 4,
+          "version": "rust",
+          "elapsed_ns": 372298991
+        },
+        {
+          "trial": 5,
+          "version": "default",
+          "elapsed_ns": 83013000
+        },
+        {
+          "trial": 5,
+          "version": "go",
+          "elapsed_ns": 155386850
+        },
+        {
+          "trial": 5,
+          "version": "rust",
+          "elapsed_ns": 449824837
+        },
+        {
+          "trial": 5,
+          "version": "explicit",
+          "elapsed_ns": 98504310
+        },
+        {
+          "trial": 6,
+          "version": "go",
+          "elapsed_ns": 159890214
+        },
+        {
+          "trial": 6,
+          "version": "rust",
+          "elapsed_ns": 404827934
+        },
+        {
+          "trial": 6,
+          "version": "explicit",
+          "elapsed_ns": 96481249
+        },
+        {
+          "trial": 6,
+          "version": "default",
+          "elapsed_ns": 162341518
+        }
+      ]
+    }
+  ],
+  "llvm_tools": {
+    "opt": {
+      "sha256": "a149a1dd4d8886da19acdefecb181cc30c1006982c4c20ec13f50b44afd9748a",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 23.1.1"
+      ]
+    },
+    "llc": {
+      "sha256": "ef1446c1d441a945afdd7a616339e2b6d93b1e5fb73b4f7f455750e838ec2ed3",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 23.1.1"
+      ]
+    },
+    "llvm-link": {
+      "sha256": "e3f840362a9cf05fe2017f7e650e947feea8d3afe11888ab7367e7c8c60c5f4c",
+      "version": [
+        "LLVM (http://llvm.org/):",
+        "  LLVM version 23.1.1"
+      ]
+    }
+  }
+}
