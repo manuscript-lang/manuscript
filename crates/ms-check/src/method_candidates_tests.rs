@@ -238,7 +238,7 @@ fn self_referential_bound_is_not_an_arity_error() {
     let p = Checker::new(&CheckOptions::default()).check_modules(
         vec![module(
             "selfbound.ms",
-            "type B[T: B[T]]:\n    v: T\nexport fn main() Int: 0\n",
+            include_str!("../tests/method_candidates/selfbound.ms"),
         )],
         None,
     );
@@ -260,7 +260,7 @@ fn self_referential_bound_is_not_an_arity_error() {
 
 #[test]
 fn interface_parameter_inference_failure_is_one_clear_error() {
-    let source = "type P[T]:\n    v: T\ninterface Get[T]:\n    fn get() T\nimpl Get[T] for P[T]:\n    fn get() T: self.v\nfn f[T](g: Get[T]) T: g.get()\nexport fn main() Int:\n    return f(P(1))\n";
+    let source = include_str!("../tests/method_candidates/iface_infer.ms");
     let p = Checker::new(&CheckOptions::default())
         .check_modules(vec![module("iface_infer.ms", source)], None);
     assert_eq!(p.diagnostics.len(), 1, "{:?}", p.diagnostics);
