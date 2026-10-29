@@ -119,6 +119,8 @@ pub struct Program {
     pub implicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
+    /// Payload bindings of a consumed match scrutinee that some path moves out.
+    pub moved_payloads: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
