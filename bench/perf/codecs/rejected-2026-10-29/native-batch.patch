@@ -1,0 +1,37 @@
+--- a/crates/ms-std-encoding/src/lib.rs
++++ b/crates/ms-std-encoding/src/lib.rs
+@@ -47 +47 @@
+-    let mut out = String::with_capacity(data.len().div_ceil(3) * 4);
++    let mut out = Vec::with_capacity(data.len().div_ceil(3) * 4);
+@@ -52,14 +52,17 @@
+-        out.push(alpha[(v >> 18) as usize & 63] as char);
+-        out.push(alpha[(v >> 12) as usize & 63] as char);
+-        out.push(if c.len() > 1 {
+-            alpha[(v >> 6) as usize & 63] as char
+-        } else {
+-            '='
+-        });
+-        out.push(if c.len() > 2 {
+-            alpha[v as usize & 63] as char
+-        } else {
+-            '='
+-        });
+-    }
+-    out
++        out.extend_from_slice(&[
++            alpha[(v >> 18) as usize & 63],
++            alpha[(v >> 12) as usize & 63],
++            if c.len() > 1 {
++                alpha[(v >> 6) as usize & 63]
++            } else {
++                b'='
++            },
++            if c.len() > 2 {
++                alpha[v as usize & 63]
++            } else {
++                b'='
++            },
++        ]);
++    }
++    // The alphabet and padding contain only ASCII.
++    ms_rt::scan::string_from_valid_utf8(out)

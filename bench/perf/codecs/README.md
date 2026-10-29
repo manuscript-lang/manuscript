@@ -41,3 +41,9 @@ Results are comparable only on the same machine and settings.
 
 [The 2026-10-29 report](results-2026-10-29.md) retains the paired distributions,
 identities, disassembly, and bounded follow-up findings.
+
+The [JSON syntax-error benchmark](json-failure/README.md) covers the independent
+second-pass parsing fix and its small/valid controls.
+
+[Rejected second-pass experiments](rejected-2026-10-29/README.md) preserve the
+CSV and native encoder tradeoffs so they are not rediscovered as wins.

@@ -1,0 +1,62 @@
+import {stringify, CsvOptions} from "./csv.ms"
+import StringBuilder from "@std/string.ms"
+import arguments from "@std/process.ms"
+import stdout from "@std/io.ms"
+import clock from "@std/time.ms"
+
+export fn main() Int:
+    let args = arguments()
+    let size = args[0].parse_int().get()
+    let count = args[1].parse_int().get()
+    let rounds = args[2].parse_int().get()
+    let shape = args[3]
+    var text = StringBuilder()
+
+    for i in 0..size:
+        if shape == "unicode": text.append("é")
+        else: text.append("a")
+
+    if shape == "quote": text.append("\"z")
+    else if shape == "comma": text.append(",z")
+    else if shape == "newline": text.append("\nz")
+
+    let suffix = text.build()
+    var field = suffix.clone()
+
+    if shape == "space": field = " {suffix}"
+    else if shape == "unicode-space": field = "　{suffix}"
+
+    var rows = List[List[String]]()
+    var expected = StringBuilder()
+
+    for i in 0..count:
+        rows.append([field.clone(), "tail"])
+
+        if shape == "quote": expected.append(
+            "\"{suffix.replace("\"", "\"\"")}\",tail\n"
+        )
+        else if (
+            shape == "comma"
+            or shape == "newline"
+            or shape == "space"
+            or shape == "unicode-space"
+        ): expected.append("\"{field}\",tail\n")
+        else: expected.append("{field},tail\n")
+
+    let wanted = expected.build()
+    let clk = clock()
+    var checksum = 0
+    let start = clk.now()
+
+    for i in 0..rounds:
+        let result = stringify(rows, CsvOptions())
+        if result.is_error(): return 2
+
+        let actual = result.get()
+        if actual != wanted: return 3
+
+        checksum += actual.byte_length()
+
+    let elapsed = clk.now().difference(start).to_nanoseconds()
+    stdout().write("{size} {count} {rounds} {shape} {checksum} {elapsed}\n").get()
+    return 0

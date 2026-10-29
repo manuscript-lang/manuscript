@@ -1,0 +1,42 @@
+import hashlib,json,statistics,subprocess
+from pathlib import Path
+root=Path('/workspace/manuscript/.artifacts/codecs-pass2')
+rows=[]
+
+def trial(kind,case,rounds,repeat):
+    labels=['before','after'] if repeat%2==0 else ['after','before']
+    for label in labels:
+        if kind=='encode':
+            size,count=case
+            binary=root/'encode'/label
+            args=[str(size),str(count),str(rounds)]
+            expected_identity=[str(size),str(count),str(rounds)]
+            expected=((size+2)//3*4*count+max(0,count-1)+count*2+2)*rounds
+        else:
+            size,count,shape=case
+            binary=root/f'csv-{label}'/'run'
+            args=[str(size),str(count),str(rounds),shape]
+            expected_identity=args
+            width={'ascii':size+6,'unicode':size*2+6,'quote':size+11,'comma':size+10,'newline':size+10,'space':size+9,'unicode-space':size+11}[shape]
+            expected=width*count*rounds
+        p=subprocess.run([str(binary),*args],text=True,capture_output=True,check=True)
+        out=p.stdout.split()
+        if len(out)!=len(expected_identity)+2 or out[:-2]!=expected_identity or int(out[-2])!=expected or int(out[-1])<=0:
+            raise RuntimeError((kind,label,args,p.stdout,p.stderr,expected))
+        rows.append(dict(kind=kind,case=list(case),rounds=rounds,repeat=repeat,label=label,checksum=int(out[-2]),ns=int(out[-1])/rounds))
+
+cases=[('encode',(s,1000),500 if s<4 else 200) for s in [0,1,2,3,4,16,32]]
+cases += [('encode',(s,1),300000 if s<=4 else max(100,1000000//s)) for s in [0,1,2,3,4,32,1024,65536]]
+cases += [('csv',(s,1000,'ascii'),100) for s in [0,3,16,64]]
+cases += [('csv',(s,10,'ascii'),max(20,1000000//(s*10))) for s in [1024,65536]]
+cases += [('csv',(s,100,'unicode'),100) for s in [3,32,1024]]
+cases += [('csv',(s,100,shape),100) for shape in ['quote','comma','newline','space','unicode-space'] for s in [3,1024]]
+for kind,case,rounds in cases:
+    start=len(rows)
+    for repeat in range(-1,9):trial(kind,case,rounds,repeat)
+    selected=rows[start:]
+    b=[r['ns'] for r in selected if r['repeat']>=0 and r['label']=='before']
+    a=[r['ns'] for r in selected if r['repeat']>=0 and r['label']=='after']
+    print(kind,case,rounds,'before',round(statistics.median(b),3),'after',round(statistics.median(a),3),'ratio',round(statistics.median(a)/statistics.median(b),4),'ranges',tuple(round(x,3) for x in [min(b),max(b),min(a),max(a)]),flush=True)
+    (root/'samples.json').write_text(json.dumps(rows,indent=2)+'\n')
+(root/'identities.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in [root/'encode'/'before',root/'encode'/'after',root/'csv-before'/'run',root/'csv-after'/'run',root/'encode'/'main.ms',root/'csv-before'/'csv.ms',root/'csv-after'/'csv.ms',root/'csv-before'/'main.ms',root/'csv-after'/'main.ms',root/'runtime-before.a',root/'runtime-batch.a',root/'ms-baseline',root/'compare.py']},indent=2)+'\n')

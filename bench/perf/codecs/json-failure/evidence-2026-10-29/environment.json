@@ -1,0 +1,19 @@
+{
+  "baseline": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "cpu": "Intel Xeon Platinum 8573C; 5 exposed CPUs; 4 CPU cgroup quota",
+  "rust": "1.99.1",
+  "llvm": "23.1.1",
+  "profile": "Release; MIR Speed; actual opt default<O3>; llc -O3; production x86_64-unknown-linux-musl archive",
+  "vectorization": "default enabled",
+  "clock": "wall monotonic and CLOCK_PROCESS_CPUTIME_ID inside program; CPU interval also encloses wall-clock queries",
+  "callgrind": "3.24.0; collect-atstart=no; toggle-collect=msrt_json_parse or msrt_json_parse_tree; 3 calls per recorded sample",
+  "native_source_sha256": {
+    "before": "6d9e9811d74d11afc7bc5921c6e07a6039f846f0eefe3de1ed7691c32e54c350",
+    "after": "0bfa3d3dbd6a32a4c1b18692685c796d992c1efb297f10ea270736f063206071"
+  },
+  "producer_executions": 520,
+  "pairs": 9,
+  "warmup_pairs": 1,
+  "scope": "flat Release JSON only; no depth, retention, compiler-latency or network probes"
+}

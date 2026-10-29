@@ -1,0 +1,33 @@
+--- a/stdlib/csv.ms
++++ b/stdlib/csv.ms
+@@ -228 +227,0 @@
+-    let delimiter = options.delimiter.scalar_values() [0]
+@@ -238 +237 @@
+-                pieces.append(encode_field(field, delimiter, crlf))
++                pieces.append(encode_field(field, options.delimiter, crlf))
+@@ -251,11 +250,11 @@
+-fn needs_quotes(field: String, delimiter: Int) Bool:
+-    let scalars = field.scalar_values()
+-    if scalars.is_empty(): return false
+-
+-    for scalar in scalars:
+-        if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
+-
+-    let first = scalars[0]
+-    if first <= 32 or first >= 127: return field.get(0).trim() == ""
+-
+-    return scalars.length() == 2 and first == 92 and scalars[1] == 46
++fn needs_quotes(field: String, delimiter: String) Bool:
++    if field.is_empty(): return false
++    if (
++        field.contains("\"")
++        or field.contains("\r")
++        or field.contains("\n")
++        or field.contains(delimiter)
++    ): return true
++    if field == "\\.": return true
++
++    return field.get(0).trim() == ""
+@@ -266 +265 @@
+-fn encode_field(field: String, delimiter: Int, crlf: Bool) String:
++fn encode_field(field: String, delimiter: String, crlf: Bool) String:

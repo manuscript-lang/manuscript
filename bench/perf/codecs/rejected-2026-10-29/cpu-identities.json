@@ -1,0 +1,8 @@
+{
+  "encode/before-cpu": "cca33e11b9d728c46946182247979c2381b653e74bce1d10e25c3f90c9cd059a",
+  "encode/after-cpu": "85a825b00c4e46814683fd3b74cf5d294686d322a32b040f942caaf7af104fea",
+  "encode/main-cpu.ms": "6f39e486d89b9c1b6213385eb2ce32a609329cba8ff54e46ed6832bb186a076d",
+  "cpu.c": "ebf00b9f1cfd23263e394acc84eb5e9d0d785b53cf33db3c80327f93b7de3a77",
+  "cpu.o": "2190722f29dea8c55ccd52de7323abab5ccfd7dba58dc54685121b572eae0d37",
+  "compare-cpu.py": "b95e08459a6bdcf1616eac7138a3c189e084ac64893948349d65bd2da831e580"
+}
