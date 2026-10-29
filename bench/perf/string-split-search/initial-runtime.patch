@@ -1,0 +1,74 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index c5fb4bf2c..c88a32de3 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1854,12 +1854,56 @@ unsafe fn split_into(
+             *out = v;
+             return;
+         }
+-        let mut start = 0;
++        // memmem's one-shot search uses a cheaper searcher below 64 bytes. Keep that
++        // path, byte separators, and single-part requests out of the Finder's frame.
++        v = if sepb.len() > 1 && sepb.len() <= text.len() && text.len() >= 64 && limit > 1 {
++            split_with_finder(text, sepb, limit, &piece)
++        } else {
++            split_nonempty(text, sepb, limit, &piece, |hay| find(hay, sepb))
++        };
++        *out = v;
++    }
++}
++
++/// Keep the stack searcher out of split's byte, short-input, and single-part paths.
++#[inline(never)]
++unsafe fn split_with_finder(
++    text: &[u8],
++    sep: &[u8],
++    limit: usize,
++    piece: &impl Fn(&[u8]) -> StrVal,
++) -> VecVal {
++    let finder = memchr::memmem::Finder::new(sep);
++    // SAFETY: the caller supplies a nonempty separator and a valid piece constructor.
++    unsafe {
++        split_nonempty(text, sep, limit, piece, |hay| {
++            if hay.len() < 64 {
++                find(hay, sep)
++            } else {
++                finder.find(hay)
++            }
++        })
++    }
++}
++
++/// One field-accounting loop for both one-shot and reusable searches.
++#[inline]
++unsafe fn split_nonempty(
++    text: &[u8],
++    sep: &[u8],
++    limit: usize,
++    piece: &impl Fn(&[u8]) -> StrVal,
++    search: impl Fn(&[u8]) -> Option<usize>,
++) -> VecVal {
++    let mut v = EMPTY_VEC;
++    let mut start = 0;
++    // SAFETY: the caller supplies a nonempty separator and a valid piece constructor.
++    unsafe {
+         while v.len < limit {
+-            match find(&text[start..], sepb) {
++            match search(&text[start..]) {
+                 Some(p) => {
+                     push_str(&mut v, piece(&text[start..start + p]));
+-                    start += p + sepb.len();
++                    start += p + sep.len();
+                 }
+                 None => {
+                     push_str(&mut v, piece(&text[start..]));
+@@ -1867,8 +1911,8 @@ unsafe fn split_into(
+                 }
+             }
+         }
+-        *out = v;
+     }
++    v
+ }
+ 
+ /// The state of `for piece in text.split(separator)` that does not build the list.

@@ -1,0 +1,48 @@
+{
+  "recorded_at": "2026-10-29T12:20:51.898550+00:00",
+  "status": "initial candidate not accepted: material control regressions",
+  "baseline_commit": "d564eb3c3bc2953962f22abcb96b70403ac11645",
+  "candidate": "baseline plus initial-runtime.patch",
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "llvm_version": "LLVM (http://llvm.org/):\n  LLVM version 23.1.1\n  Optimized build.\n  Default target: x86_64-unknown-linux-gnu\n  Host CPU: emeraldrapids\n",
+  "backend": "traced LLVM23.1.1 opt -passes=default<O3>, llc -O3 -align-loops=32",
+  "cpu_affinity": "CPU0",
+  "pairs": 7,
+  "cases_per_producer": 83,
+  "warm_up": "one unrecorded checked process per binary, plus checked per-case warmup",
+  "expected_validation": "every timed split exact-list equality against untimed independently constructed expected pieces; strict shared runner validates all identities and producer status",
+  "sha256": {
+    "compiler": "3179dc962e37f64961fc16715e7dcc758b78decffb84c2e67100acb0cb044145",
+    "benchmark_source": "5fb86058ab64ede169ed46c428c6e5fdb4d60bf5e84cf67a4cbeaaa942a50510",
+    "identities": "88eb1d8ae370d5e206d992eb9b5fc1b0b0e6e87ebea087e9ea1b253d1f9e437c",
+    "runtime_patch": "a92457b0646c30ba40f6eb7e7163178137d407b7f06d7cc7b5725b0872ee9ac9",
+    "source_tests": "13e74df15eeb94a75de73e9de6be11f4ac4eba37d9103a80ba7a7cd4b693a6d7"
+  },
+  "artifacts": {
+    "before": {
+      "archive": "182d498c374a572a420c0fcc7a93758d2a9c964e7c66bd3e7d795daaaad40112",
+      "pure_helpers": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "runtime_source": "58af069f6a043b19d104db38adae06e6dda3fe994d4ceef22b376012852712d3",
+      "program": "da19b52113c2881f410942bad2f1b2d1c720989b7aad2fc64710d817c80fef5d"
+    },
+    "after": {
+      "archive": "7a29bed55d9d8b6ab886c95345012a8224890c65a66886444b6fdcdb4c28d71d",
+      "pure_helpers": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "runtime_source": "9b71d84fd6a6de7f804cbfebb988e147c279876cc9e46649fc538b6071f54932",
+      "program": "54ebaf69e926239d38e87c4381ca8a2bffef5414f4444bcee0884e50a888c7b7"
+    }
+  },
+  "raw_data": {
+    "initial-samples.csv": "c9b9060673b67a1c3906a05e7a9b04efc81ef55bed8c749ef15d0e7130fb3f68",
+    "initial-summary.csv": "e51b5c99bf073a18989f5c98659321262bb61f1530b78b416ede6c3544be3e21",
+    "initial-paired.csv": "2488b1cc4cc47142d314deec87e7298b72a792ff56fe75991b2837c4eb670a43"
+  }
+}

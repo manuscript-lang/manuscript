@@ -1,0 +1,88 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index c5fb4bf2c..f485889a6 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1854,12 +1854,70 @@ unsafe fn split_into(
+             *out = v;
+             return;
+         }
+-        let mut start = 0;
++        // Reuse can only pay off after repeated matches with a long suffix still to search.
++        // Keep byte/short searches and small caps out of both the handoff and Finder frame.
++        v = if sepb.len() > 1 && sepb.len() <= text.len() && text.len() >= 64 && limit > 2 {
++            split_nonempty::<true>(text, sepb, limit, &piece, v, 0, |hay| find(hay, sepb))
++        } else {
++            split_nonempty::<false>(text, sepb, limit, &piece, v, 0, |hay| find(hay, sepb))
++        };
++        *out = v;
++    }
++}
++
++/// Continues after two matches, keeping the stack searcher out of absent/single-hit splits.
++/// `start` is the valid unconsumed offset in `text`; `v` is the exclusively held header from
++/// this split. The caller immediately returns this continuation's result without reusing it.
++#[inline(never)]
++unsafe fn split_with_finder(
++    text: &[u8],
++    sep: &[u8],
++    limit: usize,
++    piece: &impl Fn(&[u8]) -> StrVal,
++    v: VecVal,
++    start: usize,
++) -> VecVal {
++    let finder = memchr::memmem::Finder::new(sep);
++    // SAFETY: the caller supplies a nonempty separator and a valid piece constructor.
++    unsafe {
++        split_nonempty::<false>(text, sep, limit, piece, v, start, |hay| {
++            if hay.len() < 64 {
++                find(hay, sep)
++            } else {
++                finder.find(hay)
++            }
++        })
++    }
++}
++
++/// One field-accounting loop for both one-shot and reusable searches.
++#[inline(always)]
++unsafe fn split_nonempty<const HANDOFF: bool>(
++    text: &[u8],
++    sep: &[u8],
++    limit: usize,
++    piece: &impl Fn(&[u8]) -> StrVal,
++    mut v: VecVal,
++    mut start: usize,
++    search: impl Fn(&[u8]) -> Option<usize>,
++) -> VecVal {
++    // SAFETY: the caller supplies a nonempty separator, a valid unconsumed offset, an
++    // exclusively held list header, and a valid piece constructor. Only the initial empty-list
++    // call enables HANDOFF, so v.len == 2 means two matches have been observed.
++    unsafe {
+         while v.len < limit {
+-            match find(&text[start..], sepb) {
++            match search(&text[start..]) {
+                 Some(p) => {
+                     push_str(&mut v, piece(&text[start..start + p]));
+-                    start += p + sepb.len();
++                    start += p + sep.len();
++                    if HANDOFF
++                        && v.len == 2
++                        && v.len < limit
++                        && text.len() - start >= 64
++                        && sep.len() <= text.len() - start
++                    {
++                        return split_with_finder(text, sep, limit, piece, v, start);
++                    }
+                 }
+                 None => {
+                     push_str(&mut v, piece(&text[start..]));
+@@ -1867,8 +1925,8 @@ unsafe fn split_into(
+                 }
+             }
+         }
+-        *out = v;
+     }
++    v
+ }
+ 
+ /// The state of `for piece in text.split(separator)` that does not build the list.

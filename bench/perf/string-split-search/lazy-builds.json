@@ -1,0 +1,48 @@
+{
+  "recorded_at": "2026-10-29T12:37:11.675275+00:00",
+  "status": "lazy candidate rejected: material control regressions",
+  "baseline_commit": "d564eb3c3bc2953962f22abcb96b70403ac11645",
+  "candidate": "baseline plus lazy-runtime.patch",
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "llvm_version": "LLVM (http://llvm.org/):\n  LLVM version 23.1.1\n  Optimized build.\n  Default target: x86_64-unknown-linux-gnu\n  Host CPU: emeraldrapids\n",
+  "backend": "normal builds traced LLVM23.1.1 opt -passes=default<O3>, llc -O3 -align-loops=32",
+  "cpu_affinity": "CPU0",
+  "pairs": 7,
+  "cases_per_producer": 89,
+  "warm_up": "one unrecorded checked process per binary, plus checked per-case warmup",
+  "expected_validation": "every timed split exact-list equality against independently prepared pieces; strict producer and identity validation",
+  "sha256": {
+    "compiler": "3179dc962e37f64961fc16715e7dcc758b78decffb84c2e67100acb0cb044145",
+    "benchmark_source": "69b1b3b33c2063f3396c01a860d79324e7c422a931f69501a47f8f1c92318af7",
+    "identities": "58fbd561b58c4d206e0b435b7a223af808ada9beec9e48c8e5e0972d9ffc7d8d",
+    "runtime_patch": "df79fcf7d82bbe2a36595d8abd1956e2155520aba39e3824d5356a71f0f1abd4",
+    "source_tests": "59fefdb96e4dbcb89a23781908d762109aa8696da5422378d7526e63efcc52c3"
+  },
+  "artifacts": {
+    "before": {
+      "archive": "182d498c374a572a420c0fcc7a93758d2a9c964e7c66bd3e7d795daaaad40112",
+      "pure_helpers": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "runtime_source": "58af069f6a043b19d104db38adae06e6dda3fe994d4ceef22b376012852712d3",
+      "program": "344a582c556c968d2eee4280507509a791f99a57659fa41af0991c768f0a5b0f"
+    },
+    "lazy": {
+      "archive": "24c15bfdde203eb203e7fa859cc1a2004c81bd3eef872f7a4d1bb49103a2564d",
+      "pure_helpers": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "runtime_source": "18431db840e3b89287aabb1d9f4b857d22ccb91c389ca5185f2da25b01b37345",
+      "program": "b64c2b807fdc8ea7ab74737da2e5ac8ba3dbcf932f91d07ec3f34b5292d22da1"
+    }
+  },
+  "raw_data": {
+    "lazy-samples.csv": "574850c9e418f283d9f6952fb9d9bd3ab09a83fe03f90f2a33a177e1b171e36f",
+    "lazy-summary.csv": "9ccff056965eddf3f301d5816d7bd7465210be7bb9ab35cdfe6690fd40f958dd",
+    "lazy-paired.csv": "2dd3af06d1660ad2db3deca4a1349230b79d477ea3feeaf11b33670fc3f3614a"
+  }
+}
