@@ -48,7 +48,7 @@
 {"id":47,"jsonrpc":"2.0","result":null}
 #large
 {"id":49,"jsonrpc":"2.0","result":null}
-{"id":50,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":1},"start":{"character":20,"line":1}}}}]}
+{"id":50,"jsonrpc":"2.0","result":[{"detail":"@std/indexed.ms","filterText":"@std/indexed.ms","insertTextFormat":1,"kind":17,"label":"@std/indexed.ms","sortText":"@std/indexed.ms","textEdit":{"newText":"@std/indexed.ms","range":{"end":{"character":30,"line":1},"start":{"character":20,"line":1}}}},{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":1},"start":{"character":20,"line":1}}}}]}
 {"id":51,"jsonrpc":"2.0","result":null}
 {"id":52,"jsonrpc":"2.0","result":[{"detail":"@std/io.ms","filterText":"@std/io.ms","insertTextFormat":1,"kind":17,"label":"@std/io.ms","sortText":"@std/io.ms","textEdit":{"newText":"@std/io.ms","range":{"end":{"character":30,"line":1},"start":{"character":20,"line":1}}}}]}
 {"id":53,"jsonrpc":"2.0","result":null}
