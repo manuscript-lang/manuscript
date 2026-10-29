@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-29",
+  "host": {
+    "os": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu": "Intel Xeon Platinum 8573C",
+    "exposed_cpus": 5,
+    "affinity": [
+      0
+    ]
+  },
+  "tools": {
+    "rust": "1.99.1",
+    "llvm": "23.1.1",
+    "python": "3.12.14"
+  },
+  "build": {
+    "profile": "Release",
+    "backend": "LLVM",
+    "opt": "-passes=default<O3>",
+    "llc": "-O3",
+    "runtime_target": "x86_64-unknown-linux-musl",
+    "rustflags": "-C force-frame-pointers=yes"
+  },
+  "baseline_native_commit": "4c0a1cb820e772f56a0c831a0f2fe37fbc96a9a7",
+  "final_compiler_and_candidate_commit": "293f45361725d81945cc0b71fb5fdee3a1f902b2",
+  "final_main_commit": "7e2e62357",
+  "final_sha256": {
+    "/tmp/string-lines-before": "a666d1f4a4cfdef07105c6360c83b88c1c278b0e84e1a0e501c54e6e2010ff21",
+    "/tmp/string-lines-after": "c80c486f9112a224846e22ae5283e8f0fb783bdd3441bcafa4b71f5b643a7fb5",
+    "/tmp/string-lines-baseline/libms_native.a": "51b37a26c8f91a100015d6cc0d11a4170745ccd6989f8750792d7cd14908429f",
+    "target/ms-native/libms_native.a": "759e70554c13519a2781e4260debb98756f04e6448232ddf03cb2171c1ded7d1",
+    "target/release/ms": "00ec299238a29218a520dae47c26729f033bb77ef1d2971dd77d230cf13a3c20",
+    "bench/perf/string-lines/main.ms": "e7d37f5ea0147ac0fa127990ec52848f7319fd300f07719a3f0bd7be76a51787",
+    "crates/ms-rt/src/string.rs": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+    "bench/perf/string-lines/compare.py": "80cd3fc1917aefcea36fe8d19aefa4de054c4e1339551b18005a33dff9c52132"
+  },
+  "final_samples": {
+    "file": "samples.csv",
+    "pairs": 9,
+    "rows": 288,
+    "case_count": 16,
+    "small_iterations": 1000000,
+    "bulk_iterations": 64
+  },
+  "exploratory": [
+    {
+      "file": "initial-samples.csv",
+      "pairs": 7,
+      "runtime_source_commit": "c672c64ce3eddd127fda45875f781605f997f1a1",
+      "runtime_patch": "exploratory/initial.patch",
+      "source": "exploratory/initial-main.ms",
+      "before_sha256": "d6cd163e94afa6ccbb84cb69c3bdfba041525f9302148b6bc4db7e537e425c4e",
+      "after_sha256": "ce62cbd55c4920a491f6fe48caa1804117dfef3bbb68072d98ec55fe089f1586",
+      "native_after_sha256": "592eea3f9937472d31e9aa47368afb33af16883492f86d37ceee28e9fff31dcc"
+    },
+    {
+      "file": "second-samples.csv",
+      "pairs": 9,
+      "runtime_source_commit": null,
+      "runtime_patch": "exploratory/second.patch",
+      "runtime_source_sha256": "7f858f70483a36fc42fbba0976b758fb4c864baf31087b54c8944425e2269a37",
+      "source": "main.ms",
+      "before_sha256": "a666d1f4a4cfdef07105c6360c83b88c1c278b0e84e1a0e501c54e6e2010ff21",
+      "after_sha256": "bbf8eb092e0d976031375b32d415cc06e66ec991050ea375ade535ec8cff07c0",
+      "native_after_sha256": "1dfb0d82fc9f6324af9612023e1b7fe353e9e17d08f75ee24aa0a62731e57487"
+    },
+    {
+      "file": "prefix-samples.csv",
+      "pairs": 9,
+      "runtime_source_commit": "a63fecf89173b39b5680f9bee4f21e8ab323fdb9",
+      "runtime_patch": "exploratory/prefix.patch",
+      "source": "main.ms",
+      "before_sha256": "a666d1f4a4cfdef07105c6360c83b88c1c278b0e84e1a0e501c54e6e2010ff21",
+      "after_sha256": "9c8084da8020d5dd00ea61aafb05e38c5752f190156d0c1cc0dbf8af5f20fe4c",
+      "native_after_sha256": "debfae585ee06aa80d8ad6b70c2cb8103d55e068c1ec17e8a5c945d14ee626e6"
+    }
+  ],
+  "exploratory_provenance_limit": "Exploratory compiler used unchanged compiler sources from4c0a1cb82 and the then-current embedded runtime archive. Its binary SHA-256 was not saved before the main refresh. Only the final complete build identities support the published speed claims.",
+  "artifact_sha256": {
+    "exploratory/initial.patch": "e66588586b15774d5419f7286e92223d9ee96ebc085dab4f2cbccdf081fd080b",
+    "exploratory/prefix.patch": "858cd977c76c781360599832de5f97dfddf359782b50107e52c94a80d1508c44",
+    "exploratory/second.patch": "3440f62684cff3c5b9c0573165051e4c17c61974e13fe34f5f49f723415d2d09",
+    "initial-samples.csv": "0c645c94bd77887a26e8b067b595788ef88b95843eaa4b1835d924781c61e562",
+    "prefix-samples.csv": "f781daf5c83e71b21ae792b9daf5733356c2ce861de0b9a2d32dfadd18fcd14c",
+    "samples.csv": "06f0b33bfef452941ff50e6a20a7f21905a1cb221a0d59d4cc19aeca75cdcf86",
+    "second-samples.csv": "f67af15be596489b48a8fad5c896f199e421b9a29cd0eaa983c5eac03eedcd6f"
+  }
+}
