@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-29",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "cpu": "Intel Xeon Platinum 8573C",
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "baseline_commit": "7e2e62357d5cebc1f144b6ee86f38da247cd2f52",
+  "implementation_patch": "retained-set.patch",
+  "implementation_patch_sha256": "7cfe1113915603c7f34e6ce9a5c9f6f2423c28f72361a55b377e4fd08d65ecf0",
+  "runtime_sources_sha256": {
+    "map.rs": "7addff2124365dafe94f45d395e2cd833a167269c82ecc0accc6d287e4fbb49c",
+    "vec.rs": "c2d9e256f2d3186a9a5b08f76e69fc67798e0b56404e46ed5447028449311dd7"
+  },
+  "build_type": "Release",
+  "backend_inventory_before": {
+    "format": 1,
+    "version": "0.1.0",
+    "backend": "cranelift",
+    "build_type": "Release"
+  },
+  "backend_inventory_after": {
+    "format": 1,
+    "version": "0.1.0",
+    "backend": "cranelift",
+    "build_type": "Release"
+  },
+  "native_target": "x86_64-unknown-linux-musl",
+  "runtime_build": "cargo xtask runtime: Cargo release defaults, native debug=0",
+  "native_opt_level_override_present": false,
+  "compiler_sha256": "a8decb252fbb625d194745af732155d3fa5afb0d4db7433e12c7cb94a71699a3",
+  "baseline_native_archive_sha256": "b9beee2707bfbcb4b445b9e426f36a93142d0d41bc42e88ac200aaa64f6d29ae",
+  "candidate_native_archive_sha256": "fb80d97c4757477810dcf55347f6bdaee523b5048dbf1ddc37843b8bfce3b91f",
+  "pure_runtime_ir_before_sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+  "pure_runtime_ir_after_sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "valgrind": "3.24.0",
+  "valgrind_package_url": "https://deb.debian.org/debian/pool/main/v/valgrind/valgrind_3.24.0-3_amd64.deb",
+  "valgrind_package_sha256": "0359e30820ccee7ee5c8d4c951ca276e3978b18f157d71bd77981de05b344907",
+  "full_timing_pairs": 8,
+  "focused_timing_pairs": 10,
+  "focused_cpu": 0,
+  "final_producer_source_sha256": "4893577e15f1d4fc3f263fe826034750568e109d26ad8da477bd5a06e16a28b0",
+  "focused_driver_sha256": "96895a3773863ebf310a25d85f7a1353882bfe80ac7e28b2eaf0e656095c9216",
+  "rejected_bool_source_sha256": "b21d4744d57a16560f697c80e91c49090517b07de17950d2ea81479662092d16",
+  "inlined_helper_source_sha256": "a500debc0d8fa2ed27c86270eeab3a808f32a68df92431e41c6f7706ca7a68da",
+  "earlier_variant_patches": {
+    "rejected-return-bool.patch": "abdd79886cd7464a26555da61365ddd63246036fb18746b657ee50a07ee1f27f",
+    "inlined-helper.patch": "da1be3f532a11b3705038e4c07ca2dfb9bea232e25bc911e2d7cba0e9f50d9bc",
+    "outlined-helper.patch": "b59bd12b15efe1fca45468d5c2d99e58a6438848a5ea9bec0b6bd6d2897f370e",
+    "hinted-helper.patch": "d49fe658a80578ce78858608a07eacdf9dc3d78ff5703a41a5b344a6a3419be2",
+    "forced-inline-list.patch": "53a05b08b060aa85e36a0c0d7f067e662a318d9006858e655c26d0eb67ed81cf"
+  },
+  "patch_format": "zero-context unified diff; apply with git apply --unidiff-zero"
+}

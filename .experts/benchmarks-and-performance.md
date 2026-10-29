@@ -34,6 +34,21 @@ reusing scratch capacity; allocation counts alone do not establish a memory win.
 The [regex report](../bench/perf/stdlib/regex-results-2026-10-29.md) and its external
 counting probe distinguish logical capacity from generated-program RSS.
 
+### Shared collection helpers need conversion and union controls
+
+Verified (2026-10-29): eliminating a redundant lookup in `List.distinct` reduced
+instructions but common-case wall timings remained inconsistent; the List change
+was not retained. A shared copy-helper refactor also added roughly five
+instructions per new key to List-to-Set conversion. Keep union and conversion
+as controls when changing a Set helper, and distinguish fewer hash calls from a
+wall-clock claim. The retained Set-only change skips a check only when one
+input's uniqueness proves that a fresh output cannot already contain the key.
+
+Apply when: changing a shared collection lookup or copy helper.
+Evidence: [collection-copy measurements and rejected variants](../bench/perf/list-distinct/README.md).
+Verify: paired unique/duplicate and small/large workloads, exact producer status
+and checksums, whole-producer instruction counts, and the Set hash-count regression.
+
 ### Consume library checksums and separate allocation phase from local cost
 
 Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`). Changing an earlier allocating workload can move later allocation costs, so an apparent unrelated regression in a full-suite run may not reproduce when the same cases run repeatedly in separate focused processes. Keep both results and state the distinction; do not silently replace the full run.
