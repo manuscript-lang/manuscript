@@ -167,7 +167,7 @@ impl Cx {
             return None;
         }
         let f = c.func.func()?;
-        if f.body.is_empty() || f.result_ref || !self.var_positions(c).is_empty() {
+        if f.body.is_empty() || f.result_ref {
             return None;
         }
         let key = (c.module.file, c.id());
