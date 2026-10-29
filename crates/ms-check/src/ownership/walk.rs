@@ -1416,7 +1416,12 @@ impl Walker<'_> {
         }
         if origins.is_empty() {
             let text = self.expr_text(value);
-            let message = if matches!(value.kind, ExprKind::Call { .. }) {
+            let message = if b.ty.args.iter().any(crate::types::borrows) {
+                format!(
+                    "`{}` would hold values that hold a borrow, which a collection cannot do; keep each one in its own variable",
+                    b.name
+                )
+            } else if matches!(value.kind, ExprKind::Call { .. }) {
                 format!(
                     "`{}` holds a borrow, but `{text}` does not borrow from a variable it can hold; build it from a variable or a read-only parameter, not a temporary",
                     b.name
