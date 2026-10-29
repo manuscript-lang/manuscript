@@ -643,14 +643,14 @@ fn parse_ty(c: &mut Cur, m: &mut Module) -> Result<Ty, ParseError> {
         "str" => Ty::STR,
         "bytes" => Ty::BYTES,
         "ptr" => Ty::PTR,
-        "list" | "opt" => {
+        "list" | "opt" | "ref" => {
             c.expect_p('<')?;
             let inner = parse_ty(c, m)?;
             c.expect_p('>')?;
-            if name == "list" {
-                m.types.list(inner)
-            } else {
-                m.types.opt(inner)
+            match name.as_str() {
+                "list" => m.types.list(inner),
+                "opt" => m.types.opt(inner),
+                _ => m.types.view(inner),
             }
         }
         "fn" => {

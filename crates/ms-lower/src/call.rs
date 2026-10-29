@@ -926,8 +926,12 @@ impl<'a> FnLower<'a> {
                 }
                 None => x,
             };
+            let is_ref_field =
+                case.is_none() && ct::field_is_ref(&t, a.slot.name) && a.wrap_optional.is_none();
             // A later field may return early (`try`): hold this one as a temporary until then.
-            let x = if later_try {
+            let x = if is_ref_field {
+                x
+            } else if later_try {
                 self.hold_temp(x)
             } else {
                 let v = self.owned(x);
@@ -945,6 +949,10 @@ impl<'a> FnLower<'a> {
         let mut vals = Vec::new();
         for (i, s) in slots.into_iter().enumerate() {
             match s {
+                // A `ref` field holds a view of its argument: nothing is copied or moved in.
+                Some(x) if case.is_none() && ct::field_is_ref(&t, params[i].name) => {
+                    vals.push(self.b.ref_new(x.v));
+                }
                 Some(x) => {
                     let v = self.owned(x);
                     vals.push(v);

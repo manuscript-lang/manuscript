@@ -639,6 +639,7 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable,
+                    by_ref: false,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -751,6 +752,7 @@ impl<'a> Parser<'a> {
                         ty: Some(ty),
                         default: None,
                         mutable: false,
+                        by_ref: false,
                     });
                     if !self.take(Tok::Comma) {
                         break;
@@ -1222,6 +1224,7 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
+                let by_ref = self.take(Tok::Ref);
                 let ty = self.typ()?;
                 let mut default = None;
                 if self.take(Tok::Assign) {
@@ -1235,6 +1238,7 @@ impl<'a> Parser<'a> {
                     ty: Some(ty),
                     default,
                     mutable: false,
+                    by_ref,
                 });
                 self.end()?;
             }
@@ -2219,6 +2223,7 @@ impl<'a> Parser<'a> {
                             ty: None,
                             default: None,
                             mutable: false,
+                            by_ref: false,
                         });
                         if !self.take(Tok::Comma) {
                             break;
@@ -2788,6 +2793,7 @@ impl<'a> Parser<'a> {
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
                             mutable: p.mutable,
+                            by_ref: false,
                         }
                     })
                     .collect(),

@@ -343,6 +343,21 @@ impl<'m> FuncBuilder<'m> {
         self.val(Op::ListDropLast, &[l], Imm::None, t)
     }
 
+    // Borrowed views.
+
+    /// `ref.new`: a view of the borrowed `v`; nothing is retained, copied or dropped.
+    pub fn ref_new(&mut self, v: Value) -> Value {
+        let t = self.m.types.view(self.ty(v));
+        self.val(Op::RefNew, &[v], Imm::None, t)
+    }
+    /// `ref.get`: the value a view borrows, as a borrow.
+    pub fn ref_get(&mut self, r: Value) -> Value {
+        let TyKind::Ref(inner) = self.m.types.kind(self.ty(r)).clone() else {
+            panic!("ref.get of a non-view")
+        };
+        self.val(Op::RefGet, &[r], Imm::None, inner)
+    }
+
     // Optionals.
 
     /// `opt.some`.

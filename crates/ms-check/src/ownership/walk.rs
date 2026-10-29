@@ -550,11 +550,29 @@ impl Walker<'_> {
         declared.params.get(i).map(|(n, _)| Slot::Param(*n))
     }
 
+    /// The slot a returned place belongs to: the read-only parameter or receiver it is part of, or,
+    /// for a part reached through a `ref` field of a borrowing parameter or receiver, what that
+    /// value holds.
+    fn lend_slot(&self, o: &Place) -> Option<Slot> {
+        if let Some(Step::Field(f)) = o.path.first() {
+            let m = self.meta.get(&o.root)?;
+            if field_is_ref(&m.binding.ty, *f) {
+                if m.is_receiver {
+                    return Some(Slot::HeldReceiver);
+                }
+                let declared = Summary::declared(&self.cx.c.func);
+                let (name, _) = declared.params.get(m.parameter?)?;
+                return Some(Slot::HeldParam(*name));
+            }
+        }
+        self.slot_of(o.root)
+    }
+
     /// The binding a slot names in this callable.
     fn slot_binding(&self, slot: Slot) -> Option<&BindingRef> {
         match slot {
-            Slot::Receiver => self.cx.c.self_binding.as_ref(),
-            Slot::Param(name) => {
+            Slot::Receiver | Slot::HeldReceiver => self.cx.c.self_binding.as_ref(),
+            Slot::Param(name) | Slot::HeldParam(name) => {
                 let declared = Summary::declared(&self.cx.c.func);
                 let i = declared.params.iter().position(|(n, _)| *n == name)?;
                 self.cx.c.parameters.get(i)
@@ -573,8 +591,8 @@ impl Walker<'_> {
                 .is_some_and(|b| self.consumed.contains(&b.uid));
             if consumed {
                 let what = match l.slot {
-                    Slot::Receiver => "self".to_string(),
-                    Slot::Param(n) => n.to_string(),
+                    Slot::Receiver | Slot::HeldReceiver => "self".to_string(),
+                    Slot::Param(n) | Slot::HeldParam(n) => n.to_string(),
                 };
                 self.error(
                     l.pos,
@@ -615,7 +633,7 @@ impl Walker<'_> {
         if self.ret_expr != Some(e.id) || !self.captured.is_empty() {
             return false;
         }
-        let slots: Option<Vec<Slot>> = places.iter().map(|o| self.slot_of(o.root)).collect();
+        let slots: Option<Vec<Slot>> = places.iter().map(|o| self.lend_slot(o)).collect();
         let Some(slots) = slots else {
             return false;
         };
@@ -652,11 +670,12 @@ impl Walker<'_> {
         args: &'e [Argument],
     ) -> Option<&'e Expr> {
         match slot {
-            Slot::Receiver => match (&callee.kind, self.cx.m.resolution(call)) {
+            Slot::Receiver | Slot::HeldReceiver => match (&callee.kind, self.cx.m.resolution(call))
+            {
                 (ExprKind::Member { left, .. }, Resolution::Method(_)) => Some(&**left),
                 _ => None,
             },
-            Slot::Param(name) => {
+            Slot::Param(name) | Slot::HeldParam(name) => {
                 let slots = self.cx.m.info(call).arguments.unwrap_or_default();
                 args.iter()
                     .enumerate()
@@ -681,13 +700,38 @@ impl Walker<'_> {
             let Some(a) = self.slot_arg(*slot, e, callee, args) else {
                 continue;
             };
-            if self.is_place(a) {
+            if matches!(slot, Slot::HeldReceiver | Slot::HeldParam(_)) {
+                out.extend(self.held_places(a));
+            } else if self.is_place(a) {
                 out.extend(self.pure_places(a).unwrap_or_default());
             } else if let Some(o) = self.pure_origins(a) {
                 out.extend(o);
             }
         }
         out
+    }
+
+    /// The places the borrowing value `a` holds: what its binding was built from, or, when that
+    /// is not known (a parameter), the value itself, which keeps it frozen.
+    fn held_places(&self, a: &Expr) -> Vec<Place> {
+        let Some(places) = self.pure_places(a) else {
+            return Vec::new();
+        };
+        places
+            .into_iter()
+            .flat_map(|p| {
+                let held = self
+                    .meta
+                    .get(&p.root)
+                    .filter(|m| m.perm != Perm::Borrowed && m.perm != Perm::MutBorrowed)
+                    .map(|m| m.origins.clone())
+                    .filter(|o| !o.is_empty());
+                match held {
+                    Some(origins) => origins,
+                    None => vec![p],
+                }
+            })
+            .collect()
     }
 
     fn receiver_consumed(&self) -> bool {
@@ -1222,6 +1266,10 @@ impl Walker<'_> {
             self.let_pos.insert(b.uid, s.pos);
         }
         let class = self.cx.classes.class(&b.ty);
+        if borrows(&b.ty) {
+            self.bind_borrowing(&b, role, mutable, pattern, value);
+            return;
+        }
         if mutable && self.bind_getter(&b, role, pattern, value) {
             return;
         }
@@ -1334,6 +1382,68 @@ impl Walker<'_> {
                 self.cx.m.stmt(s).cleanup.is_some(),
             ));
         }
+    }
+
+    /// `let it = c.iter()` or `var it = Iter(source: c)`: a borrowing value owns its own storage
+    /// (a `var` may change its fields) but holds the places it was built from: they stay
+    /// unchanged until the binding's last use, and the binding can never be moved elsewhere.
+    fn bind_borrowing(
+        &mut self,
+        b: &BindingRef,
+        role: Role,
+        mutable: bool,
+        pattern: &Pattern,
+        value: &Expr,
+    ) {
+        let perm = if mutable {
+            Perm::Mutable
+        } else {
+            Perm::Immutable
+        };
+        let origins = match &value.kind {
+            ExprKind::Call { .. } => self.call_origins(value),
+            _ => Vec::new(),
+        };
+        let reported = self.diags.len();
+        self.expr(value, Demand::Read);
+        if origins.is_empty() && self.diags.len() > reported {
+            // The construction already said why (a `ref` field given a computed value).
+            self.declare(b, role, perm, None, false);
+            return;
+        }
+        if origins.is_empty() {
+            let text = self.expr_text(value);
+            let message = if matches!(value.kind, ExprKind::Call { .. }) {
+                format!(
+                    "`{}` holds a borrow, but `{text}` does not borrow from a variable it can hold; build it from a variable or a read-only parameter, not a temporary",
+                    b.name
+                )
+            } else if matches!(value.kind, ExprKind::Name(_)) {
+                format!(
+                    "`{text}` holds a borrow, so it cannot be moved into `{}`; keep using `{text}`",
+                    b.name
+                )
+            } else {
+                format!(
+                    "`{}` would hold values that hold a borrow, which a collection cannot do; keep each one in its own variable",
+                    b.name
+                )
+            };
+            self.error(pattern.pos, message);
+            self.declare(b, role, perm, None, false);
+            return;
+        }
+        self.declare(b, role, perm, None, false);
+        if let Some(m) = self.meta.get_mut(&b.uid) {
+            m.origins = origins.clone();
+        }
+        self.active.push(Borrow {
+            holder: b.uid,
+            holder_name: b.name,
+            origins: origins.into_iter().map(|p| (p, false)).collect(),
+            pos: pattern.pos,
+            why: "borrowing value".to_string(),
+        });
     }
 
     /// `var x = f(place)` where `f` hands back a part of its argument: a mutable borrow when that
@@ -1515,6 +1625,12 @@ impl Walker<'_> {
                 let Some(b) = self.cx.m.assigned(value) else {
                     return;
                 };
+                if borrows(&b.ty) {
+                    self.error(
+                        s.pos,
+                        format!("cannot assign to `{name}`: it holds a borrow of another value; bind a new variable instead"),
+                    );
+                }
                 self.check_store(s.pos, &b, *name);
                 let places = vec![Place::local(b.uid)];
                 self.check_change(s.pos, &places, "reassign", b.name.as_str(), None);
@@ -1523,6 +1639,14 @@ impl Walker<'_> {
                 self.facts.drops_old.insert(s.id);
             }
             AssignTarget::Member(t) => {
+                if let ExprKind::Member { left, name } = &t.kind
+                    && field_is_ref(&self.cx.m.ty(left), *name)
+                {
+                    self.error(
+                        t.pos,
+                        format!("cannot assign to `{name}`: it is a `ref` field that borrows its value for the life of the record"),
+                    );
+                }
                 if let Some((info, _)) = self.place(t) {
                     self.mutate(t.pos, &info, "change");
                 } else {
@@ -2032,6 +2156,14 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.lambda, m.is_receiver)
         };
         let name = b.name;
+        if borrows(&b.ty) {
+            self.error(
+                e.pos,
+                format!("cannot move `{name}`: it holds a borrow of another value and cannot outlive it; use it in place, call its methods, or pass it to a function that only reads or changes it"),
+            );
+            self.record(e.id, b, Access::Move);
+            return;
+        }
         let var_param = parameter.is_some() && perm == Perm::Mutable;
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
             if b.ty.kind == Kind::Function {
@@ -2279,6 +2411,25 @@ impl Walker<'_> {
             let mut held = self.held(&a.value, mode);
             held.extend(self.argument(a, mode, &modes, i));
             operands.push((Operand::Argument(&a.value), held));
+        }
+        // A `ref` field borrows a variable or a part of one that stays where it is.
+        if matches!(
+            cx.m.resolution(e),
+            Resolution::Constructor { case: None, .. }
+        ) {
+            for (i, a) in args.iter().enumerate() {
+                let is_ref = modes
+                    .origin
+                    .slots
+                    .iter()
+                    .any(|s| matches!(s, Slot::Param(l) if param_names.get(i) == Some(l)));
+                if is_ref && !self.is_place(&a.value) {
+                    self.error(
+                        a.value.pos,
+                        format!("`{}` is a `ref` field, so it borrows a variable or a part of one: pass a variable, not a computed value", param_names[i]),
+                    );
+                }
+            }
         }
         // An operand that already failed its own check is not reported twice.
         if self.diags.len() == reported {
@@ -2636,6 +2787,14 @@ impl Walker<'_> {
     fn capture_move(&mut self, e: &Expr, b: &BindingRef, resolved: &[Place]) {
         let perm = self.meta[&b.uid].perm;
         let name = b.name;
+        if borrows(&b.ty) {
+            self.error(
+                e.pos,
+                format!("this closure outlives the statement but captures `{name}`, which holds a borrow of another value and cannot outlive it"),
+            );
+            self.record(e.id, b, Access::Move);
+            return;
+        }
         if matches!(perm, Perm::Borrowed | Perm::MutBorrowed | Perm::Captured) {
             self.error_fix_opt(
                 e.pos,
