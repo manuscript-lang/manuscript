@@ -23,15 +23,6 @@ impl List[T]:
     # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
     fn get(index: Int, default: Optional[T] = none) ref T: ...
 
-    # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
-    fn contains(value: T) Bool: ...
-
-    # Returns the first equal element's zero-based index, or none; elements require Equal.
-    fn index_of(value: T) Optional[Int]: ...
-
-    # Returns the last equal element's zero-based index, or none; elements require Equal.
-    fn last_index_of(value: T) Optional[Int]: ...
-
     # Returns the first element, or none when the list is empty.
     fn first() ref Optional[T]: ...
 
@@ -127,9 +118,6 @@ impl List[T]:
     # Counts values satisfying the predicate, calling it once per element in order.
     fn count(predicate: fn(T) Bool) Int: ...
 
-    # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal.
-    fn distinct() List[T]: ...
-
     # Returns True when at least one value satisfies the predicate.
     fn any(predicate: fn(T) Bool) Bool: ...
 
@@ -168,18 +156,11 @@ impl List[T]:
     # The list never grows: copying stops at the end of the list. Source bounds must satisfy 0 <= start <= end <= length() and a target must be within 0 through length(); otherwise the call faults.
     var fn copy_within(target: Int, start: Int, end: Int) Unit: ...
 
-    # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
-    fn to_set() Set[T]: ...
-
     # Returns a new list of the zero-based indexes 0 through length() - 1.
     fn keys() List[Int]: ...
 
     # Returns a new list of `ListEntry` records pairing each zero-based index with its element, in order.
     fn entries() List[ListEntry[T]]: ...
-
-    # Concatenates the strings (or the decimal text of the integers) with `separator` between neighbors; an empty list returns an empty string.
-    # Available only on List[String] and List[Int].
-    fn join(separator: String) String: ...
 
     # Adds `value` at the end in place.
     var fn append(value: T) Unit: ...
@@ -549,6 +530,90 @@ impl ListFloat32Sum for List[Float32]:
             total += x
         return total
 
+interface ListSearch[T: Equal]:
+    fn contains(value: T) Bool
+    fn index_of(value: T) Optional[Int]
+    fn last_index_of(value: T) Optional[Int]
+
+impl ListSearch[T] for List[T]:
+    # Reports whether any element equals `value`, using the element type's Equal implementation; an empty list returns False.
+    fn contains(value: T) Bool:
+        for x in self:
+            if x.equals(value):
+                return true
+        return false
+
+    # Returns the first equal element's zero-based index, or none; elements require Equal.
+    fn index_of(value: T) Optional[Int]:
+        for i in 0..self.length():
+            if self[i].equals(value):
+                return some(i)
+        return none
+
+    # Returns the last equal element's zero-based index, or none; elements require Equal.
+    fn last_index_of(value: T) Optional[Int]:
+        var i = self.length() - 1
+
+        while i >= 0:
+            if self[i].equals(value):
+                return some(i)
+
+            i -= 1
+
+        return none
+
+interface ListDistinct[T: Equal & Clonable]:
+    fn distinct() List[T]
+
+impl ListDistinct[T] for List[T]:
+    # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal and Clonable.
+    # Each element is compared with the kept ones, so the cost grows with the number of distinct elements.
+    fn distinct() List[T]:
+        var out = List[T]()
+        for x in self:
+            if not out.contains(x):
+                out.append(x.clone())
+        return out
+
+interface ListToSet[T: Hashable & Clonable]:
+    fn to_set() Set[T]
+
+impl ListToSet[T] for List[T]:
+    # Returns a new set of the distinct elements, using Hashable equality; the first of equal elements is kept in insertion order.
+    fn to_set() Set[T]:
+        var out = Set[T]()
+        for x in self:
+            out.add(x.clone())
+        return out
+
+interface ListJoin:
+    fn join(separator: String) String
+
+impl ListJoin for List[String]:
+    # Concatenates the strings with `separator` between neighbors; an empty list returns an empty string.
+    # Available only on List[String] and List[Int].
+    fn join(separator: String) String:
+        var out = StringBuilder()
+
+        for i in 0..self.length():
+            if i > 0:
+                out.append(separator)
+            out.append(self[i])
+
+        return out.build()
+
+impl ListJoin for List[Int]:
+    # Concatenates the decimal text of the integers with `separator` between neighbors; an empty list returns an empty string.
+    fn join(separator: String) String:
+        var out = StringBuilder()
+
+        for i in 0..self.length():
+            if i > 0:
+                out.append(separator)
+            out.append("{self[i]}")
+
+        return out.build()
+
 interface ListOrder[T: Comparable]:
     fn sorted() List[T]
     var fn sort() Unit
@@ -648,6 +713,7 @@ impl MapUpdate[T, U] for Map[T, U]:
         self.add(key.clone(), change(self.get_or(key, initial)))
 
 import Closeable from "@std/core.ms"
+import StringBuilder from "@std/string.ms"
 
 # Closing the resources a map holds. The compiler calls this when a map of resources goes out of scope; the values close newest entry first.
 interface MapCloseValues[U: Closeable]:

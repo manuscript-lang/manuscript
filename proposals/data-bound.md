@@ -10,7 +10,7 @@
 
 ## Status
 
-- Implemented in this change, 2026-10-29, against `1cb51434`. Stage 3b (moving the `receiver_requirements` table in `bindings.json` to bounded interfaces) is not done; see Open questions.
+- Implemented in this change, 2026-10-29, against `1cb51434`. Stage 3b (moving the `receiver_requirements` table in `bindings.json` to bounded interfaces) landed afterwards; see Open questions.
 - Direction (Chinmay, 2026-10-29): the resource distinction should cover "files and sockets and streams too, but may be in a negative fashion"; "it needs to be solid for the checker with clear enforceable rules that's easy to understand"; "map keys should be only hashable"; "no i don't want clonable functions, but list of lambda should be possible"; custom `JsonEncode` types are `Data` ("yes"); a map whose key has no JSON text is "an error"; "natives declare properties, let's get more things into manuscript so language is hardened"; "just do one pr".
 - An independent skeptic review of the design (three rounds) shaped the rule: `Instant`, `Unit`, `Never`, recursion, the decoder's real key set, and the `JsonEncode` decode asymmetry (below) came from it.
 
@@ -77,7 +77,7 @@
 
 ## Open questions
 
-1. Stage 3b: move `contains`, `index_of`, `last_index_of`, `distinct`, `to_set`, `join` from the Rust requirement table (`bindings.json` `receiver_requirements`, `native.rs`) to bounded interfaces like `ListOrder`. It needs ms-lower to dispatch the new impls and a perf check against the native comparison, and `join`'s `String|Int` constraint is not expressible as a bound. Not done here.
+1. Stage 3b is done: `contains`, `index_of`, `last_index_of`, `distinct`, `to_set`, and `join` are bounded interfaces in `stdlib/collections.ms` (`ListSearch`, `ListDistinct`, `ListToSet`, `ListJoin`), and the `receiver_requirements` table and `native_receiver_available` are gone. `join` is one interface implemented for `List[String]` and for `List[Int]`, as `ListFloat32Sum` is for `List[Float32]`. `distinct` and `to_set` also require `Clonable`, as `MapUpdate` does; `distinct` keeps `Equal` (lists are not `Hashable`), so it compares against the kept elements and is quadratic in the distinct count. A Hashable fast path would need `List` to be `Hashable`.
 2. `Equal`/`Hashable`/`Clonable`/`Comparable` for natives declared in `.ms`: they have operations, so they need a bodyless declaration form first.
 3. A `JsonDecode` hook so a custom `JsonEncode` round-trips; until then row 8 trusts the codec.
 4. `opaque` types (#1853) are not `Data` once that lands: add the case to row 7 there.

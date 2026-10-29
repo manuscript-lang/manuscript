@@ -4,36 +4,12 @@ use crate::calls::function_arguments;
 use crate::checker::Checker;
 use crate::exprs::callee_name;
 use crate::inference::CallContext;
-use crate::stdlib;
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::ast::*;
 use std::rc::Rc;
 
 impl Checker {
-    /// Applies explicit requirements on the checked receiver. For example,
-    /// equality search requires Equal, join requires List[String] or List[Int], and to_set
-    /// requires Hashable, without strengthening List's element requirements.
-    pub(crate) fn native_receiver_available(&self, receiver: &Ty, name: Name) -> bool {
-        let s = substitution(receiver);
-        for requirement in stdlib::receiver_requirements(&format!("{}/{}", receiver.id, name)) {
-            let Some(actual) = s.get(&requirement.variable.id) else {
-                return false;
-            };
-            let met = requirement.constraints.iter().any(|constraint| {
-                if constraint.kind == Kind::Contract {
-                    self.satisfies(actual, constraint)
-                } else {
-                    same(actual, constraint)
-                }
-            });
-            if !met {
-                return false;
-            }
-        }
-        true
-    }
-
     /// Resolves native operations before generic specialization. Only pinned
     /// standard declarations introduce method variables; user contracts retain
     /// their existing nongeneric operation grammar.

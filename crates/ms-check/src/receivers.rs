@@ -40,9 +40,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
         &[
             ("group_by", "collections/group_by"),
             ("get", "collections/get"),
-            ("contains", "collections/contains"),
-            ("index_of", "collections/index_of"),
-            ("last_index_of", "collections/last_index_of"),
             ("first", "collections/first"),
             ("last", "collections/last"),
             ("is_empty", "collections/is_empty"),
@@ -70,7 +67,6 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("find_index", "collections/find_index"),
             ("find_last_index", "collections/find_last_index"),
             ("count", "collections/count"),
-            ("distinct", "collections/distinct"),
             ("any", "collections/any"),
             ("all", "collections/all"),
             ("for_each", "collections/for_each"),
@@ -81,10 +77,8 @@ pub const RECEIVER_BINDINGS: &[(&str, &[(&str, &str)])] = &[
             ("splice", "collections/splice"),
             ("fill", "collections/fill"),
             ("copy_within", "collections/copy_within"),
-            ("to_set", "collections/to_set"),
             ("keys", "collections/list_keys"),
             ("entries", "collections/list_entries"),
-            ("join", "string/join"),
         ],
     ),
     (
