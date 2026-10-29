@@ -12,11 +12,12 @@ interface Closeable:
     var fn close() Unit
 ```
 
-A binding is closed when it holds:
+A binding is closed only when it holds a value whose type implements `Closeable`:
 
 - A concrete value with an explicit `Closeable` implementation; the compiler registers that `close` when the binding is created.
-- A contract value whose own declaration contains exactly `var fn close() Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
-- A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
+- A generic parameter bounded by `Closeable`; `close` dispatches directly.
+
+An interface value is never closed automatically, even when its interface declares `var fn close() Unit` or is `Closeable` itself: only the concrete type's `Closeable` implementation opts in, and the interface hides it. Bind the concrete type, or call `close()` yourself.
 
 The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. A stream interface such as `ReadStream` or `WriteStream` is never owned by its holder, because `stdout()` and a file's `writer()` share one type.
 
