@@ -15,12 +15,14 @@ impl Closeable for Door:
 fn keep_if(d: Door, keep: Bool) Optional[Door]:
     if keep:
         return some(d)
+
     return none
 
 test "a parameter the callee drops on some path is closed there":
     let log: Shared[List[Int]] = share([])
     let kept = keep_if(Door(1, log), true)
     log.get().clone() | try expect_equal([])
+
     let dropped = keep_if(Door(2, log), false)
     log.get().clone() | try expect_equal([2])
     if kept.is_some() and dropped.is_none():
