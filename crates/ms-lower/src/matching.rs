@@ -249,6 +249,13 @@ impl FnLower<'_> {
         self.b.seal_block(join);
         self.enter(join);
         self.dead = !live;
+        if live && hidden {
+            // An owned temporary scrutinee (`match make():`) is the match's own: its payloads
+            // are borrowed by the arms, so it closes with the match.
+            let ty = ms_check::types::sub(&self.hir.ty(scrutinee), &self.subst);
+            let v = self.b.use_var(sv);
+            self.close_discarded_ty(&ty, v)?;
+        }
         self.pop_scope();
         if !live {
             return Ok(self.dummy(rty));

@@ -73,3 +73,23 @@ fn block_wrap(log: Shared[List[Int]]) Unit:
     let made = wrap(Door(1, log), log)
     if made.length() == 0:
         return
+
+type Shape:
+    case Circle(door: Door)
+    case Empty
+
+fn shape(log: Shared[List[Int]]) Shape:
+    return Shape.Circle(Door(5, log))
+
+test "a match on a temporary resource closes it when the match ends":
+    let log: Shared[List[Int]] = share([])
+    var seen = 0
+
+    match shape(log):
+        Circle(door):
+            seen = door.id
+        _:
+            seen = 0
+
+    expect_equal(seen, 5) | try
+    log.get().clone() | try expect_equal([5])
