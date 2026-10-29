@@ -717,6 +717,7 @@ fn renumber_param(
         ty,
         default: None,
         mutable: p.mutable,
+        by_ref: p.by_ref,
     })
 }
 

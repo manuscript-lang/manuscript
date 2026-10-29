@@ -1,4 +1,5 @@
-import Indexed from "@std/indexed.ms"
+import Iterator from "@std/core.ms"
+import Iterable from "@std/iterable.ms"
 
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
@@ -112,7 +113,7 @@ impl DequeCopy[T] for Deque[T]:
                 out.append(value.clone())
         return out
 
-impl Indexed[T] for Deque[T]:
+impl Deque[T]:
     # Returns the number of values in the deque.
     fn length() Int:
         return self.size
@@ -124,3 +125,22 @@ impl Indexed[T] for Deque[T]:
             return none
 
         return self.slots.get(self.slot_of(index))
+
+# Walks a deque from front to back, lending each value; made by `iter()` and used by `for`.
+export type DequeIter[T]:
+    # The deque being walked.
+    source: ref Deque[T]
+    # Index of the value `next` returns.
+    position: Int
+
+impl Iterator[T] for DequeIter[T]:
+    # Returns the value at the current position and moves past it, or none after the last one.
+    var fn next() ref Optional[T]:
+        let item = self.source.at(self.position)
+        self.position += 1
+        return item
+
+impl Iterable[DequeIter[T]] for Deque[T]:
+    # Returns an iterator over the values from front to back, borrowing the deque.
+    fn iter() DequeIter[T]:
+        return DequeIter(source: self, position: 0)

@@ -137,6 +137,28 @@ Constructors still need every required field, and a binding is unavailable in it
 
 Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
 
+## Opaque types
+
+`export opaque type Approved:` hides the fields of a record, or the cases of an alternative, outside the file that declares it. The module exports functions and methods that build and read the value; every other file can hold, pass, copy, and clone it, and call its methods.
+
+```text
+# gate.ms
+export opaque type Approved:
+    entity: String
+    nonce: String
+
+export fn approve(entity: String) Approved: Approved(entity: entity, nonce: "n1")
+
+# agent.ms
+let a = Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
+let n = approve("u2").nonce                  # error: field nonce is hidden
+let {entity} = approve("u2")                 # error: its fields cannot be destructured here
+```
+
+Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and the message types of processes, workers, tasks, and channels reject it at compile time.
+
+Opaque is visibility, not ownership: an opaque value can still be copied and cloned, so it proves where a value was built, not that it is spent once. Hold a resource or a non-clonable field for single use.
+
 ## Resource fields
 
 A record holding a resource neither closes it nor extends its lifetime; cleanup follows [resource scopes](../cleanup/scopes.md). Copying does not duplicate native services.

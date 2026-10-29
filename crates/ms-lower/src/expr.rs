@@ -358,7 +358,11 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|f| f.0 == name)
             .ok_or_else(|| Error::new(format!("no field {name}")))? as u32;
-        let f = self.b.rec_get(rid, idx, obj.v);
+        let mut f = self.b.rec_get(rid, idx, obj.v);
+        // A `ref` field holds a view; reading it borrows what it views.
+        if matches!(self.b.m.types.kind(self.ty_of(f)), TyKind::Ref(_)) {
+            f = self.b.ref_get(f);
+        }
         if obj.own {
             // Take a copy out of the temporary, then release the temporary.
             let o = self.owned(Val { v: f, own: false });

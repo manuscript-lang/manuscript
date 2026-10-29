@@ -448,15 +448,15 @@ impl Checker {
             if t.args.len() == 2 {
                 element = standard("MapEntry", t.args.clone());
             }
-        } else if let Some(item) = self.iterator_item(&t) {
-            return self.check_iterator_for(s, name, iter, body, item, i.no_return, i.breaks);
-        } else if self.is_indexed(&t) {
-            return self.check_indexed_for(s, name, iter, body);
+        } else if self.iterator_item(&t).is_some() {
+            return self.check_iterator_for(s, name, iter, body, Vec::new());
+        } else if self.is_iterable(&t) {
+            return self.check_iterable_for(s, name, iter, body);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, an Iterator, or an Indexed container, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() Optional[T]' (owned items) or Indexed with 'fn length() Int' and 'fn at(index: Int) ref Optional[T]' (borrowed items)"
+                    "for requires List, Set, Map, an Iterator, or an Iterable, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() ref Optional[T]', or Iterable with 'fn iter() I' for a container whose iterator I borrows from it"
                 ),
             );
         }
@@ -492,18 +492,14 @@ impl Checker {
     /// `while True: if let name = iterator.next(): body else: break`. A variable or field path
     /// is advanced in place, so it keeps the iterator's final state (`error()` of a reader);
     /// any other expression is held in a hidden `var` for the loop.
-    #[allow(clippy::too_many_arguments)]
     fn check_iterator_for(
         &mut self,
         s: &Stmt,
         name: Name,
         iter: &Expr,
         body: &[Stmt],
-        _item: Ty,
-        _no_return: bool,
-        _breaks: bool,
+        mut expansion: Vec<Stmt>,
     ) -> (bool, bool) {
-        let mut expansion: Vec<Stmt> = Vec::new();
         let pos = s.pos;
         let id = |c: &Self| c.m().facts_mut().fresh_id();
         let place = is_place_path(iter);
@@ -597,45 +593,26 @@ impl Checker {
         self.block(&expansion, false)
     }
 
-    /// A copy of the place path `e` whose nodes carry fresh ids, for synthesized code that reads
-    /// the place more than once.
-    fn fresh_path(&self, e: &Expr) -> Expr {
-        let kind = match &e.kind {
-            ExprKind::Member { left, name } => ExprKind::Member {
-                left: Box::new(self.fresh_path(left)),
-                name: *name,
-            },
-            other => other.clone(),
-        };
-        Expr {
-            id: self.m().facts_mut().fresh_id(),
-            pos: e.pos,
-            end: e.end,
-            kind,
-        }
-    }
-
-    /// Whether `t` implements `Indexed[T]`, the contract of borrowing iteration.
-    fn is_indexed(&self, t: &Ty) -> bool {
-        self.methods(t, n("at")).into_iter().any(|m| {
+    /// Whether `t` implements `Iterable[I]`, the contract of iterating a container by borrow.
+    fn is_iterable(&self, t: &Ty) -> bool {
+        self.methods(t, n("iter")).into_iter().any(|m| {
             m.contract
                 .as_ref()
-                .is_some_and(|contract| contract.is_std("Indexed"))
+                .is_some_and(|contract| contract.is_std("Iterable"))
         })
     }
 
-    /// `for name in container:` over an `Indexed` container is checked, lowered and analysed as
-    /// `for $i in 0..container.length(): if let name = container.at($i): body`, so `name` borrows
-    /// the item in place and `T` is never cloned. A place is read where it stands, so
-    /// the body may change the container once the item's last use has passed.
-    fn check_indexed_for(
+    /// `for name in container:` over an `Iterable` container is checked as
+    /// `for name in container.iter():`, so the iterator borrows the container for the loop and
+    /// each item borrows the container, never the iterator. A container that is not a place is
+    /// held in a hidden `let` first.
+    fn check_iterable_for(
         &mut self,
         s: &Stmt,
         name: Name,
         iter: &Expr,
         body: &[Stmt],
     ) -> (bool, bool) {
-        let mut expansion: Vec<Stmt> = Vec::new();
         let pos = s.pos;
         let id = |c: &Self| c.m().facts_mut().fresh_id();
         let expr = |c: &Self, kind: ExprKind| Expr {
@@ -644,17 +621,17 @@ impl Checker {
             end: iter.pos,
             kind,
         };
-        // A place is read where it stands (each use is a fresh path, so no node id repeats); any
-        // other expression is held in a hidden `let` for the loop.
-        let hidden = n(&format!("$indexed{}", s.id.0));
-        let held = !is_place_path(iter);
-        if held {
+        let mut prefix: Vec<Stmt> = Vec::new();
+        let holder = if is_place_path(iter) {
+            iter.clone()
+        } else {
+            let hidden = n(&format!("$iterable{}", s.id.0));
             let pattern = Pattern {
                 id: id(self),
                 pos,
                 kind: PatternKind::Name(hidden),
             };
-            expansion.push(Stmt {
+            prefix.push(Stmt {
                 id: id(self),
                 pos,
                 kind: StmtKind::Bind {
@@ -665,93 +642,23 @@ impl Checker {
                     group: None,
                 },
             });
-        }
-        let holder = |c: &Self| {
-            if held {
-                expr(c, ExprKind::Name(hidden))
-            } else {
-                c.fresh_path(iter)
-            }
+            expr(self, ExprKind::Name(hidden))
         };
-        let call = |c: &Self, method: &str, args: Vec<Argument>| {
-            let callee = expr(
-                c,
-                ExprKind::Member {
-                    left: Box::new(holder(c)),
-                    name: n(method),
-                },
-            );
-            expr(
-                c,
-                ExprKind::Call {
-                    callee: Box::new(callee),
-                    args,
-                },
-            )
-        };
-        let index = n(&format!("$index{}", s.id.0));
-        let index_ref = expr(self, ExprKind::Name(index));
-        let at = call(
+        let callee = expr(
             self,
-            "at",
-            vec![Argument {
-                pos: iter.pos,
-                name: None,
-                value: index_ref,
-                mutable: false,
-            }],
+            ExprKind::Member {
+                left: Box::new(holder),
+                name: n("iter"),
+            },
         );
-        let length = call(self, "length", Vec::new());
-        let zero = expr(self, ExprKind::Number(n("0")));
-        let range_callee = expr(self, ExprKind::Name(n("..")));
-        let range = expr(
+        let call = expr(
             self,
             ExprKind::Call {
-                callee: Box::new(range_callee),
-                args: [zero, length]
-                    .into_iter()
-                    .map(|value| Argument {
-                        pos: value.pos,
-                        name: None,
-                        value,
-                        mutable: false,
-                    })
-                    .collect(),
+                callee: Box::new(callee),
+                args: Vec::new(),
             },
         );
-        let binding = Pattern {
-            id: id(self),
-            pos,
-            kind: PatternKind::Name(name),
-        };
-        let step = Stmt {
-            id: id(self),
-            pos,
-            kind: StmtKind::If {
-                binding: Some(binding),
-                mutable: false,
-                cond: at,
-                body: body.to_vec(),
-                else_body: Vec::new(),
-            },
-        };
-        expansion.push(Stmt {
-            id: id(self),
-            pos,
-            kind: StmtKind::For {
-                name: index,
-                iter: range,
-                body: vec![step],
-            },
-        });
-        let expansion = Rc::new(expansion);
-        self.m()
-            .facts_mut()
-            .stmts
-            .entry(s.id)
-            .or_default()
-            .expansion = Some(expansion.clone());
-        self.block(&expansion, false)
+        self.check_iterator_for(s, name, &call, body, prefix)
     }
 
     /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
@@ -786,6 +693,7 @@ impl Checker {
                     );
                     return;
                 }
+                self.opaque_denied(p.pos, t, "its fields cannot be destructured here");
                 let fs = fields(t);
                 let mut seen: HashSet<Name> = HashSet::new();
                 for f in pfields {
@@ -878,6 +786,7 @@ impl Checker {
             );
             return (true, false);
         }
+        self.opaque_denied(pos, &t, "its cases cannot be matched here");
         let all_cases = cases(&t);
         let mut seen: HashSet<Name> = HashSet::new();
         let (mut fall, mut breaks) = (false, false);

@@ -5,7 +5,6 @@ import {JsonEncode, JsonValue, stringify} from "@std/json.ms"
 type Plain:
     name: String
     tags: List[String]
-    scores: Map[String, Int]
     note: Optional[String]
 
 type Money:
@@ -22,12 +21,10 @@ type Mode:
 fn text[T: Data](value: T) String:
     return stringify(value).get("")
 
-test "Data accepts plain records, collections, codecs, and case-only map keys":
-    let plain = Plain("a", ["x"], Map[String, Int](), none)
-    try expect_equal(text(plain), "\{\"name\":\"a\",\"tags\":[\"x\"],\"scores\":\{\}\}")
+test "Data accepts plain records, lists, codecs, and JSON documents":
+    let plain = Plain("a", ["x"], none)
+    try expect_equal(text(plain), "\{\"name\":\"a\",\"tags\":[\"x\"]\}")
     try expect_equal(text(Money(5)), "\"usd:5\"")
-
-    var modes = Map[Mode, Int]()
-    modes.add(Mode.Fast, 1)
-    try expect_equal(text(modes), "\{\"Fast\":1\}")
+    try expect_equal(text(Mode.Fast), "\"Fast\"")
+    try expect_equal(text(JsonValue.Null), "null")
     try expect_equal(text([1, 2, 3]), "[1,2,3]")

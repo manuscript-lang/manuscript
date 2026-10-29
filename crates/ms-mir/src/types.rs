@@ -79,6 +79,10 @@ pub enum TyKind {
     /// pointer-like payloads use the null pointer as `none`. Lowering wraps
     /// anything else (nested optionals, interfaces) in an alternative.
     Opt(Ty),
+    /// A borrowed view of a value of the inner type: the same leaves, owning nothing, so dropping
+    /// it does nothing and copying it is bitwise. It is how a record field borrows a value from a
+    /// place that outlives the record.
+    Ref(Ty),
     /// A runtime-implemented object type such as `Map[K, V]`
     /// or `Set[T]`, named as the runtime names it.
     Obj(String, Vec<Ty>),
@@ -223,6 +227,11 @@ impl TyTable {
         self.intern(TyKind::Opt(inner))
     }
 
+    /// A borrowed view of `inner`.
+    pub fn view(&mut self, inner: Ty) -> Ty {
+        self.intern(TyKind::Ref(inner))
+    }
+
     /// A record type.
     pub fn rec(&mut self, id: RecId) -> Ty {
         self.intern(TyKind::Rec(id))
@@ -251,7 +260,7 @@ impl TyTable {
     /// Whether values of `ty` own storage that must be dropped.
     pub fn is_rc(&self, ty: Ty) -> bool {
         match self.kind(ty) {
-            TyKind::Unit | TyKind::Bool | TyKind::Ptr => false,
+            TyKind::Unit | TyKind::Bool | TyKind::Ptr | TyKind::Ref(_) => false,
             k if Self::scalar_kind(k) => false,
             TyKind::Opt(inner) => self.is_rc(*inner),
             _ => true,

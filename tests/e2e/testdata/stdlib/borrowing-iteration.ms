@@ -2,7 +2,7 @@ import {expect_equal, expect_true} from "@std/test.ms"
 import Deque from "@std/deque.ms"
 import {PriorityQueue, Queue} from "@std/queue.ms"
 
-# `for item in container` over an `Indexed` container borrows each item: the lambdas below are
+# `for item in container` over an `Iterable` container borrows each item: the lambdas below are
 # never cloned.
 test "deque iterates front to back by borrow":
     var d = Deque[Int]()

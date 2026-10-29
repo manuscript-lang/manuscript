@@ -1,0 +1,74 @@
+diff --git a/crates/ms-rt/src/map.rs b/crates/ms-rt/src/map.rs
+index f6cf62b2d..b0625f991 100644
+--- a/crates/ms-rt/src/map.rs
++++ b/crates/ms-rt/src/map.rs
+@@ -1267 +1267,2 @@ pub unsafe extern "C-unwind" fn msrt_map_merge(
+-unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
++/// Copies a key only when absent, returning whether it was inserted.
++pub(crate) unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) -> bool {
+@@ -1271 +1272 @@ unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
+-            return;
++            return false;
+@@ -1283,0 +1285 @@ unsafe fn add_copy(m: &mut MapVal, kd: &TypeDesc, p: *const u8) {
++        true
+@@ -1320 +1322,3 @@ pub unsafe extern "C-unwind" fn msrt_set_add_copy(
+-    unsafe { add_copy(&mut *m, &*kd, key) }
++    unsafe {
++        add_copy(&mut *m, &*kd, key);
++    }
+@@ -1335 +1339,3 @@ pub unsafe extern "C-unwind" fn msrt_set_union(
+-        each_key(&*b, kd, |k| add_copy(&mut *out, kd, k));
++        each_key(&*b, kd, |k| {
++            add_copy(&mut *out, kd, k);
++        });
+@@ -1503,0 +1510,41 @@ mod tests {
++    #[test]
++    fn distinct_reuses_the_set_insertion_result() {
++        let _g = testutil::lock();
++        // SAFETY: every list and set slot holds an i64 described by COUNTED_KEY.
++        unsafe {
++            let before = alloc::live_blocks();
++            for len in [0usize, 1, 16, 17, 64] {
++                let mut source = VecVal {
++                    ptr: core::ptr::null_mut(),
++                    len: 0,
++                    cap: 0,
++                };
++                for i in 0..len {
++                    let value = (i % 32) as i64;
++                    crate::vec::msrt_list_push(
++                        &mut source,
++                        &COUNTED_KEY,
++                        (&value as *const i64).cast(),
++                    );
++                }
++                HASH_CALLS.store(0, Ordering::Relaxed);
++                let mut output = core::mem::MaybeUninit::<VecVal>::uninit();
++                crate::vec::msrt_list_distinct(&source, &COUNTED_KEY, output.as_mut_ptr());
++                let mut output = output.assume_init();
++                let unique = len.min(32);
++                // The set helper checks once per visit, then inserts each absent key. The
++                // empty set skips hashing its first check; distinct needs no extra lookup.
++                let expected_hashes = if len <= 16 { 0 } else { len + unique - 1 };
++                assert_eq!(HASH_CALLS.load(Ordering::Relaxed), expected_hashes);
++                assert_eq!(source.len, len);
++                assert_eq!(output.len, unique);
++                for i in 0..output.len {
++                    assert_eq!(*output.ptr.cast::<i64>().add(i), i as i64);
++                }
++                crate::vec::drop_list(&mut output, &COUNTED_KEY);
++                crate::vec::drop_list(&mut source, &COUNTED_KEY);
++            }
++            assert_eq!(alloc::live_blocks(), before);
++        }
++    }
++
+diff --git a/crates/ms-rt/src/vec.rs b/crates/ms-rt/src/vec.rs
+index 3fc5742da..1c259c444 100644
+--- a/crates/ms-rt/src/vec.rs
++++ b/crates/ms-rt/src/vec.rs
+@@ -977 +977 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
+-                if crate::map::contains_key(&seen, d, None, p) {
++                if !crate::map::add_copy(&mut seen, d, p) {
+@@ -980 +979,0 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
+-                crate::map::msrt_set_add_copy(&mut seen, d, p);

@@ -33,6 +33,19 @@ Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
 Evidence: [catalogue](../crates/ms-rt/SYMBOLS.md), [Stdio default](../crates/ms-lower/src/call.rs), [called source check](../tests/e2e/testdata/stdlib/host.ms).
 Verify: run `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.
 
+### Rejected uploads need a bounded half-close before socket retirement
+
+Verified: closing both TCP halves immediately after writing an HTTP/1 rejection can reset a
+connection whose peer is still uploading, hiding the response on Windows. Flush the response,
+half-close output, and discard input without buffering until peer FIN or a fixed drain deadline.
+Check the deadline during read retries as well as the reactor's timeout sweep.
+
+Apply when: changing HTTP rejection responses or connection retirement.
+Evidence: [rejection drain and socket regressions](../crates/ms-std-net/src/http/server.rs),
+[source header-cap regression](../tests/e2e/testdata/stdlib/http-limits.ms).
+Verify: a 2 MB header upload receives the complete 431 response without a reset; a peer that
+keeps its write half open cannot retain the rejected connection indefinitely.
+
 ### HTTP field folding must not erase map entries
 
 Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
@@ -190,17 +203,31 @@ Apply when: adding collection constructors or writing fixtures that need a popul
 Evidence: [Set declaration](../stdlib/collections.ms), [constructor uses](../tests/e2e/testdata/stdlib/preferred-names.ms), commit c025937b.
 Verify: duplicates collapse, first-seen order is kept, and `Set[Int]([])` is empty.
 
-### Forked fault assertions need their own cleanup boundary
+### Fault assertions need their own cleanup boundary
 
 Verified: Unix `expect_fault` children inherit the caller's cleanup stack and guard targets.
 Running them can delete a still-live parent's external resources or jump to an inherited
 callback guard. Clear cleanup records, guards, active fault reports and equality recursion
 state in the child before the assertion runs; preserve cancellation, shielding and stack limits.
 
+Verified: Windows trap entry saves its cleanup boundary before returning to the generated
+caller, which then discards transient per-call cleanup registrations. Lower the trap's saved
+base when that discard removes caller entries; otherwise newly registered operation cleanups
+can lie below the stale base and never run. Ordinary guard boundaries do not move.
+
+Verified: the trap's caller also resumes with its owned values intact. Keep trap execution in
+a borrowed-operation helper that cannot inline before unwind lowering. Otherwise an inlined
+operation registers drops for the caller's live values above the guard boundary; Windows
+then frees them before returning to the caller. A missing marker after a fault can reflect an
+invalidated caller path, rather than a skipped close. The optimized original source fixture
+exercises this distinction; a synthetic cleanup-stack test alone does not.
+
 Apply when: changing fault assertions, fork boundaries or cleanup contexts.
-Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
+Evidence: [child isolation](../crates/ms-rt/src/trap.rs), [production-runtime regressions](../crates/ms-rt/tests/trap_isolation.rs), [Windows trap entry](../crates/ms-rt/src/trap_windows.rs), [discard-boundary regression](../crates/ms-rt/src/fault.rs) (`trap_cleanup_boundary_tracks_discarded_caller_temporaries`), [borrowed trap helper](../crates/ms-lower/src/testing.rs), [post-optimization unwind regression](../crates/ms-build/tests/fault_assertion.rs), [issue #920](https://github.com/manuscript-lang/manuscript/issues/920).
 Verify: child faults leave parent cleanup pending, child cleanup runs LIFO, nested assertions
 and assertions during fault cleanup retain their own report and cleanup boundaries.
+Run [implicit-close-shielded.ms](../tests/e2e/testdata/accept/implicit-close-shielded.ms) on both
+Windows architectures to cover the generated caller, trap and scope-close path together.
 
 ### Reactor progress must not depend on the scheduler going idle
 

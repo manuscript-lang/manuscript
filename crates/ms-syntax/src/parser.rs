@@ -639,6 +639,7 @@ impl<'a> Parser<'a> {
                     ty,
                     default,
                     mutable,
+                    by_ref: false,
                 });
                 if !self.take(Tok::Comma) {
                     break;
@@ -751,6 +752,7 @@ impl<'a> Parser<'a> {
                         ty: Some(ty),
                         default: None,
                         mutable: false,
+                        by_ref: false,
                     });
                     if !self.take(Tok::Comma) {
                         break;
@@ -1003,6 +1005,7 @@ impl<'a> Parser<'a> {
                     type_params,
                     fields: Vec::new(),
                     external: true,
+                    opaque: false,
                 })
             }
             Tok::Extern => {
@@ -1075,6 +1078,18 @@ impl<'a> Parser<'a> {
                 })
             }
             Tok::Type | Tok::Interface => return self.type_declaration(token),
+            Tok::Name if self.text(token) == "opaque" && self.ahead(1).kind == Tok::Type => {
+                self.at += 1;
+                let next = self.peek();
+                let mut decl = self.type_declaration(next)?;
+                decl.pos = token.pos;
+                match &mut decl.kind {
+                    DeclKind::Record(r) => r.opaque = true,
+                    DeclKind::Alternative(a) => a.opaque = true,
+                    _ => {}
+                }
+                return Ok(decl);
+            }
             _ => {
                 if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
                     return match replacement {
@@ -1141,6 +1156,7 @@ impl<'a> Parser<'a> {
                     type_params,
                     fields: Vec::new(),
                     external: false,
+                    opaque: false,
                 }),
             });
         }
@@ -1222,6 +1238,7 @@ impl<'a> Parser<'a> {
             } else {
                 let fname = self.need(Tok::Name)?;
                 self.need_name_colon(fname)?;
+                let by_ref = self.take(Tok::Ref);
                 let ty = self.typ()?;
                 let mut default = None;
                 if self.take(Tok::Assign) {
@@ -1235,6 +1252,7 @@ impl<'a> Parser<'a> {
                     ty: Some(ty),
                     default,
                     mutable: false,
+                    by_ref,
                 });
                 self.end()?;
             }
@@ -1253,12 +1271,14 @@ impl<'a> Parser<'a> {
                 name,
                 type_params,
                 cases,
+                opaque: false,
             }),
             Form::Record | Form::None => DeclKind::Record(RecordDecl {
                 name,
                 type_params,
                 fields,
                 external: false,
+                opaque: false,
             }),
         };
         let id = self.id();
@@ -1558,7 +1578,10 @@ impl<'a> Parser<'a> {
             }
         } else {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
-            let is_call = matches!(e.kind, ExprKind::Call { .. } | ExprKind::Match { .. });
+            let is_call = matches!(
+                e.kind,
+                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Unit
+            );
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match n.as_str() {
@@ -1947,7 +1970,7 @@ impl<'a> Parser<'a> {
                 let o = op.kind.as_str();
                 return self.fail(
                     op,
-                    format!("Manuscript has no '{o}{o}' operator; write '{n} = {n} {o} 1'"),
+                    format!("Manuscript has no '{o}{o}' operator; write '{n} {o}= 1'"),
                 );
             }
             if level == 4 && compared {
@@ -2219,6 +2242,7 @@ impl<'a> Parser<'a> {
                             ty: None,
                             default: None,
                             mutable: false,
+                            by_ref: false,
                         });
                         if !self.take(Tok::Comma) {
                             break;
@@ -2788,6 +2812,7 @@ impl<'a> Parser<'a> {
                             ty: p.ty.as_ref().map(|t| self.copy_type(t)),
                             default: p.default.clone(),
                             mutable: p.mutable,
+                            by_ref: false,
                         }
                     })
                     .collect(),

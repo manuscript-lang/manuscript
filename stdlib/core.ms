@@ -66,10 +66,12 @@ export interface Closeable:
 # A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
 # `for item in source:` calls `next` until `none`; a variable or field path advances in place and
 # keeps its final state, while any other expression is held by the loop alone. `next` should keep
-# returning `none` after the end.
+# returning `none` after the end. The item is a borrow: it stays valid, and the iterator
+# unchanged, until the loop body ends; clone it to keep it.
 export interface Iterator[T]:
-    # Returns the next item, or none when no items remain.
-    var fn next() Optional[T]
+    # Returns the next item, or none when no items remain. The item borrows from the iterator
+    # (an iterator over a container borrows from the container instead).
+    var fn next() ref Optional[T]
 
 # Represents a value that may be absent: `some(value)` or `none`.
 export type Optional[T]:
@@ -176,9 +178,9 @@ export interface Clonable:
 # A type whose values are plain data: no resource, function, interface value, or runtime handle
 # anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
 # message types of processes, workers, tasks and channels require `T: Data`.
-# There is nothing to implement. Records and alternatives are `Data` when every field is; lists and
-# sets when their element is; a map when its key is a `String`, `Int`, `Bool`, `Duration`, or an
-# alternative of cases without fields, and its value is `Data`. A `Closeable` type is never `Data`.
+# There is nothing to implement. Records and alternatives are `Data` when every field is; among the collections
+# only `List` is, when its element is. A `Map` or `Set` is never `Data`, nor is a `Closeable` type or an `opaque type`; `JsonValue`
+# is `Data` by declaration, so a JSON object travels as a `JsonValue`.
 export interface Data: ...
 
 # A type with a stable hash consistent with its `Equal` implementation.

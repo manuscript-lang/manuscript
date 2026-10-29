@@ -45,3 +45,37 @@ test "regex captures groups spans and splits":
 
     let limited: Result[List[String], RegexError] = error(RegexError.LimitExceeded)
     try expect_equal(comma.split("a,b,c", 2), limited)
+
+test "regex repeated captures clear absent groups and preserve budgets":
+    let re = try compile("(a)|(b+)")
+    try expect_equal(
+        (try re.captures_all("a bbb a", 3)),
+        [["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]]
+    )
+
+    let limited: Result[List[List[String]], RegexError] = error(
+        RegexError.LimitExceeded
+    )
+    try expect_equal(re.captures_all("a bbb a", 2), limited)
+    try expect_equal((try re.captures_all("xyz", 0)), [])
+
+test "regex repeated template expansion preserves byte budgets":
+    let re = try compile("(?P<a>a+)|(b+)")
+    try expect_equal(
+        (try re.replace_template("aaaaaaaa b a", "$\{a\}:$\{2\}$$", 18)),
+        "aaaaaaaa:$ :b$ a:$"
+    )
+    try expect_equal((try re.replace_template("a b", "$$", 3)), "$ $")
+
+    let limited: Result[String, RegexError] = error(RegexError.LimitExceeded)
+    try expect_equal(re.replace_template("a b", "$$", 2), limited)
+    try expect_equal((try re.replace_template("a b", "xy", 5)), "xy xy")
+    try expect_equal(re.replace_template("a b", "xy", 4), limited)
+
+test "regex named captures preserve unnamed gaps and absent groups":
+    let re = try compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)")
+    let found = re.named_captures("ce")
+    try expect_equal(found.length(), 2)
+    try expect_equal(found.get("first").is_none(), true)
+    try expect_equal(found.get("empty").get(), "")
+    try expect_equal(found.get("last").get(), "e")

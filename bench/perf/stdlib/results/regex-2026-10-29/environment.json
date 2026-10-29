@@ -1,0 +1,25 @@
+{
+  "baseline": "7e2e62357d5cebc1f144b6ee86f38da247cd2f52",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "backend": "MS_BACKEND=cranelift",
+  "profile": "Release, MIR Speed, Cranelift speed",
+  "runtime_target": "x86_64-unknown-linux-musl",
+  "cpu": "Intel Xeon Platinum 8573C",
+  "affinity": [
+    0
+  ],
+  "cgroup_cpu_max": "400000 100000",
+  "cgroup_memory_max": "17179869184",
+  "hashes": {
+    "target/release/ms": "364fa910b472c0b7d85b27bf00a5ea73cf40025f36d42f43fc2c18584fe109c8",
+    "crates/ms-std-regex/src/lib.rs": "a35fbfdb4b5f4b62d2b220cf14b22713b6afe76f51874026f7a609d2c27d891f",
+    "bench/perf/stdlib/regex_bench.ms": "91f9f27f7f421a120729310c4653b17a2084905194acb27f535f99f04c0d799b",
+    "/workspace/regex-evidence/baseline-runtime.a": "7fba0d926857954200f2eab19871cdd53e809bfb6e23adea54e097a20d7ba53d",
+    "/workspace/regex-evidence/candidate-runtime.a": "5f60b5590ef51c4cc1666b17f2b4918c2bb951f45d438dc0bc0adecad73456f1"
+  },
+  "source_hashes": {
+    "initial_benchmark": "5221bff1b053cee0fdd2055671e400198e60f813145b572421ce9e9ff5eb518b",
+    "final_benchmark": "91f9f27f7f421a120729310c4653b17a2084905194acb27f535f99f04c0d799b",
+    "allocation_harness": "98b1d72cf85f1fb7975dd84b2a998c1ef59674a31e135bddbf60f52f69991d3b"
+  }
+}

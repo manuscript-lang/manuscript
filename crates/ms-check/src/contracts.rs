@@ -165,8 +165,9 @@ pub(crate) enum DataReason {
     Interface,
     Handle,
     Unbounded,
-    MapKey,
+    Collection,
     Never,
+    Opaque,
 }
 
 /// The first part of a type that is not `Data`, with the field path that reaches it.
@@ -200,9 +201,13 @@ impl DataBlocker {
                 "a type parameter with no Data bound".to_string(),
                 format!("add `{}: Data` to the type parameter", self.ty),
             ),
-            DataReason::MapKey => (
-                "a map whose key has no JSON text".to_string(),
-                "key the map by String, Int, Bool, Duration, or an alternative of cases without fields".to_string(),
+            DataReason::Collection => (
+                "a Map or Set, which has no portable form".to_string(),
+                "send a List, or a JsonValue object".to_string(),
+            ),
+            DataReason::Opaque => (
+                "opaque".to_string(),
+                "return a plain value from the module that declares it".to_string(),
             ),
             DataReason::Never => (
                 "Never, which has no value".to_string(),
@@ -218,17 +223,6 @@ impl DataBlocker {
             )
         }
     }
-}
-
-/// Whether a map key has JSON text the decoder reads back: `String`, `Int`, `Bool`, `Duration`,
-/// or an alternative whose cases carry no fields.
-fn json_key(key: &Ty) -> bool {
-    matches!(key.id.as_str(), "String" | "Int" | "Bool")
-        || key.is_std("Duration")
-        || (key.kind == Kind::Alternative
-            && !key.is_std("Optional")
-            && !cases(key).is_empty()
-            && cases(key).iter().all(|c| c.fields.is_empty()))
 }
 
 /// Standard types whose native compare operation satisfies Comparable without
@@ -309,6 +303,14 @@ impl Checker {
         }
         let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
+        if self.opaque_denied(
+            d.pos(),
+            &receiver,
+            "it takes no new methods or interfaces here",
+        ) {
+            self.scope = old;
+            return;
+        }
         // A bundled module may add methods to the `extern type` it declares.
         let own_extern = receiver.kind == Kind::Native
             && nominal
@@ -569,11 +571,11 @@ impl Checker {
         if ops.is_empty() && imp.methods.is_empty() && contract.kind == Kind::Contract {
             // A property without operations has no method to carry its evidence, so record the
             // implementation itself.
-            if contract.is_std("Data") && receiver.kind != Kind::Native {
+            if contract.is_std("Data") && receiver.kind != Kind::Native && !self.m().is_standard() {
                 self.type_error(
                     d.pos(),
                     format!(
-                        "{receiver} is Data when its parts are; only an extern type declares Data, so remove this impl"
+                        "{receiver} is Data when its parts are; only an extern type or the standard library declares Data, so remove this impl"
                     ),
                 );
             }
@@ -797,7 +799,7 @@ impl Checker {
                         .any(|c| c.fields.iter().any(|f| self.holds_resource(&f.ty, seen)))))
     }
 
-    /// Whether an `impl Data for` its extern type exists.
+    /// Whether an `impl Data for` the type exists.
     fn declares_data(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
@@ -855,22 +857,14 @@ impl Checker {
             Kind::Contract => return blocked(DataReason::Interface, path),
             _ => {}
         }
-        if t.is_std("List") || t.is_std("Set") {
+        if t.is_std("List") {
             return t
                 .args
                 .first()
                 .and_then(|a| self.data_blocker(a, visiting, path));
         }
-        if t.is_std("Map") {
-            if let Some(key) = t.args.first()
-                && !json_key(key)
-            {
-                return blocked(DataReason::MapKey, path);
-            }
-            return t
-                .args
-                .iter()
-                .find_map(|a| self.data_blocker(a, visiting, path));
+        if t.is_std("Map") || t.is_std("Set") {
+            return blocked(DataReason::Collection, path);
         }
         if t.kind == Kind::Native {
             return if self.declares_data(t) {
@@ -879,8 +873,15 @@ impl Checker {
                 blocked(DataReason::Handle, path)
             };
         }
+        if t.opaque_module().is_some() {
+            return blocked(DataReason::Opaque, path);
+        }
         if self.closeable(t) {
             return blocked(DataReason::Resource, path);
+        }
+        if self.declares_data(t) {
+            // The standard library vouches for the type, as for `JsonValue`.
+            return None;
         }
         if self.has_json_encoder(t) {
             // The type's own `JsonEncode` decides its JSON form, whatever its fields hold.

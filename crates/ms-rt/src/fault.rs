@@ -1257,6 +1257,15 @@ pub extern "C-unwind" fn msrt_cleanup_discard(handle: usize) {
                 break;
             }
         }
+        // Windows trap entry returns once before running its operation. The caller can then
+        // discard transient registrations that were present when the trap saved its base.
+        // Keep only the remaining caller entries protected, so new operation cleanups run.
+        #[cfg(any(windows, test))]
+        for frame in &mut *GUARDS.ptr() {
+            if frame.trap {
+                frame.cleanups = frame.cleanups.min(stack.len());
+            }
+        }
     }
 }
 
@@ -1971,6 +1980,49 @@ mod tests {
 
     unsafe extern "C-unwind" fn faulting_action(_arg: *mut u8) {
         fault(b"close failed");
+    }
+
+    #[test]
+    fn trap_cleanup_boundary_tracks_discarded_caller_temporaries() {
+        let _g = lock();
+        reset_for_tests();
+        // SAFETY: serialized runtime state; callbacks only append their numeric argument.
+        unsafe {
+            *LOG_N.ptr() = 0;
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(1));
+            let transient = msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(2));
+            // Windows trap entry snapshots the stack before the generated caller discards
+            // its per-call registrations. No jump is made from this bookkeeping test.
+            guards_push(GuardFrame {
+                jmp: 0,
+                cleanups: (*CLEANUPS.ptr()).len(),
+                limit: (*cur_hdr()).limit,
+                shield: SHIELD.get(),
+                eq_pairs: crate::desc::eq_len(),
+                trap: true,
+            });
+            msrt_cleanup_discard(transient);
+            msrt_cleanup_push(log_action, core::ptr::without_provenance_mut(3));
+        }
+        let message = fault_of(|| fault(b"body fault")).unwrap();
+        // SAFETY: serialized runtime state; pop the synthetic guard before running the parent.
+        let inside = unsafe {
+            let inside = (&*LOG.ptr())[..*LOG_N.ptr()].to_vec();
+            guards_pop();
+            msrt_cleanup_run(1);
+            inside
+        };
+        assert_eq!(message, "body fault");
+        assert_eq!(
+            inside,
+            [3],
+            "run the operation's cleanup, retaining the caller's"
+        );
+        // SAFETY: serialized access to the recorded cleanup order.
+        unsafe {
+            assert_eq!(&(&*LOG.ptr())[..*LOG_N.ptr()], &[3, 1]);
+        }
+        reset_for_tests();
     }
 
     unsafe extern "C-unwind" fn request(data: *mut u8) {

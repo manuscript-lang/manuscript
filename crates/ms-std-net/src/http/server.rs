@@ -33,6 +33,8 @@ const UNLIMITED: usize = usize::MAX;
 const INPUT_HOLD: usize = 256 * 1024;
 /// Request bodies the server skips to reuse a connection.
 pub const DRAIN_LIMIT: usize = 256 * 1024;
+/// Time to receive the peer's FIN after half-closing an HTTP/1 rejection response.
+const REJECTION_DRAIN: Duration = Duration::from_millis(500);
 
 /// How long accepting pauses after the process runs out of descriptors or memory.
 const ACCEPT_BACKOFF: Duration = Duration::from_millis(50);
@@ -170,6 +172,8 @@ pub(super) enum Phase {
     Queued(Box<Pending>),
     Busy,
     Writing,
+    /// An error response has finished; discard incoming bytes until FIN or the drain deadline.
+    Draining,
     /// An HTTP/2 connection: streams are tracked in [`ConnSt::h2`].
     H2,
     Closed,
@@ -195,6 +199,7 @@ pub(super) struct ConnSt {
     pub out_pos: usize,
     pub phase: Phase,
     pub close_after: bool,
+    pub drain_after: bool,
     pub flush_pending: bool,
     pub eof: bool,
     pub deadline: Option<Instant>,
@@ -995,6 +1000,7 @@ impl Server {
                 out_pos: 0,
                 phase,
                 close_after: false,
+                drain_after: false,
                 flush_pending: false,
                 eof: false,
                 deadline: self.limits.timeout.map(|t| Instant::now() + t),
@@ -1168,6 +1174,10 @@ impl Server {
     }
 
     fn on_ready(&self, conn: &Rc<Conn>, flags: Ev, reactor: &Reactor) {
+        if matches!(conn.st.borrow().phase, Phase::Draining) {
+            self.drain_rejected_input(conn, reactor);
+            return;
+        }
         if matches!(conn.st.borrow().phase, Phase::Handshake) {
             self.drive_handshake(conn, reactor);
             return;
@@ -1197,6 +1207,10 @@ impl Server {
 
     /// Reads whatever is available, then parses.
     fn read_in(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        if matches!(conn.st.borrow().phase, Phase::Draining) {
+            self.drain_rejected_input(conn, reactor);
+            return;
+        }
         let mut more = false;
         {
             let mut scratch = reactor.scratch.borrow_mut();
@@ -1328,7 +1342,65 @@ impl Server {
         }
         out.extend_from_slice(b"\r\n");
         out.extend_from_slice(body.as_bytes());
+        conn.st.borrow_mut().drain_after = close;
         self.queue_output(conn, reactor, out, close);
+    }
+
+    /// Deliver the rejection and FIN before closing a socket whose peer may still be uploading.
+    /// Closing both halves immediately can reset the connection and erase the response on Windows.
+    fn start_rejection_drain(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        let started = {
+            let mut st = conn.st.borrow_mut();
+            let Some(io) = &st.io else { return };
+            if st.eof || io.shutdown_write().is_err() {
+                false
+            } else {
+                st.inbuf = Vec::new();
+                st.pos = 0;
+                st.phase = Phase::Draining;
+                st.deadline = Some(Instant::now() + REJECTION_DRAIN);
+                reactor.note_deadline(st.deadline);
+                true
+            }
+        };
+        if !started {
+            self.close_conn(conn, reactor);
+            return;
+        }
+        self.set_interest(conn, reactor, Ev::IN);
+        self.drain_rejected_input(conn, reactor);
+    }
+
+    /// Discard without buffering or parsing, with bounded work per turn and a fixed deadline.
+    fn drain_rejected_input(&self, conn: &Rc<Conn>, reactor: &Reactor) {
+        let close = {
+            let mut scratch = reactor.scratch.borrow_mut();
+            let st = conn.st.borrow();
+            let Some(io) = &st.io else { return };
+            let mut total = 0;
+            loop {
+                if st.deadline.is_some_and(|at| at <= Instant::now()) {
+                    break true;
+                }
+                match io.read(&mut scratch) {
+                    Step::Done(n) => {
+                        total += n;
+                        if total >= 1 << 20 {
+                            reactor.retry.borrow_mut().push(conn.clone());
+                            break false;
+                        }
+                    }
+                    Step::WantRead | Step::WantWrite => {
+                        reactor.poller.consumed(io.fd(), Ev::IN);
+                        break false;
+                    }
+                    Step::Eof | Step::Err(_) => break true,
+                }
+            }
+        };
+        if close {
+            self.close_conn(conn, reactor);
+        }
     }
 
     /// Returns whether the head phase made progress (a request was taken).
@@ -1546,7 +1618,11 @@ impl Server {
                     return;
                 }
                 if close || self.st.borrow().closing {
-                    self.close_conn(conn, reactor);
+                    if conn.st.borrow().drain_after {
+                        self.start_rejection_drain(conn, reactor);
+                    } else {
+                        self.close_conn(conn, reactor);
+                    }
                     return;
                 }
                 {
@@ -1847,6 +1923,71 @@ pub(crate) mod tests {
             run(b"GET /badstatus HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
                 .starts_with("HTTP/1.1 500")
         );
+    }
+
+    #[test]
+    fn oversized_header_response_drains_before_closing() {
+        let (_net, server) = start(opts(Limits {
+            header: h1::DEFAULT_HEAD_LIMIT,
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let (client, text) = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let raw = format!(
+                "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\nX: {}\r\n\r\n",
+                "a".repeat(2_000_000)
+            );
+            // Rejection can start while the upload is still in flight.
+            let _ = client.write_all(raw.as_bytes());
+            let mut out = String::new();
+            client.read_to_string(&mut out).unwrap();
+            (client, out)
+        });
+        assert!(text.starts_with("HTTP/1.1 431"), "{text}");
+        assert!(
+            text.ends_with("\r\n\r\nRequest Header Fields Too Large\n"),
+            "{text}"
+        );
+        drop(client);
+        let until = Instant::now() + Duration::from_secs(2);
+        while !server.st.borrow().conns.is_empty() && Instant::now() < until {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert!(server.st.borrow().conns.is_empty());
+    }
+
+    #[test]
+    fn rejection_drain_expires_when_peer_keeps_its_write_half_open() {
+        let (_net, server) = start(opts(Limits {
+            header: 32,
+            ..Limits::default()
+        }));
+        let addr = server.address().to_string();
+        let (_client, text) = with_client(move || {
+            let mut client = TcpStream::connect(addr).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client
+                .write_all(&get("/too-long-for-the-header-budget"))
+                .unwrap();
+            let mut out = String::new();
+            client.read_to_string(&mut out).unwrap();
+            (client, out)
+        });
+        assert!(text.starts_with("HTTP/1.1 431"), "{text}");
+        let until = Instant::now() + Duration::from_secs(2);
+        while !server.st.borrow().conns.is_empty() && Instant::now() < until {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert!(server.st.borrow().conns.is_empty());
     }
 
     #[test]

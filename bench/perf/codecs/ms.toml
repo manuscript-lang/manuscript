@@ -1,0 +1,4 @@
+[project]
+name = "json-base64-codec-bench"
+source = "."
+entry = "./main.ms"

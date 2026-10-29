@@ -170,6 +170,8 @@ pub struct RecordDecl {
     pub fields: Vec<Param>,
     /// `extern type Name`: an opaque value whose layout the runtime owns (bundled modules only).
     pub external: bool,
+    /// `opaque type`: fields are visible only in the declaring file.
+    pub opaque: bool,
 }
 
 /// `type Name[T]:` with `case` lines.
@@ -181,6 +183,8 @@ pub struct AlternativeDecl {
     pub type_params: Vec<TypeParam>,
     /// Cases in declaration order.
     pub cases: Vec<Case>,
+    /// `opaque type`: cases are visible only in the declaring file.
+    pub opaque: bool,
 }
 
 /// `interface Name[T]:` with operation signatures.
@@ -269,6 +273,9 @@ pub struct Param {
     pub default: Option<Expr>,
     /// Declared `var name: Type`: the callee may change the argument.
     pub mutable: bool,
+    /// Declared `name: ref Type` on a record field: the field borrows its value from a place that
+    /// outlives the record instead of owning it.
+    pub by_ref: bool,
 }
 
 /// A generic parameter `T: Bound & Other = Default`.

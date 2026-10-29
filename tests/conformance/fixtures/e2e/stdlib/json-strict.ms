@@ -15,7 +15,6 @@ type Plain:
 
 type Holder:
     items: List[Unit]
-    named: Map[String, Unit]
 
 test "JSON stringify omits values without a JSON form unless strict":
     let handler = Handler("h", unit, none)
@@ -24,16 +23,12 @@ test "JSON stringify omits values without a JSON form unless strict":
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(handler, strict: true), invalid)
 
-test "JSON strict stringify rejects no-form list elements and map values":
-    let holder = Holder([unit], Map[String, Unit]())
-    try expect_equal(stringify(holder), ok("\{\"items\":[null],\"named\":\{\}\}"))
+test "JSON strict stringify rejects no-form list elements":
+    let holder = Holder([unit])
+    try expect_equal(stringify(holder), ok("\{\"items\":[null]\}"))
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(holder, strict: true), invalid)
-
-    var named = Map[String, Unit]()
-    named.add("a", unit)
-    try expect_equal(stringify(Holder([], named), strict: true), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":
     let plain = Plain("p", none, [some(1), none])

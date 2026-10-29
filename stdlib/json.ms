@@ -77,6 +77,9 @@ export type JsonValue:
         values: Map[String, JsonValue]
     )
 
+# A JSON document is Data even though its objects are maps.
+impl Data for JsonValue:
+
 impl JsonValue:
     # Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
     fn get(key: String) ref Optional[JsonValue]:
@@ -158,10 +161,7 @@ impl JsonValue:
 # - An alternative case without payload is its name as a string; one with payload is externally tagged,
 #   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
 #   as `Result` and the error types follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-# - `Optional[T]` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` and `Set` read arrays (a `Set` drops repeated elements).
-# - `Map[K, V]` reads an object, converting each member name to `K` from its string form (two names that read as the same key, such as `"1"` and `"01"` for `Int`, return `InvalidData`): `String`
-#   as is, `Int` and `Bool` from their text, `Duration` from nanoseconds, and a payloadless case from
-#   its name. Other key types return `InvalidData`.
+# - `Optional[T]` reads `null` as `none`, so `some(none)`, written as `null`, reads back as `none`. `List` reads an array.
 # - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 # - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
 #   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
@@ -170,8 +170,8 @@ impl JsonValue:
 #   string, and `Url`, `IpAddress` and `Cidr` their string forms.
 # - `JsonValue` keeps its subtree as parsed.
 #
-# The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
-# record and `parse[Map[String, Int]]` reads the same object as a map.
+# The record-or-document choice comes from `T`, not from the text: `parse[Request]` reads an object as a
+# record and `parse[JsonValue]` keeps it as a document.
 export fn parse[T: Data = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
@@ -212,20 +212,17 @@ export interface JsonEncode:
     # Returns the JSON form of this value.
     fn to_json() JsonValue
 
-# Encodes any value as JSON text. Every type is accepted;
-# a value with no JSON form is omitted or written as `null` rather than rejected at compile time.
+# Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at compile time.
 #
 # - Record fields appear in declaration order. A field holding `none` is omitted; so is a field
-#   holding a value with no JSON form (a function, a resource, an interface value, `Unit`, or an `Instant`).
-# - `none` elsewhere (a list element, a map value, the root) is `null`, as is a no-form list element.
+#   holding a value with no JSON form (`Unit`).
+# - `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
 #   `Optional[Optional[T]]` is allowed: `some(none)` is `null` and `none` is omitted.
-# - A map value with no JSON form is omitted. A root value with no JSON form returns `InvalidData`.
+# - A root value with no JSON form returns `InvalidData`.
 # - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
 #   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
 #   the labeled fields under the record rules. Payload labels never collide with a discriminator.
-# - Map entries and Set elements keep insertion order. A map key becomes its string form: `String`
-#   as is, `Int`, `Decimal` and `Bool` as their text, a `Duration` as its nanoseconds, and a case without
-#   payload as its name. Any other key type returns `InvalidData`.
+# - A `Map` or `Set` is not `Data`; carry an object as a `JsonValue` and a set as a `List`.
 # - The sized integers (`Int8` to `Int32`, `UInt8` to `UInt64`) are exact decimal digits, as `Int`.
 #   `Float32` is the shortest decimal that reads back as the same `Float32`; NaN and infinities are `null`.
 # - Int, BigInt and Decimal are exact decimal digits. Float uses the shortest decimal that parses

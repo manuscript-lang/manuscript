@@ -8,6 +8,7 @@
 
 use crate::syntax::{DeclRef, FuncRef};
 pub use ms_syntax::Symbol as Name;
+use ms_syntax::ast::DeclKind;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write as _};
@@ -215,6 +216,17 @@ impl Type {
     pub fn symbol(&self) -> Option<SymRef> {
         self.def.as_ref().and_then(|d| d.symbol())
     }
+
+    /// The declaring file of an `opaque type`, or `None` for any other type.
+    pub fn opaque_module(&self) -> Option<Name> {
+        let symbol = self.symbol()?;
+        let opaque = match &symbol.decl.as_ref()?.decl().kind {
+            DeclKind::Record(r) => r.opaque,
+            DeclKind::Alternative(a) => a.opaque,
+            _ => false,
+        };
+        opaque.then_some(symbol.module)
+    }
 }
 
 /// `std(t, name)` for an optional type.
@@ -247,6 +259,8 @@ pub struct Definition {
     symbol: RefCell<Weak<Sym>>,
     // Signature resolution preserves these immutable source field positions.
     field_indices: HashMap<Name, usize>,
+    /// Fields declared `ref`: they borrow their value instead of owning it.
+    ref_fields: HashSet<Name>,
     /// Definition kind (record, alternative, contract, native).
     pub kind: Kind,
     /// Declared type variables.
@@ -263,15 +277,20 @@ impl Definition {
     /// A new definition owned by `symbol`.
     pub fn new(symbol: &SymRef, kind: Kind) -> Rc<Definition> {
         let mut field_indices = HashMap::new();
+        let mut ref_fields = HashSet::new();
         if let Some(decl) = &symbol.decl {
             for (index, field) in decl.record_fields().iter().enumerate() {
                 // Invalid duplicate declarations still resolve to the first field.
                 field_indices.entry(field.name).or_insert(index);
+                if field.by_ref {
+                    ref_fields.insert(field.name);
+                }
             }
         }
         Rc::new(Definition {
             symbol: RefCell::new(Rc::downgrade(symbol)),
             field_indices,
+            ref_fields,
             kind,
             variables: RefCell::new(Vec::new()),
             fields: RefCell::new(Vec::new()),
@@ -283,6 +302,16 @@ impl Definition {
     /// The owning symbol.
     pub fn symbol(&self) -> Option<SymRef> {
         self.symbol.borrow().upgrade()
+    }
+
+    /// Whether any record field is declared `ref`.
+    pub fn has_ref_field(&self) -> bool {
+        !self.ref_fields.is_empty()
+    }
+
+    /// Whether the record field `name` is declared `ref`.
+    pub fn field_is_ref(&self, name: Name) -> bool {
+        self.ref_fields.contains(&name)
     }
 
     /// Declared variables (snapshot of the list of pointers).
@@ -819,6 +848,38 @@ pub fn fields(t: &Ty) -> Vec<Param> {
             ty: sub(&p.ty, &s),
         })
         .collect()
+}
+
+/// Whether the record field `name` of `t` is declared `ref`: it borrows its value.
+pub fn field_is_ref(t: &Ty, name: Name) -> bool {
+    t.def.as_ref().is_some_and(|d| d.field_is_ref(name))
+}
+
+/// Whether `t` is a borrowing value: a record with a `ref` field, or one holding such a value
+/// in a field, payload or type argument. It must not outlive what it borrows.
+pub fn borrows(t: &Ty) -> bool {
+    borrows_in(t, &mut Vec::new())
+}
+
+fn borrows_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
+    if t.args.iter().any(|a| borrows_in(a, seen)) {
+        return true;
+    }
+    let Some(def) = &t.def else { return false };
+    if def.kind != Kind::Record && def.kind != Kind::Alternative {
+        return false;
+    }
+    if seen.contains(&t.id) {
+        return false;
+    }
+    seen.push(t.id);
+    let found = def.has_ref_field()
+        || fields(t).iter().any(|f| borrows_in(&f.ty, seen))
+        || cases(t)
+            .iter()
+            .any(|c| c.fields.iter().any(|f| borrows_in(&f.ty, seen)));
+    seen.pop();
+    found
 }
 
 /// One declared record field, freshly substituted with the receiver's type arguments.
