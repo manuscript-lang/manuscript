@@ -5,8 +5,7 @@ import {expect_equal, expect_error, expect_ok, expect_true} from "@std/test.ms"
 import {nanoseconds, sleep} from "@std/time.ms"
 
 fn send_one(ch: Channel[Int, Unit]) Result[Unit, ChannelError]:
-    var end = ch
-    try end.send(7)
+    try ch.send(7)
     return ok(unit)
 
 fn send_nothing(ch: Channel[Int, Unit]) Result[Unit, ChannelError]:
@@ -153,3 +152,22 @@ test "cancellation cleanup closes collected channels retained outside the task":
         end.receive() | try expect_error | try expect_equal(ChannelError.Closed)
     else:
         try expect_true(false)
+
+fn double_all(ch: Channel[Int, Int]) Int:
+    var count = 0
+
+    while true:
+        let received = ch.receive().get(none)
+        if received.is_none():
+            return count
+
+        ch.send(received.get(0) * 2).get()
+        count += 1
+
+    return count
+
+test "channel ends send and receive without a var binding":
+    let group = TaskGroup[Int, Int, Int]()
+    let task = group.spawn(double_all)
+    task.channel.send(4) | try expect_ok
+    task.channel.receive() | try expect_ok | try expect_equal(some(8))

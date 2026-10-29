@@ -13,7 +13,7 @@ import {Channel, ChannelError} from "@std/channels.ms"
 import {expect_equal, expect_ok} from "@std/test.ms"
 import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
-fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
+fn serve(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     while true:
         if let n = try ch.receive():
             try ch.send(n * n)
@@ -23,8 +23,8 @@ fn serve(var ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     return ok(unit)
 
 fn squares() Unit:
-    var ch = worker_channel[Int, Int]()
-    let _finished = serve(var ch)
+    let ch = worker_channel[Int, Int]()
+    let _finished = serve(ch)
 
 test "a worker answers over its channel":
     let group = WorkerGroup[Int, Int]()

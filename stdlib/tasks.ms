@@ -245,7 +245,7 @@ impl TaskTransport[In, Out]:
         return ok(unit)
 
 impl Transport[In, Out] for TaskTransport[In, Out]:
-    var fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Result[Unit, ChannelError]:
         try self.wait_for_room()
 
         var lane = lock(self.outgoing)
@@ -254,7 +254,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
         lane.close()
         return ok(unit)
 
-    var fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Optional[Out], ChannelError]:
         while true:
             match poll_lane(self.incoming):
                 Polled.Done(result):

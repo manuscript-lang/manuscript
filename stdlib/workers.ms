@@ -7,9 +7,9 @@
 # message types are the ones `@std/json.ms` can read and write.
 #
 # ```manuscript
-# def double_all() -> Unit:
-#     var ch = worker_channel[Int, Int]()
-#     while True:
+# fn double_all() Unit:
+#     let ch = worker_channel[Int, Int]()
+#     while true:
 #         let received = ch.receive().get(none)
 #         if received.is_none(): return
 #         let _ = ch.send(received.get() * 2)
@@ -100,7 +100,7 @@ impl WorkerTransport[In, Out]:
             )
 
 impl Transport[In, Out] for WorkerTransport[In, Out]:
-    var fn send(value: In) Result[Unit, ChannelError]:
+    fn send(value: In) Result[Unit, ChannelError]:
         match stringify(value):
             error(why): return error(
                 ChannelError.Broken(
@@ -113,7 +113,7 @@ impl Transport[In, Out] for WorkerTransport[In, Out]:
 
                 return ok(unit)
 
-    var fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Optional[Out], ChannelError]:
         match msrt_pipe_receive(self.end):
             ok(text): return self.decode(text)
             error(why): return stopped(why)
@@ -135,13 +135,13 @@ type WorkerBytesTransport:
     end: Int
 
 impl Transport[Bytes, Bytes] for WorkerBytesTransport:
-    var fn send(value: Bytes) Result[Unit, ChannelError]:
+    fn send(value: Bytes) Result[Unit, ChannelError]:
         if msrt_pipe_send_bytes(self.end, value) != 0:
             return error(ChannelError.Closed)
 
         return ok(unit)
 
-    var fn receive() Result[Optional[Bytes], ChannelError]:
+    fn receive() Result[Optional[Bytes], ChannelError]:
         match msrt_pipe_receive_bytes(self.end):
             ok(data): return ok(data)
             error(why): return stopped(why)
