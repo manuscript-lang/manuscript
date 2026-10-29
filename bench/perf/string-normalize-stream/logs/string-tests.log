@@ -1,0 +1,31 @@
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript-normalize-stream/crates/ms-rt-abi)
+   Compiling ms-rt-hot v0.1.0 (/workspace/manuscript-normalize-stream/crates/ms-rt-hot)
+   Compiling ms-rt v0.1.0 (/workspace/manuscript-normalize-stream/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 7.08s
+────────────
+ Nextest run ID c35bdc42-9477-40ae-8ed4-0b7b7d4f1a2c with nextest profile: default
+    Starting 22 tests across 3 binaries (133 tests skipped)
+        PASS [   0.014s] ( 1/22) ms-rt string::tests::bytes_eq_matches_slice_equality
+        PASS [   0.017s] ( 2/22) ms-rt string::tests::concat_parts_joins_and_skips_empties
+        PASS [   0.017s] ( 3/22) ms-rt string::tests::copy_bytes_copies_exactly_the_requested_bytes
+        PASS [   0.017s] ( 4/22) ms-rt string::tests::case_pad_slice
+        PASS [   0.018s] ( 5/22) ms-rt string::tests::hash_bytes_separates_lengths_and_contents
+        PASS [   0.018s] ( 6/22) ms-rt string::tests::format_parts_writes_integers_in_place_of_strings
+        PASS [   0.028s] ( 7/22) ms-rt string::tests::join_strings_matches_a_plain_join
+        PASS [   0.035s] ( 8/22) ms-rt string::tests::find_matches_naive_search
+        PASS [   0.019s] ( 9/22) ms-rt string::tests::length_and_get_follow_scalars
+        PASS [   0.023s] (10/22) ms-rt string::tests::lowercase_sigma_ignores_unicode_marks_and_format_characters
+        PASS [   0.012s] (11/22) ms-rt string::tests::normalization_preserves_valid_and_malformed_scalar_sequences_with_budgets
+        PASS [   0.020s] (12/22) ms-rt string::tests::normalization_keeps_invalid_form_and_negative_budget_errors
+        PASS [   0.025s] (13/22) ms-rt string::tests::newline_search_matches_scalar_search_across_the_prefix_boundary
+        PASS [   0.009s] (14/22) ms-rt string::tests::normalize_nfd
+        PASS [   0.011s] (15/22) ms-rt string::tests::repeat_and_pad_fill_patterns_across_doubling_boundaries
+        PASS [   0.017s] (16/22) ms-rt string::tests::replace_first_matches_standard_string_model
+        PASS [   0.014s] (17/22) ms-rt string::tests::short_searches_agree_with_a_naive_scan
+        PASS [   0.050s] (18/22) ms-rt string::tests::needle_find_matches_a_naive_search_near_the_window_edge
+        PASS [   0.011s] (19/22) ms-rt string::tests::split_replace_trim
+        PASS [   0.017s] (20/22) ms-rt string::tests::split_view_pieces_borrow_the_source
+        PASS [   0.041s] (21/22) ms-rt string::tests::substring_search_repetitive_near_matches
+        PASS [   0.101s] (22/22) ms-rt string::tests::substring_search_matches_exhaustive_byte_model
+────────────
+     Summary [   0.199s] 22 tests run: 22 passed, 133 skipped

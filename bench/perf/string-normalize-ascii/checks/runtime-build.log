@@ -1,0 +1,9 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.46
+   Compiling rustls-webpki v0.103.15
+   Compiling x509-parser v0.18.1
+   Compiling ms-std-net v0.1.0 (/workspace/manuscript-normalize-stream/crates/ms-std-net)
+   Compiling ms-native v0.1.0 (/workspace/manuscript-normalize-stream/crates/ms-native)
+    Finished `release` profile [optimized] target(s) in 1m 00s
+    Finished `release` profile [optimized] target(s) in 0.10s
+/workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a

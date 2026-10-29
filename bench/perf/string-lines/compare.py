@@ -4,6 +4,7 @@
 import argparse
 import csv
 import io
+import json
 import statistics
 import subprocess
 
@@ -20,13 +21,13 @@ def expected_rows():
     return rows
 
 
-def sample(executable):
+def sample(executable, expected=None):
     result = subprocess.run([executable], check=True, text=True, capture_output=True)
     reader = csv.DictReader(io.StringIO(result.stdout))
     if reader.fieldnames != ["case", "input_bytes", "iterations", "elapsed_ns", "checksum"]:
         raise ValueError(f"invalid header from {executable}: {reader.fieldnames}")
     rows = {}
-    expected = expected_rows()
+    expected = expected_rows() if expected is None else expected
     for row in reader:
         if set(row) != set(reader.fieldnames) or any(value is None for value in row.values()):
             raise ValueError(f"malformed row: {row}")
@@ -48,23 +49,36 @@ def main():
     parser.add_argument("after")
     parser.add_argument("output")
     parser.add_argument("--pairs", type=int, default=7)
+    parser.add_argument("--identity-file", help="JSON object of case: [input bytes, iterations, checksum]")
     args = parser.parse_args()
     if args.pairs < 1:
         parser.error("--pairs must be positive")
+    expected = expected_rows()
+    if args.identity_file:
+        with open(args.identity_file) as inventory:
+            expected = json.load(inventory)
+        if not isinstance(expected, dict) or not expected:
+            parser.error("identity file must contain a nonempty object")
+        for name, values in expected.items():
+            if not isinstance(name, str) or not name or not isinstance(values, list) or len(values) != 3:
+                parser.error("each identity must have a name and three integers")
+            if any(type(value) is not int or value < 0 for value in values) or values[1] == 0:
+                parser.error("identities must have nonnegative integers and positive iterations")
+        expected = {name: tuple(values) for name, values in expected.items()}
     programs = {"before": args.before, "after": args.after}
     for executable in programs.values():
-        sample(executable)
+        sample(executable, expected)
     samples = []
     for pair in range(args.pairs):
         for variant in (["before", "after"] if pair % 2 == 0 else ["after", "before"]):
-            for row in sample(programs[variant]).values():
+            for row in sample(programs[variant], expected).values():
                 samples.append({"pair": pair, "variant": variant, **row})
     with open(args.output, "w", newline="") as output:
         writer = csv.DictWriter(output, fieldnames=list(samples[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(samples)
     print("case,before_median_ns,after_median_ns,before_min_ns,before_max_ns,after_min_ns,after_max_ns,speedup")
-    for name in expected_rows():
+    for name in expected:
         values = {
             variant: [int(row["elapsed_ns"]) / int(row["iterations"]) for row in samples
                       if row["case"] == name and row["variant"] == variant]
