@@ -583,7 +583,9 @@ impl Visitor for BindingWalker<'_> {
             } => self.pattern(pattern),
             StmtKind::For { .. } => {
                 let expanded = self.module.facts().stmts.get(&s.id).and_then(|f| {
-                    let StmtKind::While { body, .. } = &f.expansion.as_ref()?.last()?.kind else {
+                    let (StmtKind::While { body, .. } | StmtKind::For { body, .. }) =
+                        &f.expansion.as_ref()?.last()?.kind
+                    else {
                         return None;
                     };
                     let StmtKind::If {

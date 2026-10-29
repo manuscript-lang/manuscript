@@ -450,11 +450,13 @@ impl Checker {
             }
         } else if let Some(item) = self.iterator_item(&t) {
             return self.check_iterator_for(s, name, iter, body, item, i.no_return, i.breaks);
+        } else if self.is_indexed(&t) {
+            return self.check_indexed_for(s, name, iter, body);
         } else {
             self.type_error(
                 s.pos,
                 format!(
-                    "for requires List, Set, Map, or an Iterator, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() Optional[T]'"
+                    "for requires List, Set, Map, an Iterator, or an Indexed container, found {t}; iterate a collection, e.g. a list literal [1, 2, 3], or implement Iterator with 'var fn next() Optional[T]' (owned items) or Indexed with 'fn length() Int' and 'fn at(index: Int) ref Optional[T]' (borrowed items)"
                 ),
             );
         }
@@ -582,6 +584,163 @@ impl Checker {
             pos,
             kind: StmtKind::While {
                 cond: forever,
+                body: vec![step],
+            },
+        });
+        let expansion = Rc::new(expansion);
+        self.m()
+            .facts_mut()
+            .stmts
+            .entry(s.id)
+            .or_default()
+            .expansion = Some(expansion.clone());
+        self.block(&expansion, false)
+    }
+
+    /// A copy of the place path `e` whose nodes carry fresh ids, for synthesized code that reads
+    /// the place more than once.
+    fn fresh_path(&self, e: &Expr) -> Expr {
+        let kind = match &e.kind {
+            ExprKind::Member { left, name } => ExprKind::Member {
+                left: Box::new(self.fresh_path(left)),
+                name: *name,
+            },
+            other => other.clone(),
+        };
+        Expr {
+            id: self.m().facts_mut().fresh_id(),
+            pos: e.pos,
+            end: e.end,
+            kind,
+        }
+    }
+
+    /// Whether `t` implements `Indexed[T]`, the contract of borrowing iteration.
+    fn is_indexed(&self, t: &Ty) -> bool {
+        self.methods(t, n("at")).into_iter().any(|m| {
+            m.contract
+                .as_ref()
+                .is_some_and(|contract| contract.is_std("Indexed"))
+        })
+    }
+
+    /// `for name in container:` over an `Indexed` container is checked, lowered and analysed as
+    /// `for $i in 0..container.length(): if let name = container.at($i): body`, so `name` borrows
+    /// the item in place and `T` is never cloned. A place is read where it stands, so
+    /// the body may change the container once the item's last use has passed.
+    fn check_indexed_for(
+        &mut self,
+        s: &Stmt,
+        name: Name,
+        iter: &Expr,
+        body: &[Stmt],
+    ) -> (bool, bool) {
+        let mut expansion: Vec<Stmt> = Vec::new();
+        let pos = s.pos;
+        let id = |c: &Self| c.m().facts_mut().fresh_id();
+        let expr = |c: &Self, kind: ExprKind| Expr {
+            id: id(c),
+            pos: iter.pos,
+            end: iter.pos,
+            kind,
+        };
+        // A place is read where it stands (each use is a fresh path, so no node id repeats); any
+        // other expression is held in a hidden `let` for the loop.
+        let hidden = n(&format!("$indexed{}", s.id.0));
+        let held = !is_place_path(iter);
+        if held {
+            let pattern = Pattern {
+                id: id(self),
+                pos,
+                kind: PatternKind::Name(hidden),
+            };
+            expansion.push(Stmt {
+                id: id(self),
+                pos,
+                kind: StmtKind::Bind {
+                    mutable: false,
+                    pattern,
+                    ty: None,
+                    value: iter.clone(),
+                    group: None,
+                },
+            });
+        }
+        let holder = |c: &Self| {
+            if held {
+                expr(c, ExprKind::Name(hidden))
+            } else {
+                c.fresh_path(iter)
+            }
+        };
+        let call = |c: &Self, method: &str, args: Vec<Argument>| {
+            let callee = expr(
+                c,
+                ExprKind::Member {
+                    left: Box::new(holder(c)),
+                    name: n(method),
+                },
+            );
+            expr(
+                c,
+                ExprKind::Call {
+                    callee: Box::new(callee),
+                    args,
+                },
+            )
+        };
+        let index = n(&format!("$index{}", s.id.0));
+        let index_ref = expr(self, ExprKind::Name(index));
+        let at = call(
+            self,
+            "at",
+            vec![Argument {
+                pos: iter.pos,
+                name: None,
+                value: index_ref,
+                mutable: false,
+            }],
+        );
+        let length = call(self, "length", Vec::new());
+        let zero = expr(self, ExprKind::Number(n("0")));
+        let range_callee = expr(self, ExprKind::Name(n("..")));
+        let range = expr(
+            self,
+            ExprKind::Call {
+                callee: Box::new(range_callee),
+                args: [zero, length]
+                    .into_iter()
+                    .map(|value| Argument {
+                        pos: value.pos,
+                        name: None,
+                        value,
+                        mutable: false,
+                    })
+                    .collect(),
+            },
+        );
+        let binding = Pattern {
+            id: id(self),
+            pos,
+            kind: PatternKind::Name(name),
+        };
+        let step = Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::If {
+                binding: Some(binding),
+                mutable: false,
+                cond: at,
+                body: body.to_vec(),
+                else_body: Vec::new(),
+            },
+        };
+        expansion.push(Stmt {
+            id: id(self),
+            pos,
+            kind: StmtKind::For {
+                name: index,
+                iter: range,
                 body: vec![step],
             },
         });
