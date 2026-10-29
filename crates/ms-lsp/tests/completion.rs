@@ -80,7 +80,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     let workspace = Workspace::new("completion-opaque");
     std::fs::write(
         workspace.path("gate.ms"),
-        "export opaque type Tok:\n    id: Int\n\nimpl Tok:\n    fn show() String:\n        return \"{self.id}\"\n\nexport fn mk() Tok:\n    return Tok(id: 1)\n",
+        include_str!("completion/opaque-gate.ms"),
     )
     .expect("gate source");
     let labels = |name: &str, source: &str, line: usize, character: usize| {
@@ -103,7 +103,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     };
     let outside = labels(
         "main.ms",
-        "import {mk} from \"./gate.ms\"\n\nexport fn main() Int:\n    let t = mk()\n    let n = t.\n    return 0\n",
+        include_str!("completion/opaque-outside.ms"),
         4,
         14,
     );
@@ -111,7 +111,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     assert!(!outside.contains(&"id".to_string()), "{outside:?}");
     let inside = labels(
         "gate.ms",
-        "export opaque type Tok:\n    id: Int\n\nimpl Tok:\n    fn show() Int:\n        return self.\n",
+        include_str!("completion/opaque-inside.ms"),
         5,
         20,
     );
