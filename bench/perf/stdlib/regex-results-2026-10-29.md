@@ -26,8 +26,9 @@ cgroup quota, 16 GiB memory limit. Rust 1.99.1
 (`58cf8f9c3`, 2026-10-13); regex 1.13.1. `cargo xtask runtime` builds the static
 `x86_64-unknown-linux-musl` runtime with Rust release optimization. Generated
 programs explicitly use `MS_BACKEND=cranelift` with `ms bench`'s default Release
-profile: optimized MIR and Cranelift speed optimization. The retained benchmark
-JSON reports `build_type: "Release"`. These are not LLVM results.
+profile: optimized MIR and Cranelift speed optimization. The empty build-type
+option selects Release in `crates/ms-cli/src/backend.rs`, and the engine maps it
+to `ms_build::Profile::Release`. These are not LLVM results.
 The CLI's build sidecar currently hardcodes its backend field, so an explicit
 backend setting establishes the identity here.
 
