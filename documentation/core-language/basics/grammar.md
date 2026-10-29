@@ -10,6 +10,7 @@ Exact syntax reference. New to the language? Start with [source files](syntax.md
 ## Source characters and tokens
 
 - Source is UTF-8 without a byte-order mark. CRLF is normalized to LF; a lone CR is rejected everywhere, comments included.
+- Bidirectional text controls (U+202A to U+202E and U+2066 to U+2069) are rejected in comments and text, since they can make source display differently from how it is read; write `\u{202E}` in text when the character is needed.
 - Identifiers are `[A-Za-z_][A-Za-z0-9_]*` and case-sensitive. A lone `_` is a pattern placeholder. Unicode is allowed in text and comments only.
 
 The reserved words are:
