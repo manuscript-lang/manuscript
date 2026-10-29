@@ -1005,6 +1005,7 @@ impl<'a> Parser<'a> {
                     type_params,
                     fields: Vec::new(),
                     external: true,
+                    opaque: false,
                 })
             }
             Tok::Extern => {
@@ -1077,6 +1078,18 @@ impl<'a> Parser<'a> {
                 })
             }
             Tok::Type | Tok::Interface => return self.type_declaration(token),
+            Tok::Name if self.text(token) == "opaque" && self.ahead(1).kind == Tok::Type => {
+                self.at += 1;
+                let next = self.peek();
+                let mut decl = self.type_declaration(next)?;
+                decl.pos = token.pos;
+                match &mut decl.kind {
+                    DeclKind::Record(r) => r.opaque = true,
+                    DeclKind::Alternative(a) => a.opaque = true,
+                    _ => {}
+                }
+                return Ok(decl);
+            }
             _ => {
                 if let Some((msg, replacement)) = foreign_declaration(token, self.text(token)) {
                     return match replacement {
@@ -1143,6 +1156,7 @@ impl<'a> Parser<'a> {
                     type_params,
                     fields: Vec::new(),
                     external: false,
+                    opaque: false,
                 }),
             });
         }
@@ -1257,12 +1271,14 @@ impl<'a> Parser<'a> {
                 name,
                 type_params,
                 cases,
+                opaque: false,
             }),
             Form::Record | Form::None => DeclKind::Record(RecordDecl {
                 name,
                 type_params,
                 fields,
                 external: false,
+                opaque: false,
             }),
         };
         let id = self.id();

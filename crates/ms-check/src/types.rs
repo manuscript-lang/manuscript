@@ -8,6 +8,7 @@
 
 use crate::syntax::{DeclRef, FuncRef};
 pub use ms_syntax::Symbol as Name;
+use ms_syntax::ast::DeclKind;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Write as _};
@@ -214,6 +215,17 @@ impl Type {
     /// The nominal definition's symbol, if any.
     pub fn symbol(&self) -> Option<SymRef> {
         self.def.as_ref().and_then(|d| d.symbol())
+    }
+
+    /// The declaring file of an `opaque type`, or `None` for any other type.
+    pub fn opaque_module(&self) -> Option<Name> {
+        let symbol = self.symbol()?;
+        let opaque = match &symbol.decl.as_ref()?.decl().kind {
+            DeclKind::Record(r) => r.opaque,
+            DeclKind::Alternative(a) => a.opaque,
+            _ => false,
+        };
+        opaque.then_some(symbol.module)
     }
 }
 

@@ -693,6 +693,7 @@ impl Checker {
                     );
                     return;
                 }
+                self.opaque_denied(p.pos, t, "its fields cannot be destructured here");
                 let fs = fields(t);
                 let mut seen: HashSet<Name> = HashSet::new();
                 for f in pfields {
@@ -785,6 +786,7 @@ impl Checker {
             );
             return (true, false);
         }
+        self.opaque_denied(pos, &t, "its cases cannot be matched here");
         let all_cases = cases(&t);
         let mut seen: HashSet<Name> = HashSet::new();
         let (mut fall, mut breaks) = (false, false);

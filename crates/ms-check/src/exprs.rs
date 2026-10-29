@@ -578,6 +578,7 @@ impl Checker {
                 return i;
             }
             if let Some(cs) = case_of(&typ, name).filter(|c| c.fields.is_empty()) {
+                self.opaque_denied(e.pos, &typ, &format!("case {name} cannot be built here"));
                 let constructor = self.instantiate(&typ, &[], &[], expected, e.pos);
                 i.ty = Some(constructor.clone());
                 i.constructor = Some(constructor);
@@ -609,6 +610,7 @@ impl Checker {
             && name != "to_string"
             && let Some(f) = field_of(&rt, name)
         {
+            self.opaque_denied(e.pos, &rt, &format!("field {name} is hidden"));
             i.ty = Some(f.ty);
             return i;
         }

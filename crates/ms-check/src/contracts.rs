@@ -167,6 +167,7 @@ pub(crate) enum DataReason {
     Unbounded,
     Collection,
     Never,
+    Opaque,
 }
 
 /// The first part of a type that is not `Data`, with the field path that reaches it.
@@ -203,6 +204,10 @@ impl DataBlocker {
             DataReason::Collection => (
                 "a Map or Set, which has no portable form".to_string(),
                 "send a List, or a JsonValue object".to_string(),
+            ),
+            DataReason::Opaque => (
+                "opaque".to_string(),
+                "return a plain value from the module that declares it".to_string(),
             ),
             DataReason::Never => (
                 "Never, which has no value".to_string(),
@@ -298,6 +303,14 @@ impl Checker {
         }
         let mut receiver = self.resolve(Some(&imp.receiver));
         let nominal = receiver.def.as_ref().and_then(|d| d.symbol());
+        if self.opaque_denied(
+            d.pos(),
+            &receiver,
+            "it takes no new methods or interfaces here",
+        ) {
+            self.scope = old;
+            return;
+        }
         // A bundled module may add methods to the `extern type` it declares.
         let own_extern = receiver.kind == Kind::Native
             && nominal
@@ -859,6 +872,9 @@ impl Checker {
             } else {
                 blocked(DataReason::Handle, path)
             };
+        }
+        if t.opaque_module().is_some() {
+            return blocked(DataReason::Opaque, path);
         }
         if self.closeable(t) {
             return blocked(DataReason::Resource, path);
