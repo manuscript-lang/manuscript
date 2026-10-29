@@ -188,36 +188,13 @@ type TaskTransport[In, Out]:
     # Only group ends hold a lease; copies share its lifetime without the group retaining them.
     lifetime: Optional[TaskChannelLease] = none
 
-# What one look at a lane found: the receive's answer, or the token to park on.
-type Polled[T]:
-    case Done(result: Result[Optional[T], ChannelError])
-    case Park(token: Int)
-
-# Takes the next value of `lane`, or registers a wait. The guard lives and dies in this function;
-# a loop that closed it by hand and then parked leaked on cancellation (#1899), so keep this a function.
-fn poll_lane[T](lane: Shared[Lane[T]]) Polled[T]:
-    var guard = lock(lane)
-    if guard.value.receiver_closed:
-        return Polled.Done(error(ChannelError.Closed))
-
-    if let value = guard.value.pop():
-        guard.value.wake()
-        return Polled.Done(ok(some(value)))
-
-    if guard.value.sender_closed:
-        return Polled.Done(ok(none))
-
-    let token = msrt_channel_token()
-    guard.value.waiting.append(token)
-    return Polled.Park(token)
-
 # What one look at `outgoing` found: room to send, a closed lane, or the token to park on.
 type Reserved:
     case Ready
     case Shut
     case Wait(token: Int)
 
-# Looks for room in `lane`, or registers a wait. The guard lives and dies in this function (#1899).
+# Looks for room in `lane`, or registers a wait. The guard lives and dies in this function.
 fn claim_room[T](lane: Shared[Lane[T]]) Reserved:
     var guard = lock(lane)
     if guard.value.sender_closed or guard.value.receiver_closed:
@@ -256,12 +233,19 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
 
     fn receive() Result[Optional[Out], ChannelError]:
         while true:
-            match poll_lane(self.incoming):
-                Polled.Done(result):
-                    return result
-                Polled.Park(token):
-                    let ticket = WaitTicket[Out](lane: self.incoming, token: token)
-                    msrt_channel_park(token)
+            var lane = lock(self.incoming)
+            if lane.value.receiver_closed:
+                return error(ChannelError.Closed)
+            if let value = lane.value.pop():
+                lane.value.wake()
+                return ok(some(value))
+            if lane.value.sender_closed:
+                return ok(none)
+            let token = msrt_channel_token()
+            lane.value.waiting.append(token)
+            lane.close()
+            let ticket = WaitTicket[Out](lane: self.incoming, token: token)
+            msrt_channel_park(token)
 
         return ok(none)
 
