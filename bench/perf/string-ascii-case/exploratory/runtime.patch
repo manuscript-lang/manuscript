@@ -1,0 +1,112 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index c5fb4bf2c..720c5abd8 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1126,24 +1126,39 @@ unsafe fn msrt_string_trim_end_val(s: *const StrVal) -> StrVal {
+     unsafe { trimmed(s, false, true) }
+ }
+ 
+-fn map_case(text: &[u8], upper: bool) -> Vec<u8> {
++fn map_ascii_case(text: &mut [u8], upper: bool) {
++    if upper {
++        text.make_ascii_uppercase();
++    } else {
++        text.make_ascii_lowercase();
++    }
++}
++
++fn map_case(text: &[u8], upper: bool) -> StrVal {
+     if text.is_ascii() {
+-        let mut out = text.to_vec();
+-        if upper {
+-            out.make_ascii_uppercase();
+-        } else {
+-            out.make_ascii_lowercase();
+-        }
++        if text.len() <= STR_INLINE_MAX {
++            let mut buffer = [0; STR_INLINE_MAX];
++            let mapped = &mut buffer[..text.len()];
++            mapped.copy_from_slice(text);
++            map_ascii_case(mapped, upper);
++            return from_bytes(mapped);
++        }
++        let out = heap_copy(text);
++        // SAFETY: heap_copy made a fresh allocation initialized with these text.len() bytes.
++        // Only that result is changed; the input and the trailing NUL remain untouched.
++        let mapped = unsafe { core::slice::from_raw_parts_mut(out.ptr_word, text.len()) };
++        map_ascii_case(mapped, upper);
+         return out;
+     }
+     let text = core::str::from_utf8(text).expect("String contains valid UTF-8");
+-    if upper {
++    let mapped = if upper {
+         text.to_uppercase().into_bytes()
+     } else {
+         // Whole-string mapping supplies Unicode's full Cased and Case_Ignorable tables
+         // for the contextual final-sigma rule.
+         text.to_lowercase().into_bytes()
+-    }
++    };
++    from_buf(mapped)
+ }
+ 
+ #[unsafe(no_mangle)]
+@@ -1155,7 +1170,7 @@ pub unsafe extern "C-unwind" fn msrt_string_upper(s: *const StrVal, out: *mut St
+ #[inline(always)]
+ unsafe fn msrt_string_upper_val(s: *const StrVal) -> StrVal {
+     // SAFETY: caller passes a live string.
+-    unsafe { from_buf(map_case(bytes(s), true)) }
++    unsafe { map_case(bytes(s), true) }
+ }
+ 
+ #[unsafe(no_mangle)]
+@@ -1167,7 +1182,7 @@ pub unsafe extern "C-unwind" fn msrt_string_lower(s: *const StrVal, out: *mut St
+ #[inline(always)]
+ unsafe fn msrt_string_lower_val(s: *const StrVal) -> StrVal {
+     // SAFETY: caller passes a live string.
+-    unsafe { from_buf(map_case(bytes(s), false)) }
++    unsafe { map_case(bytes(s), false) }
+ }
+ 
+ /// `repeat` with `has_max`/`max`; status protocol, ok through `out`.
+@@ -2813,17 +2828,32 @@ mod tests {
+         for mark in ["\u{1ab0}", "\u{5bf}", "\u{2060}", "\u{fe0f}"] {
+             let before = std::format!("A{mark}Σ");
+             let after = std::format!("AΣ{mark}A");
+-            assert_eq!(
+-                map_case(before.as_bytes(), false),
+-                std::format!("a{mark}ς").as_bytes()
+-            );
+-            assert_eq!(
+-                map_case(after.as_bytes(), false),
+-                std::format!("aσ{mark}a").as_bytes()
+-            );
++            // SAFETY: the input strings remain live and ret supplies a writable output.
++            unsafe {
++                assert_eq!(
++                    ret(|o| msrt_string_lower(st(&before), o)),
++                    std::format!("a{mark}ς")
++                );
++                assert_eq!(
++                    ret(|o| msrt_string_lower(st(&after), o)),
++                    std::format!("aσ{mark}a")
++                );
++            }
+         }
+     }
+ 
++    #[test]
++    #[should_panic(expected = "String contains valid UTF-8")]
++    fn uppercase_rejects_malformed_utf8() {
++        let _ = map_case(&[0xff], true);
++    }
++
++    #[test]
++    #[should_panic(expected = "String contains valid UTF-8")]
++    fn lowercase_rejects_malformed_utf8() {
++        let _ = map_case(&[0xff], false);
++    }
++
+     #[test]
+     fn case_pad_slice() {
+         let _g = testutil::lock();

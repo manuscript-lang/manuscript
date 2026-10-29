@@ -1,0 +1,115 @@
+{
+  "recorded_at": "2026-10-29T13:09:01.556172+00:00",
+  "classification": "rejected: reproducible empty-input regression; original Unicode penalty not reproduced",
+  "baseline_commit": "1461546c8513e0c8d93aa644933f89d0a27bcca3",
+  "candidate": "baseline plus exploratory/runtime.patch",
+  "integration": "baseline inherits held unmerged split-limits work; no runtime change is retained in this evidence-only branch",
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "logical_cpus": 5,
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "compiler": {
+    "path": "/workspace/manuscript/target/release/ms",
+    "sha256": "3179dc962e37f64961fc16715e7dcc758b78decffb84c2e67100acb0cb044145"
+  },
+  "build_type": "Release",
+  "configured_llvm_tools": "/workspace/.cache/ms/llvm/d19868df5ca10629",
+  "backend_note": "Normal builds selected cached LLVM tools via MS_LLVM_TOOLS; no new backend/codegen probes performed.",
+  "runtime_build_command": "cargo xtask runtime",
+  "runtime_source_path": "/workspace/manuscript-split-search/crates/ms-rt/src/string.rs",
+  "source_restoration": "baseline and candidate built from same path with saved-candidate EXIT trap; candidate verified after builds; runtime restored to baseline for evidence-only commit",
+  "timing_affinity": "CPU0 runner and inherited producer processes; no concurrent builds/tests/timed work",
+  "validation": "every operation exact-output equality; full inventory/input bytes/iterations/checksum and producer success checked by shared runner",
+  "suites": {
+    "full": {
+      "cases": 80,
+      "pairs": 7,
+      "sample_rows": 1120,
+      "warmup": "one checked unrecorded process per program plus checked per-case warmup"
+    },
+    "focused": {
+      "cases": 20,
+      "pairs": 9,
+      "sample_rows": 360,
+      "iterations": "1000000 short/empty;128 long ASCII prefix plus Unicode",
+      "warmup": "one checked unrecorded process per program plus checked per-case warmup",
+      "allocation_phase": "Separate focused processes omit preceding nonempty ASCII workloads; do not replace original full matrix"
+    }
+  },
+  "correctness": {
+    "source_release": "2 tests,0failed",
+    "source_debug": "2 tests,0failed",
+    "string_unit_tests": "22 tests,22passed;132skipped by filter",
+    "static": "frontend checks, cargo fmt --all --check, git diff --check passed"
+  },
+  "files_sha256": {
+    "main.ms": "6094b38c3c925635409784fed7428387a443bcce959a2b1a132b575be9383ed0",
+    "identities.json": "73538a869d872b8eedbd546e9266092711758f5209eba16464d19596cfa15c8b",
+    "samples.csv": "36ed4026419cf6a99453a9aa67ad09e82fa6839486b564f345e8c400092d30a6",
+    "summary.csv": "7c2988fbf9432c513c12435303479318a7aced679c1061898d06ae375a3de9b4",
+    "paired.csv": "97d29204610fec0cd285cbc68177c8001e7883b6ed2e30c918dbbaffd9ae1ee2",
+    "focused-controls.ms": "ca3dc83231a18a8b2bcf6b9b449756f43d29905156ddef4b2c7718e447f42d0c",
+    "focused-identities.json": "42234555b4287130e6c8f0f3468e5d40b9d7d6f0cc86da3854b49762f94c9c48",
+    "focused-samples.csv": "fc47d13b0daa99c4f25c415c4e8521f7c8ac401596265480dd67b1ec8227fdbd",
+    "focused-summary.csv": "abf6a5ad61a415508ba96f9a44ea271e7111572ec6c2ce8f3f6be1adad5d705e",
+    "focused-paired.csv": "fbf14524a1aa124264b181dfbde35aeaa4b46c038e55573604fbe4183893a21f",
+    "exploratory/runtime.patch": "f0324ff40bcf37ba3a9d1ac109630002221f42945dd13a7e00b869b169ba4597",
+    "exploratory/case-tests.ms": "2216764894af76a7e70f1bc8e27c57392192a753936075d8d51d7ab4f750eb57",
+    "exploratory/source-tests-release.log": "498c341d857e3db0342ecf37c8c92b7a2461d23dac8f97187e92df9ec3348290",
+    "exploratory/source-tests-debug.log": "498c341d857e3db0342ecf37c8c92b7a2461d23dac8f97187e92df9ec3348290",
+    "exploratory/string-tests.log": "ad876055c1b8e8a42a792b8f56d917ca48c50e0dcf32ab7b474c91f8180bc5f6"
+  },
+  "artifacts": {
+    "before": {
+      "archive": {
+        "path": "/tmp/string-ascii-case-evidence/before/libms_native.a",
+        "sha256": "182d498c374a572a420c0fcc7a93758d2a9c964e7c66bd3e7d795daaaad40112"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-ascii-case-evidence/before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "runtime_source": {
+        "path": "/tmp/string-ascii-case-evidence/before/string.rs",
+        "sha256": "58af069f6a043b19d104db38adae06e6dda3fe994d4ceef22b376012852712d3"
+      },
+      "program": {
+        "path": "/tmp/string-ascii-case-evidence/before/program",
+        "sha256": "0be5bc98848455abd5a40abf53627b836338aecb8703efd17169d3e1f794baf5"
+      },
+      "focused_program": {
+        "path": "/tmp/string-ascii-case-evidence/before/focused-program",
+        "sha256": "c4965d2d73eb38adc7d2acb14cff6c738272140d9161886e5b2a6d90a25bde48"
+      }
+    },
+    "after": {
+      "archive": {
+        "path": "/tmp/string-ascii-case-evidence/after/libms_native.a",
+        "sha256": "6bc4d67f0a58b79b8ebf97fd5cfe419eaec809ec86994a3f9a43cedc3819eb24"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-ascii-case-evidence/after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "runtime_source": {
+        "path": "/tmp/string-ascii-case-evidence/after/string.rs",
+        "sha256": "188fd4ff52f54d6e2b95669c20526df1ad3c867895e3420970301cc682ec7a9c"
+      },
+      "program": {
+        "path": "/tmp/string-ascii-case-evidence/after/program",
+        "sha256": "8ceb6304dbb242310e51c0cc56f25a0bbf875e17156ecbb9156237ca348e58b0"
+      },
+      "focused_program": {
+        "path": "/tmp/string-ascii-case-evidence/after/focused-program",
+        "sha256": "3eb8bb7ec279a64788e7fb9a350c7483245054eb570756fb3549c18d17fd99f1"
+      }
+    }
+  }
+}

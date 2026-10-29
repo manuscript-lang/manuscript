@@ -1,0 +1,102 @@
+{
+  "upper_mixed_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "lower_mixed_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "upper_already_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "lower_already_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "upper_controls_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "lower_controls_n0": [
+    0,
+    1000000,
+    17000000
+  ],
+  "upper_sharp_s": [
+    7,
+    1000000,
+    24000000
+  ],
+  "lower_sharp_s": [
+    7,
+    1000000,
+    24000000
+  ],
+  "upper_turkish_i": [
+    2,
+    1000000,
+    19000000
+  ],
+  "lower_turkish_i": [
+    2,
+    1000000,
+    20000000
+  ],
+  "upper_final_sigma": [
+    4,
+    1000000,
+    21000000
+  ],
+  "lower_final_sigma": [
+    4,
+    1000000,
+    21000000
+  ],
+  "upper_medial_sigma": [
+    6,
+    1000000,
+    23000000
+  ],
+  "lower_medial_sigma": [
+    6,
+    1000000,
+    23000000
+  ],
+  "upper_sigma_mark": [
+    5,
+    1000000,
+    22000000
+  ],
+  "lower_sigma_mark": [
+    5,
+    1000000,
+    22000000
+  ],
+  "upper_sigma_format": [
+    7,
+    1000000,
+    24000000
+  ],
+  "lower_sigma_format": [
+    7,
+    1000000,
+    24000000
+  ],
+  "upper_long_prefix_unicode": [
+    1048585,
+    128,
+    134221056
+  ],
+  "lower_long_prefix_unicode": [
+    1048585,
+    128,
+    134221184
+  ]
+}

@@ -1,0 +1,5 @@
+RUN string-ascii-case.ms::ASCII case conversion preserves exact content and input across result sizes
+PASS string-ascii-case.ms::ASCII case conversion preserves exact content and input across result sizes
+RUN string-ascii-case.ms::whole string Unicode mapping preserves expansions and contextual sigma
+PASS string-ascii-case.ms::whole string Unicode mapping preserves expansions and contextual sigma
+2 tests, 0 failed
