@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "command": "build",
+  "build_type": "Release",
+  "source_root": "/workspace/manuscript-normalize-stream/bench/perf/string-normalize-ascii",
+  "output": "/tmp/string-round2/normalize-ascii-before/focused-program",
+  "completed": false,
+  "exit_code": 1,
+  "reason": "build_error",
+  "artifacts": [
+    {
+      "kind": "executable",
+      "path": "/tmp/string-round2/normalize-ascii-before/focused-program",
+      "state": "missing"
+    },
+    {
+      "kind": "build_metadata",
+      "path": "/tmp/string-round2/normalize-ascii-before/focused-program.ms-build.json",
+      "state": "missing"
+    }
+  ],
+  "stdout": "",
+  "diagnostics": [
+    {
+      "code": "MSN001",
+      "phase": "build",
+      "message": "cannot unpack the bundled linker into /home/agent/.cache/ms/linker/7c0af6e7e73843c7: Read-only file system (os error 30)",
+      "position": {
+        "file": "bench/perf/string-normalize-ascii/focused-controls.ms",
+        "line": 1,
+        "column": 1,
+        "offset": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,284 @@
+{
+  "status": "full100/focus30 and correctness complete; fmt/clippy/repo pass; canonical make conform failed; separate pinned serial strict replay2393/2393 pass; final immutable review and required CI pending",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "runtime_patch": "runtime.patch",
+  "runtime_build_method": "Saved baseline archive from same normalizer worktree path; v1 candidate built here with EXIT-protected source snapshot. All v0 source/archive/data snapshots retained.",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "requested_build_type": "Release",
+  "explicit_tool_selection": {
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629"
+  },
+  "reported_companion_labels": {
+    "before": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "after": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    }
+  },
+  "effective_optimization": "unverified beyond normal companion metadata; no backend or codegen investigation",
+  "correctness": {
+    "rust_string": {
+      "passed": 22,
+      "filtered": 133
+    },
+    "v0_source_release": {
+      "passed": 3,
+      "failed": 0
+    },
+    "v0_source_debug": {
+      "passed": 3,
+      "failed": 0
+    },
+    "ascii_source_release": {
+      "passed": 2,
+      "failed": 0
+    },
+    "ascii_source_debug": {
+      "passed": 2,
+      "failed": 0
+    },
+    "typed_release": {
+      "passed": 2,
+      "failed": 0
+    },
+    "typed_debug": {
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "matrix": {
+    "cases": 100,
+    "pairs": 7,
+    "rows": 1400,
+    "all_guards": "passed",
+    "timed_work": "normalization plus exact output/domain-error validation and result release",
+    "median_improvements": 88
+  },
+  "artifacts": {
+    "before": {
+      "string.rs": {
+        "path": "/tmp/string-round2/normalize-ascii-before/string.rs",
+        "sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/normalize-ascii-before/libms_native.a",
+        "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/normalize-ascii-before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/normalize-ascii-before/program",
+        "sha256": "13d2cb3871ee6377b87b3846f136e0740e772f3a8230d01f0d4bee7ebda07d9a"
+      },
+      "focused-program": {
+        "path": "/tmp/string-round2/normalize-ascii-before/focused-program",
+        "sha256": "742859488f5ba3077d18d38723a1fff9a3175af784f565980a16a709c393c6e5"
+      }
+    },
+    "after": {
+      "string.rs": {
+        "path": "/tmp/string-round2/normalize-ascii-after/string.rs",
+        "sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/normalize-ascii-after/libms_native.a",
+        "sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/normalize-ascii-after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/normalize-ascii-after/program",
+        "sha256": "3a5acad884b411a7bfc2ba5f7abc37d4f33b0eb7d0a409e997837a1adc54efee"
+      },
+      "focused-program": {
+        "path": "/tmp/string-round2/normalize-ascii-after/focused-program",
+        "sha256": "e5ddd405a8fb0ca2a61146a2058b9da4d4089fcdc400577782b42d8418eeab15"
+      }
+    }
+  },
+  "source_fixtures": {
+    "tests/e2e/testdata/stdlib/string-normalize-stream.ms": "90cb1eff306e813e20bad63e44242c03d27ebec75c7e386b7f18bcc92fad9d29",
+    "tests/e2e/testdata/stdlib/string-normalize-ascii.ms": "3555e15c436e8b3e66e2d99855426b0630ed86a7c2c31dfef4de49fe7e299715"
+  },
+  "files_sha256": {
+    "README.md": "4f3ddcf262fef6567724e9651903a83961be9081e5859b773b8909c9b4196f7c",
+    "after-build.json": "06bdfc312566a1ce265cff182df7fc6c3809b159c7b9006fbd04a415c8cee1f1",
+    "after-focused-build.json": "59983e1b4fbd9e42cfde8e395f69657e2b9fe4b96b5a9c563d189e5d1eb6a4a0",
+    "before-build.json": "c9872c523d712aa5b7332c6cfd33c35f9db2a54076076ed94e7e0641cc0125ee",
+    "before-focused-build.json": "fbbcc67cdc8b27d2e8a3bbd99fd97d27ad2f31c3da7fb5689777553e6fb1e3c5",
+    "build-metadata/focused-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/focused-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "checks/clippy.log": "421aae2e5bb2768123d27d212fd1a799d2fedaa1e564899443b634f2753a4d88",
+    "checks/conform-failed-input.json": "490de4bf8f511a23a0523ea08a58672a0c3ef2a56bc12ca417c65c125949905e",
+    "checks/conform-failed-report.md": "cd8d086303f2dddb6f2861e2bcbdb3e9845fcc49c2bfad31731737aeb9b9d4fd",
+    "checks/conform-pinned-report.md": "890234930f992c196c7abf0ffd7be61a6a600447387d826f8d1b6bfb23939fc4",
+    "checks/conform-pinned.log": "0b7d60556929829caf582784f729a69459192b4dda1ebddc2d425dd5f62349d1",
+    "checks/conform.log": "7a4ad2fd599d3d49bd1ac85d38ae92dbc40a9999e631caf4fde06ba68a47f09a",
+    "checks/repo-check-confirmed.log": "1a1c1ad3d0681ef04bc83514f1b7c367c3187ef0f8499d4e21d90f8bc3b3db5b",
+    "checks/repo-check.log": "6220b943824a22574f9a501cc43f7517af340079fa4890722756b22b570615a3",
+    "checks/runtime-build.log": "d0a1e06f098f9e0a576a90a9d21d0592710fd295ebbd7483ed99413860980611",
+    "checks/rustfmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "focused-controls.ms": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+    "focused-identities.json": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+    "focused-paired-samples.csv": "7b2fd6f2a808ec9c0f7d57fd29ced4d52383f211c68569e2a07e8187691bbc9d",
+    "focused-paired.csv": "4ff418398dc91c83f245f770ec2910f511707a1e1b62c68235188daa08e3a7a0",
+    "focused-samples.csv": "45164d32ef341d9e9c8fe4916b4a609951b27df3aae8ead0022e76f68de76c26",
+    "focused-summary.csv": "e0e31012ec93dc9e60a90031fe0e51e8f1998412cc16606a3a1075e15c2e25a0",
+    "identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "logs/after-focused-build-missing-env.json": "4622e78603cd04962bb8645eea98dc4838a1e406b0191e417bfabe9ca8d2b7d5",
+    "logs/after-focused-build-missing-env.log": "a7272f797ce08900f0c04d2605340e59975166038d46a52a5eeab04a26b2aed6",
+    "logs/after-focused-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/before-focused-build-missing-env.json": "8736021bf7bdcdbf351b016d66bb00ffbd32535ec9cb10d9c8338956cf97c47e",
+    "logs/before-focused-build-missing-env.log": "a7272f797ce08900f0c04d2605340e59975166038d46a52a5eeab04a26b2aed6",
+    "logs/before-focused-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/before-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/source-ascii-debug.log": "09e0b3576d1af26df5b51c625689b5a4202871f70bd7c7859ee1f41cc65ace10",
+    "logs/source-ascii-release.log": "09e0b3576d1af26df5b51c625689b5a4202871f70bd7c7859ee1f41cc65ace10",
+    "logs/source-v0-debug.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "logs/source-v0-release.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "logs/string-tests.log": "bdbacae30e8c3ac701183a1438cb2bca345e1f61f41270209bce9313e36fd413",
+    "logs/typed-debug.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "logs/typed-release.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "main.ms": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+    "paired-samples.csv": "a27ea607a44c382d8e4771e34ea8a29497eaf605537f6ce264617caa7fce7612",
+    "paired.csv": "388846ecaeb562aa8c82727f0b86d98c4a5b866b94a44fbc62c450765c1834c5",
+    "runtime.patch": "d82ce947f88673096405e898822665cc87233a12a69ea54a53e843d1ed7e11f2",
+    "samples.csv": "5eeb7ab22653c02b2809a9ef1095d6e134e3b1c220a9d198a7399d5b06dbadb3",
+    "summary.csv": "0fe141348a384a97af59cc34167707f461ec0987cdf7ad57af7c0ce1f116c981"
+  },
+  "recorded_at": "2026-10-29T16:52:00.938302+00:00",
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "logical_cpus": 5,
+  "timing_affinity": "CPU0 inherited by producers; no concurrent native build/test/timed work",
+  "focused": {
+    "cases": 30,
+    "pairs": 9,
+    "rows": 540,
+    "all_guards": "passed",
+    "separate_process_scope": "omits full-matrix preceding workloads; no pooling or replacement",
+    "iterations": "5M short;1024 mid/combining;64 large",
+    "valid_input_median_improvements": "21of22; includes expected LimitExceeded handling"
+  },
+  "review_status": "Independent static/oracle/performance review supported full local gates with explicit invalid-argument cost; final immutable review and normal CI remain pending.",
+  "measured_tradeoff": {
+    "negative_NFC_full": "median+1.953ns/+35.88%;5of7slower;pairedmedian+1.452ns",
+    "negative_NFC_focused": "median+1.308ns/+24.23%;6of9slower;pairedmedian+0.857ns",
+    "budget_NFKC_exact_focused": "median+0.631%;5of9slower;pairedmedian+3.723us;wide checked outliers",
+    "application_error_frequency": "not measured"
+  },
+  "shared_runner": {
+    "path": "bench/perf/string-lines/compare.py",
+    "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "reported_focused_companion_labels": {
+    "before": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "after": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    }
+  },
+  "preparation_failure": "First focus builds omitted supplied env and failed before executable creation on read-only default cache; saved logs. Corrected supplied environment succeeded; no measurements from failed attempt.",
+  "pending_gates": [
+    "final immutable artifact review",
+    "normal required CI including workspace tests",
+    "PR/publication by root"
+  ],
+  "current_main_freshness": {
+    "commit": "4b056af1ef8cbe894e74d912776c4bf1005ec1d5",
+    "reported_by": "root",
+    "critical_paths": "string/utf8/ABI/Cargo/toolchain/AGENTS/runtime/create-pr unchanged",
+    "rebase": "not requested"
+  },
+  "final_local_gates": {
+    "runtime_rebuild": "passed",
+    "rustfmt": "passed",
+    "workspace_clippy_all_targets_deny_warnings": "passed",
+    "repo_check": "passed; root confirmed unique checks/repo-check-confirmed.log",
+    "strict_conformance": "canonical make invocation failed; separate controlled pinned serial strict replay passed all2393",
+    "workspace_nextest": "not rerun: excluded known ms-build::debug_artifacts missing executable; normal required CI still mandatory",
+    "duplicate_gate_invocation": "agent session49777 terminated exit130; no live native children; root verifies authoritative logs",
+    "make_conform": {
+      "status": "failed",
+      "exit_code": 2,
+      "selected": 2393,
+      "passed": 1608,
+      "native_build_failed": 785,
+      "report": "checks/conform-failed-report.md",
+      "input_record": "checks/conform-failed-input.json",
+      "generated_archive_sha256": "f314c720acf628547d9e3c3fe7750acaab9be18786aa20c3dfc3a684583089c3",
+      "verified_candidate_sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e",
+      "scope": "original mixed log/build-input mismatch after overlap; no source/compiler/strip repair"
+    },
+    "serial_pinned_strict_replay": {
+      "status": "passed; authoritative root session68761 exit0",
+      "log": "checks/conform-pinned.log",
+      "compiler": "/tmp/string-round2/ms",
+      "compiler_profile": "pinned Release",
+      "runtime": "/tmp/string-round2/normalize-ascii-after/libms_native.a",
+      "runtime_sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e",
+      "selection": "same2393cases/run-check-test/expect-fail/strict/shard as canonical failed run",
+      "result": "separate successful controlled local replay; canonical make invocation remains failed; required CI pending",
+      "exit_code": 0,
+      "report": "checks/conform-pinned-report.md",
+      "selected": 2393,
+      "passed": 2393,
+      "failed": 0,
+      "expected_failed": 0,
+      "unexpected_passed": 0,
+      "unrecorded": 0,
+      "phases": {
+        "check": 1603,
+        "run": 531,
+        "test": 259
+      }
+    }
+  },
+  "companion_metadata_files": [
+    "build-metadata/focused-after.json",
+    "build-metadata/focused-before.json",
+    "build-metadata/full-after.json",
+    "build-metadata/full-before.json"
+  ],
+  "completed_log_hash_policy": "All completed evidence files below are hashed; make failure and successful serial replay remain distinct.",
+  "whitespace_check": {
+    "full": "evidence-only whitespace warnings retained byte-for-byte",
+    "scoped": "passed excluding exact six immutable generated evidence files",
+    "excluded_paths": [
+      "bench/perf/string-normalize-ascii/runtime.patch",
+      "bench/perf/string-normalize-stream/runtime.patch",
+      "bench/perf/string-normalize-stream/exploratory/runtime-v0.patch",
+      "bench/perf/string-normalize-ascii/checks/conform.log",
+      "bench/perf/string-normalize-ascii/checks/conform-failed-report.md",
+      "bench/perf/string-normalize-ascii/checks/conform-pinned-report.md"
+    ]
+  }
+}

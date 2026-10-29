@@ -1,0 +1,580 @@
+sh scripts/conform.sh
+sh scripts/conform.sh
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `release` profile [optimized] target(s) in 0.33s
+    Finished `release` profile [optimized] target(s) in 0.35s
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(regex_syntax-46bb21b9be74c5ad.regex_syntax.9a460b7d641598e9-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(regex_syntax-46bb21b9be74c5ad.regex_syntax.9a460b7d641598e9-cgu.01.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(regex_syntax-46bb21b9be74c5ad.regex_syntax.9a460b7d641598e9-cgu.02.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(regex_syntax-46bb21b9be74c5ad.regex_syntax.9a460b7d641598e9-cgu.04.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(regex_syntax-46bb21b9be74c5ad.regex_syntax.9a460b7d641598e9-cgu.12.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.01.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.02.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.03.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.04.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.05.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.07.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.08.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.09.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.10.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.11.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.12.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.13.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.14.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_net-50d5284e7cec95fc.ms_std_net.796aaa06ed8eb98e-cgu.15.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.01.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.02.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.03.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.04.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.05.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.06.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.08.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustix-0838389907cd8766.rustix.66d65b9ec263a9a-cgu.09.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.01.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.03.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.04.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.05.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.06.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.07.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.08.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.09.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.10.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.11.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.12.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.13.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.14.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustls-be0476f8f1148d1a.rustls.f0757515a847e892-cgu.15.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(webpki-7784ec6cb2887f43.webpki.90998b736752f982-cgu.7.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(x509_parser-d96249d2c6dbda79.x509_parser.80d5167cd9fdd7c4-cgu.01.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(x509_parser-d96249d2c6dbda79.x509_parser.80d5167cd9fdd7c4-cgu.12.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(oid_registry-41f0c3297a3e4573.oid_registry.ec5cb9c7d99b7bec-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(der_parser-408ff213a93bac01.der_parser.acb6f21ca183d8d-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(socket2-c612be48fe17c44c.socket2.d6817b2cb274bdbb-cgu.1.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_html-6b35a3206cb552c5.ms_std_html.f0172b407e56a1fd-cgu.1.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.02.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.03.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.06.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.07.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.10.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.11.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.12.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.13.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.14.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_std_crypto-16b986761a6be29f.ms_std_crypto.c657cec96e0ed25e-cgu.15.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(p384-4f9db5a3969c9fa5.p384.d6ad35cf8a016fb9-cgu.1.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(curve25519_dalek-c82be446e29fef36.curve25519_dalek.baad9e90c67e1033-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(der-d2ffc523bacd67f6.der.b8f325fffa5a4888-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(crypto_bigint-b4007bcc0a0aee00.crypto_bigint.44a095a86118e8b9-cgu.00.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(crypto_bigint-b4007bcc0a0aee00.crypto_bigint.44a095a86118e8b9-cgu.05.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(crypto_bigint-b4007bcc0a0aee00.crypto_bigint.44a095a86118e8b9-cgu.07.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(crypto_common-f01316949bfd9d3f.crypto_common.5963d1f9514692e7-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(crypto_common-f01316949bfd9d3f.crypto_common.5963d1f9514692e7-cgu.1.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_rt-3095724bdc0ad2fb.ms_rt.e7cf1ede1d94b6cc-cgu.03.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_rt-3095724bdc0ad2fb.ms_rt.e7cf1ede1d94b6cc-cgu.07.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(mio-6a5911359febfbad.mio.2c276eb6f7431a8a-cgu.1.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: warning: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(std-6184624d869bf728.std.874b3852ee3928e7-cgu.0.rcgu.o) has a section extending past end of file
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(std-6184624d869bf728.std.874b3852ee3928e7-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(object-5ce6bcfb9427f5db.object.43431c45d10eeb9e-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(gimli-d178ee670d2867af.gimli.7a3f1c3541dbc762-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(rustc_demangle-e33a2a7a1171fdcb.rustc_demangle.9784c94114e19c19-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(alloc-6a73427a2dd35533.alloc.d0a56055437745c0-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(core-096eeb11fed3756f.core.ed37fd7903368ee-cgu.0.rcgu.o): Unable to recognise the format of file: file format not recognized
+strip: /workspace/manuscript-normalize-stream/crates/xtask/../../target/ms-native/libms_native.a(ms_rt-3095724bdc0ad2fb.ms_rt.e7cf1ede1d94b6cc-cgu.15.rcgu.o)[.text._RINvNtNtNtNtCs1gUZZmupoa8_4core5slice4sort6shared9smallsort11insert_tailjNCINvMNtCshUCiHv8I5f8_5alloc5sliceSj11sort_by_keyjNCNvNtCsjTUGenN38RY_5ms_rt5fault22address_ordered_tabless0_0E0EB23_.llvm.3076415817939120137]: file truncated
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on build directory
+    Finished `release` profile [optimized] target(s) in 0.06s
+    Finished `release` profile [optimized] target(s) in 0.09s
+make: *** [Makefile:56: conform] Terminated
+4153 fixtures, 0 problems
+running 2393 of 4153 fixtures with /workspace/manuscript-normalize-stream/target/debug/ms
+2393 fixtures: 1608 pass, 785 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (67.2%)
+  check   1603/1603  100.0%
+  run        4/531   0.8%
+  test       1/259   0.4%
+FAIL bench/agent-templates-ms
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/language-calls
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/language-life
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/language-list
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/language-numeric
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/lists-program
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL bench/lists-repro-cleared-tail
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL docs/contributing-compiler-conformance-semantic-tests-1
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "contributing-compiler-conformance-semantic-tests-1.ms::checked decrement"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-basics-numbers-and-booleans-4
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-basics-numbers-and-booleans-4.ms::decimal amounts"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-basics-text-and-bytes-3
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-basics-text-and-bytes-3.ms::string conversion"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-basics-text-and-bytes-4
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-basics-text-and-bytes-4.ms::explicit byte conversion"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-control-flow-loops-2
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-control-flow-loops-2.ms::sum indexes"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-control-flow-loops-3
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-control-flow-loops-3.ms::five iterations"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-control-flow-loops-4
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-control-flow-loops-4.ms::sum even indexes"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-types-collections-5
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-types-collections-5.ms::dynamic mutable data and explicit copies"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-types-records-8
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-types-records-8.ms::recursive expression"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/core-language-types-records-9
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "core-language-types-records-9.ms::recursive links"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/developer-tooling-builds-build-levels-1
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL docs/learn-best-practices-1
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-best-practices-1.ms::configuration defaults"
+    - report.tests[0].status: "passed"
+    - report.tests[1].index: 1
+    - report.tests[1].name: "learn-best-practices-1.ms::configuration rejects a wrong type"
+    - report.tests[1].status: "passed"
+    - ... 31 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-common-tasks-1
+    - exit_code: 0
+    - stdout:1| Hello, Manuscript!
+    - stdout:2| 
+    - stderr: ""
+    + exit_code: 1
+    + stdout: ""
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL docs/learn-common-tasks-5
+    - exit_code: 0
+    - stderr: ""
+    + exit_code: 1
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL docs/learn-testing-1
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-testing-1.ms::addition"
+    - report.tests[0].status: "passed"
+    - report.tests[1].index: 1
+    - report.tests[1].name: "learn-testing-1.ms::zero is unchanged"
+    - report.tests[1].status: "passed"
+    - ... 31 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-testing-2
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-testing-2.ms::typed JSON and Optional payloads"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-testing-3
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-testing-3.ms::increments"
+    - report.tests[0].status: "passed"
+    - report.tests[1].index: 1
+    - report.tests[1].name: "learn-testing-3.ms::starts fresh"
+    - report.tests[1].status: "passed"
+    - ... 31 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-tour-1
+    - exit_code: 0
+    - stdout:1| Hello, Manuscript!
+    - stdout:2| 
+    - stderr: ""
+    + exit_code: 1
+    + stdout: ""
+    + stderr:1| linking failed (exit status: 1); the linker output follows. A missing symbol or library usually means a stale or mismatched runtime (check MS_RT_LIB), not a source error:
+    + stderr:2| lld: error: /workspace/.cache/ms/native/aacc5e1b2f92ad0b-58635352/libms_native.a: Archive::children failed: truncated or malformed archive (terminator characters in archive member "\377\377"
+    + stderr:3| 
+
+FAIL docs/learn-tour-13
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-tour-13.ms::pipe flow"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-tour-14
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-tour-14.ms::counter behavior"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-tour-15
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-tour-15.ms::own methods"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-tour-2
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-tour-2.ms::unread message count"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+FAIL docs/learn-tour-5
+    - exit_code: 0
+    - report.repeat: 1
+    - report.tests[0].index: 0
+    - report.tests[0].name: "learn-tour-5.ms::count five iterations"
+    - report.tests[0].status: "passed"
+    - report.summary.available: 1
+    - report.summary.selected: 1
+    - report.summary.passed: 1
+    - ... 26 more
+    + exit_code: 1
+    + report.tests: []
+    + report.summary.available: 0
+    + report.summary.selected: 0
+    + report.summary.passed: 0
+    + report.completed: false
+    + report.exit_code: 1
+    + report.reason: "build_error"
+    + ... 34 more
+
+... 755 more failures (see --markdown / --json)
+make: *** [Makefile:56: conform] Error 1

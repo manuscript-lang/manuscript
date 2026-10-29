@@ -1,0 +1,130 @@
+{
+  "status": "initial84-case comparison complete; v0 costs retained; focused24 prepared unbuilt/unrun; separate ASCII identity variant pending",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "runtime_patch": "runtime.patch",
+  "runtime_build_method": "Both archives built from this worktree path; baseline string.rs temporarily restored from pinned commit with EXIT trap restoring saved candidate.",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "requested_build_type": "Release",
+  "explicit_tool_selection": {
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629"
+  },
+  "reported_companion_labels": {
+    "before": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    },
+    "after": {
+      "format": 1,
+      "backend": "cranelift",
+      "build_type": "Release"
+    }
+  },
+  "effective_optimization": "not independently verified beyond normal companion metadata; no backend, codegen or assembly investigation",
+  "correctness": {
+    "rust_string_tests": {
+      "passed": 22,
+      "filtered": 133
+    },
+    "source_release": {
+      "passed": 3,
+      "failed": 0
+    },
+    "source_debug": {
+      "passed": 3,
+      "failed": 0
+    },
+    "typed_source_release": {
+      "passed": 2,
+      "failed": 0
+    },
+    "typed_source_debug": {
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "matrix": {
+    "cases": 84,
+    "pairs": 7,
+    "rows": 1176,
+    "timing": "completed",
+    "focused": {
+      "cases": 24,
+      "status": "prepared; not built or run"
+    }
+  },
+  "artifacts": {
+    "before": {
+      "string.rs": {
+        "path": "/tmp/string-round2/normalize-before/string.rs",
+        "sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/normalize-before/libms_native.a",
+        "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/normalize-before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/normalize-before/program",
+        "sha256": "f8f5f9fce0c51ddc12917438c70c0ce77fba0fa2a4fa1140a445b217e67de588"
+      }
+    },
+    "after": {
+      "string.rs": {
+        "path": "/tmp/string-round2/normalize-after/string.rs",
+        "sha256": "349a8347769b2d166abaf0f3aa124227a419e1c9c2c84109ea80d7b4e56b9b1a"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/normalize-after/libms_native.a",
+        "sha256": "19c3b8b4f15cb4fcd9b869299794eaf60cd15603e6990de62f58eaef38248180"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/normalize-after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/normalize-after/program",
+        "sha256": "b54a64703a3f604980f6a0eceb19d146a1628daeb5891aab5df3d26d119f42a3"
+      }
+    }
+  },
+  "source_fixture": {
+    "path": "tests/e2e/testdata/stdlib/string-normalize-stream.ms",
+    "sha256": "90cb1eff306e813e20bad63e44242c03d27ebec75c7e386b7f18bcc92fad9d29"
+  },
+  "files_sha256": {
+    "README.md": "add74b875c41ac7c97ba26f62b2e3e6eeb929d77905a3cbbd8a0532ad7f16828",
+    "after-build.json": "c4e82eb8fb47722b03e7bd67491b9a4f1f276815e4e68030dd95ef66b0565938",
+    "before-build.json": "ac7f365d884023e2ec96c8d84a7fcfd110918590699fa62cdc0afaf41428956b",
+    "build-metadata/full-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "exploratory/runtime-v0.patch": "ca5f12a13f79cbaf9408d8f94e85c8757893d4ffd9ec8c299ffb43e071d1e20a",
+    "exploratory/source-tests.ms": "90cb1eff306e813e20bad63e44242c03d27ebec75c7e386b7f18bcc92fad9d29",
+    "focused-controls.ms": "4f3ba79564748e48a11b57079035e2159cd6f3ad15fc8dc7ce2886c4253ca601",
+    "focused-identities.json": "f7f6c50cb1dff29d1ad7b3f83b28a1c629050633828ef5c720e40eb9854a3e63",
+    "identities.json": "76faf953223f6e4c33b94a875d38c08321a56598dc9db8d84911e78a183f8e36",
+    "logs/after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/before-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/source-tests-debug.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "logs/source-tests-release.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "logs/string-tests.log": "8adac0caaa75893c83af16e77cebecbae6d28139e7050fb37f6f49578382d001",
+    "logs/typed-tests-debug.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "logs/typed-tests-release.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "main.ms": "756268ab53a6bd70488fe95829596809a9e71a8fef521905733f202a2921d096",
+    "paired-samples.csv": "4091cdcf02a223de7c55218fd0b87f44ccfaaed471a0b2df575b712d17a93b82",
+    "paired.csv": "789b0f0e63ba77552eb8850cea60be55d9d64b0285a387285d18409ccc45db6b",
+    "runtime.patch": "ca5f12a13f79cbaf9408d8f94e85c8757893d4ffd9ec8c299ffb43e071d1e20a",
+    "samples.csv": "bc3da6b1e2c04b58dc073fb55cec6eb8d35d3e2bdca2c8762471c4e954f24b3e",
+    "summary.csv": "7a398fee47594f9eb6b538190aca22908dc674f9b375c6017a76f5fee55e5c2f"
+  },
+  "companion_metadata_files": [
+    "build-metadata/full-after.json",
+    "build-metadata/full-before.json"
+  ]
+}
