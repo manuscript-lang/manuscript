@@ -1,0 +1,5 @@
+running 2394 of 4154 fixtures with /tmp/string-round2/reversal-restored/inputs/ms
+2394 fixtures: 2394 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
+  check   1603/1603  100.0%
+  run      532/532   100.0%
+  test     259/259   100.0%

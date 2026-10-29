@@ -1,0 +1,107 @@
+{
+  "status": "Final evidence ready: all four comparisons and all30 recorded checks complete; candidate rejected and PR1969 closed unmerged",
+  "root_tool_cell": 82826,
+  "actual_overall_exit": 0,
+  "corpus_lint_exit_as_reported_by_root": 0,
+  "completed_gate_steps_as_reported_by_root": "nativebefore/after,fmt,24runtime stringtests,workspaceclippy,repo-check,10sourcetestsperRelease/Debug all0",
+  "completed_comparisons": {
+    "normalize-full": {
+      "cases": 100,
+      "pairs": 7,
+      "raw_rows": 1400
+    },
+    "normalize-focused": {
+      "cases": 30,
+      "pairs": 9,
+      "raw_rows": 540
+    },
+    "reverse-full": {
+      "cases": 83,
+      "pairs": 7,
+      "raw_rows": 1162
+    },
+    "reverse-focused": {
+      "cases": 18,
+      "pairs": 9,
+      "raw_rows": 324
+    }
+  },
+  "publication": "Evidence-only branch after completion; no candidate merge or new performance PR",
+  "excluded": "No binaries/native archives/helper IR or active mutable artifacts in package.",
+  "actual_exit_provenance": "After-run root tool transcript handoff, not producer-generated status; launch-record.json",
+  "final_record": "record.json",
+  "conformance_summary": {
+    "total": 2394,
+    "pass": 2394,
+    "fail": 0,
+    "expected_fail": 0,
+    "unexpected_pass": 0,
+    "unrecorded": 0,
+    "pass_rate": 100.0
+  },
+  "conformance_by_phase": {
+    "check": {
+      "total": 1603,
+      "pass": 1603,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "run": {
+      "total": 532,
+      "pass": 532,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "test": {
+      "total": 259,
+      "pass": 259,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    }
+  },
+  "conformance_input_hashes_match": true,
+  "gate_artifacts": "checks/",
+  "pending": [
+    "Root immutable informal review and evidence-only branch publication"
+  ],
+  "PR1969": {
+    "state": "closed/unmerged",
+    "head": "0525bd107aa1eee7756c90cef44d73bdd45c45d9",
+    "closed_at_utc": "2026-10-29T19:48:29Z"
+  },
+  "PR1967": {
+    "state": "merged",
+    "head": "05152904151ed68e8c8892bf8d167639bd7a0883",
+    "merge": "bb7198ea3c5d77fa1e59b39444ab68f5304a079a"
+  },
+  "correction_PR1975": {
+    "state": "open; normal gates/auto-merge pending",
+    "head": "1e36515bbbf63127b1d626fbe7f33ab0fbcf9ac1",
+    "latest_root_verification_utc": "2026-10-29T19:56:00Z",
+    "status_qualification": "At evidence collection; latest root verification2026-10-29 19:56UTC; subsequent normal merge may occur."
+  },
+  "upstream_source_freshness": {
+    "checked_at_utc": "2026-10-29T19:57Z",
+    "fetched_main": "f7659657ccf5549455cb1f78baac49b5505416bd",
+    "command": [
+      "git",
+      "diff",
+      "--exit-code",
+      "85cfb96b889ec4176cfe71a42d74acfd091cbe60",
+      "origin/main",
+      "--",
+      "crates/ms-rt/src/string.rs"
+    ],
+    "exit_code": 0,
+    "provenance": "Root handoff from fetched main and executed command; source-only freshness, no new runtime/platform validation or native measurement."
+  }
+}

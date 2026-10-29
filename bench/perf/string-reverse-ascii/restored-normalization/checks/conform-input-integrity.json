@@ -1,0 +1,80 @@
+{
+  "before": {
+    "expect-fail.txt": {
+      "sha256": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+      "size": 267,
+      "mode": "0o444"
+    },
+    "libms_native.a": {
+      "sha256": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+      "size": 47087620,
+      "mode": "0o444"
+    },
+    "ms": {
+      "sha256": "448c69c6523a27f36b89ec4a8f5cb3fba6b6fa2c8e45070204e0a208f2bcebd3",
+      "size": 126886240,
+      "mode": "0o555"
+    },
+    "ms-conform": {
+      "sha256": "78d4714d54e110bc4f0fd9a523ee78852c1b74fd2c230f4f3376d41bed0dbf5b",
+      "size": 8584448,
+      "mode": "0o555"
+    },
+    "ms_rt_hot.ll": {
+      "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "size": 114241,
+      "mode": "0o444"
+    }
+  },
+  "directory_mode": "0o555",
+  "writer_coordination": "All builds and timing finished; selected dedicated read-only snapshots never a build destination; root sole gate executor; no native jobs during this replay.",
+  "command": [
+    "/tmp/string-round2/reversal-restored/inputs/ms-conform",
+    "run",
+    "--ms",
+    "/tmp/string-round2/reversal-restored/inputs/ms",
+    "--phase",
+    "run,check,test",
+    "--exclude-tag",
+    "aliasing",
+    "--expect-fail",
+    "/tmp/string-round2/reversal-restored/inputs/expect-fail.txt",
+    "--strict",
+    "--shard",
+    "0/1",
+    "--quiet",
+    "--markdown",
+    "/tmp/string-round2/reversal-restored/checks/conform-report.md",
+    "--json",
+    "/tmp/string-round2/reversal-restored/checks/conform-report.json"
+  ],
+  "exit_code": 0,
+  "after": {
+    "expect-fail.txt": {
+      "sha256": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+      "size": 267,
+      "mode": "0o444"
+    },
+    "libms_native.a": {
+      "sha256": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+      "size": 47087620,
+      "mode": "0o444"
+    },
+    "ms": {
+      "sha256": "448c69c6523a27f36b89ec4a8f5cb3fba6b6fa2c8e45070204e0a208f2bcebd3",
+      "size": 126886240,
+      "mode": "0o555"
+    },
+    "ms-conform": {
+      "sha256": "78d4714d54e110bc4f0fd9a523ee78852c1b74fd2c230f4f3376d41bed0dbf5b",
+      "size": 8584448,
+      "mode": "0o555"
+    },
+    "ms_rt_hot.ll": {
+      "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "size": 114241,
+      "mode": "0o444"
+    }
+  },
+  "hashes_match": true
+}

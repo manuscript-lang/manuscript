@@ -1,0 +1,18 @@
+{
+  "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+  "correction_baseline": "1e36515bbbf63127b1d626fbe7f33ab0fbcf9ac1",
+  "original_reversal_head": "0525bd107aa1eee7756c90cef44d73bdd45c45d9",
+  "source_before_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+  "source_after_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+  "normalization_byte_exact_baseline_before_and_after": true,
+  "normalize_kind_sha256": "c0c6293d7f1923ec913b54915d5c804c849c3a708c5c9369ab5f51ac115da813",
+  "reversal_function_byte_exact_original_head": true,
+  "reverse_function_sha256": "e332dd6f3c392a497f32e868f1402d5189646d0712a888015d12818bca5855ce",
+  "string_rs_diff": {
+    "added": 89,
+    "deleted": 2,
+    "added_runtime_lines": 25,
+    "added_test_lines": 64
+  },
+  "provenance": "Read-only immutable git source inspection; active logs and mutable run record not copied."
+}

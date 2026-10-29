@@ -1,0 +1,96 @@
+{
+  "status": "Completed distinct focused reversal comparison; final root gate pending",
+  "provenance": "Derived completed-phase extraction from active original record, not a byte-copy of mutable record; producer completion confirmed by root handoff.",
+  "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+  "checks": {
+    "reverse-focused-build-before": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-focused-build-after": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-focused": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "bench/perf/string-reverse-ascii/focused-identities.json"
+      ],
+      "exit_code": 0
+    }
+  },
+  "native": {
+    "before": {
+      "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+      "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "after": {
+      "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+      "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    }
+  },
+  "programs": {
+    "before": {
+      "sha256": "f0159219d36e2716dd528d94d66a5a91eeccbae21fff412c3f5341f2cabcec61",
+      "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+      "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after": {
+      "sha256": "8bb69a5186e9b555d6386e3a1e9c1a23b358aedd216d5dca8d701225c7b657b0",
+      "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+      "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  },
+  "raw_rows": 324,
+  "cases": 18,
+  "pairs": 9,
+  "paired_rows": 162,
+  "unfavorable_medians": 4,
+  "favorable_medians": 14,
+  "offline_validation": "Every expected identity, operation count, checksum, row uniqueness, positive elapsed and complete before/after pair validated; original paired summaries agree. No filtering/reruns.",
+  "public_metadata_limit": "Release/cranelift labels; effective backend/optimization beyond labels unverified.",
+  "root_tool_cell": 82826,
+  "overall_exit": "Pending root actual final exit; phase producer exit0 does not establish overall exit."
+}

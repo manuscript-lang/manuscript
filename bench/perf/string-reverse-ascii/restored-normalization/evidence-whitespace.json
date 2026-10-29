@@ -1,0 +1,20 @@
+[
+  {
+    "path": "source-states/reversal-on-correction.patch",
+    "reasons": [
+      "byte-preserved generated trailing whitespace / unified patch context"
+    ]
+  },
+  {
+    "path": "checks/conform-report.md",
+    "reasons": [
+      "byte-preserved generated final blank line"
+    ]
+  },
+  {
+    "path": "checks/string-tests.log",
+    "reasons": [
+      "byte-preserved generated final blank line"
+    ]
+  }
+]

@@ -1,0 +1,487 @@
+{
+  "head": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+  "scope": "Only reviewed reversal candidate composed with exact normalization rollback; baseline1e36515bb. Normal public runtime builds; compiler448c69c65 from correction gate pinned unchanged; no compiler/backend investigation.",
+  "checks": {
+    "native-before": {
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0
+    },
+    "native-after": {
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0
+    },
+    "fmt": {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    "string-tests": {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "ms-rt",
+        "string::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0
+    },
+    "clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    "repo-check": {
+      "command": [
+        "make",
+        "repo-check"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-stream-Release": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-stream.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-ascii-Release": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-ascii.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "typed-normalization-Release": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/typed-normalization.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-reverse-ascii-Release": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-ascii.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-reverse-spans-Release": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-spans.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-stream-Debug": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-stream.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-ascii-Debug": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-ascii.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "typed-normalization-Debug": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/typed-normalization.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "string-reverse-ascii-Debug": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-ascii.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "string-reverse-spans-Debug": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-reverse-spans.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "normalize-full-build-before": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/normalize-full/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "normalize-full-build-after": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/normalize-full/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "normalize-full": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/reversal-restored/performance/normalize-full/before/program",
+        "/tmp/string-round2/reversal-restored/performance/normalize-full/after/program",
+        "/tmp/string-round2/reversal-restored/performance/normalize-full/samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/identities.json"
+      ],
+      "exit_code": 0
+    },
+    "normalize-focused-build-before": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/normalize-focused/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "normalize-focused-build-after": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/normalize-focused/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "normalize-focused": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/reversal-restored/performance/normalize-focused/before/program",
+        "/tmp/string-round2/reversal-restored/performance/normalize-focused/after/program",
+        "/tmp/string-round2/reversal-restored/performance/normalize-focused/samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/focused-identities.json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-full-build-before": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-full/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-full-build-after": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-full/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-full": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/reversal-restored/performance/reverse-full/before/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-full/after/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-full/samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-reverse-ascii/identities.json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-focused-build-before": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-focused-build-after": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "reverse-focused": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+        "/tmp/string-round2/reversal-restored/performance/reverse-focused/samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "bench/perf/string-reverse-ascii/focused-identities.json"
+      ],
+      "exit_code": 0
+    },
+    "corpus-lint": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms-conform",
+        "lint"
+      ],
+      "exit_code": 0
+    },
+    "conform": {
+      "command": [
+        "/tmp/string-round2/reversal-restored/inputs/ms-conform",
+        "run",
+        "--ms",
+        "/tmp/string-round2/reversal-restored/inputs/ms",
+        "--phase",
+        "run,check,test",
+        "--exclude-tag",
+        "aliasing",
+        "--expect-fail",
+        "/tmp/string-round2/reversal-restored/inputs/expect-fail.txt",
+        "--strict",
+        "--shard",
+        "0/1",
+        "--quiet",
+        "--markdown",
+        "/tmp/string-round2/reversal-restored/checks/conform-report.md",
+        "--json",
+        "/tmp/string-round2/reversal-restored/checks/conform-report.json"
+      ],
+      "exit_code": 0,
+      "hashes_match": true
+    }
+  },
+  "native": {
+    "before": {
+      "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+      "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "after": {
+      "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+      "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    }
+  },
+  "started_unix": 1793302605.2604067,
+  "input_hashes": {
+    "expect-fail.txt": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+    "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+    "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+    "ms-conform": "78d4714d54e110bc4f0fd9a523ee78852c1b74fd2c230f4f3376d41bed0dbf5b",
+    "ms": "448c69c6523a27f36b89ec4a8f5cb3fba6b6fa2c8e45070204e0a208f2bcebd3"
+  },
+  "programs": {
+    "normalize-full": {
+      "before": {
+        "sha256": "f48db27b80cac6bb13f0f672b6557fc30b400d9489efd0460be3df37fc3d464d",
+        "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+        "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      },
+      "after": {
+        "sha256": "f61add110306008bf1d58e44eb5097fb84e6be4b7afd72a545c103af2f22c332",
+        "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+        "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      }
+    },
+    "normalize-focused": {
+      "before": {
+        "sha256": "0227f333b758f97144a460495955bf309e800f98321bd9965d0cfb08ec10bfea",
+        "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+        "identities_sha256": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      },
+      "after": {
+        "sha256": "5ef1e05b2ade248b330cee14194e78416b7138fc862c21ecf3b9f1436b8bfd43",
+        "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+        "identities_sha256": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      }
+    },
+    "reverse-full": {
+      "before": {
+        "sha256": "47a7ac435ba0184b84f589efb39682efca9a4ebef81d856c5c77629d65dd0ac9",
+        "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+        "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      },
+      "after": {
+        "sha256": "35ae848d97b90360006fd21f74c47252d2545b4f250b1112550c3e5ad6332df5",
+        "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+        "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      }
+    },
+    "reverse-focused": {
+      "before": {
+        "sha256": "f0159219d36e2716dd528d94d66a5a91eeccbae21fff412c3f5341f2cabcec61",
+        "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+        "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      },
+      "after": {
+        "sha256": "8bb69a5186e9b555d6386e3a1e9c1a23b358aedd216d5dca8d701225c7b657b0",
+        "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+        "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+        "public_metadata": {
+          "format": 1,
+          "version": "0.1.0",
+          "backend": "cranelift",
+          "build_type": "Release"
+        }
+      }
+    }
+  },
+  "finished_unix": 1793303774.7567647
+}

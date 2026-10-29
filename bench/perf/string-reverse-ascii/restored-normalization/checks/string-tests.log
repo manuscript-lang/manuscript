@@ -1,0 +1,46 @@
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript-reversal-restored/crates/ms-rt-abi)
+   Compiling ms-rt-hot v0.1.0 (/workspace/manuscript-reversal-restored/crates/ms-rt-hot)
+   Compiling ms-rt v0.1.0 (/workspace/manuscript-reversal-restored/crates/ms-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.79s
+     Running unittests src/lib.rs (target/debug/deps/ms_rt-b9eb529fe4f7aa1d)
+
+running 24 tests
+test string::tests::bytes_eq_matches_slice_equality ... ok
+test string::tests::case_pad_slice ... ok
+test string::tests::concat_parts_joins_and_skips_empties ... ok
+test string::tests::copy_bytes_copies_exactly_the_requested_bytes ... ok
+test string::tests::find_matches_naive_search ... ok
+test string::tests::format_parts_writes_integers_in_place_of_strings ... ok
+test string::tests::hash_bytes_separates_lengths_and_contents ... ok
+test string::tests::join_strings_matches_a_plain_join ... ok
+test string::tests::length_and_get_follow_scalars ... ok
+test string::tests::lowercase_sigma_ignores_unicode_marks_and_format_characters ... ok
+test string::tests::needle_find_matches_a_naive_search_near_the_window_edge ... ok
+test string::tests::newline_search_matches_scalar_search_across_the_prefix_boundary ... ok
+test string::tests::normalization_keeps_invalid_form_and_negative_budget_errors ... ok
+test string::tests::normalization_preserves_valid_and_malformed_scalar_sequences_with_budgets ... ok
+test string::tests::normalize_nfd ... ok
+test string::tests::repeat_and_pad_fill_patterns_across_doubling_boundaries ... ok
+test string::tests::replace_first_matches_standard_string_model ... ok
+test string::tests::reverse_matches_scalar_order_across_byte_boundaries ... ok
+test string::tests::reverse_preserves_valid_spans_and_replaces_malformed_bytes ... ok
+test string::tests::short_searches_agree_with_a_naive_scan ... ok
+test string::tests::split_replace_trim ... ok
+test string::tests::split_view_pieces_borrow_the_source ... ok
+test string::tests::substring_search_matches_exhaustive_byte_model ... ok
+test string::tests::substring_search_repetitive_near_matches ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 129 filtered out; finished in 0.29s
+
+     Running tests/scope_teardown.rs (target/debug/deps/scope_teardown-8801c14662cc6a6d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/trap_isolation.rs (target/debug/deps/trap_isolation-661d4598ab2457ad)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+

@@ -1,0 +1,52 @@
+{
+  "kind": "After-run tool transcript provenance supplied by root; not producer-generated overall status",
+  "root_tool_cell": 82826,
+  "actual_exit_code": 0,
+  "observed_output": [
+    "conform 0 hashes_match True"
+  ],
+  "provenance": "Root confirmed authoritative script finished with actual exit0 from tool transcript; report packager did not independently observe the original tool session.",
+  "protocol": "protocol/check-reversal-restored.py",
+  "producer_record": "record.json",
+  "no_failed_or_overwritten_phase": "Root explicitly confirms no phase failed or was overwritten; all four archived phase raw/summary/paired and metadata files byte-match final originals.",
+  "conformance_summary_from_completed_json": {
+    "total": 2394,
+    "pass": 2394,
+    "fail": 0,
+    "expected_fail": 0,
+    "unexpected_pass": 0,
+    "unrecorded": 0,
+    "pass_rate": 100.0
+  },
+  "conformance_by_phase_from_completed_json": {
+    "check": {
+      "total": 1603,
+      "pass": 1603,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "run": {
+      "total": 532,
+      "pass": 532,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "test": {
+      "total": 259,
+      "pass": 259,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    }
+  },
+  "hashes_match": true,
+  "recorded_at_utc": "2026-10-29T19:58:04.296026+00:00"
+}

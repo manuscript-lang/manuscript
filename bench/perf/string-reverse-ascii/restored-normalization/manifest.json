@@ -1,0 +1,594 @@
+{
+  "manifest_format_version": 1,
+  "status": "Final evidence ready for immutable review/evidence-only publication: all four comparisons, all30 recorded steps and conformance complete; actual root exit0; reversal candidate closed unmerged",
+  "scope": "Read-only git evidence and completed-artifact packaging only; no native builds/writers/timing/reruns or unrelated probes by packager. No binaries/native archives/helper IR or active artifacts copied.",
+  "pending": [
+    "Root immutable informal review and evidence-only publication"
+  ],
+  "source_proof": "source-proof.json",
+  "files_sha256": {
+    "README.md": "b47c9309cbaf5b33a661a2761de6fda3401852b339118da3f989bf82f219803a",
+    "checks/clippy.log": "83763b4c86832726128f3497ac92fe467f7b30912262ede7dbea599849c505bb",
+    "checks/conform-input-integrity.json": "f35d48b3a6fd92e21eebea9b504ff42d942c7910e6d5742ede620b0fd092899b",
+    "checks/conform-report.json": "f41beb86be07665fb4e45907ed2b400d8272fd32f9e157fcc52bc9e6d6121034",
+    "checks/conform-report.md": "29ffe86bfa3c490d9bfa472871c4b44dcf64de3c0089a69772be23862e1a1c5a",
+    "checks/conform.log": "4b2e824601a991c47893c5b6173d1c18ddafc36e40467eebdba134168ae9674b",
+    "checks/corpus-lint.log": "8b4083c07b01b5abfe0cc78b4bd355f56d35b2ef5abbf96e1cbdd97e344c47a2",
+    "checks/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "checks/native-after.log": "e306f50a7be5d0e80e957c1c70fd408edbd45f769a9b768118b0fb0f4187c1f5",
+    "checks/native-before.log": "e81a4e886800b092b75015e6cd00e158ed26995a53be95ea162a8c1031222b8e",
+    "checks/repo-check.log": "1a1c1ad3d0681ef04bc83514f1b7c367c3187ef0f8499d4e21d90f8bc3b3db5b",
+    "checks/string-normalize-ascii-Debug.log": "09e0b3576d1af26df5b51c625689b5a4202871f70bd7c7859ee1f41cc65ace10",
+    "checks/string-normalize-ascii-Release.log": "09e0b3576d1af26df5b51c625689b5a4202871f70bd7c7859ee1f41cc65ace10",
+    "checks/string-normalize-stream-Debug.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "checks/string-normalize-stream-Release.log": "664a00a5164e12512bcdce106686d2ec5fa213f02008a28fc1f506941093d3ce",
+    "checks/string-reverse-ascii-Debug.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "checks/string-reverse-ascii-Release.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "checks/string-reverse-spans-Debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "checks/string-reverse-spans-Release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "checks/string-tests.log": "d7aeb331157424df4f799e20e2c8ba706953b0242be64cbce1f915b9b164062f",
+    "checks/typed-normalization-Debug.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "checks/typed-normalization-Release.log": "d030457d3d8449c59559770032e6d400eb8dbc1313017192a0e7abc1de69d69c",
+    "evidence-whitespace.json": "aa0fc707d5a1a85d6ac0aaeae4a13c64c0c665f9729825f432f71f4daa3f00d1",
+    "launch-record.json": "8c9e7af91cf1850235a7ae201c8cfa3b7f49628f748b3ec921abec6bcba493de",
+    "normalize-focused/after-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normalize-focused/after-cli.json": "102df83fd90ccccca6d6f04c67f7dd35a0bf000649527ba7fba21e356f286b64",
+    "normalize-focused/after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "normalize-focused/all-case-statistics.csv": "b3a2f79e6cba6f0b63d41d5004351b73b1bd262764571d863725bcfc8f390d97",
+    "normalize-focused/before-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normalize-focused/before-cli.json": "0912b15c9bb072a382594aa0715a01014c39c270791af272e49a6ba31c947703",
+    "normalize-focused/before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "normalize-focused/completed-phase.json": "38cf7ac31263ad678e95b1507f169dcc8acf62251fce1b8b58a2a8d758f276a7",
+    "normalize-focused/identities.json": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+    "normalize-focused/paired-samples.csv": "f1c37ca55f2f4e164f8f4a6d63a53839f47f54180451e6f34014fe361d230e73",
+    "normalize-focused/paired.csv": "3badd8d0846ce462122463691f97a9ce71bfdc05976a95db224125997c6fa301",
+    "normalize-focused/samples.csv": "0980da05dd7bb0f1ee7b6f84a549809ab152e8e65ecb412a0785082e3b9cfc81",
+    "normalize-focused/source.ms.txt": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+    "normalize-focused/summary.csv": "dafd453cbfddb94a12b606b4f811261f8f9ceda70bc531d298e43f7353776f5f",
+    "normalize-focused/unfavorable-medians.csv": "ee2af539cde33db5bb95e6298f715abfe8a4aff0c8437a82e9d11da24d15e9d9",
+    "normalize-full/after-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normalize-full/after-cli.json": "874d40a58331aeb177dfab8de4fe6d817fd195e65f3690b0e06f80fcf4f66929",
+    "normalize-full/after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "normalize-full/all-case-statistics.csv": "a4bdcb357f5c211a5464d9dd0b0399ca7fb7d40e706c36bd75f062e182b40ee1",
+    "normalize-full/before-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "normalize-full/before-cli.json": "249ee256e88435d4593cde82e6449894f85ed41fe9a6908047fbe77192efcd44",
+    "normalize-full/before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "normalize-full/completed-phase.json": "9aa08dfca3d83a6e6d54b8137daefb5b335f1da2a7aaff19ebc43fce95fbf493",
+    "normalize-full/identities.json": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+    "normalize-full/paired-samples.csv": "e82d20d985dc319ec77326ae934dd7c28c02805d5c86e4409b44e7912fe0b343",
+    "normalize-full/paired.csv": "f60efbae728df004dac1d4ef0c91f52c92281a77dafe28169823f063fbe980b3",
+    "normalize-full/samples.csv": "903166ed5776a48b11c8782d4afd70f45d9a2d7c916624984f5b7ac7afe7b5b2",
+    "normalize-full/source.ms.txt": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+    "normalize-full/summary.csv": "7e289d09cca278d02ce84b1fc5f0734a0634939aec62f7bf8fe7ccf9d5e0d027",
+    "normalize-full/unfavorable-medians.csv": "6ce80245ce0ca1318893a20620108012b33702f00f2c8126b76c0068e0d31f32",
+    "protocol/analyze-pairs.py": "9afde3866c9480dc6777467077bc58f78ff8a5572b1422a78d71166cc1f6b287",
+    "protocol/check-reversal-restored.py": "86999e9c8db9dc6a3f81532623f80b54182f9c760f0c576030a8d51d7c12d33b",
+    "protocol/compare.py": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "record.json": "0d40770ea23c0a840df993cd7eab005688ef7f538275384b389fc57c16858715",
+    "reverse-focused/after-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reverse-focused/after-cli.json": "6101c2a56a23fbbf7e6ad576979425b6dead0ade462debdfaf8c616209973cfb",
+    "reverse-focused/after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "reverse-focused/all-case-statistics.csv": "d18871bf76c2d3c335cabbddb2c6ef510f2f5e3bdf2259cb71dbefd493bda8d1",
+    "reverse-focused/before-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reverse-focused/before-cli.json": "638c379d9b54d5536a8503e25be841899daf476943ef221d3246bf1384ab713e",
+    "reverse-focused/before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "reverse-focused/completed-phase.json": "52bd0ad3eeaaedc33ac3ea6907a3c73ddbc82f4651b3fbdca86bd24e47f51571",
+    "reverse-focused/identities.json": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+    "reverse-focused/paired-samples.csv": "b5296b1730055bfcacff358c15440667f88647091d13e3c9989bd1bb6220a37d",
+    "reverse-focused/paired.csv": "7f21c774fb2ecfd0123b5f40bffa40b514855b79b777f7daaeb189f210824fd2",
+    "reverse-focused/samples.csv": "69d97327b5e0d0ed35ffff4991876cbee830948b8be2995e66e750517714255d",
+    "reverse-focused/source.ms.txt": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+    "reverse-focused/summary.csv": "85319fa865e8a05d471fec9ff8895cfb163534e31119fb08fd0893756d893c9c",
+    "reverse-focused/unfavorable-medians.csv": "517dd8ceeaf1535b6a077171c75c18feeadb24d6f4c5f9b060b7e26151124bed",
+    "reverse-full/after-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reverse-full/after-cli.json": "488a1eef313bb7386594adb87cb1c5f985b4e84153d4ab6fc8f89b651f68f8a8",
+    "reverse-full/after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "reverse-full/all-case-statistics.csv": "93e3196e980db7a2cf069392953ce232305b0487635f701cf90d0418bb0600ba",
+    "reverse-full/before-build.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reverse-full/before-cli.json": "7cb4c5a66296b3afa7eccd81860f823596b215fa7606bf8613657983dff09c35",
+    "reverse-full/before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "reverse-full/completed-phase.json": "60d8d0edb1db8a2d7ae5cb332475406d57b9e7669b18b6fc2789c6896d69f71d",
+    "reverse-full/identities.json": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+    "reverse-full/paired-samples.csv": "62e77aab544b63b88b3003168024561c5c48a40aef8eeeee634287bf63b34279",
+    "reverse-full/paired.csv": "6fe10cb831a094b805819438fe7f433be75552e2e83f96cea80fbbbfe9a211f7",
+    "reverse-full/samples.csv": "8ba2cecd928ed1ed3b43f2634ccd5fddbd77bab2ce7f2f78e08560606036b3f9",
+    "reverse-full/source.ms.txt": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+    "reverse-full/summary.csv": "80a5154cfff6dca07d6786de85d79024d0cad1093a686b8ac1c7292a1b2320a5",
+    "reverse-full/unfavorable-medians.csv": "c1ffcf146f1b86894d81e05d8fe7f07b8c6015c0bf2021d666398c4647ee732c",
+    "source-proof.json": "62cf1ccadfb4a9856858347c34bd5065378d91ff571bcdb71aebadfe6fce5981",
+    "source-states/after.rs.txt": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+    "source-states/before.rs.txt": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+    "source-states/reversal-on-correction.patch": "885a130c47e24a71c2eb3f912b5b41836641618cd3a948ebc41c2a1e07dff575",
+    "status.json": "7f53164c5b17ad3b6f24f4867605836ad90a2c9dd6dd81c2082adb55dcd1b4ec",
+    "verify_evidence.py": "c6de4f3138f35c602e009e7ec0b155f7bd5b43ce8f16fac7a1817e288cacf1da"
+  },
+  "updated_at_utc": "2026-10-29T19:59:05.146187+00:00",
+  "hashed_file_count": 94,
+  "completed_phases": {
+    "normalize-full": {
+      "status": "Completed comparison; other phases and final root gate still pending",
+      "provenance": "Derived completed-phase extraction from active original record, not a byte-copy of mutable record; producer completion confirmed by root handoff.",
+      "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+      "checks": {
+        "normalize-full-build-before": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-normalize-ascii/main.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/normalize-full/before/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "normalize-full-build-after": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-normalize-ascii/main.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/normalize-full/after/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "normalize-full": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "python3",
+            "bench/perf/string-lines/compare.py",
+            "/tmp/string-round2/reversal-restored/performance/normalize-full/before/program",
+            "/tmp/string-round2/reversal-restored/performance/normalize-full/after/program",
+            "/tmp/string-round2/reversal-restored/performance/normalize-full/samples.csv",
+            "--pairs",
+            "7",
+            "--identity-file",
+            "bench/perf/string-normalize-ascii/identities.json"
+          ],
+          "exit_code": 0
+        }
+      },
+      "native": {
+        "before": {
+          "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+          "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "after": {
+          "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+          "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        }
+      },
+      "programs": {
+        "before": {
+          "sha256": "f48db27b80cac6bb13f0f672b6557fc30b400d9489efd0460be3df37fc3d464d",
+          "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+          "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        },
+        "after": {
+          "sha256": "f61add110306008bf1d58e44eb5097fb84e6be4b7afd72a545c103af2f22c332",
+          "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+          "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        }
+      },
+      "raw_rows": 1400,
+      "cases": 100,
+      "pairs": 7,
+      "paired_rows": 700,
+      "unfavorable_medians": 56,
+      "favorable_medians": 44,
+      "offline_validation": "Every expected identity, operation count, checksum, row uniqueness, positive elapsed and complete before/after pair validated; original paired summaries agree. No filtering/reruns.",
+      "public_metadata_limit": "Release/cranelift labels; effective backend/optimization beyond labels unverified.",
+      "root_tool_cell": 82826,
+      "overall_exit": "Pending root actual final exit; phase producer exit0 does not establish overall exit."
+    },
+    "normalize-focused": {
+      "status": "Completed distinct focused comparison; remaining phases/final root gate pending",
+      "provenance": "Derived completed-phase extraction from active original record, not a byte-copy of mutable record; producer completion confirmed by root handoff.",
+      "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+      "checks": {
+        "normalize-focused-build-before": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-normalize-ascii/focused-controls.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/normalize-focused/before/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "normalize-focused-build-after": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-normalize-ascii/focused-controls.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/normalize-focused/after/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "normalize-focused": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "python3",
+            "bench/perf/string-lines/compare.py",
+            "/tmp/string-round2/reversal-restored/performance/normalize-focused/before/program",
+            "/tmp/string-round2/reversal-restored/performance/normalize-focused/after/program",
+            "/tmp/string-round2/reversal-restored/performance/normalize-focused/samples.csv",
+            "--pairs",
+            "9",
+            "--identity-file",
+            "bench/perf/string-normalize-ascii/focused-identities.json"
+          ],
+          "exit_code": 0
+        }
+      },
+      "native": {
+        "before": {
+          "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+          "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "after": {
+          "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+          "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        }
+      },
+      "programs": {
+        "before": {
+          "sha256": "0227f333b758f97144a460495955bf309e800f98321bd9965d0cfb08ec10bfea",
+          "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+          "identities_sha256": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        },
+        "after": {
+          "sha256": "5ef1e05b2ade248b330cee14194e78416b7138fc862c21ecf3b9f1436b8bfd43",
+          "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+          "identities_sha256": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        }
+      },
+      "raw_rows": 540,
+      "cases": 30,
+      "pairs": 9,
+      "paired_rows": 270,
+      "unfavorable_medians": 19,
+      "favorable_medians": 11,
+      "offline_validation": "Every expected identity, operation count, checksum, row uniqueness, positive elapsed and complete before/after pair validated; original paired summaries agree. No filtering/reruns.",
+      "public_metadata_limit": "Release/cranelift labels; effective backend/optimization beyond labels unverified.",
+      "root_tool_cell": 82826,
+      "overall_exit": "Pending root actual final exit; phase producer exit0 does not establish overall exit."
+    },
+    "reverse-full": {
+      "status": "Completed distinct full reversal comparison; focused reversal/final root gate pending",
+      "provenance": "Derived completed-phase extraction from active original record, not a byte-copy of mutable record; producer completion confirmed by root handoff.",
+      "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+      "checks": {
+        "reverse-full-build-before": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-reverse-ascii/main.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/reverse-full/before/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "reverse-full-build-after": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-reverse-ascii/main.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/reverse-full/after/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "reverse-full": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "python3",
+            "bench/perf/string-lines/compare.py",
+            "/tmp/string-round2/reversal-restored/performance/reverse-full/before/program",
+            "/tmp/string-round2/reversal-restored/performance/reverse-full/after/program",
+            "/tmp/string-round2/reversal-restored/performance/reverse-full/samples.csv",
+            "--pairs",
+            "7",
+            "--identity-file",
+            "bench/perf/string-reverse-ascii/identities.json"
+          ],
+          "exit_code": 0
+        }
+      },
+      "native": {
+        "before": {
+          "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+          "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "after": {
+          "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+          "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        }
+      },
+      "programs": {
+        "before": {
+          "sha256": "47a7ac435ba0184b84f589efb39682efca9a4ebef81d856c5c77629d65dd0ac9",
+          "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+          "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        },
+        "after": {
+          "sha256": "35ae848d97b90360006fd21f74c47252d2545b4f250b1112550c3e5ad6332df5",
+          "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+          "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        }
+      },
+      "raw_rows": 1162,
+      "cases": 83,
+      "pairs": 7,
+      "paired_rows": 581,
+      "unfavorable_medians": 3,
+      "favorable_medians": 80,
+      "offline_validation": "Every expected identity, operation count, checksum, row uniqueness, positive elapsed and complete before/after pair validated; original paired summaries agree. No filtering/reruns.",
+      "public_metadata_limit": "Release/cranelift labels; effective backend/optimization beyond labels unverified.",
+      "root_tool_cell": 82826,
+      "overall_exit": "Pending root actual final exit; phase producer exit0 does not establish overall exit."
+    },
+    "reverse-focused": {
+      "status": "Completed distinct focused reversal comparison; final root gate pending",
+      "provenance": "Derived completed-phase extraction from active original record, not a byte-copy of mutable record; producer completion confirmed by root handoff.",
+      "local_validation_commit": "e8bad27e6462a0d7ecfcd863c4a81519bfc3e05d",
+      "checks": {
+        "reverse-focused-build-before": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-reverse-ascii/focused-controls.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "reverse-focused-build-after": {
+          "command": [
+            "/tmp/string-round2/reversal-restored/inputs/ms",
+            "build",
+            "bench/perf/string-reverse-ascii/focused-controls.ms",
+            "--build-type",
+            "Release",
+            "-o",
+            "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+            "--json"
+          ],
+          "exit_code": 0
+        },
+        "reverse-focused": {
+          "command": [
+            "taskset",
+            "-c",
+            "0",
+            "python3",
+            "bench/perf/string-lines/compare.py",
+            "/tmp/string-round2/reversal-restored/performance/reverse-focused/before/program",
+            "/tmp/string-round2/reversal-restored/performance/reverse-focused/after/program",
+            "/tmp/string-round2/reversal-restored/performance/reverse-focused/samples.csv",
+            "--pairs",
+            "9",
+            "--identity-file",
+            "bench/perf/string-reverse-ascii/focused-identities.json"
+          ],
+          "exit_code": 0
+        }
+      },
+      "native": {
+        "before": {
+          "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+          "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "after": {
+          "source_sha256": "2d9d4fca607d67e82e948448ef7fed57c082a32e2d750d32669ac2682cdacf4c",
+          "libms_native.a": "cef44afa6c46e706fad5b5232172db4a0fbd1e8c76f7e1a7baf036d8c1e4e608",
+          "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        }
+      },
+      "programs": {
+        "before": {
+          "sha256": "f0159219d36e2716dd528d94d66a5a91eeccbae21fff412c3f5341f2cabcec61",
+          "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+          "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        },
+        "after": {
+          "sha256": "8bb69a5186e9b555d6386e3a1e9c1a23b358aedd216d5dca8d701225c7b657b0",
+          "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+          "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+          "public_metadata": {
+            "format": 1,
+            "version": "0.1.0",
+            "backend": "cranelift",
+            "build_type": "Release"
+          }
+        }
+      },
+      "raw_rows": 324,
+      "cases": 18,
+      "pairs": 9,
+      "paired_rows": 162,
+      "unfavorable_medians": 4,
+      "favorable_medians": 14,
+      "offline_validation": "Every expected identity, operation count, checksum, row uniqueness, positive elapsed and complete before/after pair validated; original paired summaries agree. No filtering/reruns.",
+      "public_metadata_limit": "Release/cranelift labels; effective backend/optimization beyond labels unverified.",
+      "root_tool_cell": 82826,
+      "overall_exit": "Pending root actual final exit; phase producer exit0 does not establish overall exit."
+    }
+  },
+  "candidate_decision": {
+    "status": "Rejected based on material full-run composition costs",
+    "publication": "Preserve completed evidence on evidence-only branch; no new performance PR or candidate merge",
+    "PR1969": {
+      "state": "CLOSED/UNMERGED",
+      "head": "0525bd107aa1eee7756c90cef44d73bdd45c45d9",
+      "closed_at_utc": "2026-10-29T19:48:29Z",
+      "provenance": "Root verified update response handoff; no API access by report author"
+    },
+    "correction_PR1975": {
+      "state": "open; normal gates/auto-merge pending",
+      "head": "1e36515bbbf63127b1d626fbe7f33ab0fbcf9ac1",
+      "latest_root_verification_utc": "2026-10-29T19:56:00Z",
+      "status_qualification": "At evidence collection; latest root verification2026-10-29 19:56UTC; subsequent normal merge may occur."
+    },
+    "PR1967": {
+      "state": "merged",
+      "merge": "bb7198ea3c5d77fa1e59b39444ab68f5304a079a",
+      "source_head": "05152904151ed68e8c8892bf8d167639bd7a0883"
+    }
+  },
+  "status_record": "status.json",
+  "read_only_verifier": "verify_evidence.py",
+  "final_record": "record.json",
+  "final_launch_record": "launch-record.json",
+  "completed_phase_record_note": "Derived snapshots captured as individual phases finished; final overall status is in record.json/status.json/launch-record.json.",
+  "final_gates": {
+    "recorded_steps": 30,
+    "all_exit_codes": 0,
+    "root_tool_cell": 82826,
+    "actual_overall_exit": 0,
+    "actual_exit_provenance": "After-run root tool transcript handoff, not producer-generated status",
+    "conformance_summary": {
+      "total": 2394,
+      "pass": 2394,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.0
+    },
+    "conformance_by_phase": {
+      "check": {
+        "total": 1603,
+        "pass": 1603,
+        "fail": 0,
+        "expected_fail": 0,
+        "unexpected_pass": 0,
+        "unrecorded": 0,
+        "pass_rate": 100.0
+      },
+      "run": {
+        "total": 532,
+        "pass": 532,
+        "fail": 0,
+        "expected_fail": 0,
+        "unexpected_pass": 0,
+        "unrecorded": 0,
+        "pass_rate": 100.0
+      },
+      "test": {
+        "total": 259,
+        "pass": 259,
+        "fail": 0,
+        "expected_fail": 0,
+        "unexpected_pass": 0,
+        "unrecorded": 0,
+        "pass_rate": 100.0
+      }
+    },
+    "hashes_match": true,
+    "corpus_lint": "4154 fixtures,0problems,exit0"
+  },
+  "bounded_source_pass": {
+    "source": "Independent root audit handoff on correction1e36515bb/string.rs d9124ee3...",
+    "coverage": [
+      "trim ASCII and decoded boundaries",
+      "find generic long and bounded short/16 candidate paths",
+      "repeat one-byte fill/doubling",
+      "join exact sizing/direct copies",
+      "to_bytes one allocation/copy",
+      "from_scalars one validation/encoding pass with ASCII shortcut"
+    ],
+    "from_scalars_capacity_growth": "Unmeasured lead, not retained issue; alternatives add pass or ASCII memory",
+    "limits": "No universal optimality; compiler/backend/ownership/cleanup/HTTP/Windows excluded"
+  },
+  "upstream_source_freshness": {
+    "checked_at_utc": "2026-10-29T19:57Z",
+    "fetched_main": "f7659657ccf5549455cb1f78baac49b5505416bd",
+    "command": [
+      "git",
+      "diff",
+      "--exit-code",
+      "85cfb96b889ec4176cfe71a42d74acfd091cbe60",
+      "origin/main",
+      "--",
+      "crates/ms-rt/src/string.rs"
+    ],
+    "exit_code": 0,
+    "provenance": "Root handoff from fetched main and executed command; source-only freshness, no new runtime/platform validation or native measurement."
+  }
+}
