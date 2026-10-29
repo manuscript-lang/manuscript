@@ -100,6 +100,9 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
         ":" => "; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body".into(),
         ")" => "; close the parenthesis, separating items with commas".into(),
+        "]" if found == Tok::For => {
+            "; there are no comprehensions: build the list with map and filter, e.g. items.filter(fn x: x > 0).map(fn x: x * 2)".into()
+        }
         "]" => "; close the bracket, separating items with commas".into(),
         "}" => "; close the brace, separating items with commas".into(),
         "(" if found == Tok::Lt => {
@@ -2217,6 +2220,13 @@ impl<'a> Parser<'a> {
                 if !self.take(Tok::RBrace) {
                     loop {
                         let key = self.expression(0)?;
+                        if matches!(self.kind(), Tok::Comma | Tok::RBrace) {
+                            let at = self.peek();
+                            return self.fail(
+                                at,
+                                "a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List",
+                            );
+                        }
                         self.need(Tok::Colon)?;
                         let value = self.expression(0)?;
                         entries.push(MapEntry { key, value });
