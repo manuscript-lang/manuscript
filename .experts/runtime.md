@@ -33,6 +33,19 @@ Apply when: changing the parameters of any `ms-std-*` or `ms-rt` export.
 Evidence: [catalogue](../crates/ms-rt/SYMBOLS.md), [Stdio default](../crates/ms-lower/src/call.rs), [called source check](../tests/e2e/testdata/stdlib/host.ms).
 Verify: run `make runtime` and rebuild `ms-cli`, then run a compiled program that calls the native, not only crate tests; `runtime_symbol_catalogue_matches_archive` checks names, not parameters.
 
+### Rejected uploads need a bounded half-close before socket retirement
+
+Verified: closing both TCP halves immediately after writing an HTTP/1 rejection can reset a
+connection whose peer is still uploading, hiding the response on Windows. Flush the response,
+half-close output, and discard input without buffering until peer FIN or a fixed drain deadline.
+Check the deadline during read retries as well as the reactor's timeout sweep.
+
+Apply when: changing HTTP rejection responses or connection retirement.
+Evidence: [rejection drain and socket regressions](../crates/ms-std-net/src/http/server.rs),
+[source header-cap regression](../tests/e2e/testdata/stdlib/http-limits.ms).
+Verify: a 2 MB header upload receives the complete 431 response without a reset; a peer that
+keeps its write half open cannot retain the rejected connection indefinitely.
+
 ### HTTP field folding must not erase map entries
 
 Verified: source Map keys use exact equality, while HTTP field names fold ASCII case. Passing case-equivalent outgoing entries through `Header.Set` silently replaces earlier values, including separate `Set-Cookie` fields. Append in source insertion order after validating all fields. `Header.Values(key)` also canonicalizes lookup: when converting an existing host map, index its exact key to avoid substituting another spelling's values.
