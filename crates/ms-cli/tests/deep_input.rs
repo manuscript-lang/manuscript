@@ -87,13 +87,11 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[test]
-fn a_match_over_thousands_of_cases_builds_in_linear_time() {
-    let dir = std::env::temp_dir().join(format!("ms-cli-cases-{}", std::process::id()));
+/// Builds a program whose enum has `cases` cases, each matched once; returns the build time.
+fn build_time_for_cases(cases: usize) -> std::time::Duration {
+    let dir = std::env::temp_dir().join(format!("ms-cli-cases-{}-{cases}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    // Every payload read and construction used to copy the layout of all cases.
-    let cases = 10_000;
     let mut source = String::from("import stdout from \"@std/io.ms\"\ntype E:\n");
     for i in 0..cases {
         source.push_str(&format!("    case C{i}(x: Int)\n"));
@@ -102,17 +100,28 @@ fn a_match_over_thousands_of_cases_builds_in_linear_time() {
     for i in 0..cases {
         source.push_str(&format!("        C{i}(x): return x + {i}\n"));
     }
-    source.push_str(
-        "\nexport fn main() Int:\n    stdout().write(\"{g(C9999(1))}\\n\").get()\n    return 0\n",
-    );
+    source.push_str(&format!(
+        "\nexport fn main() Int:\n    stdout().write(\"{{g(C{}(1))}}\\n\").get()\n    return 0\n",
+        cases - 1
+    ));
     std::fs::write(dir.join("cases.ms"), source).unwrap();
     let started = std::time::Instant::now();
     let (status, text) = run_ms(&["build", "cases.ms", "--build-type", "Debug"], &dir);
+    let elapsed = started.elapsed();
     assert_eq!(status, Some(0), "{text}");
-    assert!(
-        started.elapsed().as_secs() < 15,
-        "took {:?}",
-        started.elapsed()
-    );
     let _ = std::fs::remove_dir_all(&dir);
+    elapsed
+}
+
+/// Every payload read and construction used to copy the layout of all cases. Compare two sizes
+/// instead of a wall-clock limit, which fails on slow runners: 4x the cases is about 4x the time
+/// when linear and about 16x when quadratic.
+#[test]
+fn a_match_over_thousands_of_cases_builds_in_linear_time() {
+    let small = build_time_for_cases(2_500);
+    let large = build_time_for_cases(10_000);
+    assert!(
+        large < small * 10,
+        "4x the cases took {large:?} against {small:?}"
+    );
 }
