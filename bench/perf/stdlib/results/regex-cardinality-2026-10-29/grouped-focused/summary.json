@@ -1,0 +1,14 @@
+{
+  "regex.cardinality.grouped.1": {
+    "ops": 1,
+    "before": 609.5925912894581,
+    "after": 638.9309133621712,
+    "ratio": 1.0481277536701263
+  },
+  "regex.cardinality.grouped.2000": {
+    "ops": 1,
+    "before": 1003071.0163934426,
+    "after": 949851.8429752066,
+    "ratio": 0.9469437631548896
+  }
+}

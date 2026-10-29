@@ -1,0 +1,15 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "repeats": 7,
+  "samples": 5,
+  "binaries": {
+    "before": {
+      "path": "/workspace/regex-pass2/before-ms",
+      "sha256": "3074cbc1c5ae371ed0a1196164412af4de148aa1a935bd9fe39911a579311532"
+    },
+    "after": {
+      "path": "/workspace/regex-pass2/final-ms",
+      "sha256": "858e7a91bc3e6e895cab16b7b330db281f40aa2254d226142b8b3a55c6d02f31"
+    }
+  }
+}
