@@ -130,11 +130,11 @@ output.chmod(0o755)
                 for compiler in ("go", "rustc"):
                     (Path(temp) / compiler).symlink_to(tool)
                 log = Path(temp) / "log.txt"
-                env = os.environ | {"MS": str(tool), "PATH": temp + os.pathsep + os.environ["PATH"],
+                env = os.environ | {"MS": "./tool", "PATH": temp + os.pathsep + os.environ["PATH"],
                     "TEST_ROWS": json.dumps(TABLE.OPERATIONS), "TEST_MODE": mode,
                     "TEST_VERSION": version, "TEST_LOG": str(log)}
                 result = subprocess.run(["sh", str(HERE / "datastructures/run.sh"), "2"],
-                    env=env, capture_output=True, text=True, timeout=20)
+                    cwd=temp, env=env, capture_output=True, text=True, timeout=20)
                 if mode == "valid":
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(log.read_text().splitlines(), ["ms", "go", "rs", "go", "rs", "ms"])

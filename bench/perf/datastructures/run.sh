@@ -11,6 +11,8 @@ if ! [ "$N" -gt 0 ] 2>/dev/null; then
 	echo 'repeats must be a positive integer' >&2
 	exit 2
 fi
+MS=$(command -v "$MS")
+case "$MS" in /*) ;; *) MS="$(pwd)/$MS";; esac
 W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 (cd "$HERE/ms" && "$MS" build ms.toml -o "$W/ms" >/dev/null)
