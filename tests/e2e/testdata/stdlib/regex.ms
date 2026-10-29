@@ -79,3 +79,26 @@ test "regex named captures preserve unnamed gaps and absent groups":
     try expect_equal(found.get("first").is_none(), true)
     try expect_equal(found.get("empty").get(), "")
     try expect_equal(found.get("last").get(), "e")
+
+test "regex capture methods preserve whole match only patterns":
+    let re = try compile("\\bword\\b")
+    try expect_equal(re.captures("sword word"), ["word"])
+    try expect_equal(re.captures("sword"), [])
+    try expect_equal(re.named_captures("word").is_empty(), true)
+
+    let unnamed = try compile("(word)([0-9]+)")
+    try expect_equal(unnamed.named_captures("word123").is_empty(), true)
+    try expect_equal((try re.captures_all("sword word word", 2)), [["word"], ["word"]])
+
+    let limited: Result[List[List[String]], RegexError] = error(
+        RegexError.LimitExceeded
+    )
+    try expect_equal(re.captures_all("word word", 1), limited)
+    try expect_equal((try re.captures_all("sword", 0)), [])
+
+    let empty = try compile("a*")
+    try expect_equal((try empty.captures_all("a🙂🙂a", 3)), [["a"], [""], ["a"]])
+
+    let absent = try compile("(a)?b")
+    try expect_equal(absent.captures("b"), ["b", ""])
+    try expect_equal((try absent.captures_all("b b")), [["b", ""], ["b", ""]])

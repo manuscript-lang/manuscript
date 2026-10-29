@@ -34,6 +34,16 @@ reusing scratch capacity; allocation counts alone do not establish a memory win.
 The [regex report](../bench/perf/stdlib/regex-results-2026-10-29.md) and its external
 counting probe distinguish logical capacity from generated-program RSS.
 
+Verified (2026-10-29, capture shapes): checking named-group metadata before
+searching avoided work for anonymous patterns but slowed a named-pattern fast
+miss by 36% when many unnamed groups preceded its first name. A flag computed
+once during regex construction removed that repeated scan at a measured eight
+bytes of persistent wrapper storage. Include early misses and setup storage
+when promoting metadata checks into a hot path; successful matches and per-call
+allocation counts alone miss this tradeoff. The
+[capture-shape report](../bench/perf/stdlib/regex-cardinality-results-2026-10-29.md)
+retains the rejected comparison, final controls and allocation probe.
+
 ### Shared collection helpers need conversion and union controls
 
 Verified (2026-10-29): eliminating a redundant lookup in `List.distinct` reduced

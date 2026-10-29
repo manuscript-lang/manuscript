@@ -1,0 +1,44 @@
+{
+  "regex.cardinality.named.whole.hit": {
+    "ops": 1,
+    "before": 47.263971498005866,
+    "after": 38.80275464044278,
+    "ratio": 0.8209795624576306
+  },
+  "regex.cardinality.named.whole.long_miss": {
+    "ops": 1,
+    "before": 48.381388308177414,
+    "after": 42.48928115353629,
+    "ratio": 0.8782154179390251
+  },
+  "regex.cardinality.named.named.hit": {
+    "ops": 1,
+    "before": 452.74799353894304,
+    "after": 402.2258194972519,
+    "ratio": 0.8884099438038802
+  },
+  "regex.cardinality.named.anonymous.hit": {
+    "ops": 1,
+    "before": 310.67689365191745,
+    "after": 49.07126690094705,
+    "ratio": 0.15794952216796182
+  },
+  "regex.cardinality.named.anonymous.long_miss": {
+    "ops": 1,
+    "before": 163620.87692307692,
+    "after": 49.998056407515655,
+    "ratio": 0.00030557259774998785
+  },
+  "regex.cardinality.named.late.hit": {
+    "ops": 1,
+    "before": 2698.3603043307003,
+    "after": 2542.6505362744106,
+    "ratio": 0.9422946713949263
+  },
+  "regex.cardinality.named.late.miss": {
+    "ops": 1,
+    "before": 159.89747202205416,
+    "after": 218.06305774092996,
+    "ratio": 1.363768013235714
+  }
+}

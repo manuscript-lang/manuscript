@@ -1,0 +1,8 @@
+{
+  "regex.cardinality.named.named.hit": {
+    "ops": 1,
+    "before": 442.7897992042195,
+    "after": 442.00376763676906,
+    "ratio": 0.998224820063915
+  }
+}

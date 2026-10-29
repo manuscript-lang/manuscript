@@ -18,6 +18,7 @@ use ms_rt::ffi::Fail;
 /// A compiled pattern.
 pub struct Regex {
     pattern: regex::Regex,
+    has_named_groups: bool,
     #[cfg(test)]
     scans: core::cell::Cell<usize>,
 }
@@ -65,8 +66,10 @@ pub fn compile(pattern: &str) -> Result<Regex, Fail> {
         .size_limit(64 << 20)
         .build()
         .map_err(|_| Fail::InvalidData)?;
+    let has_named_groups = pattern.capture_names().any(|name| name.is_some());
     Ok(Regex {
         pattern,
+        has_named_groups,
         #[cfg(test)]
         scans: core::cell::Cell::new(0),
     })
@@ -125,6 +128,13 @@ impl Regex {
     /// Capture texts of the first match: the whole match, then each group (`""` when a group did
     /// not participate). Empty when nothing matches.
     pub fn captures(&self, text: &str) -> Vec<String> {
+        if self.pattern.captures_len() == 1 {
+            return self
+                .pattern
+                .find(text)
+                .map(|m| alloc::vec![m.as_str().into()])
+                .unwrap_or_default();
+        }
         self.pattern
             .captures(text)
             .map(|c| {
@@ -145,6 +155,12 @@ impl Regex {
         }
         if spans.is_empty() {
             return Ok(Vec::new());
+        }
+        if self.pattern.captures_len() == 1 {
+            return Ok(spans
+                .into_iter()
+                .map(|(a, b)| alloc::vec![text[a..b].into()])
+                .collect());
         }
         let mut locations = self.pattern.capture_locations();
         Ok(spans
@@ -172,6 +188,9 @@ impl Regex {
 
     /// Named groups of the first match that participated; empty when nothing matches.
     pub fn named_captures(&self, text: &str) -> Vec<(Vec<u8>, Vec<u8>)> {
+        if !self.has_named_groups {
+            return Vec::new();
+        }
         let Some(c) = self.pattern.captures(text) else {
             return Vec::new();
         };
@@ -406,6 +425,48 @@ mod tests {
     }
 
     #[test]
+    fn captures_without_explicit_groups_preserve_rows_context_and_limits() {
+        for pattern in ["", "a*", "a+", "(?:a|b)+", "\\bword\\b", "^a", "a$"] {
+            let re = compile(pattern).unwrap();
+            for text in ["", "xyz", "a🙂🙂a", "baba", "sword word", "a\na"] {
+                let first: Vec<String> = re
+                    .pattern
+                    .captures(text)
+                    .map(|c| c.iter().map(|g| g.unwrap().as_str().into()).collect())
+                    .unwrap_or_default();
+                assert_eq!(re.captures(text), first, "{pattern:?} {text:?}");
+                assert!(re.named_captures(text).is_empty());
+                let rows: Vec<Vec<String>> = re
+                    .spans_iter(text)
+                    .map(|(a, b)| alloc::vec![text[a..b].into()])
+                    .collect();
+                let count = rows.len() as i64;
+                assert_eq!(re.captures_all(text, None), Ok(rows.clone()));
+                assert_eq!(re.captures_all(text, Some(count)), Ok(rows));
+                if count > 0 {
+                    assert_eq!(
+                        re.captures_all(text, Some(count - 1)),
+                        Err(Fail::LimitExceeded)
+                    );
+                }
+                assert_eq!(re.captures_all(text, Some(-1)), Err(Fail::InvalidInput));
+            }
+        }
+
+        // A nonparticipating optional group still owns a column.
+        let re = compile("(a)?b").unwrap();
+        let first: Vec<String> = alloc::vec!["b".into(), "".into()];
+        assert_eq!(re.captures("b"), first);
+        assert_eq!(
+            re.captures_all("b b", None),
+            Ok(alloc::vec![
+                alloc::vec!["b".into(), "".into()],
+                alloc::vec!["b".into(), "".into()]
+            ])
+        );
+    }
+
+    #[test]
     fn template_expands_repeated_matches_with_strict_byte_limits() {
         let re = compile("(?P<a>a+)|(b+)").unwrap();
         assert_eq!(
@@ -451,6 +512,23 @@ mod tests {
             ]
         );
         assert!(re.named_captures("xyz").is_empty());
+    }
+
+    #[test]
+    fn named_captures_handles_patterns_without_names_and_late_names() {
+        for pattern in ["", "word", "(word)([0-9]+)", "(a)?b"] {
+            let re = compile(pattern).unwrap();
+            for text in ["", "word123", "b", "xyz"] {
+                assert!(re.named_captures(text).is_empty());
+            }
+        }
+        let pattern = alloc::format!("{}(?P<last>x)", "(a?)".repeat(128));
+        let re = compile(&pattern).unwrap();
+        assert!(re.named_captures("z").is_empty());
+        assert_eq!(
+            re.named_captures("x"),
+            alloc::vec![(b"last".to_vec(), b"x".to_vec())]
+        );
     }
 
     #[test]

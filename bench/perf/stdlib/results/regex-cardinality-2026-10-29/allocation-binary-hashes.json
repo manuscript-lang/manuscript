@@ -1,0 +1,4 @@
+{
+  "target/release/alloc-baseline": "4c4da78ab82aae1de49681fd3372b43f864ef221654dc89e528125483147f8e0",
+  "target/release/alloc-candidate": "cc41723f4d87906b56fea7de8ce3b4b4ebaf38741c2b007077232ca80eeca6ee"
+}

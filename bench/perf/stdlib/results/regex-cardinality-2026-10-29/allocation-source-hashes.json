@@ -1,0 +1,8 @@
+{
+  "baseline/src/lib.rs": "a35fbfdb4b5f4b62d2b220cf14b22713b6afe76f51874026f7a609d2c27d891f",
+  "baseline/src/translate.rs": "7cced7ccd55b07f1abe8d911a4043b057a2be4f05fd12dd486e114eddcb83735",
+  "baseline/src/ffi.rs": "52dad365eecd1159ee88f695068601b4c9aedaeb15ae99b877d1efab568483a8",
+  "candidate/src/lib.rs": "d9a683acf819b61cc47d4bd52e9386df8b0b8303f8f408093dc08fcaf12c56d1",
+  "candidate/src/translate.rs": "7cced7ccd55b07f1abe8d911a4043b057a2be4f05fd12dd486e114eddcb83735",
+  "candidate/src/ffi.rs": "52dad365eecd1159ee88f695068601b4c9aedaeb15ae99b877d1efab568483a8"
+}
