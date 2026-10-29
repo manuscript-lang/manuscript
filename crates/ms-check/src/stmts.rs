@@ -463,6 +463,7 @@ impl Checker {
         let old = self.scope.clone();
         self.scope = Scope::new(Some(old.clone()));
         let b = self.bind(name, &element, false, s.pos);
+        self.record_cleanup(&b);
         self.m()
             .facts_mut()
             .stmts
@@ -662,7 +663,22 @@ impl Checker {
     }
 
     /// The `close() -> Unit` operations of `t`: the standard `Closeable` one when it has it.
-    fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
+    /// Records the close operation a parameter or loop variable of a closeable type gets at
+    /// scope end, when it turns out to own its value.
+    pub(crate) fn record_cleanup(&mut self, b: &BindingRef) {
+        if is_invalid_id(&b.ty) || !self.closeable(&b.ty) {
+            return;
+        }
+        let mut close = self.close_method(&b.ty);
+        if close.len() == 1 {
+            self.m()
+                .facts_mut()
+                .cleanups
+                .insert(b.uid, close.pop().expect("one"));
+        }
+    }
+
+    pub(crate) fn close_method(&mut self, t: &Ty) -> Vec<MethodRef> {
         let mut candidates: Vec<MethodRef> = Vec::new();
         for method in self.methods(t, n("close")) {
             if method.ty.params.is_empty() && method.ty.result_ty().id == "Unit" {

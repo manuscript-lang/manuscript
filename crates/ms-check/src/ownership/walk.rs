@@ -245,7 +245,7 @@ struct Walker<'a> {
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// Owned `let` and `var` resources: binding, name and declaration position.
-    resources: Vec<(usize, Name, Pos, bool, bool)>,
+    resources: Vec<(usize, Name, Pos, bool)>,
     /// Bindings that had `close()` called on them.
     closed: HashSet<usize>,
 }
@@ -338,10 +338,8 @@ impl Walker<'_> {
                 // value of it (`result.get()`) hands the value over: the binding owns it.
                 // An owned `Optional` or `Result` of a part the source holds (`pop()`) hands the part
                 // over too; a `ref` result (`first()`) only lends it.
-                let lends = !call_modes(self.cx.m, e, args, self.cx.summaries)
-                    .origin
-                    .slots
-                    .is_empty();
+                let modes = call_modes(self.cx.m, e, args, self.cx.summaries);
+                let lends = !modes.origin.slots.is_empty();
                 let wraps = |src: &Expr| {
                     self.class_of(src) == Class::Resource
                         && !ty_holds(&self.cx.m.ty(src), &result)
@@ -351,7 +349,13 @@ impl Walker<'_> {
                     ExprKind::Member { left, .. } => wraps(left),
                     _ => false,
                 };
-                receiver || args.iter().any(|a| wraps(&a.value))
+                // An argument the callee consumes belongs to the result now, not the other way.
+                let kept = |i: usize| modes.arguments.get(i) == Some(&ParamMode::Consume) && !lends;
+                receiver
+                    || args
+                        .iter()
+                        .enumerate()
+                        .any(|(i, a)| !kept(i) && wraps(&a.value))
             }
             _ => false,
         }
@@ -369,7 +373,7 @@ impl Walker<'_> {
     /// otherwise a leak.
     fn unclosed_resources(&mut self) {
         let resources = std::mem::take(&mut self.resources);
-        for (uid, name, pos, closable, trackable) in resources {
+        for (uid, name, pos, closable) in resources {
             let moves: Vec<NodeId> = self
                 .facts
                 .uses
@@ -379,9 +383,8 @@ impl Walker<'_> {
                 .collect();
             if !moves.is_empty() {
                 // Moved on some path: the scope closes it on the paths that keep it. Lowering
-                // tracks that with a flag cleared at each move, which needs a binding with
-                // its own close operation.
-                if closable && trackable {
+                // tracks that with a flag cleared at each move.
+                if closable {
                     self.facts.implicit_closes.insert(uid);
                     self.facts
                         .close_moves
@@ -1260,13 +1263,7 @@ impl Walker<'_> {
         };
         if self.cx.classes.class(&b.ty) == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((
-                b.uid,
-                b.name,
-                p.pos,
-                closable,
-                self.cx.m.stmt(s).cleanup.is_some(),
-            ));
+            self.resources.push((b.uid, b.name, p.pos, closable));
         }
     }
 
@@ -1292,6 +1289,14 @@ impl Walker<'_> {
                 self.declare(&b, Role::Loop, Perm::Immutable, None, false);
                 if let Some(f) = self.facts.bindings.get_mut(&b.uid) {
                     f.owned = false;
+                }
+                // An owned iteration hands each resource element to the loop variable, which
+                // closes it at the end of the iteration unless the body moves it on.
+                if class == Class::Resource
+                    && source.owned
+                    && matches!(b.ty.kind, Kind::Record | Kind::Alternative | Kind::Native)
+                {
+                    self.resources.push((b.uid, b.name, iter.pos, true));
                 }
             } else {
                 self.declare_borrow(
@@ -1438,13 +1443,7 @@ impl Walker<'_> {
         );
         if class == Class::Resource && !self.derived_from_resource(value) {
             let closable = self.closable(s, &b.ty);
-            self.resources.push((
-                b.uid,
-                b.name,
-                pattern.pos,
-                closable,
-                self.cx.m.stmt(s).cleanup.is_some(),
-            ));
+            self.resources.push((b.uid, b.name, pattern.pos, closable));
         }
     }
 

@@ -962,8 +962,8 @@ impl<'a> FnLower<'a> {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
                 if self.cx.implicit_closes.contains(&b.uid) {
                     // A resource the callee keeps on some path closes on the others.
-                    let ty = ct::sub(&b.ty, &self.subst);
-                    if let Some(kind) = self.part_closer(&ty)? {
+                    let cleanup = self.hir.binding_cleanup(b.uid);
+                    if let Some(kind) = self.closer_opt(cleanup.as_ref(), &b.ty)? {
                         self.bind_closing_kind(b, Val { v, own: true }, kind)?;
                         continue;
                     }
