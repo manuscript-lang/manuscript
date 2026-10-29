@@ -1,0 +1,22 @@
+{
+  "baseline": "4c0a1cb820e772f56a0c831a0f2fe37fbc96a9a7",
+  "date": "2026-10-29",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "cpu": "Intel Xeon Platinum8573C,5 exposed CPUs,4 CPU cgroup quota",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "llvm": [
+    "LLVM (http://llvm.org/):",
+    "  LLVM version 23.1.1",
+    "  Optimized build.",
+    "  Default target: x86_64-unknown-linux-gnu",
+    "  Host CPU: emeraldrapids"
+  ],
+  "optimization": "Release/MIR Speed, LLVM default<O3>, llc -O3; production musl runtime via MS_RT_LIB; no backend/vectorization override",
+  "hashes": {
+    "target/release/ms": "165eb6d8b261ec430d2437691cc70342d672e7086a312890fe2925e80f4a4360",
+    ".artifacts/codecs/runtime-before.a": "447de5537a039c25529a005be495c889fb3ea8d5d4e550ef34cb55789c09eb56",
+    ".artifacts/codecs/runtime-after.a": "548dc78b1ff75edac74a43049af3884bf098c8b7059a5ac7d4283bdd8f443df6",
+    "bench/perf/codecs/main.ms": "32b351259e3501aabd038614a092ac19636accb84f6960bf5fd721772a4902ab",
+    "bench/perf/codecs/compare.py": "1aa210de751910aebf3eb8e562c7366f7e16538a67b275311020f22211bdc26b"
+  }
+}
