@@ -309,6 +309,8 @@ impl Scanner<'_> {
     fn run(&mut self, mut prefixes: Option<(&mut Vec<bool>, &[bool])>) -> PResult<()> {
         let n = self.src.len();
         let (mut pending, mut header_indent, mut pending_depth) = (false, 0usize, 0usize);
+        // Where the pending header's statement began, when it spans several lines.
+        let mut header_start = 0usize;
         // A line that starts with '.' or '|' continues the previous statement,
         // which began at statement_indent; it opens no block and ends no statement.
         let (mut continuing, mut statement_indent) = (false, 0usize);
@@ -374,6 +376,13 @@ impl Scanner<'_> {
                         });
                         self.emit_layout(Tok::Indent);
                         started_suite = true;
+                    } else if leading > header_start && leading <= header_indent {
+                        return self.fail(format!(
+                            "a suite begins four spaces after the line that ends with ':' (at {} spaces); indent this line to {}, or move that closing line back to {} spaces",
+                            header_indent,
+                            header_indent + 4,
+                            header_start
+                        ));
                     } else if leading <= header_indent {
                         // An empty declaration suite has the same layout
                         // boundaries as a populated one.
@@ -618,6 +627,7 @@ impl Scanner<'_> {
                 if last_kind == Tok::Colon && (self.delimiters.len() == top_depth || has_function) {
                     pending = true;
                     header_indent = leading;
+                    header_start = statement_indent;
                     pending_depth = self.delimiters.len();
                     self.emit_layout(Tok::Newline);
                     self.function_depths.clear();
