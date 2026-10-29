@@ -32,26 +32,6 @@
     "@std/string.ms/Regex": "native",
     "@std/string.ms/StringBuilder": "native"
   },
-  "receiver_requirements": {
-    "@std/collections.ms/List/contains": {
-      "T": "Equal"
-    },
-    "@std/collections.ms/List/distinct": {
-      "T": "Equal"
-    },
-    "@std/collections.ms/List/index_of": {
-      "T": "Equal"
-    },
-    "@std/collections.ms/List/join": {
-      "T": "String|Int"
-    },
-    "@std/collections.ms/List/last_index_of": {
-      "T": "Equal"
-    },
-    "@std/collections.ms/List/to_set": {
-      "T": "Hashable"
-    }
-  },
   "runtime_symbols": {
     "archive/compress": "msrt_compress_compress",
     "archive/decompress": "msrt_compress_decompress",

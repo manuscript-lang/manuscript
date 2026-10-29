@@ -631,11 +631,6 @@ impl Checker {
                 available.join(", ")
             );
         }
-        if receiver.is_std("List") && name == "join" {
-            return format!(
-                "{message}; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn value: \"{{value}}\").join(separator: \",\")"
-            );
-        }
         let hint = synonym_hint(name.as_str(), &available);
         if !hint.is_empty() {
             return format!("{message}{hint}");

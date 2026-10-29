@@ -17,7 +17,7 @@ fn index[T: Equal](values: List[T], value: T) Optional[Int]: values.index_of(val
 
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 
-fn unique[T: Hashable](values: List[T]) Set[T]: values.to_set()
+fn unique[T: Hashable & Clonable](values: List[T]) Set[T]: values.to_set()
 
 fn explain(cause: CollectionError) String:
     let common: Error = cause

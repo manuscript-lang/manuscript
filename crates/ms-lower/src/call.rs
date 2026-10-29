@@ -729,6 +729,23 @@ impl<'a> FnLower<'a> {
                     }
                     return self.derived_hash(recv);
                 }
+                // Equality is derived for every type that has no implementation of its own.
+                if m.name().is_some_and(|n| n.as_str() == "equals")
+                    && contract.is_std("Equal")
+                    && let [other] = view.arguments.as_slice()
+                {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    let raw = self.expr_value(other.expr)?;
+                    if self.dead {
+                        return Ok(raw);
+                    }
+                    let t = self.ty_of(recv.v);
+                    let v = self.equal(t, recv, raw)?;
+                    return Ok(Val { v, own: false });
+                }
                 // Built-in scalars order themselves against another of their own type.
                 if m.name().is_some_and(|n| n.as_str() == "compare")
                     && contract.is_std("Comparable")

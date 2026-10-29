@@ -55,15 +55,6 @@ pub struct StdResult {
     pub methods: Vec<MethodRef>,
 }
 
-/// A receiver requirement: the variable and the constraint it must meet.
-#[derive(Clone)]
-pub struct ReceiverRequirement {
-    /// The receiver variable.
-    pub variable: Ty,
-    /// The contracts or types it may satisfy; any one suffices.
-    pub constraints: Vec<Ty>,
-}
-
 #[derive(Default)]
 struct World {
     state: u8, // 0 unloaded, 1 loading, 2 loaded
@@ -81,7 +72,6 @@ struct World {
     implementations: Vec<MethodRef>,
     operation_variables: HashMap<String, Vec<Ty>>,
     receiver_bindings: HashMap<String, Name>,
-    receiver_requirements: HashMap<String, Vec<ReceiverRequirement>>,
     runtime_symbols: HashMap<String, String>,
     done: HashMap<Name, Rc<StdResult>>,
     checking: HashSet<Name>,
@@ -101,7 +91,6 @@ struct Bindings {
     function_overrides: HashMap<String, String>,
     intrinsic_receivers: HashMap<String, String>,
     contract_methods: HashMap<String, String>,
-    receiver_requirements: HashMap<String, HashMap<String, String>>,
     runtime_symbols: HashMap<String, String>,
 }
 
@@ -119,25 +108,11 @@ fn read_bindings() -> Result<Bindings, String> {
             })
             .unwrap_or_default()
     };
-    let mut requirements: HashMap<String, HashMap<String, String>> = HashMap::new();
-    if let Some(v) = entries.get("receiver_requirements") {
-        for (key, inner) in v.entries() {
-            requirements.insert(
-                key,
-                inner
-                    .entries()
-                    .into_iter()
-                    .map(|(k, v)| (k, v.text().to_string()))
-                    .collect(),
-            );
-        }
-    }
     Ok(Bindings {
         native_types: strings("native_types"),
         function_overrides: strings("function_overrides"),
         intrinsic_receivers: strings("intrinsic_receivers"),
         contract_methods: strings("contract_methods"),
-        receiver_requirements: requirements,
         runtime_symbols: strings("runtime_symbols"),
     })
 }
@@ -232,16 +207,6 @@ pub fn native_for_symbol(symbol: &str) -> Option<String> {
 pub fn runtime_symbol(native: &str) -> Option<String> {
     ensure_standard();
     world(|w| w.runtime_symbols.get(native).cloned())
-}
-
-/// Requirements a native receiver operation puts on its receiver.
-pub fn receiver_requirements(key: &str) -> Vec<ReceiverRequirement> {
-    world(|w| {
-        w.receiver_requirements
-            .get(key)
-            .cloned()
-            .unwrap_or_default()
-    })
 }
 
 /// Records the type variables an operation declares for itself (`Receiver id/name`).
@@ -1432,7 +1397,6 @@ impl Loader<'_> {
             .map(|(r, name)| (name.clone(), r.clone()))
             .collect();
         let mut bound: HashSet<String> = HashSet::new();
-        let mut requirements = self.bindings.receiver_requirements.clone();
         for module in self.native_sources() {
             self.scope_module(&module);
             for declaration in &module.decls {
@@ -1446,7 +1410,6 @@ impl Loader<'_> {
                 }
                 for method in declaration.methods() {
                     let mname = method.func.name;
-                    let key = format!("{}/{}/{}", module.file, declaration.name(), mname);
                     let sym_key = format!("{}/{}", symbol.id, mname);
                     let native = RECEIVER_BINDINGS
                         .iter()
@@ -1457,46 +1420,6 @@ impl Loader<'_> {
                         world(|w| w.receiver_bindings.insert(sym_key.clone(), n(native)));
                         bound.insert(format!("{receiver}.{mname}"));
                     }
-                    if let Some(reqs) = requirements.remove(&key) {
-                        let mut names: Vec<(String, String)> = reqs.into_iter().collect();
-                        names.sort();
-                        for (name, constraint) in names {
-                            if receiver_binding(&sym_key).is_none() {
-                                return Err(format!(
-                                    "receiver requirement needs a native binding: {key}"
-                                ));
-                            }
-                            let variable = symbol
-                                .variables()
-                                .into_iter()
-                                .find(|c| c.name.as_str() == name);
-                            let Some(variable) = variable else {
-                                return Err(format!("unknown receiver variable {name} in {key}"));
-                            };
-                            let mut constraints = Vec::new();
-                            for alternative in constraint.split('|') {
-                                let required = self
-                                    .c
-                                    .sym(n(alternative))
-                                    .filter(|r| r.kind == SymKind::Type);
-                                let Some(required) = required else {
-                                    return Err(format!(
-                                        "unknown receiver requirement {constraint} in {key}"
-                                    ));
-                                };
-                                constraints.push(required.ty());
-                            }
-                            world(|w| {
-                                w.receiver_requirements
-                                    .entry(sym_key.clone())
-                                    .or_default()
-                                    .push(ReceiverRequirement {
-                                        variable,
-                                        constraints,
-                                    })
-                            });
-                        }
-                    }
                 }
             }
         }
@@ -1506,9 +1429,6 @@ impl Loader<'_> {
                     return Err(format!("unused native receiver binding: {receiver}.{name}"));
                 }
             }
-        }
-        if let Some(key) = requirements.keys().next() {
-            return Err(format!("unused native receiver requirement: {key}"));
         }
         Ok(())
     }

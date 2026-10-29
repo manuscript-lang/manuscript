@@ -1416,7 +1416,7 @@ fn f() Int:
     return 0
 resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperfn f() String:
     return [1.5].join(separator: ",")
-resolution	2	18	32	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn value: "{value}").join(separator: ",")fn double(n: Int) Int:
+fn double(n: Int) Int:
     return n * 2
 fn f() Int:
     return [1, 2].map(double).length()
@@ -1863,7 +1863,7 @@ fn callback() Unit:
 test "reject":
     parse	2	5	19	suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declarationfn search[T: Equal](values: List[T], value: T) Bool:
     return values.contains(value: value)
-fn unique[T: Hashable](values: List[T]) Set[T]:
+fn unique[T: Hashable & Clonable](values: List[T]) Set[T]:
     return values.to_set()
 fn convert[T, U](values: List[T], transform: fn(T) U) List[U]:
     return values.map(transform: transform)
