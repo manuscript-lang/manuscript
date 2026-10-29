@@ -428,7 +428,7 @@ impl TaskGroup[T, In, Out]:
 
         return ok(values)
 
-    # Waits for every started task to end. Returns `TimedOut` or `Cancelled` if any task ended without a result.
+    # Waits for every started task to end. Returns `TimedOut`, `Cancelled`, `Closed` or `Faulted` if any task ended without a result.
     fn wait() Result[Unit, TaskError]:
         return outcome(msrt_scope_wait(self.scope))
 

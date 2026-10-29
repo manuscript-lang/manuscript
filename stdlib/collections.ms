@@ -93,11 +93,11 @@ impl List[T]:
 
     # Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
     # A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
-    # Example: `names.sorted(lambda a, b: a.length() - b.length())` orders by length.
+    # Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
     fn sorted(compare: fn(T, T) Int) List[T]: ...
 
     # Sorts the list in place, stably, in the order of `compare`, as `sorted` does. Comparable elements also have `sort()` without a comparator.
-    # Example: `var xs = [3, 1, 2]` then `xs.sort(lambda a, b: b - a)` leaves `[3, 2, 1]`.
+    # Example: `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
     var fn sort(compare: fn(T, T) Int) Unit: ...
 
     # Keeps matching values in their original order.
@@ -653,7 +653,7 @@ interface ListKeyedExtremes[T: Clonable]:
 impl ListKeyedExtremes[T] for List[T]:
     # Returns the first element whose `key` is greatest, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
-    # Example: `["bb", "a", "ccc"].max_by(lambda (w: String) -> Int: w.length())` is `some("ccc")`.
+    # Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `some("ccc")`.
     fn max_by[K: Comparable](key: fn(T) K) Optional[T]:
         if self.length() == 0:
             return none
@@ -672,7 +672,7 @@ impl ListKeyedExtremes[T] for List[T]:
 
     # Returns the first element whose `key` is least, or none when the list is empty. `key` is called once per element in order; ties keep the earlier element.
     # Returns a copy of the element, like `find`.
-    # Example: `["bb", "a", "ccc"].min_by(lambda (w: String) -> Int: w.length())` is `some("a")`.
+    # Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `some("a")`.
     fn min_by[K: Comparable](key: fn(T) K) Optional[T]:
         if self.length() == 0:
             return none
@@ -695,7 +695,7 @@ interface MapUpdate[T: Hashable & Clonable, U]:
 
 impl MapUpdate[T, U] for Map[T, U]:
     # Stores `change` applied to the value for `key`, or to `initial` when the key is absent.
-    # Example: `counts.update(word, 0, lambda n: n + 1)` counts occurrences.
+    # Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
     var fn update(key: T, initial: U, change: fn(U) U) Unit:
         self.add(key.clone(), change(self.get_or(key, initial)))
 

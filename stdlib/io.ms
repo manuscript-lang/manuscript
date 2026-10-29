@@ -82,7 +82,7 @@ export interface WriteStream:
     # Accepts the complete bytes on success, with the buffering rules of write.
     var fn write_bytes(data: Bytes) Result[Unit, IoError]
 
-# Copies bytes until end of input or the supplied byte limit; returns bytes copied.
+# Copies bytes until end of input and returns the count. Input beyond `max_bytes` returns LimitExceeded.
 export fn copy(
     input: ReadStream,
     output: WriteStream,

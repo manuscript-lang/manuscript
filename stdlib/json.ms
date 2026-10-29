@@ -197,15 +197,15 @@ export fn parse[T: Data = JsonValue](
 #     case Deleted(id: Int)
 #
 # impl JsonEncode for Event:
-#     def to_json() -> JsonValue:
+#     fn to_json() JsonValue:
 #         match self:
-#             case Created(id): return tagged("created", id)
-#             case Deleted(id): return tagged("deleted", id)
+#             Created(id): return tagged("created", id)
+#             Deleted(id): return tagged("deleted", id)
 #
-# def tagged(kind: String, id: Int) -> JsonValue:
+# fn tagged(kind: String, id: Int) JsonValue:
 #     var fields = Map[String, JsonValue]()
 #     fields.add("type", JsonValue.StringValue(kind))
-#     fields.add("id", JsonValue.NumberValue(f"{id}"))
+#     fields.add("id", JsonValue.NumberValue("{id}"))
 #     return JsonValue.ObjectValue(fields)
 # ```
 export interface JsonEncode:
@@ -251,7 +251,7 @@ export interface JsonEncode:
 #     stream: Bool
 #     user: Optional[String]
 #
-# stringify(value: Request(model: "example", stream: True, user: none))
+# stringify(value: Request(model: "example", stream: true, user: none))
 # ```
 export fn stringify[T: Data](
     value: T,
