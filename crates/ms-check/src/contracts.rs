@@ -158,6 +158,79 @@ fn contract_operation(contract: &Ty, name: Name, implementor: &Ty) -> Option<Met
     }))
 }
 
+/// Why a type is not `Data`.
+pub(crate) enum DataReason {
+    Resource,
+    Function,
+    Interface,
+    Handle,
+    Unbounded,
+    MapKey,
+    Never,
+}
+
+/// The first part of a type that is not `Data`, with the field path that reaches it.
+pub(crate) struct DataBlocker {
+    path: String,
+    ty: Ty,
+    reason: DataReason,
+}
+
+impl DataBlocker {
+    /// The diagnostic for a failed `Data` bound, naming the part and a fix.
+    pub(crate) fn message(&self, t: &Ty) -> String {
+        let (what, fix) = match self.reason {
+            DataReason::Resource => (
+                "a resource (Closeable)".to_string(),
+                "send a path or an id and reopen it on the other side".to_string(),
+            ),
+            DataReason::Function => (
+                "a function".to_string(),
+                "send the data the function would compute".to_string(),
+            ),
+            DataReason::Interface => (
+                "an interface value".to_string(),
+                "send the plain data behind it".to_string(),
+            ),
+            DataReason::Handle => (
+                "a runtime handle".to_string(),
+                "send plain data instead".to_string(),
+            ),
+            DataReason::Unbounded => (
+                "a type parameter with no Data bound".to_string(),
+                format!("add `{}: Data` to the type parameter", self.ty),
+            ),
+            DataReason::MapKey => (
+                "a map whose key has no JSON text".to_string(),
+                "key the map by String, Int, Bool, Duration, or an alternative of cases without fields".to_string(),
+            ),
+            DataReason::Never => (
+                "Never, which has no value".to_string(),
+                "use Unit or a real type".to_string(),
+            ),
+        };
+        if self.path.is_empty() {
+            format!("{t} does not satisfy Data; it is {what}; {fix}")
+        } else {
+            format!(
+                "{t} does not satisfy Data; field {} is {}, {what}; {fix}",
+                self.path, self.ty
+            )
+        }
+    }
+}
+
+/// Whether a map key has JSON text the decoder reads back: `String`, `Int`, `Bool`, `Duration`,
+/// or an alternative whose cases carry no fields.
+fn json_key(key: &Ty) -> bool {
+    matches!(key.id.as_str(), "String" | "Int" | "Bool")
+        || key.is_std("Duration")
+        || (key.kind == Kind::Alternative
+            && !key.is_std("Optional")
+            && !cases(key).is_empty()
+            && cases(key).iter().all(|c| c.fields.is_empty()))
+}
+
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
 fn builtin_comparable(t: &Ty) -> bool {
@@ -493,6 +566,30 @@ impl Checker {
             self.add_method(Rc::new(m));
         }
         self.scope.types.borrow_mut().remove(&n("Self"));
+        if ops.is_empty() && imp.methods.is_empty() && contract.kind == Kind::Contract {
+            // A property without operations has no method to carry its evidence, so record the
+            // implementation itself.
+            if contract.is_std("Data") && receiver.kind != Kind::Native {
+                self.type_error(
+                    d.pos(),
+                    format!(
+                        "{receiver} is Data when its parts are; only an extern type declares Data, so remove this impl"
+                    ),
+                );
+            }
+            let id = self.unique("method");
+            self.add_method(Rc::new(Method {
+                id,
+                module: self.current_file(),
+                local: receiver_module_differs(self, &receiver),
+                receiver: receiver.clone(),
+                contract: Some(contract.clone()),
+                ty: contract.clone(),
+                variables: vars.clone(),
+                decl: None,
+                native: n(""),
+            }));
+        }
         for op in &ops {
             if seen.contains(&op.name) {
                 continue;
@@ -585,7 +682,11 @@ impl Checker {
         if receiver.id == contract.id {
             return same(receiver, contract);
         }
-        if contract.is_std("Equal") || contract.is_std("Hashable") || contract.is_std("Clonable") {
+        if contract.is_std("Equal")
+            || contract.is_std("Hashable")
+            || contract.is_std("Clonable")
+            || contract.is_std("Data")
+        {
             return self.property(receiver, contract.name.as_str(), None);
         }
         if receiver.kind == Kind::Variable {
@@ -613,8 +714,9 @@ impl Checker {
     fn clonable(&self, t: &Ty, state: &mut PropertyState) -> bool {
         match t.kind {
             Kind::Variable => return t.bounds().iter().any(|b| b.is_std("Clonable")),
-            Kind::Contract => return false,
-            Kind::Function | Kind::Primitive => return true,
+            // A function type does not record what a closure captured, so a copy could duplicate a resource.
+            Kind::Contract | Kind::Function => return false,
+            Kind::Primitive => return true,
             _ => {}
         }
         if t.is_std("List") || t.is_std("Map") || t.is_std("Set") {
@@ -695,6 +797,125 @@ impl Checker {
                         .any(|c| c.fields.iter().any(|f| self.holds_resource(&f.ty, seen)))))
     }
 
+    /// Whether an `impl Data for` its extern type exists.
+    fn declares_data(&self, t: &Ty) -> bool {
+        self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.decl.is_none()
+                && m.contract.as_ref().is_some_and(|c| c.is_std("Data"))
+                && m.receiver.id == t.id
+        })
+    }
+
+    /// Whether `t` has a visible `JsonEncode` implementation.
+    fn has_json_encoder(&self, t: &Ty) -> bool {
+        self.p.methods.iter().any(|m| {
+            self.method_visible(m)
+                && m.contract
+                    .as_ref()
+                    .is_some_and(|c| c.is_source_type("@std/json.ms", "JsonEncode"))
+                && {
+                    let mut s = Subst::new();
+                    unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
+                }
+        })
+    }
+
+    /// The first part of `t` that keeps it from being `Data`, or `None` when `t` is plain data:
+    /// no resource, behavior, or runtime handle anywhere inside it. `visiting` holds the types
+    /// being checked on the current path, so a recursive type is assumed plain only while its own
+    /// check is open.
+    pub(crate) fn data_blocker(
+        &self,
+        t: &Ty,
+        visiting: &mut Vec<String>,
+        path: &mut Vec<String>,
+    ) -> Option<DataBlocker> {
+        let blocked = |reason: DataReason, path: &[String]| {
+            Some(DataBlocker {
+                path: path.join("."),
+                ty: t.clone(),
+                reason,
+            })
+        };
+        if t.id == "<invalid>" {
+            return None;
+        }
+        match t.kind {
+            Kind::Variable => {
+                return if t.bounds().iter().any(|b| b.is_std("Data")) {
+                    None
+                } else {
+                    blocked(DataReason::Unbounded, path)
+                };
+            }
+            Kind::Primitive if t.id.as_str() == "Never" => return blocked(DataReason::Never, path),
+            Kind::Primitive => return None,
+            Kind::Function => return blocked(DataReason::Function, path),
+            Kind::Contract => return blocked(DataReason::Interface, path),
+            _ => {}
+        }
+        if t.is_std("List") || t.is_std("Set") {
+            return t
+                .args
+                .first()
+                .and_then(|a| self.data_blocker(a, visiting, path));
+        }
+        if t.is_std("Map") {
+            if let Some(key) = t.args.first()
+                && !json_key(key)
+            {
+                return blocked(DataReason::MapKey, path);
+            }
+            return t
+                .args
+                .iter()
+                .find_map(|a| self.data_blocker(a, visiting, path));
+        }
+        if t.kind == Kind::Native {
+            return if self.declares_data(t) {
+                None
+            } else {
+                blocked(DataReason::Handle, path)
+            };
+        }
+        if self.closeable(t) {
+            return blocked(DataReason::Resource, path);
+        }
+        if self.has_json_encoder(t) {
+            // The type's own `JsonEncode` decides its JSON form, whatever its fields hold.
+            return None;
+        }
+        let key = type_key(t);
+        if visiting.contains(&key) {
+            return None;
+        }
+        visiting.push(key);
+        let mut found = None;
+        for f in fields(t) {
+            path.push(f.name.as_str().to_string());
+            found = self.data_blocker(&f.ty, visiting, path);
+            if found.is_some() {
+                break;
+            }
+            path.pop();
+        }
+        if found.is_none() {
+            'cases: for c in cases(t) {
+                for f in &c.fields {
+                    path.push(f.name.as_str().to_string());
+                    found = self.data_blocker(&f.ty, visiting, path);
+                    if found.is_some() {
+                        break 'cases;
+                    }
+                    path.pop();
+                }
+            }
+        }
+        visiting.pop();
+        found
+    }
+
     fn bounds_satisfied(&self, vars: &[Ty], s: &Subst) -> bool {
         for v in vars {
             let Some(a) = s.get(&v.id) else {
@@ -711,7 +932,11 @@ impl Checker {
 
     /// Whether `t` meets `bound`.
     pub(crate) fn satisfies(&self, t: &Ty, bound: &Ty) -> bool {
-        if bound.is_std("Equal") || bound.is_std("Hashable") || bound.is_std("Clonable") {
+        if bound.is_std("Equal")
+            || bound.is_std("Hashable")
+            || bound.is_std("Clonable")
+            || bound.is_std("Data")
+        {
             return self.property(t, bound.name.as_str(), None);
         }
         self.implements(t, bound)
@@ -733,6 +958,12 @@ impl Checker {
     fn property_in(&self, t: &Ty, property: &str, state: &mut PropertyState) -> bool {
         if t.id == "<invalid>" {
             return true;
+        }
+        if property == "Data" {
+            // Not cached: a result computed under an assumed ancestor must not outlive it.
+            return self
+                .data_blocker(t, &mut Vec::new(), &mut Vec::new())
+                .is_none();
         }
         if property == "Hashable" && self.holds_resource(t, &mut Vec::new()) {
             return false;
@@ -1063,6 +1294,11 @@ impl Checker {
     /// collection types cannot take one, so they are told what to use instead.
     pub(crate) fn unsatisfied_message(&self, t: &Ty, bound: &Ty, alternative: &str) -> String {
         let prefix = format!("{t} does not satisfy {bound}; ");
+        if bound.is_std("Data")
+            && let Some(blocker) = self.data_blocker(t, &mut Vec::new(), &mut Vec::new())
+        {
+            return blocker.message(t);
+        }
         if bound.is_std("Hashable") && float_bits(t).is_some() {
             return format!(
                 "{t} does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimal"

@@ -27,6 +27,7 @@
 #     )
 #     return Command(name: "tool", children: [greeting]).execute(arguments())
 # ```
+import Data from "@std/core.ms"
 import {stderr, stdout} from "@std/io.ms"
 import {parse, stringify} from "@std/json.ms"
 
@@ -282,7 +283,7 @@ impl Command:
 # A flag with neither a default nor `required`, and an optional `Arg`, needs an `Optional[...]` field, which is `none`
 # when absent. A field with no matching value, or of the wrong type, fails the run with an `InvalidSchema` error. The
 # handler returns the exit status.
-export fn command[T](
+export fn command[T: Data](
     name: String,
     run: fn(T) Result[Int, Error],
     about: String = "",
@@ -295,7 +296,7 @@ export fn command[T](
     )
 
 # Builds `T` from the JSON literals of the supplied values.
-fn decode[T](matches: Matches) Result[T, CliError]:
+fn decode[T: Data](matches: Matches) Result[T, CliError]:
     var members: List[String] = []
     for entry in matches.fields.entries():
         members.append(stringify(entry.key.clone()).get() + ":" + entry.value)

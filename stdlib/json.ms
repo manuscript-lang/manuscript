@@ -1,3 +1,4 @@
+import Data from "@std/core.ms"
 import parse_float from "@std/math.ms"
 
 # The compiler lowers these two calls from the type argument; see `json_parse` and `json_stringify` in ms-lower.
@@ -171,7 +172,7 @@ impl JsonValue:
 #
 # The object-or-map choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 # record and `parse[Map[String, Int]]` reads the same object as a map.
-export fn parse[T = JsonValue](
+export fn parse[T: Data = JsonValue](
     text: String,
     limits: Optional[JsonLimits] = none,
     ignore_unknown_fields: Bool = true
@@ -255,7 +256,7 @@ export interface JsonEncode:
 #
 # stringify(value: Request(model: "example", stream: True, user: none))
 # ```
-export fn stringify[T](
+export fn stringify[T: Data](
     value: T,
     max_bytes: Optional[Int] = none,
     indent: Optional[Int] = none,

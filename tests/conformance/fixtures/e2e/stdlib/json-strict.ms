@@ -5,7 +5,7 @@ import {stringify, JsonError} from "@std/json.ms"
 
 type Handler:
     name: String
-    callback: fn() Int
+    done: Unit
     note: Optional[String]
 
 type Plain:
@@ -14,28 +14,25 @@ type Plain:
     tags: List[Optional[Int]]
 
 type Holder:
-    items: List[fn() Int]
-    named: Map[String, fn() Int]
-
-fn one() Int:
-    return 1
+    items: List[Unit]
+    named: Map[String, Unit]
 
 test "JSON stringify omits values without a JSON form unless strict":
-    let handler = Handler("h", one, none)
+    let handler = Handler("h", unit, none)
     try expect_equal(stringify(handler), ok("\{\"name\":\"h\"\}"))
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(handler, strict: true), invalid)
 
 test "JSON strict stringify rejects no-form list elements and map values":
-    let holder = Holder([one], Map[String, fn() Int]())
+    let holder = Holder([unit], Map[String, Unit]())
     try expect_equal(stringify(holder), ok("\{\"items\":[null],\"named\":\{\}\}"))
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
     try expect_equal(stringify(holder, strict: true), invalid)
 
-    var named = Map[String, fn() Int]()
-    named.add("a", one)
+    var named = Map[String, Unit]()
+    named.add("a", unit)
     try expect_equal(stringify(Holder([], named), strict: true), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":

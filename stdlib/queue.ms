@@ -3,7 +3,7 @@ import Indexed from "@std/indexed.ms"
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
-export type Queue[T: Clonable]:
+export type Queue[T]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
@@ -77,7 +77,7 @@ fn order[T: Comparable](left: T, right: T) Int:
 
 # Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
 # A priority queue is an owned value: a copy is an independent queue.
-export type PriorityQueue[T: Comparable & Clonable]:
+export type PriorityQueue[T: Comparable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
     capacity: Optional[Int] = none
     # Binary heap of waiting values. Internal state: use the operations, not this field.

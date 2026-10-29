@@ -7,7 +7,7 @@
 # fault in the child ends only the child, and the parent sees its exit status.
 import {Bytes, BytesBuilder} from "@std/bytes.ms"
 import {Channel, ChannelError, Transport} from "@std/channels.ms"
-import Closeable from "@std/core.ms"
+import {Closeable, Data} from "@std/core.ms"
 import {ReadStream, WriteStream} from "@std/io.ms"
 import {parse, stringify} from "@std/json.ms"
 import {CommandError, Stdio} from "@std/process.ms"
@@ -94,7 +94,7 @@ fn not_started(cause: CommandError) ProcessError:
     return ProcessError.NotStarted(cause)
 
 # A value inside a frame body, so values with no JSON form of their own, such as `Unit`, cross too.
-type Envelope[T]:
+type Envelope[T: Data]:
     value: T
 
 # One frame read from the pipe.
@@ -121,14 +121,14 @@ fn frame(kind: Int, body: String) Bytes:
     out.append_bytes(data)
     return out.build()
 
-fn encode[T](value: T) Result[String, ChannelError]:
+fn encode[T: Data](value: T) Result[String, ChannelError]:
     match stringify(Envelope[T](value: value)):
         ok(text): return ok(text)
         error(e): return error(
             ChannelError.Broken("cannot encode the value: " + e.message())
         )
 
-fn decode[T](body: String) Result[T, ChannelError]:
+fn decode[T: Data](body: String) Result[T, ChannelError]:
     match parse[Envelope[T]](body):
         ok(envelope):
             let {value} = envelope
@@ -196,7 +196,7 @@ fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
 # One end of a process channel: JSON frames over the IPC pipe.
-type ProcessTransport[In, Out]:
+type ProcessTransport[In: Data, Out: Data]:
     link: NativeLink
     inbox: Shared[Inbox]
 
@@ -252,7 +252,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
 # The child's side: runs `entry` on the child's end of the channel, then sends `close` (if the
 # entry did not) and the result, and closes the pipe.
-fn serve[T, In, Out](entry: fn(Channel[Out, In]) T) Unit:
+fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
     let inbox: Shared[Inbox] = share(Inbox())
     let value = entry(
@@ -275,7 +275,7 @@ fn nanos(limit: Optional[Duration]) Int:
     return -1
 
 # Waits for the entry to return and gives its result, or `Exited` with the status of a child that ended first.
-fn wait_result[T](
+fn wait_result[T: Data](
     native: NativeProcess,
     link: NativeLink,
     inbox: Shared[Inbox]
@@ -321,7 +321,7 @@ fn stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) Uni
 
 # A child process started by `ProcessGroup.spawn` at an entry returning `T`, with the parent's
 # end of its channel.
-export type Process[T, In = Unit, Out = Unit]:
+export type Process[T: Data, In: Data = Unit, Out: Data = Unit]:
     # Internal state: the running child.
     native: NativeProcess
     # Internal state: the parent's end of the IPC pipe.
@@ -387,7 +387,7 @@ impl Closeable for Process[T, In, Out]:
 # `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
 # `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
 # strings and numbers.
-export type ProcessGroup[T, In = Unit, Out = Unit]:
+export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     # Internal state: the open processes in start order, changed through the shared handle so the
     # group closes when its scope ends.
     processes: Shared[List[Open]] = share([])

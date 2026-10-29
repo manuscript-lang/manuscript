@@ -1,4 +1,4 @@
-import panic from "@std/core.ms"
+import {Data, panic} from "@std/core.ms"
 import NumberError from "@std/math.ms"
 
 # How a Decimal rounds to a multiple of the requested power of ten.
@@ -16,6 +16,8 @@ export type RoundingMode:
 
 # An exact decimal value. Conversions are explicit because binary floats may round.
 export extern type Decimal
+
+impl Data for Decimal:
 
 extern fn msstd_decimal_compare(left: Decimal, right: Decimal) Int
 

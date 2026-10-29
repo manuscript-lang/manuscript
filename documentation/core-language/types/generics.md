@@ -24,6 +24,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | `Clonable` | `value.clone()` returns an independent deep copy, so a generic body can keep a value it only borrows. Plain data qualifies; function values, interface views, regular expressions and resource handles do not |
+| `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and the message types of workers and processes require it. Import it from `@std/core.ms`. Records and alternatives qualify when every part does; `Closeable` types never do; a map qualifies when its key is a `String`, `Int`, `Bool`, `Duration`, or an alternative whose cases have no fields. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
 | A named operation contract | Type supplies the required operations through an explicit implementation |
 
 Bounds are checked at every application, and `Hashable` implies `Equal`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.

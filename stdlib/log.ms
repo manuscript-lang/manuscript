@@ -1,3 +1,4 @@
+import Data from "@std/core.ms"
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
@@ -257,7 +258,7 @@ impl Logger for StdLogger:
 # Any other value, such as a number, string, list, or `none`, is written under the key `data`.
 # A value that cannot be encoded, such as a cyclic one, returns `InvalidData`; encoding happens
 # only when the level is enabled. The reserved keys `level`, `msg`, and `time` are ignored.
-export fn record[T](
+export fn record[T: Data](
     logger: Logger,
     level: LogLevel,
     message: String,

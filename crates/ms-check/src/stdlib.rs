@@ -1371,7 +1371,10 @@ impl Loader<'_> {
                     .unwrap_or_default();
                 for index in start..self.c.p.methods.len() {
                     let mut method = (*self.c.p.methods[index]).clone();
-                    let name = method.name().expect("method name");
+                    // A property without operations has no method to bind.
+                    let Some(name) = method.name() else {
+                        continue;
+                    };
                     let key = format!(
                         "{}/{}/{}/{}",
                         module.file, receiver_name, contract_name, name

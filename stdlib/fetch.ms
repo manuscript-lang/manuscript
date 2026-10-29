@@ -1,6 +1,6 @@
 # Fetch-style HTTP client implemented in Manuscript over `@std/http.ms` and `@std/json.ms`.
 import Bytes from "@std/bytes.ms"
-import Closeable from "@std/core.ms"
+import {Closeable, Data} from "@std/core.ms"
 import {
     HttpClient, HttpClientOptions, HttpError, HttpHeaders, HttpMethod,
     HttpResponseMetadata, ResponseBody, headers
@@ -66,7 +66,7 @@ export type FetchBody:
     )
 
 # Encodes `value` as a JSON request body, sent as `application/json` unless a `Content-Type` is given.
-export fn json_body[T](value: T) Result[FetchBody, FetchError]:
+export fn json_body[T: Data](value: T) Result[FetchBody, FetchError]:
     let text = try stringify(value).map_error(json_failure)
     return ok(FetchBody.JsonText(text))
 
@@ -117,7 +117,7 @@ impl FetchResponse:
         return error(FetchError.InvalidText)
 
     # Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
-    fn json[T](ignore_unknown_fields: Bool = true) Result[T, FetchError]:
+    fn json[T: Data](ignore_unknown_fields: Bool = true) Result[T, FetchError]:
         let text = try self.text()
         return parse[T](text, ignore_unknown_fields: ignore_unknown_fields).map_error(
             json_failure

@@ -4,7 +4,7 @@ import {timestamp, nanoseconds, clock, Timestamp, Duration, Instant} from "@std/
 import Url from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import TextError from "@std/core.ms"
+import {Data, TextError} from "@std/core.ms"
 import BigInt from "@std/math.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
@@ -102,7 +102,7 @@ type Node:
     label: String
     next: Optional[Node]
 
-fn encoded[T](item: T) Result[String, Error]:
+fn encoded[T: Data](item: T) Result[String, Error]:
     return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
@@ -162,12 +162,8 @@ test "JSON stringify repeats shared acyclic values and reads current field value
     try expect_equal(before, "[\{\"label\":\"s\"\},\{\"label\":\"s\"\}]")
     try expect_not_equal((try encoded(pair)), before)
 
-fn one() Int:
-    return 1
-
 type Handler:
     name: String
-    callback: fn() Int
     retries: Optional[Optional[Int]]
     note: Optional[String]
 
@@ -192,23 +188,17 @@ type Tagged:
     case Named(name: String, alias: Optional[String])
     case Plain
 
-test "JSON stringify omits values without a JSON form and writes null for list elements":
-    var handler = Handler("h", one, none, none)
+test "JSON stringify omits none fields and keeps nested optionals":
+    var handler = Handler("h", none, none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\"\}")
     handler.retries = some(none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":null\}")
     handler.retries = some(some(3))
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":3\}")
 
-    let callbacks = [one, one]
-    try expect_equal((try encoded(callbacks)), "[null,null]")
-
     var named = Map[String, Int]()
     named.add("a", 1)
     try expect_equal((try encoded(named)), "\{\"a\":1\}")
-
-    let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    try expect_equal(stringify(one), invalid)
 
 test "JSON stringify encodes standard-library values":
     let at = try timestamp(1700000000, 500000000)
@@ -218,7 +208,7 @@ test "JSON stringify encodes standard-library values":
     try expect_equal((try encoded(item)), expected)
     try expect_equal((try encoded(TextError("boom"))), "\{\"text\":\"boom\"\}")
 
-    let ok: Result[Int, Error] = ok(5)
+    let ok: Result[Int, JsonError] = ok(5)
     try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
     try expect_equal((try encoded(JsonError.InvalidData)), "\"InvalidData\"")
     try expect_equal(
@@ -235,15 +225,6 @@ test "JSON stringify encodes scalar map keys and rejects the rest":
     var flags = Map[Bool, Int]()
     flags.add(true, 1)
     try expect_equal((try encoded(flags)), "\{\"true\":1\}")
-
-    var decimals = Map[Decimal, Int]()
-    decimals.add(1.50d, 1)
-    try expect_equal((try encoded(decimals)), "\{\"1.5\":1\}")
-
-    let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    var records = Map[Money, Int]()
-    records.add(Money(1), 1)
-    try expect_equal(stringify(records), invalid)
 
 test "JSON stringify honors JsonEncode wherever the value appears":
     let invoice = Invoice(Money(500), [Money(200), Money(300)])
@@ -267,28 +248,14 @@ test "JSON stringify indents like JSON.stringify and clamps at ten":
     let negative: Result[String, JsonError] = error(JsonError.InvalidInput)
     try expect_equal(stringify(1, indent: -1), negative)
 
-interface Named:
-    fn label() ref String
-
-type Person:
-    name: String
-
-impl Named for Person:
-    fn label() ref String:
-        return self.name
-
 type Holder:
-    who: Named
-    at: Instant
     done: Unit
 
-test "JSON stringify omits interface values and monotonic instants":
-    let who: Named = Person("p")
-    let holder = Holder(who, clock().now(), unit)
+test "JSON stringify omits a Unit field and rejects a Unit root":
+    let holder = Holder(unit)
     try expect_equal((try encoded(holder)), "\{\}")
 
     let invalid: Result[String, JsonError] = error(JsonError.InvalidData)
-    try expect_equal(stringify(clock().now()), invalid)
     try expect_equal(stringify(unit), invalid)
 
     let failed: Result[Int, JsonError] = error(JsonError.LimitExceeded)
@@ -355,7 +322,7 @@ type Price:
     amount: Decimal
     cents: BigInt
 
-fn decoded[T](text: String) Result[T, JsonError]:
+fn decoded[T: Data](text: String) Result[T, JsonError]:
     return parse[T](text)
 
 test "JSON parse decodes records by field name with defaults and optional fields":
@@ -516,13 +483,6 @@ test "JSON parse reads what stringify writes for standard values and scalar map 
     let flags: Map[Bool, Int] = try parse[Map[Bool, Int]]("\{\"true\":1\}")
     try expect_equal(flags[true], 1)
 
-    let kinds: Map[Tagged, Int] = try parse[Map[Tagged, Int]]("\{\"Plain\":3\}")
-    try expect_equal(kinds[Tagged.Plain], 3)
-
-test "JSON parse needs a default for fields without a JSON form":
-    let outcome = parse[Handler]("\{\"name\":\"n\"\}")
-    try expect_false(outcome.is_ok())
-
 test "JSON parse reads standard alternatives and rejects keys that collide":
     let good: Result[Int, JsonError] = try parse[Result[Int, JsonError]](
         "\{\"ok\":\{\"value\":5\}\}"
@@ -602,9 +562,6 @@ test "JSON round trips generic records alternatives and Duration keys":
 
 test "JSON parse returns InvalidData for targets that cannot be read":
     try expect_false(parse[Unit]("null").is_ok())
-
-    let f = parse[fn() Int]("1")
-    try expect_false(f.is_ok())
     try expect_false(parse[Int]("-0").is_error())
     try expect_false(parse[Float]("1e999").is_ok())
     try expect_false(parse[String]("1").is_ok())

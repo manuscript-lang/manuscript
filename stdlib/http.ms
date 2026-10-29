@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import {Closeable, Data} from "@std/core.ms"
 import {Bytes, join} from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
@@ -498,7 +498,7 @@ export fn text(status: Int, body: String) HttpResponse:
 
 # Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
 # A value `stringify` cannot encode returns Failed with its diagnostic.
-export fn json[T](status: Int, value: T) Result[HttpResponse, HttpError]:
+export fn json[T: Data](status: Int, value: T) Result[HttpResponse, HttpError]:
     let body = stringify(value)
     if body.is_error(): return error(HttpError.Failed(body.err().message()))
 

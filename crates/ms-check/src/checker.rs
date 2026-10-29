@@ -943,6 +943,12 @@ impl Checker {
                 self.check_field_defaults(d, &s);
             }
             if let DeclKind::Interface(i) = &d.decl().kind {
+                if i.methods.is_empty() && !stdlib::is_source_module(module) {
+                    self.type_error(
+                        d.pos(),
+                        "an interface declares at least one operation; only the standard library declares a property without operations, like `Data`",
+                    );
+                }
                 for method in &i.methods {
                     for param in method.func.params.iter().filter(|p| p.mutable) {
                         self.type_error(

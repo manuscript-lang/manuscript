@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import {Closeable, Data} from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/http.ms"
 import Duration from "@std/time.ms"
@@ -289,6 +289,8 @@ impl IpFamily:
 # A validated numeric IPv4/IPv6 address without a port or zone.
 export extern type IpAddress
 
+impl Data for IpAddress:
+
 impl IpAddress:
     # Returns canonical text; mapped IPv6 input is normalized to IPv4.
     fn text() String:
@@ -303,6 +305,8 @@ impl IpAddress:
 
 # A validated, masked numeric CIDR range.
 export extern type Cidr
+
+impl Data for Cidr:
 
 impl Cidr:
     # Returns the canonical masked prefix without reparsing.
