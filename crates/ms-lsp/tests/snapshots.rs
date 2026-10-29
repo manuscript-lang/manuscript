@@ -627,3 +627,16 @@ fn hover_omits_unresolved_types() {
     s.at("textDocument/hover", &uri, 1, 8);
     compare("invalid-type-hover", &s);
 }
+
+#[test]
+fn opaque_is_a_keyword_only_before_type() {
+    let ws = Workspace::new("opaque-tokens");
+    let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
+    let uri = ws.uri("opaque.ms");
+    s.open(&uri, include_str!("semantic/opaque.ms"), 1);
+    s.request(
+        "textDocument/semanticTokens/full",
+        obj([("textDocument", obj([("uri", uri.as_str().into())]))]),
+    );
+    compare("opaque-tokens", &s);
+}
