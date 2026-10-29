@@ -158,7 +158,8 @@ pub fn navigation(
         {
             shown = value;
         }
-        let mut value = format!("```manuscript\n{}: {}\n```", hit.text, shown);
+        let by_ref = if info.by_ref { "ref " } else { "" };
+        let mut value = format!("```manuscript\n{}: {by_ref}{}\n```", hit.text, shown);
         let docs = hover_documentation(analysis, &info);
         if !docs.is_empty() {
             value.push_str("\n\n");

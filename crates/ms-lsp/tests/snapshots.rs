@@ -616,3 +616,18 @@ fn batched_changes_publish_once() {
     s.at("textDocument/hover", &main, 1, 11);
     compare("batched", &s);
 }
+
+#[test]
+fn hover_shows_ref_on_ref_fields() {
+    let ws = Workspace::new("ref-field-hover");
+    let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
+    let uri = ws.uri("cursor.ms");
+    let source = "type Cursor:\n    items: ref List[Int]\n    at: Int\n\nfn first(c: Cursor) Int:\n    return c.items[c.at]\n\nexport fn main() Int:\n    var xs = [1, 2]\n    let c = Cursor(items: xs, at: 0)\n    return first(c)\n";
+    s.open(&uri, source, 1);
+    // Declaration, member read, constructor label, and an owning field for contrast.
+    s.at("textDocument/hover", &uri, 1, 5);
+    s.at("textDocument/hover", &uri, 5, 13);
+    s.at("textDocument/hover", &uri, 9, 20);
+    s.at("textDocument/hover", &uri, 2, 5);
+    compare("ref-field-hover", &s);
+}

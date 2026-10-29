@@ -6,7 +6,9 @@ use crate::analysis::Analysis;
 use crate::lexical::{self, Lexical};
 use ms_check::stdlib;
 use ms_check::syntax::{DeclRef, FuncRef, Info, ModRef};
-use ms_check::types::{BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, fields, n};
+use ms_check::types::{
+    BindingRef, Kind, Method, MethodRef, Name, SymRef, Ty, field_is_ref, fields, n,
+};
 use ms_syntax::Symbol;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
@@ -28,6 +30,8 @@ pub struct OccInfo {
     pub constructor: Option<Ty>,
     /// Constructed case.
     pub case: Option<Name>,
+    /// A record field declared `ref`.
+    pub by_ref: bool,
 }
 
 impl OccInfo {
@@ -40,6 +44,7 @@ impl OccInfo {
             method: info.method.clone(),
             constructor: info.constructor.clone(),
             case: info.case,
+            by_ref: false,
         }
     }
 }
@@ -298,6 +303,7 @@ pub fn source_index(analysis: &Analysis) -> Vec<Occurrence> {
                             false,
                             OccInfo {
                                 ty: Some(typed.ty.clone()),
+                                by_ref: field_is_ref(&ty, field.name),
                                 ..OccInfo::default()
                             },
                         );
@@ -697,12 +703,14 @@ impl UseWalker<'_> {
                         && let Some(def) = &receiver.def
                     {
                         let parent = def.symbol();
+                        let mut field_occ = occ.clone();
+                        field_occ.by_ref = field_is_ref(&receiver, *name);
                         self.add(
                             format!("field:{}:{}", symbol_key(parent.as_ref()), name),
                             name.as_str(),
                             e.pos.offset as usize,
                             info.write,
-                            occ.clone(),
+                            field_occ,
                         );
                     }
                 }
@@ -768,6 +776,7 @@ impl UseWalker<'_> {
                                 false,
                                 OccInfo {
                                     ty: Some(field.ty.clone()),
+                                    by_ref: field_is_ref(constructor, field.name),
                                     ..OccInfo::default()
                                 },
                             );
