@@ -19,7 +19,8 @@ case "$(uname -s)" in
         ;;
     MINGW*|MSYS*|CYGWIN*)
         # Windows programs link against the mingw-w64 (gnullvm) runtime, built with the bundled clang.
-        arch=$(uname -m)
+        # An emulated MSYS shell can report x86_64 on ARM64; match the installed Rust target.
+        arch=$(rustc -vV | sed -n 's/^host: \([^-]*\)-.*/\1/p')
         target="$arch-pc-windows-gnullvm"
         release="$target/release"
         mingw="${MS_MINGW:-$repository/target/llvm-bundle/mingw}"
