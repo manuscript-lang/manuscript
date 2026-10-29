@@ -1,0 +1,28 @@
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1834,7 +1834,7 @@
+         }
+         if sepb.is_empty() {
+             // Split after each scalar: the piece count is known, so the list is sized once.
+-            let n = utf8::count(text).min(limit);
++            let n = capped_scalar_count(text, limit);
+             if n > 0 {
+                 v.ptr = alloc::alloc(n * ELEM);
+                 v.cap = n;
+@@ -1863,6 +1863,16 @@
+         }
+         *out = v;
+     }
++}
++
++/// Exact scalar count up to a cap. Keep counting separate from the scalar-copying loop.
++#[inline(never)]
++fn capped_scalar_count(text: &[u8], limit: usize) -> usize {
++    // A decoded scalar uses at most four bytes, including invalid bytes, which use one.
++    if limit <= text.len() / 4 {
++        return limit;
++    }
++    utf8::count(text).min(limit)
+ }
+ 
+ /// The state of `for piece in text.split(separator)` that does not build the list.

@@ -48,7 +48,7 @@ export fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for width in [3]:
-        for size in [1048576]:
+        for size in [64, 4096, 1048576]:
             let text = input(width, size)
             let count = text.scalar_length()
 
@@ -65,7 +65,7 @@ export fn main() Int:
                 if size == 1048576 and width != 1: iterations = 512
 
                 if requested < 0:
-                    iterations = 1024
+                    iterations = 4096
                     if size == 64: iterations = 100000
                     if size == 1048576: iterations = 32
 

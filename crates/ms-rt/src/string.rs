@@ -1834,23 +1834,19 @@ unsafe fn split_into(
         }
         if sepb.is_empty() {
             // Split after each scalar: the piece count is known, so the list is sized once.
-            // The first `limit` complete scalars fit in at most `4 * limit` bytes. Counting
-            // beyond that prefix cannot change the capped result, even if its end cuts a scalar.
-            let mut count_bytes = text.len().min(limit.saturating_mul(4));
-            // Finish a partial scalar so valid text keeps the counter's valid-UTF8 fast path.
-            for _ in 0..3 {
-                if count_bytes == text.len() || text[count_bytes] & 0xC0 != 0x80 {
-                    break;
-                }
-                count_bytes += 1;
-            }
-            let n = utf8::count(&text[..count_bytes]).min(limit);
+            // Each decoded scalar uses at most four bytes, so this cap is known to fit.
+            let n = if limit <= text.len() / 4 {
+                limit
+            } else {
+                utf8::count(text).min(limit)
+            };
             if n > 0 {
                 v.ptr = alloc::alloc(n * ELEM);
                 v.cap = n;
             }
             let mut i = 0;
-            while i < text.len() && v.len < limit {
+            // Bound by the exact capacity, rather than the possibly much larger requested cap.
+            while i < text.len() && v.len < n {
                 let w = utf8::decode(&text[i..]).1;
                 push_str(&mut v, piece(&text[i..i + w]));
                 i += w;

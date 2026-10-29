@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-29",
+  "host": {
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+    "cpu": "Intel Xeon Platinum8573C",
+    "exposed_cpus": 5,
+    "affinity": [
+      0
+    ]
+  },
+  "rust": "1.99.1",
+  "llvm": "23.1.1",
+  "optimization": "Release, opt default<O3>, llc-O3",
+  "runtime_target": "x86_64-unknown-linux-musl",
+  "rustflags": "-C force-frame-pointers=yes",
+  "compiler_source_commit": "293f45361725d81945cc0b71fb5fdee3a1f902b2",
+  "runtime_source_base": "92446e2e37846a1dce75c556a2ee507978cfc665",
+  "runtime_source_patch": "runtime.patch",
+  "sha256": {
+    "/tmp/string-split-limits-before": "fbbb80710dcab0ecbaed6e20accdd607d366ee8ce70cb2a42316c50558d468bc",
+    "/tmp/string-split-limits-after": "144d8f1e671e2be327c395b910dfe151e93559878a4fc483dad4d0763cb9edb0",
+    "/tmp/string-split-full-before": "ad7a127244c69b695d2d7735c72bfba1891499efe3940c943631776858521a6b",
+    "/tmp/string-split-full-after": "1c647d3ad4ff8abbc23377aeff8cd98299f8cac64a2a73f3f8be0d1b39fb96d5",
+    "/tmp/string-split-baseline/libms_native.a": "759e70554c13519a2781e4260debb98756f04e6448232ddf03cb2171c1ded7d1",
+    "/tmp/string-split-candidate/libms_native.a": "ef650aa10d1b033c989ff74af29581f01d80590e461c57b62acef8d0857d6996",
+    "/tmp/string-split-baseline/ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+    "/tmp/string-split-candidate/ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+    "/workspace/manuscript/target/release/ms": "00ec299238a29218a520dae47c26729f033bb77ef1d2971dd77d230cf13a3c20",
+    "crates/ms-rt/src/string.rs": "58af069f6a043b19d104db38adae06e6dda3fe994d4ceef22b376012852712d3",
+    "bench/perf/string-lines/compare.py": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+    "bench/perf/string-split-limits/main.ms": "f88a9a54c5cdf76740f7c4988e3990d78b5b34e35e6bcf73eb31c98fdda48b29",
+    "bench/perf/string-split-limits/full-controls.ms": "c553bf5d15c8f41f9441117c329994817cd008d9b202ac2137c957b52a198c8e",
+    "bench/perf/string-split-limits/identities.json": "7c3e7511876e0c168461995d4cea9a4b05f1c74a114f6a9d2315b819e69cf86a",
+    "bench/perf/string-split-limits/full-control-identities.json": "064649451f4a6997c6b9ce7d8fc88c9fb0d44bcae7b97adbd7cf62dc2d6e0895"
+  },
+  "final_samples": {
+    "main": {
+      "file": "samples.csv",
+      "cases": 63,
+      "pairs": 7,
+      "rows": 882
+    },
+    "focused": {
+      "file": "full-control-samples.csv",
+      "cases": 6,
+      "pairs": 9,
+      "rows": 108
+    }
+  },
+  "exploratory": {
+    "initial": {
+      "cases": 30,
+      "pairs": 7,
+      "rows": 420,
+      "archive_after_sha256": "c29bdaa8a327fb6f5284bd02f56c4e9da0ee11f9d8093bd1d5ae6e637e43a191"
+    },
+    "helper": {
+      "cases": 30,
+      "pairs": 7,
+      "rows": 420
+    },
+    "bounded": {
+      "cases": 63,
+      "pairs": 7,
+      "rows": 882,
+      "archive_after_sha256": "0812ae6941e665c83547b6bc2036fd32614d518768f4c5e088d70a6c9c105ae7",
+      "executable_after_sha256": "f4feec72c72fb8e65370031827931bb30af227600fe6d01649e97e8e774d8f6e"
+    },
+    "bounded_focused": {
+      "cases": 2,
+      "pairs": 9,
+      "rows": 36
+    }
+  },
+  "exploratory_provenance_limit": "Earlier compiler was the same retained executable; source snapshots and all raw CSV fields are retained. Helper-prototype executable/archive hashes and bounded focused-executable hashes were not captured; those exploratory datasets are not used for final speed claims.",
+  "artifacts": {
+    "bounded-full-control-identities.json": "6304e737396196fb25bb5fa8a901b765747cd2272c196f708efa24993dcdb9d4",
+    "bounded-samples.csv": "11ff302b03c4720886037023831319dc74d7cf9acc1b5e701b09a8a5f0a52a9e",
+    "full-control-samples.csv": "a5b933073646c4eeb9183baffc05279d1414ff6a515baa7d2d6c49f09ca78538",
+    "runtime.patch": "a72c12df47788ad62e1a93467cbf692ddd3fc1e1d6d88c82262daa74a485378f",
+    "identities.json": "7c3e7511876e0c168461995d4cea9a4b05f1c74a114f6a9d2315b819e69cf86a",
+    "summary.csv": "cfbb9c4f7d2463fa3fcb11710ce2cc7bcbcc30ce10e023fdf062904d505c4217",
+    "bounded-full-control-samples.csv": "bb61906c6f1af0a24630360d1cd15ea7f9cabffdf411137fb2669101c54032ca",
+    "full-control-summary.csv": "e35d7501c420d476febbfd6987a282f971877278018fa97c149eea115a0673a0",
+    "samples.csv": "9e80ff7ce308891d470476762d813bb82ae30dc6399e2ba8b4328d18b2a3382f",
+    "main.ms": "f88a9a54c5cdf76740f7c4988e3990d78b5b34e35e6bcf73eb31c98fdda48b29",
+    "full-controls.ms": "c553bf5d15c8f41f9441117c329994817cd008d9b202ac2137c957b52a198c8e",
+    "bounded-full-controls.ms": "a86a2512352dfe87ed3cc19c0e993b4df51cffd19353c365ef2095356b621785",
+    "full-control-identities.json": "064649451f4a6997c6b9ce7d8fc88c9fb0d44bcae7b97adbd7cf62dc2d6e0895",
+    "initial-samples.csv": "f44b140d31cdda0699ff364dc1ffd2b8ac157bdffc44eef4ffadf681f327f46b",
+    "helper-samples.csv": "3c61a2ad4b372781b31d557c440f506461a4c3e83057d006a908899abff287ea",
+    "exploratory/helper-identities.json": "2b298b32a455262a1d29626d10da3b8635828dedfdff4c31ceaba1d66e68e730",
+    "exploratory/bounded-identities.json": "7c3e7511876e0c168461995d4cea9a4b05f1c74a114f6a9d2315b819e69cf86a",
+    "exploratory/initial.patch": "7440f04c28c40de42e29a8b8419c8377585e70fb5c6dac39946286a7e226c069",
+    "exploratory/initial-main.ms": "959cf171c0914005277a29dec40f30fda6e2acaed18223009b332589c7ba52f9",
+    "exploratory/bounded.patch": "43c3b100586f669d0e72c5e184cbd7dcec117d78e642a5a7369afda83d37161f",
+    "exploratory/bounded-main.ms": "f88a9a54c5cdf76740f7c4988e3990d78b5b34e35e6bcf73eb31c98fdda48b29",
+    "exploratory/initial-identities.json": "599604367c0a833be2ace8a1a9954ba766a6cd13428437db9d509e82c6eeae65",
+    "exploratory/helper.patch": "16936436e66497c08f2417f4074067346b58e63cdfe0fad88339bd8ed0d3c13e",
+    "exploratory/helper-main.ms": "b37213aada772257c6d1a048d379b8542a47bbb0c84679c2d26e93dc6e0035f2"
+  }
+}

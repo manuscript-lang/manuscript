@@ -1,0 +1,17 @@
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1834,7 +1834,13 @@
+         }
+         if sepb.is_empty() {
+             // Split after each scalar: the piece count is known, so the list is sized once.
+-            let n = utf8::count(text).min(limit);
++            // A decoded scalar uses at most four bytes, so this limit is guaranteed to fit
++            // without counting the whole input (including invalid bytes, which use one).
++            let n = if limit <= text.len() / 4 {
++                limit
++            } else {
++                utf8::count(text).min(limit)
++            };
+             if n > 0 {
+                 v.ptr = alloc::alloc(n * ELEM);
+                 v.cap = n;
