@@ -1,6 +1,6 @@
 import {expect_equal, expect_true} from "@std/test.ms"
-import Deque from "@std/deque.ms"
-import {PriorityQueue, Queue} from "@std/queue.ms"
+import {Deque, DequeIter} from "@std/deque.ms"
+import {PriorityQueue, PriorityQueueIter, Queue, QueueIter} from "@std/queue.ms"
 
 # `for item in container` over an `Iterable` container borrows each item: the lambdas below are
 # never cloned.
@@ -87,3 +87,51 @@ test "callbacks are called through the borrow":
     for f in d:
         total += f(2)
     try expect_equal(total, 23)
+
+test "deque iterator keeps exhausted positions unchanged":
+    let empty = Deque[Int]()
+    for position in [-1, 0, 9223372036854775807]:
+        var it = DequeIter(source: empty, position: position)
+        for attempt in 0..3:
+            try expect_true(it.next().is_none())
+        try expect_equal(it.position, position)
+
+    var d = Deque[Int]()
+    d.push_back(7)
+    var it = d.iter()
+    try expect_equal(it.next(), some(7))
+    for attempt in 0..3:
+        try expect_true(it.next().is_none())
+    try expect_equal(it.position, 1)
+
+test "queue iterator keeps exhausted positions unchanged":
+    let empty = Queue[Int]()
+    for position in [-1, 0, 9223372036854775807]:
+        var it = QueueIter(source: empty, position: position)
+        for attempt in 0..3:
+            try expect_true(it.next().is_none())
+        try expect_equal(it.position, position)
+
+    var q = Queue[Int]()
+    q.enqueue(7)
+    var it = q.iter()
+    try expect_equal(it.next(), some(7))
+    for attempt in 0..3:
+        try expect_true(it.next().is_none())
+    try expect_equal(it.position, 1)
+
+test "priority queue iterator keeps exhausted positions unchanged":
+    let empty = PriorityQueue[Int]()
+    for position in [-1, 0, 9223372036854775807]:
+        var it = PriorityQueueIter(source: empty, position: position)
+        for attempt in 0..3:
+            try expect_true(it.next().is_none())
+        try expect_equal(it.position, position)
+
+    var q = PriorityQueue[Int]()
+    q.enqueue(7)
+    var it = q.iter()
+    try expect_equal(it.next(), some(7))
+    for attempt in 0..3:
+        try expect_true(it.next().is_none())
+    try expect_equal(it.position, 1)

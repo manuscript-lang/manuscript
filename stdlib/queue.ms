@@ -82,6 +82,9 @@ impl Iterator[T] for QueueIter[T]:
     # Returns the value at the current position and moves past it, or none after the newest.
     var fn next() ref Optional[T]:
         let item = self.source.at(self.position)
+        if item.is_none():
+            return none
+
         self.position += 1
         return item
 
@@ -214,6 +217,9 @@ impl Iterator[T] for PriorityQueueIter[T]:
     # Returns the value at the current heap position and moves past it, or none after the last.
     var fn next() ref Optional[T]:
         let item = self.source.at(self.position)
+        if item.is_none():
+            return none
+
         self.position += 1
         return item
 
