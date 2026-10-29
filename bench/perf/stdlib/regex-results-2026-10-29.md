@@ -58,8 +58,8 @@ an input with no matches.
 
 The strongest runtime result is literal-template replacement: the final medians
 fall from 421.77 to 192.65 ns for one match (0.457x), and from 713.51 to
-247.67 microseconds for 2,000 matches (0.347x). Before/after ranges are disjoint
-across all seven trials for both cases. The initial run independently measured
+247.67 microseconds for 2,000 matches (0.347x). Before/after process-median ranges
+are disjoint across all seven trials for both cases. The initial run independently measured
 0.454x and 0.350x, respectively.
 
 The complete [final median table](results/regex-2026-10-29/final/results.md) and

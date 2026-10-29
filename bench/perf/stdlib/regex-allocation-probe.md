@@ -43,11 +43,13 @@ for name in ('baseline', 'candidate'):
     (folder / 'Cargo.toml').write_text(manifest + '\n')
 (probe / 'Cargo.toml').write_text('[workspace]\nmembers = ["baseline", "candidate"]\n'
     'resolver = "3"\n[profile.release]\nlto = false\ncodegen-units = 1\n')
+lock = root / 'bench/perf/stdlib/results/regex-2026-10-29/allocation/Cargo.lock'
+(probe / 'Cargo.lock').write_bytes(lock.read_bytes())
 ```
 
 ```sh
 cd /tmp/regex-alloc
-cargo +1.99.1 build --release --workspace --bins
+cargo +1.99.1 build --release --locked --workspace --bins
 ./target/release/alloc-baseline > before.txt
 ./target/release/alloc-candidate > after.txt
 ```
