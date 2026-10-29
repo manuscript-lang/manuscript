@@ -279,6 +279,21 @@ unrecorded outcomes. The completed [log](checks/conform-pinned.log) and
 original make invocation remains failed. Normal required CI remains mandatory;
 this controlled local replay is not a CI pass or merge approval.
 
+The [input-integrity record](checks/conform-pinned-input-integrity.json) retains
+post-replay compiler, selected runtime archive, and pure-helper hashes; all match
+the prior pins. The selected archive was rehashed immediately before replay and
+recorded in `checks/conform-failed-input.json`. The compiler was verified at its
+initial pin and benchmark builds, **not by an immediate replay preflight**. This
+is a limitation of the recorded pre/post procedure.
+
+The replay used the preserved `/tmp` archive, never a scheduled build output.
+The duplicate process group was stopped before replay, all other native work was
+held, and reverse builds began only after the replay exited successfully. These
+are the recorded writer-coordination facts. Compiler mode 555 and selected
+archive/helper mode 444 were set **after** the completed replay; this report does
+not claim read-only permissions protected that run. The later permission change
+adds no retroactive execution guarantee.
+
 ## Evidence byte preservation
 
 The full staged whitespace check flags the three saved unified patches (required

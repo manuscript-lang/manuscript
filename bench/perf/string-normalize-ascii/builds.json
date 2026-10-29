@@ -113,7 +113,7 @@
     "tests/e2e/testdata/stdlib/string-normalize-ascii.ms": "3555e15c436e8b3e66e2d99855426b0630ed86a7c2c31dfef4de49fe7e299715"
   },
   "files_sha256": {
-    "README.md": "4f3ddcf262fef6567724e9651903a83961be9081e5859b773b8909c9b4196f7c",
+    "README.md": "88e5ebf23a4479aec8657653a831f263af5a37cbb3fd3723e8bc7fdcad5a6bd5",
     "after-build.json": "06bdfc312566a1ce265cff182df7fc6c3809b159c7b9006fbd04a415c8cee1f1",
     "after-focused-build.json": "59983e1b4fbd9e42cfde8e395f69657e2b9fe4b96b5a9c563d189e5d1eb6a4a0",
     "before-build.json": "c9872c523d712aa5b7332c6cfd33c35f9db2a54076076ed94e7e0641cc0125ee",
@@ -125,6 +125,7 @@
     "checks/clippy.log": "421aae2e5bb2768123d27d212fd1a799d2fedaa1e564899443b634f2753a4d88",
     "checks/conform-failed-input.json": "490de4bf8f511a23a0523ea08a58672a0c3ef2a56bc12ca417c65c125949905e",
     "checks/conform-failed-report.md": "cd8d086303f2dddb6f2861e2bcbdb3e9845fcc49c2bfad31731737aeb9b9d4fd",
+    "checks/conform-pinned-input-integrity.json": "c3c7c63fc63797c638adea380acf56db1046f48286d89b6c1405eec157c406d5",
     "checks/conform-pinned-report.md": "890234930f992c196c7abf0ffd7be61a6a600447387d826f8d1b6bfb23939fc4",
     "checks/conform-pinned.log": "0b7d60556929829caf582784f729a69459192b4dda1ebddc2d425dd5f62349d1",
     "checks/conform.log": "7a4ad2fd599d3d49bd1ac85d38ae92dbc40a9999e631caf4fde06ba68a47f09a",
@@ -259,7 +260,11 @@
         "check": 1603,
         "run": 531,
         "test": 259
-      }
+      },
+      "input_integrity_record": "checks/conform-pinned-input-integrity.json",
+      "compiler_preflight_limitation": "compiler hash verified at initial pin and benchmark builds, not an immediate replay preflight",
+      "post_replay_hash_result": "compiler, selected runtime archive and helper match prior pins",
+      "readonly_permissions": "compiler555/archive444/helper444 applied after replay; no claim permissions protected completed replay"
     }
   },
   "companion_metadata_files": [
