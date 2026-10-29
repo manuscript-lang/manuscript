@@ -2,6 +2,14 @@
 
 `sh bench/perf/datastructures/run.sh N` on a shared 4-CPU Linux VM (Intel Xeon @ 2.30GHz), Go 1.24, `rustc -O3`. Nanoseconds per operation, best of N; compare numbers only within one run, since this host varies by 10 to 20% between runs. Ratios below 1.00 mean Manuscript is faster.
 
+The current runner rotates version order and requires successful producers, exact
+operation counts, and every expected row in each trial before printing a table.
+Go has no SortedMap row, so its timing and ratio are unavailable. Zero timings
+remain visible but do not produce ratios. These checks validate measurement
+accounting: the producers retain their existing nonzero-total observability
+guards, but do not emit per-operation checksums to prove equivalent results.
+The dated measurements below predate this accounting validation.
+
 ## 2026-10-27 (PriorityQueue sift-down, second pass)
 
 Revision: this branch on top of `b2a6f03f`; callgrind on 100k enqueue and dequeue, `run.sh 7` twice.
