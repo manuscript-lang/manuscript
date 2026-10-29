@@ -9,7 +9,7 @@ weight = 4
 
 ## String literals
 
-A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected; other Unicode appears directly. There are no single-quoted, raw, multiline, or byte literals.
+A literal is delimited by `"` and fits on one source line, interpolations included. Raw newlines and control characters U+0000 to U+001F are rejected, as are the bidirectional controls U+202A to U+202E and U+2066 to U+2069 (use `\u{H}`); other Unicode appears directly. There are no single-quoted, raw, multiline, or byte literals.
 
 | Escape | Value |
 | --- | --- |

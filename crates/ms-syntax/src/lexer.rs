@@ -224,6 +224,18 @@ fn normalize_source(source: &str) -> (Cow<'_, str>, Vec<u32>) {
     (Cow::Owned(normalized), offsets)
 }
 
+/// The Unicode bidirectional control (U+202A-U+202E, U+2066-U+2069) starting `bytes`, if any.
+/// These reorder displayed source (Trojan Source), so comments and text reject them.
+fn bidi_control_at(bytes: &[u8]) -> Option<char> {
+    match bytes {
+        [0xE2, 0x80, 0xAA..=0xAE, ..] | [0xE2, 0x81, 0xA6..=0xA9, ..] => {
+            let end = bytes.len().min(3);
+            std::str::from_utf8(&bytes[..end]).ok()?.chars().next()
+        }
+        _ => None,
+    }
+}
+
 /// Quotes a character for messages, escaping what is not printable.
 pub fn quote_rune(c: char) -> String {
     format!("{c:?}")
@@ -715,6 +727,9 @@ impl Scanner<'_> {
             if self.src[self.offset] == b'\r' {
                 return self.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
             }
+            if let Some(c) = bidi_control_at(&self.src[self.offset..]) {
+                return self.fail(format!("the bidirectional control character U+{:04X} is not allowed in comments; it can make the source read differently from what the compiler sees", c as u32));
+            }
             self.advance();
         }
         Ok(())
@@ -854,6 +869,12 @@ impl Scanner<'_> {
                     return self.fail_at(at, format!("unterminated interpolation; the quote after this '{{' opens a nested text that never closes ({})", BRACE_HINT));
                 }
                 return self.fail_at(opened, "unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break");
+            }
+            if let Some(c) = bidi_control_at(&self.src[self.offset - 1..]) {
+                return self.fail(format!(
+                    "the bidirectional control character U+{0:04X} is not allowed in text; write the escape \\u{{{0:X}}} instead",
+                    c as u32
+                ));
             }
             if b < 32 {
                 return self.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");

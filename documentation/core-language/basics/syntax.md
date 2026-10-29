@@ -36,7 +36,7 @@ let customer = Customer(
 )
 ```
 
-Comments start with `#` and run to the end of the line. Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode.
+Comments start with `#` and run to the end of the line. Source is UTF-8 and case-sensitive. Identifiers use ASCII letters, digits, and underscores; text and comments may contain Unicode, except the bidirectional controls U+202A to U+202E and U+2066 to U+2069, which are rejected; write them in text as `\u{202E}`.
 
 ```manuscript
 # A local binding can infer its type from the value.

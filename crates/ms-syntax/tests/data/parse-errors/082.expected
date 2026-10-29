@@ -1,0 +1,1 @@
+error parse 2:7:28 "the bidirectional control character U+202E is not allowed in comments; it can make the source read differently from what the compiler sees"
