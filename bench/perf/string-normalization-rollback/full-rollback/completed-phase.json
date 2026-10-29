@@ -1,0 +1,231 @@
+{
+  "head": "85cfb96b889ec4176cfe71a42d74acfd091cbe60",
+  "scope": "Only normalize_kind exact baseline implementation restored; tests/evidence retained. Normal current-main builds; no compiler/backend investigation.",
+  "native": {
+    "before": {
+      "source_sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0",
+      "libms_native.a": "0c194ee1fb81530d2c4ca235f1b2b0f0efd95089d91b231ecd28558a9303f289",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "after": {
+      "source_sha256": "d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0",
+      "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    }
+  },
+  "started_unix": 1793301402.6355803,
+  "input_hashes": {
+    "expect-fail.txt": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+    "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+    "libms_native.a": "46c96e329f68f665e8bc41e3490d6150f19c20f959c57f2026d2a8077ce9d6d0",
+    "ms-conform": "78d4714d54e110bc4f0fd9a523ee78852c1b74fd2c230f4f3376d41bed0dbf5b",
+    "ms": "448c69c6523a27f36b89ec4a8f5cb3fba6b6fa2c8e45070204e0a208f2bcebd3"
+  },
+  "programs": {
+    "before": {
+      "sha256": "db60c6fa8c0124975bf37e7cf5c03f42e69ae4baeaf2163d143f53143664f2c7",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after": {
+      "sha256": "46e5e336c9d7686042122a2f3ec095c96fd1d3d1d7bac770c4fdf5690c52cbe8",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  },
+  "continuation_note": "Original exec session unavailable after context transition; filesystem record confirms all through performance exited0. No conformance log existed. Resume only analysis and never-started conformance; no completed run overwritten.",
+  "checks": {
+    "native-before": {
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0
+    },
+    "native-after": {
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0
+    },
+    "fmt": {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    "string-tests": {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "ms-rt",
+        "string::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0
+    },
+    "clippy": {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0
+    },
+    "compiler-harness-build": {
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "-p",
+        "ms-cli",
+        "-p",
+        "ms-conform"
+      ],
+      "exit_code": 0
+    },
+    "repo-check": {
+      "command": [
+        "make",
+        "repo-check"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-stream-Release": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-stream.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-ascii-Release": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-ascii.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "typed-normalization-Release": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/typed-normalization.ms",
+        "--build-type",
+        "Release"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-stream-Debug": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-stream.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "string-normalize-ascii-Debug": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/string-normalize-ascii.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "typed-normalization-Debug": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "test",
+        "tests/e2e/testdata/stdlib/typed-normalization.ms",
+        "--build-type",
+        "Debug"
+      ],
+      "exit_code": 0
+    },
+    "performance-build-before": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-full-revert/performance/before/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "performance-build-after": {
+      "command": [
+        "/tmp/string-round2/normalization-full-revert/inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-full-revert/performance/after/program",
+        "--json"
+      ],
+      "exit_code": 0
+    },
+    "performance": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/normalization-full-revert/performance/before/program",
+        "/tmp/string-round2/normalization-full-revert/performance/after/program",
+        "/tmp/string-round2/normalization-full-revert/performance/samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/identities.json"
+      ],
+      "exit_code": 0
+    }
+  },
+  "packaging_provenance": {
+    "kind": "derived completed-phase snapshot, not byte-copy of original mutable record.json",
+    "original_record_path": "/tmp/string-round2/normalization-full-revert/record.json",
+    "boundary": "Completed checks through performance only; active corpus lint and strict conformance deliberately excluded until root confirms completion.",
+    "copied_at_utc": "2026-10-29T19:30:44.103367+00:00",
+    "copied_binary_native_or_helper_ir": false
+  }
+}

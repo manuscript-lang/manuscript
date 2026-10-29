@@ -1,0 +1,77 @@
+{
+  "decision": "REJECTED",
+  "tool_session": 48019,
+  "overall_actual_exit_code": 0,
+  "overall_exit_provenance": "root handoff reports actual session48019 exit0; per-comparison command/exits and finished_unix are contemporaneous performance/record.json",
+  "all_comparisons": {
+    "full-vs-baseline": {
+      "exit_code": 0,
+      "cases": 100,
+      "rows": 1400
+    },
+    "full-vs-lazy": {
+      "exit_code": 0,
+      "cases": 100,
+      "rows": 1400
+    },
+    "budget-vs-baseline": {
+      "exit_code": 0,
+      "cases": 72,
+      "rows": 1296
+    },
+    "budget-vs-lazy": {
+      "exit_code": 0,
+      "cases": 72,
+      "rows": 1296
+    }
+  },
+  "total_raw_rows": 5392,
+  "all_output_status_inventory_checksum_guards": "passed",
+  "program_hashes": {
+    "baseline/full": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/baseline/full",
+      "program_sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "copied_binary": false
+    },
+    "baseline/budget": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/baseline/budget",
+      "program_sha256": "42980d9953688098e3a470c8c396f5e7caa54e72b92c3e6b17d83f460f38f602",
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "copied_binary": false
+    },
+    "lazy/full": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/lazy/full",
+      "program_sha256": "1c9006b4caca3a0004267f0a5ed886f976e7d33b45607589c76d130576bdd9d9",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "copied_binary": false
+    },
+    "lazy/budget": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget",
+      "program_sha256": "b6d853cbe7c9274666a826413ac29593ad968f6d966008fa2d0702285fbdd7d5",
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "copied_binary": false
+    },
+    "candidate/full": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/candidate/full",
+      "program_sha256": "21b713bcf556b1684ff7358aadf3f6d9e14aa9185301b8de502c9fdf123cdd17",
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "copied_binary": false
+    },
+    "candidate/budget": {
+      "original_program_path": "/tmp/string-round2/normalization-partial-revert/performance/candidate/budget",
+      "program_sha256": "16d56fe83386019873262a0290779802ee4bdf998fb75fee5ad9c9efeb63ffae",
+      "source_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+      "copied_binary": false
+    }
+  },
+  "format_provenance": {
+    "raw72_before_format_sha256": "c3822d1b36e063b367d4a9aecede333c047b63a3b9527bf47168e5cea090c2b8",
+    "executed_formatted72_sha256": "1027fb09cf38831da47425b97f4946222091d137b1352165b695c2420fbb6ef6",
+    "identities_unchanged_sha256": "c21f72b4380cf6b2784d2dfafd939ff4e15438895d42b7c97128caa019d408dc",
+    "raw_oracles": "partial-revert-results/inputs/oracles72.json"
+  },
+  "48_case_version": "prepared and unrun; source/identity/oracles preserved",
+  "candidate_status": "not retained; no production PR for this partial candidate",
+  "memory": "fullinput Vec<char> restored forUnicode; earlier payload lowerbounds are not measured capacity/peak/RSS"
+}

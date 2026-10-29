@@ -1,0 +1,16 @@
+{
+  "base_main": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "integration_commit": "0390f5d2d9deee4339a29c885f023e206a4f35ab",
+  "command": [
+    "cargo",
+    "xtask",
+    "runtime"
+  ],
+  "exit_code": 0,
+  "source_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+  "candidate_source_sha256": "b1dbd7e4ad286a294601f8f101b8a542c392f01eaff749ee2edfde2dc76b5830",
+  "matched_same_worktree": "/workspace/manuscript-strings-integrated",
+  "after_archive": "/tmp/string-round2/integrated-inputs/libms_native.a",
+  "libms_native.a": "42f47bd3db22793b355c74e4cc46ef6e94277d4d1a78eb5fe36ccc1df38c5012",
+  "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+}

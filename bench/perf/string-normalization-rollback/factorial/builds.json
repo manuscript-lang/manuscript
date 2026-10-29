@@ -1,0 +1,44 @@
+{
+  "main_base": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "same_worktree": "/workspace/manuscript-strings-integrated",
+  "baseline_native": "/tmp/string-round2/integration-before-native/libms_native.a",
+  "states": {
+    "combined": {
+      "source_commit": "0390f5d2d9deee4339a29c885f023e206a4f35ab",
+      "source_sha256": "b1dbd7e4ad286a294601f8f101b8a542c392f01eaff749ee2edfde2dc76b5830",
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0,
+      "libms_native.a": "f571ef574c43fc8ce8787813f9c866b62bc7c679bcc6e42d0c7317c3c5fe324a",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "matches_saved_combined": true
+    },
+    "normalize_only": {
+      "source_commit": "05152904151ed68e8c8892bf8d167639bd7a0883",
+      "source_sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0",
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0,
+      "libms_native.a": "0c194ee1fb81530d2c4ca235f1b2b0f0efd95089d91b231ecd28558a9303f289",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "reverse_only": {
+      "source_commit": "0525bd107aa1eee7756c90cef44d73bdd45c45d9",
+      "source_sha256": "95a38a74296ddc5c43e4011d11a6694d4ea28008ef18eda3f959c0cf84f3c6bf",
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0,
+      "libms_native.a": "98e2c3f8c1018c44f615be47c4112c87185e8b646d627bfa613742ecd202fa77",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    }
+  }
+}

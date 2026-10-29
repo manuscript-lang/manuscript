@@ -1,0 +1,43 @@
+{
+  "method": "pure in-memory patch replay against publicdb975 baseline snapshot; no production writes/apply",
+  "states": {
+    "baseline": {
+      "source_commit": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+      "snapshot_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+      "snapshot_equals_named_commit": true,
+      "snapshot": "source-states/baseline.rs.txt"
+    },
+    "normalize_only": {
+      "source_commit": "05152904151ed68e8c8892bf8d167639bd7a0883",
+      "snapshot_sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0",
+      "snapshot_equals_named_commit": true,
+      "patch": "source-states/normalize_only-vs-db975.patch",
+      "patch_sha256": "542c3f215007ca5949fc4e7bb15e5b27ffc398786a539a378e8aca79bab778ba",
+      "hunks": 3,
+      "pure_in_memory_replay_exact": true,
+      "snapshot": "source-states/normalize_only.rs.txt"
+    },
+    "reverse_only": {
+      "source_commit": "0525bd107aa1eee7756c90cef44d73bdd45c45d9",
+      "snapshot_sha256": "95a38a74296ddc5c43e4011d11a6694d4ea28008ef18eda3f959c0cf84f3c6bf",
+      "snapshot_equals_named_commit": true,
+      "patch": "source-states/reverse_only-vs-db975.patch",
+      "patch_sha256": "6018989cfcaef8eb71959bf4e91f32524a8721ac020b1f469068b0dc9de308d2",
+      "hunks": 2,
+      "pure_in_memory_replay_exact": true,
+      "snapshot": "source-states/reverse_only.rs.txt"
+    },
+    "combined": {
+      "source_commit": "0390f5d2d9deee4339a29c885f023e206a4f35ab",
+      "snapshot_sha256": "b1dbd7e4ad286a294601f8f101b8a542c392f01eaff749ee2edfde2dc76b5830",
+      "snapshot_equals_named_commit": true,
+      "patch": "source-states/combined-vs-db975.patch",
+      "patch_sha256": "686cc978d21ec4fe584b710c269a55574d6fe9cb54b55e9310f57ffa619ce7fd",
+      "hunks": 5,
+      "pure_in_memory_replay_exact": true,
+      "snapshot": "source-states/combined.rs.txt"
+    }
+  },
+  "baseline_snapshot": "source-states/baseline.rs.txt",
+  "archive_semantics": "Historical Rust source document snapshots use.rs.txt; patch headers retain original crate paths and all snapshot/patch bytes are unchanged."
+}

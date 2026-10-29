@@ -1,0 +1,44 @@
+[
+  {
+    "path": "source-states/combined-vs-db975.patch",
+    "reasons": [
+      "byte-preserved trailing whitespace / unified patch context"
+    ]
+  },
+  {
+    "path": "source-states/normalize_only-vs-db975.patch",
+    "reasons": [
+      "byte-preserved trailing whitespace / unified patch context"
+    ]
+  },
+  {
+    "path": "source-states/reverse_only-vs-db975.patch",
+    "reasons": [
+      "byte-preserved trailing whitespace / unified patch context"
+    ]
+  },
+  {
+    "path": "unvalidated-partial-revert/string-tests.log",
+    "reasons": [
+      "byte-preserved generated final blank line"
+    ]
+  },
+  {
+    "path": "unvalidated-partial-revert/vs-db975.patch",
+    "reasons": [
+      "byte-preserved trailing whitespace / unified patch context"
+    ]
+  },
+  {
+    "path": "full-rollback/checks/string-tests.log",
+    "reasons": [
+      "byte-preserved generated final blank line"
+    ]
+  },
+  {
+    "path": "full-rollback/checks/conform-report.md",
+    "reasons": [
+      "byte-preserved generated final blank line"
+    ]
+  }
+]
