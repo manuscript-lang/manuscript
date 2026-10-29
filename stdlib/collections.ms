@@ -593,10 +593,12 @@ impl ListJoin[T] for List[T]:
     # Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
     fn join(separator: String) String:
         var out = StringBuilder()
+
         for i in 0..self.length():
             if i > 0:
                 out.append(separator)
             out.append("{self[i]}")
+
         return out.build()
 
 interface ListOrder[T: Comparable]:
