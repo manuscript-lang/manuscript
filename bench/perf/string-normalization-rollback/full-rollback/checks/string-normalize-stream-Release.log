@@ -1,0 +1,7 @@
+RUN string-normalize-stream.ms::normalization preserves all four forms and literal replacement characters
+PASS string-normalize-stream.ms::normalization preserves all four forms and literal replacement characters
+RUN string-normalize-stream.ms::normalization keeps exact exceeded zero negative and invalid form budgets
+PASS string-normalize-stream.ms::normalization keeps exact exceeded zero negative and invalid form budgets
+RUN string-normalize-stream.ms::normalization retains lookahead across a complete combining segment
+PASS string-normalize-stream.ms::normalization retains lookahead across a complete combining segment
+3 tests, 0 failed

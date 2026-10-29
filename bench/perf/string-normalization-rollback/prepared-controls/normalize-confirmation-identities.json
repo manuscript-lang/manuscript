@@ -1,0 +1,242 @@
+{
+  "early_unicode_4096_NFC": [
+    4101,
+    256,
+    1054208
+  ],
+  "late_unicode_4096_NFC": [
+    4101,
+    256,
+    1054208
+  ],
+  "early_unicode_4096_NFD": [
+    4101,
+    256,
+    1054464
+  ],
+  "late_unicode_4096_NFD": [
+    4101,
+    256,
+    1054464
+  ],
+  "early_unicode_4096_NFKC": [
+    4101,
+    256,
+    1053952
+  ],
+  "late_unicode_4096_NFKC": [
+    4101,
+    256,
+    1053952
+  ],
+  "early_unicode_4096_NFKD": [
+    4101,
+    256,
+    1054208
+  ],
+  "late_unicode_4096_NFKD": [
+    4101,
+    256,
+    1054208
+  ],
+  "early_unicode_1048576_NFC": [
+    1048581,
+    16,
+    16777568
+  ],
+  "late_unicode_1048576_NFC": [
+    1048581,
+    16,
+    16777568
+  ],
+  "early_unicode_1048576_NFD": [
+    1048581,
+    16,
+    16777584
+  ],
+  "late_unicode_1048576_NFD": [
+    1048581,
+    16,
+    16777584
+  ],
+  "early_unicode_1048576_NFKC": [
+    1048581,
+    16,
+    16777552
+  ],
+  "late_unicode_1048576_NFKC": [
+    1048581,
+    16,
+    16777552
+  ],
+  "early_unicode_1048576_NFKD": [
+    1048581,
+    16,
+    16777568
+  ],
+  "late_unicode_1048576_NFKD": [
+    1048581,
+    16,
+    16777568
+  ],
+  "canonical_scale_65536_NFC_full": [
+    196608,
+    16,
+    2097424
+  ],
+  "canonical_scale_65536_NFD_full": [
+    196608,
+    16,
+    3146000
+  ],
+  "canonical_scale_65536_NFKC_full": [
+    196608,
+    16,
+    2097424
+  ],
+  "canonical_scale_65536_NFKD_full": [
+    196608,
+    16,
+    3146000
+  ],
+  "compatibility_scale_65536_NFC_full": [
+    393216,
+    16,
+    6291728
+  ],
+  "compatibility_scale_65536_NFD_full": [
+    393216,
+    16,
+    6291728
+  ],
+  "compatibility_scale_65536_NFKC_full": [
+    393216,
+    16,
+    3146000
+  ],
+  "compatibility_scale_65536_NFKD_full": [
+    393216,
+    16,
+    3146000
+  ],
+  "empty_NFC_full": [
+    0,
+    5000000,
+    85000000
+  ],
+  "empty_NFD_full": [
+    0,
+    5000000,
+    85000000
+  ],
+  "empty_NFKC_full": [
+    0,
+    5000000,
+    85000000
+  ],
+  "empty_NFKD_full": [
+    0,
+    5000000,
+    85000000
+  ],
+  "one_ascii_NFC_full": [
+    1,
+    5000000,
+    90000000
+  ],
+  "one_ascii_NFD_full": [
+    1,
+    5000000,
+    90000000
+  ],
+  "one_ascii_NFKC_full": [
+    1,
+    5000000,
+    90000000
+  ],
+  "one_ascii_NFKD_full": [
+    1,
+    5000000,
+    90000000
+  ],
+  "ascii_scale_65536_NFC_full": [
+    327680,
+    16,
+    5243152
+  ],
+  "ascii_scale_65536_NFD_full": [
+    327680,
+    16,
+    5243152
+  ],
+  "negative_NFC": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFD": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFKC": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFKD": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_lowercase": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_unknown": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_nul": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_negative": [
+    2,
+    5000000,
+    85000000
+  ],
+  "budget_NFD_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFD_exact": [
+    12288,
+    1024,
+    12600320
+  ],
+  "budget_NFD_exceeded": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKC_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKC_exact": [
+    12288,
+    1024,
+    8406016
+  ],
+  "budget_NFKC_exceeded": [
+    12288,
+    1024,
+    17408
+  ]
+}

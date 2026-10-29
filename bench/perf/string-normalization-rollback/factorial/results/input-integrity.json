@@ -1,0 +1,97 @@
+{
+  "before": {
+    "orchestrator": {
+      "path": "/tmp/string-round2/normalization-factorial/run_states.py",
+      "sha256": "6e6bb4b2f62845318543cdde4cb4425f735ff48096d126d125c72f218bacebcd",
+      "size_bytes": 14067
+    },
+    "shared_parser": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-lines/compare.py",
+      "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+      "size_bytes": 4437
+    },
+    "programs_json": {
+      "path": "/tmp/string-round2/normalization-factorial/programs.json",
+      "sha256": "a942f703ac6c14c23e2d79d1cc5a3ea9b8585882505378ca850fc289a0d49b8a",
+      "size_bytes": 331
+    },
+    "identities_json": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/identities.json",
+      "sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+      "size_bytes": 6626
+    },
+    "benchmark_source": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "size_bytes": 7255
+    },
+    "program:baseline": {
+      "path": "/tmp/string-round2/normalization-factorial/baseline/program",
+      "sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "size_bytes": 813608
+    },
+    "program:normalize_only": {
+      "path": "/tmp/string-round2/normalization-factorial/normalize_only/program",
+      "sha256": "1c9006b4caca3a0004267f0a5ed886f976e7d33b45607589c76d130576bdd9d9",
+      "size_bytes": 814200
+    },
+    "program:reverse_only": {
+      "path": "/tmp/string-round2/normalization-factorial/reverse_only/program",
+      "sha256": "1b88cf14bf975990d2afbbc88c348a3d664dc2c10f3d40394d1165faea2a0183",
+      "size_bytes": 813608
+    },
+    "program:combined": {
+      "path": "/tmp/string-round2/normalization-factorial/combined/program",
+      "sha256": "01ec1d671e4c5b72d0363c9be111a219c1fb3f12963b640f9d3ee4baab2f6c19",
+      "size_bytes": 814200
+    }
+  },
+  "after": {
+    "orchestrator": {
+      "path": "/tmp/string-round2/normalization-factorial/run_states.py",
+      "sha256": "6e6bb4b2f62845318543cdde4cb4425f735ff48096d126d125c72f218bacebcd",
+      "size_bytes": 14067
+    },
+    "shared_parser": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-lines/compare.py",
+      "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+      "size_bytes": 4437
+    },
+    "programs_json": {
+      "path": "/tmp/string-round2/normalization-factorial/programs.json",
+      "sha256": "a942f703ac6c14c23e2d79d1cc5a3ea9b8585882505378ca850fc289a0d49b8a",
+      "size_bytes": 331
+    },
+    "identities_json": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/identities.json",
+      "sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348",
+      "size_bytes": 6626
+    },
+    "benchmark_source": {
+      "path": "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/main.ms",
+      "sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "size_bytes": 7255
+    },
+    "program:baseline": {
+      "path": "/tmp/string-round2/normalization-factorial/baseline/program",
+      "sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "size_bytes": 813608
+    },
+    "program:normalize_only": {
+      "path": "/tmp/string-round2/normalization-factorial/normalize_only/program",
+      "sha256": "1c9006b4caca3a0004267f0a5ed886f976e7d33b45607589c76d130576bdd9d9",
+      "size_bytes": 814200
+    },
+    "program:reverse_only": {
+      "path": "/tmp/string-round2/normalization-factorial/reverse_only/program",
+      "sha256": "1b88cf14bf975990d2afbbc88c348a3d664dc2c10f3d40394d1165faea2a0183",
+      "size_bytes": 813608
+    },
+    "program:combined": {
+      "path": "/tmp/string-round2/normalization-factorial/combined/program",
+      "sha256": "01ec1d671e4c5b72d0363c9be111a219c1fb3f12963b640f9d3ee4baab2f6c19",
+      "size_bytes": 814200
+    }
+  },
+  "hashes_match": true
+}

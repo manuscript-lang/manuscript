@@ -1,0 +1,269 @@
+{
+  "compiler_sha256": "23f2e89aafe312160062cda12010ce4511366ee8131e87847a00bbce36806c89",
+  "integration_commit": "0390f5d2d9deee4339a29c885f023e206a4f35ab",
+  "before_main": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "archives": {
+    "before": {
+      "libms_native.a": "42f47bd3db22793b355c74e4cc46ef6e94277d4d1a78eb5fe36ccc1df38c5012",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "after": {
+      "libms_native.a": "f571ef574c43fc8ce8787813f9c866b62bc7c679bcc6e42d0c7317c3c5fe324a",
+      "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    }
+  },
+  "builds": {
+    "before/normalize-full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/before/normalize-full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "program_sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "before/normalize-focused": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/before/normalize-focused",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+      "program_sha256": "9914e5798568016d27a5406856250bad6fb5340fbfca9ef36201ebaf826c564f",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "before/reverse-full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/before/reverse-full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "program_sha256": "bde01c925e575f89544145cac35efa555c428368b582288b3ecc5e87b262d15a",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "before/reverse-focused": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/before/reverse-focused",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+      "program_sha256": "d3b19429a503443df5d3f44dc7932fdfa0a4d5696fd6f2e4f5f60b3fde09a22c",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after/normalize-full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/after/normalize-full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4",
+      "program_sha256": "01ec1d671e4c5b72d0363c9be111a219c1fb3f12963b640f9d3ee4baab2f6c19",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after/normalize-focused": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/after/normalize-focused",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "fb50acdbfc7a54546fd931b928f3b871349d3f0767dddbc66c32b09c8688adc0",
+      "program_sha256": "024b0b610eeab7417ed91f8fb44e0719eb96c717d431b3aff5df0ae88161fcda",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after/reverse-full": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/after/reverse-full",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+      "program_sha256": "c6e29ce8f76d1d803b3e196f5598dcbb9a02c1850a1aad9ad9b577f96a3a06eb",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "after/reverse-focused": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-reverse-ascii/focused-controls.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/integration-performance/after/reverse-focused",
+        "--json"
+      ],
+      "exit_code": 0,
+      "source_sha256": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+      "program_sha256": "f904057085950c4278983580270e12469db63c7a156e8155df6d7eed90467118",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  },
+  "comparisons": {
+    "normalize-full": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/integration-performance/before/normalize-full",
+        "/tmp/string-round2/integration-performance/after/normalize-full",
+        "/tmp/string-round2/integration-performance/normalize-full-samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 100,
+      "expected_rows": 1400,
+      "identities_sha256": "fd34146cd146a6bb37064d4ba662fd9360cc0a483a75ebe2243dbeb5642c0348"
+    },
+    "normalize-focused": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/integration-performance/before/normalize-focused",
+        "/tmp/string-round2/integration-performance/after/normalize-focused",
+        "/tmp/string-round2/integration-performance/normalize-focused-samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "bench/perf/string-normalize-ascii/focused-identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 30,
+      "expected_rows": 540,
+      "identities_sha256": "a44e054ec386bb2b5ff41546bde474f3bf7e3d6fc24fb0c47087588714ac662b"
+    },
+    "reverse-full": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/integration-performance/before/reverse-full",
+        "/tmp/string-round2/integration-performance/after/reverse-full",
+        "/tmp/string-round2/integration-performance/reverse-full-samples.csv",
+        "--pairs",
+        "7",
+        "--identity-file",
+        "bench/perf/string-reverse-ascii/identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 83,
+      "expected_rows": 1162,
+      "identities_sha256": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0"
+    },
+    "reverse-focused": {
+      "command": [
+        "taskset",
+        "-c",
+        "0",
+        "python3",
+        "bench/perf/string-lines/compare.py",
+        "/tmp/string-round2/integration-performance/before/reverse-focused",
+        "/tmp/string-round2/integration-performance/after/reverse-focused",
+        "/tmp/string-round2/integration-performance/reverse-focused-samples.csv",
+        "--pairs",
+        "9",
+        "--identity-file",
+        "bench/perf/string-reverse-ascii/focused-identities.json"
+      ],
+      "exit_code": 0,
+      "cases": 18,
+      "expected_rows": 324,
+      "identities_sha256": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727"
+    }
+  },
+  "started_unix": 1793298292.2374756,
+  "finished_unix": 1793298823.40741
+}

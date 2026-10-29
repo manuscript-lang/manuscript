@@ -1,0 +1,25 @@
+{
+  "command": [
+    "taskset",
+    "-c",
+    "0",
+    "python3",
+    "/tmp/string-round2/normalization-factorial/run_states.py",
+    "--programs",
+    "/tmp/string-round2/normalization-factorial/programs.json",
+    "--identity-file",
+    "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/identities.json",
+    "--source",
+    "/workspace/manuscript-strings-integrated/bench/perf/string-normalize-ascii/main.ms",
+    "--parser",
+    "/workspace/manuscript-strings-integrated/bench/perf/string-lines/compare.py",
+    "--output-dir",
+    "/tmp/string-round2/normalization-factorial",
+    "--prefix",
+    "original100-factorial-7rounds"
+  ],
+  "cwd": "/workspace/manuscript-strings-integrated",
+  "tool_session": 8145,
+  "exit_code": 0,
+  "provenance": "Root records exact invoked argv and actual tool exit from session8145 transcript; this file was written after completion, not emitted by the runner."
+}

@@ -1,0 +1,152 @@
+{
+  "negative_NFC": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFD": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFKC": [
+    2,
+    5000000,
+    85000000
+  ],
+  "negative_NFKD": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_lowercase": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_unknown": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_nul": [
+    2,
+    5000000,
+    85000000
+  ],
+  "invalid_negative": [
+    2,
+    5000000,
+    85000000
+  ],
+  "budget_NFC_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFC_exact": [
+    12288,
+    1024,
+    8406016
+  ],
+  "budget_NFC_exceeded": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFD_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFD_exact": [
+    12288,
+    1024,
+    12600320
+  ],
+  "budget_NFD_exceeded": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKC_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKC_exact": [
+    12288,
+    1024,
+    8406016
+  ],
+  "budget_NFKC_exceeded": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKD_zero": [
+    12288,
+    1024,
+    17408
+  ],
+  "budget_NFKD_exact": [
+    12288,
+    1024,
+    12600320
+  ],
+  "budget_NFKD_exceeded": [
+    12288,
+    1024,
+    17408
+  ],
+  "compatibility_scale_4096_NFD_full": [
+    24576,
+    1024,
+    25183232
+  ],
+  "compatibility_scale_65536_NFD_full": [
+    393216,
+    64,
+    25166912
+  ],
+  "canonical_scale_4096_NFD_full": [
+    12288,
+    1024,
+    12600320
+  ],
+  "combining_segment_NFKC_full": [
+    1025,
+    1024,
+    1065984
+  ],
+  "canonical_scale_65536_NFD_full": [
+    196608,
+    64,
+    12584000
+  ],
+  "late_unicode_4096_NFKC": [
+    4101,
+    1024,
+    4215808
+  ],
+  "early_unicode_1048576_NFD": [
+    1048581,
+    64,
+    67110336
+  ],
+  "late_unicode_1048576_NFD": [
+    1048581,
+    64,
+    67110336
+  ],
+  "empty_NFC_full": [
+    0,
+    5000000,
+    85000000
+  ],
+  "one_ascii_NFC_full": [
+    1,
+    5000000,
+    90000000
+  ]
+}

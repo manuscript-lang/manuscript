@@ -1,0 +1,14 @@
+{
+  "kind": "offline validation of existing completed samples; no executions, new timings or reruns",
+  "source": "performance/samples.csv",
+  "identities": "../inputs/normalize-full-identities.json",
+  "raw_rows": 1400,
+  "cases": 100,
+  "pairs": 7,
+  "identity_checksum_and_operations_validated": true,
+  "unique_complete_pairs_validated": true,
+  "unfavorable_median_cases": 69,
+  "favorable_median_cases": 31,
+  "summary_note": "Original summary.csv retains one-decimal rounding; derived statistics recompute exact ns/op from integer elapsed/iterations. No filtering or outlier deletion.",
+  "warmup_exit_provenance": "compare.py executes one validated warmup per variant before seven measured pairs; exit0 in root record is preserved as recorded, not an independently observed tool exit by packager."
+}

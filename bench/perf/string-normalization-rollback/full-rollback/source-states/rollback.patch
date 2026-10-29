@@ -1,0 +1,42 @@
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -2208,27 +2208,13 @@
+             usize::MAX
+         };
+         let text = bytes(s);
+-        if text.is_empty() {
+-            *out = empty();
+-            return STATUS_OK;
+-        }
+-        // ASCII is unchanged by every form. A non-ASCII first byte rules out this path.
+-        if text[0] < 0x80 && text.is_ascii() {
+-            if text.len() > limit {
+-                return STATUS_LIMIT_EXCEEDED;
+-            }
+-            *out = from_bytes(text);
+-            return STATUS_OK;
+-        }
++        let mut chars: Vec<char> = Vec::new();
+         let mut i = 0;
+-        let it = core::iter::from_fn(|| {
+-            if i >= text.len() {
+-                return None;
+-            }
++        while i < text.len() {
+             let (c, w) = utf8::decode(&text[i..]);
++            chars.push(char::from_u32(c).unwrap_or('\u{FFFD}'));
+             i += w;
+-            Some(char::from_u32(c).unwrap_or('\u{FFFD}'))
+-        });
++        }
+         let mut b = Vec::new();
+         let mut tmp = [0u8; 4];
+         let mut push = |c: char| -> bool {
+@@ -2239,6 +2225,7 @@
+             b.extend_from_slice(e);
+             true
+         };
++        let it = chars.as_slice().iter().copied();
+         let ok = match kind {
+             0 => it.nfc().all(&mut push),
+             1 => it.nfd().all(&mut push),

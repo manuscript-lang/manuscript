@@ -1,0 +1,10 @@
+{
+  "command": [
+    "python3",
+    "/tmp/string-round2/integration-performance.py"
+  ],
+  "cwd": "/workspace/manuscript-strings-integrated",
+  "tool_session": 73306,
+  "exit_code": 0,
+  "provenance": "Root actual invoked command and exit from tool session73306, recorded after completion; perbuild and comparison commands/exits are contemporaneous in record.json."
+}
