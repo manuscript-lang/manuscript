@@ -1,5 +1,5 @@
-import panic from "@std/core.ms"
-import Indexed from "@std/indexed.ms"
+import {Iterator, panic} from "@std/core.ms"
+import Iterable from "@std/iterable.ms"
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
@@ -59,7 +59,7 @@ impl Queue[T]:
     fn is_empty() Bool:
         return self.head >= self.items.length()
 
-impl Indexed[T] for Queue[T]:
+impl Queue[T]:
     # Returns the number of values currently waiting in the queue.
     fn length() Int:
         return self.items.length() - self.head
@@ -70,6 +70,25 @@ impl Indexed[T] for Queue[T]:
             return none
 
         return self.items.get(self.head + index)
+
+# Walks a queue from the oldest value to the newest, lending each value; made by `iter()` and used by `for`.
+export type QueueIter[T]:
+    # The queue being walked.
+    source: ref Queue[T]
+    # Distance from the oldest value of the value `next` returns.
+    position: Int
+
+impl Iterator[T] for QueueIter[T]:
+    # Returns the value at the current position and moves past it, or none after the newest.
+    var fn next() ref Optional[T]:
+        let item = self.source.at(self.position)
+        self.position += 1
+        return item
+
+impl Iterable[QueueIter[T]] for Queue[T]:
+    # Returns an iterator over the values from oldest to newest, borrowing the queue.
+    fn iter() QueueIter[T]:
+        return QueueIter(source: self, position: 0)
 
 # Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
@@ -171,7 +190,7 @@ impl PriorityQueue[T]:
     fn is_empty() Bool:
         return self.heap.length() == 0
 
-impl Indexed[T] for PriorityQueue[T]:
+impl PriorityQueue[T]:
     # Returns the number of enqueued values, independent of their priorities.
     fn length() Int:
         return self.heap.length()
@@ -183,3 +202,22 @@ impl Indexed[T] for PriorityQueue[T]:
             return none
 
         return some(self.heap.get(index))
+
+# Walks a priority queue in heap order, lending each value; made by `iter()` and used by `for`.
+export type PriorityQueueIter[T: Comparable]:
+    # The queue being walked.
+    source: ref PriorityQueue[T]
+    # Heap index of the value `next` returns.
+    position: Int
+
+impl Iterator[T] for PriorityQueueIter[T]:
+    # Returns the value at the current heap position and moves past it, or none after the last.
+    var fn next() ref Optional[T]:
+        let item = self.source.at(self.position)
+        self.position += 1
+        return item
+
+impl Iterable[PriorityQueueIter[T]] for PriorityQueue[T]:
+    # Returns an iterator over the values in heap order, borrowing the queue; only the first is known to be the next to dequeue.
+    fn iter() PriorityQueueIter[T]:
+        return PriorityQueueIter(source: self, position: 0)
