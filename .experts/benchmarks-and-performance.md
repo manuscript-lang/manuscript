@@ -26,6 +26,14 @@ Apply when: optimizing a helper, a lowering path, or a runtime routine.
 Evidence: [program results](../bench/perf/programs/results.md), [kernel baselines](../bench/perf/kernels/README.md).
 Verify: time and allocation counts before and after on one machine; behavior tests unchanged.
 
+Verified (2026-10-29, regex templates): reusing a temporary string cut allocation
+calls but raised logical peak live allocation by 33% when a large first expansion
+was followed by many small ones. Expanding directly into the result removed the
+temporary and lowered that peak instead. Include changing-size output cases when
+reusing scratch capacity; allocation counts alone do not establish a memory win.
+The [regex report](../bench/perf/stdlib/regex-results-2026-10-29.md) and its external
+counting probe distinguish logical capacity from generated-program RSS.
+
 ### Consume library checksums and separate allocation phase from local cost
 
 Verified: a returned checksum that the harness discards is not evidence that the work stayed observable. Consume each result with `keep` from `@std/bench.ms` so the work stays observable, and reject missing, duplicate, failed, or changed cases and operation counts on every trial (`compare_stdlib.py` validates all stdlib cases from `ms bench --json`). Changing an earlier allocating workload can move later allocation costs, so an apparent unrelated regression in a full-suite run may not reproduce when the same cases run repeatedly in separate focused processes. Keep both results and state the distinction; do not silently replace the full run.

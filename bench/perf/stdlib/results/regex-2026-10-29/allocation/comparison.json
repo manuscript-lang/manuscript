@@ -1,0 +1,240 @@
+{
+  "baseline": {
+    "captures_all.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "replace_template.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "captures_all.1": {
+      "allocs": 7,
+      "reallocs": 0,
+      "frees": 7,
+      "requested_bytes": 318,
+      "peak_extra_live_bytes": 270,
+      "end_extra_live_bytes": 0,
+      "checksum": 16221458622800311666
+    },
+    "replace_template.1": {
+      "allocs": 3,
+      "reallocs": 2,
+      "frees": 3,
+      "requested_bytes": 99,
+      "peak_extra_live_bytes": 73,
+      "end_extra_live_bytes": 0,
+      "checksum": 16238957300880625795
+    },
+    "captures_all.128": {
+      "allocs": 642,
+      "reallocs": 10,
+      "frees": 642,
+      "requested_bytes": 30304,
+      "peak_extra_live_bytes": 19248,
+      "end_extra_live_bytes": 0,
+      "checksum": 16032526769752334629
+    },
+    "replace_template.128": {
+      "allocs": 257,
+      "reallocs": 136,
+      "frees": 257,
+      "requested_bytes": 13815,
+      "peak_extra_live_bytes": 2368,
+      "end_extra_live_bytes": 0,
+      "checksum": 15014574575885007909
+    },
+    "captures_all.2000": {
+      "allocs": 10002,
+      "reallocs": 18,
+      "frees": 10002,
+      "requested_bytes": 479680,
+      "peak_extra_live_bytes": 301968,
+      "end_extra_live_bytes": 0,
+      "checksum": 4620037622058733669
+    },
+    "replace_template.2000": {
+      "allocs": 4001,
+      "reallocs": 2012,
+      "frees": 4001,
+      "requested_bytes": 217719,
+      "peak_extra_live_bytes": 36928,
+      "end_extra_live_bytes": 0,
+      "checksum": 17472916979528889157
+    },
+    "replace_template.mixed_long_short.2000": {
+      "allocs": 4001,
+      "reallocs": 3,
+      "frees": 4001,
+      "requested_bytes": 931966,
+      "peak_extra_live_bytes": 393250,
+      "end_extra_live_bytes": 0,
+      "checksum": 14768133323212702187
+    },
+    "replace_template.literal.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "replace_template.literal.1": {
+      "allocs": 3,
+      "reallocs": 0,
+      "frees": 3,
+      "requested_bytes": 64,
+      "peak_extra_live_bytes": 64,
+      "end_extra_live_bytes": 0,
+      "checksum": 16817790119355657979
+    },
+    "replace_template.literal.2000": {
+      "allocs": 4001,
+      "reallocs": 11,
+      "frees": 4001,
+      "requested_bytes": 144760,
+      "peak_extra_live_bytes": 16440,
+      "end_extra_live_bytes": 0,
+      "checksum": 13750382946672192933
+    },
+    "replace_template.unused_large": {
+      "allocs": 1,
+      "reallocs": 0,
+      "frees": 1,
+      "requested_bytes": 8,
+      "peak_extra_live_bytes": 8,
+      "end_extra_live_bytes": 0,
+      "checksum": 12638216887369603693
+    }
+  },
+  "candidate": {
+    "captures_all.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "replace_template.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "captures_all.1": {
+      "allocs": 7,
+      "reallocs": 0,
+      "frees": 7,
+      "requested_bytes": 294,
+      "peak_extra_live_bytes": 294,
+      "end_extra_live_bytes": 0,
+      "checksum": 16221458622800311666
+    },
+    "replace_template.1": {
+      "allocs": 2,
+      "reallocs": 1,
+      "frees": 2,
+      "requested_bytes": 72,
+      "peak_extra_live_bytes": 64,
+      "end_extra_live_bytes": 0,
+      "checksum": 16238957300880625795
+    },
+    "captures_all.128": {
+      "allocs": 515,
+      "reallocs": 10,
+      "frees": 515,
+      "requested_bytes": 21136,
+      "peak_extra_live_bytes": 16176,
+      "end_extra_live_bytes": 0,
+      "checksum": 16032526769752334629
+    },
+    "replace_template.128": {
+      "allocs": 129,
+      "reallocs": 8,
+      "frees": 129,
+      "requested_bytes": 10232,
+      "peak_extra_live_bytes": 2096,
+      "end_extra_live_bytes": 0,
+      "checksum": 15014574575885007909
+    },
+    "captures_all.2000": {
+      "allocs": 8003,
+      "reallocs": 18,
+      "frees": 8003,
+      "requested_bytes": 335728,
+      "peak_extra_live_bytes": 253968,
+      "end_extra_live_bytes": 0,
+      "checksum": 4620037622058733669
+    },
+    "replace_template.2000": {
+      "allocs": 2001,
+      "reallocs": 12,
+      "frees": 2001,
+      "requested_bytes": 161528,
+      "peak_extra_live_bytes": 32816,
+      "end_extra_live_bytes": 0,
+      "checksum": 17472916979528889157
+    },
+    "replace_template.mixed_long_short.2000": {
+      "allocs": 2001,
+      "reallocs": 2,
+      "frees": 2001,
+      "requested_bytes": 522752,
+      "peak_extra_live_bytes": 262176,
+      "end_extra_live_bytes": 0,
+      "checksum": 14768133323212702187
+    },
+    "replace_template.literal.0": {
+      "allocs": 0,
+      "reallocs": 0,
+      "frees": 0,
+      "requested_bytes": 0,
+      "peak_extra_live_bytes": 0,
+      "end_extra_live_bytes": 0,
+      "checksum": 14695981039346656037
+    },
+    "replace_template.literal.1": {
+      "allocs": 1,
+      "reallocs": 0,
+      "frees": 1,
+      "requested_bytes": 8,
+      "peak_extra_live_bytes": 8,
+      "end_extra_live_bytes": 0,
+      "checksum": 16817790119355657979
+    },
+    "replace_template.literal.2000": {
+      "allocs": 1,
+      "reallocs": 11,
+      "frees": 1,
+      "requested_bytes": 32760,
+      "peak_extra_live_bytes": 16384,
+      "end_extra_live_bytes": 0,
+      "checksum": 13750382946672192933
+    },
+    "replace_template.unused_large": {
+      "allocs": 1,
+      "reallocs": 0,
+      "frees": 1,
+      "requested_bytes": 8,
+      "peak_extra_live_bytes": 8,
+      "end_extra_live_bytes": 0,
+      "checksum": 12638216887369603693
+    }
+  }
+}

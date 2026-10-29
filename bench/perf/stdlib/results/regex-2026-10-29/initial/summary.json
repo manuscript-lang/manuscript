@@ -1,0 +1,104 @@
+{
+  "regex.captures_all.0": {
+    "ops": 1,
+    "before": 33.0174370782649,
+    "after": 31.441643287745844,
+    "ratio": 0.9522738913143448
+  },
+  "regex.captures_all.1": {
+    "ops": 1,
+    "before": 587.0433924545957,
+    "after": 577.0604346908631,
+    "ratio": 0.9829945147291564
+  },
+  "regex.captures_all.128": {
+    "ops": 1,
+    "before": 67204.25867861143,
+    "after": 62788.09726962457,
+    "ratio": 0.9342874767787246
+  },
+  "regex.captures_all.2000": {
+    "ops": 1,
+    "before": 1068765.4433962265,
+    "after": 1065467.0444444444,
+    "ratio": 0.9969138233536997
+  },
+  "regex.replace_template.0": {
+    "ops": 1,
+    "before": 37.18563497837695,
+    "after": 39.326181883479016,
+    "ratio": 1.057563812110423
+  },
+  "regex.replace_template.1": {
+    "ops": 1,
+    "before": 558.682263623756,
+    "after": 506.744472192277,
+    "ratio": 0.9070351883115151
+  },
+  "regex.replace_template.128": {
+    "ops": 1,
+    "before": 60185.3908045977,
+    "after": 54193.77133728891,
+    "ratio": 0.9004472781980993
+  },
+  "regex.replace_template.2000": {
+    "ops": 1,
+    "before": 928221.82,
+    "after": 828807.60625,
+    "ratio": 0.8928982150516566
+  },
+  "regex.replace_template.mixed_long_short.2000": {
+    "ops": 1,
+    "before": 1861597.109375,
+    "after": 1949825.9104477612,
+    "ratio": 1.0473941437856995
+  },
+  "regex.replace_template.literal.1": {
+    "ops": 1,
+    "before": 430.9143185699802,
+    "after": 195.85047095043032,
+    "ratio": 0.45449979847588734
+  },
+  "regex.replace_template.literal.2000": {
+    "ops": 1,
+    "before": 715164.006329114,
+    "after": 250618.15639810427,
+    "ratio": 0.3504345215645142
+  },
+  "regex.replace_template.unused_large": {
+    "ops": 1,
+    "before": 82.08848317214576,
+    "after": 80.14090341710424,
+    "ratio": 0.9762746285498138
+  },
+  "regex.named_captures.1": {
+    "ops": 1,
+    "before": 328.1850493092917,
+    "after": 318.4957631227575,
+    "ratio": 0.970476149943678
+  },
+  "regex.named_captures.8": {
+    "ops": 1,
+    "before": 1186.9695299035432,
+    "after": 1146.7216603053434,
+    "ratio": 0.9660919100413046
+  },
+  "regex.find_all": {
+    "ops": 2000,
+    "before": 133.77837635869565,
+    "after": 144.05101533018868,
+    "ratio": 1.0767884859354948
+  },
+  "regex.matches": {
+    "ops": 10000,
+    "before": 80.541575147929,
+    "after": 84.14766971830986,
+    "ratio": 1.04477308227158
+  },
+  "regex.replace_all": {
+    "ops": 2000,
+    "before": 117.52107613168724,
+    "after": 126.80916795366795,
+    "ratio": 1.0790334136455066
+  }
+}
