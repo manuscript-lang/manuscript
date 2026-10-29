@@ -52,6 +52,7 @@ export fn main() Int:
 - Move: giving a value to a new owner (`xs.append(s)`, a field, `return`, a parameter the callee keeps) kills the old name, so `xs.append(s.clone())` unless it is the last use.
 - Borrow: `xs[i]`, `let x = a.b`, loop variables, match payloads and read-only parameters cannot be moved or stored, and a field or element cannot move out: `names.append(u.name.clone())`, `out.append(first.clone())`.
 - A fn returning part of a parameter or receiver writes `ref` before its result type: `fn name(u: User) ref String: return u.name`. Otherwise return `.clone()`.
+- `export opaque type T:` hides fields and cases outside its file. A `name: ref String` field makes a record a borrowing view: use it in place, never store or move it.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).

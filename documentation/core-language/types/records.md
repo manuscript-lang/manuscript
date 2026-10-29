@@ -89,7 +89,7 @@ Identity is module, declaration, and type arguments; alternate import paths to o
 
 ## Public data surfaces
 
-Exporting a record exports its constructor and every field; there are no field visibility modifiers or opaque exports. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
+Exporting a record exports its constructor and every field; there are no per-field visibility modifiers; [`export opaque type`](#opaque-types) hides all fields outside the declaring file. Field types must satisfy [public signature closure](../modules/declarations.md#public-signature-closure), including nested types. Importing a record does not import its field types' names.
 
 ## Recursive data
 
