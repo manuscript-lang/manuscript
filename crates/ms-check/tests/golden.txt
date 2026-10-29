@@ -444,7 +444,7 @@ impl Same[T] for Box[T]:
         return self.value == other
 fn compare[T](value: Box[T], other: T) Bool:
     return value.same(other: other)
-resolution	9	18	229	unknown or ambiguous member same on Box[T]; available: same, valueexport type Value:
+resolution	9	18	229	unknown or ambiguous member same on Box[T]; same requires T to be Equal; declare T: Equal on the enclosing functionexport type Value:
     value: Int
 export fn read(value: Value) Int:
     return value.value
@@ -1869,7 +1869,7 @@ fn callback() Unit:
     return values.map(transform: transform)
 fn search[T](values: List[T], value: T) Bool:
     return values.contains(value: value)
-resolution	2	19	64	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 55 members in totalfn wrong(data: Bytes) List[Bytes]:
+resolution	2	19	64	unknown or ambiguous member contains on List[T]; contains requires T to be Equal; declare T: Equal on the enclosing functionfn wrong(data: Bytes) List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	16	15	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
 resolution	1	28	27	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn first() Unit:
@@ -2322,7 +2322,7 @@ fn probe() Int:
     return sum + values.length()
 fn wrong() Int:
     let values = [fn() Int: 1]
-    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; available starting with 'd': distinct, drop; 55 members in totalfn wrong() List[Int]:
+    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
     return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
     fn get() T

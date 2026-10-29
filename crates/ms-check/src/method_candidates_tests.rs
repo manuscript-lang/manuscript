@@ -214,3 +214,21 @@ fn editor_queries_rebuild_candidate_indexes() {
             .any(|m| m.name == "read")
     );
 }
+
+#[test]
+fn unmet_list_element_bound_names_the_bound() {
+    let p = Checker::new(&CheckOptions::default()).check_modules(
+        vec![module(
+            "bound.ms",
+            "fn has[T](xs: List[T], x: T) Bool: xs.contains(x)\nexport fn main() Int: 0\n",
+        )],
+        None,
+    );
+    assert!(
+        p.diagnostics.iter().any(|d| d
+            .message
+            .contains("contains requires T to be Equal; declare T: Equal")),
+        "{:?}",
+        p.diagnostics
+    );
+}
