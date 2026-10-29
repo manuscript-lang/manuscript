@@ -2,7 +2,7 @@
 # Every fixture under tests/e2e/testdata against the Rust ms on this host (`make e2e`, usable without make).
 # accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
 # conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that exists.
-# project_check is a project whose check must fail.
+# project_check is a project whose check must fail; projects/*/reject_*.ms are reject files beside the modules they import.
 # Known failures are listed in tests/e2e/expect-fail.txt (Windows-only ones in expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release,
 # which the deep-nesting fixtures need to finish quickly). Extra arguments are fixture paths to run instead.
 set -eu
@@ -28,7 +28,7 @@ cargo build --locked -q -p ms-cli --target-dir "$repository/target"
 if [ "$#" -gt 0 ]; then
     fixtures=$*
 else
-    fixtures=$(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/*)
+    fixtures=$(ls -d tests/e2e/testdata/accept/*.ms tests/e2e/testdata/stdlib/*.ms tests/e2e/testdata/reject/*.ms tests/e2e/testdata/projects/* tests/e2e/testdata/projects/*/reject_*.ms)
 fi
 
 # A project directory passes when its tests pass, or its main.ms checks and prints expected-output.txt.
@@ -52,6 +52,13 @@ count=0
 for fixture in $fixtures; do
     count=$((count + 1))
     case "$fixture" in
+        */projects/*/reject_*.ms)
+            # A project-local reject case imports its sibling modules, so it must live beside them.
+            if "$ms" check "$fixture" >/dev/null 2>&1; then
+                echo "FAIL $fixture: a reject fixture checked clean" >&2
+                failed=$((failed + 1))
+            fi
+            ;;
         */projects/project_check)
             if project_passes "$fixture"; then
                 echo "FAIL $fixture: a reject project checked clean" >&2
