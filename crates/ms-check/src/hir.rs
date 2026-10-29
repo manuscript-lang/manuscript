@@ -309,6 +309,11 @@ impl ModuleHir {
         self.data.facts().patterns.get(&p.id).cloned()
     }
 
+    /// The close operation this module chose for a parameter or loop variable.
+    pub fn binding_cleanup(&self, uid: usize) -> Option<MethodRef> {
+        self.data.facts().cleanups.get(&uid).cloned()
+    }
+
     /// Facts of a statement (loop variable, cleanup, flow).
     pub fn stmt(&self, s: &Stmt) -> StmtFacts {
         self.data

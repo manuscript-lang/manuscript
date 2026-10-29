@@ -198,7 +198,10 @@ impl FnLower<'_> {
         x: crate::func::Val,
         cleanup: Option<&ct::MethodRef>,
     ) -> Result<(), Error> {
-        let kind = self.closer_for(cleanup, &binding.ty)?;
+        let Some(kind) = self.closer_opt(cleanup, &binding.ty)? else {
+            self.bind_local(binding, x);
+            return Ok(());
+        };
         self.bind_closing_kind(binding, x, kind)
     }
 
@@ -261,12 +264,13 @@ impl FnLower<'_> {
     }
 
     /// How a binding of `ty` is closed: its own close operation, if it has one, and then the
-    /// resources it holds.
-    fn closer_for(
+    /// resources it holds; `None` when this module sees no close operation for the type (its
+    /// `Closeable` implementation is local to another file).
+    pub(crate) fn closer_opt(
         &mut self,
         cleanup: Option<&ct::MethodRef>,
         ty: &ct::Ty,
-    ) -> Result<CloseKind, Error> {
+    ) -> Result<Option<CloseKind>, Error> {
         let ty = ct::sub(ty, &self.subst);
         let mt = self.mty(&ty)?;
         if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
@@ -275,14 +279,13 @@ impl FnLower<'_> {
                 .iter()
                 .position(|m| m.name == "close")
                 .ok_or_else(|| Error::new("interface without close"))?;
-            return Ok(CloseKind::Iface(iface, k as u32));
+            return Ok(Some(CloseKind::Iface(iface, k as u32)));
         }
         let own = match cleanup {
             Some(c) => Some(self.own_closer(c, &ty)?),
             None => None,
         };
-        self.close_with_parts(&ty, own)?
-            .ok_or_else(|| Error::new(format!("{ty} has no close operation")))
+        self.close_with_parts(&ty, own)
     }
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.
@@ -690,11 +693,16 @@ impl FnLower<'_> {
         let Some(kind) = self.part_closer(ty)? else {
             return Ok(());
         };
+        self.close_discarded_kind(&kind, v);
+        Ok(())
+    }
+
+    /// Closes `v` with `kind`, shielded like any other close.
+    pub(crate) fn close_discarded_kind(&mut self, kind: &CloseKind, v: Value) {
         let mt = self.ty_of(v);
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        close_call(&mut self.b, &kind, v, mt);
+        close_call(&mut self.b, kind, v, mt);
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
-        Ok(())
     }
 
     /// Leaves the closing binding `uid`: the cleanup entry goes away and its close runs on the

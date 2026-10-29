@@ -354,6 +354,8 @@ pub struct Facts {
     pub decls: HashMap<NodeId, DeclFacts>,
     /// Binding pattern variables.
     pub patterns: HashMap<NodeId, BindingRef>,
+    /// The close operation of a parameter or loop variable (by binding), chosen in this module.
+    pub cleanups: HashMap<usize, MethodRef>,
     /// Resolved written types.
     pub type_refs: HashMap<NodeId, Ty>,
     /// Name expressions that stand for a constant's initializer call.

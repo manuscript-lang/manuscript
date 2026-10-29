@@ -1351,7 +1351,19 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
-        if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
+        let closing = if list_var.is_some() && self.cx.implicit_closes.contains(&loop_var.uid) {
+            let ty = ms_check::types::sub(&loop_var.ty, &self.subst);
+            let cleanup = self.hir.binding_cleanup(loop_var.uid);
+            self.closer_opt(cleanup.as_ref(), &loop_var.ty)?
+                .map(|kind| (ty, kind))
+        } else {
+            None
+        };
+        let owned_elem = closing.as_ref().map(|(_, kind)| kind.clone());
+        if let Some((_, kind)) = closing {
+            // The loop owns its elements: the one in hand closes with the iteration.
+            self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
+        } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
             // The loop holds the list and the body cannot change it: the element is a borrow.
             self.bind_lent(&loop_var, e);
         } else {
@@ -1379,8 +1391,55 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(header);
         self.b.seal_block(exit);
         self.enter(exit);
+        if let (Some(kind), Some(var)) = (owned_elem, list_var) {
+            self.close_rest(&kind, var, idx);
+        }
         self.pop_scope();
         Ok(())
+    }
+
+    /// After a `break` out of a loop that owns its elements, closes the ones it never reached
+    /// (those after index `idx`); a loop that ran to the end has `idx` at the length and closes
+    /// nothing.
+    fn close_rest(
+        &mut self,
+        kind: &crate::close::CloseKind,
+        list: ms_mir::builder::Var,
+        idx: ms_mir::builder::Var,
+    ) {
+        let next = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
+        let at = self.b.use_var(idx);
+        let one = self.b.iconst(1);
+        let first = self
+            .b
+            .emit(Op::IAdd, &[at, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(next, first);
+        let (header, body, done) = (self.b.new_block(), self.b.new_block(), self.b.new_block());
+        self.b.br(header, &[]);
+        self.enter(header);
+        let j = self.b.use_var(next);
+        let l = self.b.use_var(list);
+        let len = self.b.list_len(l);
+        let more = self.b.icmp(Cc::Lt, j, len);
+        self.b.br_if(more, body, &[], done, &[]);
+        self.b.seal_block(body);
+        self.enter(body);
+        let j = self.b.use_var(next);
+        let l = self.b.use_var(list);
+        let v = self.b.list_get(l, j);
+        self.close_discarded_kind(kind, v);
+        let j = self.b.use_var(next);
+        let one = self.b.iconst(1);
+        let bumped = self
+            .b
+            .emit(Op::IAdd, &[j, one], Imm::None, Some(MTy::INT))
+            .expect("add");
+        self.b.def_var(next, bumped);
+        self.b.br(header, &[]);
+        self.b.seal_block(header);
+        self.b.seal_block(done);
+        self.enter(done);
     }
 }
 
