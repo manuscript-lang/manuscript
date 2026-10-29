@@ -48,7 +48,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 
 ## Fast code from the straightforward loop
 
-Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized, with an AVX2 copy chosen at run time on x86-64. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
+Debug builds use Cranelift for a quick edit-check-run loop; release builds use LLVM. List loops are auto-vectorized with SIMD. Speed is comparable to Rust with overflow checks on, and Manuscript beat hand-written Go on all seven kernels. [Recorded runs and reproduction commands](bench/perf/README.md)
 
 The standard library is about 14,000 lines of Manuscript across 40+ modules (HTTP, JSON, TOML, YAML, CSV, crypto, processes, and more), with Rust only for small primitives. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 
