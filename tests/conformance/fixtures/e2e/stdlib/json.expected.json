@@ -27,9 +27,9 @@
           "message": "Named is an interface and cannot be constructed; a type with 'impl Named for <Type>:' passes wherever Named is expected, so pass the value directly",
           "position": {
             "file": "json.ms",
-            "line": 257,
+            "line": 255,
             "column": 15,
-            "offset": 9958
+            "offset": 9905
           }
         }
       ]

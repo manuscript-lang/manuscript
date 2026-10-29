@@ -54,8 +54,8 @@ impl Counter:
         self.values.append(1)
 
 fn bump(shared: Shared[Counter]) Unit:
-    with var guard = lock(shared):
-        guard.value.bump()
+    var guard = lock(shared)
+    guard.value.bump()
 
 test "lock changes the payload every holder sees":
     let first = share(Counter([]))
@@ -66,20 +66,19 @@ test "lock changes the payload every holder sees":
 
 test "a read while the payload is locked faults":
     let shared = share(Counter([]))
-
-    with var held = lock(shared):
-        let message = try expect_fault(
-            fn() Unit:
-                let _length = shared.get().values.length()
-        )
-        try expect_equal(message, "shared value is in use")
-        held.value.bump()
-
+    var held = lock(shared)
+    let message = try expect_fault(
+        fn() Unit:
+            let _length = shared.get().values.length()
+    )
+    try expect_equal(message, "shared value is in use")
+    held.value.bump()
+    held.close()
     try expect_equal(shared.get().values.length(), 1)
 
 fn append_seven(shared: Shared[List[Int]]) Unit:
-    with var items = lock(shared):
-        items.value.append(7)
+    var items = lock(shared)
+    items.value.append(7)
 
 fn drop_while_locked() Unit:
     let shared: Shared[List[Int]] = share([])
@@ -104,8 +103,10 @@ test "a box dropped while its payload is locked does not free the payload twice"
 test "an optional payload keeps its value through lock":
     let shared: Shared[Optional[Int]] = share(some(5))
     try expect_equal(shared.get(), some(5))
-    with var held = lock(shared):
-        held.value = held.value
+
+    var held = lock(shared)
+    held.value = held.value
+    held.close()
     try expect_equal(shared.get(), some(5))
 
 type Pair:
@@ -114,7 +115,8 @@ type Pair:
 
 test "a record payload with an optional field after a flag survives lock":
     let shared = share(Pair(flag: 1 == 1, value: some(5)))
-    with var pair = lock(shared):
-        pair.value = Pair(flag: 1 == 2, value: pair.value.value)
+    var pair = lock(shared)
+    pair.value = Pair(flag: 1 == 2, value: pair.value.value)
+    pair.close()
     try expect_equal(shared.get().value, some(5))
     try expect_equal(shared.get().flag, 1 == 2)

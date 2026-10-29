@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/try-result-payloads.ms
 import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
@@ -68,9 +68,9 @@ fn tail_cleanup(
     var visits: List[Int],
     marker: String
 ) Result[Int, TextError]:
-    with let resource = TailCleanup(marker):
-        let value = try visit(result, var visits)
-        return ok(value)
+    let _resource = TailCleanup(marker)
+    let value = try visit(result, var visits)
+    return ok(value)
 
 fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError]:
     let value = try result
@@ -88,19 +88,18 @@ test "tail Results evaluate once and retain payload identity":
 test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-tail-") | try expect_ok:
-        let first = "{temporary.path()}/first"
-        let second = "{temporary.path()}/second"
-        tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(
-            42
-        )
-        visits | try expect_equal([1])
-        fs.read_file(first).is_ok() | try expect_true
-        fs.read_file(second).is_ok() | try expect_false
-        tail_cleanup(Result[Int, TextError].error(TextError("")), var visits, second).is_error() | try expect_true
-        visits | try expect_equal([1, 1])
-        fs.read_file(second).is_ok() | try expect_true
+    let temporary = fs.temporary("manuscript-tail-") | try expect_ok
+    let first = "{temporary.path()}/first"
+    let second = "{temporary.path()}/second"
+    tail_cleanup(Result[Int, TextError].ok(42), var visits, first).get() | try expect_equal(
+        42
+    )
+    visits | try expect_equal([1])
+    fs.read_file(first).is_ok() | try expect_true
+    fs.read_file(second).is_ok() | try expect_false
+    tail_cleanup(Result[Int, TextError].error(TextError("")), var visits, second).is_error() | try expect_true
+    visits | try expect_equal([1, 1])
+    fs.read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42

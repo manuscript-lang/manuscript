@@ -53,6 +53,6 @@ export fn main() Int:
 - Borrow: `xs[i]`, `let x = a.b`, loop variables, match payloads and read-only parameters cannot be moved or stored, and a field or element cannot move out: `names.append(u.name.clone())`, `out.append(first.clone())`.
 - A fn returning part of a parameter or receiver writes `ref` before its result type: `fn name(u: User) ref String: return u.name`. Otherwise return `.clone()`.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
-- Lints (`ms lint`, `ms verify`): `Optional.get()` without default, unread bindings (prefix `_`).
+- Lints: `ms lint`/`ms verify` fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail check (prefix `_`).
 - Any `Closeable` (files, or your `impl Closeable for T:`) has `close()` called when its `let`/`var` goes out of scope, unless moved on (returned, stored).
 - Not Python: no exceptions, classes, `async`, `null`, `pass`; `fn` not `def`/`lambda`, `true`/`false`, `else if`, `none`, no `f""`.

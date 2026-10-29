@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,interfaces,interpolation,lists,modules,mutation,optional,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/sse.ms
 import {expect_equal, expect_false, fail} from "@std/test.ms"
@@ -202,31 +202,28 @@ test "reader decodes a borrowed stream and leaves it open":
         ],
         none
     )
-
-    with var events = try reader(source.clone()):
-        let first = (try next_event(var events)).get()
-        let second = (try next_event(var events)).get()
-        try expect_false(first.data != "hello" or second.data != "2")
-        try expect_false((try next_event(var events)).is_some())
-        try expect_false((try next_event(var events)).is_some())
-        try expect_false(source.closed)
+    var events = try reader(source.clone())
+    let first = (try next_event(var events)).get()
+    let second = (try next_event(var events)).get()
+    try expect_false(first.data != "hello" or second.data != "2")
+    try expect_false((try next_event(var events)).is_some())
+    try expect_false((try next_event(var events)).is_some())
+    try expect_false(source.closed)
 
 test "reader reports truncation limits and read failures":
-    with var cut = try reader(stream(["data: a\n".to_bytes()], none)):
-        let truncated = next_event(var cut)
-        try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
+    var cut = try reader(stream(["data: a\n".to_bytes()], none))
+    let truncated = next_event(var cut)
+    try expect_false(truncated.is_ok() or truncated.err() != SseError.Truncated)
 
-        with var big = try reader(
-            stream(["data: abcdef\n\n".to_bytes()], none), SseLimits(some(4))
-        ):
-            let limited = next_event(var big)
-            try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
+    var big = try reader(
+        stream(["data: abcdef\n\n".to_bytes()], none), SseLimits(some(4))
+    )
+    let limited = next_event(var big)
+    try expect_false(limited.is_ok() or limited.err() != SseError.LimitExceeded)
 
-            with var broken = try reader(
-                stream(["data: a\n\n".to_bytes()], some(IoError.Closed))
-            ):
-                let _event = try next_event(var broken)
-                let failed = next_event(var broken)
-                try expect_false(failed.is_ok())
-                try expect_equal(failed.err(), SseError.ReadFailed(IoError.Closed))
-                try expect_false(reader(stream([], none), chunk_bytes: some(0)).is_ok())
+    var broken = try reader(stream(["data: a\n\n".to_bytes()], some(IoError.Closed)))
+    let _event = try next_event(var broken)
+    let failed = next_event(var broken)
+    try expect_false(failed.is_ok())
+    try expect_equal(failed.err(), SseError.ReadFailed(IoError.Closed))
+    try expect_false(reader(stream([], none), chunk_bytes: some(0)).is_ok())

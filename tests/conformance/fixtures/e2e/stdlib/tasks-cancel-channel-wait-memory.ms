@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import Channel from "@std/channels.ms"
 import stdout from "@std/io.ms"
@@ -26,32 +26,32 @@ fn waiting(ready: Channel[Unit, Unit], ch: Channel[Int, Int]) Unit:
     let _ignored = end.receive()
 
 fn cancel_one(ch: Channel[Int, Int]) Result[Unit, Error]:
-    with var group = TaskGroup[Unit]():
-        let end = ch.clone()
-        var task = group.spawn(fn ready: waiting(ready, end.clone()))
-        task.channel.receive() | try expect_ok | try expect_equal(some(unit))
-        group.close()
-        task.result() | try expect_error | try expect_equal(TaskError.Closed)
-
+    var group = TaskGroup[Unit]()
+    let end = ch.clone()
+    var task = group.spawn(fn ready: waiting(ready, end.clone()))
+    task.channel.receive() | try expect_ok | try expect_equal(some(unit))
+    group.close()
+    task.result() | try expect_error | try expect_equal(TaskError.Closed)
+    group.close()
     return ok(unit)
 
 export fn main() Int:
-    with let owner = TaskGroup[Unit, Int, Int]():
-        var task = owner.spawn(echo)
+    var owner = TaskGroup[Unit, Int, Int]()
+    var task = owner.spawn(echo)
 
-        for index in 0..4:
-            cancel_one(task.channel.clone()).get()
-            task.channel.send(0).get()
-            task.channel.receive().get()
+    for index in 0..4:
+        cancel_one(task.channel.clone()).get()
+        task.channel.send(0).get()
+        task.channel.receive().get()
 
-        let before = control().memory_usage().get()
+    let before = control().memory_usage().get()
 
-        for index in 0..32:
-            cancel_one(task.channel.clone()).get()
-            task.channel.send(0).get()
-            task.channel.receive().get()
+    for index in 0..32:
+        cancel_one(task.channel.clone()).get()
+        task.channel.send(0).get()
+        task.channel.receive().get()
 
-        let after = control().memory_usage().get()
-        stdout().write("growth {after.heap_used - before.heap_used}\n").get()
-
+    let after = control().memory_usage().get()
+    stdout().write("growth {after.heap_used - before.heap_used}\n").get()
+    owner.close()
     return 0

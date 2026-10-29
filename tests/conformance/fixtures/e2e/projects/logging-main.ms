@@ -1,4 +1,4 @@
-# conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,diagnostics,faults,interpolation,modules,records,stdlib-io,stdlib-json,stdlib-log,stdlib-process,strings,tier-io,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/logging/main.ms
 import {Logger, LogLevel, create, record, stdout_transport, file_transport} from "@std/log.ms"
@@ -9,36 +9,37 @@ import emit from "./records.ms"
 
 fn exercise(mode: String, path: String) Result[Unit, Error]:
     if (mode == "file" or mode == "missing"):
-        with let root = try create(try file_transport(path), timestamp: false):
-            let logger = try root.child_json("\{\"service\":\"api\"\}")
-            try emit(logger)
-            try logger.flush()
-
+        var root = try create(try file_transport(path), timestamp: false)
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
+        try emit(logger)
+        try logger.flush()
+        root.close()
         return ok(unit)
 
     if mode == "limit":
-        with let logger = try create(stdout_transport(), max_bytes: 1):
-            try logger.info("too large")
+        let logger = try create(stdout_transport(), max_bytes: 1)
+        try logger.info("too large")
     else if mode == "closed":
         var root = try create(stdout_transport())
         let logger = try root.child_json("\{\"service\":\"api\"\}")
         root.close()
         try logger.info("closed")
     else:
-        with let root = try create(stdout_transport()):
-            let logger = try root.child_json("\{\"service\":\"api\"\}")
+        let root = try create(stdout_transport())
+        let logger = try root.child_json("\{\"service\":\"api\"\}")
 
-            if mode == "invalid":
-                try record(
-                    logger, level: LogLevel.Info, message: "invalid",
-                    fields: JsonValue.NumberValue("NaN")
-                )
-            else:
-                try emit(logger)
-                try logger.flush()
+        if mode == "invalid":
+            try record(
+                logger, level: LogLevel.Info, message: "invalid",
+                fields: JsonValue.NumberValue("NaN")
+            )
+        else:
+            try emit(logger)
+            try logger.flush()
 
-    with let logger = try create(stdout_transport(), timestamp: false):
-        try logger.info("still open")
+    var logger = try create(stdout_transport(), timestamp: false)
+    try logger.info("still open")
+    logger.close()
     return ok(unit)
 
 export fn main() Int:

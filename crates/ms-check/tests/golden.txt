@@ -1433,21 +1433,7 @@ fn f(s: S) Int:
             return 1
         other:
             return 2
-resolution	8	9	99	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bimport Closeable from "@std/cleanup.ms"
-type R:
-    n: Int
-impl Closeable for R:
-    fn close() Unit:
-        return unit
-fn mk() Result[R, Error]:
-    return ok(R(n: 1))
-fn f() Int:
-    with let x = mk():
-        return 1
-    return 0
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	4	6	64	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	10	5	187	with needs a Closeable value, but this expression is Result[R, Error]; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'export type MoneyError:
+resolution	8	9	99	'other' is not a case of S; use '_' for a catch-all arm (it cannot bind a name); cases: A, Bexport type MoneyError:
     case Invalid
 export fn parse_cents() Int: 0
 export fn format_cents() String: "0"
@@ -2353,10 +2339,7 @@ export fn invoke[T: Read[Int]](value: T) Int:
     return Read[Int](value: value)
 resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import it
 resolution	1	25	24	unknown type Read; declare it with 'type Read:' / 'interface Read:', declare it as a type parameter, or import it
-resolution	2	12	46	unknown binding Read; declare it with 'let Read = ...' before use, define 'fn Read(...) T:', or import it from a modulefn use(value: Box[Int]) Unit:
-    with let resource = value:
-        return
-resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'interface Box:', declare it as a type parameter, or import itimport Closeable from "@std/cleanup.ms"
+resolution	2	12	46	unknown binding Read; declare it with 'let Read = ...' before use, define 'fn Read(...) T:', or import it from a moduleimport Closeable from "@std/cleanup.ms"
 impl Closeable for Box[T]:
     fn close() Unit:
         return
@@ -3573,14 +3556,7 @@ fn g() Unit: return
     use(fn(x: Int) Int: return x, other: 1)
     let gs = [fn() Unit: return, fn() Int: return 2]
 resolution	3	5	54	unknown binding use; declare it with 'let use = ...' before use, define 'fn use(...) T:', or import it from a module
-type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)fn f() Unit:
-    while true: break
-    for x in values: consume(x)
-    with let x = resource(): consume(x)
-resolution	3	14	48	unknown binding values; add: import values from "@std/bytes.ms"
-resolution	3	22	56	unknown binding consume; declare it with 'let consume = ...' before use, define 'fn consume(...) T:', or import it from a module
-resolution	4	18	84	unknown binding resource; declare it with 'let resource = ...' before use, define 'fn resource(...) T:', or import it from a module
-resolution	4	30	96	unknown binding consume; declare it with 'let consume = ...' before use, define 'fn consume(...) T:', or import it from a modulefn f(x: Int) Int:
+type	4	34	127	expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)fn f(x: Int) Int:
     if x > 0: return x else: return 0
 parse	2	24	41	expected end of inline statement, found 'else'; an inline body holds one simple statement, so move more statements to an indented blockfn f() Unit:
     if true: return else: return
@@ -3947,39 +3923,7 @@ fn two() Int:
 parse	1	31	30	expected ':', found end of line; block headers (fn, if, else, for, while, match, with, type, impl, test) end with ':' before their indented body
 type parameters: ...type Data:
     value: Int
-import Closeable from "@std/cleanup.ms"
-import Queue from "@std/queues.ms"
-
-type Resource:
-    state: Queue[Int]
-
-impl Closeable for Resource:
-    fn close() Unit:
-        self.state.dequeue()
-
-fn pure() Int:
-    return 1
-
-fn direct(resource: Resource) Unit:
-    with let item = resource:
-        return
-
-fn transitive(resource: Resource) Unit:
-    direct(resource: resource)
-
-fn nested(resource: Resource) Unit:
-    let callback = fn() Unit:
-        with let item = resource:
-            return
-
-fn indirect(callback: fn() Unit) Unit:
-    callback()
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	2	8	47	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	5	12	102	unknown type Queue; add: import Queue from "@std/queue.ms"
-resolution	7	6	119	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	15	5	263	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
-type	23	9	451	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unittype State:
+type State:
     count: Int
 fn increment(state: State) Int:
     state.count = state.count + 1
@@ -4385,19 +4329,7 @@ resolution	2	34	46	unknown binding remaining; declare it with 'let remaining = .
             doubled
         none: return 0
     return result
-fn work(enabled: Bool) Int:
-    let count = 2
-    if enabled:
-        run(count)
-    for item in [1, 2]:
-        run(item)
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	4	9	70	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	6	9	113	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	7	25	147	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module
-resolution	8	9	166	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a modulefn process(input: String) Int:
+fn process(input: String) Int:
     let records = parse(input)
     if records.length() == 0: return 0
     if records.length() > 100: return 1
@@ -4427,59 +4359,7 @@ resolution	7	11	220	unknown binding save; declare it with 'let save = ...' befor
 resolution	2	19	49	unknown binding parse; add: import parse from "@std/csv.ms"
 resolution	6	18	159	unknown binding summarize; declare it with 'let summarize = ...' before use, define 'fn summarize(...) T:', or import it from a module
 resolution	7	19	196	unknown binding encode; declare it with 'let encode = ...' before use, define 'fn encode(...) T:', or import it from a module
-resolution	9	11	222	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a modulefn work(enabled: Bool) Int:
-    let count = 2
-    if enabled:
-        run(count)
-    else if count > 0: run(1)
-    else:
-        run(0)
-    while enabled:
-        if count == 0: break
-        run(count)
-        break
-    for item in [1, 2]:
-        if item == 1: continue
-        run(item)
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	4	9	70	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	5	24	104	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	7	9	129	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	10	9	192	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	14	9	280	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	15	25	314	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module
-resolution	16	9	333	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a modulefn work(enabled: Bool) Int:
-    let count = 2
-
-    if enabled:
-        run(count)
-    else if count > 0: run(1)
-    else:
-        run(0)
-
-    while enabled:
-        if count == 0: break
-
-        run(count)
-        break
-
-    for item in [1, 2]:
-        if item == 1: continue
-
-        run(item)
-
-    with let resource = acquire():
-        run(resource)
-    return count
-resolution	5	9	71	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	6	24	105	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	8	9	130	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	13	9	195	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	19	9	285	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a module
-resolution	21	25	320	unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module
-resolution	22	9	339	unknown binding run; declare it with 'let run = ...' before use, define 'fn run(...) T:', or import it from a modulefn choose(value: Choice) Int:
+resolution	9	11	222	unknown binding save; declare it with 'let save = ...' before use, define 'fn save(...) T:', or import it from a modulefn choose(value: Choice) Int:
     match value:
         first: return 1
         second: return 2
@@ -5634,24 +5514,6 @@ fn two() Int:
 
 fn b(n: Int) Int:
     return a(n)
-import stdout from "@std/io.ms"
-
-fn load(n: Int) Result[Int, Error]:
-    if n > 3:
-        return ok(0)
-    return ok(n)
-
-fn guarded(n: Int) Result[Int, Error]:
-    with let out = stdout():
-        let v = try load(n)
-        if v > 1:
-            return ok(2)
-    return ok(0)
-
-export fn main() Int:
-    match guarded(1):
-        ok(_): return 0
-        error(_): return 1
 export fn main() Int:
     return 0   
 export fn main() Int:
@@ -6485,46 +6347,7 @@ fn run() Int:
 test "fault":
     run()
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	4	36	85	unknown binding panic; add: import panic from "@std/core.ms"import Closeable from "@std/cleanup.ms"
-type Count:
-    total: Int
-type Watch:
-    count: Count
-impl Closeable for Watch:
-    fn close() Unit:
-        self.count.total += 10
-fn next(count: Count) Int:
-    with let watch = Watch(count):
-        count.total += 1
-        return 0
-fn unknown(s: Shape) Int: return area(s)
-export fn main() Int:
-    let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
-    let count = Count(0)
-    if area(shapes.get(next(count) * 0)) != 6: return 1
-    if count.total != 11: return 2
-    if area(shapes.get(next(count))) != 6: return 5
-    if count.total != 22: return 6
-    if unknown(Shape.Tri(4)) != 4: return 3
-    var sum = 0
-    var i = 0
-    while i < 321:
-        sum += area(shapes.get(i % 3))
-        i += 1
-    if sum != 2033: return 4
-    return 0
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	13	15	292	unknown type Shape; declare it with 'type Shape:' / 'interface Shape:', declare it as a type parameter, or import it
-resolution	6	6	101	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	10	5	205	with requires an explicit Closeable implementation or a contract declaring close() Unit; Watch has none, so add 'impl Closeable for Watch:' with var fn close() Unit
-resolution	13	34	311	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module
-resolution	15	19	359	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module
-resolution	15	36	376	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module
-resolution	15	53	393	unknown binding Shape; declare it with 'let Shape = ...' before use, define 'fn Shape(...) T:', or import it from a module
-resolution	17	8	439	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module
-resolution	19	8	530	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a module
-resolution	21	16	625	unknown binding Shape; did you mean 'shapes'?
-resolution	25	16	718	unknown binding area; declare it with 'let area = ...' before use, define 'fn area(...) T:', or import it from a modulefn probe() Int:
+resolution	4	36	85	unknown binding panic; add: import panic from "@std/core.ms"fn probe() Int:
     let shapes = [Shape.Circle(2)]
     return area(shapes.get(2))
 export fn main() Int:
@@ -6760,63 +6583,7 @@ test "continues":
 resolution	4	9	88	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	6	23	157	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	9	8	223	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
-resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?import panic from "@std/faults.ms"
-import Closeable from "@std/cleanup.ms"
-import ListBuilder from "@std/collections.ms"
-import Queue from "@std/queues.ms"
-import {stdout, WriteStream} from "@std/io.ms"
-import Bytes from "@std/bytes.ms"
-
-fn emit(message: String) Unit:
-    let written = stdout().write(message).get()
-
-type Resource:
-    output: WriteStream
-
-impl Closeable for Resource:
-    fn close() Unit:
-        let written = self.output.write("fault cleanup completed\n").get()
-
-test "panic unwinds Closeable":
-    with let resource = Resource(stdout()):
-        return panic("intentional stdlib panic")
-
-test "absent Optional unwrap faults":
-    let absent: Optional[Int] = none
-    let impossible = absent.get()
-
-test "sealed builder mutation faults":
-    let builder = ListBuilder[Int]()
-    let sealed = builder.freeze()
-    builder.append(1)
-
-test "zero queue capacity faults":
-    let queue = Queue[Int](0)
-
-test "negative queue capacity faults":
-    let queue = Queue[Int](-1)
-
-test "unwrapping an out of range slice faults":
-    let impossible = ([1, 2]).slice(start: 0, end: 3).get()
-
-test "negative split limit faults":
-    let impossible = "a,b,c".split(separator: ",", max_parts: -1)
-
-test "negative replace limit faults":
-    let impossible = "aaa".replace(old: "a", new: "b", max_replacements: -1)
-
-test "runner continues with fresh roots after faults":
-    emit("fresh root after stdlib faults\n")
-resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	2	8	42	unknown standard module @std/cleanup.ms
-resolution	4	8	128	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	14	6	363	unknown type Closeable; add: import Closeable from "@std/core.ms"
-type	19	5	520	with requires an explicit Closeable implementation or a contract declaring close() Unit; Resource has none, so add 'impl Closeable for Resource:' with var fn close() Unit
-resolution	20	16	575	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	28	26	821	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
-resolution	32	17	904	unknown binding Queue; add: import Queue from "@std/queue.ms"
-resolution	35	17	974	unknown binding Queue; add: import Queue from "@std/queue.ms"
-type	44	56	1295	unknown argument max_replacements; parameters of replace: new, oldimport filesystem from "@std/fs.ms"
+resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?import filesystem from "@std/fs.ms"
 import {expect_true, fail} from "@std/test.ms"
 
 test "fixture next to the manifest":

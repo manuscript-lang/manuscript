@@ -12,11 +12,11 @@ export fn main() Int:
         address: "127.0.0.1:0", handler: buffered(handle),
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):
-        with let server = acquired:
-            stdout().write("{server.address()}\n").get()
-            stdout().flush().get()
+        let server = acquired
+        stdout().write("{server.address()}\n").get()
+        stdout().flush().get()
 
-            let _ignored = server.wait()
-            return 0
+        let _ignored = server.wait()
+        return 0
 
     return 1

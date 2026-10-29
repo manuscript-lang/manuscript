@@ -493,6 +493,7 @@ pub fn run_profile(
                 "the program wrote no profile to {folded_path} (it exited with status {program_status}); a runtime built without profiling support or a program killed before cleanup writes nothing"
             );
             diagnostics.push(CommandDiagnostic {
+                severity: String::new(),
                 code: "MSN001".into(),
                 phase: "artifact".into(),
                 message: message.clone(),
@@ -512,6 +513,7 @@ pub fn run_profile(
             Err(problem) => {
                 let message = format!("cannot read {folded_path}: {problem}");
                 diagnostics.push(CommandDiagnostic {
+                    severity: String::new(),
                     code: "MSN001".into(),
                     phase: "artifact".into(),
                     message: message.clone(),
@@ -551,6 +553,7 @@ pub fn run_profile(
                 if let Some(Err(error)) = writes.iter().find(|result| result.is_err()) {
                     let message = format!("cannot write the profile bundle in {output}: {error}");
                     diagnostics.push(CommandDiagnostic {
+                        severity: String::new(),
                         code: "MSN001".into(),
                         phase: "artifact".into(),
                         message,
@@ -733,6 +736,7 @@ fn fail(
         return status;
     }
     let diagnostic = CommandDiagnostic {
+        severity: String::new(),
         code: "MSN001".into(),
         phase: phase.into(),
         message: message.into(),

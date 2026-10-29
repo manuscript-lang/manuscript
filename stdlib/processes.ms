@@ -145,25 +145,26 @@ fn next_frame(
     inbox: Shared[Inbox]
 ) Result[Optional[Frame], ChannelError]:
     while true:
-        with var state = lock(inbox):
-            let available = state.value.pending.length()
+        var state = lock(inbox)
+        let available = state.value.pending.length()
 
-            if available >= 5:
-                let size = state.value.pending.uint32_le(0).get(0).to_int()
-                if size > FRAME_LIMIT:
-                    return error(ChannelError.Broken("a frame is larger than 16 MiB"))
+        if available >= 5:
+            let size = state.value.pending.uint32_le(0).get(0).to_int()
+            if size > FRAME_LIMIT:
+                return error(ChannelError.Broken("a frame is larger than 16 MiB"))
 
-                if available >= 5 + size:
-                    let kind = state.value.pending.get(4).to_int()
-                    let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
-                    state.value.pending = state.value.pending.slice(
-                        5 + size, available
-                    ).get("".to_bytes())
-                    if let text = body.decode_utf8():
-                        return ok(Frame(kind: kind, body: text))
+            if available >= 5 + size:
+                let kind = state.value.pending.get(4).to_int()
+                let body = state.value.pending.slice(5, 5 + size).get("".to_bytes())
+                state.value.pending = state.value.pending.slice(
+                    5 + size, available
+                ).get("".to_bytes())
+                if let text = body.decode_utf8():
+                    return ok(Frame(kind: kind, body: text))
 
-                    return error(ChannelError.Broken("a frame is not UTF-8"))
+                return error(ChannelError.Broken("a frame is not UTF-8"))
 
+        state.close()
         if msstd_process_ipc_wait_reader(link):
             return ok(Frame(kind: RETRY, body: ""))
 
@@ -171,27 +172,26 @@ fn next_frame(
         if chunk.is_empty():
             return ok(none)
 
-        with var more = lock(inbox):
-            more.value.pending = more.value.pending.concat(chunk)
+        var more = lock(inbox)
+        more.value.pending = more.value.pending.concat(chunk)
 
     return ok(none)
 
 # Marks that the other end sent no more messages, keeping the result body if this was it.
 fn finish(inbox: Shared[Inbox], result: Optional[String]) Unit:
-    with var state = lock(inbox):
-        state.value.finished = true
-        if result.is_some():
-            state.value.result = result
+    var state = lock(inbox)
+    state.value.finished = true
+    if result.is_some():
+        state.value.result = result
 
 # Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
 # the child: the write could wait forever on a full pipe the child never reads).
 fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
     var first = false
-
-    with var state = lock(inbox):
-        first = not state.value.closed
-        state.value.closed = true
-
+    var state = lock(inbox)
+    first = not state.value.closed
+    state.value.closed = true
+    state.close()
     if first and notify:
         msstd_process_ipc_write(link, frame(CLOSE, ""))
 
@@ -375,20 +375,21 @@ impl Closeable for Process[T, In, Out]:
     var fn close() Unit:
         stop_child(self.link, self.inbox, self.native)
 
-        with var all = lock(self.registry):
-            for index in 0..all.value.length():
-                if all.value[index].id == self.id:
-                    all.value.remove(index)
-                    break
+        var all = lock(self.registry)
+
+        for index in 0..all.value.length():
+            if all.value[index].id == self.id:
+                all.value.remove(index)
+                break
 
 # A scope that owns the child processes started in it. Each runs an entry returning `T` and has a
 # two-way channel to the group: the child sends `Out` values and receives `In` values, both
-# `Unit` unless given. Open a group with `with`: leaving the block stops every child still running.
+# `Unit` unless given. Bind a group to a local: when its scope ends it stops every child still running.
 # `In`, `Out` and `T` cross as JSON, so use plain data: records, alternatives, lists, maps,
 # strings and numbers.
 export type ProcessGroup[T, In = Unit, Out = Unit]:
     # Internal state: the open processes in start order, changed through the shared handle so the
-    # group works as a `with` binding.
+    # group closes when its scope ends.
     processes: Shared[List[Open]] = share([])
     # Internal state: the number of the next process.
     started: Shared[Int] = share(0)
@@ -412,13 +413,14 @@ impl ProcessGroup[T, In, Out]:
         let link = msstd_process_forked_link(native)
         let inbox: Shared[Inbox] = share(Inbox())
         var id = 0
+        var next = lock(self.started)
+        id = next.value
+        next.value = id + 1
+        next.close()
 
-        with var next = lock(self.started):
-            id = next.value
-            next.value = id + 1
-
-        with var all = lock(self.processes):
-            all.value.append(Open(id, native, link, inbox))
+        var all = lock(self.processes)
+        all.value.append(Open(id, native, link, inbox))
+        all.close()
         return ok(
             Process[T, In, Out](
                 native: native,
@@ -449,9 +451,8 @@ impl ProcessGroup[T, In, Out]:
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit:
-        with var all = lock(self.processes):
-            for index in 0..all.value.length():
-                stop_child(
-                    all.value[index].link, all.value[index].inbox,
-                    all.value[index].native
-                )
+        var all = lock(self.processes)
+        for index in 0..all.value.length():
+            stop_child(
+                all.value[index].link, all.value[index].inbox, all.value[index].native
+            )

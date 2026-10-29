@@ -50,32 +50,32 @@ fn closes_by_hand_too(dir: String) Int:
     return r.id
 
 test "a resource nothing takes is closed when its scope ends":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(falls_off_the_end(dir.clone()), 1)
-        try expect_true(closed(dir, 1))
-        try expect_equal(returns_early(dir.clone(), true), 1)
-        try expect_true(closed(dir, 2))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(falls_off_the_end(dir.clone()), 1)
+    try expect_true(closed(dir, 1))
+    try expect_equal(returns_early(dir.clone(), true), 1)
+    try expect_true(closed(dir, 2))
 
 test "an error leaving the scope still closes it":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_true(propagates(dir.clone()).is_error())
-        try expect_true(closed(dir, 3))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_true(propagates(dir.clone()).is_error())
+    try expect_true(closed(dir, 3))
 
 test "break and continue close the iteration's resource":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(breaks_out(dir.clone()), 2)
-        try expect_true(closed(dir, 10))
-        try expect_true(closed(dir, 11))
-        try expect_false(closed(dir, 12))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(breaks_out(dir.clone()), 2)
+    try expect_true(closed(dir, 10))
+    try expect_true(closed(dir, 11))
+    try expect_false(closed(dir, 12))
 
 test "closing by hand does not stop the scope's own close":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(closes_by_hand_too(dir.clone()), 20)
-        try expect_true(closed(dir, 20))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(closes_by_hand_too(dir.clone()), 20)
+    try expect_true(closed(dir, 20))
 
 fn reassigns(dir: String) Int:
     var r = Resource(dir.clone(), 30)
@@ -83,11 +83,11 @@ fn reassigns(dir: String) Int:
     return r.id
 
 test "reassigning a resource closes the value it replaces":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(reassigns(dir.clone()), 31)
-        try expect_true(closed(dir, 30))
-        try expect_true(closed(dir, 31))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(reassigns(dir.clone()), 31)
+    try expect_true(closed(dir, 30))
+    try expect_true(closed(dir, 31))
 
 fn open_resource(dir: String, id: Int) Resource:
     return Resource(dir, id)
@@ -96,10 +96,10 @@ fn temporary_id(dir: String) Int:
     return open_resource(dir, 40).id
 
 test "an unbound resource temporary is closed at the end of its statement":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(temporary_id(dir.clone()), 40)
-        try expect_true(closed(dir, 40))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(temporary_id(dir.clone()), 40)
+    try expect_true(closed(dir, 40))
 
 fn pops_and_discards(dir: String) Int:
     var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
@@ -107,7 +107,7 @@ fn pops_and_discards(dir: String) Int:
     return rs.length()
 
 test "a discarded resource result is closed":
-    with let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(pops_and_discards(dir.clone()), 1)
-        try expect_true(closed(dir, 51))
+    let temporary = filesystem().temporary("manuscript-implicit-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(pops_and_discards(dir.clone()), 1)
+    try expect_true(closed(dir, 51))

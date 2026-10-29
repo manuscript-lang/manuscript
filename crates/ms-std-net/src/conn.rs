@@ -100,7 +100,7 @@ impl<T> Deref for Owned<T> {
 
 /// Runs `body`, which may park on a socket, counted in `busy`. A cancellation that leaves it
 /// still counts it out, and `idle` runs when the count reaches zero, so the close of an
-/// enclosing `with` can free the descriptor.
+/// enclosing scope can free the descriptor.
 fn parked<T>(busy: &Cell<u32>, idle: &dyn Fn(), body: impl FnOnce() -> T) -> T {
     busy.set(busy.get() + 1);
     let leave = || {

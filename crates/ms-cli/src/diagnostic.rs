@@ -41,6 +41,8 @@ impl fmt::Display for Position {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CommandDiagnostic {
     pub code: String,
+    /// `warning` or `error` for a lint finding; empty for compiler diagnostics, which are errors.
+    pub severity: String,
     pub phase: String,
     pub message: String,
     pub position: Position,
@@ -54,6 +56,7 @@ impl CommandDiagnostic {
     pub fn source(phase: &str, message: &str, position: Position) -> CommandDiagnostic {
         CommandDiagnostic {
             code: ms_syntax::diag::code_for(phase, message).to_string(),
+            severity: String::new(),
             phase: phase.into(),
             message: message.into(),
             position,
@@ -66,6 +69,9 @@ impl CommandDiagnostic {
         let mut object = Json::object().with("code", Json::str(&self.code));
         if let Some(kind) = ms_syntax::diag::kind_for(&self.code, &self.message) {
             object = object.with("subcode", Json::str(kind.info.code));
+        }
+        if !self.severity.is_empty() {
+            object = object.with("severity", Json::str(&self.severity));
         }
         if !self.phase.is_empty() {
             object = object.with("phase", Json::str(&self.phase));

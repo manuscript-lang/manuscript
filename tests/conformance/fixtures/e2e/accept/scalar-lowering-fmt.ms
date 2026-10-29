@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,formatter,generics,interfaces,interpolation,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/scalar-lowering.ms
 import TextError from "@std/core.ms"
@@ -48,13 +48,16 @@ test "primitive equality captures operands once in order":
 
 fn conditional(counter: Counter, take: Bool) Int:
     if take:
-        with let resource = Resource(counter): return 7
+        let _resource = Resource(counter)
+        return 7
+
     return 8
 
 fn matched(counter: Counter) Int:
     return match some(1):
         some(value):
-            with let resource = Resource(counter): return value
+            var _resource = Resource(counter)
+            return value
             0
         none: 0
 
@@ -62,24 +65,26 @@ fn defaulted(
     counter: Counter,
     value: Int = match some(2):
         some(number):
-            with let resource = Resource(counter):
-                let _used = unit
+            var _resource = Resource(counter)
+            let _used = unit
+            _resource.close()
             number
         none: 0
 ) Int: value
 
 fn nested(counter: Counter) Unit:
     let callback = fn() Unit:
-        with let resource = Resource(counter): return
+        let _resource = Resource(counter)
+        return
+
     callback()
 
 fn failed() Result[Int, TextError]: error(TextError("expected"))
 
 fn propagate(counter: Counter) Result[Int, TextError]:
-    with let resource = Resource(counter):
-        let value = try failed()
-        return ok(value)
-
+    var _resource = Resource(counter)
+    let value = try failed()
+    return ok(value)
     return ok(0)
 
 fn bare_propagate() Result[Int, TextError]:
@@ -94,10 +99,9 @@ fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
 
 fn nested_results(counter: Counter) Result[Int, TextError]:
     let child = fn() Result[Bool, TextError]:
-        with let resource = Resource(counter):
-            let value = try bool_failed()
-            return ok(value)
-
+        var _resource = Resource(counter)
+        let value = try bool_failed()
+        return ok(value)
         return ok(false)
 
     let _ignored = child()
@@ -107,9 +111,9 @@ fn nested_results(counter: Counter) Result[Int, TextError]:
 fn statement_match_try(counter: Counter) Result[Int, TextError]:
     match some(1):
         some(_):
-            with let resource = Resource(counter):
-                let value = try failed()
-                return ok(value)
+            let _resource = Resource(counter)
+            let value = try failed()
+            return ok(value)
         none: return ok(0)
 
     return ok(-1)
@@ -120,8 +124,9 @@ fn value_match_loop_try(counter: Counter) Result[Int, TextError]:
     while index < 2:
         let _selected = match some(index):
             some(number):
-                with let resource = Resource(counter):
-                    let _value = try failed()
+                var _resource = Resource(counter)
+                let _value = try failed()
+                _resource.close()
                 number
             none: 0
 
@@ -185,8 +190,8 @@ test "cleanup remains owned by its source callable":
     while index < 3:
         index += 1
 
-        with let resource = Resource(counter):
-            if index == 1: continue
-            if index == 2: break
+        let _resource = Resource(counter)
+        if index == 1: continue
+        if index == 2: break
 
     try expect_equal(counter.value, 7)

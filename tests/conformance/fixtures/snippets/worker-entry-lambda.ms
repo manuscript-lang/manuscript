@@ -6,6 +6,7 @@ fn work(count: Int) Unit:
     return
 
 fn start(count: Int) Int:
-    with let group = WorkerGroup[Int, Int]():
-        let _ = group.spawn(fn: work(count))
+    var group = WorkerGroup[Int, Int]()
+    let _ = group.spawn(fn: work(count))
+    group.close()
     return 0

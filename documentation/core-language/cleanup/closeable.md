@@ -5,16 +5,16 @@ weight = 3
 
 # Implementing Closeable
 
-Import `Closeable` from `@std/core.ms` to name or implement it. `with` checks the identity of this standard contract; an unrelated same-named interface does not qualify.
+Import `Closeable` from `@std/core.ms` to name or implement it. Scope-end cleanup checks the identity of this standard contract; an unrelated same-named interface does not qualify.
 
 ```manuscript
 interface Closeable:
     var fn close() Unit
 ```
 
-`with` accepts:
+A binding is closed when it holds:
 
-- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close`.
+- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close` when the binding is created.
 - A contract value whose own declaration contains exactly `var fn close() Unit`. This lets `File`, `ReadStream`, `WriteStream`, and test fakes work without inheritance.
 - A generic parameter bounded by `Closeable` or by a contract declaring that exact signature; `close` dispatches directly.
 
@@ -34,7 +34,7 @@ A record, alternative, `Optional`, `List` or `Map` that holds a `Closeable` valu
 
 A `Map` iterates in insertion order, so its close order is the reverse of the order you added the entries; no order is unspecified. Nested holders close depth first in the same way. A value derived from a resource, such as `let name = r.name`, borrows it and cannot outlive it: the checker rejects closing or changing the resource while the borrow is still used.
 
-A holder of values that are not resources adds no code, because a `List[Int]` or a record of strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic local `List[T]` with an unconstrained `T` is not closed even when it holds resources at run time; write `T: Closeable` to opt in. Overwriting a record field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within` and `merge` would store copies of resources, so the checker rejects them on a holder of resources. `Set` operations do not close yet.
+A holder of values that are not resources adds no code, because a `List[Int]` or a record of strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic local `List[T]` with an unconstrained `T` is not closed even when it holds resources at run time; write `T: Closeable` to opt in. Overwriting a record field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move elements out with `pop` or `remove`. `Set` operations do not close yet.
 
 A similarly named method without `impl Closeable`, or an unconstrained type parameter, is insufficient.
 
@@ -44,4 +44,4 @@ Expected failures belong to explicit operations such as `commit()`, `flush()`, o
 
 A close failure does not skip other actions. After a failed release, leave the object unusable or quarantined; faults and remaining obligations go to the host.
 
-User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [using with](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).
+User `defer` is unsupported; package custom cleanup in a `Closeable` library object. See [scope-end cleanup](scopes.md), [cleanup faults](cleanup-faults.md), and [operation contracts](../types/contracts.md).

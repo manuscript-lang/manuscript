@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import Channel from "@std/channels.ms"
 import stdout from "@std/io.ms"
@@ -23,28 +23,28 @@ fn sender(ch: Channel[Int, Int]) Int:
     return 0
 
 fn cancel_receiver() Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        group.spawn(receiver)
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int, Int, Int]()
+    group.spawn(receiver)
+    sleep(nanoseconds(1000000))
 
 fn cancel_sender() Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        group.spawn(sender)
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int, Int, Int]()
+    group.spawn(sender)
+    sleep(nanoseconds(1000000))
 
 fn timeout_receiver() Unit:
-    with let group = TaskGroup[Int, Int, Int]():
-        let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
-        let _ = task.result()
+    let group = TaskGroup[Int, Int, Int]()
+    let task = group.spawn(receiver, timeout: some(nanoseconds(1000000)))
+    let _ = task.result()
 
 fn churn() Int:
     var total = 0
 
     for round in 0..20:
-        with let group = TaskGroup[String]():
-            for i in 0..5:
-                group.spawn(fn ch: "task {i}")
-            total += group.results().get([]).length()
+        let group = TaskGroup[String]()
+        for i in 0..5:
+            group.spawn(fn ch: "task {i}")
+        total += group.results().get([]).length()
 
     return total
 

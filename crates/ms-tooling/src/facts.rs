@@ -19,7 +19,8 @@ pub struct Fact {
     pub effects: Vec<String>,
     pub error: String,
     pub tries: usize,
-    pub withs: usize,
+    /// Bindings whose scope closes a resource.
+    pub scopes: usize,
     /// Keys of project entities called.
     pub calls: Vec<String>,
     pub external: Vec<String>,

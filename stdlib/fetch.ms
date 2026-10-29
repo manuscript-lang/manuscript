@@ -129,7 +129,7 @@ impl FetchResponse:
 
         return error(FetchError.Status(self.head.status))
 
-# A reusable client with connection pooling. Open it with `with`, or close it when done.
+# A reusable client with connection pooling. Bind it to a local and its scope closes it, or close it when done.
 export type Fetcher:
     # Internal state: the pooled HTTP client every request goes through.
     client: HttpClient
@@ -167,17 +167,17 @@ fn drain(
     options: FetchOptions,
     started: Instant
 ) Result[FetchResponse, FetchError]:
-    with let open = body:
-        let metadata = open.metadata()
-        let whole = (
-            try open
-            .read_all()
-            .map_error(fn cause: read_failure(cause, options, started))
-        )
-        if limit_exceeded(options.max_response_bytes, whole.length()):
-            return error(FetchError.Http(HttpError.LimitExceeded))
+    let open = body
+    let metadata = open.metadata()
+    let whole = (
+        try open
+        .read_all()
+        .map_error(fn cause: read_failure(cause, options, started))
+    )
+    if limit_exceeded(options.max_response_bytes, whole.length()):
+        return error(FetchError.Http(HttpError.LimitExceeded))
 
-        return ok(FetchResponse(head: metadata, body: whole))
+    return ok(FetchResponse(head: metadata, body: whole))
 
 # Maps a body read failure to a fetch error, reporting Timeout once the deadline has passed.
 fn read_failure(cause: IoError, options: FetchOptions, started: Instant) FetchError:
@@ -254,5 +254,5 @@ export fn fetch(
     url: String,
     options: FetchOptions = FetchOptions()
 ) Result[FetchResponse, FetchError]:
-    with let client = try fetcher():
-        return client.fetch(url, options)
+    let client = try fetcher()
+    return client.fetch(url, options)

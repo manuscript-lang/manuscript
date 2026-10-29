@@ -153,30 +153,12 @@ impl Scan<'_> {
 
 impl Visitor for Scan<'_> {
     fn stmt(&mut self, s: &Stmt) {
-        match &s.kind {
-            StmtKind::Assign {
-                target: AssignTarget::Member(_),
-                ..
-            } => {
-                self.effects.insert("write");
-            }
-            StmtKind::With { .. } => {
-                let cleanup = self
-                    .module
-                    .facts()
-                    .stmts
-                    .get(&s.id)
-                    .and_then(|f| f.cleanup.clone());
-                match cleanup {
-                    Some(m) if !m.id.as_str().is_empty() => {
-                        self.edges.insert(m.id);
-                    }
-                    _ => {
-                        self.effects.insert("unknown");
-                    }
-                }
-            }
-            _ => {}
+        if let StmtKind::Assign {
+            target: AssignTarget::Member(_),
+            ..
+        } = &s.kind
+        {
+            self.effects.insert("write");
         }
     }
 

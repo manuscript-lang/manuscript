@@ -721,17 +721,6 @@ pub enum StmtKind {
         /// Body.
         body: Vec<Stmt>,
     },
-    /// `with let name = resource:` or `with var name = resource:`
-    With {
-        /// Bound name.
-        name: Symbol,
-        /// Written `var`: the block may change the binding, and the close runs on its final value.
-        mutable: bool,
-        /// Resource expression.
-        value: Expr,
-        /// Body.
-        body: Vec<Stmt>,
-    },
 }
 
 impl Module {

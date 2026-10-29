@@ -41,18 +41,17 @@ impl Closeable for Server:
         self.client.close()
 
 fn serve() Result[Unit, Error]:
-    with let signals = try control().watch_signals([2, 15]):
-        let listener = try network().listen("127.0.0.1:0")
-        say("{listener.address()}\n")
+    let signals = try control().watch_signals([2, 15])
+    let listener = try network().listen("127.0.0.1:0")
+    say("{listener.address()}\n")
 
-        let client = try listener.accept()
+    let client = try listener.accept()
+    let _server = Server(listener: listener, client: client)
+    let _cleanup = WorkerCleanup(label: "worker")
+    say("ready\n")
 
-        with let server = Server(listener: listener, client: client):
-            with let cleanup = WorkerCleanup(label: "worker"):
-                say("ready\n")
-
-                let _observed = signals.next()
-                return ok(unit)
+    let _observed = signals.next()
+    return ok(unit)
 
 export fn main() Int:
     let served = serve()

@@ -213,10 +213,6 @@ impl Flow<'_> {
                 self.branch(body, state, depth + 1);
                 state
             }
-            StmtKind::With { value, body, .. } => {
-                let state = if own(value) { Held::No } else { state };
-                self.branch(body, state, depth)
-            }
         }
     }
 

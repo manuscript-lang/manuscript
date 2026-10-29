@@ -311,7 +311,7 @@ extern fn msstd_terminal_raw_terminal_erase(
     region: Int
 ) Result[Unit, TerminalError]
 
-# Raw terminal input and cursor control. Closing it, or leaving the `with`
+# Raw terminal input and cursor control. Closing it, or leaving the
 # scope that acquired it by return, error, fault, or cancellation, restores the
 # original terminal settings, shows the cursor, and leaves the alternate screen.
 # In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.

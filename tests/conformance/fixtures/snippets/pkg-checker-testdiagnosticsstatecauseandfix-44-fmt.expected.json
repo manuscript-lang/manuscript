@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import Closeable from \"@std/core.ms\"\n\ntype R:\n    n: Int\n\nimpl Closeable for R:\n    fn close() Unit:\n        return unit\n\nfn mk() Result[R, Error]:\n    return ok(R(n: 1))\n\nfn f() Int:\n    with let x = mk():\n        return 1\n    return 0\n"
-  }
-}

@@ -2,8 +2,8 @@
 #
 # Copying a `Shared[T]` shares the payload instead of duplicating it; the payload is freed when
 # the last holder is dropped. `get` reads the payload. To change it, `lock` it from
-# `@std/sync.ms` with `with`: the guard holds the payload for the block and returns it when the
-# block ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
+# `@std/sync.ms` into a `var` binding: the guard holds the payload for its scope and returns it when the
+# scope ends, however it ends. `take`, `put`, `locked` and `id` are the primitives `lock` is built on;
 # calling them elsewhere is rejected.
 export type Shared[T]: ...
 

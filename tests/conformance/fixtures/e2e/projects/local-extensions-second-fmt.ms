@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,match,modules,parser,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,formatter,generics,interfaces,match,modules,parser,stdlib-cleanup,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/local_extensions/second.ms
 import {expect_equal, expect_false} from "@std/test.ms"
@@ -60,8 +60,8 @@ impl Closeable for Resource:
         self.events.append(value: 20)
 
 fn leave(resource: Resource) Unit:
-    with let local = resource:
-        return
+    let _local = resource
+    return
 
 export fn second_resource(resource: Resource) Closeable:
     return Closeable(resource)

@@ -501,7 +501,7 @@ impl Server<'_> {
                     ranges
                         .get_or_insert_with(|| text::DiagnosticRanges::new(&d.text))
                         .range(issue.offset),
-                    2,
+                    issue.severity,
                     "manuscript-lint",
                     &issue.code,
                     &issue.message,

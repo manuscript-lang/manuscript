@@ -114,13 +114,14 @@ fn serve_here(port: String, dir: String, ready: Bool) Int:
     if let acquired = network().serve(
         address: "127.0.0.1:{port}", handler: buffered(handler), options: options
     ):
-        with let server = acquired:
-            if ready:
-                var ch = worker_channel[Int, Int]()
-                let _sent = ch.send(1)
+        let server = acquired
 
-            let _ignored = server.wait()
-            return 0
+        if ready:
+            var ch = worker_channel[Int, Int]()
+            let _sent = ch.send(1)
+
+        let _ignored = server.wait()
+        return 0
 
     return 1
 
@@ -140,14 +141,14 @@ export fn main() Int:
     if threads <= 1:
         return serve_here(args.get(0), args.get(1), false)
 
-    with let group = WorkerGroup[Int, Int]():
-        var workers: List[Worker[Int, Int]] = []
+    var group = WorkerGroup[Int, Int]()
+    var workers: List[Worker[Int, Int]] = []
 
-        for i in 0..threads:
-            var worker = group.spawn(serve_worker).get(none)
-            let _ready = worker.channel.receive()
-            workers.append(worker)
+    for i in 0..threads:
+        var worker = group.spawn(serve_worker).get(none)
+        let _ready = worker.channel.receive()
+        workers.append(worker)
 
-        let _stopped = workers[0].wait()
-
+    let _stopped = workers[0].wait()
+    group.close()
     return 0

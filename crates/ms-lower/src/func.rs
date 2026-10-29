@@ -62,8 +62,8 @@ pub(crate) struct FnLower<'a> {
     pub locals: HashMap<usize, Local>,
     /// Locals needing a drop, per lexical scope.
     pub scopes: Vec<Vec<usize>>,
-    /// `with` bindings and how each is closed when its scope is left.
-    pub closers: HashMap<usize, crate::with::Closer>,
+    /// Bindings closed at scope end and how each is closed when its scope is left.
+    pub closers: HashMap<usize, crate::close::Closer>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -101,7 +101,7 @@ pub(crate) struct FnLower<'a> {
     pub aliases: HashMap<usize, crate::alias::Alias>,
     /// Locals a closure of this body changes: they live in memory so the closure shares them.
     pub slotted: HashSet<usize>,
-    /// Immutable bindings whose local is stored to again (a `with` binding is replaced by what its
+    /// Immutable bindings whose local is stored to again (a closing binding is replaced by what its
     /// close leaves behind), so they cannot be single-definition builder variables.
     pub redefined: HashSet<usize>,
     /// Values that are views into another string: no drop, and an immutable `let` may hold one.

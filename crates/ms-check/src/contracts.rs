@@ -922,7 +922,7 @@ impl Checker {
         m.visible_in(self.current_file())
     }
 
-    /// Whether a value of `t` can be bound by `with`.
+    /// Whether a value of `t` is closed when its scope ends.
     pub(crate) fn closeable(&self, t: &Ty) -> bool {
         if t.kind == Kind::Contract || t.kind == Kind::Variable {
             return self
@@ -1090,27 +1090,6 @@ impl Checker {
             return format!("{prefix}add 'impl {bound} for {t}:' or {alternative}");
         }
         format!("{prefix}{alternative}")
-    }
-
-    /// Explains a failed `with` binding. Built-in and wrapper types cannot
-    /// receive an implementation, so they are told to unwrap the value first.
-    pub(crate) fn with_not_closeable_message(&self, t: &Ty) -> String {
-        let name = t.to_string();
-        if t.is_std("Result") || t.is_std("Optional") {
-            return format!(
-                "with needs a Closeable value, but this expression is {name}; unwrap it first with 'try' (inside a function that returns a compatible Result) or 'if let'"
-            );
-        }
-        let nominal = t.symbol().is_some_and(|s| s.native.as_str().is_empty())
-            && matches!(t.kind, Kind::Record | Kind::Alternative);
-        if !nominal {
-            return format!(
-                "with needs a Closeable value, but this expression is {name}, which cannot implement Closeable; bind a source type that has 'impl Closeable' or declares close() Unit"
-            );
-        }
-        format!(
-            "with requires an explicit Closeable implementation or a contract declaring close() Unit; {name} has none, so add 'impl Closeable for {name}:' with var fn close() Unit"
-        )
     }
 
     /// Whether a concrete `actual` converts implicitly to the interface `expected`.

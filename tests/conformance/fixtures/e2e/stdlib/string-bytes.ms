@@ -1,4 +1,4 @@
-# conform: tags=alternatives,closures,control-flow,faults,interpolation,lists,modules,mutation,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=alternatives,closures,control-flow,faults,interpolation,lists,modules,mutation,optional,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/string-bytes.ms
 import {expect_equal, expect_false} from "@std/test.ms"

@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,tier-core
+# conform: tags=scope-cleanup,tier-core
 # conform: phase=run
 # conform: origin=an if let payload resource closes when its branch ends
 import stdout from "@std/io.ms"

@@ -25,19 +25,18 @@ fn compute() Unit:
 
 fn run(workers: Int, jobs: Int, n: Int) Result[Int, Error]:
     var total = 0
-
-    with let group = WorkerGroup[Int, Int]():
-        var handles: List[Worker[Int, Int]] = []
-        for i in 0..workers:
-            handles.append(try group.spawn(compute))
-        for job in 0..jobs:
-            try handles[job % workers].channel.send(n)
-        for job in 0..jobs:
-            if let value = try handles[job % workers].channel.receive():
-                total += value
-        for i in 0..workers:
-            try handles[i].wait()
-
+    var group = WorkerGroup[Int, Int]()
+    var handles: List[Worker[Int, Int]] = []
+    for i in 0..workers:
+        handles.append(try group.spawn(compute))
+    for job in 0..jobs:
+        try handles[job % workers].channel.send(n)
+    for job in 0..jobs:
+        if let value = try handles[job % workers].channel.receive():
+            total += value
+    for i in 0..workers:
+        try handles[i].wait()
+    group.close()
     return ok(total)
 
 export fn main() Int:

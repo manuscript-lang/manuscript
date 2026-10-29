@@ -31,21 +31,20 @@ fn open_io_then_read(path: String) Int:
 
 export fn main() Int:
     let path = arguments() [0].clone()
-
-    with let group = TaskGroup[Int](timeout: 300.milliseconds):
-        let first = path.clone()
-        let second = path.clone()
-        let third = path.clone()
-        let a = group.spawn(fn ch: read_whole(first.clone()))
-        let b = group.spawn(fn ch: open_then_read(second.clone()))
-        let d = group.spawn(fn ch: open_io_then_read(third.clone()))
-        let c = group.spawn(fn ch: 5)
-        (
-            stdout()
-            .write(
-                "{c.result().get(-9)} {a.result().is_error()} {b.result().is_error()} {d.result().is_error()}\n"
-            )
-            .get()
+    var group = TaskGroup[Int](timeout: 300.milliseconds)
+    let first = path.clone()
+    let second = path.clone()
+    let third = path.clone()
+    let a = group.spawn(fn ch: read_whole(first.clone()))
+    let b = group.spawn(fn ch: open_then_read(second.clone()))
+    let d = group.spawn(fn ch: open_io_then_read(third.clone()))
+    let c = group.spawn(fn ch: 5)
+    (
+        stdout()
+        .write(
+            "{c.result().get(-9)} {a.result().is_error()} {b.result().is_error()} {d.result().is_error()}\n"
         )
-
+        .get()
+    )
+    group.close()
     return 0

@@ -69,9 +69,9 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `effects` | Callees that carry an effect, down to the native operation |
 | `errors` | Functions with a `Result` error type or `try` sites |
 | `modules` | Imports per module |
-| `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, `with` scopes, exits (needs `--entity`) |
-| `scope` | `flow` pruned to `with` scopes and the exits inside them (needs `--entity`) |
-| `tasks` | `flow` pruned to `with` scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
+| `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
+| `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
+| `tasks` | `flow` pruned to resource scopes that start tasks: each `TaskGroup.spawn` with the calls its work makes (needs `--entity`) |
 
 - `--entity name`, `file::name`, or a full entity ID roots the tree at one declaration (a project-relative path for `modules`). A missing or ambiguous name fails. Without it, roots are entities nothing relevant calls, plus roots for otherwise unreachable recursive groups. Tests are entry points too.
 - `--depth n` bounds expansion (default 3; 1 for `flow`, `scope` and `tasks`). Repeats print `(cycle)`. A view stops at 200 nodes and counts the rest.
@@ -89,7 +89,7 @@ ms review ms.toml --diff change.patch --explain 1
 
 `ms review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `none`.
 
-- Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, `with` scopes, and imports.
+- Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, resource scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
 - `--explain <n|id>` (with `--diff`) prints one finding: id, tier, location, score terms, evidence, direct callers, and the diagram command for its flow. `n` is the number under LOOK HERE FIRST; a full id or unambiguous entity name also works. Removed entities and declarations without a callable body have no current flow.
 - `--format ascii|markdown` picks the rendering. Text tables show five rows per section unless `--all`; `--json` includes every row and finding. Report format 2 includes `base_checked` (`null` for a project map) and a `number` on each finding (`null` for INTERNAL).
@@ -103,7 +103,7 @@ Entities match by file, kind, and name, so formatting and in-file moves are not 
 | `CONTRACT` | Exported signature or visibility change, exported entity added or removed |
 | `EFFECT+` | New conservative effect, with the call path to where it enters |
 | `ERROR` | Different `Result` error type or number of `try` sites |
-| `RESOURCE` | Different number of `with` scopes |
+| `RESOURCE` | Different number of resource scopes |
 | `INTERNAL` | Body changed without affecting any tier |
 
 Reach is the number of entities that transitively call the changed one; the score is the sum of the listed terms. `unknown` effects appear for indirect calls and most native operations, so only newly introduced effects rank.
@@ -142,7 +142,7 @@ Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which pri
 
 Targets, imported diagnostics, and documented modules are deduplicated and ordered by displayed path and position. Paths inside the invocation directory are relative; others are canonical absolute paths.
 
-- `check` and `lint` continue after an error and return 1 for any failed selection, source error, or finding. Their `format: 1` JSON collects all diagnostics. Empty selections succeed with empty arrays. Usage errors return 2.
+- `check` and `lint` continue after an error and return 1 for any failed selection, source error, or lint error finding (any finding with `lint --deny-warnings`). Their `format: 1` JSON collects all diagnostics. Empty selections succeed with empty arrays. Usage errors return 2.
 
 ## Machine-readable native results
 
@@ -178,7 +178,7 @@ A nonzero application exit keeps its status with `completed: true` and `reason: 
 
 `ms run --json` captures the program's output and reports `exit_code`, `stdout`, `stderr`, and `diagnostics`; compile errors return `reason: "compile_error"` with diagnostics. A program that ends in a runtime fault (exit 67) adds a `fault` object, and `ms test --json` adds the same object to a test that faulted: `kind` (`division_by_zero`, `overflow`, `index_out_of_range`, `stack_overflow`, `deadlock`, `assertion`, `incomplete_cleanup`, or `fault`; an absent `Map` key reports `fault` with `map key not found: <key>`), `message` (which carries the offending values), `position` and `trace` (`function`, `file`, `line`, innermost first, `repeated` when frames collapsed), `trace_truncated`, `cleanups_ran` (the runtime runs every cleanup before it reports), `cleanup_faults`, and `exit_code`. `ms run --json` returns the program's own status.
 
-`ms verify [target] [--json] [--no-test]` runs `check`, `fmt --check`, `lint`, and `test` on one target (default `ms.toml`) and exits 1 when any step fails.
+`ms verify [target] [--json] [--no-test] [--deny-warnings]` runs `check`, `fmt --check`, `lint`, and `test` on one target (default `ms.toml`) and exits 1 when any step fails. Lint warnings do not fail the `lint` step unless `--deny-warnings` is passed.
 
 - `--json` writes `target`, `ok`, and a `steps` array in that order. Each step has `name`, `status` (`passed`, `failed`, `skipped`), `exit_code`, `duration_ns`, and `result`, the command's own `--json` document unchanged. A step that cannot produce one carries `error`; a skipped step carries `reason`.
 - `lint` and `test` are skipped when `check` fails; `fmt` always runs; `--no-test` skips the native test build.
@@ -220,21 +220,23 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 
 ## Linting and formatting
 
-`lint` returns 1 for findings and 0 for clean source. Run `ms check` for correctness errors.
+Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source file fails checking or has an error finding, and 0 otherwise: warnings are printed (with a count) but do not fail the command. `--deny-warnings` makes warnings fail too, for CI. `--json` findings carry `severity` (`warning` or `error`); the language server reports warnings and errors with the matching LSP severity. `ms guide <code>` prints a rule's severity. Run `ms check` for correctness errors.
 
-| Code | Finding |
-| --- | --- |
-| MSL001 | Trailing whitespace |
-| MSL002 | Missing final newline |
-| MSL102 | Unused import |
-| MSL103 | Unreachable statement |
-| MSL106 | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
-| MSL107 | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
-| MSL108 | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
-| MSL110 | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
-| MSL111 | `while true` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
-| MSL112 | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
-| MSL114 | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
+| Code | Severity | Finding |
+| --- | --- | --- |
+| MSL001 | warning | Trailing whitespace |
+| MSL002 | warning | Missing final newline |
+| MSL102 | warning | Unused import |
+| MSL103 | warning | Unreachable statement |
+| MSL106 | error | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
+| MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
+| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
+| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if let` or a Result method |
+| MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
+| MSL111 | error | `while true` loop in a module that imports `@std/tasks.ms` whose body neither waits nor exits; other tasks cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
+| MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
+| MSL113 | warning | A written `some(x)` where a plain `x` is wrapped to the same Optional; `ms lint --fix` removes the wrapper. See [Optionals](../core-language/types/optionals.md) |
+| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. `close` cannot report a failure, so call `try x.flush()` before the scope ends. See [scopes](../core-language/cleanup/scopes.md) |
 
 Implicit imports (such as `List` for list literals) count as uses. Unused-import and whitespace fixes are editor actions; initializers with possible effects are never silently removed.
 

@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,control-flow,records,tier-io
+# conform: tags=scope-cleanup,control-flow,records,tier-io
 # conform: phase=run
 # conform: origin=close-gap-probes
 import stdout from "@std/io.ms"

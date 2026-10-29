@@ -5,7 +5,7 @@ weight = 1
 
 # Task groups
 
-A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its `with` block ends. Import it from `@std/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
+A `TaskGroup[T]` starts tasks that each return a `T`, and owns them until its scope ends. Import it from `@std/tasks.ms`. Each task also gets a two-way [channel](#channels) to the group.
 
 <!-- manuscript-example: test -->
 ```manuscript
@@ -16,10 +16,10 @@ fn square(n: Int) Int:
     return n * n
 
 test "a group collects its results in start order":
-    with let group = TaskGroup[Int]():
-        for n in [1, 2, 3]:
-            group.spawn(fn ch: square(n))
-        group.results() | try expect_ok | try expect_equal([1, 4, 9])
+    let group = TaskGroup[Int]()
+    for n in [1, 2, 3]:
+        group.spawn(fn ch: square(n))
+    group.results() | try expect_ok | try expect_equal([1, 4, 9])
 ```
 
 ## How tasks run
@@ -28,9 +28,9 @@ test "a group collects its results in start order":
 - Tasks share one thread. A task runs until it waits (including on a channel), so a loop that never waits keeps the other tasks from running.
 - `task.result()` waits for that task and returns `Result[T, TaskError]`. Call it once per task.
 - `group.results()` waits for every uncollected task and returns their results in start order, or the first task's error. A task collected with `result()` is not included. Collecting a task, by `result()` or `results()`, makes the group forget it, so a long-lived group holds only tasks that are running or uncollected. `group.wait()` waits for all of them and reports an error if any ended without a result.
-- Leaving the `with` block cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
+- Leaving the scope of the group binding cancels tasks that are still running and waits for them to end. Collect the work first with `results()`, `wait()` or `result()`.
 - A task cancelled before it first ran never starts.
-- Use `with` for files, connections and other resources that need scoped closing inside a task. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
+- Files, connections and other resources bound inside a task close when the task leaves their scope. Cancellation is not a guarantee that every allocation is reclaimed; some stack-held values and native resources can remain until program exit.
 - Closing a group invalidates its tasks: afterwards `result()`, `wait()`, `results()` and `spawn` give `TaskError.Closed` instead of a result. A second `result()` on the same task gives `Closed` too. A task cannot wait on or close its own group.
 - A Manuscript fault in a task ends the program, unless the group is created with `contain_faults: true`: then only that task ends, its siblings keep running, and `result()`, `results()` or `wait()` return `error(TaskError.Faulted(report))`, where `report` is the fault text with frames. Fault containment does not guarantee complete resource reclamation. A faulted task that is never collected is dropped when the group closes, with no report.
 - A Manuscript fault in a task on the main thread otherwise ends the program. When the worker runtime catches a Manuscript fault from a task inside that worker, its starter observes it through `worker.wait()`. This does not isolate native crashes from the rest of the process.
@@ -51,12 +51,12 @@ fn wait_a_minute(ch: Channel[Unit, Unit]) Int:
     return 1
 
 test "a task that passes its timeout is cancelled":
-    with let group = TaskGroup[Int]():
-        let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
-        task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
+    let group = TaskGroup[Int]()
+    let task = group.spawn(wait_a_minute, timeout: nanoseconds(10000000))
+    task.result() | try expect_error | try expect_equal(TaskError.TimedOut)
 ```
 
-`cancelled()` from `@std/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside `with` cleanups.
+`cancelled()` from `@std/tasks.ms` returns `true` once the running task was cancelled, by a closed group, a passed timeout or a program stop. It only reports: it does not wait or unwind, so a loop that never waits can poll it and return early. It stays `true` inside scope-end cleanups.
 
 ## What a task may use
 
@@ -84,12 +84,12 @@ fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     return ok(unit)
 
 test "a task answers messages on its channel":
-    with let group = TaskGroup[Result[Unit, ChannelError], Int, Int]():
-        var task = group.spawn(square_all)
-        task.channel.send(3) | try expect_ok
-        task.channel.receive() | try expect_ok | try expect_equal(some(9))
-        task.channel.close()
-        task.result() | try expect_ok | try expect_ok
+    let group = TaskGroup[Result[Unit, ChannelError], Int, Int]()
+    var task = group.spawn(square_all)
+    task.channel.send(3) | try expect_ok
+    task.channel.receive() | try expect_ok | try expect_equal(some(9))
+    task.channel.close()
+    task.result() | try expect_ok | try expect_ok
 ```
 
 - `send(value)` moves `value` to the other end. It waits while the other end has 16 unread values.

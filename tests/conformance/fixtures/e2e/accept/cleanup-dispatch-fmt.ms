@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=control-flow,formatter,generics,interfaces,lists,modules,parser,records,stdlib-cleanup,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cleanup-dispatch.ms
 import {expect_equal, expect_fault} from "@std/test.ms"
@@ -28,19 +28,20 @@ impl Disposable for Resource:
         panic("disposable")
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
-    with let item = resource:
-        let _completed = unit
+    let _item = resource
+    let _completed = unit
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
-    with let item = resource:
-        let _completed = unit
+    let _item = resource
+    let _completed = unit
 
 test "cleanup uses the selected contract":
     let direct = try expect_fault(
         fn:
-            with let resource = Resource(0):
-                let _completed = unit
+            let _resource = Resource(0)
+            let _completed = unit
     )
+
     try expect_equal(direct, "closeable")
 
     let bound = try expect_fault(fn: bound_cleanup(resource: Resource(0)))

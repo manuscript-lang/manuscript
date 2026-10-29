@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,formatter,interfaces,interpolation,lists,match,modules,mutation,parser,records,stdlib-cleanup,stdlib-errors,stdlib-io,stdlib-testing,strings,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/lifecycle/main.ms
 import TextError from "@std/core.ms"
@@ -32,17 +32,17 @@ fn select(output: WriteStream) fn(Int, Int) Int:
     return combine
 
 fn early(output: WriteStream) Int:
-    with let outer = Resource(label: "outer", output: output):
-        with let inner = Resource(label: "inner", output: output):
-            return report(output: output, label: "return value", value: 5)
+    let _outer = Resource(label: "outer", output: output)
+    let _inner = Resource(label: "inner", output: output)
+    return report(output: output, label: "return value", value: 5)
 
 fn failure() Result[Int, TextError]:
     return error(TextError("expected"))
 
 fn propagate(output: WriteStream) Result[Int, TextError]:
-    with let resource = Resource(label: "propagation", output: output):
-        let number = try failure()
-        return ok(number)
+    let _resource = Resource(label: "propagation", output: output)
+    let number = try failure()
+    return ok(number)
 
 fn iterable(output: WriteStream) List[Int]:
     let _ = output.write(data: "iterable\n")
@@ -60,20 +60,22 @@ fn exercise() Result[Int, Error]:
         first: report(output: stdout(), label: "pair first", value: 1)
     )
     (pair.first + pair.second) | try expect_equal(3)
-    with let resource = Resource(label: "normal", output: stdout()):
-        let completed = unit
+
+    var _resource = Resource(label: "normal", output: stdout())
+    let completed = unit
+    _resource.close()
 
     let _ = stdout().write(data: "after normal\n")
     var count = 0
 
     while count < 2:
-        with let resource = Resource(label: "iteration", output: stdout()):
-            count = count + 1
-            continue
+        let _resource = Resource(label: "iteration", output: stdout())
+        count = count + 1
+        continue
 
     for value in iterable(output: stdout()):
-        with let resource = Resource(label: "break", output: stdout()):
-            break
+        let _resource = Resource(label: "break", output: stdout())
+        break
 
     match propagate(output: stdout()):
         ok(_):

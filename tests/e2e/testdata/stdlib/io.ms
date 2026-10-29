@@ -13,13 +13,12 @@ test "stream compositions invoke source implementations and preserve EOF":
     try expect_false(not (try read_line(input)).is_none())
 
     let fs = filesystem()
-
-    with let directory = try fs.temporary("manuscript-io-"):
-        let path = "{directory.path()}/copy.bin"
-        let file = try fs.open(path: path, flags: "w", mode: 420)
-        let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
-        try expect_equal((try copy(source, file.writer(), 6)), 6)
-        try expect_equal((try fs.read_file(path)), "é🙂".to_bytes())
+    let directory = try fs.temporary("manuscript-io-")
+    let path = "{directory.path()}/copy.bin"
+    let file = try fs.open(path: path, flags: "w", mode: 420)
+    let source = MemoryStream("é🙂".to_bytes(), 0, closed: false)
+    try expect_equal((try copy(source, file.writer(), 6)), 6)
+    try expect_equal((try fs.read_file(path)), "é🙂".to_bytes())
 
 test "streams enforce byte limits and preserve original errors":
     var reader = MemoryStream("abc".to_bytes(), 0, closed: false)
@@ -32,15 +31,14 @@ test "streams enforce byte limits and preserve original errors":
 
 test "native line reads reject buffered lines after the shared file is closed":
     let fs = filesystem()
+    let directory = try fs.temporary("manuscript-closed-lines-")
+    let path = "{directory.path()}/lines.txt"
+    try fs.write_file(path, "first\nsecond\nlast")
 
-    with let directory = try fs.temporary("manuscript-closed-lines-"):
-        let path = "{directory.path()}/lines.txt"
-        try fs.write_file(path, "first\nsecond\nlast")
+    var handle = try fs.open(path, "r", 384)
+    let input = handle.reader()
+    try expect_equal((try read_line(input)), some("first"))
+    handle.close()
 
-        var handle = try fs.open(path, "r", 384)
-        let input = handle.reader()
-        try expect_equal((try read_line(input)), some("first"))
-        handle.close()
-
-        let closed: Result[Optional[String], IoError] = error(IoError.Closed)
-        try expect_equal(read_line(input), closed)
+    let closed: Result[Optional[String], IoError] = error(IoError.Closed)
+    try expect_equal(read_line(input), closed)

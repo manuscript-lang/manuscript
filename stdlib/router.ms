@@ -490,25 +490,21 @@ type TestExchange:
     state: Shared[TestState]
 
 fn finished(state: Shared[TestState]) Result[HttpResponse, HttpError]:
-    with var guard = lock(state):
-        if not guard.value.sent:
-            return ok(
-                HttpResponse(
-                    status: 204, headers: headers(), body: "".to_bytes()
-                )
-            )
+    var guard = lock(state)
+    if not guard.value.sent:
+        return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
 
-        return ok(
-            HttpResponse(
-                status: guard.value.status, headers: guard.value.head.clone(),
-                body: guard.value.body.build()
-            )
+    return ok(
+        HttpResponse(
+            status: guard.value.status, headers: guard.value.head.clone(),
+            body: guard.value.body.build()
         )
+    )
 
 impl HttpExchange for TestExchange:
     fn close() Unit:
-        with var guard = lock(self.state):
-            guard.value.closed = true
+        var guard = lock(self.state)
+        guard.value.closed = true
 
     fn headers() HttpHeaders:
         return self.request.headers
@@ -531,22 +527,22 @@ impl HttpExchange for TestExchange:
 
         let max = if requested > 65536: 65536 else: requested
 
-        with var guard = lock(self.state):
-            if guard.value.closed: return error(IoError.Closed)
+        var guard = lock(self.state)
+        if guard.value.closed: return error(IoError.Closed)
 
-            let chunk = guard.value.unread.clone()
-            guard.value.unread = none
+        let chunk = guard.value.unread.clone()
+        guard.value.unread = none
 
-            if let bytes = chunk:
-                if bytes.length() == 0: return ok(none)
+        if let bytes = chunk:
+            if bytes.length() == 0: return ok(none)
 
-                let n = if max < bytes.length(): max else: bytes.length()
+            let n = if max < bytes.length(): max else: bytes.length()
 
-                if n < bytes.length():
-                    guard.value.unread = bytes.slice(n, bytes.length()).get()
-                return ok(bytes.slice(0, n).get())
+            if n < bytes.length():
+                guard.value.unread = bytes.slice(n, bytes.length()).get()
+            return ok(bytes.slice(0, n).get())
 
-            return ok(none)
+        return ok(none)
 
     fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
         if status < 200 or status > 599: return error(HttpError.InvalidInput)
@@ -554,26 +550,24 @@ impl HttpExchange for TestExchange:
         if headers.contains("Transfer-Encoding"): return error(HttpError.InvalidInput)
         if headers.contains("Connection"): return error(HttpError.InvalidInput)
 
-        with var guard = lock(self.state):
-            if guard.value.closed: return error(HttpError.Closed)
-            if guard.value.sent: return error(HttpError.InvalidInput)
+        var guard = lock(self.state)
+        if guard.value.closed: return error(HttpError.Closed)
+        if guard.value.sent: return error(HttpError.InvalidInput)
 
-            guard.value.status = status
-            guard.value.head = headers.clone()
-            guard.value.sent = true
-            return ok(unit)
+        guard.value.status = status
+        guard.value.head = headers.clone()
+        guard.value.sent = true
+        return ok(unit)
 
     fn send(status: Int, headers: HttpHeaders, body: Bytes) Result[Unit, HttpError]:
         try self.send_headers(status, headers)
 
-        with var guard = lock(self.state):
-            guard.value.complete = true
-            if self.request.method.text() == "HEAD" or not has_body(status): return ok(
-                unit
-            )
+        var guard = lock(self.state)
+        guard.value.complete = true
+        if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
-            guard.value.body.append_bytes(body)
-            return ok(unit)
+        guard.value.body.append_bytes(body)
+        return ok(unit)
 
     fn upgrade(
         allowed_origins: List[String],
@@ -586,16 +580,16 @@ impl HttpExchange for TestExchange:
         return self.write_bytes(data.to_bytes())
 
     fn write_bytes(data: Bytes) Result[Unit, IoError]:
-        with var guard = lock(self.state):
-            if guard.value.closed: return error(IoError.Closed)
-            if not guard.value.sent or guard.value.complete: return error(
-                IoError.InvalidInput
-            )
-            if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
-                return error(IoError.InvalidInput)
+        var guard = lock(self.state)
+        if guard.value.closed: return error(IoError.Closed)
+        if not guard.value.sent or guard.value.complete: return error(
+            IoError.InvalidInput
+        )
+        if self.request.method.text() == "HEAD" or not has_body(guard.value.status):
+            return error(IoError.InvalidInput)
 
-            guard.value.body.append_bytes(data)
-            return ok(unit)
+        guard.value.body.append_bytes(data)
+        return ok(unit)
 
 # Whether a response with this status may carry a body.
 fn has_body(status: Int) Bool:
@@ -616,13 +610,13 @@ fn new_tap(inner: HttpExchange, extra: HttpHeaders) Tap:
     return Tap(inner: inner, extra: extra, state: share(TapState(status: 0, bytes: 0)))
 
 fn counted(state: Shared[TapState], status: Int, bytes: Int) Unit:
-    with var guard = lock(state):
-        if status != 0: guard.value.status = status
-        guard.value.bytes += bytes
+    var guard = lock(state)
+    if status != 0: guard.value.status = status
+    guard.value.bytes += bytes
 
 fn snapshot(state: Shared[TapState]) TapState:
-    with var guard = lock(state):
-        return TapState(status: guard.value.status, bytes: guard.value.bytes)
+    var guard = lock(state)
+    return TapState(status: guard.value.status, bytes: guard.value.bytes)
 
 # `sent` plus the `extra` headers it does not already have.
 fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:

@@ -17,7 +17,7 @@ A machine value must keep the behavior its Manuscript type promises: `Int` arith
 | Value equality and hashing | Direct comparison for scalars, strings, handles; otherwise `eq`, `hash`, `copy` entries in a compiler-emitted element descriptor |
 | Explicit contract implementation | Frontend selection of a unique implementation, then `{ data, vtable }` views |
 | Closures | Closure objects with borrowed non-escaping captures or owned escaping captures |
-| Lexical cleanup | `with` registrations and close calls; see [cleanup lowering](cleanup-and-faults.md) |
+| Lexical cleanup | Scope-end registrations and close calls; see [cleanup lowering](cleanup-and-faults.md) |
 
 ## Representation boundaries
 

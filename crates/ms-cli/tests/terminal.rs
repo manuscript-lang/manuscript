@@ -115,7 +115,7 @@ fn raw_terminal_reads_keys_resizes_and_restores_the_terminal() {
     wait_for(&master, &mut log, "resize:100x30");
     type_bytes(&master, b"q");
     wait_for(&master, &mut log, "text:q");
-    // The `with` scope shows the cursor again and the terminal settings come back.
+    // The scope shows the cursor again and the terminal settings come back.
     wait_for(&master, &mut log, "\x1b[?25h");
     assert!(child.wait().unwrap().success());
     assert!(canonical(slave.as_raw_fd()), "settings restored");

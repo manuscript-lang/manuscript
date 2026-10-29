@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,stdlib-queues,tier-stdlib,with-cleanup
+# conform: tags=closures,control-flow,formatter,interfaces,modules,parser,records,stdlib-cleanup,stdlib-queues,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/effects_test.go:13 TestEffectsIncludeTransitiveCallsAndImplicitCleanup
 import Closeable from "@std/core.ms"
@@ -15,16 +15,17 @@ fn pure() Int:
     return 1
 
 fn direct(resource: Resource) Unit:
-    with let item = resource:
-        return
+    let _item = resource
+    return
 
 fn transitive(resource: Resource) Unit:
     direct(resource: resource)
 
 fn nested(resource: Resource) Unit:
     let callback = fn(item: Resource) Unit:
-        with let held = item:
-            return
+        let _held = item
+        return
+
     callback(resource)
 
 fn indirect(callback: fn() Unit) Unit:

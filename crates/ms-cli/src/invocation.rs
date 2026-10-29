@@ -70,6 +70,8 @@ pub struct Invocation {
     pub structured: bool,
     pub watch: bool,
     pub fix: bool,
+    /// `--deny-warnings`: lint warnings fail the command.
+    pub deny_warnings: bool,
     pub build_type_name: String,
     pub test_timeout: String,
     pub test_filter: String,
@@ -173,6 +175,7 @@ fn parse_options(
             }
             "--watch" => inv.watch = true,
             "--fix" => inv.fix = true,
+            "--deny-warnings" => inv.deny_warnings = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -564,6 +567,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             io,
             format!(
                 "--fix requires check or lint without --watch, not {command}; use ms check <file> --fix"
+            ),
+        ));
+    }
+    if inv.deny_warnings && command != "lint" {
+        return Err(usage_error(
+            io,
+            format!(
+                "--deny-warnings requires lint, not {command}; use ms lint <file> --deny-warnings"
             ),
         ));
     }

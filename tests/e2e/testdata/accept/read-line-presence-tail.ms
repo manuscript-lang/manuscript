@@ -41,11 +41,11 @@ impl Closeable for LineTailCleanup:
         let _written = filesystem().write_file(self.marker, "closed", true)
 
 fn with_cleanup(var input: ReadStream, marker: String) Bool:
-    with let resource = LineTailCleanup(marker):
-        if let line = read_line(input):
-            return line.is_some()
+    let _resource = LineTailCleanup(marker)
+    if let line = read_line(input):
+        return line.is_some()
 
-        return false
+    return false
 
 fn limit(var visits: List[Int]) Int:
     visits.append(1)
@@ -83,26 +83,23 @@ test "presence retains written argument order and cleanup":
     visits | try expect_equal([1, 2])
 
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-presence-") | try expect_ok:
-        let first = "{temporary.path()}/first"
-        let second = "{temporary.path()}/second"
-        with_cleanup(var input, first.clone()) | try expect_true
-        fs.read_file(first).is_ok() | try expect_true
-        fs.read_file(second).is_ok() | try expect_false
-        with_cleanup(var input, second.clone()) | try expect_false
-        fs.read_file(second).is_ok() | try expect_true
+    let temporary = fs.temporary("manuscript-presence-") | try expect_ok
+    let first = "{temporary.path()}/first"
+    let second = "{temporary.path()}/second"
+    with_cleanup(var input, first.clone()) | try expect_true
+    fs.read_file(first).is_ok() | try expect_true
+    fs.read_file(second).is_ok() | try expect_false
+    with_cleanup(var input, second.clone()) | try expect_false
+    fs.read_file(second).is_ok() | try expect_true
 
 test "presence and text reads share buffered consumption":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-presence-") | try expect_ok:
-        let path = "{temporary.path()}/lines"
-        let _written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
-
-        with let handle = fs.open(path, "r", 384) | try expect_ok:
-            let input = handle.reader()
-            present(input) | try expect_true
-            (try read_line(input)) | try expect_equal(some("λ"))
-            present(input) | try expect_true
-            present(input) | try expect_false
+    let temporary = fs.temporary("manuscript-presence-") | try expect_ok
+    let path = "{temporary.path()}/lines"
+    let _written = fs.write_file(path, "\nλ\r\nlast") | try expect_ok
+    let handle = fs.open(path, "r", 384) | try expect_ok
+    let input = handle.reader()
+    present(input) | try expect_true
+    (try read_line(input)) | try expect_equal(some("λ"))
+    present(input) | try expect_true
+    present(input) | try expect_false

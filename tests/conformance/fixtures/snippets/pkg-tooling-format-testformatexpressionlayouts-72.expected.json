@@ -14,7 +14,7 @@
           "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
           "line": 6,
           "column": 53,
-          "offset": 297
+          "offset": 298
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "pkg-tooling-format-testformatexpressionlayouts-72.ms",
           "line": 7,
           "column": 8,
-          "offset": 381
+          "offset": 382
         }
       }
     ],

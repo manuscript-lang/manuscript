@@ -19,21 +19,20 @@ fn grandchild(ch: Channel[Unit, Unit]) Int:
     return 0
 
 fn child(ch: Channel[Unit, Unit]) Int:
-    with let group = ProcessGroup[Int]():
-        var g = group.spawn(grandchild).get()
-        var c = ch
-        let _ = c.send(unit)
-        g.result().get()
-
+    var group = ProcessGroup[Int]()
+    var g = group.spawn(grandchild).get()
+    var c = ch
+    let _ = c.send(unit)
+    g.result().get()
+    group.close()
     return 0
 
 export fn main() Int:
     let _ = filesystem().remove(marker())
-
-    with let group = ProcessGroup[Int, Unit, Unit]():
-        var c = group.spawn(child).get()
-        let _ = c.channel.receive()
-
+    var group = ProcessGroup[Int, Unit, Unit]()
+    var c = group.spawn(child).get()
+    let _ = c.channel.receive()
+    group.close()
     sleep(nanoseconds(3500000000))
     stdout().write(
         "grandchild survived: " + filesystem().read_file(

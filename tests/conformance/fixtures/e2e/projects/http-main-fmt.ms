@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-http,stdlib-io,stdlib-net,tier-io,with-cleanup
+# conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-http,stdlib-io,stdlib-net,tier-io,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/http/main.ms
 import {buffered, headers, HttpRequest, HttpResponse, HttpServerOptions} from "@std/http.ms"
@@ -18,11 +18,11 @@ export fn main() Int:
     if let acquired = serve(
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
-        with let server = acquired:
-            if stdout().write("{server.address()}\n").is_error():
-                return 1
+        let server = acquired
+        if stdout().write("{server.address()}\n").is_error():
+            return 1
 
-            let _ignored = server.wait()
-            return 0
+        let _ignored = server.wait()
+        return 0
 
     return 1

@@ -1,4 +1,4 @@
-# conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,diagnostics,faults,modules,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/local_extensions/conformance_test.ms
 import {expect_equal, expect_false} from "@std/test.ms"
@@ -32,10 +32,13 @@ test "views and functions retain local implementations across modules":
 
     let events = ListBuilder[Int]()
     let resource = Resource(events)
-    with let first_close = first_resource(resource):
-        let active = true
-    with let second_close = second_resource(resource):
-        let active = true
+    var _first_close = first_resource(resource)
+    let active = true
+    _first_close.close()
+
+    var _second_close = second_resource(resource)
+    let active = true
+    _second_close.close()
 
     let values = events.build()
     (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false

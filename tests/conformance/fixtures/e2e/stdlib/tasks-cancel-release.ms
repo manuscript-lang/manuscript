@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import stdout from "@std/io.ms"
 import {TaskError, TaskGroup} from "@std/tasks.ms"
@@ -23,22 +23,20 @@ fn hold_in_callee() Int:
     return total + words.length()
 
 fn group_timeout() Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        group.spawn(fn ch: hold_in_callee())
+    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
+    group.spawn(fn ch: hold_in_callee())
 
-        let _ = group.wait()
+    let _ = group.wait()
 
 fn task_timeout() Unit:
-    with let group = TaskGroup[Int]():
-        let held = group.spawn(
-            fn ch: hold_in_callee(), timeout: some(nanoseconds(1000000))
-        )
-        let _ = held.result()
+    let group = TaskGroup[Int]()
+    let held = group.spawn(fn ch: hold_in_callee(), timeout: some(nanoseconds(1000000)))
+    let _ = held.result()
 
 fn leave_group() Unit:
-    with let group = TaskGroup[Int]():
-        group.spawn(fn ch: hold_in_callee())
-        sleep(nanoseconds(1000000))
+    let group = TaskGroup[Int]()
+    group.spawn(fn ch: hold_in_callee())
+    sleep(nanoseconds(1000000))
 
 export fn main() Int:
     for round in 0..5:

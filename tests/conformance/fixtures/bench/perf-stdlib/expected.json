@@ -14,20 +14,20 @@
           "file": "src/strings.ms",
           "line": 43,
           "column": 31,
-          "offset": 922
+          "offset": 956
         },
         "fix": {
           "position": {
             "file": "src/strings.ms",
             "line": 43,
             "column": 31,
-            "offset": 922
+            "offset": 956
           },
           "end": {
             "file": "src/strings.ms",
             "line": 43,
             "column": 42,
-            "offset": 933
+            "offset": 967
           },
           "replacement": "replace"
         }
@@ -38,16 +38,16 @@
         "message": "expected UInt8, found Int (in argument 'value' of bb.append)",
         "position": {
           "file": "src/binarybench.ms",
-          "line": 36,
+          "line": 39,
           "column": 29,
-          "offset": 977
+          "offset": 1039
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:39:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 39 |                 bb.append(j % 256)\n    |                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

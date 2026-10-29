@@ -65,9 +65,9 @@ fn tail_cleanup(
     var visits: List[Int],
     marker: String
 ) Result[Int, TextError]:
-    with let resource = TailCleanup(marker):
-        let value = try visit(result, var visits)
-        return ok(value)
+    let _resource = TailCleanup(marker)
+    let value = try visit(result, var visits)
+    return ok(value)
 
 fn function_tail(result: Result[fn() Int, TextError]) Result[fn() Int, TextError]:
     let value = try result
@@ -85,21 +85,20 @@ test "tail Results evaluate once and retain payload identity":
 test "tail Results preserve cleanup on success and failure":
     var visits: List[Int] = []
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-tail-") | try expect_ok:
-        let first = "{temporary.path()}/first"
-        let second = "{temporary.path()}/second"
-        tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(
-            42
-        )
-        visits | try expect_equal([1])
-        fs.read_file(first).is_ok() | try expect_true
-        fs.read_file(second).is_ok() | try expect_false
-        tail_cleanup(
-            Result[Int, TextError].error(TextError("")), var visits, second.clone()
-        ).is_error() | try expect_true
-        visits | try expect_equal([1, 1])
-        fs.read_file(second).is_ok() | try expect_true
+    let temporary = fs.temporary("manuscript-tail-") | try expect_ok
+    let first = "{temporary.path()}/first"
+    let second = "{temporary.path()}/second"
+    tail_cleanup(Result[Int, TextError].ok(42), var visits, first.clone()).get() | try expect_equal(
+        42
+    )
+    visits | try expect_equal([1])
+    fs.read_file(first).is_ok() | try expect_true
+    fs.read_file(second).is_ok() | try expect_false
+    tail_cleanup(
+        Result[Int, TextError].error(TextError("")), var visits, second.clone()
+    ).is_error() | try expect_true
+    visits | try expect_equal([1, 1])
+    fs.read_file(second).is_ok() | try expect_true
 
 test "function Result payloads keep their calling convention":
     let original = fn() Int: 42

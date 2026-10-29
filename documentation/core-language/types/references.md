@@ -35,11 +35,11 @@ The standard library declares its lending natives the same way (`trim`, `List.fi
 ## Reassignment
 
 - Reassigning a `var` replaces its value; it does not close the old object or affect other references. A `let` cannot be reassigned.
-- A `with let` binding cannot be reassigned. A `with var` binding can change, and cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [using with](../cleanup/scopes.md).
+- A resource in a `let` binding cannot be reassigned. A `var` binding can change, and the scope-end cleanup closes its final value. Closing early is fine because `close()` is idempotent. See [scope-end cleanup](../cleanup/scopes.md).
 - Every binding is initialized at declaration, and an outer `var` keeps its declared type.
 - Non-escaping closures borrow captures; escaping closures own them. Borrowed roots cannot be changed or moved while the borrow is live.
 
-See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [using with](../cleanup/scopes.md).
+See [bindings](../basics/bindings.md), [closure captures](../functions/function-values-and-closures.md), and [scope-end cleanup](../cleanup/scopes.md).
 
 ## Data copies
 
@@ -49,7 +49,7 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 `Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/sync.ms` in a `with var` block. The guard holds the payload as `guard.value` and puts it back when the block ends, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) inside the `with` block of an earlier `lock` of it in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, lock it with `lock(box)` from `@std/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -65,8 +65,8 @@ impl Counter:
         self.values.append(1)
 
 fn bump(shared: Shared[Counter]) Unit:
-    with var guard = lock(shared):
-        guard.value.bump()
+    var guard = lock(shared)
+    guard.value.bump()
 
 test "change a shared value through its guard":
     let shared = share(Counter([]))
@@ -86,19 +86,19 @@ Records, alternatives, collections, and closures may hold resource references. S
 
 ## Memory and open resources
 
-Owned values are dropped deterministically; there is no tracing garbage collector. Releasing a file, socket, or other external resource is separate. Use `close()` or a `with` block.
+Owned values are dropped deterministically; there is no tracing garbage collector. Releasing a file, socket, or other external resource is separate. Use `close()`, or let the scope that owns the resource close it.
 
 A borrow keeps its owner available until the borrow ends, without extending the external resource lifetime. Once one reference closes it, all others see it closed. Dropping a reference, closure, or work ID closes nothing.
 
 ## Returning a resource
 
-A factory can return an open resource for its caller's `with`. A resource returned from inside a local `with` block is already closed when the caller receives it.
+A factory can return an open resource for its caller to own. A resource bound in the factory and not handed on is already closed when the caller receives it.
 
 | What the function does | What the caller receives |
 | --- | --- |
 | Returns an open resource without registering local cleanup | An open resource; the caller must arrange cleanup. |
-| Returns a resource registered in a local `with` block | A reference to the resource after that block has closed it. |
+| Returns a resource a local binding still owns | A reference to the resource after its scope has closed it. |
 
 Using a closed resource raises its runtime closed-state error. A `let` or `var` that holds a resource and is never moved on is closed when its scope ends; move it on (return it, pass it to a consuming parameter, or store it) to hand the duty to a new owner. A resource made by another resource, such as a child of a `ProcessGroup`, is closed by its owner. Use after close is still a runtime error, and ownership transfer does not replace explicit resource cleanup.
 
-See [Closeable](../cleanup/closeable.md), [using with](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).
+See [Closeable](../cleanup/closeable.md), [scope-end cleanup](../cleanup/scopes.md), and [closures](../functions/function-values-and-closures.md).

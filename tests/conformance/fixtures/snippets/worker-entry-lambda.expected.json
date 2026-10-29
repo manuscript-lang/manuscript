@@ -13,15 +13,15 @@
         "position": {
           "file": "worker-entry-lambda.ms",
           "line": 10,
-          "column": 29,
-          "offset": 266
+          "column": 25,
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/worker-entry-lambda.ms:10:29: type: a worker entry must be the name of a top-level fn; closures, local functions and captured values cannot run on another thread, so move the work into a fn and send what it needs through the worker's channel\n    |\n 10 |         let _ = group.spawn(fn: work(count))\n    |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/worker-entry-lambda.ms:10:25: type: a worker entry must be the name of a top-level fn; closures, local functions and captured values cannot run on another thread, so move the work into a fn and send what it needs through the worker's channel\n    |\n 10 |     let _ = group.spawn(fn: work(count))\n    |                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

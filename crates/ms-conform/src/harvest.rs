@@ -444,7 +444,6 @@ pub fn tags_for(text: &str, phase: Phase) -> Vec<String> {
         ("Result[", "try-result"),
         ("Optional[", "optional"),
         ("some(", "optional"),
-        ("with ", "with-cleanup"),
         ("interface ", "interfaces"),
         ("impl ", "interfaces"),
         ("case ", "alternatives"),

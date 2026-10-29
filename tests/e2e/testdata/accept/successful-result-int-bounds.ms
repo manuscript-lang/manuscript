@@ -87,8 +87,8 @@ impl Closeable for BoundedResultCleanup:
         self.visits.append(7)
 
 fn cleanup(visits: List[Int]) Int:
-    with let resource = BoundedResultCleanup(visits):
-        return total(true)
+    let _resource = BoundedResultCleanup(visits)
+    return total(true)
 
 fn argument(value: Int, var visits: List[Int]) Int:
     visits.append(value)

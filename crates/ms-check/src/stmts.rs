@@ -78,6 +78,7 @@ impl Checker {
         if nested {
             self.scope = Scope::new(Some(old.clone()));
         }
+        let locks = self.held_locks.len();
         let mut fall = true;
         let mut breaks = false;
         for s in body {
@@ -88,6 +89,7 @@ impl Checker {
             }
         }
         self.scope = old;
+        self.held_locks.truncate(locks);
         (fall, breaks)
     }
 
@@ -136,12 +138,6 @@ impl Checker {
             StmtKind::For {
                 name, iter, body, ..
             } => self.check_for(s, *name, iter, body),
-            StmtKind::With {
-                name,
-                mutable,
-                value,
-                body,
-            } => self.check_with(s, *name, *mutable, value, body),
         }
     }
 
@@ -181,6 +177,9 @@ impl Checker {
             info = self.check_expression(value, info, Some(&bound));
         }
         self.pattern(pattern, &bound, mutable, Some(value));
+        if let PatternKind::Name(name) = &pattern.kind {
+            self.begin_lock(s, *name, value, &bound);
+        }
         // The scope closes a resource nothing takes; ownership decides which bindings that is.
         if matches!(pattern.kind, PatternKind::Name(_))
             && !is_invalid_id(&bound)
@@ -316,6 +315,15 @@ impl Checker {
     }
 
     fn check_call_statement(&mut self, pos: Pos, value: &Expr) -> (bool, bool) {
+        // `guard.close()` releases the lock the guard holds.
+        if let ExprKind::Call { callee, .. } = &value.kind
+            && let ExprKind::Member { left, name } = &callee.kind
+            && let ExprKind::Name(guard) = &left.kind
+            && name.as_str() == "close"
+            && let Some(at) = self.held_locks.iter().rposition(|(_, _, g)| g == guard)
+        {
+            self.held_locks.remove(at);
+        }
         let i = if matches!(value.kind, ExprKind::Match { .. }) {
             // A match used as a statement discards its result, so its arms need
             // not agree on a value.
@@ -603,48 +611,6 @@ impl Checker {
             }
         }
         candidates
-    }
-
-    fn check_with(
-        &mut self,
-        s: &Stmt,
-        name: Name,
-        mutable: bool,
-        value: &Expr,
-        body: &[Stmt],
-    ) -> (bool, bool) {
-        let i = self.expression(value, None);
-        let t = i.t();
-        let held = self.begin_lock(s, value, &t);
-        if !is_invalid_id(&t) && !self.closeable(&t) {
-            let msg = self.with_not_closeable_message(&t);
-            self.type_error(s.pos, msg);
-        }
-        let candidates = self.close_method(&t);
-        if candidates.len() == 1 {
-            self.m().facts_mut().stmts.entry(s.id).or_default().cleanup =
-                Some(candidates[0].clone());
-        } else if candidates.len() > 1 {
-            self.type_error(
-                s.pos,
-                "with cleanup operation is ambiguous; bind the value to a Closeable-typed let first, e.g. let view: Closeable = x",
-            );
-        }
-        let old = self.scope.clone();
-        self.scope = Scope::new(Some(old.clone()));
-        let b = self.bind(name, &t, mutable, s.pos);
-        self.m()
-            .facts_mut()
-            .stmts
-            .entry(s.id)
-            .or_default()
-            .loop_binding = Some(b);
-        let (fall, br) = self.block(body, false);
-        self.scope = old;
-        if held {
-            self.held_locks.pop();
-        }
-        (!i.no_return && fall, i.breaks || br)
     }
 
     pub(crate) fn pattern(&mut self, p: &Pattern, t: &Ty, mutable: bool, source: Option<&Expr>) {

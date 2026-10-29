@@ -464,8 +464,7 @@ impl Completer<'_> {
         let line_start = text[..c.start].rfind('\n').map_or(0, |at| at + 1);
         if text[line_start..c.start].trim().is_empty() {
             let mut words: Vec<&str> = vec![
-                "let", "var", "if", "else", "for", "while", "match", "with", "return", "break",
-                "continue",
+                "let", "var", "if", "else", "for", "while", "match", "return", "break", "continue",
             ];
             if line_start == c.start {
                 words = vec![
@@ -598,7 +597,6 @@ fn keyword_template(word: &str) -> Option<&'static str> {
         "type" => "type ${1:Name}:\n    ${0:field: String}",
         "if" => "if ${1:condition}:\n    $0",
         "for" => "for ${1:item} in ${2:items}:\n    $0",
-        "with" => "with let ${1:resource} = ${2:initializer}:\n    $0",
         "test" => "test \"${1:name}\":\n    ${0:return unit}",
         "bench" => "bench \"${1:name}\":\n    ${0:return unit}",
         _ => return None,

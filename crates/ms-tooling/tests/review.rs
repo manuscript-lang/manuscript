@@ -163,7 +163,7 @@ fn review_reach_counts_distinct_callers_across_cycles() {
     head.entities
         .get_mut(&fact_key("r.ms", "fn", "left"))
         .unwrap()
-        .withs = 1;
+        .scopes = 1;
 
     // The right branch has one caller, but a body-only edit gets no reach bonus.
     let findings = compare_facts(&base, &head, &input(&[6]));
@@ -401,8 +401,8 @@ fn flow_view_expands_calls_and_scope_prunes() {
         ..Node::default()
     };
     let with = Node {
-        kind: "with".into(),
-        label: "with out = stdout()  [closed on exit]".into(),
+        kind: "scope".into(),
+        label: "let out = stdout()  [closed on exit]".into(),
         children: vec![
             Node {
                 kind: "native".into(),
@@ -418,17 +418,17 @@ fn flow_view_expands_calls_and_scope_prunes() {
         ..Node::default()
     };
     main.calls = vec![guarded.key.clone()];
-    guarded.withs = 1;
+    guarded.scopes = 1;
     let mut facts = facts_of(vec![main.clone(), guarded.clone()]);
     facts.flows.insert(main.key.clone(), vec![call]);
     facts.flows.insert(guarded.key.clone(), vec![with]);
     let flow = build_view(&facts, "flow", "main", 2).unwrap().ascii();
-    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- with out = stdout()  [closed on exit]\n         |- native @std/io.ms#stdout\n         `- try call load\n";
+    let want = "FLOW VIEW\n`- main  [fn] r.ms:15\n   `- call guarded\n      `- let out = stdout()  [closed on exit]\n         |- native @std/io.ms#stdout\n         `- try call load\n";
     assert_eq!(flow, want);
     let scope = build_view(&facts, "scope", "guarded", 0).unwrap().ascii();
     assert_eq!(
         scope,
-        "SCOPE VIEW\n`- guarded  [fn] r.ms:8\n   `- with out = stdout()  [closed on exit]\n      `- try call load\n"
+        "SCOPE VIEW\n`- guarded  [fn] r.ms:8\n   `- let out = stdout()  [closed on exit]\n      `- try call load\n"
     );
     assert!(
         build_view(&facts, "flow", "", 0)
@@ -451,8 +451,8 @@ fn tasks_view_keeps_groups_and_spawned_work() {
         ..Node::default()
     };
     let with = Node {
-        kind: "with".into(),
-        label: "with let group = TaskGroup[Int]()  [closed on exit]".into(),
+        kind: "scope".into(),
+        label: "let group = TaskGroup[Int]()  [closed on exit]".into(),
         children: vec![
             spawn,
             Node {
@@ -473,7 +473,7 @@ fn tasks_view_keeps_groups_and_spawned_work() {
     let tasks = build_view(&facts, "tasks", "load", 0).unwrap().ascii();
     assert_eq!(
         tasks,
-        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- with let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(fn: fetch(1))\n         `- call fetch\n"
+        "TASKS VIEW\n`- load  [fn] r.ms:3\n   `- let group = TaskGroup[Int]()  [closed on exit]\n      `- spawn  group.spawn(fn: fetch(1))\n         `- call fetch\n"
     );
 }
 

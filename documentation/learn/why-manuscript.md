@@ -23,13 +23,13 @@ Diagnostics read `cause; fix`. When an agent writes `len(xs)`, `.unwrap()`, `nam
 
 ## Concurrency without `async`
 
-Any function can wait, so there is no `async`, no `await` and no function coloring. A `TaskGroup` runs cooperative tasks on one thread, a `WorkerGroup` runs isolated entries on OS threads, and a `ProcessGroup` runs them in child processes. All three own their work inside a `with` block, cancel what is still running when the block ends, and communicate over typed channels. Values move into tasks and come back as results or messages; `Shared[T]` is the one explicit, reference-counted way to share.
+Any function can wait, so there is no `async`, no `await` and no function coloring. A `TaskGroup` runs cooperative tasks on one thread, a `WorkerGroup` runs isolated entries on OS threads, and a `ProcessGroup` runs them in child processes. All three own their work until the binding that holds the group goes out of scope, cancel what is still running then, and communicate over typed channels. Values move into tasks and come back as results or messages; `Shared[T]` is the one explicit, reference-counted way to share.
 
 A recorded eight-job run achieved 3.95x scaling from one to four workers ([worker scaling](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/workers/README.md)). Adversarial reviews probe the task, worker and process runtimes for leaks, hangs and unsound sharing. Cleanup, fault containment and deadlock detection have limits; read [concurrency](../core-language/concurrency/_index.md) before choosing a boundary.
 
 ## Ownership you can follow
 
-Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and `with` scopes external resources.
+Records, lists, maps, strings and alternatives are values with one owner. The compiler moves them at their last use, borrows them for reads and drops them deterministically, with no tracing collector and no reference counting on ordinary data. `var` marks mutation at the declaration and at the call, `.clone()` marks a copy, borrows are lexical with no lifetimes in source, and a scope closes the external resources bound in it.
 
 The web benchmark records both benefits and costs. The October 25 run at `6003f16b` used 93 MB for 10,000 idle connections versus Go's 197 MB, but memory after load was higher (70 MB versus 15 MB) and `/io` throughput was lower. See the dated [web results](https://github.com/manuscript-lang/manuscript/blob/main/bench/perf/web/results.md#2026-10-25) and later experiments. The language's exact rules are in [references and borrowing](../core-language/types/references.md).
 

@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,generics,interfaces,interpolation,lists,maps,match,modules,mutation,optional,records,stdlib-cleanup,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/expression-conveniences.ms
 import TextError from "@std/core.ms"
@@ -18,14 +18,15 @@ impl Closeable for Resource:
 fn identity[T](value: T) T: return value
 
 fn amount(text: String, counter: Counter) Result[Int, TextError]:
-    with let resource = Resource(counter: counter):
-        let cents = match text.parse_int():
-            some(value):
-                value
-            none:
-                return error(cause: TextError("Invalid amount"))
+    let _resource = Resource(counter: counter)
 
-        return ok(value: cents + 1)
+    let cents = match text.parse_int():
+        some(value):
+            value
+        none:
+            return error(cause: TextError("Invalid amount"))
+
+    return ok(value: cents + 1)
 
 fn early(value: Optional[Int]) Int:
     let number = match value:

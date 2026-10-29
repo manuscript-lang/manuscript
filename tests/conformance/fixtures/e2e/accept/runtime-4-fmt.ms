@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,interfaces,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=control-flow,formatter,interfaces,modules,optional,parser,records,stdlib-bytes,stdlib-io,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/runtime-4.ms
 import {expect_equal, expect_false} from "@std/test.ms"
@@ -18,8 +18,7 @@ impl File for ClosedFile:
 
 test "contract-valued cleanup":
     let opened: File = ClosedFile(unit)
-
-    with let file = opened:
-        let read = file.read(1)
-        try expect_false(read.is_ok())
-        try expect_equal(read.err(), IoError.Closed)
+    let file = opened
+    let read = file.read(1)
+    try expect_false(read.is_ok())
+    try expect_equal(read.err(), IoError.Closed)

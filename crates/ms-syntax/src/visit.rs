@@ -104,10 +104,6 @@ pub fn walk_stmt<V: Visitor>(v: &mut V, s: &Stmt) {
             walk_expr(v, iter);
             walk_block(v, body);
         }
-        StmtKind::With { value, body, .. } => {
-            walk_expr(v, value);
-            walk_block(v, body);
-        }
     }
 }
 

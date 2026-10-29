@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 # Cancelling a task must drop every owned value its frames hold, whatever shape holds it.
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
@@ -92,18 +92,19 @@ fn t_nested(depth: Int) Int:
     return t_nested(depth - 1) + s.length()
 
 fn run_one(which: Int) Unit:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(1000000))):
-        if which == 0: group.spawn(fn ch: t_record())
-        else if which == 1: group.spawn(fn ch: t_field_move())
-        else if which == 2: group.spawn(fn ch: t_map_loop())
-        else if which == 3: group.spawn(fn ch: t_consume_in_loop())
-        else if which == 4: group.spawn(fn ch: t_optional())
-        else if which == 5: group.spawn(fn ch: t_closure())
-        else if which == 6: group.spawn(fn ch: t_match())
-        else if which == 7: group.spawn(fn ch: t_chan(ch))
-        else: group.spawn(fn ch: t_nested(5))
+    let group = TaskGroup[Int](timeout: some(nanoseconds(1000000)))
 
-        let _ = group.wait()
+    if which == 0: group.spawn(fn ch: t_record())
+    else if which == 1: group.spawn(fn ch: t_field_move())
+    else if which == 2: group.spawn(fn ch: t_map_loop())
+    else if which == 3: group.spawn(fn ch: t_consume_in_loop())
+    else if which == 4: group.spawn(fn ch: t_optional())
+    else if which == 5: group.spawn(fn ch: t_closure())
+    else if which == 6: group.spawn(fn ch: t_match())
+    else if which == 7: group.spawn(fn ch: t_chan(ch))
+    else: group.spawn(fn ch: t_nested(5))
+
+    let _ = group.wait()
 
 export fn main() Int:
     for which in 0..9:

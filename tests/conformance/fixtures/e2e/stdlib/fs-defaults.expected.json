@@ -24,56 +24,56 @@
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`write` is moved here but used again at 64:23; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
+          "message": "`write` is moved here but used again at 68:19; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed",
           "position": {
             "file": "fs-defaults.ms",
-            "line": 62,
-            "column": 21,
-            "offset": 2119
+            "line": 66,
+            "column": 17,
+            "offset": 2168
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`copy` is moved here but used again at 84:23; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
+          "message": "`copy` is moved here but used again at 87:19; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed",
           "position": {
             "file": "fs-defaults.ms",
-            "line": 81,
-            "column": 21,
-            "offset": 3027
+            "line": 84,
+            "column": 17,
+            "offset": 3020
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`copy` is moved here but used again at 125:23; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
+          "message": "`copy` is moved here but used again at 119:19; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed",
           "position": {
             "file": "fs-defaults.ms",
-            "line": 122,
-            "column": 21,
-            "offset": 4824
+            "line": 116,
+            "column": 17,
+            "offset": 4606
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`create` is moved here but used again at 172:23; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
+          "message": "`create` is moved here but used again at 155:19; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed",
           "position": {
             "file": "fs-defaults.ms",
-            "line": 169,
-            "column": 21,
-            "offset": 6647
+            "line": 152,
+            "column": 17,
+            "offset": 6177
           }
         },
         {
           "code": "MS3000",
           "phase": "type",
-          "message": "`remove` is moved here but used again at 192:23; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed",
+          "message": "`remove` is moved here but used again at 174:19; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `def`, which can be passed as often as needed",
           "position": {
             "file": "fs-defaults.ms",
-            "line": 190,
-            "column": 21,
-            "offset": 7617
+            "line": 172,
+            "column": 17,
+            "offset": 7084
           }
         }
       ]

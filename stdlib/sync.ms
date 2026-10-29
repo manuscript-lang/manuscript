@@ -11,7 +11,7 @@ extern fn msrt_waitq_wake(key: Int) Int
 
 extern fn msrt_waitq_remove(key: Int, token: Int) Int
 
-# The locked payload of a `Shared`, held until the `with` block that opened it ends. Change the
+# The locked payload of a `Shared`, held until the scope of the binding that opened it ends, or its `close()` is called. Change the
 # payload through `value`.
 export type SharedGuard[T]:
     # Internal state: the box the payload returns to.
@@ -48,16 +48,16 @@ impl Closeable for Ticket:
                 msrt_waitq_wake(self.key)
 
 # Locks `box` and returns the guard that holds its payload. Waits while another guard holds it,
-# and stops waiting if the task is cancelled. Use it with `with var`, which closes the guard:
-# `with var guard = lock(box):` then change `guard.value`.
+# and stops waiting if the task is cancelled. Bind it with `var`; the scope end closes the guard:
+# `var guard = lock(box)`, then change `guard.value`.
 export fn lock[T](box: Shared[T]) SharedGuard[T]:
     while box.locked():
         let key = box.id()
         let token = msrt_channel_token()
         msrt_waitq_push(key, token)
 
-        with var ticket = Ticket(key: key, token: token, parked: true):
-            msrt_channel_park(token)
-            ticket.parked = false
+        var ticket = Ticket(key: key, token: token, parked: true)
+        msrt_channel_park(token)
+        ticket.parked = false
 
     return SharedGuard[T](box: box, value: box.take(), held: true)

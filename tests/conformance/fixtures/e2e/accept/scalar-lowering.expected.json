@@ -18,10 +18,10 @@
           "index": 1,
           "name": "scalar-lowering.ms::combined lowering retains callable state and try boundaries",
           "status": "failed",
-          "failure": "expected false, got true\n  at scalar-lowering.ms:134:5",
+          "failure": "expected false, got true\n  at scalar-lowering.ms:139:5",
           "position": {
             "file": "scalar-lowering.ms",
-            "line": 134,
+            "line": 139,
             "column": 5,
             "offset": 0
           }
@@ -30,10 +30,10 @@
           "index": 2,
           "name": "scalar-lowering.ms::cleanup remains owned by its source callable",
           "status": "failed",
-          "failure": "expected false, got true\n  at scalar-lowering.ms:162:5",
+          "failure": "expected false, got true\n  at scalar-lowering.ms:167:5",
           "position": {
             "file": "scalar-lowering.ms",
-            "line": 162,
+            "line": 167,
             "column": 5,
             "offset": 0
           }
@@ -49,7 +49,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN scalar-lowering.ms::primitive equality captures operands once in order\nPASS scalar-lowering.ms::primitive equality captures operands once in order\nRUN scalar-lowering.ms::combined lowering retains callable state and try boundaries\nFAIL scalar-lowering.ms::combined lowering retains callable state and try boundaries: expected false, got true\n  at scalar-lowering.ms:134:5\nRUN scalar-lowering.ms::cleanup remains owned by its source callable\nFAIL scalar-lowering.ms::cleanup remains owned by its source callable: expected false, got true\n  at scalar-lowering.ms:162:5\n3 tests, 2 failed\n",
+      "stdout": "RUN scalar-lowering.ms::primitive equality captures operands once in order\nPASS scalar-lowering.ms::primitive equality captures operands once in order\nRUN scalar-lowering.ms::combined lowering retains callable state and try boundaries\nFAIL scalar-lowering.ms::combined lowering retains callable state and try boundaries: expected false, got true\n  at scalar-lowering.ms:139:5\nRUN scalar-lowering.ms::cleanup remains owned by its source callable\nFAIL scalar-lowering.ms::cleanup remains owned by its source callable: expected false, got true\n  at scalar-lowering.ms:167:5\n3 tests, 2 failed\n",
       "diagnostics": []
     },
     "shape": [

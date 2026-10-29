@@ -990,7 +990,6 @@ impl Scanner<'_> {
                     | Tok::For
                     | Tok::While
                     | Tok::Match
-                    | Tok::With
                     | Tok::Type
                     | Tok::Impl
                     | Tok::Test

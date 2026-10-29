@@ -12,16 +12,16 @@
         "message": "cannot find module ./support/streams.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file",
         "position": {
           "file": "log.ms",
-          "line": 13,
+          "line": 20,
           "column": 1,
-          "offset": 685
+          "offset": 708
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/log.ms:13:1: resolution: cannot find module ./support/streams.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file\n    |\n 13 | import MemoryStream from \"./support/streams.ms\"\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/log.ms:20:1: resolution: cannot find module ./support/streams.ms (looked for support); check the spelling, make sure the file exists, and that the path is relative to the importing file\n    |\n 20 | from \"./support/streams.ms\" import MemoryStream\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

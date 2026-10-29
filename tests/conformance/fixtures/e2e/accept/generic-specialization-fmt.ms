@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,generics,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=control-flow,formatter,generics,modules,mutation,parser,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/generic-specialization.ms
 import expect_equal from "@std/test.ms"

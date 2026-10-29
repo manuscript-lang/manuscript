@@ -9,24 +9,25 @@ import {nanoseconds, sleep} from "@std/time.ms"
 
 fn holder(box: Shared[Int], chan: Channel[Unit, Unit]) Int:
     var ch = chan.clone()
-    with var g = lock(box):
-        let _never = ch.receive()
+    var _g = lock(box)
+    let _never = ch.receive()
+    _g.close()
     return 0
 
 fn waiter(box: Shared[Int]) Int:
-    with var g = lock(box):
-        g.value = 1
+    var g = lock(box)
+    g.value = 1
+    g.close()
     return 1
 
 export fn main() Int:
     let box = share(0)
+    var g = TaskGroup[Int, Unit, Unit]()
+    g.spawn(fn ch: holder(box, ch))
+    sleep(nanoseconds(1000000))
 
-    with let g = TaskGroup[Int, Unit, Unit]():
-        g.spawn(fn ch: holder(box, ch))
-        sleep(nanoseconds(1000000))
-
-        let w = g.spawn(fn ch: waiter(box))
-        let _ = stdout().write("waiting\n")
-        let _ = w.result()
-
+    let w = g.spawn(fn ch: waiter(box))
+    let _ = stdout().write("waiting\n")
+    let _ = w.result()
+    g.close()
     return 0

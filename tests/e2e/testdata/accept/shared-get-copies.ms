@@ -15,8 +15,9 @@ test "a loop over a shared value walks a copy":
 
     for name in sh.get():
         seen.append(name.clone())
-        with var g = lock(other):
-            g.value = ["replaced one", "replaced two", "replaced three"]
+
+        var g = lock(other)
+        g.value = ["replaced one", "replaced two", "replaced three"]
 
     try expect_equal(seen, ["ada lovelace", "grace hopper", "barbara liskov"])
 
@@ -24,8 +25,9 @@ test "a let of a shared value keeps a copy":
     let sh = share(["ada lovelace", "grace hopper"])
     let other = sh
     let names = sh.get()
-    with var g = lock(other):
-        g.value = ["replaced"]
+    var g = lock(other)
+    g.value = ["replaced"]
+    g.close()
     try expect_equal(names[1], "grace hopper")
 
 test "a match payload of a shared value is a copy":
@@ -34,7 +36,8 @@ test "a match payload of a shared value is a copy":
 
     match sh.get():
         Running(n):
-            with var g = lock(other):
-                g.value = State.Running("replaced")
+            var g = lock(other)
+            g.value = State.Running("replaced")
+            g.close()
             try expect_equal(n, "ada lovelace")
         Idle: try expect_equal(1, 0)

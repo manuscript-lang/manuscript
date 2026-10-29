@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,faults,lists,modules,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,faults,lists,modules,stdlib-errors,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/pipe-flow.ms
 import TextError from "@std/core.ms"

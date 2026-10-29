@@ -1,4 +1,4 @@
-# conform: tags=closures,with-cleanup,stdlib-tasks,tier-io
+# conform: tags=closures,scope-cleanup,stdlib-tasks,tier-io
 # conform: phase=run
 import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
@@ -17,26 +17,27 @@ impl Closeable for Reporter:
         say("{self.name} cleanup sees cancelled: {cancelled()}")
 
 fn sleep_with_reporter() Int:
-    with let reporter = Reporter("timeout"):
-        sleep(nanoseconds(60000000000))
+    let _reporter = Reporter("timeout")
+    sleep(nanoseconds(60000000000))
     return 0
 
 fn returns_normally() Int:
-    with let reporter = Reporter("normal"):
-        say("normal body sees cancelled: {cancelled()}")
+    let _reporter = Reporter("normal")
+    say("normal body sees cancelled: {cancelled()}")
     return 1
 
 export fn main() Int:
     say("outside a group: {cancelled()}")
 
-    with let group = TaskGroup[Int]():
-        group.spawn(fn ch: returns_normally())
+    var group = TaskGroup[Int]()
+    group.spawn(fn ch: returns_normally())
 
-        let _ = group.results()
+    let _ = group.results()
+    group.close()
 
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(20000000))):
-        group.spawn(fn ch: sleep_with_reporter())
+    var group2 = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
+    group2.spawn(fn ch: sleep_with_reporter())
 
-        let _ = group.wait()
-
+    let _ = group2.wait()
+    group2.close()
     return 0

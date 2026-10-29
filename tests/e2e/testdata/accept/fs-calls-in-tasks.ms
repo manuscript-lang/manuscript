@@ -25,12 +25,12 @@ test "file-system calls from concurrent tasks":
     let root = try fs.temporary_directory("ms-fs-tasks-")
     let first = root.clone()
     let second = root.clone()
-
-    with let group = TaskGroup[Int]():
-        let a = group.spawn(fn ch: churn(first, "one"))
-        let b = group.spawn(fn ch: churn(second, "two"))
-        try a.result() | try expect_equal(2)
-        try b.result() | try expect_equal(2)
+    var group = TaskGroup[Int]()
+    let a = group.spawn(fn ch: churn(first, "one"))
+    let b = group.spawn(fn ch: churn(second, "two"))
+    try a.result() | try expect_equal(2)
+    try b.result() | try expect_equal(2)
+    group.close()
 
     let text = try fs.read_file("{root}/one/c.txt")
     text | try expect_equal("one!".to_bytes())

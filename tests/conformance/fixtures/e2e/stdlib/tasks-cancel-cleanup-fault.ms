@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,faults,stdlib-tasks,tier-io
+# conform: tags=scope-cleanup,faults,stdlib-tasks,tier-io
 # conform: phase=run
 import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
@@ -16,14 +16,14 @@ impl Closeable for Bad:
         stdout().write("{xs[3]}\n").get()
 
 fn work() Int:
-    with let b = Bad(1):
-        sleep(nanoseconds(5000000000))
-        return 1
+    let _b = Bad(1)
+    sleep(nanoseconds(5000000000))
+    return 1
 
 export fn main() Int:
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(50000000))):
-        group.spawn(fn ch: work())
+    var group = TaskGroup[Int](timeout: some(nanoseconds(50000000)))
+    group.spawn(fn ch: work())
 
-        let _ = group.wait()
-
+    let _ = group.wait()
+    group.close()
     return 0

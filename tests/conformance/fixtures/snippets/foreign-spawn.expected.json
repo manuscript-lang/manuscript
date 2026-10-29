@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" inside 'with', e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))",
+        "message": "unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))",
         "position": {
           "file": "foreign-spawn.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/foreign-spawn.ms:5:5: resolution: unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" inside 'with', e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))\n   |\n 5 |     spawn(fn: 1)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/foreign-spawn.ms:5:5: resolution: unknown binding spawn; there is no free spawn: start tasks with a TaskGroup from \"@std/tasks.ms\" bound to a local, e.g. group.spawn(fn ch: work(), timeout: some(nanoseconds(...)))\n   |\n 5 |     spawn(fn: 1)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

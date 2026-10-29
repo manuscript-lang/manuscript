@@ -388,7 +388,7 @@ impl Walker<'_> {
                 self.error(
                     pos,
                     format!(
-                        "`{name}` is a resource that is never closed: open it with `with let {name} = ...`, call `{name}.close()`, or return it so the caller owns it"
+                        "`{name}` is a resource that is never closed: call `{name}.close()`, or return it so the caller owns it"
                     ),
                 );
             }
@@ -1096,27 +1096,6 @@ impl Walker<'_> {
                 Some(expansion) => self.block(&expansion),
                 None => self.for_stmt(s, iter, body),
             },
-            StmtKind::With {
-                mutable,
-                value,
-                body,
-                ..
-            } => {
-                self.expr(value, Demand::Consume);
-                self.release_pending();
-                let mark = self.declared.len();
-                if let Some(b) = self.cx.m.stmt(s).loop_binding {
-                    let perm = if *mutable {
-                        Perm::Mutable
-                    } else {
-                        Perm::Immutable
-                    };
-                    self.declare(&b, Role::With, perm, None, false);
-                }
-                self.block(body);
-                let ended: Vec<usize> = self.declared.drain(mark..).collect();
-                self.active.retain(|a| !ended.contains(&a.holder));
-            }
         }
     }
 
@@ -2089,11 +2068,6 @@ impl Walker<'_> {
                 format!("cannot move `{name}` out of the function: the caller keeps ownership of a var parameter; return `{name}.{COPY}()` or change the value in place"),
                 copy_after(e),
             );
-        } else if matches!(role, Role::With) && !self.is_last(e.id, b) {
-            self.error(
-                e.pos,
-                format!("`{name}` is moved here, but its `with` block closes it at the end of the block; a `with` resource cannot move out of its block, so use `{name}` in place, or bind it with `let` and close or move it yourself"),
-            );
         } else if !self.is_last(e.id, b) {
             let later = self
                 .next_use(e.id, b)
@@ -2259,6 +2233,29 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; `set` or `add` each one instead"),
                 );
+            }
+            // A collection method that reads the receiver and returns an owned value holding the
+            // very resources it holds (`xs.take(1)`, `xs.concat(xs)`, `xs.find(..)`) makes a second
+            // owner of each one, and every owner closes it.
+            if modes.receiver != Some(ParamMode::Mutate)
+                && !modes.accessor
+                && (rty.is_std("List") || rty.is_std("Map") || rty.is_std("Set"))
+                && self.class_of(r) == Class::Resource
+                && self.class_of(e) == Class::Resource
+                && self.cx.m.info(e).native_str() != "clone"
+            {
+                let ety = self.cx.m.ty(e);
+                let copied = rty.args.iter().any(|a| {
+                    self.cx.classes.class(a) == Class::Resource
+                        && (crate::types::same(a, &ety) || ty_contains(&ety, a))
+                });
+                if copied {
+                    let text = self.expr_text(r);
+                    self.error(
+                        e.pos,
+                        format!("`{copies}` would copy the resources `{text}` holds, and a copy would be closed a second time; move them out with `remove` or `pop`, or `set` or `add` each one instead"),
+                    );
+                }
             }
             let mut mode = modes.receiver.unwrap_or(ParamMode::Borrow);
             // An owned resource taken out of a receiver that holds it (`o.get(default)`) is the

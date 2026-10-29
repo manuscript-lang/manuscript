@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,modules,optional,parser,stdlib-io,stdlib-process,stdlib-system,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/host.ms
 import {expect_equal, expect_false, expect_not_equal} from "@std/test.ms"
@@ -58,24 +58,24 @@ test "subprocess validation returns expected domain errors":
 test "subprocess streams that are not piped are closed":
     if os_type() == "windows": return
 
-    with let child = try commands().spawn(
+    let child = try commands().spawn(
         "sh", ["-c", "cat; echo done >&2"], stdin: Stdio.Null, stdout: Stdio.Null
-    ):
-        try expect_equal((try child.wait()), 0)
+    )
+    try expect_equal((try child.wait()), 0)
 
-        let line = try read_line(child.stderr())
-        try expect_equal(line.get(""), "done")
-        try expect_false(child.stdout().read().is_ok())
-        try expect_false(child.stdin().write("x").is_ok())
+    let line = try read_line(child.stderr())
+    try expect_equal(line.get(""), "done")
+    try expect_false(child.stdout().read().is_ok())
+    try expect_false(child.stdin().write("x").is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with let child = try commands().spawn("cat", []):
-        try child.stdin().write("ping\n")
+    let child = try commands().spawn("cat", [])
+    try child.stdin().write("ping\n")
 
-        let line = try read_line(child.stdout())
-        try expect_equal(line.get(""), "ping")
-        child.stdin().close()
-        try expect_equal((try child.wait()), 0)
-        try expect_false((try child.stdout().read()).is_some())
+    let line = try read_line(child.stdout())
+    try expect_equal(line.get(""), "ping")
+    child.stdin().close()
+    try expect_equal((try child.wait()), 0)
+    try expect_false((try child.stdout().read()).is_some())

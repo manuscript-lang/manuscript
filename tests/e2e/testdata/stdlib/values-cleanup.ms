@@ -28,9 +28,9 @@ impl Closeable for Resource:
         let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
 
 fn leave(dir: String) Int:
-    with let outer = Resource(dir.clone(), 1):
-        with let inner = Resource(dir, 2):
-            return 42
+    let _outer = Resource(dir.clone(), 1)
+    let _inner = Resource(dir, 2)
+    return 42
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     let found = try result
@@ -74,9 +74,8 @@ test "custom equality and hashing define map key identity":
 
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(leave(dir.clone()), 42)
-        try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-        try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+    let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(leave(dir.clone()), 42)
+    try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+    try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

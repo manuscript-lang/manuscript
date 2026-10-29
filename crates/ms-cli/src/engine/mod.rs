@@ -217,6 +217,7 @@ pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
         offset: pos.offset as usize,
     };
     CommandDiagnostic {
+        severity: String::new(),
         code: issue.code().to_string(),
         phase: issue.phase.as_str().to_string(),
         message: issue.message.clone(),

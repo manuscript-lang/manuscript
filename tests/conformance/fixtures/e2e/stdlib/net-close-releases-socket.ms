@@ -1,4 +1,4 @@
-# conform: tags=with-cleanup,stdlib-net,tier-io
+# conform: tags=scope-cleanup,stdlib-net,tier-io
 # conform: phase=run
 import stdout from "@std/io.ms"
 import network from "@std/net.ms"
@@ -9,25 +9,25 @@ import nanoseconds from "@std/time.ms"
 # after a cancelled `accept` or `read` ran its `with` cleanup.
 
 fn accept_one(address: String) Int:
-    with let listener = network().listen(address).get():
-        let accepted = listener.accept(nanoseconds(10000000000))
-        if accepted.is_ok():
-            return 1
+    let listener = network().listen(address).get()
+    let accepted = listener.accept(nanoseconds(10000000000))
+    if accepted.is_ok():
+        return 1
 
-        return 0
+    return 0
 
 fn read_one(address: String) Int:
-    with let client = network().connect(address, nanoseconds(2000000000)).get():
-        let got = client.read(none, none)
-        return got.get(none).map(fn b: b.length()).get(-1)
+    let client = network().connect(address, nanoseconds(2000000000)).get()
+    let got = client.read(none, none)
+    return got.get(none).map(fn b: b.length()).get(-1)
 
 fn receive_one(address: String) Int:
-    with let socket = network().bind_datagram(address).get():
-        let got = socket.receive(none, none)
-        if got.is_ok():
-            return 1
+    let socket = network().bind_datagram(address).get()
+    let got = socket.receive(none, none)
+    if got.is_ok():
+        return 1
 
-        return 0
+    return 0
 
 fn rebound_datagram(address: String) Int:
     match network().bind_datagram(address):
@@ -52,32 +52,32 @@ export fn main() Int:
     first.close()
     stdout().write("closed listener rebound: {rebound(address)}\n").get()
 
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
-        let a = address.clone()
-        group.spawn(fn ch: accept_one(a))
+    var group = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+    let a = address.clone()
+    group.spawn(fn ch: accept_one(a))
 
-        let _ = group.wait()
-
+    let _ = group.wait()
+    group.close()
     stdout().write("cancelled accept rebound: {rebound(address)}\n").get()
 
     let third = net.listen("127.0.0.1:0").get()
     let third_address = third.address().clone()
+    var server = third
+    let target = server.address().clone()
 
-    with let server = third:
-        let target = server.address().clone()
+    for round in 0..20:
+        let round_a = target.clone()
+        var round_group = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+        round_group.spawn(fn ch: read_one(round_a))
 
-        for round in 0..20:
-            let a = target.clone()
+        let _ = round_group.wait()
+        round_group.close()
 
-            with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
-                group.spawn(fn ch: read_one(a))
+        let accepted = server.accept(nanoseconds(500000000))
+        if accepted.is_ok():
+            accepted.get().close()
 
-                let _ = group.wait()
-
-            let accepted = server.accept(nanoseconds(500000000))
-            if accepted.is_ok():
-                accepted.get().close()
-
+    server.close()
     stdout().write("cancelled reads rebound: {rebound(third_address)}\n").get()
 
     var udp = net.bind_datagram("127.0.0.1:0").get()
@@ -89,11 +89,11 @@ export fn main() Int:
         ).get()
     )
 
-    with let group = TaskGroup[Int](timeout: some(nanoseconds(2000000))):
-        let a = udp_address.clone()
-        group.spawn(fn ch: receive_one(a))
+    var group2 = TaskGroup[Int](timeout: some(nanoseconds(2000000)))
+    let datagram_a = udp_address.clone()
+    group2.spawn(fn ch: receive_one(datagram_a))
 
-        let _ = group.wait()
-
+    let _ = group2.wait()
+    group2.close()
     stdout().write("cancelled receive rebound: {rebound_datagram(udp_address)}\n").get()
     return 0

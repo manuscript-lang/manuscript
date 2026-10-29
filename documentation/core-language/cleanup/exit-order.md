@@ -5,7 +5,7 @@ weight = 4
 
 # Cleanup order
 
-On scope exit, `with` cleanup closes inner resources before outer ones. Another reference to a resource, including in a record, registers no extra close.
+On scope exit, cleanup closes inner resources before outer ones, and the bindings of one scope last declared first. Another reference to a resource, including in a record, registers no extra close.
 
 1. Evaluate the pending return value or select the initiating error, fault, or cancellation.
 2. Call registered `close()` methods in reverse registration/nesting order.
@@ -15,4 +15,4 @@ A cleanup fault suppresses a pending return or domain error; a value that is not
 
 Returned references do not bypass cleanup: a file registered in the exiting scope is already closed when the caller receives it. Transferring ownership does not transfer or cancel that registered cleanup.
 
-Register dependencies in an outer `with` so they close after the resources that use them. See [fault selection](cleanup-faults.md).
+Declare dependencies in an outer scope, or before the resources that use them, so they close after the resources that use them. See [fault selection](cleanup-faults.md).

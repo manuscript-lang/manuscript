@@ -21,12 +21,12 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Memory:** one owner per value, moved at its last use, dropped deterministically, with borrows inferred. No collector, no lifetime annotations. Every `var` and `.clone()` is visible in the source. [References](documentation/core-language/types/references.md)
 - **Compile errors:** a dropped `Result`, a `match` missing a case, an unclosed `Closeable`, literal overflow.
 - **Runtime faults:** overflow, bounds, deadlock and skipped cleanup stop with a source trace. [Faults](documentation/core-language/errors/faults.md)
-- **Concurrency:** any function can wait, and tasks live in a `with` block that cancels what is still running, so generated code cannot leak one. [Concurrency](documentation/core-language/concurrency/_index.md)
+- **Concurrency:** any function can wait, and tasks live in a group that cancels what is still running when its scope ends, so generated code cannot leak one. [Concurrency](documentation/core-language/concurrency/_index.md)
 - **Tests:** property tests draw inputs the agent did not think of and shrink failures; `ms test --fuzz 30s` turns them into a fuzzer. [Testing](documentation/learn/testing.md)
 
 ## Review agent-written changes
 
-`ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and `with` scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
+`ms review --diff` compares the checked program before and after and ranks changed contracts, error flow and resource scopes by where a reader should look first. `ms diagram` draws call and flow graphs from the same analysis. [Review report](documentation/developer-tooling/implementation.md#review-report)
 
 ## What Manuscript offers
 

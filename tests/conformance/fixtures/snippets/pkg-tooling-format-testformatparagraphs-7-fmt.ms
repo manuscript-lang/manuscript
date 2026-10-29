@@ -1,4 +1,4 @@
-# conform: tags=control-flow,formatter,parser,tier-core,with-cleanup
+# conform: tags=control-flow,formatter,parser,tier-core,scope-cleanup
 # conform: phase=parse
 # conform: origin=pkg/tooling/format/format_paragraphs_test.go:83 TestFormatParagraphs
 fn work(enabled: Bool) Int:
@@ -21,6 +21,7 @@ fn work(enabled: Bool) Int:
 
         run(item)
 
-    with let resource = acquire():
-        run(resource)
+    var resource = acquire()
+    run(resource)
+    resource.close()
     return count

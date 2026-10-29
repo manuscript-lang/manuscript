@@ -6,6 +6,7 @@ fn handle(request: HttpRequest) HttpResponse:
 
 export fn main() Int:
     if let acquired = network().serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        with let server = acquired:
-            return 0
+        let _server = acquired
+        return 0
+
     return 1

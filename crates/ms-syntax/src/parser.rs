@@ -1289,7 +1289,7 @@ impl<'a> Parser<'a> {
             return Ok(Vec::new());
         }
         if self.kind() != Tok::Newline {
-            if matches!(self.kind(), Tok::If | Tok::While | Tok::For | Tok::With) {
+            if matches!(self.kind(), Tok::If | Tok::While | Tok::For) {
                 let t = self.peek();
                 return self.fail(t, format!("inline bodies require one simple statement; put '{}' on its own line in an indented block", t.kind.as_str()));
             }
@@ -1516,27 +1516,6 @@ impl<'a> Parser<'a> {
                     body,
                 }
             }
-            Tok::With => {
-                self.at += 1;
-                let kind = self.peek();
-                if kind.kind != Tok::Let && kind.kind != Tok::Var {
-                    return self.fail(
-                        kind,
-                        "expected 'let' or 'var'; with binds its resource: with let file = open(path):",
-                    );
-                }
-                self.at += 1;
-                let name = self.need(Tok::Name)?;
-                self.need(Tok::Assign)?;
-                let value = self.expression(0)?;
-                let body = self.suite()?;
-                StmtKind::With {
-                    name: self.sym(name),
-                    mutable: kind.kind == Tok::Var,
-                    value,
-                    body,
-                }
-            }
             _ => self.expression_statement(t, allow_value)?,
         };
         let id = self.id();
@@ -1585,8 +1564,8 @@ impl<'a> Parser<'a> {
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
                         "global" | "nonlocal" => return self.fail(t, format!("'{n}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly")),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
-                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" inside 'with'")),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": with let group = TaskGroup[T](): group.spawn(fn ch: work())"),
+                        "async" | "await" => return self.fail(t, format!("'{n}' is not a keyword; call the function directly, or start concurrent work with a TaskGroup from \"@std/tasks.ms\" bound to a local")),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with a TaskGroup from \"@std/tasks.ms\": let group = TaskGroup[T](), then group.spawn(fn ch: work())"),
                         _ => {}
                     }
                 }

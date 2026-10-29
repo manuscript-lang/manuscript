@@ -1,4 +1,4 @@
-# conform: tags=alternatives,control-flow,diagnostics,interfaces,records,strings,tier-core,with-cleanup
+# conform: tags=alternatives,control-flow,diagnostics,interfaces,records,strings,tier-core,scope-cleanup
 # conform: phase=check
 # conform: origin=pkg/checker/documentation_members_test.go:14 TestDocumentationCapturesMemberComments
 # A described record.

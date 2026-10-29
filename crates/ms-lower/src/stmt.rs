@@ -219,9 +219,6 @@ impl<'a> FnLower<'a> {
                     self.for_stmt(s, iter, body)?;
                 }
             }
-            StmtKind::With { value, body, .. } => {
-                self.with_stmt(s, value, body)?;
-            }
         }
         self.flush_temps(mark);
         Ok(())

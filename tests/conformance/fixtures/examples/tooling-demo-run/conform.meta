@@ -1,4 +1,4 @@
-# conform: tags=control-flow,interpolation,modules,mutation,optional,projects,records,stdlib-collections,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=control-flow,interpolation,modules,mutation,optional,projects,records,stdlib-collections,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=run
 # conform: origin=examples/tooling-demo
 # conform: timeout=120

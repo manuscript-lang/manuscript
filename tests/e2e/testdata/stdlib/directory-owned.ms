@@ -26,8 +26,8 @@ fn counts_entries(path: String) Result[Int, Error]:
     return ok(seen)
 
 test "a directory cursor reads its children and closes at scope end":
-    with let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok:
-        let path = temporary.path()
-        try expect_true(filesystem().write_file("{path}/a.txt", "x", true).is_ok())
-        try expect_true(filesystem().write_file("{path}/b.txt", "y", true).is_ok())
-        counts_entries(path) | try expect_ok | try expect_equal(2)
+    let temporary = filesystem().temporary("manuscript-owned-") | try expect_ok
+    let path = temporary.path()
+    try expect_true(filesystem().write_file("{path}/a.txt", "x", true).is_ok())
+    try expect_true(filesystem().write_file("{path}/b.txt", "y", true).is_ok())
+    counts_entries(path) | try expect_ok | try expect_equal(2)

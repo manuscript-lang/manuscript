@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,interfaces,lists,maps,match,modules,optional,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,interfaces,lists,maps,match,modules,optional,records,stdlib-cleanup,stdlib-json,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/values-cleanup.ms
 import {expect_equal, expect_false, expect_not_equal, expect_ok, fail} from "@std/test.ms"
@@ -31,9 +31,9 @@ impl Closeable for Resource:
         let _ = fs.write_file("{self.dir}/{self.id}", "{inner_closed}", true)
 
 fn leave(dir: String) Int:
-    with let outer = Resource(dir, 1):
-        with let inner = Resource(dir, 2):
-            return 42
+    let _outer = Resource(dir, 1)
+    let _inner = Resource(dir, 2)
+    return 42
 
 fn propagate(result: Result[Int, JsonError]) Result[Int, JsonError]:
     let found = try result
@@ -77,9 +77,8 @@ test "custom equality and hashing define map key identity":
 
 test "Closeable cleanup runs in reverse order before return delivery":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(leave(dir), 42)
-        try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
-        try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))
+    let temporary = fs.temporary("manuscript-cleanup-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(leave(dir), 42)
+    try expect_equal((try fs.read_file("{dir}/1")), Bytes([116, 114, 117, 101]))
+    try expect_equal((try fs.read_file("{dir}/2")), Bytes([102, 97, 108, 115, 101]))

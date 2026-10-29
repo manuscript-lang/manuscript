@@ -19,14 +19,15 @@ fn closed(marker: String) Bool: filesystem().read_file(marker).is_ok()
 fn identity[T](value: T) T: return value
 
 fn amount(text: String, marker: String) Result[Int, TextError]:
-    with let resource = Resource(marker: marker.clone()):
-        let cents = match text.parse_int():
-            some(value):
-                value
-            none:
-                return error(cause: TextError("Invalid amount"))
+    let _resource = Resource(marker: marker.clone())
 
-        return ok(value: cents + 1)
+    let cents = match text.parse_int():
+        some(value):
+            value
+        none:
+            return error(cause: TextError("Invalid amount"))
+
+    return ok(value: cents + 1)
 
 fn early(value: Optional[Int]) Int:
     let number = match value:
@@ -97,16 +98,16 @@ test "match expressions preserve returns and cleanup":
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
     let fs = filesystem()
+    var temporary = fs.temporary("manuscript-match-") | try expect_ok
+    let dir = temporary.path()
+    let parsed = amount(text: "3", marker: "{dir}/parsed")
+    (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
+    closed("{dir}/parsed") | try expect_true
 
-    with let temporary = fs.temporary("manuscript-match-") | try expect_ok:
-        let dir = temporary.path()
-        let parsed = amount(text: "3", marker: "{dir}/parsed")
-        (parsed != Result[Int, TextError].ok(value: 4)) | try expect_false
-        closed("{dir}/parsed") | try expect_true
-
-        let invalid = amount(text: "invalid", marker: "{dir}/invalid")
-        (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
-        closed("{dir}/invalid") | try expect_true
+    let invalid = amount(text: "invalid", marker: "{dir}/invalid")
+    (invalid != Result[Int, TextError].error(cause: TextError("Invalid amount"))) | try expect_false
+    closed("{dir}/invalid") | try expect_true
+    temporary.close()
 
     let nested = match present:
         some(value):

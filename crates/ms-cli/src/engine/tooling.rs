@@ -168,6 +168,7 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             };
             findings.push(CommandDiagnostic {
                 code: finding.code.to_string(),
+                severity: finding.severity.name().to_string(),
                 message: finding.message,
                 position: selection.position(&checked.source_root, &at),
                 fix: finding.fix.as_ref().map(|fix| {
@@ -217,7 +218,8 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         // One file's recovered syntax errors, in source order.
         diagnostics.sort_by_key(|d| (d.position.file.clone(), d.position.line, d.position.column));
     }
-    let status = i32::from(!diagnostics.is_empty());
+    let failing = |d: &CommandDiagnostic| d.severity != "warning" || request.deny_warnings;
+    let status = i32::from(diagnostics.iter().any(failing));
     if request.json {
         return (
             emit_json(io, &diagnostics_document(&diagnostics), status),
@@ -230,10 +232,12 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
         if !root.is_empty() && !pathops::is_abs(&position.file) {
             position.file = pathops::join(&[&root, &position.file]);
         }
-        let label = if issue.phase.is_empty() {
-            &issue.code
-        } else {
+        let label = if !issue.phase.is_empty() {
             &issue.phase
+        } else if issue.severity == "warning" {
+            &format!("warning {}", issue.code)
+        } else {
+            &issue.code
         };
         let end = issue.end.as_ref().map(|e| (e.line, e.column));
         let excerpt = sources.excerpt(&position.file, position.line, position.column, end);
@@ -245,6 +249,22 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
             io.stderr,
             "{count} {}; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)",
             plural(count, "error", "errors")
+        );
+    }
+    let warnings = diagnostics
+        .iter()
+        .filter(|d| d.severity == "warning")
+        .count();
+    if warnings > 0 {
+        let note = if request.deny_warnings {
+            "failing because of --deny-warnings"
+        } else {
+            "warnings do not fail ms lint; pass --deny-warnings to fail on them"
+        };
+        let _ = writeln!(
+            io.stderr,
+            "{warnings} {}; {note}",
+            plural(warnings, "warning", "warnings")
         );
     }
     (status, files)

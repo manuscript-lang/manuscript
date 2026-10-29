@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first",
+        "message": "box is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first",
         "position": {
           "file": "diag-lock-shared-inside-own-guard.ms",
-          "line": 11,
-          "column": 9,
-          "offset": 292
+          "line": 9,
+          "column": 5,
+          "offset": 281
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-lock-shared-inside-own-guard.ms:11:9: type: box is already locked by an enclosing 'with' block, so locking it again waits on itself forever; use the outer guard's value, or end the outer block first\n    |\n 11 |         with var inner = lock(box):\n    |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-lock-shared-inside-own-guard.ms:9:5: type: box is already locked by an earlier guard that is still open, so locking it again waits on itself forever; use that guard's value, or call its close() first\n   |\n 9 |     var inner = lock(box)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

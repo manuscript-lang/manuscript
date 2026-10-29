@@ -321,13 +321,14 @@ Use an interface when callers should depend on behavior rather than on the type.
 import {filesystem, FileSystemError} from "@std/fs.ms"
 
 fn copy_notes() Result[Unit, FileSystemError]:
-    with let source = try filesystem().open("notes.txt", flags: "r", mode: 0):
-        let contents = try source.read_file(max_bytes: 1048576)
-        try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
+    var source = try filesystem().open("notes.txt", flags: "r", mode: 0)
+    let contents = try source.read_file(max_bytes: 1048576)
+    try filesystem().write_file_bytes(path: "backup.txt", data: contents, replace: true)
+    source.close()
     return ok(unit)
 ```
 
-`with` closes the file at block end, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
+The file closes at the end of its scope, even on early return. Closures do not keep it open; see [resource captures](../core-language/functions/function-values-and-closures.md#resource-captures).
 
 ## A few compiler errors to recognize
 

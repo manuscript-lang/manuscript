@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,parser,records,stdlib-cleanup,tier-stdlib,with-cleanup
+# conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,parser,records,stdlib-cleanup,tier-stdlib,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
 import Closeable from "@std/core.ms"
@@ -14,9 +14,9 @@ impl Closeable for Watch:
         self.count.total += 10
 
 fn next(count: Count) Int:
-    with let watch = Watch(count):
-        count.total += 1
-        return 0
+    let _watch = Watch(count)
+    count.total += 1
+    return 0
 
 fn unknown(s: Shape) Int: return area(s)
 

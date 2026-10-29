@@ -11,8 +11,8 @@ fn sink() Unit:
     let got = ch.receive()
 
 export fn main() Int:
-    with let group = WorkerGroup[Box, Int]():
-        var w = group.spawn(sink).get()
-        let sent = w.channel.send(Box(held: share([1])))
-
+    var group = WorkerGroup[Box, Int]()
+    var w = group.spawn(sink).get()
+    let sent = w.channel.send(Box(held: share([1])))
+    group.close()
     return 0

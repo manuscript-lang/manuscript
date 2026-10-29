@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,generics,match,modules,parser,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,generics,match,modules,parser,stdlib-fs,stdlib-path,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,strings,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/library/main.ms
 import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
@@ -58,33 +58,35 @@ fn exercise(path: String) Result[Unit, Error]:
     )
     (system().info().cpu_count > 0) | try expect_true
 
-    with let file = try common_result(
+    var file = try common_result(
         result: filesystem().open(path: path, flags: "r+", mode: 384)
-    ):
-        let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
-        try expect_false(
-            not (
-                try common_result(
-                    result: file.read_at(offset: 0, max_bytes: 5)
-                ) == "HELLO".to_bytes()
-            )
+    )
+    let updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
+    try expect_false(
+        not (
+            try common_result(
+                result: file.read_at(offset: 0, max_bytes: 5)
+            ) == "HELLO".to_bytes()
         )
+    )
 
-        let synced = try common_result(result: file.sync())
-        let resized = try common_result(result: file.truncate(size: 3))
-        (try common_result(result: file.stat())).size | try expect_equal(3)
+    let synced = try common_result(result: file.sync())
+    let resized = try common_result(result: file.truncate(size: 3))
+    (try common_result(result: file.stat())).size | try expect_equal(3)
+    file.close()
 
-    with let watcher = try common_result(
+    var watcher = try common_result(
         result: filesystem().watch_native(
             path: path, recursive: false, max_entries: 4, max_events: 16,
             overflow: "error"
         )
-    ):
-        let appended = try common_result(
-            result: filesystem().append_file(path: path, data: "!")
-        )
-        let events = try common_result(result: watcher.next())
-        (events.length() > 0) | try expect_true
+    )
+    let appended = try common_result(
+        result: filesystem().append_file(path: path, data: "!")
+    )
+    let events = try common_result(result: watcher.next())
+    (events.length() > 0) | try expect_true
+    watcher.close()
 
     let paths = posix()
     try expect_false(

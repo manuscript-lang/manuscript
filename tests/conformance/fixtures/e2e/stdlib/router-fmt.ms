@@ -1,4 +1,4 @@
-# conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-http,stdlib-io,stdlib-log,stdlib-net,stdlib-router,stdlib-shared,stdlib-sse,stdlib-sync,stdlib-testing,strings,testing,tier-io,try-result,with-cleanup
+# conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-http,stdlib-io,stdlib-log,stdlib-net,stdlib-router,stdlib-shared,stdlib-sse,stdlib-sync,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/router.ms
 import {expect_equal, expect_true} from "@std/test.ms"
@@ -156,21 +156,20 @@ test "a handler that sends nothing answers 204":
 
 test "the router serves over a socket":
     let handler = router().handler()
+    let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions())
+    let client = try network().http_client(HttpClientOptions())
+    let response = try client.request(
+        HttpMethod.Get, "http://{server.address()}/users/9", headers()
+    )
+    try expect_equal(response.metadata().status, 200)
 
-    with let server = try network().serve("127.0.0.1:0", handler, HttpServerOptions()):
-        with let client = try network().http_client(HttpClientOptions()):
-            let response = try client.request(
-                HttpMethod.Get, "http://{server.address()}/users/9", headers()
-            )
-            try expect_equal(response.metadata().status, 200)
+    let body = try read_all(body_stream(response))
+    try expect_equal(body.decode_utf8().get(""), "9|-")
 
-            let body = try read_all(body_stream(response))
-            try expect_equal(body.decode_utf8().get(""), "9|-")
-
-            let missing = try client.request(
-                HttpMethod.Delete, "http://{server.address()}/users", headers()
-            )
-            try expect_equal(missing.metadata().status, 405)
+    let missing = try client.request(
+        HttpMethod.Delete, "http://{server.address()}/users", headers()
+    )
+    try expect_equal(missing.metadata().status, 405)
 
 test "mount places a router under a prefix with its own middleware":
     var api = Router()
@@ -255,8 +254,9 @@ type Sink:
 
 impl Transport for Sink:
     var fn write(data: String) Result[Unit, LogError]:
-        with var guard = lock(self.lines):
-            guard.value.append(data.clone())
+        var guard = lock(self.lines)
+        guard.value.append(data.clone())
+        guard.close()
         return ok(unit)
 
     var fn write_bytes(data: Bytes) Result[Unit, LogError]:
@@ -269,8 +269,8 @@ impl Transport for Sink:
         return unit
 
 fn logged(lines: Shared[List[String]]) String:
-    with var guard = lock(lines):
-        return guard.value.join("")
+    var guard = lock(lines)
+    return guard.value.join("")
 
 test "access_log writes one record per request":
     let lines = share(List[String]())

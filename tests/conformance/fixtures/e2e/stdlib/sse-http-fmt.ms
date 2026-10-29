@@ -1,4 +1,4 @@
-# conform: tags=control-flow,faults,formatter,interpolation,modules,optional,parser,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,with-cleanup
+# conform: tags=control-flow,faults,formatter,interpolation,modules,optional,parser,stdlib-http,stdlib-net,stdlib-sse,stdlib-testing,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
 import {expect_equal, expect_false, fail} from "@std/test.ms"
@@ -20,22 +20,20 @@ fn stream_events(exchange: HttpExchange) Result[Unit, HttpError]:
     return ok(unit)
 
 test "HTTP response bodies decode as SSE and close with the reader":
-    with let server = try network().serve(
-        "127.0.0.1:0", stream_events, HttpServerOptions()
-    ):
-        with let client = try network().http_client(HttpClientOptions()):
-            let response = try client.request(
-                HttpMethod.Get, "http://{server.address()}/", headers()
-            )
-            let status = response.metadata().status
-            var events = try reader(body_stream(response))
-            let first = (try next_event(var events)).get()
-            let second = (try next_event(var events)).get()
-            if first.event != "greet" or first.data != "h\u{e9}!": return fail(
-                "first event {first.data}"
-            )
+    let server = try network().serve("127.0.0.1:0", stream_events, HttpServerOptions())
+    let client = try network().http_client(HttpClientOptions())
+    let response = try client.request(
+        HttpMethod.Get, "http://{server.address()}/", headers()
+    )
+    let status = response.metadata().status
+    var events = try reader(body_stream(response))
+    let first = (try next_event(var events)).get()
+    let second = (try next_event(var events)).get()
+    if first.event != "greet" or first.data != "h\u{e9}!": return fail(
+        "first event {first.data}"
+    )
 
-            try expect_false(second.event != "message" or second.data != "second")
-            try expect_false((try next_event(var events)).is_some())
-            events.close()
-            try expect_equal(status, 200)
+    try expect_false(second.event != "message" or second.data != "second")
+    try expect_false((try next_event(var events)).is_some())
+    events.close()
+    try expect_equal(status, 200)

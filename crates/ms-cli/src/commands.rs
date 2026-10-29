@@ -97,22 +97,31 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
     let mut entries = Vec::new();
     for code in codes.iter().copied() {
         let found = ms_syntax::diag::explain(code)
-            .map(|c| (c.code, c.family, c.repair))
-            .or_else(|| ms_tooling::lint::explain(code).map(|r| (r.code, r.family, r.repair)));
-        let Some((code, family, repair)) = found else {
+            .map(|c| (c.code, c.family, c.repair, ""))
+            .or_else(|| {
+                ms_tooling::lint::explain(code)
+                    .map(|r| (r.code, r.family, r.repair, r.severity.name()))
+            });
+        let Some((code, family, repair, severity)) = found else {
             let _ = writeln!(io.stderr, "ms guide: unknown diagnostic code {code}");
             status = 1;
             continue;
         };
         if json {
-            entries.push(
-                crate::json::Json::object()
-                    .with("code", crate::json::Json::str(code))
-                    .with("family", crate::json::Json::str(family))
-                    .with("repair", crate::json::Json::str(repair)),
-            );
-        } else {
+            let mut entry = crate::json::Json::object()
+                .with("code", crate::json::Json::str(code))
+                .with("family", crate::json::Json::str(family));
+            if !severity.is_empty() {
+                entry = entry.with("severity", crate::json::Json::str(severity));
+            }
+            entries.push(entry.with("repair", crate::json::Json::str(repair)));
+        } else if severity.is_empty() {
             let _ = writeln!(io.stdout, "{code}: {family}\n  repair: {repair}");
+        } else {
+            let _ = writeln!(
+                io.stdout,
+                "{code}: {family} ({severity})\n  repair: {repair}"
+            );
         }
     }
     if json {

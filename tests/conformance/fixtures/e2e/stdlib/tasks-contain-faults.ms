@@ -1,4 +1,4 @@
-# conform: tags=closures,faults,stdlib-tasks,tier-stdlib,with-cleanup
+# conform: tags=closures,faults,stdlib-tasks,tier-stdlib,scope-cleanup
 # conform: phase=run
 import stdout from "@std/io.ms"
 import {TaskError, TaskGroup} from "@std/tasks.ms"
@@ -16,23 +16,26 @@ fn say(text: String) Unit:
 
 # A fault in a contained group ends only that task: siblings keep their results.
 export fn main() Int:
-    with let group = TaskGroup[Int](contain_faults: true):
-        let bad = group.spawn(fn ch: boom([1]))
-        let good = group.spawn(fn ch: 7)
+    var group = TaskGroup[Int](contain_faults: true)
+    let bad = group.spawn(fn ch: boom([1]))
+    let good = group.spawn(fn ch: 7)
 
-        match bad.result():
-            ok(_value): say("unexpected result")
-            error(reason): say(describe(reason))
+    match bad.result():
+        ok(_value): say("unexpected result")
+        error(reason): say(describe(reason))
 
-        match good.result():
-            ok(value): say("good {value}")
-            error(_other): say("good failed")
+    match good.result():
+        ok(value): say("good {value}")
+        error(_other): say("good failed")
 
-    with let group = TaskGroup[Int](contain_faults: true):
-        group.spawn(fn ch: boom([1]))
+    group.close()
 
-        match group.wait():
-            ok(_unit): say("wait ok")
-            error(reason): say(describe(reason))
+    var group2 = TaskGroup[Int](contain_faults: true)
+    group2.spawn(fn ch: boom([1]))
 
+    match group2.wait():
+        ok(_unit): say("wait ok")
+        error(reason): say(describe(reason))
+
+    group2.close()
     return 0

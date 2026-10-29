@@ -209,8 +209,8 @@ pub struct Checker {
     pub(crate) function: usize,
     pub(crate) serial: usize,
     pub(crate) loops: usize,
-    /// `(function, place)` of each `lock` guard whose `with` block is being checked.
-    pub(crate) held_locks: Vec<(usize, String)>,
+    /// `(function, place)` of each `lock` guard that is still held.
+    pub(crate) held_locks: Vec<(usize, String, Name)>,
     pub(crate) test_function: usize,
     pub(crate) rejected_names: HashSet<Name>,
     pub(crate) unknown_type: bool,

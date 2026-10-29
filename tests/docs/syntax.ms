@@ -75,10 +75,14 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
         total = value
     if var value = items.first():
         value += 1
-    with let resource = acquire():
-        resource.read()
-    with var guard = lock():
-        guard.value = total
+
+    var resource = acquire()
+    resource.read()
+    resource.close()
+
+    var guard = lock()
+    guard.value = total
+    guard.close()
 
     let result = match state:
         Ready: 0

@@ -5,7 +5,7 @@ use crate::flow::{FlowBuilder, Site, StmtView};
 use ms_check::syntax::DeclRef;
 use ms_check::{ModRef, Program};
 use ms_syntax::visit::{Visitor, walk_callable, walk_expr};
-use ms_syntax::{DeclKind, Expr, ExprKind, Method, Stmt, StmtKind, UnaryOp};
+use ms_syntax::{DeclKind, Expr, ExprKind, Method, NodeId, Stmt, StmtKind, UnaryOp};
 use std::collections::{HashMap, HashSet};
 
 /// An inspection entity, as far as facts need it.
@@ -112,12 +112,19 @@ pub fn collect_facts(inspection: &InspectionRows, program: &Program) -> Facts {
         }
         let source: &str = &module.source;
         let module_facts = module.facts();
+        let scoped: HashSet<NodeId> = module_facts
+            .patterns
+            .iter()
+            .filter(|(_, b)| program.implicit_closes.contains(&b.uid))
+            .map(|(id, _)| *id)
+            .collect();
         let flow = FlowBuilder {
             file: module.file.as_str(),
             lines: source.split('\n').collect(),
             sites: &sites,
             keys: &id_to_key,
             const_use: &module_facts.const_use,
+            scoped: &scoped,
         };
         collect_bodies(&mut facts, module, &flow);
     }
@@ -160,7 +167,7 @@ fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
         if let Some(fact) = facts.entities.get_mut(&key) {
             fact.first = decl.pos().line as usize;
             fact.last = last;
-            (fact.tries, fact.withs) = count_declaration(decl);
+            (fact.tries, fact.scopes) = count_declaration(flow.scoped, decl);
             let steps = match &decl.decl().kind {
                 DeclKind::Fn(f) => flow.body(&f.body),
                 DeclKind::Test(t) => flow.body(&t.body),
@@ -184,23 +191,36 @@ fn collect_bodies(facts: &mut Facts, module: &ModRef, flow: &FlowBuilder) {
             if let Some(fact) = facts.entities.get_mut(&key) {
                 fact.first = method.pos.line as usize;
                 fact.last = end;
-                (fact.tries, fact.withs) = count_method(method);
+                (fact.tries, fact.scopes) = count_method(flow.scoped, method);
                 facts.flows.insert(key, flow.body(&method.func.body));
             }
         }
     }
 }
 
-#[derive(Default)]
-struct Sites {
+struct Sites<'a> {
+    scoped: &'a HashSet<NodeId>,
     tries: usize,
-    withs: usize,
+    /// Bindings the scope closes.
+    scopes: usize,
 }
 
-impl Visitor for Sites {
+impl<'a> Sites<'a> {
+    fn new(scoped: &'a HashSet<NodeId>) -> Self {
+        Sites {
+            scoped,
+            tries: 0,
+            scopes: 0,
+        }
+    }
+}
+
+impl Visitor for Sites<'_> {
     fn stmt(&mut self, s: &Stmt) {
-        if matches!(s.kind, StmtKind::With { .. }) {
-            self.withs += 1;
+        if let StmtKind::Bind { pattern, .. } = &s.kind
+            && self.scoped.contains(&pattern.id)
+        {
+            self.scopes += 1;
         }
     }
 
@@ -219,21 +239,21 @@ impl Visitor for Sites {
 
 /// Counts one body. A declaration with methods reports only its own body;
 /// each method counts its own.
-fn count_declaration(decl: &DeclRef) -> (usize, usize) {
-    let mut sites = Sites::default();
+fn count_declaration(scoped: &HashSet<NodeId>, decl: &DeclRef) -> (usize, usize) {
+    let mut sites = Sites::new(scoped);
     match &decl.decl().kind {
         DeclKind::Fn(f) => walk_callable(&mut sites, &f.params, &f.body),
         DeclKind::Test(t) => walk_callable(&mut sites, &[], &t.body),
         DeclKind::Const(c) => walk_expr(&mut sites, &c.value),
         _ => {}
     }
-    (sites.tries, sites.withs)
+    (sites.tries, sites.scopes)
 }
 
-fn count_method(method: &Method) -> (usize, usize) {
-    let mut sites = Sites::default();
+fn count_method(scoped: &HashSet<NodeId>, method: &Method) -> (usize, usize) {
+    let mut sites = Sites::new(scoped);
     walk_callable(&mut sites, &method.func.params, &method.func.body);
-    (sites.tries, sites.withs)
+    (sites.tries, sites.scopes)
 }
 
 #[cfg(test)]

@@ -49,13 +49,16 @@ test "primitive equality captures operands once in order":
 
 fn conditional(marker: String, take: Bool) Int:
     if take:
-        with let resource = Resource(marker.clone()): return 7
+        let _resource = Resource(marker.clone())
+        return 7
+
     return 8
 
 fn matched(marker: String) Int:
     return match some(1):
         some(value):
-            with let resource = Resource(marker.clone()): return value
+            var _resource = Resource(marker.clone())
+            return value
             0
         none: 0
 
@@ -63,24 +66,26 @@ fn defaulted(
     marker: String,
     value: Int = match some(2):
         some(number):
-            with let resource = Resource(marker.clone()):
-                let _used = unit
+            var _resource = Resource(marker.clone())
+            let _used = unit
+            _resource.close()
             number
         none: 0
 ) Int: value
 
 fn nested(marker: String) Unit:
     let callback = fn() Unit:
-        with let resource = Resource(marker.clone()): return
+        let _resource = Resource(marker.clone())
+        return
+
     callback()
 
 fn failed() Result[Int, TextError]: error(TextError("expected"))
 
 fn propagate(marker: String) Result[Int, TextError]:
-    with let resource = Resource(marker.clone()):
-        let value = try failed()
-        return ok(value)
-
+    var _resource = Resource(marker.clone())
+    let value = try failed()
+    return ok(value)
     return ok(0)
 
 fn bare_propagate() Result[Int, TextError]:
@@ -95,10 +100,9 @@ fn bool_failed() Result[Bool, TextError]: error(TextError("expected"))
 
 fn nested_results(marker: String) Result[Int, TextError]:
     let child = fn() Result[Bool, TextError]:
-        with let resource = Resource(marker.clone()):
-            let value = try bool_failed()
-            return ok(value)
-
+        var _resource = Resource(marker.clone())
+        let value = try bool_failed()
+        return ok(value)
         return ok(false)
 
     let _ignored = child()
@@ -108,9 +112,9 @@ fn nested_results(marker: String) Result[Int, TextError]:
 fn statement_match_try(marker: String) Result[Int, TextError]:
     match some(1):
         some(_):
-            with let resource = Resource(marker.clone()):
-                let value = try failed()
-                return ok(value)
+            let _resource = Resource(marker.clone())
+            let value = try failed()
+            return ok(value)
         none: return ok(0)
 
     return ok(-1)
@@ -121,8 +125,9 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
     while index < 2:
         let _selected = match some(index):
             some(number):
-                with let resource = Resource(marker.clone()):
-                    let _value = try failed()
+                var _resource = Resource(marker.clone())
+                let _value = try failed()
+                _resource.close()
                 number
             none: 0
 
@@ -132,55 +137,53 @@ fn value_match_loop_try(marker: String) Result[Int, TextError]:
 
 test "combined lowering retains callable state and try boundaries":
     let fs = filesystem()
-
-    with let temporary = fs.temporary("manuscript-scalar-") | try expect_ok:
-        let dir = temporary.path()
-        let expected = Result[Int, TextError].error(TextError("expected"))
-        try expect_equal(nested_results("{dir}/nested"), expected)
-        try expect_true(closed("{dir}/nested"))
-        try expect_equal(statement_match_try("{dir}/statement"), expected)
-        try expect_true(closed("{dir}/statement"))
-        try expect_equal(value_match_loop_try("{dir}/loop"), expected)
-        try expect_true(closed("{dir}/loop"))
+    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let dir = temporary.path()
+    let expected = Result[Int, TextError].error(TextError("expected"))
+    try expect_equal(nested_results("{dir}/nested"), expected)
+    try expect_true(closed("{dir}/nested"))
+    try expect_equal(statement_match_try("{dir}/statement"), expected)
+    try expect_true(closed("{dir}/statement"))
+    try expect_equal(value_match_loop_try("{dir}/loop"), expected)
+    try expect_true(closed("{dir}/loop"))
 
 test "cleanup remains owned by its source callable":
     let fs = filesystem()
+    let temporary = fs.temporary("manuscript-scalar-") | try expect_ok
+    let dir = temporary.path()
+    try expect_equal(conditional("{dir}/skipped", take: false), 8)
+    try expect_false(closed("{dir}/skipped"))
+    try expect_equal(conditional("{dir}/taken", take: true), 7)
+    try expect_true(closed("{dir}/taken"))
+    try expect_equal(matched("{dir}/matched"), 1)
+    try expect_true(closed("{dir}/matched"))
+    try expect_equal(defaulted("{dir}/default"), 2)
+    try expect_true(closed("{dir}/default"))
+    try expect_equal(defaulted("{dir}/supplied", 9), 9)
+    try expect_false(closed("{dir}/supplied"))
+    nested("{dir}/nested")
+    try expect_true(closed("{dir}/nested"))
+    try expect_equal(
+        propagate("{dir}/propagated"),
+        Result[Int, TextError].error(TextError("expected"))
+    )
+    try expect_true(closed("{dir}/propagated"))
+    try expect_equal(
+        bare_propagate(), Result[Int, TextError].error(TextError("expected"))
+    )
+    try expect_equal(
+        equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
+    )
 
-    with let temporary = fs.temporary("manuscript-scalar-") | try expect_ok:
-        let dir = temporary.path()
-        try expect_equal(conditional("{dir}/skipped", take: false), 8)
-        try expect_false(closed("{dir}/skipped"))
-        try expect_equal(conditional("{dir}/taken", take: true), 7)
-        try expect_true(closed("{dir}/taken"))
-        try expect_equal(matched("{dir}/matched"), 1)
-        try expect_true(closed("{dir}/matched"))
-        try expect_equal(defaulted("{dir}/default"), 2)
-        try expect_true(closed("{dir}/default"))
-        try expect_equal(defaulted("{dir}/supplied", 9), 9)
-        try expect_false(closed("{dir}/supplied"))
-        nested("{dir}/nested")
-        try expect_true(closed("{dir}/nested"))
-        try expect_equal(
-            propagate("{dir}/propagated"),
-            Result[Int, TextError].error(TextError("expected"))
-        )
-        try expect_true(closed("{dir}/propagated"))
-        try expect_equal(
-            bare_propagate(), Result[Int, TextError].error(TextError("expected"))
-        )
-        try expect_equal(
-            equality_propagate(), Result[Bool, TextError].error(TextError("expected"))
-        )
+    var index = 0
 
-        var index = 0
+    while index < 3:
+        index += 1
 
-        while index < 3:
-            index += 1
+        let _resource = Resource("{dir}/loop{index}")
+        if index == 1: continue
+        if index == 2: break
 
-            with let resource = Resource("{dir}/loop{index}"):
-                if index == 1: continue
-                if index == 2: break
-
-        try expect_true(closed("{dir}/loop1"))
-        try expect_true(closed("{dir}/loop2"))
-        try expect_false(closed("{dir}/loop3"))
+    try expect_true(closed("{dir}/loop1"))
+    try expect_true(closed("{dir}/loop2"))
+    try expect_false(closed("{dir}/loop3"))

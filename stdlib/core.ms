@@ -57,7 +57,7 @@ export fn category(cause: Error) Optional[ErrorCategory]: ...
 # Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 
-# A resource that can be closed. `with` closes a bound resource on every exit.
+# A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
 export interface Closeable:
     # Releases the implementation's resource state; with calls this on every scope exit.
     # Cleanup runs during return, expected errors, faults, and cancellation too.

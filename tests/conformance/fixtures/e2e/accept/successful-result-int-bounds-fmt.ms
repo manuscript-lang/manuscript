@@ -1,4 +1,4 @@
-# conform: tags=closures,control-flow,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,with-cleanup
+# conform: tags=closures,control-flow,formatter,interfaces,lists,match,modules,mutation,optional,parser,records,stdlib-cleanup,stdlib-errors,stdlib-testing,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
 import Closeable from "@std/core.ms"
@@ -90,8 +90,8 @@ impl Closeable for BoundedResultCleanup:
         self.visits.append(7)
 
 fn cleanup(visits: List[Int]) Int:
-    with let resource = BoundedResultCleanup(visits):
-        return total(true)
+    let _resource = BoundedResultCleanup(visits)
+    return total(true)
 
 fn argument(value: Int, var visits: List[Int]) Int:
     visits.append(value)

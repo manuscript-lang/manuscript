@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 1,
     "stdout": "",
-    "stderr": "<DIR>/lifecycle-main.ms:71:13: type: local binding completed is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 71 |         let completed = unit\n    |             ^\n<DIR>/lifecycle-main.ms:90:17: type: local binding completed is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 90 |             let completed = unit\n    |                 ^\n<DIR>/lifecycle-main.ms:102:17: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n     |\n 102 |             let written = stderr().write(\"{cause.message()}\\n\")\n     |                 ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    "stderr": "<DIR>/lifecycle-main.ms:93:17: type: binding completed shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n    |\n 93 |             let completed = ()\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
   }
 }
