@@ -143,6 +143,8 @@ pub fn analyze(cx: &Context) -> Outcome {
         hidden: 0,
         ret_expr: None,
         ret_hit: false,
+        carrier_move: None,
+        carrier_clone: None,
         owned_return: false,
         owned_paths: Vec::new(),
         lends: Vec::new(),
@@ -227,6 +229,10 @@ struct Walker<'a> {
     ret_expr: Option<NodeId>,
     /// The expression being returned lent a part of a read-only parameter.
     ret_hit: bool,
+    /// The use of an owned borrowing local that may move it: the value of a binding or a `return`.
+    carrier_move: Option<NodeId>,
+    /// A `clone()` of a borrowing local that is the initializer of a binding, which holds the same sources.
+    carrier_clone: Option<NodeId>,
     /// Some return gives back a value of its own.
     owned_return: bool,
     /// Returns (and `try` exits) that give back an owned value other than `none`.
@@ -424,7 +430,33 @@ impl Walker<'_> {
                 }
                 self.expr(arg, Demand::Consume);
             }
-            None => self.expr(e, Demand::Consume),
+            None => match self.movable_carrier(e) {
+                Some(origins) => {
+                    // `return it` hands the hold to the caller, which is only possible when
+                    // `it` holds read-only parameters.
+                    self.carrier_move = Some(e.id);
+                    self.expr(e, Demand::Consume);
+                    self.carrier_move = None;
+                    if !self.lend(e, &origins, None) {
+                        let mut roots: Vec<String> = Vec::new();
+                        for o in &origins {
+                            let r = self.name_of(o.root).to_string();
+                            if !roots.contains(&r) {
+                                roots.push(r);
+                            }
+                        }
+                        let text = self.expr_text(e);
+                        self.error(
+                            e.pos,
+                            format!(
+                                "cannot return `{text}`: it holds a borrow of `{}`, which is not a read-only parameter, so the caller could not keep it alive",
+                                roots.join("`, `")
+                            ),
+                        );
+                    }
+                }
+                None => self.expr(e, Demand::Consume),
+            },
         }
         // A call whose result is an owned copy (an interface call, or a lending call over a
         // temporary), or a part converted to an interface, hands back a value of its own, not a
@@ -713,7 +745,7 @@ impl Walker<'_> {
                 out.extend(o);
             }
         }
-        out
+        self.with_held(out)
     }
 
     /// The places the borrowing value `a` holds: what its binding was built from, or, when that
@@ -1393,6 +1425,62 @@ impl Walker<'_> {
         }
     }
 
+    /// The places `it.clone()` holds when `it` is a borrowing value: a copy views the same sources.
+    fn cloned_carrier_origins(&self, e: &Expr) -> Vec<Place> {
+        let ExprKind::Call { callee, args } = &e.kind else {
+            return Vec::new();
+        };
+        let ExprKind::Member { left, name } = &callee.kind else {
+            return Vec::new();
+        };
+        if name.as_str() != "clone" || !args.is_empty() || !borrows(&self.cx.m.ty(left)) {
+            return Vec::new();
+        }
+        self.held_places(left)
+    }
+
+    /// `places` plus, for each one rooted in a local that holds borrows (a carrier or a closure),
+    /// the sources it holds: a value derived from it (a call result, a binding of its `ref` field,
+    /// a closure that captures it) must keep those sources unchanged too, even after the holder
+    /// itself is gone.
+    fn with_held(&self, places: Vec<Place>) -> Vec<Place> {
+        let mut out = places.clone();
+        for p in &places {
+            let borrowed = self
+                .meta
+                .get(&p.root)
+                .is_some_and(|m| matches!(m.perm, Perm::Borrowed | Perm::MutBorrowed));
+            if borrowed {
+                continue;
+            }
+            for a in self.active.iter().filter(|a| a.holder == p.root) {
+                for (o, _) in &a.origins {
+                    if !out.contains(o) {
+                        out.push(o.clone());
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// The origins held by `e` when it names an owned local borrowing value, which can be moved
+    /// to a new binding or returned: the hold goes with it.
+    fn movable_carrier(&self, e: &Expr) -> Option<Vec<Place>> {
+        if !matches!(e.kind, ExprKind::Name(_)) {
+            return None;
+        }
+        let Resolution::Local(b) = self.cx.m.resolution(e) else {
+            return None;
+        };
+        let m = self.meta.get(&b.uid)?;
+        let owned = matches!(m.perm, Perm::Mutable | Perm::Immutable)
+            && m.parameter.is_none()
+            && !m.is_receiver
+            && !self.captured.iter().any(|c| c.contains(&b.uid));
+        (owned && borrows(&b.ty) && !m.origins.is_empty()).then(|| m.origins.clone())
+    }
+
     /// `let it = c.iter()` or `var it = Iter(source: c)`: a borrowing value owns its own storage
     /// (a `var` may change its fields) but holds the places it was built from: they stay
     /// unchanged until the binding's last use, and the binding can never be moved elsewhere.
@@ -1409,12 +1497,31 @@ impl Walker<'_> {
         } else {
             Perm::Immutable
         };
+        let moved = self.movable_carrier(value);
         let origins = match &value.kind {
-            ExprKind::Call { .. } => self.call_origins(value),
-            _ => Vec::new(),
+            ExprKind::Call { .. } => {
+                let direct = self.call_origins(value);
+                if direct.is_empty() {
+                    self.cloned_carrier_origins(value)
+                } else {
+                    direct
+                }
+            }
+            _ => moved.clone().unwrap_or_default(),
         };
         let reported = self.diags.len();
-        self.expr(value, Demand::Read);
+        if matches!(value.kind, ExprKind::Call { .. }) && !origins.is_empty() {
+            self.carrier_clone = Some(value.id);
+        }
+        if moved.is_some() {
+            // `let b = it` moves the hold: `it` ends at this use and `b` holds what it held.
+            self.carrier_move = Some(value.id);
+            self.expr(value, Demand::Consume);
+            self.carrier_move = None;
+        } else {
+            self.expr(value, Demand::Read);
+        }
+        self.carrier_clone = None;
         if origins.is_empty() && self.diags.len() > reported {
             // The construction already said why (a `ref` field given a computed value).
             self.declare(b, role, perm, None, false);
@@ -1453,7 +1560,12 @@ impl Walker<'_> {
         }
         self.active.push(Borrow {
             holder: b.uid,
-            holder_name: b.name,
+            // The hidden iterator of a `for` is reported as the loop.
+            holder_name: if b.name.as_str().starts_with('$') {
+                n("for")
+            } else {
+                b.name
+            },
             origins: origins.into_iter().map(|p| (p, false)).collect(),
             pos: pattern.pos,
             why: "borrowing value".to_string(),
@@ -2040,12 +2152,16 @@ impl Walker<'_> {
                 };
                 Some(self.resolve(&Place::local(b.uid)))
             }
-            ExprKind::Member { left, name } => Some(
-                self.pure_places(left)?
-                    .iter()
-                    .map(|p| p.then(Step::Field(*name)))
-                    .collect(),
-            ),
+            ExprKind::Member { left, name } => {
+                let lefts = self.pure_places(left)?;
+                let mut out: Vec<Place> =
+                    lefts.iter().map(|p| p.then(Step::Field(*name))).collect();
+                // A part reached through a `ref` field is the sources the carrier holds.
+                if field_is_ref(&self.cx.m.ty(left), *name) {
+                    out = self.with_held(out);
+                }
+                Some(out)
+            }
             ExprKind::Index { left, .. }
             | ExprKind::Apply {
                 left,
@@ -2178,10 +2294,10 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.lambda, m.is_receiver)
         };
         let name = b.name;
-        if borrows(&b.ty) {
+        if borrows(&b.ty) && self.carrier_move != Some(e.id) {
             self.error(
                 e.pos,
-                format!("cannot move `{name}`: it holds a borrow of another value and cannot outlive it; use it in place, call its methods, or pass it to a function that only reads or changes it"),
+                format!("cannot move `{name}`: it holds a borrow of another value and cannot outlive it; move a local one into a new variable or return it, or use it in place, call its methods, or pass it to a function that only reads or changes it"),
             );
             self.record(e.id, b, Access::Move);
             return;
@@ -2377,6 +2493,7 @@ impl Walker<'_> {
             }
             if matches!(self.cx.m.info(e).native_str(), "clone" | "copy")
                 && crate::types::borrows(&self.cx.m.ty(r))
+                && self.carrier_clone != Some(e.id)
             {
                 let text = self.expr_text(r);
                 self.error(
@@ -2811,7 +2928,7 @@ impl Walker<'_> {
                     self.record(e.id, b, Access::Borrow);
                     facts.push((b.uid, CaptureMode::Borrow));
                 }
-                for p in resolved {
+                for p in self.with_held(resolved) {
                     held.push((p, changed));
                 }
             }
