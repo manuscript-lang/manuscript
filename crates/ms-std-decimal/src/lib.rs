@@ -105,7 +105,10 @@ impl Dec {
 
     /// Packs a normalized coefficient of at most 34 digits.
     fn pack(coef: &BigInt, exp: i64) -> Dec {
-        let wide = coef.to_i128().unwrap_or(0);
+        Dec::pack_wide(coef.to_i128().unwrap_or(0), exp)
+    }
+
+    fn pack_wide(wide: i128, exp: i64) -> Dec {
         Dec {
             lo: wide as u64,
             hi: (wide >> 64) as i64,
@@ -175,13 +178,24 @@ impl Dec {
     }
 
     pub fn from_int(n: i64) -> Dec {
-        let (coef, exp) = normalize(BigInt::from(n), 0);
-        Dec::pack(&coef, exp)
+        Dec::from_integer(n.unsigned_abs(), n < 0)
     }
 
     pub fn from_uint(n: u64) -> Dec {
-        let (coef, exp) = normalize(BigInt::from(n), 0);
-        Dec::pack(&coef, exp)
+        Dec::from_integer(n, false)
+    }
+
+    fn from_integer(mut magnitude: u64, negative: bool) -> Dec {
+        if magnitude == 0 {
+            return Dec::ZERO;
+        }
+        let mut exp = 0;
+        while magnitude.is_multiple_of(10) {
+            magnitude /= 10;
+            exp += 1;
+        }
+        let coefficient = i128::from(magnitude);
+        Dec::pack_wide(if negative { -coefficient } else { coefficient }, exp)
     }
 
     pub fn is_zero(&self) -> bool {
@@ -217,7 +231,9 @@ impl Dec {
     }
 
     pub fn negate(&self) -> Dec {
-        Dec::pack(&-self.coefficient(), self.exp)
+        // Every valid coefficient has at most 34 decimal digits, so its negation fits i128.
+        let coefficient = (i128::from(self.hi) << 64) | i128::from(self.lo);
+        Dec::pack_wide(-coefficient, self.exp)
     }
 
     /// The exact sum and difference share one alignment.
@@ -498,6 +514,53 @@ mod tests {
         assert_eq!(d("2d").to_float(), 2.0);
         assert_eq!(d("0.1d").to_float(), 0.1);
         assert_eq!(Dec::from_int(123), d("123d"));
+    }
+
+    #[test]
+    fn integer_conversions_match_bigint_normalization() {
+        let check = |signed: i64, unsigned: u64| {
+            let (coefficient, exp) = normalize(BigInt::from(signed), 0);
+            assert_eq!(Dec::from_int(signed), Dec::pack(&coefficient, exp));
+            let (coefficient, exp) = normalize(BigInt::from(unsigned), 0);
+            assert_eq!(Dec::from_uint(unsigned), Dec::pack(&coefficient, exp));
+        };
+        for n in [0, 1, 9, 10, 100, i64::MAX as u64, 1u64 << 63, u64::MAX] {
+            check(n as i64, n);
+        }
+        let mut power = 1u64;
+        for _ in 0..19 {
+            for n in [power - 1, power, power + 1] {
+                check(n as i64, n);
+                check(-(n as i64), n);
+            }
+            power *= 10;
+        }
+        let mut sample = 0x9e3779b97f4a7c15u64;
+        for _ in 0..10000 {
+            sample = sample.wrapping_mul(6364136223846793005).wrapping_add(1);
+            check(sample as i64, sample);
+        }
+    }
+
+    #[test]
+    fn negation_preserves_normalized_coefficients_and_quantum() {
+        for text in [
+            "0",
+            "1",
+            "-1",
+            "1.25",
+            "-1.25",
+            "9223372036854775808",
+            "9999999999999999999999999999999999",
+            "1e-6176",
+            "1e6144",
+            "9.999999999999999999999999999999999e6144",
+        ] {
+            let value = d(text);
+            let expected = Dec::pack(&-value.coefficient(), value.exp);
+            assert_eq!(value.negate(), expected, "{text}");
+            assert_eq!(expected.negate(), value, "{text}");
+        }
     }
 
     #[test]

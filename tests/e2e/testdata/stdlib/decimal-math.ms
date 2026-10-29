@@ -10,6 +10,27 @@ test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(1e400d.to_float(), none)
     try expect_equal(123.to_decimal(), 123d)
 
+test "decimal integer conversions normalize boundary values":
+    let minimum: Int = -9223372036854775808
+    let maximum: Int = 9223372036854775807
+    let unsigned: UInt64 = 18446744073709551615
+    let power: UInt64 = 10000000000000000000
+    try expect_equal(minimum.to_decimal(), -9223372036854775808d)
+    try expect_equal(maximum.to_decimal(), 9223372036854775807d)
+    try expect_equal(unsigned.to_decimal(), 18446744073709551615d)
+    try expect_equal(power.to_decimal(), 1e19d)
+    try expect_equal((-1000000000000000000).to_decimal(), -1e18d)
+    try expect_equal(0.to_decimal(), 0d)
+
+test "decimal negation keeps full precision and exponent":
+    let maximum = 9.999999999999999999999999999999999e6144d
+    let minimum = 1e-6176d
+    try expect_equal(-maximum, -9.999999999999999999999999999999999e6144d)
+    try expect_equal(-(-maximum), maximum)
+    try expect_equal(-minimum, -1e-6176d)
+    try expect_equal(-(-minimum), minimum)
+    try expect_equal(-0d, 0d)
+
 test "math rounding signs and exact identities":
     try expect_false((-2.5).abs() != 2.5 or (-3).abs() != 3)
     try expect_false(ceil(-1.5) != -1.0 or floor(-1.5) != -2.0)
