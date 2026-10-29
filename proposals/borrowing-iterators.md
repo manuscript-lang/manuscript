@@ -10,7 +10,7 @@
 
 ## Status
 
-Proposal, 2026-10-29, against `main` at `d636bd3e`. Direction (Chinmay): "Can we update the iterator to just return ref instead of own value?"; "How about we make the container own the iterator?"; "Try to follow the Rust model as much as possible. Figure out the right way of doing it and just do it." Supersedes `borrowing-iteration.md` (#1904). `one-borrow-model.md` deferred `ref` in field and function types after review; this proposal revisits only fields.
+Implemented in #1908, #1910 and the Iterable change. Proposal, 2026-10-29, against `main` at `d636bd3e`. Direction (Chinmay): "Can we update the iterator to just return ref instead of own value?"; "How about we make the container own the iterator?"; "Try to follow the Rust model as much as possible. Figure out the right way of doing it and just do it." Supersedes `borrowing-iteration.md` (#1904). `one-borrow-model.md` deferred `ref` in field and function types after review; this proposal revisits only fields.
 
 ## Problem
 
