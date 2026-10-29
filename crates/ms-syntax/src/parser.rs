@@ -1512,6 +1512,9 @@ impl<'a> Parser<'a> {
                     if !matches!(pat.kind, PatternKind::Name(_)) {
                         return self.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch");
                     }
+                    if self.kind() == Tok::LParen {
+                        return self.fail(t, "if let unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if let value = optional:'");
+                    }
                     binding = Some(pat);
                     self.need(Tok::Assign)?;
                 }
