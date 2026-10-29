@@ -1,0 +1,828 @@
+{
+  "ms": "/tmp/string-round2/reverse-width-conform-inputs/ms",
+  "summary": {
+    "total": 2393,
+    "pass": 2393,
+    "fail": 0,
+    "expected_fail": 0,
+    "unexpected_pass": 0,
+    "unrecorded": 0,
+    "pass_rate": 100.00
+  },
+  "by_phase": {
+    "check": {
+      "total": 1603,
+      "pass": 1603,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "run": {
+      "total": 531,
+      "pass": 531,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "test": {
+      "total": 259,
+      "pass": 259,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    }
+  },
+  "by_tag": {
+    "alternatives": {
+      "total": 78,
+      "pass": 78,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "closures": {
+      "total": 403,
+      "pass": 403,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "control-flow": {
+      "total": 840,
+      "pass": 840,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "decimal": {
+      "total": 20,
+      "pass": 20,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "destructuring": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "diagnostics": {
+      "total": 1591,
+      "pass": 1591,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "faults": {
+      "total": 271,
+      "pass": 271,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "functions": {
+      "total": 316,
+      "pass": 316,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "fuzz": {
+      "total": 650,
+      "pass": 650,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "generics": {
+      "total": 216,
+      "pass": 216,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "interfaces": {
+      "total": 204,
+      "pass": 204,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "interpolation": {
+      "total": 602,
+      "pass": 602,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "lexer": {
+      "total": 11,
+      "pass": 11,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "lists": {
+      "total": 631,
+      "pass": 631,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "maps": {
+      "total": 73,
+      "pass": 73,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "match": {
+      "total": 164,
+      "pass": 164,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "modules": {
+      "total": 466,
+      "pass": 466,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "mutation": {
+      "total": 149,
+      "pass": 149,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "numbers": {
+      "total": 663,
+      "pass": 663,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "optional": {
+      "total": 222,
+      "pass": 222,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "parser": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "perf": {
+      "total": 7,
+      "pass": 7,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "projects": {
+      "total": 6,
+      "pass": 6,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "records": {
+      "total": 353,
+      "pass": 353,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "scope-cleanup": {
+      "total": 69,
+      "pass": 69,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "sets": {
+      "total": 36,
+      "pass": 36,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-archive": {
+      "total": 4,
+      "pass": 4,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-bigint": {
+      "total": 7,
+      "pass": 7,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-binary": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-bits": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-bitset": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-bytes": {
+      "total": 37,
+      "pass": 37,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-channels": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-cleanup": {
+      "total": 15,
+      "pass": 15,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-collections": {
+      "total": 66,
+      "pass": 66,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-compress": {
+      "total": 8,
+      "pass": 8,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-crypto": {
+      "total": 7,
+      "pass": 7,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-csv": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-decimal": {
+      "total": 13,
+      "pass": 13,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-deque": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-encoding": {
+      "total": 8,
+      "pass": 8,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-errors": {
+      "total": 48,
+      "pass": 48,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-faults": {
+      "total": 35,
+      "pass": 35,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-fs": {
+      "total": 20,
+      "pass": 20,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-html": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-http": {
+      "total": 19,
+      "pass": 19,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-io": {
+      "total": 453,
+      "pass": 453,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-json": {
+      "total": 17,
+      "pass": 17,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-jsonstream": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-log": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-math": {
+      "total": 8,
+      "pass": 8,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-net": {
+      "total": 21,
+      "pass": 21,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-numbers": {
+      "total": 4,
+      "pass": 4,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-optional": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-path": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-process": {
+      "total": 22,
+      "pass": 22,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-processes": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-property": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-queue": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-queues": {
+      "total": 15,
+      "pass": 15,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-random": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-regex": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-semver": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-shared": {
+      "total": 6,
+      "pass": 6,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-sorted": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-sse": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-streams": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-string": {
+      "total": 12,
+      "pass": 12,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-system": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-tasks": {
+      "total": 23,
+      "pass": 23,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-terminal": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-testing": {
+      "total": 236,
+      "pass": 236,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-time": {
+      "total": 18,
+      "pass": 18,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-tls": {
+      "total": 4,
+      "pass": 4,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-toml": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-url": {
+      "total": 3,
+      "pass": 3,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-websocket": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-workers": {
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-yaml": {
+      "total": 2,
+      "pass": 2,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "stdlib-|": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "strings": {
+      "total": 728,
+      "pass": 728,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "testing": {
+      "total": 301,
+      "pass": 301,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "tier-core": {
+      "total": 1938,
+      "pass": 1938,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "tier-io": {
+      "total": 96,
+      "pass": 96,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "tier-stdlib": {
+      "total": 356,
+      "pass": 356,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "try-result": {
+      "total": 371,
+      "pass": 371,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    },
+    "types": {
+      "total": 296,
+      "pass": 296,
+      "fail": 0,
+      "expected_fail": 0,
+      "unexpected_pass": 0,
+      "unrecorded": 0,
+      "pass_rate": 100.00
+    }
+  },
+  "failures": [],
+  "unexpected_passes": []
+}

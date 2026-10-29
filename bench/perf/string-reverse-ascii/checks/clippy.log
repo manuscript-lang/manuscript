@@ -1,0 +1,5 @@
+   Compiling ms-clif v0.0.0 (/workspace/manuscript-reverse-bytes/crates/ms-clif)
+   Compiling ms-lower v0.0.0 (/workspace/manuscript-reverse-bytes/crates/ms-lower)
+   Compiling ms-cli v0.1.0 (/workspace/manuscript-reverse-bytes/crates/ms-cli)
+    Checking ms-build v0.0.0 (/workspace/manuscript-reverse-bytes/crates/ms-build)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 41.03s
