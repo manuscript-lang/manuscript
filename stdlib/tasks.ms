@@ -236,14 +236,18 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
             var lane = lock(self.incoming)
             if lane.value.receiver_closed:
                 return error(ChannelError.Closed)
+
             if let value = lane.value.pop():
                 lane.value.wake()
                 return ok(some(value))
+
             if lane.value.sender_closed:
                 return ok(none)
+
             let token = msrt_channel_token()
             lane.value.waiting.append(token)
             lane.close()
+
             let ticket = WaitTicket[Out](lane: self.incoming, token: token)
             msrt_channel_park(token)
 
