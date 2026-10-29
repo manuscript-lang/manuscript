@@ -12,5 +12,5 @@ impl Cursor[T]:
 
 fn f(d: Deque[String]) Int:
     let it = Cursor(source: d, position: 0)
-    let c = it.clone()  # error: a copy would outlive
-    return c.position
+    var its: List[Cursor[String]] = []  # error: a collection cannot do
+    return its.length() + it.position

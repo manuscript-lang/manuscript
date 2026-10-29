@@ -10,10 +10,8 @@ impl Cursor[T]:
         self.position += 1
         return item
 
-fn take(c: Cursor[String]) Int:
-    return c.position
-
-fn f(d: Deque[String]) Int:
-    let it = Cursor(source: d, position: 0)
-    let other = it  # error: cannot be moved into `other`
-    return other.position
+fn f(var d: Deque[String]) Int:
+    let first = Cursor(source: d, position: 0)
+    var second = Cursor(source: first.source, position: 0)
+    d = Deque[String]()  # error: while `second` borrows it
+    return second.position

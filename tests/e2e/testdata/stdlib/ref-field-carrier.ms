@@ -44,3 +44,28 @@ test "two items can be live while the cursor advances":
         if let b = it.next():
             n = a.length() + b.length()
     try expect_equal(n, 5)
+
+fn advanced(d: Deque[String]) Cursor[String]:
+    var it = cursor_of(d)
+    it.position = 1
+    return it
+
+test "a carrier moves to a new variable, is returned from parameters and clones":
+    var d = Deque[String]()
+    d.push_back("a")
+    d.push_back("bb")
+    d.push_back("ccc")
+
+    let first = advanced(d)
+    var moved = first
+    let copy = moved.clone()
+    var total = 0
+
+    while true:
+        if let item = moved.next():
+            total += item.length()
+        else:
+            break
+
+    try expect_equal(total, 5)
+    try expect_equal(copy.position, 1)
