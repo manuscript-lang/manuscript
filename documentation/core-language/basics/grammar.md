@@ -20,6 +20,7 @@ impl import in interface let match not or ref return self test true try type
 unit var while
 ```
 
+- `opaque` is contextual too: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `let opaque = 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `let from = 2` and `let bench = 3` are valid.
 - Words from other languages (`def`, `lambda`, `elif`, `True`, `False`, `None`, `class`, `except`, `raise`, `finally`, `async`, `await`, `yield`, `global`, `nonlocal`, `del`, `is`, `pass`, `throw`, `catch`, `null`, `undefined`, `new`, `this`, `function`) and Python spellings (`f"..."`, `from "p" import x`, `Callable[[Int], Int]`, `a if c else b`, `case` arms, `()` for Unit) are not syntax and get a targeted diagnostic naming the Manuscript form (`fn`, `else if`, `true`, `none`, `unit`, `try expr`, and so on).
 - `fixture` names the file fixture inside test blocks when a local `make_fixture` factory returns a concrete `TestHooks` implementer. `fixture` and `self` (the implementation receiver) cannot be declared as parameters or bindings.
@@ -117,7 +118,7 @@ Declaration   = [ "export" ], (TypeDeclaration | InterfaceDeclaration | Function
 ConstantDeclaration = "let", ( ConstantBinding | "(", NEWLINE, INDENT, ConstantBinding, { ConstantBinding }, DEDENT, ")", NEWLINE ) ;
 ConstantBinding = Name, [ ":", Type ], "=", Expression, NEWLINE ;
 
-TypeDeclaration = "type", Name, [ TypeParameters ], ":", NEWLINE,
+TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, (RecordBody | AlternativeBody), DEDENT ;
 RecordBody    = { Field } ;
 Field         = Name, ":", Type, [ "=", Expression ], NEWLINE ;

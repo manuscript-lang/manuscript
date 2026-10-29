@@ -100,6 +100,9 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
         ":" => "; block headers (fn, if, else, for, while, match, type, impl, test) end with ':' before their indented body".into(),
         ")" => "; close the parenthesis, separating items with commas".into(),
+        "]" if found == Tok::For => {
+            "; there are no comprehensions: build the list with map and filter, e.g. items.filter(fn x: x > 0).map(fn x: x * 2)".into()
+        }
         "]" => "; close the bracket, separating items with commas".into(),
         "}" => "; close the brace, separating items with commas".into(),
         "(" if found == Tok::Lt => {
@@ -1105,6 +1108,14 @@ impl<'a> Parser<'a> {
                         "'export' appears twice; write it once before the declaration",
                         "",
                     );
+                }
+                if token.kind == Tok::Name && self.text(token) == "opaque" {
+                    let advice = if self.ahead(1).kind == Tok::Export {
+                        "write 'export opaque type Name:', with export first"
+                    } else {
+                        "'opaque' applies only to a record or alternative type: write 'opaque type Name:' or 'export opaque type Name:'"
+                    };
+                    return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }
                 let msg = format!(
                     "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
@@ -2209,6 +2220,13 @@ impl<'a> Parser<'a> {
                 if !self.take(Tok::RBrace) {
                     loop {
                         let key = self.expression(0)?;
+                        if matches!(self.kind(), Tok::Comma | Tok::RBrace) {
+                            let at = self.peek();
+                            return self.fail(
+                                at,
+                                "a brace literal is a Map and needs 'key: value' entries; there is no set literal, so write Set[T]() and call add(value), or [a, b].to_set() from a List",
+                            );
+                        }
                         self.need(Tok::Colon)?;
                         let value = self.expression(0)?;
                         entries.push(MapEntry { key, value });
@@ -2492,7 +2510,14 @@ impl<'a> Parser<'a> {
         let result: PResult<Expr> = (|| {
             let value = nested.expression(0)?;
             nested.newlines();
-            nested.need(Tok::Eof)?;
+            if nested.kind() != Tok::Eof {
+                let at = nested.peek();
+                let found = describe(source, at);
+                return nested.fail(
+                    at,
+                    format!("an interpolation holds one expression, found {found} after it; close the brace after the expression, or bind the rest to a name first"),
+                );
+            }
             Ok(value)
         })();
         self.next_id = nested.next_id;
