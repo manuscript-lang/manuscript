@@ -1,3 +1,5 @@
+import Indexed from "@std/indexed.ms"
+
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
 # Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
@@ -10,10 +12,6 @@ export type Deque[T: Clonable]:
     size: Int = 0
 
 impl Deque[T]:
-    # Returns the number of values in the deque.
-    fn length() Int:
-        return self.size
-
     # Reports whether the deque holds no values.
     fn is_empty() Bool:
         return self.size == 0
@@ -98,14 +96,6 @@ impl Deque[T]:
 
         return self.slots.get(self.slot_of(self.size - 1))
 
-    # Returns the value at `index` counted from the front, or `none` when out of range.
-    # Negative indexes are out of range.
-    fn at(index: Int) ref Optional[T]:
-        if index < 0 or index >= self.size:
-            return none
-
-        return self.slots.get(self.slot_of(index))
-
     # Removes every value and releases the storage.
     var fn clear() Unit:
         self.slots = []
@@ -119,3 +109,16 @@ impl Deque[T]:
             if let value = self.slots.get(self.slot_of(index)):
                 out.append(value.clone())
         return out
+
+impl Indexed[T] for Deque[T]:
+    # Returns the number of values in the deque.
+    fn length() Int:
+        return self.size
+
+    # Returns the value at `index` counted from the front, or `none` when out of range.
+    # Negative indexes are out of range.
+    fn at(index: Int) ref Optional[T]:
+        if index < 0 or index >= self.size:
+            return none
+
+        return self.slots.get(self.slot_of(index))

@@ -1,4 +1,5 @@
 import panic from "@std/core.ms"
+import Indexed from "@std/indexed.ms"
 
 # A mutable first-in, first-out queue. A queue is an owned value: a copy is an independent queue, like Deque and List.
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
@@ -54,13 +55,21 @@ impl Queue[T]:
 
         return self.items.get(self.head)
 
+    # Reports whether dequeue and peek would return none.
+    fn is_empty() Bool:
+        return self.head >= self.items.length()
+
+impl Indexed[T] for Queue[T]:
     # Returns the number of values currently waiting in the queue.
     fn length() Int:
         return self.items.length() - self.head
 
-    # Reports whether dequeue and peek would return none.
-    fn is_empty() Bool:
-        return self.head >= self.items.length()
+    # Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
+    fn at(index: Int) ref Optional[T]:
+        if index < 0 or index >= self.length():
+            return none
+
+        return self.items.get(self.head + index)
 
 # Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
@@ -152,16 +161,25 @@ impl PriorityQueue[T]:
         return top
 
     # Returns the next value by priority without removing it, or none when empty.
-    fn peek() Optional[T]:
+    fn peek() ref Optional[T]:
         if self.heap.length() == 0:
             return none
 
-        return self.heap.get(0).clone()
-
-    # Returns the number of enqueued values, independent of their priorities.
-    fn length() Int:
-        return self.heap.length()
+        return some(self.heap.get(0))
 
     # Reports whether the queue has no values to peek or dequeue.
     fn is_empty() Bool:
         return self.heap.length() == 0
+
+impl Indexed[T] for PriorityQueue[T]:
+    # Returns the number of enqueued values, independent of their priorities.
+    fn length() Int:
+        return self.heap.length()
+
+    # Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
+    # Negative indexes are out of range.
+    fn at(index: Int) ref Optional[T]:
+        if index < 0 or index >= self.heap.length():
+            return none
+
+        return some(self.heap.get(index))
