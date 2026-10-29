@@ -209,6 +209,14 @@ impl Checker {
                 && !compatible(&Some(actual.clone()), exp)
             {
                 if self.interface_assignable(&actual, exp) {
+                    if let Some(op) = self.unlendable_operation(exp) {
+                        self.type_error(
+                            e.pos,
+                            format!(
+                                "`{op}` changes its receiver and lends a `ref` result, so a {actual} cannot be used as `{exp}`; take a generic bound such as `[I: {exp}]` instead"
+                            ),
+                        );
+                    }
                     i.error_source = Some(actual.clone());
                     i.scoped_error = exp.is_std("Error") && self.error_needs_scope(&actual);
                     i.ty = Some(exp.clone());

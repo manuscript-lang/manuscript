@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`next` changes its receiver and lends a `ref` result, so a DequeIter[String] cannot be used as `Iterator[String]`; take a generic bound such as `[I: Iterator[String]]` instead",
+        "position": {
+          "file": "diag-iface-lend-var-receiver.ms",
+          "line": 13,
+          "column": 17,
+          "offset": 324
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-iface-lend-var-receiver.ms:13:17: type: `next` changes its receiver and lends a `ref` result, so a DequeIter[String] cannot be used as `Iterator[String]`; take a generic bound such as `[I: Iterator[String]]` instead\n    |\n 13 |     return take(it)\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

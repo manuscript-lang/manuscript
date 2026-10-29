@@ -1335,6 +1335,21 @@ impl Checker {
             && self.implements(actual, expected)
     }
 
+    /// The first operation of `contract` that changes its receiver and lends a non-scalar `ref`
+    /// result: an interface table entry cannot lend through the receiver's write-back, so a
+    /// value of the interface type cannot be built.
+    pub(crate) fn unlendable_operation(&self, contract: &Ty) -> Option<Name> {
+        let def = contract.def.as_ref()?;
+        let s = substitution(contract);
+        let ops = def.operations.borrow();
+        ops.iter().find_map(|op| {
+            let decl = op.decl.as_ref()?;
+            let lends = decl.func()?.result_ref && decl.method()?.mutating;
+            let result = sub(&op.ty, &s).result_ty();
+            (lends && !crate::ownership::scalar(&result)).then_some(op.name)
+        })
+    }
+
     /// Whether the Error boundary accepts `actual` where `expected` is written.
     pub(crate) fn error_assignable(&self, actual: &Ty, expected: &Ty) -> bool {
         if expected.is_std("Error") {
