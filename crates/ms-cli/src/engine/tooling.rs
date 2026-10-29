@@ -127,6 +127,14 @@ fn analysis_once(request: &AnalysisRequest, io: &mut Io) -> (i32, Vec<String>) {
     let mut findings = Vec::new();
     let mut summaries = Vec::new();
     let mut root = String::new();
+    if selection.inputs.is_empty() && selection.diagnostics.is_empty() && !request.json {
+        let _ = writeln!(
+            io.stderr,
+            "ms {}: no .ms files found in {}",
+            if check { "check" } else { "lint" },
+            request.targets.join(", ")
+        );
+    }
     for input in &selection.inputs {
         let checked = analyze_with(&input.path, &Overlay::new(), check, check);
         if request.fix {

@@ -110,3 +110,15 @@ fn lint_deduplicates_shared_imports_and_keeps_findings_from_valid_inputs() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// A directory without sources says so rather than succeeding silently.
+#[test]
+fn directories_without_sources_report_none() {
+    let dir = scratch("empty");
+    for command in ["check", "lint", "fmt"] {
+        let out = ms(&dir, &[command, "."]);
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(out.status.success(), "{command}: {stderr}");
+        assert!(stderr.contains("no .ms files found"), "{command}: {stderr}");
+    }
+}
