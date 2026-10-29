@@ -169,7 +169,9 @@ pub fn workspace_references(
         Ok(documents) => documents,
         Err(ScanError::Canceled) => return Vec::new(),
         Err(ScanError::Io(_)) => {
-            return nav::references_with_index(analysis, index, d, p, include);
+            let mut locations = nav::references_with_index(analysis, index, d, p, include);
+            locations.sort_by_cached_key(go_location_order);
+            return locations;
         }
     };
     let mut locations: Vec<Json> = Vec::new();
