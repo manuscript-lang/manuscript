@@ -328,6 +328,7 @@ impl Checker {
             return;
         }
         if mentions_variable(&pattern, vars) && !concrete_callback_mismatch {
+            self.conflicted_arguments.insert(arg.value.id);
             self.type_error(arg.pos, CONFLICTING_INFERENCE);
         }
     }

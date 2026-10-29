@@ -608,8 +608,23 @@ impl Checker {
             if expected.is_some() && !call_name.is_empty() {
                 self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));
             }
+            let checkpoint = self.p.diagnostics.len();
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
+            if self.conflicted_arguments.remove(&arg.value.id) {
+                // The argument check names both types and may carry a fix; it replaces the generic conflict note.
+                let at = arg.pos;
+                let explained = self.p.diagnostics[checkpoint..]
+                    .iter()
+                    .any(|d| d.pos == at && d.message.starts_with("expected "));
+                if explained
+                    && let Some(i) = self.p.diagnostics[..checkpoint]
+                        .iter()
+                        .rposition(|d| d.pos == at && d.message == CONFLICTING_INFERENCE)
+                {
+                    self.p.diagnostics.remove(i);
+                }
+            }
             if let (Some(want), Some(have)) = (&expected, &v.error_source)
                 && arg.mutable
                 && want.kind == Kind::Contract
