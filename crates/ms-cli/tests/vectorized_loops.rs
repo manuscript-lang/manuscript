@@ -225,15 +225,18 @@ fn element_wise_list_loops_use_neon() {
     );
     let asm = std::fs::read_to_string(dir.join("k.s")).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
-    // Packed multiplies: `.2d` for `scale` (Float), `.4s` for `fma` (Float32).
+    // Packed arithmetic: `.2d` for `scale` (Float; LLVM turns `a * 2.0` into `a + a`), `.4s` for
+    // `fma` (Float32).
     for lane in [".2d", ".4s"] {
         assert!(
-            asm.lines()
-                .any(|l| l.trim_start().starts_with("fmul\tv") && l.contains(lane))
-                || asm
-                    .lines()
-                    .any(|l| l.trim_start().starts_with("fmla\tv") && l.contains(lane)),
-            "no NEON {lane} multiply in:\n{asm}"
+            asm.lines().any(|l| {
+                let l = l.trim_start();
+                ["fmul\tv", "fmla\tv", "fadd\tv"]
+                    .iter()
+                    .any(|op| l.starts_with(op))
+                    && l.contains(lane)
+            }),
+            "no NEON {lane} arithmetic in:\n{asm}"
         );
     }
 }
