@@ -180,6 +180,20 @@ impl FnLower<'_> {
         close_call(&mut self.b, &kind, v, mt);
     }
 
+    /// Closes `x` when it is an owned temporary of a resource type that nothing takes.
+    pub(crate) fn close_owned_temp(&mut self, x: crate::func::Val) {
+        if !x.own || self.dead {
+            return;
+        }
+        let mt = self.b.ty(x.v);
+        let Some(ty) = self.cx.source_tys.get(&mt).cloned() else {
+            return;
+        };
+        if let Ok(Some(kind)) = self.part_closer(&ty) {
+            self.close_discarded_kind(&kind, x.v);
+        }
+    }
+
     /// Closes a discarded statement result, which nothing took from: unlike a pending temporary
     /// it may be a wrapper (`xs.pop()` is an `Optional`).
     pub(crate) fn close_unused(&mut self, v: Value, ty: &ct::Ty) {
