@@ -622,7 +622,7 @@ fn hover_omits_unresolved_types() {
     let ws = Workspace::new("invalid-type-hover");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let uri = ws.uri("broken.ms");
-    s.open(&uri, include_str!("fixtures/invalid-type-hover.ms"), 1);
+    s.open(&uri, include_str!("hover/invalid-type-hover.ms"), 1);
     s.at("textDocument/hover", &uri, 2, 12);
     s.at("textDocument/hover", &uri, 1, 8);
     compare("invalid-type-hover", &s);
