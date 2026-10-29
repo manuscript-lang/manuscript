@@ -19,13 +19,18 @@ mkdir -p "$W/rust-checked"
 "$RUSTC" --edition 2021 -C opt-level=3 -C codegen-units=1 -C overflow-checks=on -o "$W/rust-checked/bench" "$W/rust/main.rs"
 (cd "$W/ms" && rm -f ms.lock && "$MS" build ms.toml -o bench >&2)
 : > "$W/raw.txt"
+versions='go ms rust rust-checked'
 i=0
 while [ "$i" -lt "$N" ]; do
   # Rotate the order each round so no version always runs first.
-  order='go ms rust rust-checked'
+  order=$versions
   r=0
   while [ "$r" -lt "$i" ]; do order="${order#* } ${order%% *}"; r=$((r + 1)); done
-  for v in $order; do "$W/$v/bench" | sed "s/^/$v /" >> "$W/raw.txt"; done
+  for v in $order; do
+    "$W/$v/bench" > "$W/sample.txt"
+    sed "s/^/$v /" "$W/sample.txt" >> "$W/raw.txt"
+    printf '%s # end\n' "$v" >> "$W/raw.txt"
+  done
   i=$((i + 1))
 done
-python3 "$HERE/../table.py" "$W/raw.txt"
+python3 "$HERE/../table.py" "$W/raw.txt" competence "$N" "$versions"

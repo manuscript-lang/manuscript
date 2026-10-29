@@ -34,6 +34,10 @@ Apply when: retaining a benchmark win or diagnosing a nominal unrelated slowdown
 Evidence: [stdlib validator](../bench/perf/compare_stdlib.py), [program measurements](../bench/perf/programs/results.md).
 Verify: balanced process order, identical tool flags and inputs, no simultaneous CPU work, raw samples plus source and binary hashes, and focused controls for regressions. Identical instructions can vary when relocated across alignment boundaries; preserve assembly and reject arbitrary padding or lucky-placement tuning.
 
+Verified: matching checksums among the rows that happen to be present cannot establish complete work. The kernel and competence wrappers check the producer before filtering its output, append a trial boundary only after success, and the shared reporter requires the suite's full kernel and version identities exactly once per trial and the requested trial count before printing any rows. A missing kernel in every version, duplicate row, failed producer with plausible output, or late checksum mismatch must fail without a partial comparison.
+Evidence: [kernel reporter](../bench/perf/table.py), [producer and evidence regressions](../bench/perf/test_kernel_trials.py).
+Verify: `python3 -m unittest discover -s bench/perf -p test_kernel_trials.py` exercises both actual shell runners with controlled producers and requires zero report output on failure.
+
 Verified: a Python launcher's inherited high-water mark can dominate Linux `wait4` RSS for small child executables. Use a small native launcher that forks after its own exec for separate RSS trials; distinguish maximum single-process RSS in a waited process tree from simultaneous aggregate memory. Keep timing trials separate and label empty extraction caches separately from cold OS page caches.
 Evidence: [isolated RSS helper](../bench/perf/representative/rss.c), [measurement protocol](../bench/perf/representative/README.md).
 Verify: a trivial native program's reported RSS must not merely equal the Python launcher's RSS; retain the original raw measurements when correcting the measurement method.
