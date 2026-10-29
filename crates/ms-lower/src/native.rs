@@ -141,6 +141,15 @@ impl<'a> FnLower<'a> {
             if !sym.module.as_str().starts_with("@std/") {
                 return self.extern_call(e, view, symbol, sym);
             }
+            // The runtime keeps the first of equal elements and receives the element descriptor like a method call.
+            if symbol == "msrt_list_distinct" {
+                let args = self.native_args(view)?;
+                if self.dead {
+                    return Ok(self.dummy(MTy::UNIT));
+                }
+                let result = self.emty(e)?;
+                return self.rt_method(symbol, args[0].val, &params[1..], &args[1..], result);
+            }
             // Float rounding and square root are single instructions.
             if let Some(op) = match symbol {
                 "msstd_math_sqrt" => Some(ms_mir::ir::Op::FSqrt),

@@ -209,3 +209,14 @@ test "imported map add interoperates with with_entry":
 test "flatten concatenates lists":
     try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
     try expect_equal(flatten(List[List[Int]]()), List[Int]())
+
+type JoinPoint:
+    x: Int
+
+test "List join renders any element type":
+    try expect_equal([1.5, 2.5].join(","), "1.5,2.5")
+    try expect_equal([true, false].join("/"), "true/false")
+    try expect_equal(
+        [JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
+    )
+    try expect_equal(List[Int]().join(","), "")

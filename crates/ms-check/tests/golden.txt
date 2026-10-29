@@ -1416,7 +1416,7 @@ fn f() Int:
     return 0
 resolution	2	19	30	unknown or ambiguous member foo on String; available: byte_length, chars, clamp, compare, concat, contains, drop, ends_with, get, index_of, is_empty, last_index_of, length, lines, lower, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_first, reverse, scalar_at, scalar_length, scalar_values, slice, slice_scalars, split, starts_with, take, to_bytes, trim, trim_end, trim_start, upperfn f() String:
     return [1.5].join(separator: ",")
-resolution	2	18	32	unknown or ambiguous member join on List[Float]; join is only available on List[String] and List[Int]; convert the elements first, e.g. xs.map(transform: fn value: "{value}").join(separator: ",")fn double(n: Int) Int:
+fn double(n: Int) Int:
     return n * 2
 fn f() Int:
     return [1, 2].map(double).length()
@@ -1869,7 +1869,7 @@ fn callback() Unit:
     return values.map(transform: transform)
 fn search[T](values: List[T], value: T) Bool:
     return values.contains(value: value)
-resolution	2	19	64	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 54 members in totalfn wrong(data: Bytes) List[Bytes]:
+resolution	2	19	64	unknown or ambiguous member contains on List[T]; available starting with 'c': chunks, clone, concat, contains, copy_within, count; 55 members in totalfn wrong(data: Bytes) List[Bytes]:
     let split = data.split
     return split(value: Bytes([]))resolution	1	16	15	unknown type Bytes; add: import Bytes from "@std/bytes.ms"
 resolution	1	28	27	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn first() Unit:
@@ -2322,7 +2322,7 @@ fn probe() Int:
     return sum + values.length()
 fn wrong() Int:
     let values = [fn() Int: 1]
-    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; available starting with 'd': distinct, drop; 54 members in totalfn wrong() List[Int]:
+    return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; available starting with 'd': distinct, drop; 55 members in totalfn wrong() List[Int]:
     let copy = [1].METHOD
     return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, chunks, clone, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, join, keys, last, last_index_of, length, map, max, max_by, min, min_by, partition, pop, ...export interface Read[T]:
     fn get() T

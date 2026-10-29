@@ -562,18 +562,16 @@ impl ListSearch[T] for List[T]:
 
         return none
 
-interface ListDistinct[T: Equal & Clonable]:
+# The runtime keeps the first of equal elements, hashing them when the element type is hashable; the compiler lowers this call from the element type.
+extern fn msrt_list_distinct[T](values: List[T]) List[T]
+
+interface ListDistinct[T: Equal]:
     fn distinct() List[T]
 
 impl ListDistinct[T] for List[T]:
-    # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal and Clonable.
-    # Each element is compared with the kept ones, so the cost grows with the number of distinct elements.
+    # Returns a new owned List keeping a copy of each first equal element in order; elements require Equal.
     fn distinct() List[T]:
-        var out = List[T]()
-        for x in self:
-            if not out.contains(x):
-                out.append(x.clone())
-        return out
+        return msrt_list_distinct(self)
 
 interface ListToSet[T: Hashable & Clonable]:
     fn to_set() Set[T]
@@ -586,32 +584,19 @@ impl ListToSet[T] for List[T]:
             out.add(x.clone())
         return out
 
-interface ListJoin:
+interface ListJoin[T]:
     fn join(separator: String) String
 
-impl ListJoin for List[String]:
-    # Concatenates the strings with `separator` between neighbors; an empty list returns an empty string.
-    # Available only on List[String] and List[Int].
+impl ListJoin[T] for List[T]:
+    # Concatenates the elements' interpolation text (`"{value}"`) with `separator` between neighbors; an empty list returns an empty string.
+    # Strings join as they are and numbers as decimal text; a record or alternative joins in its structural form.
+    # Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
     fn join(separator: String) String:
         var out = StringBuilder()
-
-        for i in 0..self.length():
-            if i > 0:
-                out.append(separator)
-            out.append(self[i])
-
-        return out.build()
-
-impl ListJoin for List[Int]:
-    # Concatenates the decimal text of the integers with `separator` between neighbors; an empty list returns an empty string.
-    fn join(separator: String) String:
-        var out = StringBuilder()
-
         for i in 0..self.length():
             if i > 0:
                 out.append(separator)
             out.append("{self[i]}")
-
         return out.build()
 
 interface ListOrder[T: Comparable]:

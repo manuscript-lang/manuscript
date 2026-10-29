@@ -77,7 +77,7 @@
 
 ## Open questions
 
-1. Stage 3b is done: `contains`, `index_of`, `last_index_of`, `distinct`, `to_set`, and `join` are bounded interfaces in `stdlib/collections.ms` (`ListSearch`, `ListDistinct`, `ListToSet`, `ListJoin`), and the `receiver_requirements` table and `native_receiver_available` are gone. `join` is one interface implemented for `List[String]` and for `List[Int]`, as `ListFloat32Sum` is for `List[Float32]`. `distinct` and `to_set` also require `Clonable`, as `MapUpdate` does; `distinct` keeps `Equal` (lists are not `Hashable`), so it compares against the kept elements and is quadratic in the distinct count. A Hashable fast path would need `List` to be `Hashable`.
+1. Stage 3b is done: `contains`, `index_of`, `last_index_of`, `distinct`, `to_set`, and `join` are bounded interfaces in `stdlib/collections.ms` (`ListSearch`, `ListDistinct`, `ListToSet`, `ListJoin`), and the `receiver_requirements` table and `native_receiver_available` are gone. `join` is one interface implemented for `List[String]` and for `List[Int]`, as `ListFloat32Sum` is for `List[Float32]`. `to_set` also requires `Clonable`, as `MapUpdate` does. `distinct` keeps its `Equal` bound and its hashed runtime path through `extern fn msrt_list_distinct[T]`, which lowering routes like the old native method, so it stays at native speed.
 2. `Equal`/`Hashable`/`Clonable`/`Comparable` for natives declared in `.ms`: they have operations, so they need a bodyless declaration form first.
 3. A `JsonDecode` hook so a custom `JsonEncode` round-trips; until then row 8 trusts the codec.
 4. `opaque` types (#1853) are not `Data` once that lands: add the case to row 7 there.

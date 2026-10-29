@@ -74,7 +74,7 @@ test "List distinct keeps the first equal element in order":
     copy.append(1)
     try expect_false(not (empty.is_empty()))
 
-fn unique_count[T: Equal & Clonable](values: List[T]) Int:
+fn unique_count[T: Equal](values: List[T]) Int:
     return values.distinct().length()
 
 test "List parity operations support generic and bound use":
