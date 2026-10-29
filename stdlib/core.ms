@@ -167,11 +167,19 @@ export interface Comparable:
     # Orders this value against another of the same type: negative when it sorts before, zero when neither sorts first, positive when it sorts after.
     fn compare(other: Self) Int
 
-# A type whose values can be duplicated. Plain data is Clonable; functions and resource handles are not.
+# A type whose values can be duplicated. Plain data is Clonable; functions, interface values and resource handles are not.
 # There is nothing to implement: the bound `T: Clonable` makes `value.clone()` available on a type parameter.
 export interface Clonable:
     # Returns an independent deep copy of this value.
     fn clone() Self
+
+# A type whose values are plain data: no resource, function, interface value, or runtime handle
+# anywhere inside. Bytes cross a boundary only as data, so `json.parse`, `json.stringify`, and the
+# message types of processes, workers, tasks and channels require `T: Data`.
+# There is nothing to implement. Records and alternatives are `Data` when every field is; lists and
+# sets when their element is; a map when its key is a `String`, `Int`, `Bool`, `Duration`, or an
+# alternative of cases without fields, and its value is `Data`. A `Closeable` type is never `Data`.
+export interface Data: ...
 
 # A type with a stable hash consistent with its `Equal` implementation.
 export interface Hashable:

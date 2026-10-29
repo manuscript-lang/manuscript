@@ -16,7 +16,7 @@
 # ```
 import Bytes from "@std/bytes.ms"
 import {Channel, ChannelError, Transport} from "@std/channels.ms"
-import Closeable from "@std/core.ms"
+import {Closeable, Data} from "@std/core.ms"
 import {parse, stringify} from "@std/json.ms"
 import {Shared, share} from "@std/shared.ms"
 import lock from "@std/sync.ms"
@@ -78,7 +78,7 @@ impl Error for WorkerError:
             NotStarted: return "worker: not started"
 
 # One end of the in-memory pipe between a group and a worker.
-type WorkerTransport[In, Out]:
+type WorkerTransport[In: Data, Out: Data]:
     # The pipe end this transport sends and receives on.
     end: Int
 
@@ -123,7 +123,7 @@ impl Transport[In, Out] for WorkerTransport[In, Out]:
 
 # Returns the worker's end of its channel. The worker sends `Send` values and receives `Receive`
 # values, so a group of `WorkerGroup[Receive, Send]` started it. Call it on a worker's thread.
-export fn worker_channel[Send, Receive]() Channel[Send, Receive]:
+export fn worker_channel[Send: Data, Receive: Data]() Channel[Send, Receive]:
     return Channel[Send, Receive](
         transport: WorkerTransport[Send, Receive](end: msrt_worker_end())
     )
@@ -161,7 +161,7 @@ export fn worker_bytes() Channel[Bytes, Bytes]:
     return bytes_channel(msrt_worker_end())
 
 # A started worker, with the group's end of its channel.
-export type Worker[In, Out]:
+export type Worker[In: Data, Out: Data]:
     # Internal state: the runtime handle of the worker.
     handle: Int
     # The group's end of the worker's channel: sends `In` to the worker and receives the `Out` it sends.
@@ -210,7 +210,7 @@ fn outcome_of(report: String) Result[Unit, WorkerError]:
 # Bind a group to a local: when its scope ends it cancels workers that are still running and waits for them.
 # Manuscript faults caught by the worker runtime are reported through `wait` as `Faulted`.
 # Worker threads are not a process-crash isolation boundary.
-export type WorkerGroup[In = Unit, Out = Unit]:
+export type WorkerGroup[In: Data = Unit, Out: Data = Unit]:
     # Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
     workers: Shared[List[Worker[In, Out]]] = share([])
 

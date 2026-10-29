@@ -1,4 +1,4 @@
-import panic from "@std/core.ms"
+import {Data, panic} from "@std/core.ms"
 
 extern fn msstd_math_acos(value: Float) Float
 
@@ -484,6 +484,8 @@ export type BigIntError:
 # both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
 # divide and remainder return a Result for callers that want an error value instead of a fault.
 export extern type BigInt
+
+impl Data for BigInt:
 
 impl BigInt:
     # Returns the exact sum; arbitrary precision means it cannot overflow.

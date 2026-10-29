@@ -1,7 +1,7 @@
 # A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
 # Written in Manuscript over a ring buffer, so a copy of a Deque is an independent deque.
 # Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
-export type Deque[T: Clonable]:
+export type Deque[T]:
     # Ring-buffer storage; `none` marks unused slots. Internal state: use the operations, not this field.
     slots: List[Optional[T]] = []
     # Index in `slots` of the front value. Internal state.
@@ -65,8 +65,7 @@ impl Deque[T]:
         if self.size == 0:
             return none
 
-        let value = self.slots.get(self.start).clone()
-        self.slots.set(self.start, none)
+        let value = self.slots.replace(self.start, none)
         self.start += 1
         if self.start == self.slots.length():
             self.start = 0
@@ -79,8 +78,7 @@ impl Deque[T]:
             return none
 
         let index = self.slot_of(self.size - 1)
-        let value = self.slots.get(index).clone()
-        self.slots.set(index, none)
+        let value = self.slots.replace(index, none)
         self.size -= 1
         return value
 
@@ -112,7 +110,11 @@ impl Deque[T]:
         self.start = 0
         self.size = 0
 
-    # Returns a new list of the values from front to back.
+interface DequeCopy[T: Clonable]:
+    fn to_list() List[T]
+
+impl DequeCopy[T] for Deque[T]:
+    # Returns a new list of copies of the values from front to back.
     fn to_list() List[T]:
         var out: List[T] = []
         for index in 0..self.size:

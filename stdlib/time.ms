@@ -1,4 +1,4 @@
-import panic from "@std/core.ms"
+import {Data, panic} from "@std/core.ms"
 
 extern fn msstd_time_duration_to_nanoseconds(value: Duration) Int
 
@@ -108,6 +108,8 @@ export interface Clock:
 
 # A span of elapsed time.
 export extern type Duration
+
+impl Data for Duration:
 
 impl Duration:
     # Adds signed nanoseconds; a result outside Duration's representable range faults.
@@ -260,6 +262,8 @@ impl Instant:
 
 # A wall-clock time with Unix seconds and nanoseconds.
 export extern type Timestamp
+
+impl Data for Timestamp:
 
 impl Timestamp:
     # Formats this timestamp in RFC 3339 form.

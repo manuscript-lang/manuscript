@@ -1,5 +1,9 @@
+import Data from "@std/core.ms"
+
 # An immutable sequence of bytes. Indices and slice bounds are zero-based.
 export type Bytes: ...
+
+impl Data for Bytes:
 
 impl Bytes:
     # Copies byte storage without changing the receiver.
