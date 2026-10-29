@@ -1416,7 +1416,12 @@ impl Walker<'_> {
         }
         if origins.is_empty() {
             let text = self.expr_text(value);
-            let message = if matches!(value.kind, ExprKind::Call { .. }) {
+            let message = if b.ty.args.iter().any(crate::types::borrows) {
+                format!(
+                    "`{}` would hold values that hold a borrow, which a collection cannot do; keep each one in its own variable",
+                    b.name
+                )
+            } else if matches!(value.kind, ExprKind::Call { .. }) {
                 format!(
                     "`{}` holds a borrow, but `{text}` does not borrow from a variable it can hold; build it from a variable or a read-only parameter, not a temporary",
                     b.name
@@ -2213,6 +2218,11 @@ impl Walker<'_> {
                     e.pos,
                     format!("`{name}` is moved here but used again{later}; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed"),
                 );
+            } else if self.cx.classes.class(&b.ty) == Class::Resource {
+                self.error(
+                    e.pos,
+                    format!("`{name}` is moved here but used again{later}; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read"),
+                );
             } else {
                 self.error_fix(
                     e.pos,
@@ -2351,6 +2361,15 @@ impl Walker<'_> {
                     format!("`{text}` holds a resource, which has one owner and cannot be cloned: a copy would be closed a second time; move it instead"),
                 );
             }
+            if matches!(self.cx.m.info(e).native_str(), "clone" | "copy")
+                && crate::types::borrows(&self.cx.m.ty(r))
+            {
+                let text = self.expr_text(r);
+                self.error(
+                    e.pos,
+                    format!("`{text}` holds a borrow, so a copy would outlive its source and cannot be made; use it in place, or copy the value it borrows"),
+                );
+            }
             let rty = self.cx.m.ty(r);
             let copies = match &e.kind {
                 ExprKind::Call { callee, .. } => match &callee.kind {
@@ -2458,7 +2477,12 @@ impl Walker<'_> {
                     }
                 }
                 let from = roots.join("`, `");
-                let msg = if self.ret_expr == Some(e.id) && self.captured.is_empty() {
+                let carrier = crate::types::borrows(&self.cx.m.ty(e));
+                let msg = if carrier {
+                    format!(
+                        "`{name}` borrows its result from `{from}`, and a value that holds a borrow cannot be stored or returned from a local; use it in place, or build it from a variable or read-only parameter"
+                    )
+                } else if self.ret_expr == Some(e.id) && self.captured.is_empty() {
                     format!(
                         "`{name}` returns a part of `{from}`, which this function does not lend: only a read-only parameter can; return an owned copy with `{name}(..).{COPY}()`"
                     )
@@ -2467,7 +2491,7 @@ impl Walker<'_> {
                         "`{name}` borrows its result from `{from}`; use it in place, or take an owned copy with `{name}(..).{COPY}()`"
                     )
                 };
-                self.error_fix_opt(e.pos, msg, copy_after(e));
+                self.error_fix_opt(e.pos, msg, if carrier { None } else { copy_after(e) });
             }
         }
         // A computed receiver is an owned temporary with no parent to dangle from, so the accessor

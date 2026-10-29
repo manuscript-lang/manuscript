@@ -12,4 +12,4 @@ impl Cursor[T]:
 
 fn f() Cursor[String]:
     var d = Deque[String]()
-    return Cursor(source: d, position: 0)  # error: only a read-only parameter can
+    return Cursor(source: d, position: 0)  # error: cannot be stored or returned from a local

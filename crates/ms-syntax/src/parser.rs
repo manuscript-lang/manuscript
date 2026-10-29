@@ -1562,7 +1562,10 @@ impl<'a> Parser<'a> {
             }
         } else {
             let try_call = matches!(&e.kind, ExprKind::Unary { op: UnaryOp::Try, operand } if matches!(operand.kind, ExprKind::Call { .. }));
-            let is_call = matches!(e.kind, ExprKind::Call { .. } | ExprKind::Match { .. });
+            let is_call = matches!(
+                e.kind,
+                ExprKind::Call { .. } | ExprKind::Match { .. } | ExprKind::Unit
+            );
             if !self.inline_return && !is_call && !try_call && !allow_value {
                 if let ExprKind::Name(n) = &e.kind {
                     match n.as_str() {
@@ -1951,7 +1954,7 @@ impl<'a> Parser<'a> {
                 let o = op.kind.as_str();
                 return self.fail(
                     op,
-                    format!("Manuscript has no '{o}{o}' operator; write '{n} = {n} {o} 1'"),
+                    format!("Manuscript has no '{o}{o}' operator; write '{n} {o}= 1'"),
                 );
             }
             if level == 4 && compared {
