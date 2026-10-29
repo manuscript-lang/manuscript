@@ -1,4 +1,5 @@
 //! Int and Float formatting and parsing with shortest round-trip output.
+use core::fmt::Write as _;
 use ms_rt_abi::{
     STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_OK, STATUS_OUT_OF_RANGE, StrVal,
 };
@@ -185,31 +186,55 @@ fn float_syntax(t: &[u8]) -> bool {
     i == t.len()
 }
 
+/// A positive finite binary64's shortest scientific form needs at most 17 digits, a decimal
+/// point, `e`, an exponent sign and three exponent digits: 23 bytes. Binary32 is smaller.
+#[derive(Default)]
+struct Scientific {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl Scientific {
+    fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
+impl core::fmt::Write for Scientific {
+    fn write_str(&mut self, text: &str) -> core::fmt::Result {
+        let end = self.len + text.len();
+        let target = self.bytes.get_mut(self.len..end).ok_or(core::fmt::Error)?;
+        target.copy_from_slice(text.as_bytes());
+        self.len = end;
+        Ok(())
+    }
+}
+
 /// Shortest round-trip digits and decimal exponent of a finite positive `v`.
-fn shortest(v: f64) -> (Vec<u8>, i32) {
-    let mut s = Vec::new();
-    let _ = write!(s, "{v:e}");
-    split_scientific(&s)
+fn shortest(v: f64) -> (Scientific, i32) {
+    let mut s = Scientific::default();
+    write!(s, "{v:e}").expect("shortest finite binary64 scientific form fits 32 bytes");
+    split_scientific(s)
 }
 
 /// The same for a finite positive binary32 value.
-fn shortest32(v: f32) -> (Vec<u8>, i32) {
-    let mut s = Vec::new();
-    let _ = write!(s, "{v:e}");
-    split_scientific(&s)
+fn shortest32(v: f32) -> (Scientific, i32) {
+    let mut s = Scientific::default();
+    write!(s, "{v:e}").expect("shortest finite binary32 scientific form fits 32 bytes");
+    split_scientific(s)
 }
 
-fn split_scientific(s: &[u8]) -> (Vec<u8>, i32) {
-    let text = s;
+fn split_scientific(mut s: Scientific) -> (Scientific, i32) {
+    let text = s.as_slice();
     let epos = text.iter().position(|&c| c == b'e').unwrap_or(text.len());
-    let mut digits = Vec::new();
-    for &c in &text[..epos] {
-        if c != b'.' {
-            digits.push(c);
-        }
-    }
     let exp = parse_int_decimal(&text[(epos + 1).min(text.len())..]).unwrap_or(0) as i32;
-    (digits, exp)
+    let point = text[..epos].iter().position(|&c| c == b'.');
+    s.len = epos;
+    if let Some(point) = point {
+        s.bytes.copy_within(point + 1..epos, point);
+        s.len -= 1;
+    }
+    (s, exp)
 }
 
 /// Renders shortest decimal digits: plain notation for exponents in -6..=20, else scientific.
@@ -698,6 +723,90 @@ mod tests {
         }
         assert_eq!(s(float_to_string(f64::NAN)), "NaN");
         assert_eq!(s(float_to_string(f64::NEG_INFINITY)), "-Infinity");
+    }
+
+    #[test]
+    fn shortest_float_strings_match_the_previous_formatter() {
+        let _g = crate::testutil::lock();
+        // Independent storage/extraction oracle: the former implementation used
+        // Rust's scientific formatter and collected a separate digit vector.
+        let previous = |value: f64, binary32: bool| {
+            let value = if binary32 {
+                f64::from(value as f32)
+            } else {
+                value
+            };
+            if value.is_nan() {
+                return b"NaN".to_vec();
+            }
+            if value.is_infinite() {
+                return if value.is_sign_negative() {
+                    b"-Infinity".to_vec()
+                } else {
+                    b"Infinity".to_vec()
+                };
+            }
+            if value == 0.0 {
+                return if value.is_sign_negative() {
+                    b"-0".to_vec()
+                } else {
+                    b"0".to_vec()
+                };
+            }
+            if !binary32 && value.abs() < 9.007_199_254_740_992e15 && value == (value as i64) as f64
+            {
+                return (value as i64).to_string().into_bytes();
+            }
+            let scientific = if binary32 {
+                format!("{:e}", (value as f32).abs())
+            } else {
+                format!("{:e}", value.abs())
+            };
+            let (mantissa, exponent) = scientific.split_once('e').unwrap();
+            let digits: Vec<u8> = mantissa.bytes().filter(|&c| c != b'.').collect();
+            let mut out = Vec::new();
+            render_decimal(
+                &digits,
+                exponent.parse().unwrap(),
+                value.is_sign_negative(),
+                &mut out,
+            );
+            out
+        };
+        let check = |value: f64| {
+            assert_eq!(
+                float_to_string(value),
+                previous(value, false),
+                "binary64 bits={:016x}",
+                value.to_bits()
+            );
+            assert_eq!(
+                float32_to_string(value),
+                previous(value, true),
+                "binary32 input bits={:016x}",
+                value.to_bits()
+            );
+        };
+        for exponent in 0..=0x7ffu64 {
+            for fraction in [0, 1, 0x0007_ffff_ffff_ffff, 0x000f_ffff_ffff_ffff] {
+                let value = f64::from_bits((exponent << 52) | fraction);
+                check(value);
+                check(-value);
+            }
+        }
+        for exponent in 0..=0xffu32 {
+            for fraction in [0, 1, 0x003f_ffff, 0x007f_ffff] {
+                let value = f64::from(f32::from_bits((exponent << 23) | fraction));
+                check(value);
+                check(-value);
+            }
+        }
+        let mut bits = 0x9e37_79b9_7f4a_7c15u64;
+        for _ in 0..8192 {
+            bits = bits.wrapping_mul(6364136223846793005).wrapping_add(1);
+            check(f64::from_bits(bits));
+            check(f64::from(f32::from_bits(bits as u32)));
+        }
     }
 
     #[test]
