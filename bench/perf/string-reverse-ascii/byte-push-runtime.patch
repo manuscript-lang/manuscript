@@ -1,0 +1,110 @@
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -988,13 +988,34 @@
+     // SAFETY: caller passes a live string.
+     unsafe {
+         let text = bytes(a);
++        if text.is_empty() {
++            return empty();
++        }
++        // A non-ASCII first byte already rules out the byte-reversal fast path.
++        if text[0] < 0x80 && text.is_ascii() {
++            if text.len() == 1 {
++                return from_bytes(text);
++            }
++            let mut out = text.to_vec();
++            out.reverse();
++            return from_buf(out);
++        }
+         let mut out = Vec::with_capacity(text.len());
+         let mut end = text.len();
+         let mut tmp = [0u8; 4];
+         while end > 0 {
+             let (c, w) = utf8::decode_last(&text[..end]);
+-            let n = utf8::encode(c, &mut tmp);
+-            out.extend_from_slice(&tmp[..n]);
++            if c < 0x80 {
++                // The decoder already returned this single-byte scalar.
++                out.push(c as u8);
++            } else if c == utf8::RUNE_ERROR && w == 1 {
++                // Malformed bytes still become one replacement scalar per decoded byte.
++                let n = utf8::encode(c, &mut tmp);
++                out.extend_from_slice(&tmp[..n]);
++            } else {
++                // A valid scalar already has its canonical UTF-8 bytes in the input.
++                out.extend_from_slice(&text[end - w..end]);
++            }
+             end -= w;
+         }
+         from_buf(out)
+@@ -2842,6 +2863,70 @@
+     }
+ 
+     #[test]
++    fn reverse_preserves_valid_spans_and_replaces_malformed_bytes() {
++        let _g = testutil::lock();
++        let cases: &[(&[u8], &str)] = &[
++            (b"", ""),
++            (b"a\0z", "z\0a"),
++            ("\u{FFFD}".as_bytes(), "\u{FFFD}"),
++            ("a\u{FFFD}é日😀\0".as_bytes(), "\0😀日é\u{FFFD}a"),
++            (&[0xff], "\u{FFFD}"),
++            (&[0xc0, 0xaf], "\u{FFFD}\u{FFFD}"),
++            (&[0xed, 0xa0, 0x80], "\u{FFFD}\u{FFFD}\u{FFFD}"),
++            (
++                &[0xf4, 0x90, 0x80, 0x80],
++                "\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}",
++            ),
++            (&[0xf0, 0x9f, 0x98], "\u{FFFD}\u{FFFD}\u{FFFD}"),
++            (&[b'a', 0x80, 0, 0xc3, 0xa9, 0xff], "\u{FFFD}é\0\u{FFFD}a"),
++        ];
++        for &(data, expected) in cases {
++            for prefix in [0, 7, 8, 15, 16, 17, 31, 32, 63, 64, 4096] {
++                let mut input_bytes = vec![b'x'; prefix];
++                input_bytes.extend_from_slice(data);
++                let input = from_bytes(&input_bytes);
++                let expected = format!("{expected}{}", "x".repeat(prefix));
++                let mut actual = NO_STR;
++                // SAFETY: input is live and actual is a writable output, live during the check.
++                unsafe {
++                    msrt_string_reverse(&input, &mut actual);
++                    assert_eq!(
++                        bytes(&actual),
++                        expected.as_bytes(),
++                        "input {data:?}, ASCII prefix {prefix}"
++                    );
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn reverse_matches_scalar_order_across_byte_boundaries() {
++        let _g = testutil::lock();
++        let ascii: S = (0u8..=127).map(char::from).collect();
++        let expected: S = ascii.chars().rev().collect();
++        // SAFETY: st creates a live input and ret supplies a writable output.
++        let actual = unsafe { ret(|out| msrt_string_reverse(st(&ascii), out)) };
++        assert_eq!(actual, expected);
++        for text in [format!("{ascii}é"), format!("é{ascii}")] {
++            let expected: S = text.chars().rev().collect();
++            // SAFETY: st creates a live input and ret supplies a writable output.
++            let actual = unsafe { ret(|out| msrt_string_reverse(st(&text), out)) };
++            assert_eq!(actual, expected);
++        }
++        for prefix in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096] {
++            let text = format!("{}é日😀\0\u{FFFD}", "x".repeat(prefix));
++            let expected: S = text.chars().rev().collect();
++            let mut actual = NO_STR;
++            // SAFETY: st creates a live input and actual is live during the check.
++            unsafe {
++                msrt_string_reverse(st(&text), &mut actual);
++                assert_eq!(bytes(&actual), expected.as_bytes(), "ASCII prefix {prefix}");
++            }
++        }
++    }
++
++    #[test]
+     fn repeat_and_pad_fill_patterns_across_doubling_boundaries() {
+         let _g = testutil::lock();
+         unsafe {

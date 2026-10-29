@@ -1,0 +1,358 @@
+{
+  "status": "V3 full83/focus18 complete; correctness/fmt/workspace clippy/repo/serial strict2393 conformance passed; final immutable review and normal CI pending",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "runtime_patch": "runtime.patch",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "requested_build_type": "Release",
+  "explicit_tool_selection": {
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629"
+  },
+  "reported_companion_labels": {
+    "backend": "cranelift",
+    "build_type": "Release"
+  },
+  "effective_optimization": "unverified beyond public metadata; no backend/codegen/assembly investigation",
+  "runtime_build_method": "same reverse worktree path with EXIT-protected baseline source restore; saved matched baseline reused for later genuine causal variants",
+  "variants": {
+    "V1_bulk": {
+      "status": "superseded measured experiment",
+      "runtime_patch": "bulk-ascii-runtime.patch",
+      "data_prefix": "",
+      "cases": 83,
+      "pairs": 7,
+      "rows": 1162,
+      "audit": "all identities/checksums/iteration tuples, medians/ranges/paired signs and median deltas verified",
+      "artifacts": {
+        "string.rs": {
+          "path": "/tmp/string-round2/reverse-ascii-after/string.rs",
+          "sha256": "cd82e455e82fd233a3534719a9ce9028829a9603c869765fb481f9f63f3c0fdc"
+        },
+        "libms_native.a": {
+          "path": "/tmp/string-round2/reverse-ascii-after/libms_native.a",
+          "sha256": "3dfdfc001511ab2bc555b48587b05dbccde11d361f455b618167add37393d4ab"
+        },
+        "ms_rt_hot.ll": {
+          "path": "/tmp/string-round2/reverse-ascii-after/ms_rt_hot.ll",
+          "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "program": {
+          "path": "/tmp/string-round2/reverse-ascii-after/program",
+          "sha256": "8ffbbff09fe54f19c7ae12d5b1370b12d572dce78ef61a83fe21369ac864ab8b"
+        },
+        "focused-program": {
+          "path": "/tmp/string-round2/reverse-ascii-after/focused-program",
+          "sha256": "90d31d4cd02f3ee5bed5b880d248e5c0107bb2159908a391b544642ed7e93909"
+        }
+      },
+      "focused": {
+        "data_prefix": "focused-",
+        "cases": 18,
+        "pairs": 9,
+        "rows": 324,
+        "audit": "all identities/checksums/iteration tuples, medians/ranges/paired signs and median deltas verified"
+      }
+    },
+    "V2_bytepush": {
+      "status": "superseded measured experiment",
+      "runtime_patch": "byte-push-runtime.patch",
+      "data_prefix": "byte-push-",
+      "cases": 83,
+      "pairs": 7,
+      "rows": 1162,
+      "audit": "all identities/checksums/iteration tuples, medians/ranges/paired signs and median deltas verified",
+      "artifacts": {
+        "string.rs": {
+          "path": "/tmp/string-round2/reverse-byte-after/string.rs",
+          "sha256": "bac9f07f6e61790619e3f2b8ea1093e943a1d891ea5c6f1c298b9e199db50467"
+        },
+        "libms_native.a": {
+          "path": "/tmp/string-round2/reverse-byte-after/libms_native.a",
+          "sha256": "3c190941f4b24dac0d828e8848531adc14bb47b24cb48a8d0d70df1d4311dad2"
+        },
+        "ms_rt_hot.ll": {
+          "path": "/tmp/string-round2/reverse-byte-after/ms_rt_hot.ll",
+          "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "program": {
+          "path": "/tmp/string-round2/reverse-byte-after/program",
+          "sha256": "a0a57a5c23fda2eebc65d1b8d2ee7395debfd58fce2bb0c6b7b8f2fc73817f7f"
+        }
+      }
+    },
+    "V3_width": {
+      "status": "final candidate pending gates",
+      "runtime_patch": "runtime.patch",
+      "data_prefix": "width-",
+      "cases": 83,
+      "pairs": 7,
+      "rows": 1162,
+      "audit": "all identities/checksums/iteration tuples, medians/ranges/paired signs and median deltas verified",
+      "artifacts": {
+        "string.rs": {
+          "path": "/tmp/string-round2/reverse-width-after/string.rs",
+          "sha256": "95a38a74296ddc5c43e4011d11a6694d4ea28008ef18eda3f959c0cf84f3c6bf"
+        },
+        "libms_native.a": {
+          "path": "/tmp/string-round2/reverse-width-after/libms_native.a",
+          "sha256": "8ff7c374d80c5468d82feba7651c59c0213f32985b47d7b5d1fb96960f7e8651"
+        },
+        "ms_rt_hot.ll": {
+          "path": "/tmp/string-round2/reverse-width-after/ms_rt_hot.ll",
+          "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+        },
+        "program": {
+          "path": "/tmp/string-round2/reverse-width-after/program",
+          "sha256": "532574466b05a70b5c3bb075a7d21526051bf584e294df46b37c083d23adeedb"
+        },
+        "focused-program": {
+          "path": "/tmp/string-round2/reverse-width-after/focused-program",
+          "sha256": "95e83115d229c92a348905467f0f79bb6f135a447c1a1c441ab34a6aad5e2054"
+        }
+      },
+      "focused": {
+        "data_prefix": "width-focused-",
+        "cases": 18,
+        "pairs": 9,
+        "rows": 324,
+        "audit": "all identities/checksums/iteration tuples, medians/ranges/paired signs and median deltas verified"
+      }
+    }
+  },
+  "correctness": {
+    "native_string_passed": 22,
+    "spans_source_release": 2,
+    "spans_source_debug": 2,
+    "ascii_source_release": 1,
+    "ascii_source_debug": 1
+  },
+  "shared_runner": {
+    "path": "bench/perf/string-lines/compare.py",
+    "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "source_fixtures": {
+    "tests/e2e/testdata/stdlib/string-reverse-spans.ms": "77a263d31af46feddda90157fc207e2285d0b58adbdc6b5a9281d28e095ec7ae",
+    "tests/e2e/testdata/stdlib/string-reverse-ascii.ms": "599da9ebcbe85c83b23a437a41ab51fd65d9e28eacde9df8496ef022ab600b60"
+  },
+  "remaining_gates": [
+    "independent immutable artifact review",
+    "normal required CI and publication by root"
+  ],
+  "measured_tradeoff": {
+    "empty_mixed_focused": {
+      "before": 5.882532,
+      "after": 6.287202,
+      "delta": 0.4046699999999994,
+      "pct": 6.879180597742596,
+      "speed": 0.935635915626697,
+      "pd": 0.0837015000000001,
+      "slow": 5,
+      "fast": 4,
+      "pairs": 9,
+      "bmin": 5.4466885,
+      "bmax": 9.133763,
+      "amin": 5.8007965,
+      "amax": 8.4544405
+    },
+    "empty_controls_focused": {
+      "before": 5.853283,
+      "after": 7.00256,
+      "delta": 1.1492769999999997,
+      "pct": 19.634741733826978,
+      "speed": 0.8358775933372938,
+      "pd": 0.4672054999999995,
+      "slow": 7,
+      "fast": 2,
+      "pairs": 9,
+      "bmin": 5.3808645,
+      "bmax": 38.819453,
+      "amin": 5.5292135,
+      "amax": 10.7127765
+    },
+    "all_nonempty_focused_medians_improve": 16,
+    "application_input_frequency": "unmeasured",
+    "empty_mixed_full": {
+      "median_change_ns_approx": 1.5,
+      "slower_pairs": 7,
+      "total_pairs": 7,
+      "paired_delta_median_ns": 0.924564
+    },
+    "empty_controls_full": {
+      "median_direction": "improved",
+      "slower_pairs": 2,
+      "total_pairs": 7,
+      "paired_delta_median_ns": -0.27553
+    },
+    "all_nonempty_full_medians_improve": 81,
+    "pure_two_byte_full_family": "7sizes:1.104\u20131.256x;5\u20137of7faster;not separately repeated in focused18"
+  },
+  "artifact_before": {
+    "string.rs": {
+      "path": "/tmp/string-round2/reverse-before/string.rs",
+      "sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+    },
+    "libms_native.a": {
+      "path": "/tmp/string-round2/reverse-before/libms_native.a",
+      "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+    },
+    "ms_rt_hot.ll": {
+      "path": "/tmp/string-round2/reverse-before/ms_rt_hot.ll",
+      "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+    },
+    "program": {
+      "path": "/tmp/string-round2/reverse-before/program",
+      "sha256": "929f975f960f9904b0079b151667fbbd5937b5e82d39a0aa03e1c4d7a8bdf773"
+    },
+    "ascii-program": {
+      "path": "/tmp/string-round2/reverse-before/ascii-program",
+      "sha256": "7e5c998f3cd18d55cf56f96b4e30d19b1e59d451af62dcad06d99b4396a382c4"
+    },
+    "ascii-focused-program": {
+      "path": "/tmp/string-round2/reverse-before/ascii-focused-program",
+      "sha256": "e14678e575b170b3f858d06cd2e8db68d57b7cf3d477faed066d00c7b3bf01e9"
+    }
+  },
+  "files_sha256": {
+    "README.md": "f165f537a9b56c58e6df999c430f2ffbb8beaac29af2dd2857e186b80e229c55",
+    "build-metadata/v1-after-cli.json": "325ff0447c9e95b23bdf648abd08a3c348ce470477ef7264c6bea530f4673a58",
+    "build-metadata/v1-after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v1-after-focused-cli.json": "93e26f2b983b22640b4eb5d0256132f9c4c64d244830d195e18166d93a00cf78",
+    "build-metadata/v1-after-focused-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v1-before-cli.json": "e235b3659866d2e0f592b3895a328c8f979b307b358f7b05e6a16b361b6b132e",
+    "build-metadata/v1-before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v1-before-focused-cli.json": "b184d69b82338839f0980b21df1d147a997554cc74b07ea3be47468f761c5001",
+    "build-metadata/v1-before-focused-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v2-after-cli.json": "f9b48cea198cc5fc804bc7e4690f0b3513274318886fccc1197ba82a34d8bc24",
+    "build-metadata/v2-after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v3-after-cli.json": "ed1bd00ff92ae63d993806fb617d39e6d8a905c5a4d7ea1a0b8731bdd74d7b5f",
+    "build-metadata/v3-after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v3-after-focused-cli.json": "fc22764f956614e204fcae0921df2c75c905591bb51cc432697e51471ef9adba",
+    "build-metadata/v3-after-focused-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "bulk-ascii-runtime.patch": "959ea3e7551b3715830f5342c799a2056ed6dbf63bbeb395ba36b037502cc211",
+    "byte-push-paired-samples.csv": "3426e085d832da337e425032ea75ebed4abe1518ac69509d666b56f050423891",
+    "byte-push-paired.csv": "13b92bcae15d446b89bd6c25fcfa9005b1e60f88a20c40f36e65cc12a1931448",
+    "byte-push-runtime.patch": "6d79bebca711048a4a06cb363938521fbc4c0025f023e1b206f17cee93d48953",
+    "byte-push-samples.csv": "b0de1644828d1da29878f037521c117dd6a62960e6728603a9d28060f4f23efe",
+    "byte-push-summary.csv": "11c18d2ae2de0c8fc7f89ccf6a24ae638c543d66a687f4afe973796f32b5f372",
+    "checks/clippy.log": "f3d2825d09d424e3a3a35ff9f0fd5db5e0aa71985b280e1bdac936e8a6b33481",
+    "checks/conform-input-integrity.json": "a3509ef48f841ed1dd409ed2ba35cab56b416a44b54cb6b5efca1609d6fbd4a2",
+    "checks/conform-pinned-report.json": "ab430cd602efe8d1b51c6c783b3ca086afb725410e6de746440ce92c4671b54f",
+    "checks/conform-pinned-report.md": "5494c9fd86fe92bd5caf4952cc5816da04db97fc8ecf32882bd1715b5a4a3575",
+    "checks/conform-pinned.log": "43127eaa599b20ca130dc6b419ce2ce24f486f13546500da66aa89af6901c3eb",
+    "checks/final-gates.json": "3bbf469666765307e64e829fcb9f68548bf5c5f0b4f2d33778d55966d5f22a81",
+    "checks/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "checks/repo-check.log": "1a1c1ad3d0681ef04bc83514f1b7c367c3187ef0f8499d4e21d90f8bc3b3db5b",
+    "focused-controls.ms": "2b55a43096d981b1ebf3352765a92479008771978a6a78464d7265285b46d27f",
+    "focused-identities.json": "2faa305da489b1fe34dae9d03e225629af01a422f81935d9114d9a846815e727",
+    "focused-paired-samples.csv": "9abd4a532fe9bce4cf4cf93fbf4204b879c5430b5dc1d2ba041c9fe399d3a2bf",
+    "focused-paired.csv": "68d47aae7e1e07d04f9ae0ccf2ef37198f1c8e3cca1c7f60422e98792af6aeab",
+    "focused-samples.csv": "3c8f309d64db9e97892e8844e9c56e7cb3a36b8887ac4857360638e7640b31ee",
+    "focused-summary.csv": "395fe3cb925d7ff1dc6d9eb220ea1f15470ac58aadcf4ff92556d8991551f15c",
+    "identities.json": "97fcce849ce6dcc1bfd614ff21af58ea4be05732c4daa810c05c5f8f6604ddc0",
+    "logs/v1-after-ascii-debug.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v1-after-ascii-release.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v1-after-focused-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v1-after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v1-after-runtime-build.log": "d7dd57dff1e66e3c2c8918c62a4ba2c6edac7b1f3f4fb9201c21d000fa191a38",
+    "logs/v1-after-source-release-usage-error.log": "d88fb3720fa1abe393d9726d859960712ad240b8d8b8d75b2bb014863147b3dd",
+    "logs/v1-after-spans-debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v1-after-spans-release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v1-after-string-tests.log": "7f9ac1cc7c80b91de6c32657c4c225040ebbf97285a07661e1239b60d1806110",
+    "logs/v1-before-focused-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v1-before-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v1-before-runtime-build.log": "150c4a0eb3159bb8e78f981c1f258c57124cd286e32108f2bed9f2678e5f7f58",
+    "logs/v2-after-ascii-debug.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v2-after-ascii-release.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v2-after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v2-after-runtime-build.log": "e3cd519f7622b769be194e1ebae46cc120a96d1146696d970ea4306ff445790a",
+    "logs/v2-after-spans-debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v2-after-spans-release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v2-after-string-tests.log": "fed017f0a195c8ca35b81b8953d02db41fb0be0ea830c42696109eb1155624ed",
+    "logs/v3-after-ascii-debug.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v3-after-ascii-release.log": "4059016781a563402d0b4fe7a50e5932be77077100211bd0331bfeec59548d1e",
+    "logs/v3-after-focused-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v3-after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v3-after-runtime-build.log": "00087dae33ec9522527ef6692317e8e3067956d8f53bcf03a8e83682813fc5e8",
+    "logs/v3-after-spans-debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v3-after-spans-release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v3-after-string-tests.log": "aeaf711e0e9a00a2e182ad20925cbfbd7620dd789fb2ef3c3cdf7c200b2cf216",
+    "main.ms": "e2a3d9649526e85de556a92b3f0fc4ea5f19ee46254ada7b4bfafe41c718c68e",
+    "paired-samples.csv": "0f00fe50b551e236d0938b5c06bca22047c96539358f0785b68dc572f554108d",
+    "paired.csv": "22378f892907cde5168a34b6b5bfae094b912865f4cad48c628dcd47c78e1d02",
+    "runtime.patch": "573df010d8cd7fab30c78ef35c543f1a6429a4b1f662ef1484bf4b29f9891de2",
+    "samples.csv": "aa07ae5205ef85c545034b3037f8f82b4a6ad56e505120b54321fb079525e422",
+    "summary.csv": "3e97825050fb1f693be3792f3b4f11fd08289caffa289659fe19b4c48f653d9d",
+    "width-focused-paired-samples.csv": "0c1c210c163a01125bb8dd31c769720ab39f4da060e79cacb0649239cfc398d7",
+    "width-focused-paired.csv": "202bba4830391ed6fddef624438ee99fa6285184f9f61b366efaf5920c7818e2",
+    "width-focused-samples.csv": "0ab72e5dcf93d45160ce1ec6a64e4814ef9d4d792f2b114bba50fbf1f0cfc002",
+    "width-focused-summary.csv": "b0c933763e8448df50c01bcf18616703846b73d106a0bfee43b348cddc55a966",
+    "width-paired-samples.csv": "a624c644239b7c72f6fdb506b34332a05d318456f6639cc6d3e85b14456634fc",
+    "width-paired.csv": "e28c83ebaf9060e4f2a5dcb55dc1254412dd36ec6a7e2b3d5e1c96a468652846",
+    "width-samples.csv": "dfae7aba42d7718576004b76a6ceae4bf58918e0bbf6f91407b392db7ce7b67c",
+    "width-summary.csv": "42daaf98dd0b8d34b6ef83375065753a26442569b32f763dab58b780e0b38759"
+  },
+  "active_gate_logs_policy": "All checks logs and reports included below are final; root confirmed actual exits. No unfinished log is hashed.",
+  "final_local_gates": {
+    "rustfmt": {
+      "status": "passed",
+      "exit_code": 0,
+      "log": "checks/fmt.log",
+      "authority": "root actual process exit"
+    },
+    "serial_strict_conformance": {
+      "status": "passed",
+      "exit_code": 0,
+      "available_fixtures": 4153,
+      "selected": 2393,
+      "passed": 2393,
+      "failed": 0,
+      "expected_failed": 0,
+      "unexpected_passed": 0,
+      "unrecorded": 0,
+      "phases": {
+        "check": 1603,
+        "run": 531,
+        "test": 259
+      },
+      "log": "checks/conform-pinned.log",
+      "report_md": "checks/conform-pinned-report.md",
+      "report_json": "checks/conform-pinned-report.json",
+      "integrity": "checks/conform-input-integrity.json",
+      "immediate_pre_post_hashes_match": true,
+      "readonly_snapshot_before_run": true,
+      "scope": "serial pinned-input local result; exact selected phases/aliasing exclusion/strict/expect-fail/shard recorded in integrity command; not a make-conform or CI claim"
+    },
+    "workspace_clippy_all_targets_locked_deny_warnings": {
+      "status": "passed",
+      "exit_code": 0,
+      "log": "checks/clippy.log",
+      "command_record": "checks/final-gates.json",
+      "authority": "root actual process exit"
+    },
+    "repo_check": {
+      "status": "passed",
+      "exit_code": 0,
+      "log": "checks/repo-check.log",
+      "command_record": "checks/final-gates.json",
+      "authority": "root actual process exit"
+    },
+    "workspace_nextest": "not rerun; excluded known ms-build::debug_artifacts missing-executable path; normal CI mandatory"
+  },
+  "current_main_freshness": {
+    "commit": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+    "reference": "origin/main",
+    "checked_at_utc": "2026-10-29 17:44",
+    "authority": "root",
+    "relevant_paths": "string/utf8/ABI/Cargo/toolchain/AGENTS/runtime/create-pr unchanged from4be",
+    "rebase": "not requested"
+  },
+  "whitespace_evidence_exceptions": [
+    "bench/perf/string-reverse-spans/runtime.patch",
+    "bench/perf/string-reverse-ascii/bulk-ascii-runtime.patch",
+    "bench/perf/string-reverse-ascii/byte-push-runtime.patch",
+    "bench/perf/string-reverse-ascii/checks/conform-pinned-report.md",
+    "bench/perf/string-reverse-ascii/runtime.patch"
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "status": "superseded/discarded measured V0:79case7pairs plus focused10case9pairs; no acceptance",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "runtime_patch": "runtime.patch",
+  "runtime_build_method": "Both archives built from this worktree path; baseline string.rs temporarily restored from baseline commit with EXIT trap restoring saved candidate.",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "requested_build_type": "Release",
+  "explicit_tool_selection": {
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629"
+  },
+  "reported_backend": "cranelift",
+  "reported_build_type": "Release",
+  "effective_optimization": "not independently verified; no backend, codegen or assembly investigation",
+  "correctness": {
+    "rust_string_tests": {
+      "passed": 22,
+      "filtered": 133
+    },
+    "source_release": {
+      "passed": 2,
+      "failed": 0
+    },
+    "source_debug": {
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "matrix": {
+    "cases": 79,
+    "pairs": 7,
+    "rows": 1106,
+    "all_guards": "passed",
+    "independent_audit": "identity/checksum/iterations/summary ranges and paired signs/delta verified"
+  },
+  "artifacts": {
+    "before": {
+      "string.rs": {
+        "path": "/tmp/string-round2/reverse-before/string.rs",
+        "sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/reverse-before/libms_native.a",
+        "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/reverse-before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/reverse-before/program",
+        "sha256": "929f975f960f9904b0079b151667fbbd5937b5e82d39a0aa03e1c4d7a8bdf773"
+      },
+      "focused-program": {
+        "path": "/tmp/string-round2/reverse-before-focused",
+        "sha256": "f3fa915436cc83d9cf064b30c5c5fd026bf6441e2599d801d000c5709fe991b9"
+      }
+    },
+    "after": {
+      "string.rs": {
+        "path": "/tmp/string-round2/reverse-after/string.rs",
+        "sha256": "76779c7ccd90391d0ab3ef1feb7519720ea97f534b95d092046e9d98e4827a25"
+      },
+      "libms_native.a": {
+        "path": "/tmp/string-round2/reverse-after/libms_native.a",
+        "sha256": "0b58e70b77b142ed9e46118701116ae988117e431d14d60c79882d33c0eef3f0"
+      },
+      "ms_rt_hot.ll": {
+        "path": "/tmp/string-round2/reverse-after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "program": {
+        "path": "/tmp/string-round2/reverse-after/program",
+        "sha256": "8a8a9d839702193798d02efa216e10be1cddee528e688ca77a5503937e352b93"
+      },
+      "focused-program": {
+        "path": "/tmp/string-round2/reverse-after-focused",
+        "sha256": "7569d2bd478944a521b765901262572711e62668c167569e455e9128bd9a3fa8"
+      }
+    }
+  },
+  "source_fixture": {
+    "path": "tests/e2e/testdata/stdlib/string-reverse-spans.ms",
+    "sha256": "77a263d31af46feddda90157fc207e2285d0b58adbdc6b5a9281d28e095ec7ae"
+  },
+  "files_sha256": {
+    "README.md": "236834ee9082161b3c42f59b1679cf3741da842b6b03c0192c245e9f578d283f",
+    "after-build.json": "dd2922411e8bf9647f65a93e1a47268b1fd6cf56729762c3661da30553de1058",
+    "before-build.json": "2531fbbbec449259fbe893c29ac7888d58280f950ca67b306e230190cd2a5039",
+    "build-metadata/focused-after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/focused-before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v0-after-cli.json": "dd2922411e8bf9647f65a93e1a47268b1fd6cf56729762c3661da30553de1058",
+    "build-metadata/v0-after-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/v0-before-cli.json": "2531fbbbec449259fbe893c29ac7888d58280f950ca67b306e230190cd2a5039",
+    "build-metadata/v0-before-companion.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "focused-controls.ms": "cca7847953c20f870537ca973627ec133e56dc95ffbb6131de160abe1d18e547",
+    "focused-identities.json": "d66c89dced4ba62afa9bd77a922160134b7e24226d7b5bcde5611a4b2a55a9f5",
+    "focused-paired-samples.csv": "36d6967fb52fd81c71bf539455f0787d155e5714ef899c16c4887e1cff42211e",
+    "focused-paired.csv": "921c6b569c5b19ceccb04f9a8c9e6a634126a3d96ba01add128a0903d63d0650",
+    "focused-samples.csv": "33204398def57eed0a35c384ea7693ac509eb3304556b03142fadd1f6f56ce63",
+    "focused-summary.csv": "2bb0981ea20c70e0387fc9bd1940a17cda94893812ce7c525b1b82a607319ae7",
+    "identities.json": "89946d4dd74e7d6e1c35550e3884eb762172167034f004fb8746c1f275730a3d",
+    "logs/after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/before-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/focused-after-build.log": "14254aa8a48c0ea65ade01f5d9d387796d642cfc5506d3be07373a6b7da77b7e",
+    "logs/focused-before-build.log": "e44811e9269757938ab2d008e5a5c3c1ef4a79496d7cf4e93f99e170abe9828f",
+    "logs/source-tests-debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/source-tests-release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/string-tests.log": "e3a32f8343557c1baf4770d4ac1e45c87ab6c1333d82a96b0f14a48a8f0b62f7",
+    "logs/v0-after-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v0-after-runtime-build.log": "fc79c5be8be180d1497f582a1e7a8a23e2a2be655053bdbc3f66615cc64b9e46",
+    "logs/v0-after-source-tests-debug.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v0-after-source-tests-release.log": "0d99227ef09fff7b818bd99190f3e7d56a5094258ef5552992801a7aa42e0778",
+    "logs/v0-after-string-tests.log": "e3a32f8343557c1baf4770d4ac1e45c87ab6c1333d82a96b0f14a48a8f0b62f7",
+    "logs/v0-before-program-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "logs/v0-before-runtime-build.log": "150c4a0eb3159bb8e78f981c1f258c57124cd286e32108f2bed9f2678e5f7f58",
+    "main.ms": "2236db63ef5ffef9080fb7cb25ff29caf2f4352d916f0c880efdd882a6005cc5",
+    "paired-samples.csv": "e1ca7979ab0a39389ba8f1484c6fd18919d7fef820bbfe67991b894417760186",
+    "paired.csv": "c5d000be11b1b31b4b214a4ebe5c7b35db135d71dab9350cf6858b8650a12939",
+    "runtime.patch": "ddcd11e981382542ef28f37cfec3bc94e303a5374db976aaf8938a48c9af0e8c",
+    "samples.csv": "5e71723f8fe4c3c68a6e0efaef7357f2d8dedfbeb76a75c404b3d1038a6c2332",
+    "summary.csv": "6d6b23dec9a099ea89be142fa789208831661b23f85a86ec0ecd7657d3e5735d"
+  },
+  "focused": {
+    "cases": 10,
+    "pairs": 9,
+    "rows": 180,
+    "all_guards": "passed"
+  },
+  "shared_runner": {
+    "path": "bench/perf/string-lines/compare.py",
+    "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "active_gate_logs_policy": "Root may be running final gates; unfinished checks logs excluded until root confirms completion."
+}

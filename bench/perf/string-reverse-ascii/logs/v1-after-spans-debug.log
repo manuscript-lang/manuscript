@@ -1,0 +1,5 @@
+RUN string-reverse-spans.ms::reverse preserves scalar order, literal replacement characters and controls
+PASS string-reverse-spans.ms::reverse preserves scalar order, literal replacement characters and controls
+RUN string-reverse-spans.ms::reverse keeps mixed width spans correct around byte boundaries and large prefixes
+PASS string-reverse-spans.ms::reverse keeps mixed width spans correct around byte boundaries and large prefixes
+2 tests, 0 failed

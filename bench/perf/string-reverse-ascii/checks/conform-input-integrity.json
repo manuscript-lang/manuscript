@@ -1,0 +1,93 @@
+{
+  "before": {
+    "expect-fail.txt": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/expect-fail.txt",
+      "sha256": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+      "size": 267,
+      "mode": "0o444"
+    },
+    "libms_native.a": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/libms_native.a",
+      "sha256": "8ff7c374d80c5468d82feba7651c59c0213f32985b47d7b5d1fb96960f7e8651",
+      "size": 47058550,
+      "mode": "0o444"
+    },
+    "ms": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms",
+      "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc",
+      "size": 126772968,
+      "mode": "0o555"
+    },
+    "ms-conform": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms-conform",
+      "sha256": "7ecc1c7b9d925e4c5d2a8de4a18552a3611b262a7b02620e677d67ca5ce47be0",
+      "size": 8374256,
+      "mode": "0o555"
+    },
+    "ms_rt_hot.ll": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms_rt_hot.ll",
+      "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "size": 114241,
+      "mode": "0o444"
+    }
+  },
+  "directory_mode": "0o555",
+  "started_unix": 1793295913.13585,
+  "writer_coordination": "Root sole gate executor; delegates documentation/read-only only; selected dedicated snapshot never a build destination; no builds during replay.",
+  "lint_exit_code": 0,
+  "command": [
+    "/tmp/string-round2/reverse-width-conform-inputs/ms-conform",
+    "run",
+    "--ms",
+    "/tmp/string-round2/reverse-width-conform-inputs/ms",
+    "--phase",
+    "run,check,test",
+    "--exclude-tag",
+    "aliasing",
+    "--expect-fail",
+    "/tmp/string-round2/reverse-width-conform-inputs/expect-fail.txt",
+    "--strict",
+    "--shard",
+    "0/1",
+    "--quiet",
+    "--markdown",
+    "bench/perf/string-reverse-ascii/checks/conform-pinned-report.md",
+    "--json",
+    "bench/perf/string-reverse-ascii/checks/conform-pinned-report.json"
+  ],
+  "exit_code": 0,
+  "after": {
+    "expect-fail.txt": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/expect-fail.txt",
+      "sha256": "4cc017b64eae81971453503b997c83e68f1109f80715661151fa17e71e586976",
+      "size": 267,
+      "mode": "0o444"
+    },
+    "libms_native.a": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/libms_native.a",
+      "sha256": "8ff7c374d80c5468d82feba7651c59c0213f32985b47d7b5d1fb96960f7e8651",
+      "size": 47058550,
+      "mode": "0o444"
+    },
+    "ms": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms",
+      "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc",
+      "size": 126772968,
+      "mode": "0o555"
+    },
+    "ms-conform": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms-conform",
+      "sha256": "7ecc1c7b9d925e4c5d2a8de4a18552a3611b262a7b02620e677d67ca5ce47be0",
+      "size": 8374256,
+      "mode": "0o555"
+    },
+    "ms_rt_hot.ll": {
+      "path": "/tmp/string-round2/reverse-width-conform-inputs/ms_rt_hot.ll",
+      "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+      "size": 114241,
+      "mode": "0o444"
+    }
+  },
+  "finished_unix": 1793296301.418464,
+  "hashes_match": true
+}

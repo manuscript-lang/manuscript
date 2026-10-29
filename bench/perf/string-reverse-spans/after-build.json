@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "command": "build",
+  "build_type": "Release",
+  "source_root": "/workspace/manuscript-reverse-bytes/bench/perf/string-reverse-spans",
+  "output": "/tmp/string-round2/reverse-after/program",
+  "completed": true,
+  "exit_code": 0,
+  "artifacts": [
+    {
+      "kind": "executable",
+      "path": "/tmp/string-round2/reverse-after/program",
+      "state": "verified"
+    },
+    {
+      "kind": "build_metadata",
+      "path": "/tmp/string-round2/reverse-after/program.ms-build.json",
+      "state": "verified"
+    }
+  ],
+  "stdout": "",
+  "diagnostics": []
+}

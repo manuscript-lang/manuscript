@@ -1,0 +1,11 @@
+case,before_median_ns,after_median_ns,before_min_ns,before_max_ns,after_min_ns,after_max_ns,speedup
+ascii_mixed_n0,5.5,6.2,5.1,8.2,5.3,6.9,0.888
+ascii_mixed_n1,25.5,24.2,23.8,35.6,23.5,27.5,1.054
+ascii_mixed_n2,39.8,36.6,38.1,77.4,34.0,38.0,1.087
+ascii_mixed_n7,86.6,71.8,77.6,122.7,67.6,74.2,1.206
+ascii_controls_n0,5.9,6.6,5.0,7.2,5.6,8.8,0.901
+ascii_controls_n1,25.2,24.6,23.7,31.5,23.1,31.5,1.024
+ascii_controls_n2,37.8,36.7,35.5,72.1,33.6,47.5,1.029
+ascii_controls_n7,83.4,70.6,76.6,146.4,68.5,97.2,1.181
+two_byte_copies1,74.7,64.1,71.4,118.3,61.9,76.3,1.166
+replacement_copies1,41.4,39.7,37.5,43.3,36.3,42.4,1.042
