@@ -15,6 +15,8 @@ comparison. There is no performance CI threshold.
 
 Build the baseline runtime at `4c0a1cb820e772f56a0c831a0f2fe37fbc96a9a7` and the
 changed runtime with the same pinned Rust toolchain and `cargo xtask runtime`.
+The exact source delta is retained as `evidence-2026-10-29/fix.patch`; apply it to
+the baseline with `git apply --unidiff-zero` to reconstruct the changed runtime.
 Save each `target/ms-native/libms_native.a` as an absolute path. Build one compiler
 with `cargo build --release --locked -p ms-cli`; only the linked native archive
 changes between the generated programs:

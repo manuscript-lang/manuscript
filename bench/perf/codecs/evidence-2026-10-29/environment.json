@@ -18,5 +18,9 @@
     ".artifacts/codecs/runtime-after.a": "548dc78b1ff75edac74a43049af3884bf098c8b7059a5ac7d4283bdd8f443df6",
     "bench/perf/codecs/main.ms": "32b351259e3501aabd038614a092ac19636accb84f6960bf5fd721772a4902ab",
     "bench/perf/codecs/compare.py": "1aa210de751910aebf3eb8e562c7366f7e16538a67b275311020f22211bdc26b"
+  },
+  "native_source_hashes": {
+    "before": "9fbbec31edfae81ef9b7c3404beb66a232e9cd4ebf5e55fd4a236bbb705a2ce3",
+    "after": "9c12efd3ed029f8e5aa403be93fad6a99ea50b883f9f47e8ce86fb363a44d204"
   }
 }
