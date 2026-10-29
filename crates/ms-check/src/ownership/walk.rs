@@ -121,6 +121,8 @@ struct PlaceInfo {
     root_node: NodeId,
     resolved: Vec<Place>,
     projection: bool,
+    /// The path passes through a `ref` field: a read-only view of another value.
+    through_ref: Option<Name>,
     text: String,
 }
 
@@ -1058,6 +1060,7 @@ impl Walker<'_> {
                     root: b.clone(),
                     root_node: e.id,
                     projection: false,
+                    through_ref: None,
                     text: b.name.as_str().to_string(),
                 };
                 Some((info, p))
@@ -1067,6 +1070,9 @@ impl Walker<'_> {
                 let p = p.then(Step::Field(*name));
                 info.resolved = self.resolve(&p);
                 info.projection = true;
+                if field_is_ref(&self.cx.m.ty(left), *name) {
+                    info.through_ref.get_or_insert(*name);
+                }
                 info.text = format!("{}.{}", info.text, name);
                 Some((info, p))
             }
@@ -1706,6 +1712,13 @@ impl Walker<'_> {
             (m.perm, m.role, m.parameter, m.is_receiver)
         };
         let text = info.text.clone();
+        if let Some(field) = info.through_ref {
+            self.error(
+                pos,
+                format!("cannot {what} `{text}`: `{field}` is a `ref` field, a read-only view of another value"),
+            );
+            return;
+        }
         match perm {
             Perm::Mutable | Perm::Captured | Perm::MutBorrowed => {}
             Perm::Borrowed => {
@@ -1871,6 +1884,7 @@ impl Walker<'_> {
             root_node,
             resolved: source.origins.clone(),
             projection: true,
+            through_ref: None,
         };
         let reads_in_place = matches!(
             &value.kind,
@@ -2781,6 +2795,7 @@ impl Walker<'_> {
                         root_node: e.id,
                         resolved: resolved.clone(),
                         projection: false,
+                        through_ref: None,
                         text: b.name.as_str().to_string(),
                     };
                     self.mutate(e.pos, &info, "change");
