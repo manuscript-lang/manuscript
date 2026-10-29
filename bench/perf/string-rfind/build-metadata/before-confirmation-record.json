@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/tmp/string-round2/ms",
+    "build",
+    "bench/perf/string-rfind/confirmation.ms",
+    "--build-type",
+    "Release",
+    "-o",
+    "/tmp/string-round2/rfind-before/confirmation-program",
+    "--json"
+  ],
+  "exit_code": 0,
+  "source_sha256": "63a7dc8c6536b55b31c2b2e81f9bf359dd0f9585abaca7c04cc7e85238390f66",
+  "program_sha256": "6cd66a3efb015cf9f531d5548d1378316ee280a674ae7d636a1a1c722f588b2e",
+  "public_metadata": {
+    "format": 1,
+    "version": "0.1.0",
+    "backend": "cranelift",
+    "build_type": "Release"
+  }
+}

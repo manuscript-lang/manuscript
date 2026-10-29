@@ -1,0 +1,49 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index 0627f7af6..76f13e406 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -603,6 +603,9 @@ pub fn rfind(hay: &[u8], needle: &[u8]) -> Option<usize> {
+     if needle.len() > hay.len() {
+         return None;
+     }
++    if needle.len() == 1 {
++        return memchr::memrchr(needle[0], hay);
++    }
+     memchr::memmem::rfind(hay, needle)
+ }
+ 
+@@ -2629,6 +2632,34 @@ mod tests {
+             assert_eq!(find(&hay, &needle), naive, "{hay:?} {needle:?}");
+         }
+     }
++    #[test]
++    fn reverse_byte_search_covers_all_values_and_slice_boundaries() {
++        for byte in 0u8..=255 {
++            let fill = byte.wrapping_add(1);
++            for len in [0, 1, 2, 7, 8, 15, 16, 31, 32, 63, 64, 65, 128] {
++                for offset in [0, 1, 7, 15] {
++                    // Matching bytes outside the searched subslice must not affect the result.
++                    let mut storage = vec![byte; offset];
++                    storage.extend(core::iter::repeat_n(fill, len));
++                    let hay = &mut storage[offset..];
++                    assert_eq!(rfind(hay, &[byte]), None, "{byte} {len} {offset}");
++                    if len == 0 {
++                        continue;
++                    }
++                    hay[0] = byte;
++                    assert_eq!(rfind(hay, &[byte]), Some(0), "{byte} {len} {offset}");
++                    hay[len - 1] = byte;
++                    assert_eq!(rfind(hay, &[byte]), Some(len - 1), "{byte} {len} {offset}");
++                    if len > 2 {
++                        hay[len - 1] = fill;
++                        hay[len / 2] = byte;
++                        assert_eq!(rfind(hay, &[byte]), Some(len / 2), "{byte} {len} {offset}");
++                    }
++                }
++            }
++        }
++    }
++
+     #[test]
+     fn substring_search_matches_exhaustive_byte_model() {
+         // Include NUL and invalid UTF-8; these helpers also implement Bytes search.

@@ -1,0 +1,26 @@
+{
+  "status": "Preparation record before root formatting/builds; original hashes retained, current main.ms formatted separately",
+  "baseline_commit": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "cases": 101,
+  "api": "String.last_index_of(value:String)->Optional[Int]",
+  "files_sha256": {
+    "README.md": "03b731fce281d95baa44a7183a0619663f5a88811dbc14a7ec6422c25463dca5",
+    "generate.py": "ebca26ee8e856ad37743b78a2d07ed4eb5d3d49e5bf94090f45d08d866096e7b",
+    "identities.json": "a82933461e66aa23bc0024ca8e7ad86c8eeae10b10c638a42dca6d7d497dfa55",
+    "main.ms": "07fce076ec1a36d20f86936743d98fe391c2cd19d1604e0cacb1536bcb8ee6f4",
+    "oracle.json": "ab3d85ec2d274ee50ea1b4d8f47c17610f3c3e2d6aedc7d70bb2ea41e0629014"
+  },
+  "shared_runner": "/workspace/manuscript-strings-integrated/bench/perf/string-lines/compare.py",
+  "shared_runner_sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883",
+  "pending": [
+    "coordinated formatting/frontend/native correctness",
+    "root independent runtime assessment",
+    "matched archive/compiler/program builds",
+    "separate authorized paired timings",
+    "independent data/performance review"
+  ],
+  "prior_tradeoff": "Root duplicate check: #1034 recorded general reverse-end-hit regression and deferred tiny fast paths; current hypothesis is a narrow one-byte specialization, not a newly discovered general slowdown; no historical broad benchmark rerun",
+  "root_formatted_source_sha256": "6545cbe4ea6e96322f1d6267428302a8d4445c5553137f08eb22da5f0083b7c1",
+  "format_command": "/tmp/string-round2/ms fmt bench/perf/string-rfind/main.ms",
+  "unformatted_source": "generated-before-format.ms.txt"
+}

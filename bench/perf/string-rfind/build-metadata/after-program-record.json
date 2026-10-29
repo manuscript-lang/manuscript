@@ -1,0 +1,23 @@
+{
+  "command": [
+    "/tmp/string-round2/ms",
+    "build",
+    "bench/perf/string-rfind/main.ms",
+    "--build-type",
+    "Release",
+    "-o",
+    "/tmp/string-round2/rfind-after/program",
+    "--json"
+  ],
+  "exit_code": 0,
+  "source_sha256": "6545cbe4ea6e96322f1d6267428302a8d4445c5553137f08eb22da5f0083b7c1",
+  "program_sha256": "a35bb8772db2187961147c2a8ebb38d05f976b41fcde2ac25dae2fafe5928fc3",
+  "runtime_sha256": "b7e0b0f96a955e543b9c16e037ea2674b3082135a9d47447910cec2842f5795b",
+  "helper_sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+  "public_metadata": {
+    "format": 1,
+    "version": "0.1.0",
+    "backend": "cranelift",
+    "build_type": "Release"
+  }
+}

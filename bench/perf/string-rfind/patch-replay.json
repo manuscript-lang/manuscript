@@ -1,0 +1,11 @@
+{
+  "method": "pure in-memory unified-patch replay; no production write or patch application",
+  "baseline_commit": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "baseline_source_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+  "candidate_source_sha256": "caefede7b62019b9dda2b0fe04f6b0a83e6c18f444fd7bcf6d506cc32db62490",
+  "patch_sha256": "78d3dd782a927c17cc98f64fd88850656f425b674e62488a873d35198b94135d",
+  "hunks": 2,
+  "replayed_candidate_matches_saved_source": true,
+  "current_production_matches_restored_baseline": true,
+  "replay_retains_archived_candidate_native_test": true
+}

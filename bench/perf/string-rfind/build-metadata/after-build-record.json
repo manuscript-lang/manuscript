@@ -1,0 +1,26 @@
+{
+  "runtime-build": {
+    "command": [
+      "cargo",
+      "xtask",
+      "runtime"
+    ],
+    "exit_code": 0
+  },
+  "string-tests": {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "ms-rt",
+      "string::tests::",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0
+  },
+  "libms_native.a": "b7e0b0f96a955e543b9c16e037ea2674b3082135a9d47447910cec2842f5795b",
+  "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef",
+  "string.rs": "caefede7b62019b9dda2b0fe04f6b0a83e6c18f444fd7bcf6d506cc32db62490"
+}

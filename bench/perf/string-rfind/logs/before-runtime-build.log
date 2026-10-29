@@ -1,0 +1,33 @@
+   Compiling ms-rt-abi v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-rt-abi)
+   Compiling ring v0.17.14
+   Compiling ms-rt-hot v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-rt-hot)
+   Compiling ms-rt v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-rt)
+   Compiling ms-std-path v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-path)
+   Compiling ms-std-json v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-json)
+   Compiling ms-std-fs v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-fs)
+   Compiling ms-std-compress v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-compress)
+   Compiling ms-std-archive v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-archive)
+   Compiling ms-std-io v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-io)
+   Compiling ms-std-process v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-process)
+   Compiling rustls v0.23.46
+   Compiling ms-std-system v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-system)
+   Compiling rustls-webpki v0.103.15
+   Compiling x509-parser v0.18.1
+   Compiling ms-std-log v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-log)
+   Compiling ms-std-random v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-random)
+   Compiling ms-std-html v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-html)
+   Compiling ms-std-regex v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-regex)
+   Compiling ms-std-math v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-math)
+   Compiling ms-std-decimal v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-decimal)
+   Compiling ms-std-terminal v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-terminal)
+   Compiling ms-std-time v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-time)
+   Compiling ms-std-crypto v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-crypto)
+   Compiling ms-std-encoding v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-encoding)
+   Compiling ms-std-bigint v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-bigint)
+   Compiling ms-std-url v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-url)
+   Compiling ms-std-net v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-std-net)
+   Compiling ms-native v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-native)
+    Finished `release` profile [optimized] target(s) in 1m 04s
+   Compiling ms-rt-hot v0.1.0 (/workspace/manuscript-string-rfind/crates/ms-rt-hot)
+    Finished `release` profile [optimized] target(s) in 0.26s
+/workspace/manuscript-string-rfind/crates/xtask/../../target/ms-native/libms_native.a
