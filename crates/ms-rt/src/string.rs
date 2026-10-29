@@ -1747,8 +1747,7 @@ pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut Ve
         let text = bytes(s);
         let mut v = EMPTY_VEC;
         let mut start = 0;
-        let newline = Needle::Byte(b'\n');
-        while let Some(p) = newline.find(&text[start..]) {
+        while let Some(p) = find_newline(&text[start..]) {
             let mut end = start + p;
             if end > start && text[end - 1] == b'\r' {
                 end -= 1;
@@ -1761,6 +1760,20 @@ pub unsafe extern "C-unwind" fn msrt_string_lines(s: *const StrVal, out: *mut Ve
         }
         *out = v;
     }
+}
+
+/// Keep nearby line endings cheap, then scan long lines with the vector byte searcher.
+/// A scalar prefix also avoids vector-search setup for ordinary short lines in a long text.
+#[inline]
+fn find_newline(text: &[u8]) -> Option<usize> {
+    let near = text.len().min(SHORT_HAY);
+    if let Some(at) = text[..near].iter().position(|&c| c == b'\n') {
+        return Some(at);
+    }
+    if near == text.len() {
+        return None;
+    }
+    memchr(b'\n', &text[near..]).map(|at| at + near)
 }
 
 #[unsafe(no_mangle)]
@@ -2420,6 +2433,23 @@ mod tests {
                     let naive = hay.windows(nlen).position(|w| w == &needle[..]);
                     assert_eq!(Needle::new(&needle).find(&hay), naive, "{hay:?} {needle:?}");
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn newline_search_matches_scalar_search_across_the_prefix_boundary() {
+        for len in 0..=129 {
+            let mut text = vec![b'x'; len];
+            assert_eq!(find_newline(&text), None);
+            for at in 0..len {
+                text[at] = b'\n';
+                assert_eq!(
+                    find_newline(&text),
+                    text.iter().position(|&c| c == b'\n'),
+                    "length {len}, newline {at}"
+                );
+                text[at] = b'x';
             }
         }
     }

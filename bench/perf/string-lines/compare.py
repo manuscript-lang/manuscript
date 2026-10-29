@@ -9,14 +9,14 @@ import subprocess
 
 
 def expected_rows():
-    rows = {"empty": (0, 100000, 0), "tiny": (4, 100000, 3600000),
-            "short_unterminated": (5, 100000, 2200000),
-            "empty_lines": (4, 100000, 6800000)}
+    rows = {"empty": (0, 1000000, 0), "tiny": (4, 1000000, 36000000),
+            "short_unterminated": (5, 1000000, 22000000),
+            "empty_lines": (4, 1000000, 68000000)}
     for width in [7, 8, 15, 16, 31, 32, 128, 1024, 8192, 65536]:
         count = 1048576 // (width + 1)
-        rows[f"lf_{width}"] = ((width + 1) * count, 16, (width + 17) * count * 16)
-    rows["unicode_crlf"] = (9002 * 128, 16, 9017 * 128 * 16)
-    rows["no_newline"] = (1048576, 16, (1048576 + 17) * 16)
+        rows[f"lf_{width}"] = ((width + 1) * count, 64, (width + 17) * count * 64)
+    rows["unicode_crlf"] = (9002 * 128, 64, 9017 * 128 * 64)
+    rows["no_newline"] = (1048576, 64, (1048576 + 17) * 64)
     return rows
 
 
@@ -28,6 +28,8 @@ def sample(executable):
     rows = {}
     expected = expected_rows()
     for row in reader:
+        if set(row) != set(reader.fieldnames) or any(value is None for value in row.values()):
+            raise ValueError(f"malformed row: {row}")
         name = row["case"]
         if name in rows or name not in expected:
             raise ValueError(f"duplicate or unknown case: {name}")
