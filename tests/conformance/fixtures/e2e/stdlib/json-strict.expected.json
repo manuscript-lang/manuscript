@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "json-strict.ms::JSON strict stringify rejects no-form list elements and map values",
+          "name": "json-strict.ms::JSON strict stringify rejects no-form list elements",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN json-strict.ms::JSON stringify omits values without a JSON form unless strict\nPASS json-strict.ms::JSON stringify omits values without a JSON form unless strict\nRUN json-strict.ms::JSON strict stringify rejects no-form list elements and map values\nPASS json-strict.ms::JSON strict stringify rejects no-form list elements and map values\nRUN json-strict.ms::JSON strict stringify accepts none and nulls that are values\nPASS json-strict.ms::JSON strict stringify accepts none and nulls that are values\n3 tests, 0 failed\n",
+      "stdout": "RUN json-strict.ms::JSON stringify omits values without a JSON form unless strict\nPASS json-strict.ms::JSON stringify omits values without a JSON form unless strict\nRUN json-strict.ms::JSON strict stringify rejects no-form list elements\nPASS json-strict.ms::JSON strict stringify rejects no-form list elements\nRUN json-strict.ms::JSON strict stringify accepts none and nulls that are values\nPASS json-strict.ms::JSON strict stringify accepts none and nulls that are values\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
