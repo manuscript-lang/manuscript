@@ -1,0 +1,5 @@
+RUN string-empty-replace.ms::empty boundary replacements preserve text at result size boundaries
+PASS string-empty-replace.ms::empty boundary replacements preserve text at result size boundaries
+RUN string-empty-replace.ms::empty replacement fast path leaves insertion and ordinary matching intact
+PASS string-empty-replace.ms::empty replacement fast path leaves insertion and ordinary matching intact
+2 tests, 0 failed

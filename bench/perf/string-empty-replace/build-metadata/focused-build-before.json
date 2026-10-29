@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "command": "build",
+  "build_type": "Release",
+  "source_root": "/workspace/manuscript-empty-replace/bench/perf/string-empty-replace",
+  "output": "/tmp/string-round2/empty-before/focused-program",
+  "completed": true,
+  "exit_code": 0,
+  "artifacts": [
+    {
+      "kind": "executable",
+      "path": "/tmp/string-round2/empty-before/focused-program",
+      "state": "verified"
+    },
+    {
+      "kind": "build_metadata",
+      "path": "/tmp/string-round2/empty-before/focused-program.ms-build.json",
+      "state": "verified"
+    }
+  ],
+  "stdout": "",
+  "diagnostics": []
+}

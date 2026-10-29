@@ -1,0 +1,15 @@
+diff --git a/crates/ms-rt/src/string.rs b/crates/ms-rt/src/string.rs
+index 0627f7af6..b198d49ab 100644
+--- a/crates/ms-rt/src/string.rs
++++ b/crates/ms-rt/src/string.rs
+@@ -1472,6 +1472,10 @@ pub unsafe extern "C-unwind" fn msrt_string_replace(
+             return replace_shrinking(s, o, n).write_to(out);
+         }
+         let count = if o.is_empty() {
++            if n.is_empty() {
++                // Empty insertions leave every byte unchanged; no scalar traversal is needed.
++                return from_bytes(text).write_to(out);
++            }
+             utf8::count(text) + 1
+         } else {
+             count_matches(text, o)

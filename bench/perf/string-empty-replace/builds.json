@@ -1,0 +1,140 @@
+{
+  "recorded_at": "2026-10-29T16:25:02.586350+00:00",
+  "classification": "rejected: insertion/control costs recur despite no-op gains",
+  "baseline_commit": "4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192",
+  "candidate": "baseline plus exploratory/runtime.patch (archived, not applied)",
+  "runtime_restored_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+  "compiler": {
+    "path": "/tmp/string-round2/ms",
+    "sha256": "cd158b8ca24e62776ba38aa8b774e57f4dd1434346d2edc7569211e7b848c0fc"
+  },
+  "machine": {
+    "system": "Linux",
+    "node": "171dde036bbb",
+    "release": "6.18.55",
+    "version": "#1 SMP Wed Oct 14 19:45:18 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "rust_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "configuration": {
+    "build_type": "Release",
+    "MS_LLVM_TOOLS": "/workspace/.cache/ms/llvm/d19868df5ca10629",
+    "explicit_other_backend_override": "none supplied by recorded commands",
+    "companion_metadata_label": "cranelift",
+    "effective_backend": "unverified beyond recorded configuration; no backend probes performed"
+  },
+  "suites": {
+    "full": {
+      "cases": 70,
+      "pairs": 7,
+      "raw_rows": 980,
+      "unrecorded_checked_producers": 2,
+      "recorded_producers": 14,
+      "producer_exits": "all zero, checked by strict runner",
+      "exact_output_identity_and_checksum": "all passed"
+    },
+    "focused": {
+      "cases": 29,
+      "pairs": 9,
+      "raw_rows": 522,
+      "unrecorded_checked_producers": 2,
+      "recorded_producers": 18,
+      "producer_exits": "all zero, checked by strict runner",
+      "exact_output_identity_and_checksum": "all passed",
+      "iterations": "1000000 at<=128bytes;4096 at<=16384bytes;64 beyond",
+      "expected_construction": "independently expressed literals/repeats replace reused input variables for no-op/miss expectations; separate setup/allocation and validation phase, not pooled with full matrix"
+    }
+  },
+  "timing_affinity": "CPU0 inherited by producers, no concurrent native build/test/timed work",
+  "timed_work": "replacement plus complete output equality, checksum, and result release; setup/expected generation/warmups/printing/compilation/startup excluded",
+  "correctness": {
+    "source_release": "2 passed",
+    "source_debug": "2 passed",
+    "string_unit": "20 passed,133 skipped by filter"
+  },
+  "files_sha256": {
+    "build-metadata/focused-build-after.json": "39f7baf2cd832da6b046d34472196567a6597921986ed3193793edf6afb3df6b",
+    "build-metadata/focused-build-before.json": "e9880c985702583e13e96f9fc514afe65af2d44df1bab59c20ac51761c30be08",
+    "build-metadata/focused-build-stderr-after.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build-metadata/focused-build-stderr-before.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build-metadata/focused-companion-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/focused-companion-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-build-after.json": "27ec3999030e2f6cdac2192fdba75fbe34abe564a343046e29aa0716cecde75d",
+    "build-metadata/full-build-before.json": "ffe58510b3943d064d5b9e7d35407fd6c127dd17f9bae9637b0a118461fe1f40",
+    "build-metadata/full-build-stderr-after.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build-metadata/full-build-stderr-before.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build-metadata/full-companion-after.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "build-metadata/full-companion-before.json": "0ffd7ffa13422e26ecec239ac0d540bd80dda32dcfecee1a060d5264bcecf80f",
+    "checks/runtime-after.txt": "1e01280dd72bc9ecf1ab06374e66a6277bbbf8f4f592c26f4c07ba5c537188df",
+    "checks/runtime-before.txt": "dcc73984ec512f2a260cd2094bf975532c43ce41146e60ae14bfc71ae5a772d8",
+    "checks/source-debug.txt": "3bcee6c08e89c2e9c9a526a7af8a166caf00639c51dd8a54aa94e1125836d4fd",
+    "checks/source-release.txt": "3bcee6c08e89c2e9c9a526a7af8a166caf00639c51dd8a54aa94e1125836d4fd",
+    "checks/string-unit.txt": "3ffc860c7cbccafd1eb94bb11ede25d304c1f474f6e5b6fcb2b5e446bbf88a1e",
+    "exploratory/runtime.patch": "9d47e35535a20c9417c98f01588058be6076143ddd4e968ce87598a0ffc0b0af",
+    "exploratory/source-tests.ms": "9a13652cdf93f3b2f9a968f29db4aac71c447238602db8f51282acd79915b4f7",
+    "focused-controls.ms": "edea61cb0ac83ccc92bd19fca8c063a3897691edec3034614f96adb9effa5277",
+    "focused-identities.json": "21ee7aedd971242ac24a28e8c9b3fc7973540627fde27e4c088de1e6579b3e8f",
+    "focused-paired-samples.csv": "2786dab34f35442e3899d0a9ea22144c1329a852d966f68066d83bad3775176a",
+    "focused-paired.csv": "07f677d84865358872306bf5ca467a93b90264d60bb66aaaf281cf742efaece5",
+    "focused-samples.csv": "5a35674378d766532dfb1e7208f1ef9b9935a7e6d8c05fd7a64ebf96c1dbd1cb",
+    "focused-summary.csv": "62c9beb4ffb1e6046ae03a0c327b28d9b380a7e0b5a9501ba8d2c46c1e0e248f",
+    "identities.json": "ec6ac54aed72f479c4520257240d9875c690b453706fe72a4ff63b1ae229683c",
+    "main.ms": "63ee8784f626e80fd7abbb8db09b929680e7952b4620f0b655606fedef7e4c8e",
+    "paired-samples.csv": "e28ac96a2bd5ce105fcd80659bc996f7a4d3708f88ebc03e05ddfc0466a97fe5",
+    "paired.csv": "2b18bdb38b653d99daa8623a6129ac56ce92306f045456daf8ee4f5c1fd81310",
+    "samples.csv": "8b6d8370d639dc2494d6587383c9753d8939f4f95f805b96d5fa676181fde397",
+    "summary.csv": "9864d7b650f6c56a100f79b96ef47c5c7d806eeb21e4d9da9d0a3845a9e57eae"
+  },
+  "shared_runner": {
+    "path": "bench/perf/string-lines/compare.py",
+    "sha256": "ac6ce5a9b394188ec8157aec126b96d61ea8c577651ad6dcc83acef3d74e8883"
+  },
+  "artifacts": {
+    "before": {
+      "archive": {
+        "path": "/tmp/string-round2/empty-before/libms_native.a",
+        "sha256": "08984ee2e7fef1b392d576513d33cc72ab58fa23b46035afaf037f807c2d179f"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-round2/empty-before/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "runtime_source": {
+        "path": "/tmp/string-round2/empty-before/string.rs",
+        "sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e"
+      },
+      "program": {
+        "path": "/tmp/string-round2/empty-before/program",
+        "sha256": "612f45ad89a4ba60a4ef8ea910553bccba3bf6894de4259b3f067d54a876ee11"
+      },
+      "focused_program": {
+        "path": "/tmp/string-round2/empty-before/focused-program",
+        "sha256": "04ba4c407568a1576b2a95241819fdf768d755184336851b01f8ee1b55903723"
+      }
+    },
+    "after": {
+      "archive": {
+        "path": "/tmp/string-round2/empty-after/libms_native.a",
+        "sha256": "dcb906e50fa608a6379cfac9eb27908066d58c991d85edf0def44d6ec490236e"
+      },
+      "pure_helpers": {
+        "path": "/tmp/string-round2/empty-after/ms_rt_hot.ll",
+        "sha256": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+      },
+      "runtime_source": {
+        "path": "/tmp/string-round2/empty-after/string.rs",
+        "sha256": "8af4b226cd5d9e77955f23099b887e6a528937cfc3782841aa27b52e025f5d57"
+      },
+      "program": {
+        "path": "/tmp/string-round2/empty-after/program",
+        "sha256": "7f03e699df9e70bc391e4d7621f1a988e9977ab7db9ecf567ecfff4b09a4af29"
+      },
+      "focused_program": {
+        "path": "/tmp/string-round2/empty-after/focused-program",
+        "sha256": "fe9580054e6e0653b6f94fae81e0db2f7bc841171b3b903ca44a385932fd0b96"
+      }
+    }
+  }
+}
