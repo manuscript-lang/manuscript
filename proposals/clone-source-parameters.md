@@ -15,6 +15,7 @@ Skeptical review, 2026-10-30: **revise, do not build as written.** Objections to
 - Evidence: the only fixture is a non-recursive `left_of` called from `main`; Release still shows allocs=4, which is unexplained (the inliner should have turned the clone into a move). Find a realistic non-inlinable case and a measured benefit, or the do-nothing case wins.
 - Cost: "no call copies more than today" needs a borrowed entry beside the owned one, so every clone-source function gets two entries (plus the indirect wrapper); stdlib and generic instantiations multiply this. Measure it.
 - Soundness: with an owned `p`, unwinding must drop `p`'s other fields and skip the caller's drop; `unwind.rs` handling of `Mode::Own` source parameters is unverified, and the "Unproven" list in `owned-parameters.md` applies in full.
+- Explained: the Release count is all construction (two heap literals and two lists). The inliner already removes the clone, so the benefit exists only for functions that are not inlined (recursive, large, or reached through a function value). Debug shows the clone (allocs=5). The proposal needs a recursive or large-callee case with a measured Release gain before any build; otherwise the do-nothing case holds.
 - Simpler route to try first: infer `Consume` for `p.f.clone()` only, reusing the existing owned-entry path (`owned_mask`, `func.rs`) with last-use callers, so no new mode is added.
 
 ## Problem
