@@ -556,3 +556,37 @@ fn an_unoptimized_build_moves_a_value_rebuilt_from_itself() {
         .count();
     assert_eq!(copies, 0);
 }
+
+const DEAD_RECORD: &str = r#"module "t"
+record Pair { a: list<int>, b: list<int> }
+entry @main
+
+fn @main() -> int export {
+b0:
+  %1: int = iconst 7
+  %2: list<int> = list.lit %1
+  %3: list<int> = list.lit %1, %1
+  %4: Pair = rec.new Pair %2, %3
+  %5: list<int> = rec.get Pair.a %4
+  %6: list<int> = copy %5
+  drop %4
+  %7: int = list.len %6
+  drop %6
+  ret %7
+}
+"#;
+
+#[test]
+fn a_field_cloned_out_of_a_dying_record_is_moved_not_copied() {
+    let mut m = parse_module(DEAD_RECORD).unwrap_or_else(|e| panic!("{e}"));
+    verify_module(&m).unwrap_or_else(|e| panic!("{e:?}"));
+    let before = Interp::new(&m).run_entry().map_err(|f| f.message);
+    assert!(opt::copyelim::run_takes(&mut m));
+    if let Err(e) = verify_module(&m) {
+        panic!("{e:?}\n{}", print_module(&m));
+    }
+    assert_eq!(count(&m, "main", Op::Copy), 0);
+    assert_eq!(count(&m, "main", Op::RecRelease), 1);
+    assert_eq!(count(&m, "main", Op::Drop), 1);
+    assert_eq!(before, Interp::new(&m).run_entry().map_err(|f| f.message));
+}
