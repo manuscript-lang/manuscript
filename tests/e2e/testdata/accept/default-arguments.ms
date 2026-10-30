@@ -62,7 +62,7 @@ test "omitted and explicit defaults":
     (identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
     unit_value(unit) | try expect_equal(unit)
     unit_value() | try expect_equal(unit)
-    (optional(value: none) != Int?.none or optional() != some(3)) | try expect_false
+    (not optional(value: none).is_none() or optional() != some(3)) | try expect_false
     (
         (
             propagate() != Result[Int, TextError].error(

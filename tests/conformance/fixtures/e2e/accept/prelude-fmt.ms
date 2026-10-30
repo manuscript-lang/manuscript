@@ -22,7 +22,7 @@ fn propagated() Result[Int, Error]:
 test "prelude cases and optional methods need no imports":
     let inferred = some(3)
     let absent: Int? = none
-    let qualified = Int?.some(5)
+    let qualified: Int? = 5
     try expect_false(not inferred.is_some() or not absent.is_none())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(

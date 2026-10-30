@@ -53,7 +53,7 @@ test "Optional or_else keeps the wrapper and is lazy":
     let missing: Int? = none
     try expect_equal(present.or_else(unexpected_optional), some(0))
     try expect_equal(missing.or_else(fn: some(4)), some(4))
-    try expect_equal(missing.or_else(fn: Int?.none), none)
+    try expect_equal(missing.or_else(fn: none), none)
 
 test "Result get_or_else returns the payload and receives the error":
     let success: Result[Int, TextError] = ok(0)

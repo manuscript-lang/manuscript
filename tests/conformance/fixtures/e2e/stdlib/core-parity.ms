@@ -170,7 +170,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let chained = present.clone().and_then(fn value: some(value))
     try expect_equal(chained.get().calls, 0)
 
-    let absent = present.clone().and_then(fn unused: Int?.none)
+    let absent = present.clone().and_then(fn(unused: Counter) Int?: none)
     try expect_false(not (absent.is_none()))
 
     let create = fn() Counter?: some(Counter(5))
@@ -181,7 +181,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
     let fallback = missing.clone().or_else(create)
     try expect_equal(fallback.get().calls, 5)
 
-    let nested = present.clone().map(fn unused: Int?.none)
+    let nested = present.clone().map(fn(unused: Counter) Int?: none)
     try expect_false(not (nested.is_some()) or not (nested.get().is_none()))
 
     let bound_map = mapped.clone().map[String]

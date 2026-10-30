@@ -2374,29 +2374,6 @@ impl<'a> Parser<'a> {
                         name: self.sym(name),
                     },
                 );
-            } else if self.kind() == Tok::Question && self.ahead(1).kind == Tok::Dot {
-                // `Int?.none`: the optional type as a value, like `Optional[Int].none`.
-                self.link(&mut links)?;
-                let q = self.next();
-                let Some(inner) = self.value_type(&e) else {
-                    return self.fail(
-                        q,
-                        "'?' follows a type; write Int?.none or (fn(Int) Int)?.none",
-                    );
-                };
-                let id = self.id();
-                let wrapped = TypeRef {
-                    id,
-                    pos: inner.pos,
-                    kind: TypeKind::Named {
-                        name: Symbol::intern("Optional"),
-                        args: vec![inner],
-                    },
-                };
-                let Some(value) = self.type_value(&wrapped) else {
-                    return self.fail(q, "'?' follows a type; write Int?.none");
-                };
-                e = value;
             } else if self.take(Tok::LBracket) {
                 self.link(&mut links)?;
                 e = self.bracket(e)?;
@@ -2834,51 +2811,6 @@ impl<'a> Parser<'a> {
                 index: Box::new(index),
             },
         ))
-    }
-
-    /// Reinterprets a name or applied name expression as the type it spells.
-    fn value_type(&mut self, e: &Expr) -> Option<TypeRef> {
-        let mut pos = e.pos;
-        let name = match &e.kind {
-            ExprKind::Name(n) => n.as_str().to_string(),
-            ExprKind::Member { left, name } => {
-                let base = self.value_type(left)?;
-                pos = base.pos;
-                let TypeKind::Named { name: base, args } = base.kind else {
-                    return None;
-                };
-                if !args.is_empty() {
-                    return None;
-                }
-                format!("{base}.{name}")
-            }
-            ExprKind::Apply { left, types, .. } => {
-                let base = self.value_type(left)?;
-                let TypeKind::Named { name, args } = base.kind else {
-                    return None;
-                };
-                if !args.is_empty() {
-                    return None;
-                }
-                let args = self.copy_types(types);
-                let id = self.id();
-                return Some(TypeRef {
-                    id,
-                    pos: e.pos,
-                    kind: TypeKind::Named { name, args },
-                });
-            }
-            _ => return None,
-        };
-        let id = self.id();
-        Some(TypeRef {
-            id,
-            pos,
-            kind: TypeKind::Named {
-                name: Symbol::intern(&name),
-                args: Vec::new(),
-            },
-        })
     }
 
     /// Reinterprets a type as the value expression that spells it.

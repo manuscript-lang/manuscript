@@ -14,11 +14,11 @@ let missing: String? = none
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 
-`T?` is an invariant alternative with qualified cases `T?.some(value: ...)` and `T?.none`. Unqualified forms use the expected type or infer `T` from a `some` payload; `none` needs context or qualification.
+`T?` is an invariant alternative. `some` and `none` use the expected type or infer `T` from a `some` payload; `none` needs the type written on its binding.
 
 ```manuscript
 let inferred = some(1)  # Int?
-let explicit = String?.none
+let explicit: String? = none
 # Rejected: no type determines the absent payload.
 let unknown = none
 # Wrapped: an annotated binding expects an Optional.
