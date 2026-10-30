@@ -7,10 +7,10 @@ impl Closeable for Door:
     var fn close() Unit:
         return
 
-fn wrap(d: Door) Optional[Door]:
+fn wrap(d: Door) Door?:
     return some(d)
 
-fn apply(f: fn(Door) Optional[Door]) Int:
+fn apply(f: fn(Door) Door?) Int:
     return f(Door(1)).get().n
 
 fn g() Int:
