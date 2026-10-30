@@ -749,6 +749,9 @@ impl<'m> Interp<'m> {
                 }
                 set!(p[i as usize].clone());
             }
+            Op::RecRelease => {
+                arg(f, regs, a[0], true, m);
+            }
             Op::AltRelease => {
                 arg(f, regs, a[0], true, m);
             }

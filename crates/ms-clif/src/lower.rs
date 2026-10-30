@@ -2024,6 +2024,20 @@ impl<'a, 'm> Lower<'a, 'm> {
                     _ => idx.iter().map(|k| v[*k]).collect(),
                 }
             }
+            Op::RecRelease => {
+                let Imm::RecMask(_, mask) = inst.imm else {
+                    unreachable!()
+                };
+                let ty = f.ty(inst.args[0]);
+                let v = self.a(inst, 0);
+                // Drop the fields that were not moved out; a record owns no block of its own.
+                for (k, (fty, at, w)) in self.fields_of(ty).into_iter().enumerate() {
+                    if mask >> k & 1 == 0 {
+                        self.drop_value(fty, &v[at..at + w]);
+                    }
+                }
+                vec![]
+            }
             Op::AltRelease => {
                 let Imm::AltMask(a, c, mask) = inst.imm else {
                     unreachable!()
