@@ -37,6 +37,9 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
 /// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
+    #[cfg(feature = "stats")]
+    // SAFETY: caller passes a live string.
+    count_copy(1, unsafe { bytes(&*s) }.len());
     // SAFETY: caller passes a live string and a writable `out`.
     unsafe { cloned(&*s).write_to(out) }
 }
@@ -2358,6 +2361,20 @@ crate::isolate_static! {
 /// Dynamic string copies and drops, `[drop static, drop owned, copy static, copy owned]`, counted when
 /// the program was compiled with `MS_COUNT_STR` set (see `ms-clif`); printed at exit by the `stats` runtime.
     pub static STR_COUNTS: [u64; 4] = [0; 4];
+}
+crate::isolate_static! {
+/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (the `stats` runtime).
+    pub static COPY_COUNTS: [u64; 4] = [0; 4];
+}
+/// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
+#[cfg(feature = "stats")]
+pub fn count_copy(kind: usize, bytes: usize) {
+    // SAFETY: single threaded access to the counters.
+    unsafe {
+        let c = &mut *COPY_COUNTS.ptr();
+        c[kind * 2] += 1;
+        c[kind * 2 + 1] += bytes as u64;
+    }
 }
 /// Records one executed string drop (`kind` 0) or copy (1) of a string whose capacity word is `cap`.
 #[unsafe(no_mangle)]

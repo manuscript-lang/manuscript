@@ -5,7 +5,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench
+.PHONY: runtime setup tools doctor verify verify-full check lint repo-check unit test build conform e2e leak-check count-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench
 
 setup: tools
 
@@ -61,6 +61,9 @@ e2e:
 	sh scripts/e2e.sh
 
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
+count-check:
+	sh scripts/count-check.sh
+
 leak-check:
 	sh scripts/leak-check.sh
 
