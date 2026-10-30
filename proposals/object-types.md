@@ -13,6 +13,13 @@
 
 Proposal, 2026-10-30, against `origin/main` at `69d78f65`. Supersedes every earlier proposal on this branch (`shared-guard-consuming-close.md`, `retire-shared.md`, `owner-task-state.md`, `mutex-guard-naming.md`, `lock-api.md`, `channels-as-base.md`). Their reviews established: guards are held across waits in the library, native per-purpose objects cost 600-900 Rust lines, a channel base breaks logger and router contracts. This design needs no new runtime object and no Rust per use. Nothing implemented.
 
+**Skeptic review (2026-10-30): do not build as written.**
+- The builder path is not in-place: `builder_call` takes, mutates and puts back (`sharedbuilder.rs:154-157`), and user `var fn` calls are copy-in/copy-out (`ir.rs:121-123`). An object field call would leave stale bits during the call, the #1422 bug moved to every object. A by-address `var` mode across MIR, interpreter, passes and clif is required.
+- Borrow safety needs every wait, closure and interface call treated as a possible write, which rejects stdlib loops (`workers.ms:245-251`, `processes.ms:454-458`, `router.ms:435`). Today's `get` rules and in-use fault are stricter.
+- Sites that hold a lock across a wait (`Worker.wait`, log `send`/`flush`/`close`, group closes) rebuild a lock by hand with flags, wait lists and a cancel ticket. Users lose exclusion across waits entirely.
+- Many `Shared` sites wrap anonymous types (`Map`, `List`, `Int`, an interface) and need new declarations; cycles leak and skip close; a close from drop glue that waits switches tasks at invisible points; `.clone()`, hashing and derivations are undefined.
+- Size is several thousand Rust lines, against about 40 lines of special cases removable by fixing the guard in place (payload `Optional`, or a compiler-known guard moved out on close).
+
 ## Problem
 
 - Verified: `Lane[T]` (`tasks.ms:111`) is an ordinary record with `var fn pop`, `clear`, `wake`. It is wrapped as `Shared[Lane[T]]` only so sender and receiver see one instance; every use is `var g = lock(lane); g.value.pop(); g.close()`.
