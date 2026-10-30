@@ -2541,7 +2541,7 @@ type	2	11	33	assignment requires a record field; only fields of a record value c
 resolution	1	12	11	unknown type File; add: import File from "@std/io.ms"import Network from "@std/net.ms"
 fn f(socket: Network) Unit:
     socket.clone()
-resolution	3	12	73	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
+resolution	3	12	73	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, serve_connections, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
     queue.clone()
 resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
