@@ -2290,11 +2290,21 @@ impl Walker<'_> {
             ExprKind::Name(_) => match self.cx.m.resolution(e) {
                 Resolution::Local(b) => self.use_local(e, &b, d),
                 Resolution::Function(sym) if !self.callees.contains(&e.id) => {
-                    self.function_value_copies(e, &sym)
+                    if let Some(decl) = sym.decl.clone() {
+                        let func = crate::syntax::FuncRef::of_decl(decl);
+                        self.function_value_copies(e, sym.module, &func);
+                    }
                 }
                 _ => {}
             },
             ExprKind::Member { .. } | ExprKind::Index { .. } | ExprKind::Apply { .. } => {
+                if let (ExprKind::Member { .. }, Resolution::Method(m)) =
+                    (&e.kind, self.cx.m.resolution(e))
+                    && let Some(func) = m.decl.clone()
+                {
+                    // A method used as a value; calls take their receiver apart instead.
+                    self.function_value_copies(e, m.module, &func);
+                }
                 self.projection(e, d)
             }
             ExprKind::List(items) => items.iter().for_each(|i| self.expr(i, Demand::Consume)),
@@ -2614,10 +2624,8 @@ impl Walker<'_> {
 
     /// A named function used as a value is called with its arguments lent, so a parameter it
     /// keeps is a copy: rejected for a resource, a copy of the type parameter in generic code.
-    fn function_value_copies(&mut self, e: &Expr, sym: &SymRef) {
-        let Some(decl) = sym.decl.clone() else { return };
-        let func = crate::syntax::FuncRef::of_decl(decl);
-        let Some(summary) = self.cx.summaries.get(&(sym.module, func.id())) else {
+    fn function_value_copies(&mut self, e: &Expr, module: Name, func: &crate::syntax::FuncRef) {
+        let Some(summary) = self.cx.summaries.get(&(module, func.id())) else {
             return;
         };
         let fty = self.cx.m.ty(e);

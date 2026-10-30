@@ -41,7 +41,7 @@ impl Classifier {
         self.class_in(t, &mut Vec::new())
     }
 
-    fn class_in(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn class_in(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         match t.kind {
             Kind::Primitive if t.id.as_str() == "String" => Class::Move,
             Kind::Primitive => Class::Copy,
@@ -61,7 +61,7 @@ impl Classifier {
         }
     }
 
-    fn native(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn native(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
         } else if t.is_std("Shared") {
@@ -83,22 +83,25 @@ impl Classifier {
 
     /// The class of a collection holding `element`: `Resource` when its elements are, else
     /// `Move`, so a collection of plain values stays as cheap as before.
-    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<Name>) -> Class {
+    fn holds(&self, element: Option<&Ty>, visiting: &mut Vec<String>) -> Class {
         match element.map(|e| self.class_in(e, visiting)) {
             Some(Class::Resource) => Class::Resource,
             _ => Class::Move,
         }
     }
 
-    fn nominal(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
+    fn nominal(&self, t: &Ty, visiting: &mut Vec<String>) -> Class {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
         }
-        if visiting.contains(&t.id) {
+        // Keyed by the instance, so `Optional[Optional[Door]]` looks inside its payload; a
+        // generic type that grows without bound is cut off as boxed.
+        let key = t.to_string();
+        if visiting.contains(&key) || visiting.len() > 64 {
             // A type containing itself is boxed: it cannot be copied implicitly.
             return Class::Move;
         }
-        visiting.push(t.id);
+        visiting.push(key);
         let mut class = Class::Copy;
         for f in fields(t) {
             class = class.max(self.class_in(&f.ty, visiting));
