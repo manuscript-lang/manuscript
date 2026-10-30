@@ -101,6 +101,18 @@ native! {
         Handed::New(Object(Stream::standard(which)))
     }
 
+    /// Points this process's standard stream `which` (0 input, 1 output, 2 error) at the null device. Pending buffered output is written first.
+    fn msstd_io_redirect_null(which: i64) -> Result<(), StatusCode> {
+        if !(0..=2).contains(&which) {
+            return Err(StatusCode(ms_rt_abi::STATUS_INVALID_INPUT));
+        }
+        ms_rt::io::flush_stdout();
+        ms_std_fs::sys::redirect_standard_to_null(which).map_err(|errno| {
+            record_failure(alloc::format!("redirect standard stream: errno {errno}").into_bytes());
+            StatusCode(ms_rt_abi::STATUS_FAILED)
+        })
+    }
+
     fn msstd_io_open(path: &str) -> Result<Object<Stream>, StatusCode> {
         status(Stream::open(path.as_bytes())).map(Object)
     }

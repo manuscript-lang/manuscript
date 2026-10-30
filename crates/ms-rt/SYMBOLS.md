@@ -469,6 +469,7 @@ msstd_io_acc_finish_line(a: *mut Acc, out: *mut StrVal) -> u8
 msstd_io_failure_message(out: *mut StrVal)
 msstd_io_standard(which: i64) -> *mut Host
 msstd_io_open(path: *const StrVal, out: *mut *mut Host) -> u8
+msstd_io_redirect_null(which: i64) -> u8
 msstd_io_read( h: *mut Host, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_io_read_line( h: *mut Host, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msstd_io_write_bytes(h: *mut Host, data: *const VecVal) -> u8
