@@ -2,9 +2,9 @@
 import Bytes from "@std/bytes.ms"
 import filesystem from "@std/fs.ms"
 import {headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
-import network from "@std/net.ms"
+import {deal_connections, network, serve_core} from "@std/net.ms"
 import arguments from "@std/process.ms"
-import {Worker, WorkerGroup, worker_channel} from "@std/workers.ms"
+import {Worker, WorkerGroup} from "@std/workers.ms"
 
 fn score(id: Int) Int:
     return id * 7919 % 1000
@@ -124,20 +124,8 @@ fn serve_here(port: String, dir: String) Int:
 
 # One serving thread of a multi-threaded run: serves the connections its starter sends.
 fn serve_worker() Unit:
-    var ch = worker_channel[Int, Int]()
     let args = arguments()
-
-    if let acquired = network().serve_connections(handler: make_handler(args.get(1))):
-        var server = acquired
-
-        while true:
-            if let connection = ch.receive().get(none):
-                server.adopt(connection)
-                continue
-
-            break
-
-        server.close()
+    let _ = serve_core(make_handler(args.get(1)))
 
 # Accepts on the main thread and deals the connections to `threads` workers.
 fn serve_threads(port: String, threads: Int) Int:
@@ -149,17 +137,7 @@ fn serve_threads(port: String, threads: Int) Int:
         workers.append(worker)
 
     if let bound = network().listen("127.0.0.1:{port}"):
-        let listener = bound
-        var next = 0
-
-        while true:
-            if let connection = listener.accept_raw():
-                let _sent = workers[next].channel.send(connection)
-                next = (next + 1) % threads
-                continue
-
-            break
-
+        let _ = deal_connections(bound, workers)
     return 1
 
 export fn main() Int:
