@@ -11,6 +11,8 @@ use ms_rt::ffi::{
     ErrOut, Handler, ObjRef, Object, OptInt, Out, StatusCode, Str, StringList, abi_record, fault,
     native,
 };
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 abi_record! {
@@ -169,7 +171,7 @@ native! {
 
     /// `HttpExchange.headers()`.
     fn msrt_http_exchange_headers(x: ObjRef<ExchH>) -> Object<HeadersH> {
-        Object(HeadersH(x.headers()))
+        Object(HeadersH(Rc::new(RefCell::new(x.headers().borrow().clone()))))
     }
 
     /// `HttpExchange.method()`.

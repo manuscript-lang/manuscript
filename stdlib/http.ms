@@ -49,17 +49,17 @@ export type HttpError:
 
 # Mutable HTTP fields with ASCII case-insensitive names and separate values, which are Strings by default and Bytes on request.
 # Names keep first-insertion order and spelling; values keep append order.
-# Lookup shares list membership. Use clone() to separate mutable membership.
+# Headers are an owned value: assignment moves them, mutation needs `var`, and clone() copies them.
 export extern type HttpHeaders
 
 impl HttpHeaders:
     # Appends a String value under a valid HTTP name; invalid names return InvalidInput.
     # Transport operations additionally validate framing and field values.
-    fn append(name: String, value: String) Result[Unit, HttpError]:
+    var fn append(name: String, value: String) Result[Unit, HttpError]:
         return msrt_http_headers_append(self, name, value.to_bytes())
 
     # Appends raw bytes, for the rare field whose value is not UTF-8 text.
-    fn append_bytes(name: String, value: Bytes) Result[Unit, HttpError]:
+    var fn append_bytes(name: String, value: Bytes) Result[Unit, HttpError]:
         return msrt_http_headers_append(self, name, value)
 
     # Returns every value as an owned list, empty for an absent name.
@@ -85,7 +85,7 @@ impl HttpHeaders:
         return msrt_http_headers_names(self)
 
     # Removes a name; existing list aliases are detached from this header object.
-    fn remove(name: String) Bool:
+    var fn remove(name: String) Bool:
         return msrt_http_headers_remove(self, name)
 
     # Copies name/list membership and shares immutable Bytes values.
@@ -268,12 +268,12 @@ export type HttpClientOptions:
     )
 
 # One streaming server exchange. Read or write incrementally and close when done.
-# Received headers are one shared mutable object; repeated values stay separate.
+# Received headers are an owned copy; repeated values stay separate.
 export interface HttpExchange:
     # Ends the exchange, interrupting reads or writes in progress.
     # Later operations return Closed.
     fn close() Unit
-    # Returns the request headers as shared mutable fields with every repeated value retained.
+    # Returns an owned copy of the request headers with every repeated value retained.
     fn headers() HttpHeaders
     # Returns the request method, using the Custom case for extension tokens.
     fn method() HttpMethod
@@ -506,14 +506,14 @@ export fn json[T: Data](status: Int, value: T) Result[HttpResponse, HttpError]:
     let body = stringify(value)
     if body.is_error(): return error(HttpError.Failed(body.err().message()))
 
-    let sent = headers()
+    var sent = headers()
     try sent.append("Content-Type", "application/json")
     return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
 
 # Builds a redirect to `location` with an empty body.
 # The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
 export fn redirect(location: String, status: Int = 303) Result[HttpResponse, HttpError]:
-    let sent = headers()
+    var sent = headers()
     try sent.append("Location", location)
     return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
