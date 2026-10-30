@@ -388,42 +388,6 @@ impl Error for CollectionError:
     # Returns the fixed diagnostic `collection: <reason>`, such as `collection: limit exceeded`, without echoing values.
     fn message() String: ...
 
-# Appends values efficiently before freezing them into a list.
-export type ListBuilder[T]: ...
-
-impl ListBuilder[T]:
-    # Adds `value` to the end of the mutable builder and returns Unit.
-    # A frozen builder faults.
-    fn append(value: T) Unit: ...
-
-    # Seals the builder and returns the accumulated list without copying it.
-    # Later `append` calls fault.
-    fn build() List[T]: ...
-
-# Adds entries efficiently before freezing them into a map.
-export type MapBuilder[T: Hashable, U]: ...
-
-impl MapBuilder[T, U]:
-    # Seals the builder and returns the accumulated map without copying it.
-    # Later `add` calls fault.
-    fn build() Map[T, U]: ...
-
-    # Inserts or replaces an entry in the mutable builder; returns Unit like all builder mutations.
-    # Replacement retains the original key and insertion position; a sealed builder faults.
-    fn add(key: T, value: U) Unit: ...
-
-# Adds unique values efficiently before freezing them into a set.
-export type SetBuilder[T: Hashable]: ...
-
-impl SetBuilder[T]:
-    # Seals the builder and returns the accumulated set without copying it.
-    # Later `add` calls fault.
-    fn build() Set[T]: ...
-
-    # Adds a value to the mutable builder; returns Unit like all builder mutations.
-    # Equal values retain the first payload and position; a sealed builder faults.
-    fn add(value: T) Unit: ...
-
 # Concatenates the inner lists in order into one new list (JavaScript `Array.prototype.flat`).
 export fn flatten[T](lists: List[List[T]]) List[T]: ...
 

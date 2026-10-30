@@ -9,17 +9,9 @@ use ms_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Whether a standard collection method mutates its receiver: `List`, `Map` and `Set`
-/// methods say so with `var fn` in their `@std` declaration. The collection builders are
-/// shared handles declared with plain `fn`, so their mutating methods are listed here.
+/// methods say so with `var fn` in their `@std` declaration; so do `StringBuilder` and `BytesBuilder`.
 pub fn collection_mutation(method: &Method) -> bool {
     let receiver = &method.receiver;
-    let name = method.name().map(|n| n.as_str()).unwrap_or_default();
-    if receiver.is_std("ListBuilder") {
-        return matches!(name, "append" | "build");
-    }
-    if receiver.is_std("MapBuilder") || receiver.is_std("SetBuilder") {
-        return matches!(name, "add" | "build");
-    }
     (receiver.is_std("List")
         || receiver.is_std("Map")
         || receiver.is_std("Set")

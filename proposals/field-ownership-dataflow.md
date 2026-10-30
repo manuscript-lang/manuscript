@@ -12,7 +12,7 @@
 
 ## Status
 
-Proposal, 2026-10-30, against `origin/main` at `083edc8e`. Stage 4 of [solid-value-semantics](solid-value-semantics.md). Direction (Chinmay): "Track ownership per field, through every control-flow path ... Use one shared dataflow analysis for those facts. It should drive both diagnostics and cleanup generation." Order: "fix the known holes → unify field-level ownership dataflow → define mutation and cleanup contracts → use those facts for copy/allocation elimination."
+Steps 1 to 3 implemented, 2026-10-30 (#1991 harness, #1997 per-place liveness and partial moves). Later steps are dropped or deferred per the revision below: no per-field drop flags, `PathFacts` or verifier table are built unless the optimizer cannot cover a shape; tooling consumers did not need to change. Proposal, 2026-10-30, against `origin/main` at `083edc8e`. Stage 4 of [solid-value-semantics](solid-value-semantics.md). Direction (Chinmay): "Track ownership per field, through every control-flow path ... Use one shared dataflow analysis for those facts. It should drive both diagnostics and cleanup generation." Order: "fix the known holes → unify field-level ownership dataflow → define mutation and cleanup contracts → use those facts for copy/allocation elimination."
 
 ## Problem
 
@@ -50,6 +50,10 @@ A field path appears only in `Place` for overlap checks (`places.rs`), never as 
 - Element-level moves out of collections (`xs[i]` stays a borrow; `List.replace`/`swap` from [move-out-of-places](move-out-of-places.md) cover it).
 - Moving out of a type that has its own `Closeable.close`, or out of a borrow, `ref` field, carrier, closure capture or `var` borrow: still rejected.
 - Mutation-overlap, cleanup-timing and clone contracts (stage 5) and allocation elimination (stage 6).
+
+## Revision after step 3 (2026-10-30): lowering keeps copying
+
+Implementing the checker showed that cleanup needs no new per-field flags to be sound. A consumed projection already lowers as a borrowed leaf plus `Copy` (`FnLower::owned`), and the rest of the record is dropped whole at scope exit, so accepting the move in the checker cannot double free. Per-place liveness (`Liveness.places`, `live.rs`) replaces the forward moved/maybe state: a move is legal at its last use, which already covers branches, loops, early exits and re-initialization, and a later use of an overlapping place is reported as `moved here but used again`. What the earlier design called per-field drop flags becomes an optimizer job: the copies thread's `rec.release` and the `copyelim` rewrite turn `rec.get; copy; drop` into a move plus a release of the other leaves, and `make count-check` shows when the copy disappears. The `PathFacts` table, `exit_state` and `flags` below are therefore not built unless the optimizer cannot cover a shape. `Facts.partial_moves` records the accepted moves. Receivers (`self`) are excluded from the first cut, and `let x = b.items` stays a borrow.
 
 ## Design
 

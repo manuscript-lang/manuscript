@@ -5,7 +5,8 @@ import expect_equal, expect_false from "@std/test.ms"
 import Item, Box, Holder, Choice from "./domain.ms"
 import Read, invoke, relay, as_view from "./contracts.ms"
 import Closeable from "@std/core.ms"
-import ListBuilder from "@std/collections.ms"
+import share from "@std/shared.ms"
+import lock from "@std/sync.ms"
 
 impl Read[Int] for Item:
     fn get() Int:
@@ -15,7 +16,7 @@ fn delta() Int:
     return 20
 
 impl Read[T] for Box[T]:
-    fn get() T:
+    fn get() ref T:
         return self.value
 
 impl Read[Int] for Choice:
@@ -35,7 +36,7 @@ impl Extract for Holder[T]:
         return self.value.get()
 
 export fn second_view(value: Item) Read[Int]:
-    return Read[Int](value)
+    return value
 
 export fn second_method(value: Item) fn() Int:
     return value.get
@@ -56,20 +57,21 @@ test "second local extensions":
 import Resource from "./domain.ms"
 
 impl Closeable for Resource:
-    fn close() Unit:
-        self.events.append(value: 20)
+    var fn close() Unit:
+        var guard = lock(self.events)
+        guard.value.append(value: 20)
 
 fn leave(resource: Resource) Unit:
     let _local = resource
     return
 
 export fn second_resource(resource: Resource) Closeable:
-    return Closeable(resource)
+    return resource
 
 test "second local cleanup":
-    let events = ListBuilder[Int]()
+    let events = share(List[Int]())
     leave(Resource(events))
-    events.build().get(index: 0) | try expect_equal(20)
+    events.get().get(index: 0) | try expect_equal(20)
 
 import mixed from "./first.ms"
 
