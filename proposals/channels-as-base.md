@@ -13,6 +13,17 @@
 
 Proposal, 2026-10-30, checked against `origin/main` at `69d78f65`. Supersedes `retire-shared.md`, `shared-guard-consuming-close.md` and `lock-api.md`, whose skeptic reviews found: guards are held across parking calls in the library, a native lane costs 600-900 Rust lines if done naively, and a guard cannot be written in plain Manuscript (a generic `T` has no `clone`, fields cannot move). A local POC that made `Shared` a plain record produced 24 compile errors in `tasks.ms` (15), `processes.ms` (4), `router.ms` (4) and `log.ms` (1): every site where two holders need one mutable value. Nothing implemented.
 
+**Skeptic review (2026-10-30): do not build as written.** The channel core (task lanes, result slot) is sound; deleting `Shared` entirely is not supported. Findings:
+- Router `TestState` (`router.ms:456-590`) is a synchronous read-modify-write record inside non-`var` `HttpExchange` methods; a channel gives no read-your-own-write, so it needs a runtime-owned record, which is `Shared` again.
+- Logger: `tests/e2e/testdata/stdlib/log.ms:150-166, 210-243` require immediate per-call `Closed`/`FileSystem` errors. Deferred errors break that contract; a per-call reply channel costs a task switch per record. A writer task runs only when some task waits, so plain `main` output reorders against direct stdout writes, and nothing owns the writer's lifetime.
+- Size: `pipe.rs` is a global integer-id table, not a refcounted `Obj`, and holds bytes. A descriptor-carrying generic channel with hand-lowered ops (`native.rs`) is 600-900 Rust lines, the figure this proposal wrongly dismissed.
+- Cancellation: a cancelled parked `send` leaves a stale waiter, and a moved-in value has no owner on unwind. Required API: cancellable park-until-room, then an infallible push (as `wait_for_room` plus `send` do now).
+- Registries: `ChannelGroup` already closes handed-out channels, so group close needs no `Entry.channel`. The runtime table must be pointer-erased.
+- Scope: about 47 conformance and 19 e2e files plus `shared-lock-*` fixtures and six doc pages use `Shared`/`lock`; removal is a user-visible language break that needs the owner's call.
+- Net: complexity moves into Rust, and the logger and router keep `Shared`, so the claimed deletion does not happen.
+
+Narrowed recommendation: build only stages 1-2 (task channels and result slot on a native channel, split park/push API, re-sized at 600-900 lines, with the stated go/no-go) and keep `Shared`/`lock` for logger, router test state and inbox until each has a sound replacement.
+
 ## Problem
 
 - Verified: `Lane[T]` in `tasks.ms` is a record behind a `Shared` that sender and receiver both lock; `claim_room`, `send`, `receive`, `WaitTicket` and `close_end` are lock choreography around a queue and wait tokens.
