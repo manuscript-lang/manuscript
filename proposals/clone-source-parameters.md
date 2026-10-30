@@ -9,7 +9,13 @@
 
 ## Status
 
-Proposal, 2026-10-30, checked against main `178df7ea`. Direction (Chinmay, 2026-10-30): "separate value semantics from physical copying", moving dead inputs into results rather than cloning them, from general ownership facts. Builds on `proposals/owned-parameters.md`.
+Proposal (under revision after review), 2026-10-30, checked against main `178df7ea`. Direction (Chinmay, 2026-10-30): "separate value semantics from physical copying", moving dead inputs into results rather than cloning them, from general ownership facts. Builds on `proposals/owned-parameters.md`.
+
+Skeptical review, 2026-10-30: **revise, do not build as written.** Objections to resolve first:
+- Evidence: the only fixture is a non-recursive `left_of` called from `main`; Release still shows allocs=4, which is unexplained (the inliner should have turned the clone into a move). Find a realistic non-inlinable case and a measured benefit, or the do-nothing case wins.
+- Cost: "no call copies more than today" needs a borrowed entry beside the owned one, so every clone-source function gets two entries (plus the indirect wrapper); stdlib and generic instantiations multiply this. Measure it.
+- Soundness: with an owned `p`, unwinding must drop `p`'s other fields and skip the caller's drop; `unwind.rs` handling of `Mode::Own` source parameters is unverified, and the "Unproven" list in `owned-parameters.md` applies in full.
+- Simpler route to try first: infer `Consume` for `p.f.clone()` only, reusing the existing owned-entry path (`owned_mask`, `func.rs`) with last-use callers, so no new mode is added.
 
 ## Problem
 
