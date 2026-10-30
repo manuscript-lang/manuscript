@@ -446,6 +446,29 @@ pub fn standard(which: i64) -> Fd {
     which as Fd
 }
 
+/// Points standard stream `which` (0 input, 1 output, 2 error) of this process at the null
+/// device, so children started afterwards inherit it too.
+#[cfg(unix)]
+pub fn redirect_standard_to_null(which: i64) -> Result<(), Errno> {
+    use std::os::fd::AsRawFd;
+    let null = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/null")
+        .map_err(|e| code(&e))?;
+    // SAFETY: both descriptors are open; `dup2` replaces `which` and `null` closes on drop.
+    if unsafe { libc::dup2(null.as_raw_fd(), which as Fd) } < 0 {
+        return Err(code(&io::Error::last_os_error()));
+    }
+    Ok(())
+}
+
+/// Points standard stream `which` of this process at the null device (`NUL`).
+#[cfg(windows)]
+pub fn redirect_standard_to_null(which: i64) -> Result<(), Errno> {
+    windows::redirect_standard_to_null(which).map_err(|e| code(&e))
+}
+
 /// Whether `fd` is one of the standard output streams the runtime's buffered `print` shares.
 #[cfg(unix)]
 pub fn is_output(fd: Fd) -> bool {
