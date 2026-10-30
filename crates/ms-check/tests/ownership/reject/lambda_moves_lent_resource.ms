@@ -8,6 +8,6 @@ impl Closeable for Door:
         return
 
 fn f() Int:
-    let wrap = fn(d: Door) Optional[Door]: some(d)  # error: cannot move `d` out: a function value only borrows
+    let wrap = fn(d: Door) Door?: some(d)  # error: cannot move `d` out: a function value only borrows
     let kept = wrap(Door(1))
     return kept.get().n

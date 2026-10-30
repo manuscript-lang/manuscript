@@ -244,6 +244,13 @@ impl Checker {
                     self.res_error(e.pos, msg);
                     return i;
                 }
+                if alt.is_std("Optional") {
+                    self.res_error(
+                        e.pos,
+                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                    );
+                    return i;
+                }
                 cs = case_of(alt, *name);
                 if cs.is_none() {
                     self.res_error(

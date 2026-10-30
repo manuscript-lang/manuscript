@@ -577,6 +577,14 @@ impl Checker {
                 self.res_error(e.pos, msg);
                 return i;
             }
+            if typ.is_std("Optional") {
+                self.res_error(
+                    e.pos,
+                    "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                );
+                i.ty = Some(invalid());
+                return i;
+            }
             if let Some(cs) = case_of(&typ, name).filter(|c| c.fields.is_empty()) {
                 self.opaque_denied(e.pos, &typ, &format!("case {name} cannot be built here"));
                 let constructor = self.instantiate(&typ, &[], &[], expected, e.pos);
