@@ -94,7 +94,7 @@ impl Classifier {
         if self.closeable.contains(&t.id) {
             return Class::Resource;
         }
-        // Keyed by the instance, so `Optional[Optional[Door]]` looks inside its payload; a
+        // Keyed by the instance, so `Door??` looks inside its payload; a
         // generic type that grows without bound is cut off as boxed.
         let key = t.to_string();
         if visiting.contains(&key) || visiting.len() > 64 {
