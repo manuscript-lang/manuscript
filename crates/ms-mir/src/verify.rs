@@ -160,7 +160,7 @@ pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
         | Op::IfaceNew
         | Op::Drop
         | Op::GlobalSet
-        | Op::SharedNew
+        | Op::CellNew
         | Op::AltUnbox
         | Op::AltRelease
         | Op::OptUnbox => one(0),
@@ -1128,21 +1128,21 @@ impl Verifier<'_> {
                     "call.method yields the method's result type",
                 )
             }
-            Op::SharedNew => {
+            Op::CellNew => {
                 arity(1)?;
-                let ok = matches!(res.map(|r| m.types.kind(r)), Some(TyKind::Obj(n, a)) if n == "Shared" && a.as_slice() == [t(0)]);
-                want(ok, "shared.new wraps a value into Shared[T]")
+                let ok = matches!(res.map(|r| m.types.kind(r)), Some(TyKind::Obj(n, a)) if n == "Cell" && a.as_slice() == [t(0)]);
+                want(ok, "cell.new wraps a value into Cell[T]")
             }
-            Op::SharedGet => {
+            Op::CellGet => {
                 arity(1)?;
-                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, a) if n == "Shared" && a.as_slice() == [res.unwrap_or(Ty::UNIT)]);
-                want(ok, "shared.get reads the payload of a Shared[T]")
+                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, a) if n == "Cell" && a.as_slice() == [res.unwrap_or(Ty::UNIT)]);
+                want(ok, "cell.get reads the payload of a Cell[T]")
             }
-            Op::SharedAddr => {
+            Op::CellAddr => {
                 arity(1)?;
-                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, _) if n == "Shared")
+                let ok = matches!(m.types.kind(t(0)), TyKind::Obj(n, _) if n == "Cell")
                     && res == Some(Ty::PTR);
-                want(ok, "shared.addr yields a ptr to the payload of a Shared[T]")
+                want(ok, "cell.addr yields a ptr to the payload of a Cell[T]")
             }
             Op::Copy => {
                 arity(1)?;

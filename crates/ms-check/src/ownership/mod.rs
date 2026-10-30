@@ -287,7 +287,7 @@ impl Hir<'_> {
             let Some(declared) = declared else { continue };
             // An implementation follows the operation's contract: it lends exactly when the
             // operation is declared `ref`. A scalar result is the same either way; a `Copy`
-            // handle such as `Shared` still holds a reference, so it must be lent too.
+            // handle such as `Lock` still holds a reference, so it must be lent too.
             let scalar = modules[&m.module]
                 .type_ref(f.result.id)
                 .is_some_and(|t| scalar(&t));

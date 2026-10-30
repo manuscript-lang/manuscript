@@ -2,8 +2,7 @@ import Data from "@std/core.ms"
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import {FileHandle, FileSystemError, filesystem} from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import stringify from "@std/json.ms"
@@ -182,7 +181,7 @@ impl Transport for FileTransport:
 # The logger behind the `Logger` interface: shared encoder state plus the transport it writes to.
 type StdLogger:
     state: LogState
-    transport: Shared[Transport]
+    transport: Lock[Transport]
 
 impl StdLogger:
     fn emit(level: Int, message: String) Result[Unit, LogError]:
@@ -201,7 +200,7 @@ impl StdLogger:
     fn send(text: String) Result[Unit, LogError]:
         if text == "": return ok(unit)
 
-        var transport = lock(self.transport)
+        var transport = self.transport.lock()
         return transport.value.write(text)
 
 impl Logger for StdLogger:
@@ -245,11 +244,11 @@ impl Logger for StdLogger:
         self.state.set_level(level_index(level))
 
     fn flush() Result[Unit, LogError]:
-        var transport = lock(self.transport)
+        var transport = self.transport.lock()
         return transport.value.flush()
 
     var fn close() Unit:
-        var transport = lock(self.transport)
+        var transport = self.transport.lock()
         transport.value.close()
 
 # Writes a record whose fields come from `fields`, which can be any value `stringify` accepts.
@@ -288,7 +287,7 @@ export fn create(
     let state = new_state(index, timestamp, max_bytes)
     if state.is_error(): return error(core_error(state.err()))
 
-    return ok(StdLogger(state.get(), share(transport)))
+    return ok(StdLogger(state.get(), new_lock(transport)))
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:

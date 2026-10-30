@@ -1,6 +1,6 @@
-import {share, Shared} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 fn f() Int:
-    let items = share([1, 2])
+    let items = new_lock([1, 2])
     var inner = items.get()  # error: read-only result
     return inner.length()

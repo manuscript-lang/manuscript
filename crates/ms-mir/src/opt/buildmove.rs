@@ -1,7 +1,7 @@
 //! The `buildmove` pass: `builder.build()` moves the bytes out of a builder that is not used again.
 //!
 //! `build()` lowers to `load` of the builder's buffer and a `copy` of it, because a builder may be
-//! built twice. When the `Shared` handle is local and every use of it after the copy is its drop,
+//! built twice. When the builder handle is local and every use of it after the copy is its drop,
 //! the copy is the last use: the buffer moves out and an empty one takes its place, so the drop
 //! frees nothing. Building a large string then costs no second copy of its bytes.
 
@@ -32,8 +32,8 @@ fn move_one(m: &mut Module, fi: usize) -> bool {
     let f = &m.funcs[fi];
     for b in &f.blocks {
         for inst in &b.insts {
-            if inst.op == Op::SharedNew
-                && let Some(site) = find_site(f, inst.res.expect("shared.new has a result"))
+            if inst.op == Op::CellNew
+                && let Some(site) = find_site(f, inst.res.expect("cell.new has a result"))
             {
                 apply(m, fi, site);
                 return true;
@@ -60,7 +60,7 @@ fn find_site(f: &Func, h: Value) -> Option<Site> {
                 def_block = bi;
             }
             match i.op {
-                Op::SharedAddr if kind[a.index()] == 1 => kind[r.index()] = 2,
+                Op::CellAddr if kind[a.index()] == 1 => kind[r.index()] = 2,
                 Op::PtrField if kind[a.index()] == 2 => kind[r.index()] = 3,
                 _ => {}
             }
@@ -79,7 +79,7 @@ fn find_site(f: &Func, h: Value) -> Option<Site> {
             for (k, a) in i.args.iter().enumerate() {
                 let ok = match kind[a.index()] {
                     0 => true,
-                    1 => matches!(i.op, Op::SharedAddr | Op::Drop),
+                    1 => matches!(i.op, Op::CellAddr | Op::Drop),
                     2 => i.op == Op::PtrField,
                     // A runtime call borrows the pointer while it runs (the appends of a builder).
                     _ => {

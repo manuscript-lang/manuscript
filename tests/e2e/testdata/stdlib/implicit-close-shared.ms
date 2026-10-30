@@ -1,8 +1,7 @@
 import {expect_equal, expect_ok} from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 # Close appends the id to a log file, so the log is the order in which the closes ran.
 type Tracked:
@@ -20,18 +19,18 @@ fn closed(log: String) String:
     return ""
 
 fn last_holder(log: String) Int:
-    let first = share(Tracked(log, 1))
+    let first = new_lock(Tracked(log, 1))
     let second = first
     return second.get().id
 
-fn other_holder_lives(log: String) Shared[Tracked]:
-    let first = share(Tracked(log, 1))
+fn other_holder_lives(log: String) Lock[Tracked]:
+    let first = new_lock(Tracked(log, 1))
     let second = first
     return second
 
 fn locked_then_dropped(log: String) Int:
-    let box = share(Tracked(log, 1))
-    var guard = lock(box)
+    let box = new_lock(Tracked(log, 1))
+    var guard = box.lock()
     guard.value.id += 0
     guard.close()
     return 0

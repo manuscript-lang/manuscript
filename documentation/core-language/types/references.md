@@ -15,7 +15,7 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 - A record field written `name: ref Type` makes the record a carrier that views the variable it was built from: `Cursor(source: d, position: 0)`. A carrier is used in place only: it cannot be moved, cloned, stored in a collection, or returned unless built from a read-only parameter, and its source is held unchanged until the carrier's last use.
 - A binding of a place (`let x = a.b`, `var x = xs[i]`), a loop variable and a match payload borrow without a marker; `let ref`, `for ref` and `match ref` are rejected.
 - A `ref` result freezes every borrowable argument of the call until its last use, not only the one it came from.
-- An interface operation declares `ref` when its implementations lend: every implementation of a `ref` operation returns `ref`, and an owning operation cannot be implemented by a lender. A scalar result (`Int`, `Bool`, `Optional[Float]`) is the same lent or owned, so an implementation may compute it; a `Shared` handle still refers to storage, so it is not exempt. A call through the interface lends too: `view.label()` borrows from `view`, so keeping the result past `view`, or returning it from a function without `ref`, needs `.clone()`.
+- An interface operation declares `ref` when its implementations lend: every implementation of a `ref` operation returns `ref`, and an owning operation cannot be implemented by a lender. A scalar result (`Int`, `Bool`, `Optional[Float]`) is the same lent or owned, so an implementation may compute it; a `Lock` handle still refers to storage, so it is not exempt. A call through the interface lends too: `view.label()` borrows from `view`, so keeping the result past `view`, or returning it from a function without `ref`, needs `.clone()`.
 
 ```manuscript
 type Box:
@@ -48,14 +48,13 @@ See [bindings](../basics/bindings.md), [closure captures](../functions/function-
 
 ## Sharing a value
 
-`Shared[T]` from `@std/shared.ms` gives several owners one reference-counted value. `share(value)` moves the value in; copying the `Shared` adds a holder, and the value is dropped with the last holder. `.get()` reads the value in place as a borrow.
+`Lock[T]` from `@std/lock.ms` gives several holders one reference-counted value. `new_lock(value)` moves the value in; copying the `Lock` adds a holder, and the value is dropped with the last holder. Any number of holders read it in place with `.get()`, a borrow.
 
-To change the value, lock it with `lock(box)` from `@std/sync.ms` into a `var` binding. The guard holds the payload as `guard.value` and puts it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock` waits until the guard is closed; a `get` while a guard holds the payload is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Shared` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put` and `locked` are internal to the standard library and rejected elsewhere. A `Shared` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
+To change the value, one holder at a time takes it with `box.lock()` into a `var` binding. The guard holds the value as `held.value` and hands it back when the binding goes out of scope, however it ends, including when the task is cancelled or returns early. Another `lock()` waits until the guard is closed; a `get` while a guard holds the value is a fault. Locking a box already held by the same task blocks; if no work can make progress, the runtime reports a deadlock fault. `ms check` rejects the visible case, a `lock()` of the same written place (`box`, `self.lines`) while the guard of an earlier `lock()` of it is still open (before its scope ends or its `close()`) in the same function; a second handle to the box, or a call that locks it, is caught only by the runtime. A `Lock` of a `Closeable` value is move-only, so the resource still has one owner. `take`, `put`, `locked` and `id` are internal to the standard library and rejected elsewhere. A `Lock` inside a worker or process message is rejected, since the other side would get a copy instead of the same box.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {share, Shared} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import expect_equal from "@std/test.ms"
 
 type Counter:
@@ -65,14 +64,14 @@ impl Counter:
     var fn bump() Unit:
         self.values.append(1)
 
-fn bump(shared: Shared[Counter]) Unit:
-    var guard = lock(shared)
-    guard.value.bump()
+fn bump(counter: Lock[Counter]) Unit:
+    var held = counter.lock()
+    held.value.bump()
 
 test "change a shared value through its guard":
-    let shared = share(Counter([]))
-    bump(shared)
-    shared.get().values.length() | try expect_equal(1)
+    let counter = new_lock(Counter([]))
+    bump(counter)
+    counter.get().values.length() | try expect_equal(1)
 ```
 
 ## References inside other values

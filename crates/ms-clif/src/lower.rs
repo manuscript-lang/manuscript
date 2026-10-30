@@ -1,6 +1,6 @@
 //! Lowering of one MIR function (or glue function) to Cranelift IR.
 
-use crate::cg::{CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, SHARED_VALUE, leaf_type, mem_type};
+use crate::cg::{CELL_VALUE, CLOSURE_CAPTURES, CLOSURE_CODE, Gen, Glue, leaf_type, mem_type};
 use crate::layout::{AltRepr, Leaf, mem_layout};
 use cranelift_codegen::ir::condcodes::{CondCode, FloatCC, IntCC};
 use cranelift_codegen::ir::{
@@ -525,18 +525,18 @@ impl<'a, 'm> Lower<'a, 'm> {
                 self.store_leaves(blk, 0, &leaves, &copied);
                 self.b.ins().return_(&[blk]);
             }
-            Glue::SharedDrop => {
+            Glue::CellDrop => {
                 let obj = params[0];
-                if let Some(&(_, close)) = self.g.m.shared_close.iter().find(|(t, _)| *t == ty) {
+                if let Some(&(_, close)) = self.g.m.cell_close.iter().find(|(t, _)| *t == ty) {
                     // The last holder is gone: close the payload before it is dropped.
-                    let at = self.add_imm(obj, SHARED_VALUE);
+                    let at = self.add_imm(obj, CELL_VALUE);
                     let id = self.g.funcs[close.index()];
                     self.call_id(id, &[at]);
                 }
                 if self.g.m.needs_drop(ty) {
                     let leaves = self.g.lay.leaves(ty);
-                    let vs = self.load_leaves(obj, SHARED_VALUE, &leaves);
-                    if self.is_shared_box(ty) {
+                    let vs = self.load_leaves(obj, CELL_VALUE, &leaves);
+                    if self.is_lock_cell(ty) {
                         // `take` moved the payload out and left its bits behind; the new owner
                         // drops it, so a box dropped while taken must not drop it again.
                         let (_, at, _) = *self.fields_of(ty).last().expect("taken flag");
@@ -545,7 +545,7 @@ impl<'a, 'm> Lower<'a, 'm> {
                             types::I8,
                             flags(),
                             obj,
-                            (SHARED_VALUE + off as i64) as i32,
+                            (CELL_VALUE + off as i64) as i32,
                         );
                         let held = self.b.ins().icmp_imm_s(IntCC::Equal, taken, 0);
                         self.if_then(held, |s| s.drop_value(ty, &vs));
@@ -584,7 +584,7 @@ impl<'a, 'm> Lower<'a, 'm> {
     }
 
     /// Splits `vs` into per-field slices for a record type.
-    /// For a `SharedGuard` (fields `box`, `value`, `held`): the `held` flag and the leaf index of
+    /// For a `Locked` guard (fields `box`, `value`, `held`): the `held` flag and the leaf index of
     /// `value`. A closed guard handed its payload back to the box without a copy, so its stale
     /// `value` is neither dropped nor copied.
     fn guard_held(&self, ty: Ty, vs: &[Value]) -> Option<(Value, usize)> {
@@ -594,7 +594,7 @@ impl<'a, 'm> Lower<'a, 'm> {
         };
         let def = &m.records[r.index()];
         let names: Vec<&str> = def.fields.iter().map(|f| f.0.as_str()).collect();
-        if !def.name.starts_with("SharedGuard[") || names != ["box", "value", "held"] {
+        if !def.name.starts_with("Locked[") || names != ["box", "value", "held"] {
             return None;
         }
         let fields = self.fields_of(ty);
@@ -1274,11 +1274,11 @@ impl<'a, 'm> Lower<'a, 'm> {
         }
     }
 
-    /// Whether `ty` is the `{value, taken}` record of a user-facing `Shared[T]` (a builder's
+    /// Whether `ty` is the `{value, taken}` record of a `Lock[T]` (a builder's
     /// `{items, sealed}` keeps owning its items once sealed).
-    fn is_shared_box(&self, ty: Ty) -> bool {
+    fn is_lock_cell(&self, ty: Ty) -> bool {
         let m = self.g.m;
-        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].name.starts_with("Shared#"))
+        matches!(m.types.kind(ty), TyKind::Rec(r) if m.records[r.index()].name.starts_with("Lock#"))
     }
 
     fn is_wide(&self, ty: Ty) -> bool {
@@ -2252,32 +2252,32 @@ impl<'a, 'm> Lower<'a, 'm> {
                 };
                 vec![self.rt_call("msrt_string_length", &[at])[0]]
             }
-            Op::SharedNew => {
+            Op::CellNew => {
                 let t = self.g.m.types.kind(res_ty.expect("result")).clone();
                 let TyKind::Obj(_, args) = t else {
                     unreachable!()
                 };
                 let leaves = self.g.lay.leaves(args[0]);
-                let size = SHARED_VALUE + mem_layout(&leaves).size as i64;
+                let size = CELL_VALUE + mem_layout(&leaves).size as i64;
                 let obj = self.alloc(size);
                 let one = self.iconst(1);
                 self.b.ins().store(flags(), one, obj, 0);
-                let drop = self.g.glue(Glue::SharedDrop, args[0]);
+                let drop = self.g.glue(Glue::CellDrop, args[0]);
                 let dr = self.fref(drop);
                 let da = self.b.ins().func_addr(types::I64, dr);
                 self.b.ins().store(flags(), da, obj, 8);
                 let v = self.a(inst, 0);
-                self.store_leaves(obj, SHARED_VALUE, &leaves, &v);
+                self.store_leaves(obj, CELL_VALUE, &leaves, &v);
                 vec![obj]
             }
-            Op::SharedGet => {
+            Op::CellGet => {
                 let obj = self.a(inst, 0)[0];
                 let leaves = self.g.lay.leaves(res_ty.expect("result"));
-                self.load_leaves(obj, SHARED_VALUE, &leaves)
+                self.load_leaves(obj, CELL_VALUE, &leaves)
             }
-            Op::SharedAddr => {
+            Op::CellAddr => {
                 let obj = self.a(inst, 0)[0];
-                vec![self.add_imm(obj, SHARED_VALUE)]
+                vec![self.add_imm(obj, CELL_VALUE)]
             }
             Op::ClosureNew => self.closure_new(inst),
             Op::ClosureCap => {

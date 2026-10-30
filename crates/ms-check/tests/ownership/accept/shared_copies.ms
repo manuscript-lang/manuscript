@@ -1,16 +1,16 @@
-import {share, Shared} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 type Holder:
-    items: Shared[List[String]]
+    items: Lock[List[String]]
 
 fn child(holder: Holder) Holder:
     return Holder(holder.items)
 
-fn count(items: Shared[List[String]]) Int:
+fn count(items: Lock[List[String]]) Int:
     return items.get().length()
 
 fn f() Int:
-    let items = share(["a", "b"])
+    let items = new_lock(["a", "b"])
     let copy = items
     let holder = Holder(items)
     let other = child(holder)

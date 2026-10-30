@@ -269,16 +269,16 @@ b0:
   %0: bytes = call.rt @msrt_list_new ()
   %1: bool = bconst false
   %2: SB = rec.new SB %1, %0
-  %3: Shared<SB> = shared.new %2
+  %3: Cell<SB> = cell.new %2
   %4: int = iconst 0
   br b1(%4, %3)
-b1(%5: int, %6: own Shared<SB>):
+b1(%5: int, %6: own Cell<SB>):
   %7: int = iconst 10
   %8: bool = icmp.lt %5, %7
   br_if %8, b2(), b5()
 b2():
   %9: str = str "x"
-  %10: ptr = shared.addr %6
+  %10: ptr = cell.addr %6
   %11: ptr = ptr.field SB.sealed %10
   %12: ptr = ptr.field SB.items %10
   %13: bool = load bool %11
@@ -299,7 +299,7 @@ b4():
   %22: int = iadd.chk %5, %21
   br b1(%22, %6)
 b5():
-  %23: ptr = shared.addr %6
+  %23: ptr = cell.addr %6
   %24: ptr = ptr.field SB.sealed %23
   %25: ptr = ptr.field SB.items %23
   %26: bool = bconst true

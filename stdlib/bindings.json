@@ -28,7 +28,7 @@
     "@std/collections.ms/MapBuilder": "native",
     "@std/collections.ms/Set": "native",
     "@std/collections.ms/SetBuilder": "native",
-    "@std/shared.ms/Shared": "native",
+    "@std/lock.ms/Lock": "native",
     "@std/string.ms/Regex": "native",
     "@std/string.ms/StringBuilder": "native"
   },

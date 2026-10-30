@@ -394,7 +394,7 @@ impl FnLower<'_> {
     ) -> Result<Option<CloseKind>, Error> {
         // A lock guard hands its payload back to the box when it closes, and the last holder of
         // the box closes it then; closing the guard's copy as a part would close it early.
-        if ty.is_source_type("@std/sync.ms", "SharedGuard") {
+        if ty.is_source_type("@std/lock.ms", "Locked") {
             return Ok(own);
         }
         let mt = self.mty(ty)?;
@@ -480,19 +480,15 @@ impl FnLower<'_> {
         }))
     }
 
-    /// Makes the last holder's drop of a `Shared` over `held` close the payload, unless a
+    /// Makes the last holder's drop of a `Lock` over `held` close the payload, unless a
     /// `lock` guard has taken it out (the guard puts it back and the box is closed then).
-    pub(crate) fn register_shared_close(
-        &mut self,
-        held: &ct::Ty,
-        handle: MTy,
-    ) -> Result<(), Error> {
+    pub(crate) fn register_cell_close(&mut self, held: &ct::Ty, handle: MTy) -> Result<(), Error> {
         let Some(kind) = self.part_closer(held)? else {
             return Ok(());
         };
-        let rec = self.builder_rec(handle)?;
+        let rec = self.cell_rec(handle)?;
         let state = self.b.m.types.rec(rec);
-        if self.b.m.shared_close.iter().any(|(t, _)| *t == state) {
+        if self.b.m.cell_close.iter().any(|(t, _)| *t == state) {
             return Ok(());
         }
         let value_ty = self.b.m.records[rec.index()].fields[0].1;
@@ -537,7 +533,7 @@ impl FnLower<'_> {
         b.ret(Some(u));
         let f = b.into_func();
         let fid = self.b.m.add_func(f);
-        self.b.m.shared_close.push((state, fid));
+        self.b.m.cell_close.push((state, fid));
         Ok(())
     }
 

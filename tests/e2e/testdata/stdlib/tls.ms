@@ -6,7 +6,7 @@ import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsO
 import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
-import {Shared, share} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import TaskGroup from "@std/tasks.ms"
 import {Listener, Connection} from "@std/net.ms"
 import {certificate, private_key} from "./support/certificates.ms"
@@ -144,7 +144,7 @@ fn answer_ping(var connection: Connection) Int:
 
     return 1
 
-fn serve_one_tls(listener: Shared[Listener]) Int:
+fn serve_one_tls(listener: Lock[Listener]) Int:
     match listener.get().accept(some(3.seconds)):
         ok(accepted):
             var connection = accepted
@@ -162,7 +162,7 @@ test "raw TLS listeners and clients handshake and report negotiated details":
         server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
         private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
+    let listener: Lock[Listener] = new_lock(
         try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
     )
     var group = TaskGroup[Int]()
@@ -201,7 +201,7 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
         server_name: "", roots_pem: "", certificate_pem: certificate(),
         private_key_pem: private_key(), alpn: [], require_client_certificate: false
     )
-    let listener: Shared[Listener] = share(
+    let listener: Lock[Listener] = new_lock(
         try net.listen_tls("127.0.0.1:0", server_tls, some(3.seconds))
     )
     var group = TaskGroup[Int]()

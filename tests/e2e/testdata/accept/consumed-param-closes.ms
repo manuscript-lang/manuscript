@@ -1,15 +1,14 @@
 import Closeable from "@std/core.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import expect_equal from "@std/test.ms"
 
 type Door:
     id: Int
-    log: Shared[List[Int]]
+    log: Lock[List[Int]]
 
 impl Closeable for Door:
     var fn close() Unit:
-        var seen = lock(self.log)
+        var seen = self.log.lock()
         seen.value.append(self.id)
 
 fn keep_if(d: Door, keep: Bool) Optional[Door]:
@@ -19,7 +18,7 @@ fn keep_if(d: Door, keep: Bool) Optional[Door]:
     return none
 
 test "a parameter the callee drops on some path is closed there":
-    let log: Shared[List[Int]] = share([])
+    let log: Lock[List[Int]] = new_lock([])
     let kept = keep_if(Door(1, log), true)
     log.get().clone() | try expect_equal([])
 
@@ -29,7 +28,7 @@ test "a parameter the callee drops on some path is closed there":
         log.get().clone() | try expect_equal([2])
 
 test "a bound resource passed to such a callee closes once":
-    let log: Shared[List[Int]] = share([])
+    let log: Lock[List[Int]] = new_lock([])
     let door = Door(3, log)
     let dropped = keep_if(door, false)
     log.get().clone() | try expect_equal([3])

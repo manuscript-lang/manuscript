@@ -335,7 +335,7 @@ pub const KIND_STRING: u32 = 3;
 /// Slot holds a `VecVal` of bytes (24 bytes). Copy duplicates the buffer.
 pub const KIND_BYTES: u32 = 4;
 /// Slot holds a nullable pointer to a reference-counted object with an `Obj`
-/// header (`Shared[T]`, closures, handle objects...). Copy = retain, drop = release.
+/// header (runtime cells, closures, handle objects...). Copy = retain, drop = release.
 /// `eq`/`hash` are called when present, else identity.
 pub const KIND_SHARED: u32 = 5;
 /// Plain bits without ownership (scalars, records of scalars, inline `Optional[Int]`).

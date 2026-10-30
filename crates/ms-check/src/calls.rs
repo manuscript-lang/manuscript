@@ -489,8 +489,8 @@ impl Checker {
         i
     }
 
-    /// `Shared` is changed through `lock` from `@std/sync.ms`, which is the one place that may call
-    /// its raw `take`, `put`, `locked` and `id`. A `Shared` is not `Data`, so the `Data` bound on
+    /// A `Lock` is changed through its `lock` method in `@std/lock.ms`, the one place that may call
+    /// its raw `take`, `put`, `locked` and `id`. A `Lock` is not `Data`, so the `Data` bound on
     /// worker and process messages already keeps it from crossing as a silent copy.
     fn check_shared_use(&mut self, e: &Expr, callee: &Expr, callable: &Info) {
         let name = match &callee.kind {
@@ -498,14 +498,14 @@ impl Checker {
             _ => callee_name(callee),
         };
         if let Some(m) = callable.method.as_ref()
-            && m.receiver.is_std("Shared")
+            && m.receiver.is_std("Lock")
             && matches!(name.as_str(), "take" | "put" | "locked" | "id")
-            && self.m().file.as_str() != "@std/sync.ms"
+            && self.m().file.as_str() != "@std/lock.ms+source"
         {
             self.type_error(
                 e.pos,
                 format!(
-                    "Shared.{name} is internal; change a Shared with `var guard = lock(box)` from \"@std/sync.ms\" and use guard.value, which puts the payload back when the guard's scope ends or you call guard.close()"
+                    "Lock.{name} is internal; change a Lock with `var held = box.lock()` and use held.value, which is handed back when the binding's scope ends or you call held.close()"
                 ),
             );
         }

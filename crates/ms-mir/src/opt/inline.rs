@@ -1013,7 +1013,7 @@ fn remove_dead(m: &mut Module) -> bool {
             .iter()
             .flat_map(|(_, eq, hash)| [eq.index(), hash.index()]),
     );
-    stack.extend(m.shared_close.iter().map(|(_, f)| f.index()));
+    stack.extend(m.cell_close.iter().map(|(_, f)| f.index()));
     if stack.is_empty() {
         return false;
     }
@@ -1070,7 +1070,7 @@ fn remove_dead(m: &mut Module) -> bool {
         *eq = FuncId(map[eq.index()]);
         *hash = FuncId(map[hash.index()]);
     }
-    for (_, f) in &mut m.shared_close {
+    for (_, f) in &mut m.cell_close {
         *f = FuncId(map[f.index()]);
     }
     m.entry = m.entry.map(|e| FuncId(map[e.index()]));

@@ -11,8 +11,7 @@ import {Closeable, Data} from "@std/core.ms"
 import {ReadStream, WriteStream} from "@std/io.ms"
 import {parse, stringify} from "@std/json.ms"
 import {CommandError, Stdio} from "@std/process.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import Duration from "@std/time.ms"
 
 # A running child, owned by its `Process`.
@@ -142,10 +141,10 @@ fn decode[T: Data](body: String) Result[T, ChannelError]:
 # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
 fn next_frame(
     link: NativeLink,
-    inbox: Shared[Inbox]
+    inbox: Lock[Inbox]
 ) Result[Optional[Frame], ChannelError]:
     while true:
-        var state = lock(inbox)
+        var state = inbox.lock()
         let available = state.value.pending.length()
 
         if available >= 5:
@@ -172,23 +171,23 @@ fn next_frame(
         if chunk.is_empty():
             return ok(none)
 
-        var more = lock(inbox)
+        var more = inbox.lock()
         more.value.pending = more.value.pending.concat(chunk)
 
     return ok(none)
 
 # Marks that the other end sent no more messages, keeping the result body if this was it.
-fn finish(inbox: Shared[Inbox], result: Optional[String]) Unit:
-    var state = lock(inbox)
+fn finish(inbox: Lock[Inbox], result: Optional[String]) Unit:
+    var state = inbox.lock()
     state.value.finished = true
     if result.is_some():
         state.value.result = result
 
 # Marks this end closed and sends `close` once unless `notify` is False (a parent about to kill
 # the child: the write could wait forever on a full pipe the child never reads).
-fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
+fn close_end(link: NativeLink, inbox: Lock[Inbox], notify: Bool = true) Unit:
     var first = false
-    var state = lock(inbox)
+    var state = inbox.lock()
     first = not state.value.closed
     state.value.closed = true
     state.close()
@@ -198,7 +197,7 @@ fn close_end(link: NativeLink, inbox: Shared[Inbox], notify: Bool = true) Unit:
 # One end of a process channel: JSON frames over the IPC pipe.
 type ProcessTransport[In: Data, Out: Data]:
     link: NativeLink
-    inbox: Shared[Inbox]
+    inbox: Lock[Inbox]
 
 impl Transport[In, Out] for ProcessTransport[In, Out]:
     fn send(value: In) Result[Unit, ChannelError]:
@@ -254,7 +253,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 # entry did not) and the result, and closes the pipe.
 fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
     let link = msstd_process_ipc_child()
-    let inbox: Shared[Inbox] = share(Inbox())
+    let inbox: Lock[Inbox] = new_lock(Inbox())
     let value = entry(
         Channel[Out, In](
             transport: ProcessTransport[Out, In](link: link, inbox: inbox)
@@ -278,7 +277,7 @@ fn nanos(limit: Optional[Duration]) Int:
 fn wait_result[T: Data](
     native: NativeProcess,
     link: NativeLink,
-    inbox: Shared[Inbox]
+    inbox: Lock[Inbox]
 ) Result[T, ProcessError]:
     while true:
         if let body = inbox.get().result.clone():
@@ -312,10 +311,10 @@ export type Open:
     # Internal state: the parent's end of the IPC pipe.
     link: NativeLink
     # Internal state: what the parent's end has read.
-    inbox: Shared[Inbox]
+    inbox: Lock[Inbox]
 
 # Closes the channel, then stops and joins the child.
-fn stop_child(link: NativeLink, inbox: Shared[Inbox], native: NativeProcess) Unit:
+fn stop_child(link: NativeLink, inbox: Lock[Inbox], native: NativeProcess) Unit:
     close_end(link, inbox, false)
     msstd_process_forked_close(native)
 
@@ -327,13 +326,13 @@ export type Process[T: Data, In: Data = Unit, Out: Data = Unit]:
     # Internal state: the parent's end of the IPC pipe.
     link: NativeLink
     # Internal state: what the parent's end has read.
-    inbox: Shared[Inbox]
+    inbox: Lock[Inbox]
     # The parent's end of the channel: sends `In` to the child and receives the `Out` it sends.
     channel: Channel[In, Out]
     # Internal state: the process's number in its group.
     id: Int
     # Internal state: the group's list of open processes, which `close` leaves.
-    registry: Shared[List[Open]]
+    registry: Lock[List[Open]]
 
 impl Process[T, In, Out]:
     # Waits for the entry to return and gives its result, or `Exited` with the status of a child
@@ -375,7 +374,7 @@ impl Closeable for Process[T, In, Out]:
     var fn close() Unit:
         stop_child(self.link, self.inbox, self.native)
 
-        var all = lock(self.registry)
+        var all = self.registry.lock()
 
         for index in 0..all.value.length():
             if all.value[index].id == self.id:
@@ -390,9 +389,9 @@ impl Closeable for Process[T, In, Out]:
 export type ProcessGroup[T: Data, In: Data = Unit, Out: Data = Unit]:
     # Internal state: the open processes in start order, changed through the shared handle so the
     # group closes when its scope ends.
-    processes: Shared[List[Open]] = share([])
+    processes: Lock[List[Open]] = new_lock([])
     # Internal state: the number of the next process.
-    started: Shared[Int] = share(0)
+    started: Lock[Int] = new_lock(0)
 
 impl ProcessGroup[T, In, Out]:
     # Starts this executable again in a new process at `entry`, a top-level `def`, and returns the
@@ -411,14 +410,14 @@ impl ProcessGroup[T, In, Out]:
             not_started
         )
         let link = msstd_process_forked_link(native)
-        let inbox: Shared[Inbox] = share(Inbox())
+        let inbox: Lock[Inbox] = new_lock(Inbox())
         var id = 0
-        var next = lock(self.started)
+        var next = self.started.lock()
         id = next.value
         next.value = id + 1
         next.close()
 
-        var all = lock(self.processes)
+        var all = self.processes.lock()
         all.value.append(Open(id, native, link, inbox))
         all.close()
         return ok(
@@ -451,7 +450,7 @@ impl ProcessGroup[T, In, Out]:
 impl Closeable for ProcessGroup[T, In, Out]:
     # Closes every open process: its channel, then the child, which is stopped and joined. Safe to call again.
     var fn close() Unit:
-        var all = lock(self.processes)
+        var all = self.processes.lock()
         for index in 0..all.value.length():
             stop_child(
                 all.value[index].link, all.value[index].inbox, all.value[index].native

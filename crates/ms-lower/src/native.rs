@@ -331,7 +331,7 @@ impl<'a> FnLower<'a> {
                     .ok_or_else(|| Error::new("parse without a node type"))?;
                 self.html_parse(&node, rty, &args)
             }
-            "shared/share" => {
+            "lock/new_lock" => {
                 let args = self.native_args(view)?;
                 if self.dead {
                     return Ok(self.dummy(MTy::UNIT));
@@ -341,7 +341,7 @@ impl<'a> FnLower<'a> {
                 let held = self.ety(e).args.first().cloned();
                 let shared = self.native_call(native, params, &args, result)?;
                 if let Some(held) = held {
-                    self.register_shared_close(&held, result)?;
+                    self.register_cell_close(&held, result)?;
                 }
                 Ok(shared)
             }
@@ -468,7 +468,7 @@ impl<'a> FnLower<'a> {
             "math/min"
                 | "math/max"
                 | "time/duration"
-                | "shared/share"
+                | "lock/new_lock"
                 | "core/category"
                 | "math/bit_and"
                 | "math/bit_or"
@@ -518,10 +518,10 @@ impl<'a> FnLower<'a> {
             let v = self.b.call(f, &[cause]);
             return Ok(Val { v, own: true });
         }
-        if native == "shared/share" {
+        if native == "lock/new_lock" {
             // The payload moves into a refcounted box; copies of the handle retain it.
             let payload = self.owned(args[0].val);
-            let v = self.shared_new(payload, result);
+            let v = self.lock_new(payload, result);
             return Ok(Val { v, own: true });
         }
         if native == "time/duration" {
@@ -1572,7 +1572,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
+        if crate::builder::builder_kind(&m.receiver).is_some() {
             let handle = self.borrow(recv);
             return self.builder_call(&name, handle, &m.ty.params, args, result);
         }

@@ -429,12 +429,12 @@ impl Cx {
             let e = self.lower_ty(m, &t.args[0])?;
             return Ok(m.types.list(e));
         }
-        if t.is_std("Shared") {
+        if t.is_std("Lock") {
             let payload = self.lower_ty(m, &t.args[0])?;
-            return Ok(crate::sharedbuilder::handle_ty(m, "Shared", payload));
+            return Ok(crate::builder::cell_ty(m, "Lock", payload));
         }
         // A collection builder is a shared handle over its accumulating collection.
-        if let Some(kind) = crate::sharedbuilder::builder_kind(t) {
+        if let Some(kind) = crate::builder::builder_kind(t) {
             let items = if kind == "ListBuilder" {
                 let e = self.lower_ty(m, &t.args[0])?;
                 m.types.list(e)
@@ -447,7 +447,7 @@ impl Cx {
                 }
                 m.types.obj(kind.trim_end_matches("Builder"), args)
             };
-            return Ok(crate::sharedbuilder::handle_ty(m, kind, items));
+            return Ok(crate::builder::cell_ty(m, kind, items));
         }
         let name = ["Map", "Set"].into_iter().find(|n| t.is_std(n));
         if let Some(name) = name {

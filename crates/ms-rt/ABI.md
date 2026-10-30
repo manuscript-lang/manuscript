@@ -56,7 +56,7 @@ recorded here before it is committed.)_
   maps `InvalidInput`/`OutOfRange`/`InvalidData` to the numbers codes; `Closed` is never produced natively). Zones come from the bundled
   IANA data (`jiff-tzdb`), `Local` follows `TZ` then `/etc/localtime`. `ms_rt::glue` is the shared glue (read/build strings, faults, cancellation).
 - **v2 (value semantics).** The owner adopted value semantics (DESIGN.md decisions 1-2).
-  Only `Shared` boxes (internal today, used for builder handles; the source type `Shared[T]` is planned) and closures keep an `Obj` header and a count.
+  Only runtime cells (builder handles and `Lock[T]`) and closures keep an `Obj` header and a count.
   `String` is a two-word owned `StrVal` (`{ptr, tagged}`) over immutable bytes (section 3).
   `List`, `Bytes`, `Map`, `Set`, `StringBuilder` are **owned header-less values**
   (`VecVal` = `{ptr, len, cap}`, `MapVal` = six words at v2, seven since v3) living in the owner's slot;
@@ -142,7 +142,7 @@ recorded here before it is committed.)_
 Obj { rc: usize @0, drop: fn(*mut Obj) @8 }       16 bytes; pointers point here
 ```
 
-`Shared` boxes (and planned `Weak[T]`), closures and runtime handle objects have a header. A `String` has no header
+`Lock` boxes (and planned `Weak[T]`), closures and runtime handle objects have a header. A `String` has no header
 and no count (section 3). `rc` starts at 1; retain is
 `rc += 1`; release is `rc -= 1; if rc == 0 { drop(obj) }`. Static and literal objects
 live in writable data with `rc = STATIC_RC` (2^62). `drop(obj)` drops what the
@@ -151,7 +151,7 @@ trees) must not overflow the stack: `msrt_drop_slow` bounds drop nesting at 4096
 queues further zero-count objects on an intrusive list (reusing `rc` as the link), drained
 iteratively. Owned values (`List`, `Map`, records) are dropped through
 `msrt_slot_drop(desc, slot)`; the runtime applies the same depth bounding there.
-Cycles through `Shared` are never collected (documented leak).
+Cycles through `Lock` are never collected (documented leak).
 
 ### Allocator
 

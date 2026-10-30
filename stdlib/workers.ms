@@ -18,8 +18,7 @@ import Bytes from "@std/bytes.ms"
 import {Channel, ChannelError, Transport} from "@std/channels.ms"
 import {Closeable, Data} from "@std/core.ms"
 import {parse, stringify} from "@std/json.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 extern fn msrt_pipe_new() Int
 
@@ -169,14 +168,14 @@ export type Worker[In: Data, Out: Data]:
     # Internal state: the group's pipe end, shared with `channel`.
     end: Int
     # Internal state: empty until the worker was collected, then how it ended.
-    ended: Shared[List[Result[Unit, WorkerError]]]
+    ended: Lock[List[Result[Unit, WorkerError]]]
 
 impl Worker[In, Out]:
     # Closes the group's end of the channel, waits for the worker to end, and returns how it ended.
     # A worker that is still reading ends once its input is closed; call `cancel` first to stop one that is not.
     # Safe to call again: later calls return the same outcome.
     var fn wait() Result[Unit, WorkerError]:
-        var held = lock(self.ended)
+        var held = self.ended.lock()
         if held.value.length() > 0:
             return held.value[0].clone()
 
@@ -212,7 +211,7 @@ fn outcome_of(report: String) Result[Unit, WorkerError]:
 # Worker threads are not a process-crash isolation boundary.
 export type WorkerGroup[In: Data = Unit, Out: Data = Unit]:
     # Internal state: the workers in start order, changed through the shared handle so the group closes when its scope ends.
-    workers: Shared[List[Worker[In, Out]]] = share([])
+    workers: Lock[List[Worker[In, Out]]] = new_lock([])
 
 impl WorkerGroup[In, Out]:
     # Starts `entry`, a named top-level `def`, on a new thread and returns its handle. The handle's
@@ -232,9 +231,9 @@ impl WorkerGroup[In, Out]:
             return error(WorkerError.NotStarted)
 
         let channel = Channel[In, Out](transport: WorkerTransport[In, Out](end: near))
-        let ended: Shared[List[Result[Unit, WorkerError]]] = share([])
+        let ended: Lock[List[Result[Unit, WorkerError]]] = new_lock([])
         let worker = Worker(handle, channel, near, ended)
-        var started = lock(self.workers)
+        var started = self.workers.lock()
         started.value.append(worker.clone())
         started.close()
         return ok(worker)
@@ -242,7 +241,7 @@ impl WorkerGroup[In, Out]:
 impl Closeable for WorkerGroup[In, Out]:
     # Cancels workers that have not ended, closes their channels, and waits for them. Safe to call again.
     var fn close() Unit:
-        var started = lock(self.workers)
+        var started = self.workers.lock()
 
         for index in 0..started.value.length():
             started.value[index].cancel()

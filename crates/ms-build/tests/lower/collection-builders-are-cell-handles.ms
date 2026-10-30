@@ -1,6 +1,6 @@
 # Lowered and verified by tests/lower.rs; each expect line is checked against the printed MIR.
-# expect-mir: "shared.new"
-# expect-mir: "shared.addr"
+# expect-mir: "cell.new"
+# expect-mir: "cell.addr"
 # expect-mir: "builder is sealed"
 
 import ListBuilder from "@std/collections.ms"

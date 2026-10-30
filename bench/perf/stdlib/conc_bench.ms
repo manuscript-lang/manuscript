@@ -1,8 +1,7 @@
 import {keep, measure} from "@std/bench.ms"
 import Channel from "@std/channels.ms"
 import {TaskGroup, Task} from "@std/tasks.ms"
-import share from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import new_lock from "@std/lock.ms"
 
 fn produce(ch: Channel[Int, Unit]) Int:
     var c = ch
@@ -62,13 +61,13 @@ bench "tasks.spawn_then_result_5000":
 
 bench "lock.uncontended":
     fn work() Result[Unit, Error]:
-        let box = share(0)
+        let box = new_lock(0)
 
         for i in 0..200000:
-            var g = lock(box)
+            var g = box.lock()
             g.value += 1
 
-        var g = lock(box)
+        var g = box.lock()
         return keep(g.value)
 
     try measure(200000, work)

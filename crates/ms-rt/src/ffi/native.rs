@@ -1059,7 +1059,7 @@ unsafe impl<'a, T: IntoAbi> FromAbi<'a> for Out<'a, T> {
 }
 
 /// A reference-counted runtime object (header followed by the Rust value), returned to Manuscript
-/// as a `Shared`-class handle. The runtime drops the value when the count reaches zero. The layout
+/// as a refcounted handle. The runtime drops the value when the count reaches zero. The layout
 /// matches `ms_rt::glue::Handle<T>`, so crates move between the two one function at a time.
 #[repr(C)]
 pub struct ObjCell<T> {

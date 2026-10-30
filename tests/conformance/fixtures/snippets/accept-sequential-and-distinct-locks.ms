@@ -1,18 +1,17 @@
 # conform: tags=scope-cleanup,mutation,tier-core
 # conform: phase=check
 # conform: origin=ms-check/tests/messages.rs
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 export fn main() Int:
-    let a = share(1)
-    let b = share(2)
-    var one = lock(a)
-    var two = lock(b)
+    let a = new_lock(1)
+    let b = new_lock(2)
+    var one = a.lock()
+    var two = b.lock()
     two.value += one.value
     one.close()
 
-    var again = lock(a)
+    var again = a.lock()
     again.value += 1
     again.close()
     return 0

@@ -1,33 +1,32 @@
 import stdout from "@std/io.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import TaskGroup from "@std/tasks.ms"
 import expect_equal from "@std/test.ms"
 import {nanoseconds, sleep} from "@std/time.ms"
 
-fn hold(box: Shared[List[Int]]) Int:
-    var guard = lock(box)
+fn hold(box: Lock[List[Int]]) Int:
+    var guard = box.lock()
     guard.value.append(2)
     sleep(nanoseconds(5000000000))
     guard.close()
     return 0
 
-fn add_slowly(box: Shared[List[Int]]) Int:
-    var guard = lock(box)
+fn add_slowly(box: Lock[List[Int]]) Int:
+    var guard = box.lock()
     guard.value.append(1)
     sleep(nanoseconds(2000000))
     guard.value.append(2)
     guard.close()
     return 0
 
-fn add(box: Shared[List[Int]], value: Int) Int:
-    var guard = lock(box)
+fn add(box: Lock[List[Int]], value: Int) Int:
+    var guard = box.lock()
     guard.value.append(value)
     guard.close()
     return value
 
 test "a task cancelled while holding the lock puts the payload back":
-    let box: Shared[List[Int]] = share([1])
+    let box: Lock[List[Int]] = new_lock([1])
     let mine = box
     var group = TaskGroup[Int](timeout: some(nanoseconds(20000000)))
     group.spawn(fn ch: hold(mine))
@@ -36,13 +35,13 @@ test "a task cancelled while holding the lock puts the payload back":
     group.close()
     box.get().clone() | try expect_equal([1, 2])
 
-    var guard = lock(box)
+    var guard = box.lock()
     guard.value.append(3)
     guard.close()
     box.get().clone() | try expect_equal([1, 2, 3])
 
 test "a second lock waits for the first guard":
-    let box: Shared[List[Int]] = share([])
+    let box: Lock[List[Int]] = new_lock([])
     let first = box
     let second = box
     var group = TaskGroup[Int]()

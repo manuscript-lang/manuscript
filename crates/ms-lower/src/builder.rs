@@ -1,7 +1,7 @@
 //! The collection and text builders (`ListBuilder`, `MapBuilder`, `SetBuilder`, `StringBuilder`,
-//! `BytesBuilder`): shared handles that accumulate a value.
+//! `BytesBuilder`): handles that accumulate a value.
 //!
-//! A builder is a `Shared` cell holding `{items, sealed}`. Copies of the handle see every
+//! A builder is a runtime cell holding `{items, sealed}`. Copies of the handle see every
 //! append or add, and `build` seals the cell so later changes fault with "builder is sealed".
 
 use crate::Error;
@@ -24,8 +24,8 @@ pub(crate) fn builder_kind(t: &ct::Ty) -> Option<&'static str> {
     .find(|n| t.is_std(n))
 }
 
-/// The handle type of a builder over the collection type `items`.
-pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
+/// The handle type of a runtime cell named `name` (a builder, a `Lock`) over the payload `items`.
+pub(crate) fn cell_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
     let rec_name = format!("{name}#{}", items.0);
     let rec = match m.records.iter().position(|r| r.name == rec_name) {
         Some(i) => m.types.rec(RecId(i as u32)),
@@ -39,24 +39,24 @@ pub(crate) fn handle_ty(m: &mut Module, name: &str, items: MTy) -> MTy {
             m.add_record(&rec_name, fields).1
         }
     };
-    m.types.obj("Shared", vec![rec])
+    m.types.obj("Cell", vec![rec])
 }
 
 impl<'a> FnLower<'a> {
-    pub(crate) fn builder_rec(&self, handle: MTy) -> Result<RecId, Error> {
+    pub(crate) fn cell_rec(&self, handle: MTy) -> Result<RecId, Error> {
         if let TyKind::Obj(n, a) = self.b.m.types.kind(handle)
-            && n == "Shared"
+            && n == "Cell"
             && let Some(&r) = a.first()
             && let TyKind::Rec(id) = self.b.m.types.kind(r)
         {
             return Ok(*id);
         }
-        Err(Error::new("not a builder handle"))
+        Err(Error::new("not a cell handle"))
     }
 
     /// `ListBuilder[T]()`, `MapBuilder[K, V]()` and `SetBuilder[T]()`.
     pub(crate) fn construct_builder(&mut self, handle: MTy) -> Result<Val, Error> {
-        let rec = self.builder_rec(handle)?;
+        let rec = self.cell_rec(handle)?;
         let items_ty = self.b.m.records[rec.index()].fields[0].1;
         let items = match self.b.m.types.kind(items_ty).clone() {
             TyKind::List(elem) => self.b.list_lit(elem, &[]),
@@ -68,7 +68,7 @@ impl<'a> FnLower<'a> {
         let state = self.b.rec_new(rec, &[items, sealed]);
         let v = self
             .b
-            .emit(Op::SharedNew, &[state], Imm::None, Some(handle))
+            .emit(Op::CellNew, &[state], Imm::None, Some(handle))
             .expect("shared result");
         Ok(Val { v, own: true })
     }
@@ -79,7 +79,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Faults with `message` when the flag at `flag` equals `when`.
-    fn fault_if_flag(&mut self, flag: Value, when: bool, message: &str) {
+    pub(crate) fn fault_if_flag(&mut self, flag: Value, when: bool, message: &str) {
         let flag = self
             .b
             .emit(Op::Load, &[flag], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
@@ -119,11 +119,11 @@ impl<'a> FnLower<'a> {
         args: &[NArg],
         result: MTy,
     ) -> Result<Val, Error> {
-        let rec = self.builder_rec(self.ty_of(handle))?;
+        let rec = self.cell_rec(self.ty_of(handle))?;
         let items_ty = self.b.m.records[rec.index()].fields[0].1;
         let addr = self
             .b
-            .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
+            .emit(Op::CellAddr, &[handle], Imm::None, Some(MTy::PTR))
             .expect("addr");
         let field = |s: &mut Self, i: u32| {
             s.b.emit(Op::PtrField, &[addr], Imm::Field(rec, i), Some(MTy::PTR))
@@ -177,103 +177,5 @@ impl<'a> FnLower<'a> {
         self.at(e.pos);
         let result = self.emty(e)?;
         self.builder_call(name, handle, &m.ty.params, &args, result)
-    }
-}
-
-impl<'a> FnLower<'a> {
-    /// A method of a user-facing `Shared[T]`: a box holding `{value, taken}`. `take` moves the
-    /// value out and marks the box in use; `put` moves it back. A second `take`, or a `get`, while
-    /// the value is out faults, which is the runtime check of the single mutable borrow.
-    pub(crate) fn shared_method(
-        &mut self,
-        e: &ms_syntax::ast::Expr,
-        view: &ms_check::hir::CallView<'_>,
-        recv_expr: &ms_syntax::ast::Expr,
-        name: &str,
-    ) -> Result<Val, Error> {
-        let recv = self.expr(recv_expr)?;
-        if self.dead {
-            return Ok(recv);
-        }
-        let args = self.native_args(view)?;
-        if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
-        }
-        let handle = self.borrow(recv);
-        self.at(e.pos);
-        let result = self.emty(e)?;
-        let rec = self.builder_rec(self.ty_of(handle))?;
-        let value_ty = self.b.m.records[rec.index()].fields[0].1;
-        let addr = self
-            .b
-            .emit(Op::SharedAddr, &[handle], Imm::None, Some(MTy::PTR))
-            .expect("addr");
-        let field = |s: &mut Self, i: u32| {
-            s.b.emit(Op::PtrField, &[addr], Imm::Field(rec, i), Some(MTy::PTR))
-                .expect("field")
-        };
-        let value = field(self, 0);
-        let taken = field(self, 1);
-        match name {
-            "get" => {
-                self.fault_if_flag(taken, true, "shared value is in use");
-                let v = self
-                    .b
-                    .emit(Op::Load, &[value], Imm::Ty(value_ty), Some(value_ty))
-                    .expect("load");
-                Ok(Val { v, own: false })
-            }
-            "id" => {
-                // The box address: what a wait queue is keyed by.
-                let id = self.call_runtime("msrt_addr_id", &[addr], MTy::INT)?;
-                Ok(Val { v: id, own: false })
-            }
-            "locked" => {
-                let v = self
-                    .b
-                    .emit(Op::Load, &[taken], Imm::Ty(MTy::BOOL), Some(MTy::BOOL))
-                    .expect("load");
-                Ok(Val { v, own: false })
-            }
-            "take" => {
-                self.fault_if_flag(taken, true, "shared value is in use");
-                let yes = self.b.bconst(true);
-                self.b.emit(Op::Store, &[taken, yes], Imm::None, None);
-                let v = self.take_slot(value, value_ty);
-                Ok(Val { v, own: true })
-            }
-            "put" => {
-                self.fault_if_flag(taken, false, "shared value was not taken");
-                let arg = args
-                    .first()
-                    .ok_or_else(|| Error::new("put without a value"))?;
-                // `put` moves the argument bitwise: its one caller, `SharedGuard.close`, clears `held`
-                // first, and the glue of a closed guard neither copies nor drops its `value`.
-                let moved = if arg.val.own || !self.needs_drop(value_ty) {
-                    arg.val.v
-                } else {
-                    self.b.move_out(arg.val.v)
-                };
-                self.b.emit(Op::Put, &[value, moved], Imm::None, None);
-                let no = self.b.bconst(false);
-                self.b.emit(Op::Store, &[taken, no], Imm::None, None);
-                let _ = result;
-                Ok(Val {
-                    v: self.b.unit(),
-                    own: false,
-                })
-            }
-            _ => Err(Error::new("unknown Shared method")),
-        }
-    }
-
-    /// `share(value)`: a new box holding the value, not taken.
-    pub(crate) fn shared_new(&mut self, payload: Value, handle: MTy) -> Value {
-        let rec = self.builder_rec(handle).expect("shared handle");
-        let free = self.b.bconst(false);
-        let state = self.b.rec_new(rec, &[payload, free]);
-        self.b
-            .emit(Op::SharedNew, &[state], Imm::None, Some(handle))
-            .expect("shared result")
     }
 }

@@ -334,7 +334,7 @@ pub(crate) fn method_changes_receiver(
         (_, "contract") => false,
         // A builder is a handle: copying it already shares the contents.
         (_, native) if !native.is_empty() => {
-            crate::sharedbuilder::builder_kind(&m.receiver).is_none()
+            crate::builder::builder_kind(&m.receiver).is_none()
                 && ms_check::effects::collection_mutation(m)
         }
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),

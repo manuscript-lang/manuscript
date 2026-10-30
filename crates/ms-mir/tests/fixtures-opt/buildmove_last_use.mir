@@ -14,9 +14,9 @@ b0:
   %0: bytes = call.rt @msrt_list_new ()
   %1: bool = bconst false
   %2: StringBuilder = rec.new StringBuilder %0, %1
-  %3: Shared<StringBuilder> = shared.new %2
+  %3: Cell<StringBuilder> = cell.new %2
   %4: str = str "hello world this is long enough to be heap"
-  %5: ptr = shared.addr %3
+  %5: ptr = cell.addr %3
   %6: ptr = ptr.field StringBuilder.items %5
   %7: ptr = ptr.field StringBuilder.sealed %5
   %8: bool = load bool %7
@@ -34,7 +34,7 @@ b2():
   put %6, %14
   %15: unit = unit
   %16: str = str "hello world this is long enough to be heap"
-  %17: ptr = shared.addr %3
+  %17: ptr = cell.addr %3
   %18: ptr = ptr.field StringBuilder.items %17
   %19: ptr = ptr.field StringBuilder.sealed %17
   %20: bool = load bool %19
@@ -51,7 +51,7 @@ b4():
   %26: bytes = take bytes %24
   put %18, %26
   %27: unit = unit
-  %28: ptr = shared.addr %3
+  %28: ptr = cell.addr %3
   %29: ptr = ptr.field StringBuilder.items %28
   %30: ptr = ptr.field StringBuilder.sealed %28
   %31: bool = bconst true

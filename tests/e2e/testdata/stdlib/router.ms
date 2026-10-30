@@ -6,8 +6,7 @@ import {
 import {IoError, read_all} from "@std/io.ms"
 import network from "@std/net.ms"
 import {create, LogError, Transport} from "@std/log.ms"
-import {Shared, share} from "@std/shared.ms"
-import lock from "@std/sync.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import Bytes from "@std/bytes.ms"
 import {access_log, request_id, RouteParams, Router, RouterError} from "@std/router.ms"
 import body_stream from "@std/sse.ms"
@@ -357,11 +356,11 @@ test "request_id keeps a usable id and makes one otherwise":
     try expect_equal(id_of(try r.call(get("/missing"))).length(), 36)
 
 type Sink:
-    lines: Shared[List[String]]
+    lines: Lock[List[String]]
 
 impl Transport for Sink:
     var fn write(data: String) Result[Unit, LogError]:
-        var guard = lock(self.lines)
+        var guard = self.lines.lock()
         guard.value.append(data.clone())
         guard.close()
         return ok(unit)
@@ -375,12 +374,12 @@ impl Transport for Sink:
     var fn close() Unit:
         return unit
 
-fn logged(lines: Shared[List[String]]) String:
-    var guard = lock(lines)
+fn logged(lines: Lock[List[String]]) String:
+    var guard = lines.lock()
     return guard.value.join("")
 
 test "access_log writes one record per request":
-    let lines = share(List[String]())
+    let lines = new_lock(List[String]())
     let logger = (create(Sink(lines: lines), timestamp: some(false))).get()
     var r = Router()
     r.use(access_log(logger))

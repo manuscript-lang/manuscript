@@ -8,7 +8,7 @@ use std::collections::HashSet;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Class {
     /// Duplicated implicitly: scalars, records of those,
-    /// and handle types whose identity is shared (native handles and `Shared[T]`).
+    /// and handle types whose identity is shared (native handles and `Lock[T]`).
     Copy,
     /// One owner. Moves at its last use into a consuming position; `.clone()`
     /// duplicates it explicitly. Strings, lists, maps, sets, bytes, records and
@@ -61,7 +61,7 @@ impl Classifier {
     fn native(&self, t: &Ty, visiting: &mut Vec<Name>) -> Class {
         if self.closeable.contains(&t.id) {
             Class::Resource
-        } else if t.is_std("Shared") {
+        } else if t.is_std("Lock") {
             // Copying shares the box; the payload is closed once the last holder releases it.
             Class::Copy
         } else if t.is_std("List") {

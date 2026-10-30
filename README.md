@@ -38,7 +38,7 @@ When the repair is mechanical, `ms check --fix` applies it. A runtime fault come
 - **Batteries-included standard library:** HTTP, JSON, TOML, YAML, CSV, crypto, processes and more, written in Manuscript. Nothing to install for common work. [API reference](https://manuscript-lang.github.io/manuscript/standard-library/reference/)
 - **Cleanup you cannot forget:** resources close at scope end on every exit, including faults and cancellation. [Cleanup](documentation/core-language/cleanup/scopes.md)
 - **Explicit error handling:** `Result` and `Optional` instead of null and exceptions. `try` propagates an error, `if let` and `match` handle one, and a dropped `Result` is a compile error. [Errors](documentation/core-language/errors/propagation.md)
-- **Exact numbers:** sized integers, `Float32`, and `Decimal` literals like `12.50d`; conversions are explicit. Sharing between owners is an explicit `Shared[T]`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
+- **Exact numbers:** sized integers, `Float32`, and `Decimal` literals like `12.50d`; conversions are explicit. Sharing between owners is an explicit `Lock[T]`. [Numbers](documentation/core-language/basics/numbers-and-booleans.md)
 
 ## Shaped by measured agent use
 

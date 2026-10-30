@@ -504,10 +504,10 @@ impl Walker<'_> {
         (self.ret_expr, self.ret_hit) = saved;
     }
 
-    /// Whether `e` is a `Copy` handle such as `Shared[T]`: it is not the storage it lends from,
+    /// Whether `e` is a `Copy` handle such as `Lock[T]`: it is not the storage it lends from,
     /// and another copy of the handle can change that storage, so what it lends is a copy.
     fn copy_handle(&self, e: &Expr) -> bool {
-        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Shared")
+        self.class_of(e) == Class::Copy && self.cx.m.ty(e).is_std("Lock")
     }
 
     /// Whether `a` is converted to an interface where it is used: the use receives a new
@@ -1348,6 +1348,7 @@ impl Walker<'_> {
             && let ExprKind::Call { callee, .. } = &value.kind
             && let ExprKind::Member { left, .. } = &callee.kind
             && self.copy_handle(left)
+            && self.declared_ref(value)
         {
             let text = self.expr_text(value);
             self.expr(value, Demand::Read);

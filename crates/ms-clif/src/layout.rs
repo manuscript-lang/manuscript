@@ -8,7 +8,7 @@
 //! | --- | --- |
 //! | `Unit` | none |
 //! | `Bool` | `i8` |
-//! | `Int`, `Ptr`, closures, `Shared[T]` | `i64` |
+//! | `Int`, `Ptr`, closures, runtime cells | `i64` |
 //! | `Int8`, `Int16`, `Int32` | `i64` in registers, 1, 2, 4 bytes in memory |
 //! | `UInt8`, `UInt16`, `UInt32` | `i64` in registers (zero-extended), 1, 2, 4 bytes in memory |
 //! | `UInt64` | `i64` bit pattern |

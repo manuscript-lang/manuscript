@@ -10,7 +10,7 @@
 //! memory model: records, lists, optionals and the like are *values*, flattened
 //! into scalar leaves by the backend (see [`crate::layout`]), not heap objects
 //! with identity. A value whose type [needs a drop](Module::needs_drop) (lists,
-//! maps, strings, boxed alternatives, `Shared[T]`, records containing them) is
+//! maps, strings, boxed alternatives, runtime cells, records containing them) is
 //! either **owned** (it must be consumed exactly once: moved into a consuming
 //! position or `drop`ped) or **borrowed** (a read-only view the producer keeps
 //! alive). Ownership is determined by the defining instruction (see
@@ -289,8 +289,8 @@ pub enum Op {
     OptSome, OptView, OptNone, OptIsSome, OptGet, OptUnwrap, OptUnbox,
     // Strings.
     StrLen, StrByte, StrAscii,
-    // Shared[T].
-    SharedNew, SharedGet, SharedAddr,
+    // Runtime cells: a refcounted payload behind a handle (builders, `Lock[T]`).
+    CellNew, CellGet, CellAddr,
     // Closures and interface views.
     ClosureNew, ClosureCap, IfaceNew, IfaceData, IfaceIs,
     // Ownership.
@@ -407,7 +407,7 @@ impl Op {
         Op::ListSet, Op::ListSetNn, Op::ListSetU, Op::ListFill, Op::ListPush, Op::ListDropLast,
         Op::RefNew, Op::RefGet,
         Op::OptSome, Op::OptView, Op::OptNone, Op::OptIsSome, Op::OptGet, Op::OptUnwrap, Op::OptUnbox,
-        Op::StrLen, Op::StrByte, Op::StrAscii, Op::SharedNew, Op::SharedGet, Op::SharedAddr,
+        Op::StrLen, Op::StrByte, Op::StrAscii, Op::CellNew, Op::CellGet, Op::CellAddr,
         Op::ClosureNew, Op::ClosureCap, Op::IfaceNew, Op::IfaceData, Op::IfaceIs,
         Op::Copy, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
@@ -505,9 +505,9 @@ impl Op {
             Op::StrLen => ("str.len", K::None, true, effects!(reads, writes)),
             Op::StrByte => ("str.byte", K::None, true, effects!(reads)),
             Op::StrAscii => ("str.ascii", K::None, true, effects!()),
-            Op::SharedNew => ("shared.new", K::None, true, effects!(alloc)),
-            Op::SharedGet => ("shared.get", K::None, true, effects!(reads)),
-            Op::SharedAddr => ("shared.addr", K::None, true, effects!(reads)),
+            Op::CellNew => ("cell.new", K::None, true, effects!(alloc)),
+            Op::CellGet => ("cell.get", K::None, true, effects!(reads)),
+            Op::CellAddr => ("cell.addr", K::None, true, effects!(reads)),
             Op::ClosureNew => ("closure.new", K::Func, true, effects!(alloc)),
             Op::ClosureCap => ("closure.cap", K::Idx, true, effects!(reads)),
             Op::IfaceNew => ("iface.new", K::Vtable, true, effects!()),
@@ -1073,9 +1073,9 @@ pub struct Module {
     /// Equality and hash functions (`fn(ptr, ptr) -> bool`, `fn(ptr) -> int`) that the
     /// descriptor of an aggregate type points to.
     pub desc_glue: Vec<(Ty, FuncId, FuncId)>,
-    /// Closers of `Shared` payloads holding resources: for the payload record type, a function
+    /// Closers of `Lock` payloads holding resources: for the payload record type, a function
     /// `fn(ptr)` over the box's payload that closes the value the last holder's drop releases.
-    pub shared_close: Vec<(Ty, FuncId)>,
+    pub cell_close: Vec<(Ty, FuncId)>,
 }
 
 impl Default for Module {
@@ -1102,7 +1102,7 @@ impl Module {
             funcs: Vec::new(),
             entry: None,
             desc_glue: Vec::new(),
-            shared_close: Vec::new(),
+            cell_close: Vec::new(),
         }
     }
 

@@ -750,11 +750,11 @@ impl Checker {
         true
     }
 
-    /// Whether `t` holds a `Shared` handle anywhere in its data. Copies of such a
+    /// Whether `t` holds a `Lock` handle anywhere in its data. Copies of such a
     /// value alias one payload, so a key stored in a Map or Set could change its
     /// hash through another handle.
     fn shares_state(&self, t: &Ty, seen: &mut Vec<String>) -> bool {
-        if t.is_std("Shared") {
+        if t.is_std("Lock") {
             return true;
         }
         let key = type_key(t);
@@ -1310,7 +1310,7 @@ impl Checker {
         }
         if bound.is_std("Hashable") && self.shares_state(t, &mut Vec::new()) {
             return format!(
-                "{prefix}it holds a Shared handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
+                "{prefix}it holds a Lock handle, and a key changed through another handle stays filed under its old hash; key on a plain value such as an Int id instead"
             );
         }
         if bound.is_std("Hashable") && self.holds_resource(t, &mut Vec::new()) {

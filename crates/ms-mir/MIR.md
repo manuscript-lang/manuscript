@@ -9,7 +9,7 @@ For the HIR→MIR lowering thread. Source of truth is `src/ir.rs` (ops), `src/ve
 
 ## Ownership (linear)
 - Every value is `Own` or `Borrow`. Owned values must be consumed exactly once: passed to an `Own` parameter, stored, returned, or `drop`ped. The verifier runs move/live-set dataflow and rejects leaks, double use and use-after-move.
-- Value semantics: `copy` duplicates deeply (lowering inserts it where Manuscript copies); records/lists are not aliased. Only `Shared[T]` (`shared.new`/`shared.get`) is reference counted.
+- Value semantics: `copy` duplicates deeply (lowering inserts it where Manuscript copies); records/lists are not aliased. Only runtime cells (`cell.new`/`cell.get`: `Lock[T]` and builders) are reference counted.
 - Constructors and mutators (`rec.set`, `list.push`, `list.set*`) take and return the owned aggregate; `load`/`list.get`/field reads yield borrows of the container.
 - `move.out` takes ownership of a borrowed field or element without copying it; the update that follows must put a value back with `rec.fill` or `list.fill`, which store without dropping the (moved-out) old value. Lowering uses the pair so `r.items.append(x)` and `xs[i].m()` change the field in place instead of copying it.
 - `drop` / `drop_if` release a value; the backend generates drop glue per type. Faults do not unwind: `cleanup.push/run` register thunks run in LIFO order before exit.

@@ -4,7 +4,7 @@ import {control, ControlError} from "@std/process.ms"
 import {filesystem, FileSystemError, FileEvent, FileWatcher, join} from "@std/fs.ms"
 import {milliseconds, sleep} from "@std/time.ms"
 import TaskGroup from "@std/tasks.ms"
-import {Shared, share} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 fn expect_process_error[T](
     outcome: Result[T, ControlError],
@@ -142,7 +142,7 @@ test "native watcher max_entries counts the paths under the root":
     )
     w.close()
 
-fn wait_next(w: Shared[FileWatcher]) Int:
+fn wait_next(w: Lock[FileWatcher]) Int:
     let r = w.get().next()
     if r.is_ok():
         return 1
@@ -152,7 +152,7 @@ fn wait_next(w: Shared[FileWatcher]) Int:
 test "close wakes a pending native next with Closed":
     let fs = filesystem()
     let t = fs.temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
+    let w: Lock[FileWatcher] = new_lock(
         try fs.watch_native(path: t.path(), recursive: false, overflow: "error")
     )
     let group = TaskGroup[Int]()
@@ -167,7 +167,7 @@ test "close wakes a pending native next with Closed":
 test "a group timeout cancels a task waiting on a watcher":
     let fs = filesystem()
     let t = fs.temporary("ms-r2-") | try expect_ok
-    let w: Shared[FileWatcher] = share(
+    let w: Lock[FileWatcher] = new_lock(
         try fs.watch(
             path: t.path(), recursive: false, interval: milliseconds(20)
         )

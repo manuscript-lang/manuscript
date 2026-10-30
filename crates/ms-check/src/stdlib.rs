@@ -530,6 +530,13 @@ pub fn source_standard_dependencies(modules: Vec<ModRef>) -> (Vec<ModRef>, Vec<D
             if let Some(dep) = standard_source_module(n(&item.path)) {
                 visit(&dep, state, ordered, diagnostics);
             }
+            // A mixed file's methods written in Manuscript live in its source half; importing the
+            // file brings them, as importing a source module does.
+            if let Some(dep) = standard_source_module(n(&format!("{}+source", item.path)))
+                && dep.file != module.file
+            {
+                visit(&dep, state, ordered, diagnostics);
+            }
         }
         state.insert(module.file, 2);
         ordered.push(module.clone());
@@ -875,6 +882,15 @@ fn split_mixed(parsed: &Module) -> Result<Option<(Module, Module)>, String> {
                         .iter()
                         .filter(|x| implements(x, name))
                         .all(decl_has_body)
+            }
+            // A private record with bodied operations goes with them: the source half cannot
+            // import a name the file does not export.
+            DeclKind::Record(r) if !d.export && !r.external => {
+                parsed.decls.iter().any(|x| {
+                    decl_has_body(x)
+                        && matches!(&x.kind, DeclKind::Impl(i)
+                            if matches!(&i.receiver.kind, TypeKind::Named { name, .. } if *name == r.name))
+                })
             }
             _ => decl_has_body(d),
         };

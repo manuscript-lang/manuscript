@@ -4,7 +4,7 @@ import {
     network, parse_ip, parse_cidr, contains_ip, DatagramSocket, DnsKind, NetworkError,
     IpFamily, Listener, Connection
 } from "@std/net.ms"
-import {Shared, share} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 import TaskGroup from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 
@@ -86,7 +86,7 @@ fn expect_ip_error(input: String) Result[Unit, Error]:
     try expect_equal((try expect_error(parse_ip(input))), NetworkError.InvalidData)
     return ok(unit)
 
-fn accept_one(l: Shared[Listener]) Int:
+fn accept_one(l: Lock[Listener]) Int:
     let r = l.get().accept(2.seconds)
 
     if r.is_ok():
@@ -97,7 +97,7 @@ fn accept_one(l: Shared[Listener]) Int:
 
 test "two tasks accept on one listener":
     let net = network()
-    let shared: Shared[Listener] = share(try net.listen("127.0.0.1:0"))
+    let shared: Lock[Listener] = new_lock(try net.listen("127.0.0.1:0"))
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
@@ -115,7 +115,7 @@ test "two tasks accept on one listener":
     group.close()
     shared.get().close()
 
-fn read_some(c: Shared[Connection]) Int:
+fn read_some(c: Lock[Connection]) Int:
     let r = c.get().read(some(1), some(2.seconds))
     if r.is_ok() and r.get().is_some():
         return 1
@@ -127,7 +127,7 @@ test "two tasks read one connection":
     let listener = try net.listen("127.0.0.1:0")
     var client = try net.connect(listener.address(), 2.seconds)
     let server = try listener.accept(2.seconds)
-    let shared: Shared[Connection] = share(server)
+    let shared: Lock[Connection] = new_lock(server)
     var group = TaskGroup[Int]()
     let a = shared
     let b = shared
@@ -143,7 +143,7 @@ test "two tasks read one connection":
     shared.get().close()
 
 # Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
-fn answer_mx(socket: Shared[DatagramSocket]) Result[Int, NetworkError]:
+fn answer_mx(socket: Lock[DatagramSocket]) Result[Int, NetworkError]:
     let query = try socket.get().receive(512, 2.seconds)
     let question = (query.data.slice(12, query.data.length())).get(Bytes([]))
     let header = Bytes(
@@ -168,7 +168,7 @@ test "resolve returns typed DNS records from the configured resolver":
     try expect_equal(one[0].value, "127.0.0.1")
     try expect_equal(one[0].kind.text(), "A")
 
-    let server: Shared[DatagramSocket] = share(try net.bind_datagram("127.0.0.1:0"))
+    let server: Lock[DatagramSocket] = new_lock(try net.bind_datagram("127.0.0.1:0"))
     let derived = try net.with_resolver(server.get().address())
     let group = TaskGroup[Int]()
     let socket = server

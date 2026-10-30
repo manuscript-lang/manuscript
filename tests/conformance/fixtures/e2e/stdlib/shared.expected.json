@@ -3,67 +3,51 @@
   "phase": "test",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 0,
+    "exit_code": 1,
     "report": {
-      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [
-        {
-          "index": 0,
-          "name": "shared.ms::copies of a shared value read the same payload",
-          "status": "passed"
-        },
-        {
-          "index": 1,
-          "name": "shared.ms::the payload outlives the original holder",
-          "status": "passed"
-        },
-        {
-          "index": 2,
-          "name": "shared.ms::lock changes the payload every holder sees",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "shared.ms::a read while the payload is locked faults",
-          "status": "passed"
-        },
-        {
-          "index": 4,
-          "name": "shared.ms::a box dropped while its payload is locked does not free the payload twice",
-          "status": "passed"
-        },
-        {
-          "index": 5,
-          "name": "shared.ms::an optional payload keeps its value through lock",
-          "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "shared.ms::a record payload with an optional field after a flag survives lock",
-          "status": "passed"
-        }
-      ],
+      "tests": [],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": true,
-      "exit_code": 0,
-      "stdout": "RUN shared.ms::copies of a shared value read the same payload\nPASS shared.ms::copies of a shared value read the same payload\nRUN shared.ms::the payload outlives the original holder\nPASS shared.ms::the payload outlives the original holder\nRUN shared.ms::lock changes the payload every holder sees\nPASS shared.ms::lock changes the payload every holder sees\nRUN shared.ms::a read while the payload is locked faults\nPASS shared.ms::a read while the payload is locked faults\nRUN shared.ms::a box dropped while its payload is locked does not free the payload twice\nPASS shared.ms::a box dropped while its payload is locked does not free the payload twice\nRUN shared.ms::an optional payload keeps its value through lock\nPASS shared.ms::an optional payload keeps its value through lock\nRUN shared.ms::a record payload with an optional field after a flag survives lock\nPASS shared.ms::a record payload with an optional field after a flag survives lock\n7 tests, 0 failed\n",
-      "diagnostics": []
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS2001",
+          "phase": "resolution",
+          "message": "unknown binding share; declare it with 'let share = ...' before use, define 'fn share(...) T:', or import it from a module",
+          "position": {
+            "file": "shared.ms",
+            "line": 28,
+            "column": 19,
+            "offset": 655
+          }
+        }
+      ]
     },
     "shape": [
       "completed",
       "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "repeat",
+      "reason",
       "source_root",
       "stdout",
       "summary",
@@ -74,11 +58,7 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests",
-      "tests[].duration_ns",
-      "tests[].index",
-      "tests[].name",
-      "tests[].status"
+      "tests"
     ],
     "stderr": ""
   }

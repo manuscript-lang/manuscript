@@ -1,12 +1,12 @@
-import {share, Shared} from "@std/shared.ms"
+import {new_lock, Lock} from "@std/lock.ms"
 
 interface Cell:
-    fn get() ref Shared[List[String]]
+    fn get() ref Lock[List[String]]
 
 type Fresh:
     n: Int
 
-# A `Shared` handle is `Copy` but holds a reference, so it is not exempt like a scalar.
+# A `Lock` handle is `Copy` but holds a reference, so it is not exempt like a scalar.
 impl Cell for Fresh:
-    fn get() Shared[List[String]]:  # error: implements an operation declared `ref`
-        return share(["a"])
+    fn get() Lock[List[String]]:  # error: implements an operation declared `ref`
+        return new_lock(["a"])

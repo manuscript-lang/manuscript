@@ -513,11 +513,11 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| n.to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if crate::sharedbuilder::builder_kind(&m.receiver).is_some() {
+        if crate::builder::builder_kind(&m.receiver).is_some() {
             return self.builder_method(e, view, m, recv_expr, &method);
         }
-        if m.receiver.is_std("Shared") {
-            return self.shared_method(e, view, recv_expr, &method);
+        if m.receiver.is_std("Lock") {
+            return self.lock_method(e, view, recv_expr, &method);
         }
         if ms_check::effects::collection_mutation(m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
@@ -901,7 +901,7 @@ impl<'a> FnLower<'a> {
     ) -> Result<Val, Error> {
         let t = ct::sub(ty, &self.subst);
         let mt = self.cx.lower_ty(self.b.m, &t)?;
-        if crate::sharedbuilder::builder_kind(&t).is_some() {
+        if crate::builder::builder_kind(&t).is_some() {
             return self.construct_builder(mt);
         }
         if crate::mapset::is_map_or_set(self.b.m, mt)

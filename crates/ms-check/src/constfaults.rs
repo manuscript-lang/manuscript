@@ -1,5 +1,5 @@
 //! Faults that constant operands make certain: integer overflow, division by
-//! zero, an index outside a list literal and locking a `Shared` twice.
+//! zero, an index outside a list literal and locking a `Lock` twice.
 
 use crate::checker::Checker;
 use crate::types::*;
@@ -106,17 +106,20 @@ fn place_text(e: &Expr) -> Option<String> {
 }
 
 impl Checker {
-    /// Tracks `let guard = lock(box)` until its scope ends or `guard.close()` runs, and rejects
+    /// Tracks `var held = box.lock()` until its scope ends or `guard.close()` runs, and rejects
     /// locking the same written place again meanwhile, which waits on itself forever. Returns
     /// whether a lock was pushed; `block` pops it when the scope ends.
     pub(crate) fn begin_lock(&mut self, s: &Stmt, guard: Name, value: &Expr, ty: &Ty) -> bool {
-        let ExprKind::Call { args, .. } = &value.kind else {
+        let ExprKind::Call { callee, .. } = &value.kind else {
             return false;
         };
-        if !ty.is_source_type("@std/sync.ms", "SharedGuard") {
+        if !ty.is_source_type("@std/lock.ms", "Locked") {
             return false;
         }
-        let Some(place) = args.first().and_then(|a| place_text(&a.value)) else {
+        let ExprKind::Member { left, .. } = &callee.kind else {
+            return false;
+        };
+        let Some(place) = place_text(left) else {
             return false;
         };
         let function = self.function;
