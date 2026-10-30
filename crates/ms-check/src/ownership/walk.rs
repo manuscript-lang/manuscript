@@ -140,6 +140,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         declared: Vec::new(),
         consumed: HashSet::new(),
         copies: std::collections::BTreeSet::new(),
+        callees: HashSet::new(),
         escaped: cx.escaped.clone(),
         positions: HashMap::new(),
         mutated: Vec::new(),
@@ -227,6 +228,8 @@ struct Walker<'a> {
     consumed: HashSet<usize>,
     /// Type parameters of this callable whose values the body may copy.
     copies: std::collections::BTreeSet<Name>,
+    /// Callee expressions of direct calls, which call a named function without making a value.
+    callees: HashSet<NodeId>,
     escaped: HashSet<NodeId>,
     /// Source positions of the callable's statements and expressions.
     positions: HashMap<NodeId, Pos>,
@@ -2284,11 +2287,13 @@ impl Walker<'_> {
                     }
                 }
             }
-            ExprKind::Name(_) => {
-                if let Resolution::Local(b) = self.cx.m.resolution(e) {
-                    self.use_local(e, &b, d);
+            ExprKind::Name(_) => match self.cx.m.resolution(e) {
+                Resolution::Local(b) => self.use_local(e, &b, d),
+                Resolution::Function(sym) if !self.callees.contains(&e.id) => {
+                    self.function_value_copies(e, &sym)
                 }
-            }
+                _ => {}
+            },
             ExprKind::Member { .. } | ExprKind::Index { .. } | ExprKind::Apply { .. } => {
                 self.projection(e, d)
             }
@@ -2383,6 +2388,21 @@ impl Walker<'_> {
             return;
         }
         let var_param = parameter.is_some() && perm == Perm::Mutable;
+        if role == Role::LambdaParameter && self.cx.classes.class(&b.ty) == Class::Resource {
+            // A function value is called with its arguments lent, so taking one would copy it,
+            // and the caller still closes the original.
+            self.error(
+                e.pos,
+                format!("cannot move `{name}` out: a function value only borrows its arguments, and the resource `{}` stays with its caller, which closes it; use `{name}` in place here", b.ty),
+            );
+            self.record(e.id, b, Access::Move);
+            return;
+        }
+        if role == Role::LambdaParameter {
+            // In generic code the lent argument may be a resource in some instance.
+            let t = b.ty.clone();
+            self.note_copied(&t);
+        }
         if self.captured.iter().any(|c| c.contains(&b.uid)) && perm != Perm::Captured {
             if b.ty.kind == Kind::Function {
                 self.error(
@@ -2588,6 +2608,33 @@ impl Walker<'_> {
                 } else {
                     self.note_copied(&t);
                 }
+            }
+        }
+    }
+
+    /// A named function used as a value is called with its arguments lent, so a parameter it
+    /// keeps is a copy: rejected for a resource, a copy of the type parameter in generic code.
+    fn function_value_copies(&mut self, e: &Expr, sym: &SymRef) {
+        let Some(decl) = sym.decl.clone() else { return };
+        let func = crate::syntax::FuncRef::of_decl(decl);
+        let Some(summary) = self.cx.summaries.get(&(sym.module, func.id())) else {
+            return;
+        };
+        let fty = self.cx.m.ty(e);
+        for (i, (name, mode)) in summary.params.iter().enumerate() {
+            if *mode != ParamMode::Consume {
+                continue;
+            }
+            let Some(p) = fty.params.get(i) else { continue };
+            if self.cx.classes.class(&p.ty) == Class::Resource {
+                let text = self.expr_text(e);
+                self.error(
+                    e.pos,
+                    format!("`{text}` keeps its parameter `{name}`, but a function value only lends its arguments, so every call would hand it a copy; the resource `{}` cannot be copied: call `{text}` directly, or wrap it in a closure that uses `{name}` in place", p.ty),
+                );
+            } else {
+                let t = p.ty.clone();
+                self.note_copied(&t);
             }
         }
     }
@@ -2805,6 +2852,7 @@ impl Walker<'_> {
             self.receiver(r, mode);
             operands.push((Operand::Receiver(r), held));
         } else {
+            self.callees.insert(callee.id);
             self.expr(callee, Demand::Read);
         }
         for (i, a) in args.iter().enumerate() {

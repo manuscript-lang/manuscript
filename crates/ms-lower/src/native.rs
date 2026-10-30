@@ -2466,6 +2466,8 @@ impl<'a> FnLower<'a> {
                         let fv = f.val.v;
                         let y = s.b.call_ind(fv, &[p]);
                         let v = if by_map { s.b.opt_some(y) } else { y };
+                        // The callback only borrowed the payload: an owned temporary closes it.
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2638,6 +2640,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2671,6 +2674,7 @@ impl<'a> FnLower<'a> {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let y = s.b.call_ind(f.val.v, &[p]);
                         let v = s.b.alt_new(oa, out_err, &[y]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2692,6 +2696,7 @@ impl<'a> FnLower<'a> {
                     &mut |s| {
                         let p = s.b.alt_get(alt, err, 0, r);
                         let v = s.b.call_ind(f.val.v, &[p]);
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
@@ -2725,6 +2730,7 @@ impl<'a> FnLower<'a> {
                         } else {
                             y
                         };
+                        s.close_owned_temp(recv);
                         s.finish(recv);
                         s.finish(f.val);
                         Ok(Some(v))
