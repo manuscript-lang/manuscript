@@ -954,7 +954,7 @@ impl<'a> FnLower<'a> {
                 let v = self.owned(x);
                 Val {
                     v,
-                    own: self.needs_drop(self.ty_of(v)),
+                    own: self.holds(self.ty_of(v)),
                 }
             };
             let idx = params

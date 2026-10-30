@@ -370,7 +370,7 @@ impl<'a> FnLower<'a> {
             self.drop_value(obj.v);
             return Ok(Val {
                 v: o,
-                own: self.needs_drop(self.ty_of(o)),
+                own: self.holds(self.ty_of(o)),
             });
         }
         Ok(Val { v: f, own: false })
@@ -407,7 +407,7 @@ impl<'a> FnLower<'a> {
                     self.drop_value(l.v);
                     return Ok(Val {
                         v: o,
-                        own: self.needs_drop(self.ty_of(o)),
+                        own: self.holds(self.ty_of(o)),
                     });
                 }
                 Ok(Val { v: got, own: false })

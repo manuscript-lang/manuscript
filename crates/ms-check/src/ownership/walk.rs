@@ -2937,8 +2937,13 @@ impl Walker<'_> {
                     self.meta.get(&b.uid).map(|m| m.perm),
                     Some(Perm::Borrowed | Perm::MutBorrowed | Perm::Captured)
                 ) || !self.is_last(e.id, b);
+                // A value holding a borrow is never copied in: the copy would outlive its
+                // origin, so it reaches `capture_move`, which rejects it.
                 if class == Class::Copy
-                    || class == Class::Move && b.ty.kind != Kind::Function && shared
+                    || class == Class::Move
+                        && b.ty.kind != Kind::Function
+                        && shared
+                        && !borrows(&b.ty)
                 {
                     self.record(e.id, b, Access::Copy);
                     facts.push((b.uid, CaptureMode::Copy));

@@ -513,6 +513,20 @@ impl<'a> FnLower<'a> {
         self.cx.lower_ty(self.b.m, &t)
     }
 
+    /// Whether values of `t` are resources, which must be closed whatever their storage.
+    pub fn is_resource(&self, t: MTy) -> bool {
+        self.cx
+            .source_tys
+            .get(&t)
+            .is_some_and(|ty| self.cx.classes.class(ty) == ms_check::ownership::Class::Resource)
+    }
+
+    /// Whether an owned value of `t` carries a duty: storage to free or a resource to close.
+    /// Ownership is tracked for both; a resource with no storage still has to be closed.
+    pub fn holds(&self, t: MTy) -> bool {
+        self.needs_drop(t) || self.is_resource(t)
+    }
+
     /// Whether values of `t` need a drop.
     pub fn needs_drop(&self, t: MTy) -> bool {
         self.b.m.needs_drop(t)
@@ -548,7 +562,8 @@ impl<'a> FnLower<'a> {
 
     /// The operand for a borrowing use; owned temporaries are dropped by `flush_temps`.
     pub fn borrow(&mut self, x: Val) -> Value {
-        if x.own && self.needs_drop(self.ty_of(x.v)) {
+        let t = self.ty_of(x.v);
+        if x.own && self.holds(t) {
             self.temps.push(x.v);
         }
         x.v
@@ -567,7 +582,7 @@ impl<'a> FnLower<'a> {
             let v = self.temps.pop().expect("temp");
             if !self.dead {
                 self.close_temp(v);
-                self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                self.drop_value(v);
             }
         }
     }
@@ -581,7 +596,7 @@ impl<'a> FnLower<'a> {
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
             self.close_temp(v);
-            self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+            self.drop_value(v);
         }
     }
 
@@ -618,7 +633,7 @@ impl<'a> FnLower<'a> {
     pub fn val(&self, v: Value, own: bool) -> Val {
         Val {
             v,
-            own: own && self.needs_drop(self.ty_of(v)),
+            own: own && self.holds(self.ty_of(v)),
         }
     }
 
@@ -914,7 +929,7 @@ impl<'a> FnLower<'a> {
         // The temporaries stay registered: a conditional return leaves the others running.
         for t in self.temps.clone().into_iter().rev() {
             self.close_temp(t);
-            self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
+            self.drop_value(t);
         }
         self.end_fixture();
         self.unwind_to(0);
