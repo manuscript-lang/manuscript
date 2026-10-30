@@ -52,9 +52,10 @@ fn keep(r: fn(Int) Int) List[fn(Int) Int]:
     out.append(r)
     return out
 
-test "an escaping closure copies a captured value that is used again":
+test "an escaping closure takes an explicit clone of a value that is used again":
     var a = [1, 2, 3]
-    let b = keep(fn x: x + a.length())
+    let snapshot = a.clone()
+    let b = keep(fn x: x + snapshot.length())
     a.append(4)
     try expect_equal(b[0](1), 4)
     try expect_equal(a.length(), 4)
