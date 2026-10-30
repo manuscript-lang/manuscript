@@ -292,6 +292,9 @@ jobs:
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-shapes.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-release-vars.ms \
             tests/conformance/fixtures/e2e/stdlib/tasks-cancel-channel-wait-memory.ms
+      - name: Ownership counts and cleanup order hold
+        if: matrix.corpus
+        run: sh scripts/count-check.sh
       - name: Package and run the distribution on a hello project
         run: |
           sh scripts/package-rust.sh "${{ matrix.os }}" "${{ matrix.arch }}"

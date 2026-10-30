@@ -187,6 +187,13 @@ fn report_leaks() {
     crate::task::teardown();
     {
         eprintln!("ms-rt live blocks at exit: {}", crate::alloc::live_blocks());
+        let [allocs, bytes] = crate::alloc::requested();
+        // SAFETY: the counters belong to this isolate.
+        let k = unsafe { *crate::string::COPY_COUNTS.ptr() };
+        eprintln!(
+            "ms-rt counts: allocs={allocs} alloc_bytes={bytes} list_copies={} list_copy_bytes={} string_clones={} string_clone_bytes={}",
+            k[0], k[1], k[2], k[3]
+        );
         // SAFETY: the counters belong to this isolate.
         let c = unsafe { *crate::string::STR_COUNTS.ptr() };
         if c.iter().any(|n| *n != 0) {
