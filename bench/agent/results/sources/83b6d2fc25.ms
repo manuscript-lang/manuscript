@@ -1,4 +1,4 @@
-import {read_all, stdin, stdout} from "@std/io.ms"
+import read_all, stdin, stdout from "@std/io.ms"
 
 # A fatal error. `text` is the complete line to print; empty means print nothing.
 type Fatal:

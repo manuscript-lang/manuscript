@@ -1,14 +1,20 @@
 # Fetch-style HTTP client implemented in Manuscript over `@std/http.ms` and `@std/json.ms`.
 import Bytes from "@std/bytes.ms"
-import {Closeable, Data} from "@std/core.ms"
-import {
-    HttpClient, HttpClientOptions, HttpError, HttpHeaders, HttpMethod,
-    HttpResponseMetadata, ResponseBody, headers
-} from "@std/http.ms"
+import Closeable, Data from "@std/core.ms"
+import (
+    HttpClient,
+    HttpClientOptions,
+    HttpError,
+    HttpHeaders,
+    HttpMethod,
+    HttpResponseMetadata,
+    ResponseBody,
+    headers
+) from "@std/http.ms"
 import IoError from "@std/io.ms"
-import {JsonError, parse, stringify} from "@std/json.ms"
-import {Network, TlsOptions, network} from "@std/net.ms"
-import {Duration, Instant, clock, seconds} from "@std/time.ms"
+import JsonError, parse, stringify from "@std/json.ms"
+import Network, TlsOptions, network from "@std/net.ms"
+import Duration, Instant, clock, seconds from "@std/time.ms"
 
 # Errors returned by fetch operations.
 export type FetchError:

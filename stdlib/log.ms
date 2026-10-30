@@ -2,13 +2,13 @@ import Data from "@std/core.ms"
 import IoError from "@std/io.ms"
 import WriteStream from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
-import {FileHandle, FileSystemError, filesystem} from "@std/fs.ms"
+import FileHandle, FileSystemError, filesystem from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import stringify from "@std/json.ms"
 import wall_clock from "@std/time.ms"
-import {LogCoreError, LogGate, LogState, new_gate, new_state, object_text} from "@std/logcore.ms"
+import LogCoreError, LogGate, LogState, new_gate, new_state, object_text from "@std/logcore.ms"
 
 # Errors returned while validating or writing a structured log record.
 export type LogError:

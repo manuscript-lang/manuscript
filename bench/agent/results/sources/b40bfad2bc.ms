@@ -1,5 +1,5 @@
 import Bytes from "@std/bytes.ms"
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 let BAD = "error: bad command"

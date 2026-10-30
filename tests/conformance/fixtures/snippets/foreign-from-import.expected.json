@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "imports read: import {name, other} from \"path.ms\"",
+        "message": "imports read: import name, other from \"path.ms\"",
         "position": {
           "file": "foreign-from-import.ms",
           "line": 4,

@@ -6,7 +6,7 @@ import Channel from "@std/channels.ms"
 import filesystem from "@std/fs.ms"
 import stdout from "@std/io.ms"
 import ProcessGroup from "@std/processes.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn marker() String:
     let root = filesystem().temporary_root().get("/tmp")

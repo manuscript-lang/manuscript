@@ -1,11 +1,19 @@
 # conform: tags=alternatives,control-flow,faults,interpolation,lists,modules,optional,stdlib-testing,stdlib-url,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/url.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {
-    parse, format, resolve, encode_component, decode_component, parse_query,
-    format_query, QueryEntry, Url, UrlError
-} from "@std/net.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import (
+    parse,
+    format,
+    resolve,
+    encode_component,
+    decode_component,
+    parse_query,
+    format_query,
+    QueryEntry,
+    Url,
+    UrlError
+) from "@std/net.ms"
 
 test "URL canonicalization and relative references":
     let url = try parse("https://EXAMPLE.com:443/a/b?q=1#fragment")

@@ -1,9 +1,9 @@
 # conform: tags=faults,formatter,modules,parser,sets,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/preferred_names/conformance_test.ms
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 import Key from "./domain.ms"
-import {first_run, first_add, first_remove} from "./first.ms"
+import first_run, first_add, first_remove from "./first.ms"
 import second_run from "./second.ms"
 
 test "bound and forwarded calls keep the equality of the collection creator":

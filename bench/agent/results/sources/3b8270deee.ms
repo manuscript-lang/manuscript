@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {from_scalars} from "@std/string.ms"
+import stdin, stdout from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import from_scalars from "@std/string.ms"
 
 # First code point of the alphabet that `v` belongs to ('A' or 'a'), or -1 for any other character.
 fn letter_base(v: Int) Int:

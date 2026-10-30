@@ -5,13 +5,13 @@
 # `Process` holds the other end in its `channel` field. Values cross as JSON, so they are copied,
 # and the entry's return value comes back through `Process.result`. Each process is isolated: a
 # fault in the child ends only the child, and the parent sees its exit status.
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {Channel, ChannelError, Transport} from "@std/channels.ms"
-import {Closeable, Data} from "@std/core.ms"
-import {ReadStream, WriteStream} from "@std/io.ms"
-import {parse, stringify} from "@std/json.ms"
-import {CommandError, Stdio} from "@std/process.ms"
-import {Shared, share} from "@std/shared.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import Channel, ChannelError, Transport from "@std/channels.ms"
+import Closeable, Data from "@std/core.ms"
+import ReadStream, WriteStream from "@std/io.ms"
+import parse, stringify from "@std/json.ms"
+import CommandError, Stdio from "@std/process.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Duration from "@std/time.ms"
 

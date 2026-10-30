@@ -1,7 +1,7 @@
 # conform: tags=formatter,generics,modules,parser,records,stdlib-testing,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/cl-09.ms
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 type Box[T]:
     value: T

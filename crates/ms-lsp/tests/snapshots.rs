@@ -170,13 +170,13 @@ fn completion_in_unfinished_code() {
         ("case", "fn main() Int:\n    let s = Shape.C"),
         ("type", "fn main() Int:\n    let z: In"),
         ("param-type", "fn run(shape: Sh"),
-        ("import-name", "import {st"),
+        ("import-name", "import st"),
         ("import-path", "import stdout from \"@std/i"),
         (
             "import-from",
-            "import {stdout} from \"@std/io.ms\"\nimport {} from \"@std/testing.ms\"",
+            "import stdout from \"@std/io.ms\"\nimport  from \"@std/testing.ms\"",
         ),
-        ("import-local", "import {x} from \"./"),
+        ("import-local", "import x from \"./"),
         ("keyword", "fn main() Int:\n    ret"),
         ("top-level", "fn main() Int:\n    return 0\n\nim"),
         (

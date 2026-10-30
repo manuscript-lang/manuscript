@@ -1,4 +1,4 @@
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 fn count_up(limit: Int) Int:
     var i = limit - 3

@@ -1,6 +1,6 @@
 import Closeable from "@std/core.ms"
 import stdout from "@std/io.ms"
-import {network, Listener, Connection} from "@std/net.ms"
+import network, Listener, Connection from "@std/net.ms"
 import control from "@std/process.ms"
 import sleep from "@std/time.ms"
 

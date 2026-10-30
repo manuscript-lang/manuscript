@@ -267,6 +267,9 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     let [param] = callee.params.as_slice() else {
         return None;
     };
+    if let Some(ty) = slot_close_value(m, close) {
+        return slot_with_closer(m, cx, close, ty);
+    }
     // Closing that consumes the value, or yields one that needs a drop, leaves nothing to add.
     if param.mode == Mode::Own || callee.ret != Ty::UNIT {
         return None;
@@ -297,6 +300,62 @@ fn with_closer(m: &mut Module, cx: &mut Cx, close: FuncId) -> Option<FuncId> {
     b.call(close, &[v]);
     let on = b.call_rt(gate, &[]);
     b.emit(Op::DropIf, &[on, v], Imm::None, None);
+    let u = b.unit();
+    b.ret(Some(u));
+    let f = b.into_func();
+    let id = m.add_func(f);
+    cx.with_closers.insert(close, id);
+    Some(id)
+}
+
+/// The type of the value a scope close reads from the slot it is registered with, when `close` is
+/// the thunk of a `var` binding that lives in memory: it takes the slot's address and loads first.
+fn slot_close_value(m: &Module, close: FuncId) -> Option<Ty> {
+    let f = m.funcs.get(close.index())?;
+    let [param] = f.params.as_slice() else {
+        return None;
+    };
+    if param.ty != Ty::PTR {
+        return None;
+    }
+    let first = f.blocks.first()?.insts.first()?;
+    match (first.op, first.imm) {
+        (Op::Load, Imm::Ty(ty))
+            if first.args.first().copied() == f.param_values().first().copied()
+                && m.needs_drop(ty) =>
+        {
+            Some(ty)
+        }
+        _ => None,
+    }
+}
+
+/// [`with_closer`] for a slot-held value: runs the thunk, then drops what the slot still holds.
+/// The thunk closes a copy or borrows, so the original is left for this drop.
+fn slot_with_closer(m: &mut Module, cx: &mut Cx, close: FuncId, ty: Ty) -> Option<FuncId> {
+    let gate = m.add_extern(ExternDef {
+        name: "msrt_unwind_drops".into(),
+        params: Vec::new(),
+        ret: Ty::BOOL,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+    });
+    let mut b = FuncBuilder::new(
+        m,
+        "unwind.close_drop_slot",
+        vec![Param {
+            ty: Ty::PTR,
+            mode: Mode::Borrow,
+        }],
+        Ty::UNIT,
+    );
+    b.func_mut().linkage = Linkage::Internal;
+    let p = b.params()[0];
+    b.call(close, &[p]);
+    let on = b.call_rt(gate, &[]);
+    let held = b.emit(Op::Take, &[p], Imm::Ty(ty), Some(ty)).expect("take");
+    b.emit(Op::DropIf, &[on, held], Imm::None, None);
     let u = b.unit();
     b.ret(Some(u));
     let f = b.into_func();

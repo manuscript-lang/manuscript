@@ -512,15 +512,18 @@ impl Checker {
     }
 
     /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
-    /// that captured anything: `WorkerGroup.spawn` takes the name of a top-level `def`.
+    /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
     fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
         let is_spawn = callable.method.as_ref().is_some_and(|m| {
             m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
                 && m.decl
                     .as_ref()
-                    .is_some_and(|d| d.name().as_str() == "spawn")
+                    .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
+        }) && !matches!(self.m().file.as_str(), "@std/workers.ms" | "@std/net.ms");
+        let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
+            s.module.as_str() == "@std/net.ms" && s.name.as_str() == "serve_cores"
         });
-        if !is_spawn {
+        if !is_spawn && !is_serve_cores {
             return;
         }
         let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {
@@ -608,8 +611,23 @@ impl Checker {
             if expected.is_some() && !call_name.is_empty() {
                 self.mismatch_context = Some(format!("argument '{}' of {call_name}", arg.name));
             }
+            let checkpoint = self.p.diagnostics.len();
             let v = self.argument_expression(arg.value, expected.as_ref());
             self.mismatch_context = None;
+            if self.conflicted_arguments.remove(&arg.value.id) {
+                // The argument check names both types and may carry a fix; it replaces the generic conflict note.
+                let at = arg.pos;
+                let explained = self.p.diagnostics[checkpoint..]
+                    .iter()
+                    .any(|d| d.pos == at && d.message.starts_with("expected "));
+                if explained
+                    && let Some(i) = self.p.diagnostics[..checkpoint]
+                        .iter()
+                        .rposition(|d| d.pos == at && d.message == CONFLICTING_INFERENCE)
+                {
+                    self.p.diagnostics.remove(i);
+                }
+            }
             if let (Some(want), Some(have)) = (&expected, &v.error_source)
                 && arg.mutable
                 && want.kind == Kind::Contract

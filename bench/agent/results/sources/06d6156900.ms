@@ -1,5 +1,5 @@
 # Markdown subset to HTML, following the exact rules in TASK.md.
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 let K_TEXT = 0

@@ -1,0 +1,31 @@
+{
+  "main_base": "db975ce2f01ddf8da108ec9045ecaf66a63ab22c",
+  "comparison_before": "normalization-only05152904151ed68e8c8892bf8d167639bd7a0883",
+  "scope": "Retain exact ASCII bypass; Unicode function body is byte-exact baseline with that bypass inserted; reversal omitted. No helper/reserve/guard/constructor changes.",
+  "source_sha256": "52876dd9c97746ce820e97c1f6eb5c287474513273a634bff6c53bce903715c3",
+  "checks": {
+    "runtime-build": {
+      "command": [
+        "cargo",
+        "xtask",
+        "runtime"
+      ],
+      "exit_code": 0
+    },
+    "string-tests": {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "ms-rt",
+        "string::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0
+    }
+  },
+  "libms_native.a": "7e102752b7870a1eb1c6b4852f89caf225f2d40d4dc5ea96fce51d2631affe59",
+  "ms_rt_hot.ll": "8315efc0c1ae0b87ff80185ee282e4ede97e82afa6ecfe1825fe296549bc46ef"
+}

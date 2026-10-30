@@ -109,6 +109,8 @@ pub unsafe fn copy_list(src: *const VecVal, d: &TypeDesc, out: *mut VecVal) {
         }
         let size = d.size as usize;
         let p = alloc::alloc(s.len * size.max(1));
+        #[cfg(feature = "stats")]
+        crate::string::count_copy(0, s.len * size);
         copy_range(d, s.ptr, p, s.len);
         *out = VecVal {
             ptr: p,

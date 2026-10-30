@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,generics,interfaces,modules,records,stdlib-testing,testing,tier-core
 # conform: phase=test
 # conform: origin=tests/e2e/e2e_test.go:381 TestNominalIdentityEscapesPathDelimiters
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 interface Read:
     fn get() Int

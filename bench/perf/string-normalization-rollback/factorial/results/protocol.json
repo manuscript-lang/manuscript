@@ -1,0 +1,87 @@
+{
+  "format": 1,
+  "labels": [
+    "baseline",
+    "normalize_only",
+    "reverse_only",
+    "combined"
+  ],
+  "rounds": 7,
+  "warmup_order": [
+    "baseline",
+    "normalize_only",
+    "reverse_only",
+    "combined"
+  ],
+  "round_schedule": [
+    {
+      "round": 0,
+      "order": [
+        "baseline",
+        "normalize_only",
+        "reverse_only",
+        "combined"
+      ]
+    },
+    {
+      "round": 1,
+      "order": [
+        "normalize_only",
+        "reverse_only",
+        "combined",
+        "baseline"
+      ]
+    },
+    {
+      "round": 2,
+      "order": [
+        "reverse_only",
+        "combined",
+        "baseline",
+        "normalize_only"
+      ]
+    },
+    {
+      "round": 3,
+      "order": [
+        "combined",
+        "baseline",
+        "normalize_only",
+        "reverse_only"
+      ]
+    },
+    {
+      "round": 4,
+      "order": [
+        "combined",
+        "reverse_only",
+        "normalize_only",
+        "baseline"
+      ]
+    },
+    {
+      "round": 5,
+      "order": [
+        "baseline",
+        "combined",
+        "reverse_only",
+        "normalize_only"
+      ]
+    },
+    {
+      "round": 6,
+      "order": [
+        "normalize_only",
+        "baseline",
+        "combined",
+        "reverse_only"
+      ]
+    }
+  ],
+  "schedule_rule": "rotate labels left by round%4; reverse rounds4..6",
+  "order_balance": "near-balanced: each state appears1or2times per position, not fully balanced",
+  "validation": "unchanged shared sample(executable, expected), check=True",
+  "summaries": "only after all4warmups+28round producers validated and input hashes match",
+  "pairing": "same round vs baseline; no warmup pooling or state pooling",
+  "scope": "already-built producer operation timings, not launcher wall time"
+}

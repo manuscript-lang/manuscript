@@ -1,15 +1,38 @@
 # conform: tags=aliasing,control-flow,match,modules,stdlib-bytes,stdlib-crypto,stdlib-encoding,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/crypto.ms
-import {expect_equal, expect_false, expect_true} from "@std/test.ms"
-import {
-    sha256, sha384, sha512, derive_key, seal, open, public_key, sign, verify,
-    constant_time_equal, aes_ctr, aes_cbc_encrypt, aes_cbc_decrypt, ecdsa_generate,
-    ecdsa_sign, ecdsa_verify, ecdh_shared_secret, public_key_der, rsa_generate,
-    rsa_sign, rsa_verify, rsa_sign_pss, rsa_verify_pss, rsa_encrypt, rsa_decrypt, Curve,
-    CryptoError, HashAlgorithm
-} from "@std/crypto.ms"
-import {hex_encode, hex_decode} from "@std/encoding.ms"
+import expect_equal, expect_false, expect_true from "@std/test.ms"
+import (
+    sha256,
+    sha384,
+    sha512,
+    derive_key,
+    seal,
+    open,
+    public_key,
+    sign,
+    verify,
+    constant_time_equal,
+    aes_ctr,
+    aes_cbc_encrypt,
+    aes_cbc_decrypt,
+    ecdsa_generate,
+    ecdsa_sign,
+    ecdsa_verify,
+    ecdh_shared_secret,
+    public_key_der,
+    rsa_generate,
+    rsa_sign,
+    rsa_verify,
+    rsa_sign_pss,
+    rsa_verify_pss,
+    rsa_encrypt,
+    rsa_decrypt,
+    Curve,
+    CryptoError,
+    HashAlgorithm
+) from "@std/crypto.ms"
+import hex_encode, hex_decode from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 
 test "crypto known SHA256 HMAC and PBKDF2 vectors":

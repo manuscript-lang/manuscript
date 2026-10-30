@@ -1,9 +1,9 @@
 # conform: tags=aliasing,closures,control-flow,faults,interfaces,maps,modules,optional,records,sets,stdlib-bytes,stdlib-collections,stdlib-string,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/naming-migration.ms
-import {expect_equal, expect_false} from "@std/test.ms"
-import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import MapBuilder, SetBuilder, ListBuilder from "@std/collections.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
 type Counter:

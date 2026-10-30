@@ -1,0 +1,11 @@
+{
+  "status": "complete",
+  "validated_producers": 32,
+  "validated_warmups": 4,
+  "validated_round_producers": 28,
+  "raw_rows": 2800,
+  "cases": 100,
+  "rounds": 7,
+  "input_hashes_match": true,
+  "summaries_emitted": true
+}

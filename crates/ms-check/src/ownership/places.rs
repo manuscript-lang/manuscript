@@ -10,6 +10,9 @@ pub enum Step {
     Field(Name),
     /// Some element of a collection (an index, a map value, an accessor).
     Element,
+    /// The element of a list at a non-negative literal index. Two different literal indexes are
+    /// disjoint; the same index, or any other element step, may be the same element.
+    Index(u64),
 }
 
 /// A part of a local binding's value.
@@ -51,9 +54,15 @@ impl Place {
     }
 
     /// Whether the two places share storage: same root, and one path is a
-    /// prefix of the other. Distinct fields are disjoint; all elements alias.
+    /// prefix of the other. Distinct fields and distinct literal list indexes are disjoint; any
+    /// other pair of elements may alias.
     pub fn overlaps(&self, other: &Place) -> bool {
-        self.root == other.root && self.path.iter().zip(&other.path).all(|(a, b)| a == b)
+        self.root == other.root
+            && self
+                .path
+                .iter()
+                .zip(&other.path)
+                .all(|(a, b)| a.may_alias(b))
     }
 
     /// Source-like text with the root's name.
@@ -66,9 +75,22 @@ impl Place {
                     s.push_str(f.as_str());
                 }
                 Step::Element => s.push_str("[..]"),
+                Step::Index(i) => s.push_str(&format!("[{i}]")),
             }
         }
         s
+    }
+}
+
+impl Step {
+    /// Whether the two steps can denote the same storage.
+    fn may_alias(&self, other: &Step) -> bool {
+        match (self, other) {
+            (Step::Index(a), Step::Index(b)) => a == b,
+            (Step::Field(_), Step::Field(_)) => self == other,
+            (Step::Field(_), _) | (_, Step::Field(_)) => false,
+            _ => true,
+        }
     }
 }
 
@@ -77,6 +99,7 @@ impl fmt::Display for Step {
         match self {
             Step::Field(n) => write!(f, ".{n}"),
             Step::Element => f.write_str("[..]"),
+            Step::Index(i) => write!(f, "[{i}]"),
         }
     }
 }

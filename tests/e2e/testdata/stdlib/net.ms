@@ -1,10 +1,18 @@
-import {expect_equal, expect_error, expect_false} from "@std/test.ms"
+import expect_equal, expect_error, expect_false from "@std/test.ms"
 import Bytes from "@std/bytes.ms"
-import {
-    network, parse_ip, parse_cidr, contains_ip, DatagramSocket, DnsKind, NetworkError,
-    IpFamily, Listener, Connection
-} from "@std/net.ms"
-import {Shared, share} from "@std/shared.ms"
+import (
+    network,
+    parse_ip,
+    parse_cidr,
+    contains_ip,
+    DatagramSocket,
+    DnsKind,
+    NetworkError,
+    IpFamily,
+    Listener,
+    Connection
+) from "@std/net.ms"
+import Shared, share from "@std/shared.ms"
 import TaskGroup from "@std/tasks.ms"
 import sleep from "@std/time.ms"
 

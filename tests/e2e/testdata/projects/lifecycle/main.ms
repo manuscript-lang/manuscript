@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import {expect_equal, fail} from "@std/test.ms"
+import expect_equal, fail from "@std/test.ms"
 import stderr from "@std/io.ms"
 import stdout from "@std/io.ms"
 import WriteStream from "@std/io.ms"

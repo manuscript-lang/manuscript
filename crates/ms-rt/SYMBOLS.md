@@ -469,6 +469,7 @@ msstd_io_acc_finish_line(a: *mut Acc, out: *mut StrVal) -> u8
 msstd_io_failure_message(out: *mut StrVal)
 msstd_io_standard(which: i64) -> *mut Host
 msstd_io_open(path: *const StrVal, out: *mut *mut Host) -> u8
+msstd_io_redirect_null(which: i64) -> u8
 msstd_io_read( h: *mut Host, has_max: u8, max: i64, out: *mut VecVal, ) -> u8
 msstd_io_read_line( h: *mut Host, has_max: u8, max: i64, out: *mut StrVal, ) -> u8
 msstd_io_write_bytes(h: *mut Host, data: *const VecVal) -> u8
@@ -595,8 +596,10 @@ msrt_http_body_read_all(b: *const Obj, out: *mut VecVal, err: *mut StrVal) -> u8
 msrt_net_network_request( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const StrVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_request_bytes( net: *const Obj, method: *const StrVal, address: *const StrVal, headers: *const Obj, body: *const VecVal, has_max: u8, max: i64, has_timeout: u8, timeout: i64, out: *mut ClientResponseWire, err: *mut StrVal, ) -> u8
 msrt_net_network_serve( net: *const Obj, address: *const StrVal, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
+msrt_net_network_serve_connections( net: *const Obj, env: *mut Obj, opts: *const HttpServerOptionsWire, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
 msrt_http_server_address(s: *const Obj, out: *mut StrVal)
 msrt_http_server_close(s: *const Obj)
+msrt_http_server_adopt(s: *const Obj, connection: i64)
 msrt_http_server_wait(s: *const Obj) -> u8
 msrt_http_exchange_close(x: *const Obj)
 msrt_http_exchange_headers(x: *const Obj) -> *mut Obj
@@ -637,6 +640,7 @@ msrt_net_connection_write( c: *const Obj, data: *const StrVal, has_timeout: u8, 
 msrt_net_connection_write_bytes( c: *const Obj, data: *const VecVal, has_timeout: u8, timeout: i64, err: *mut StrVal, ) -> u8
 msrt_net_connection_shutdown_write( c: *const Obj, err: *mut StrVal, ) -> u8
 msrt_net_listener_accept( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut *mut Obj, err: *mut StrVal, ) -> u8
+msrt_net_listener_accept_raw( l: *const Obj, has_timeout: u8, timeout: i64, out: *mut i64, err: *mut StrVal, ) -> u8
 msrt_net_listener_address(l: *const Obj, out: *mut StrVal)
 msrt_net_listener_close(l: *const Obj)
 msrt_net_datagram_address(sock: *const Obj, out: *mut StrVal)

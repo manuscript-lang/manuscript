@@ -1,4 +1,4 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
+import read_line, stdin, stdout from "@std/io.ms"
 
 type Line:
     sku: String

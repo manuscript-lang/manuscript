@@ -1,15 +1,15 @@
 # conform: tags=faults,formatter,interpolation,lists,maps,modules,parser,stdlib-http,stdlib-net,stdlib-testing,stdlib-time,stdlib-tls,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/tls.ms
-import {expect_equal, expect_false, expect_ok} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok from "@std/test.ms"
 import http_result from "./support/http.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
-import {text_headers, list_headers} from "./support/http.ms"
-import {parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions} from "@std/net.ms"
-import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
+import text_headers, list_headers from "./support/http.ms"
+import parse_certificates, verify_certificates, CertificateInfo, TlsError, TlsOptions from "@std/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
 import network from "@std/net.ms"
 import timestamp from "@std/time.ms"
-import {certificate, private_key} from "./support/certificates.ms"
+import certificate, private_key from "./support/certificates.ms"
 
 fn hello(exchange: HttpExchange) Result[Unit, HttpError]:
     let started = try exchange.send_headers(

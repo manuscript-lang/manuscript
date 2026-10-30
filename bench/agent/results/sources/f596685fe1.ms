@@ -1,6 +1,6 @@
-import {stdout, stdin} from "@std/io.ms"
-import {read_lines} from "@std/streams.ms"
-import {parse_float, floor, pow, sqrt} from "@std/math.ms"
+import stdout, stdin from "@std/io.ms"
+import read_lines from "@std/streams.ms"
+import parse_float, floor, pow, sqrt from "@std/math.ms"
 
 # Cell ids are row * 100 + column, so numeric order is row-major (row, then column).
 let LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

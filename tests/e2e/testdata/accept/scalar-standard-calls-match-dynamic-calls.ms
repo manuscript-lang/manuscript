@@ -1,5 +1,5 @@
 import expect_true from "@std/test.ms"
-import {atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate} from "@std/math.ms"
+import atan2, ceil, floor, max, min, pow, remainder, round, sqrt, truncate from "@std/math.ms"
 
 fn viaValue(f: fn(Float) Float, x: Float) Float: f(x)
 

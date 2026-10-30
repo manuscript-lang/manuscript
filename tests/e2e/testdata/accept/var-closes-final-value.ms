@@ -1,9 +1,9 @@
 import Closeable from "@std/core.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import TaskGroup from "@std/tasks.ms"
 import expect_equal from "@std/test.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 type Counter:
     value: Int

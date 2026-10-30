@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 fn invalid_division(zero: Int) Bool:
     return 1 / zero == 0

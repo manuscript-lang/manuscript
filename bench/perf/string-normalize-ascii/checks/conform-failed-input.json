@@ -1,0 +1,12 @@
+{
+  "generated_archive": "target/ms-native/libms_native.a",
+  "sha256": "f314c720acf628547d9e3c3fe7750acaab9be18786aa20c3dfc3a684583089c3",
+  "size_bytes": 58635352,
+  "verified_candidate_sha256": "3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e",
+  "failed_gate": "make conform",
+  "gate_exit_code": 2,
+  "selected_fixtures": 2393,
+  "passed": 1608,
+  "failed": 785,
+  "note": "Overlapping identical runtime rebuilds emitted strip file-truncated errors; duplicate group stopped. Original mixed log and failed report retained."
+}

@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {bit_and, bit_xor, shift_right_unsigned, wrapping_multiply} from "@std/math.ms"
+import bit_and, bit_xor, shift_right_unsigned, wrapping_multiply from "@std/math.ms"
 
 let FNV_OFFSET = -3750763034362895579
 let FNV_PRIME = 1099511628211

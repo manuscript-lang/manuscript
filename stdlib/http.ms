@@ -1,5 +1,5 @@
-import {Closeable, Data} from "@std/core.ms"
-import {Bytes, join} from "@std/bytes.ms"
+import Closeable, Data from "@std/core.ms"
+import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import IoError from "@std/io.ms"
 import stringify from "@std/json.ms"
@@ -335,6 +335,8 @@ export extern type NativeHttpServer
 
 extern fn msrt_http_server_address(handle: NativeHttpServer) String
 
+extern fn msrt_http_server_adopt(handle: NativeHttpServer, connection: Int) Unit
+
 extern fn msrt_http_server_close(handle: NativeHttpServer) Unit
 
 extern fn msrt_http_server_wait(handle: NativeHttpServer) Result[Unit, IoError]
@@ -355,6 +357,10 @@ impl HttpServer:
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
         return msrt_http_server_address(self.native)
+
+    # Serves the socket handle `Listener.accept_raw` returned, on the thread that started this server. The server owns the socket from here, also when it is closing and drops the connection. Use each handle once.
+    fn adopt(connection: Int) Unit:
+        msrt_http_server_adopt(self.native, connection)
 
     # Blocks until the server stops. Returns Ok after a normal `close`, or IoError.Failed with the host's text if serving ended with an error.
     # Cancelling the waiting task stops the wait.
@@ -377,8 +383,6 @@ export type HttpServerOptions:
     grace: Optional[Duration] = none
     # Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
     tls: Optional[TlsOptions] = none
-    # True shares the listening socket with every other server of the process that serves the same address text with `shared` set, so workers on several threads each run `serve` and accept from one port. The first server binds; the port closes with the last. It works the same on Linux, macOS and Windows.
-    shared: Bool = false
 
 # The runtime handle behind a `ResponseBody`.
 export extern type NativeResponseBody

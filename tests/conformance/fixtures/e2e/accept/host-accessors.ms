@@ -1,10 +1,10 @@
 # conform: tags=match,modules,stdlib-io,stdlib-net,stdlib-process,stdlib-random,stdlib-system,stdlib-testing,stdlib-time,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/host-accessors.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {arguments, control} from "@std/process.ms"
-import {stdin, stdout, stderr} from "@std/io.ms"
-import {clock, wall_clock} from "@std/time.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import arguments, control from "@std/process.ms"
+import stdin, stdout, stderr from "@std/io.ms"
+import clock, wall_clock from "@std/time.ms"
 import entropy from "@std/random.ms"
 import system from "@std/process.ms"
 import network from "@std/net.ms"

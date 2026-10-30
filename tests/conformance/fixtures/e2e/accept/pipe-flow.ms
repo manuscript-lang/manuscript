@@ -2,7 +2,7 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/pipe-flow.ms
 import TextError from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 fn parse(text: String) Result[Int, TextError]:
     if text == "-":

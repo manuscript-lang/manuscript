@@ -2,7 +2,7 @@
 # conform: phase=parse
 # conform: origin=internal/cli/advisory_lint_test.go:19 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 import network from "@std/net.ms"
-import {HttpResponse, buffered} from "@std/http.ms"
+import HttpResponse, buffered from "@std/http.ms"
 import panic from "@std/core.ms"
 
 fn use() Unit:

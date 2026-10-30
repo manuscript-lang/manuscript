@@ -1,5 +1,5 @@
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {from_scalars, StringBuilder} from "@std/string.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import from_scalars, StringBuilder from "@std/string.ms"
 
 # Errors returned when encoded text is invalid or exceeds a supplied byte limit.
 export type EncodingError:

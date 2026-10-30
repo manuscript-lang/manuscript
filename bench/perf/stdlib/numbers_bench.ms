@@ -1,10 +1,10 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
 import from_int from "@std/math.ms"
-import {compress, decompress} from "@std/archive.ms"
+import compress, decompress from "@std/archive.ms"
 import parse_timestamp from "@std/time.ms"
-import {PriorityQueue, Queue} from "@std/queue.ms"
+import PriorityQueue, Queue from "@std/queue.ms"
 
 fn unpacked_length(data: Bytes) Int:
     if let b = decompress(data, "gzip"):

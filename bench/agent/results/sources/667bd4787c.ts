@@ -1,5 +1,5 @@
 // Read stdin, write stdout. See TASK.md.
-import { readFileSync } from 'node:fs';
+import readFileSync from 'node:fs';
 
 const AMOUNT = /^\d+(\.\d{1,2})?$/;
 

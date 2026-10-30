@@ -1,8 +1,13 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {
-    headers, HttpClientOptions, HttpError, HttpExchange, HttpMethod, HttpServerOptions
-} from "@std/http.ms"
-import {body_stream, reader, next_event} from "@std/sse.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import (
+    headers,
+    HttpClientOptions,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpServerOptions
+) from "@std/http.ms"
+import body_stream, reader, next_event from "@std/sse.ms"
 import network from "@std/net.ms"
 
 # Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.

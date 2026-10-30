@@ -1,5 +1,5 @@
 import expect_ok from "@std/test.ms"
-import {HttpError, HttpExchange} from "@std/http.ms"
+import HttpError, HttpExchange from "@std/http.ms"
 import TextError from "@std/core.ms"
 import network from "@std/net.ms"
 import Bytes from "@std/bytes.ms"

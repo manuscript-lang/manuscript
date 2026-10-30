@@ -1,5 +1,5 @@
 import filesystem from "@std/fs.ms"
-import {stdout, files} from "@std/io.ms"
+import stdout, files from "@std/io.ms"
 import TaskGroup from "@std/tasks.ms"
 
 fn read_whole(path: String) Int:

@@ -2,11 +2,11 @@
 # conform: phase=run
 # conform: timeout=30
 # Closing a server lets a response in progress finish, and returns as soon as it has.
-import {headers, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
+import headers, HttpRequest, HttpResponse, buffered from "@std/http.ms"
 import stdout from "@std/io.ms"
 import network from "@std/net.ms"
 import control from "@std/process.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 
 fn handle(request: HttpRequest) HttpResponse:
     sleep(nanoseconds(300000000))

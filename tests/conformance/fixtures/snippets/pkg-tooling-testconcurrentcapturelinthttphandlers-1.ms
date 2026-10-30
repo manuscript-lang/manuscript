@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=pkg/tooling/capture_lint_test.go:101 TestConcurrentCaptureLintHTTPHandlers
 import network from "@std/net.ms"
-import {HttpResponse, HttpServerOptions} from "@std/http.ms"
+import HttpResponse, HttpServerOptions from "@std/http.ms"
 import panic from "@std/core.ms"
 
 fn run() Unit:

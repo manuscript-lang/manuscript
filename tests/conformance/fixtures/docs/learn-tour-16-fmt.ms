@@ -1,7 +1,7 @@
 # conform: tags=formatter,modules,parser,stdlib-fs,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=documentation/learn/tour.md:312
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 
 fn copy_notes() Result[Unit, FileSystemError]:
     var source = try filesystem().open("notes.txt", flags: "r", mode: 0)

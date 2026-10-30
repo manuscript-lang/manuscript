@@ -64,6 +64,18 @@ pub(crate) struct FnLower<'a> {
     pub scopes: Vec<Vec<usize>>,
     /// Bindings closed at scope end and how each is closed when its scope is left.
     pub closers: HashMap<usize, crate::close::Closer>,
+    /// Loops that own their elements: how an element closes, the list and the loop index, by
+    /// the scope entry that closes the unreached ones when the loop is left.
+    pub rest_closers: HashMap<
+        usize,
+        (
+            crate::close::CloseKind,
+            ms_mir::builder::Var,
+            ms_mir::builder::Var,
+        ),
+    >,
+    /// Hidden owned scrutinees whose payload closes when the scope is left, by hidden uid.
+    pub hidden_closers: HashMap<usize, crate::close::CloseKind>,
     /// Owned temporaries borrowed by the current statement.
     pub temps: Vec<Value>,
     pub loops: Vec<LoopCtx>,
@@ -167,7 +179,7 @@ impl Cx {
             return None;
         }
         let f = c.func.func()?;
-        if f.body.is_empty() || f.result_ref || !self.var_positions(c).is_empty() {
+        if f.body.is_empty() || f.result_ref {
             return None;
         }
         let key = (c.module.file, c.id());
@@ -333,7 +345,7 @@ pub(crate) fn lower_tests(
         }
         ids.push(cx.function_for(&mut m, c, &Subst::new())?);
     }
-    if bench {
+    if bench && !tests.is_empty() {
         // Each bench runs under the standard driver, which repeats and times its body.
         let driver = cx
             .callables
@@ -446,6 +458,8 @@ impl<'a> FnLower<'a> {
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
             closers: HashMap::new(),
+            rest_closers: HashMap::new(),
+            hidden_closers: HashMap::new(),
             temps: Vec::new(),
             loops: Vec::new(),
             dead: false,
@@ -499,6 +513,20 @@ impl<'a> FnLower<'a> {
         self.cx.lower_ty(self.b.m, &t)
     }
 
+    /// Whether values of `t` are resources, which must be closed whatever their storage.
+    pub fn is_resource(&self, t: MTy) -> bool {
+        self.cx
+            .source_tys
+            .get(&t)
+            .is_some_and(|ty| self.cx.classes.class(ty) == ms_check::ownership::Class::Resource)
+    }
+
+    /// Whether an owned value of `t` carries a duty: storage to free or a resource to close.
+    /// Ownership is tracked for both; a resource with no storage still has to be closed.
+    pub fn holds(&self, t: MTy) -> bool {
+        self.needs_drop(t) || self.is_resource(t)
+    }
+
     /// Whether values of `t` need a drop.
     pub fn needs_drop(&self, t: MTy) -> bool {
         self.b.m.needs_drop(t)
@@ -534,7 +562,8 @@ impl<'a> FnLower<'a> {
 
     /// The operand for a borrowing use; owned temporaries are dropped by `flush_temps`.
     pub fn borrow(&mut self, x: Val) -> Value {
-        if x.own && self.needs_drop(self.ty_of(x.v)) {
+        let t = self.ty_of(x.v);
+        if x.own && self.holds(t) {
             self.temps.push(x.v);
         }
         x.v
@@ -553,7 +582,7 @@ impl<'a> FnLower<'a> {
             let v = self.temps.pop().expect("temp");
             if !self.dead {
                 self.close_temp(v);
-                self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+                self.drop_value(v);
             }
         }
     }
@@ -567,7 +596,7 @@ impl<'a> FnLower<'a> {
         for i in (from..self.temps.len()).rev() {
             let v = self.temps[i];
             self.close_temp(v);
-            self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
+            self.drop_value(v);
         }
     }
 
@@ -604,7 +633,7 @@ impl<'a> FnLower<'a> {
     pub fn val(&self, v: Value, own: bool) -> Val {
         Val {
             v,
-            own: own && self.needs_drop(self.ty_of(v)),
+            own: own && self.holds(self.ty_of(v)),
         }
     }
 
@@ -770,7 +799,7 @@ impl<'a> FnLower<'a> {
     }
 
     /// Makes the innermost scope drop `var`, so a `return` or `break` leaving it releases it too.
-    pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) {
+    pub fn adopt_hidden(&mut self, var: ms_mir::builder::Var, ty: MTy) -> usize {
         let uid = usize::MAX - self.locals.len();
         self.locals.insert(
             uid,
@@ -783,6 +812,7 @@ impl<'a> FnLower<'a> {
         if self.needs_drop(ty) {
             self.scopes.last_mut().expect("scope").push(uid);
         }
+        uid
     }
 
     /// Declares a borrowed local (a parameter or a borrowing binding): no drop at scope end.
@@ -827,10 +857,18 @@ impl<'a> FnLower<'a> {
         for i in (depth..self.scopes.len()).rev() {
             let uids = self.scopes[i].clone();
             for uid in uids.iter().rev() {
+                if let Some((kind, list, idx)) = self.rest_closers.get(uid).cloned() {
+                    self.close_rest(&kind, list, idx);
+                    continue;
+                }
                 if let Some(closer) = self.closers.get(uid).cloned() {
                     self.close_at_scope_end(*uid, &closer);
                 }
                 let l = self.locals[uid];
+                if let Some(kind) = self.hidden_closers.get(uid).cloned() {
+                    let v = self.local_get(&l);
+                    self.close_discarded_kind(&kind, v);
+                }
                 if self.needs_drop(l.ty) {
                     let v = self.local_take(&l);
                     self.b.emit(Op::Drop, &[v], ms_mir::ir::Imm::None, None);
@@ -891,7 +929,7 @@ impl<'a> FnLower<'a> {
         // The temporaries stay registered: a conditional return leaves the others running.
         for t in self.temps.clone().into_iter().rev() {
             self.close_temp(t);
-            self.b.emit(Op::Drop, &[t], ms_mir::ir::Imm::None, None);
+            self.drop_value(t);
         }
         self.end_fixture();
         self.unwind_to(0);

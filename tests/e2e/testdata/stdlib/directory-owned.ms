@@ -1,5 +1,5 @@
 import filesystem from "@std/fs.ms"
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 
 # `Directory` and `TemporaryDirectory` are nominal types with `impl Closeable`, so a binding owns them.
 fn leaves_a_temporary() Result[String, Error]:

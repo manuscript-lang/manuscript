@@ -140,7 +140,7 @@ fn import_insertion(source: &str, statement: &str) -> (Position, String) {
             let mut open = line.contains('{') && !line.contains('}');
             at += 1;
             while open && at < lines.len() {
-                open = !lines[at].contains('}');
+                open = !lines[at].contains(')');
                 at += 1;
             }
             last = Some(at - 1);
@@ -330,12 +330,12 @@ pub fn editor_actions(
         let start = at;
         let mut block: Vec<String> = Vec::new();
         while at < lines.len() && is_import(lines[at]) {
-            // A braced import continues until the line with its `}`.
+            // A parenthesized import continues until the line with its `)`.
             let mut declaration = lines[at].to_string();
-            let mut open = lines[at].contains('{') && !lines[at].contains('}');
+            let mut open = lines[at].contains('(') && !lines[at].contains(')');
             at += 1;
             while open && at < lines.len() {
-                open = !lines[at].contains('}');
+                open = !lines[at].contains(')');
                 declaration.push_str(lines[at]);
                 at += 1;
             }

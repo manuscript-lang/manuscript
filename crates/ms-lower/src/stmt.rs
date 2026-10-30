@@ -1320,6 +1320,21 @@ impl<'a> FnLower<'a> {
         let one = self.b.iconst(1);
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
+        let closing = if list_var.is_some() && self.cx.implicit_closes.contains(&loop_var.uid) {
+            self.closer_opt(
+                self.hir.binding_cleanup(loop_var.uid).as_ref(),
+                &loop_var.ty,
+            )?
+        } else {
+            None
+        };
+        if let (Some(kind), Some(list)) = (&closing, list_var) {
+            // Leaving the loop early (`break`, `return`, `try`) closes the elements it never
+            // reached, after the one in hand.
+            let uid = usize::MAX - self.rest_closers.len() - 1_000_000;
+            self.rest_closers.insert(uid, (kind.clone(), list, idx));
+            self.scopes.last_mut().expect("scope").push(uid);
+        }
         let (header, body_b, step, exit) = (
             self.b.new_block(),
             self.b.new_block(),
@@ -1351,16 +1366,7 @@ impl<'a> FnLower<'a> {
             }
             None => i,
         };
-        let closing = if list_var.is_some() && self.cx.implicit_closes.contains(&loop_var.uid) {
-            let ty = ms_check::types::sub(&loop_var.ty, &self.subst);
-            let cleanup = self.hir.binding_cleanup(loop_var.uid);
-            self.closer_opt(cleanup.as_ref(), &loop_var.ty)?
-                .map(|kind| (ty, kind))
-        } else {
-            None
-        };
-        let owned_elem = closing.as_ref().map(|(_, kind)| kind.clone());
-        if let Some((_, kind)) = closing {
+        if let Some(kind) = closing {
             // The loop owns its elements: the one in hand closes with the iteration.
             self.bind_closing_kind(&loop_var, Val { v: e, own: false }, kind)?;
         } else if list_var.is_some() && !loop_var.mutable && !self.slotted.contains(&loop_var.uid) {
@@ -1391,9 +1397,6 @@ impl<'a> FnLower<'a> {
         self.b.seal_block(header);
         self.b.seal_block(exit);
         self.enter(exit);
-        if let (Some(kind), Some(var)) = (owned_elem, list_var) {
-            self.close_rest(&kind, var, idx);
-        }
         self.pop_scope();
         Ok(())
     }
@@ -1401,7 +1404,7 @@ impl<'a> FnLower<'a> {
     /// After a `break` out of a loop that owns its elements, closes the ones it never reached
     /// (those after index `idx`); a loop that ran to the end has `idx` at the length and closes
     /// nothing.
-    fn close_rest(
+    pub(crate) fn close_rest(
         &mut self,
         kind: &crate::close::CloseKind,
         list: ms_mir::builder::Var,

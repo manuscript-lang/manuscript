@@ -1,5 +1,5 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {parse, from_int, BigInt, BigIntError} from "@std/math.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import parse, from_int, BigInt, BigIntError from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)
@@ -60,3 +60,17 @@ test "big integers support sign pow shifts and conversion":
     let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
     try expect_equal(from_int(2).pow(100000000), limited)
     try expect_equal(five.shift_left(100000000), limited)
+
+test "power radix parsing keeps digit order leading zeros and strict budgets":
+    try expect_equal((try parse("-000101", 2)).to_int(), some(-5))
+    try expect_equal((try parse("+000123", 4)).to_int(), some(27))
+    try expect_equal((try parse("-000777", 8)).to_int(), some(-511))
+    try expect_equal((try parse("+000Ff", 16, 5)).to_int(), some(255))
+    try expect_equal((try parse("-000Vv", 32)).to_int(), some(-1023))
+    try expect_equal((try parse("-000", 32)).sign(), 0)
+
+    let limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    let malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+    try expect_equal(parse("+000Ff", 16, 4), limited)
+    try expect_equal(parse("+0_1", 16, 2), limited)
+    try expect_equal(parse("+0_1", 16, 3), malformed)

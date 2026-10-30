@@ -1,0 +1,100 @@
+{
+  "compiler_sha256": "23f2e89aafe312160062cda12010ce4511366ee8131e87847a00bbce36806c89",
+  "programs": {
+    "baseline": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-factorial/baseline/program",
+        "--json"
+      ],
+      "exit_code": 0,
+      "runtime_sha256": "42f47bd3db22793b355c74e4cc46ef6e94277d4d1a78eb5fe36ccc1df38c5012",
+      "runtime_source_sha256": "fb83f4ff3252b42142758f0d65bd6e772b802a9a36329ed57852c7ee2853287e",
+      "executable": "/tmp/string-round2/normalization-factorial/baseline/program",
+      "sha256": "277eaa2ba0d40932ee395172d3a01bfa1f07740a283d282790b89d098b6e0a08",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "normalize_only": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-factorial/normalize_only/program",
+        "--json"
+      ],
+      "exit_code": 0,
+      "runtime_sha256": "0c194ee1fb81530d2c4ca235f1b2b0f0efd95089d91b231ecd28558a9303f289",
+      "runtime_source_sha256": "1c27ec3227e0d6cd7a3db5e209301df571df81c7c9c57359ce11d0e0b0d719d0",
+      "executable": "/tmp/string-round2/normalization-factorial/normalize_only/program",
+      "sha256": "1c9006b4caca3a0004267f0a5ed886f976e7d33b45607589c76d130576bdd9d9",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "reverse_only": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-factorial/reverse_only/program",
+        "--json"
+      ],
+      "exit_code": 0,
+      "runtime_sha256": "98e2c3f8c1018c44f615be47c4112c87185e8b646d627bfa613742ecd202fa77",
+      "runtime_source_sha256": "95a38a74296ddc5c43e4011d11a6694d4ea28008ef18eda3f959c0cf84f3c6bf",
+      "executable": "/tmp/string-round2/normalization-factorial/reverse_only/program",
+      "sha256": "1b88cf14bf975990d2afbbc88c348a3d664dc2c10f3d40394d1165faea2a0183",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    },
+    "combined": {
+      "command": [
+        "/tmp/string-round2/integrated-inputs/ms",
+        "build",
+        "bench/perf/string-normalize-ascii/main.ms",
+        "--build-type",
+        "Release",
+        "-o",
+        "/tmp/string-round2/normalization-factorial/combined/program",
+        "--json"
+      ],
+      "exit_code": 0,
+      "runtime_sha256": "f571ef574c43fc8ce8787813f9c866b62bc7c679bcc6e42d0c7317c3c5fe324a",
+      "runtime_source_sha256": "b1dbd7e4ad286a294601f8f101b8a542c392f01eaff749ee2edfde2dc76b5830",
+      "executable": "/tmp/string-round2/normalization-factorial/combined/program",
+      "sha256": "01ec1d671e4c5b72d0363c9be111a219c1fb3f12963b640f9d3ee4baab2f6c19",
+      "public_metadata": {
+        "format": 1,
+        "version": "0.1.0",
+        "backend": "cranelift",
+        "build_type": "Release"
+      }
+    }
+  },
+  "source": "bench/perf/string-normalize-ascii/main.ms",
+  "identities": "bench/perf/string-normalize-ascii/identities.json",
+  "source_sha256": "252fa9d83f11dd9ba817cd1a8324b423c147f0e4959cee02e14bc0a10540eeb4"
+}

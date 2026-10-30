@@ -1,7 +1,7 @@
 import arguments from "@std/process.ms"
 import clock from "@std/time.ms"
 import stdout from "@std/io.ms"
-import {infinity, nan} from "@std/math.ms"
+import infinity, nan from "@std/math.ms"
 
 export fn main() Int:
     let args = arguments()

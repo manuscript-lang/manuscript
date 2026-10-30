@@ -171,3 +171,16 @@ Worker threads on tiny bodies (#1539): with free cores, two threads match or bea
 | `/health` req/s beside 10,000 idle connections | 105k | 111k |
 
 Throughput and tail latency are at parity with hyper. `run.sh` prints resident memory after the `/io` rows, which hyper does not serve, so the printed 57 MB against 4 MB is not a comparison: the `/io` payloads and pool threads account for the difference (10 MB after `/health` load alone). The suite's Manuscript server also failed to compile on main (a discarded `Result` in the worker handshake) until this change.
+
+## 2026-10-30, acceptor and serving workers
+
+`Listener.accept_raw` on the main thread, `HttpServer.adopt` in each worker, connections dealt round robin (`proposals/http-server-multicore.md`, stage 1). Server on CPUs 0-1 (main thread and workers share them), load on 2-3, shared 4-CPU Linux VM (+/-10% between runs), 64 keep-alive connections for 4 s per row (`load`), 32 connection-per-request clients for the last column (`Connection: close`, a Go dialer, scratch). Two rounds each.
+
+| Manuscript | `/health` req/s | `/top?n=10` req/s | new connections per second |
+| --- | ---: | ---: | ---: |
+| 1 thread (`serve`) | 124k, 124k | 27.6k, 27.1k | 40.2k, 40.2k |
+| 2 workers | 208k, 197k | 63.9k, 64.4k | 36.4k, 34.4k |
+| 4 workers (2 CPUs) | 179k, 193k | 64.2k, 66.0k | 34.7k, 31.3k |
+
+The CPU-bound handler scales 2.3x on two cores (the shared-listener workers reached 58k to 61k on the same rows, and with an uneven spread). Tiny requests gain 1.6x; the load generator takes the other two CPUs. Connection-per-request throughput is 85% to 90% of one thread with two workers: every connection pays the accept loop and a channel send, and the 2 CPUs are shared by acceptor and workers. Four workers on two CPUs add nothing, as expected.
+

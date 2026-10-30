@@ -2,10 +2,19 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/encoding.ms
 import expect_equal from "@std/test.ms"
-import {
-    base64_encode, base64_decode, hex_encode, hex_decode, EncodingError, utf16_encode,
-    utf16_decode, latin1_encode, latin1_decode, ascii_encode, ascii_decode
-} from "@std/encoding.ms"
+import (
+    base64_encode,
+    base64_decode,
+    hex_encode,
+    hex_decode,
+    EncodingError,
+    utf16_encode,
+    utf16_decode,
+    latin1_encode,
+    latin1_decode,
+    ascii_encode,
+    ascii_decode
+) from "@std/encoding.ms"
 import Bytes from "@std/bytes.ms"
 
 test "encoding known vectors and exact output limits":

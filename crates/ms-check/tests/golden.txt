@@ -562,7 +562,7 @@ fn f() Int:
             n
             n + 1
         none: 0
-parse	4	13	77	an arm value must be its final expressionimport {filesystem, FileSystemError} from "@std/fs.ms"
+parse	4	13	77	an arm value must be its final expressionimport filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
 fn check() Unit: ...
@@ -822,9 +822,9 @@ func init() {
 fn fail() Int:
     return 1 / 0
 export fn main() Int:
-    let data = parse	5	16	93	expected an expression, found end of line; write a value, name, call, or literal hereimport {base64_encode, base64_decode} from "@std/encoding.ms"
-import {parse, CsvOptions} from "@std/csv.ms"
-import {commands, Commands, CommandOutput, CommandError} from "@std/process.ms"
+    let data = parse	5	16	93	expected an expression, found end of line; write a value, name, call, or literal hereimport base64_encode, base64_decode from "@std/encoding.ms"
+import parse, CsvOptions from "@std/csv.ms"
+import commands, Commands, CommandOutput, CommandError from "@std/process.ms"
 import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
@@ -837,13 +837,13 @@ fn forward[T](item: T) T: item
 export fn main() Int:
     return panic(message: "profile failure")
 resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import {nanoseconds, sleep} from "@std/time.ms"
+resolution	3	12	68	unknown binding panic; add: import panic from "@std/core.ms"import nanoseconds, sleep from "@std/time.ms"
 import stdout from "@std/io.ms"
 export fn main() Int:
     stdout().write(data: "ready\n")
     sleep(nanoseconds(60000000000))
     return 0
-type	4	5	106	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
+type	4	5	104	this statement discards Result[Unit, IoError], so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purposeimport stdout from "@std/io.ms"
 
 export fn main() Int:
     if stdout().write(data: %q).is_error():
@@ -909,9 +909,9 @@ fn call(left: Int, right: Int) Int: return first(right, left)
 fn use() Unit: unit
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakimport List from "@std/collections.ms"
 fn broken(
-parse	3	1	50	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport {ListBuilder, List} from "@std/collections.ms"
+parse	3	1	50	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport ListBuilder, List from "@std/collections.ms"
 fn broken(
-parse	3	1	65	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport List from "@std/collections.ms"
+parse	3	1	63	unterminated delimiter '(' opened at line 2:10; add the matching ')' before the end of the fileimport List from "@std/collections.ms"
 fn bad() String: "unterminated
 parse	2	18	56	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn bad() Unit:
    unit
@@ -1983,18 +1983,18 @@ fn standard() CollectionError: CollectionError.OutOfRange
 fn recognize(value: Other) Int:
     match value:
         OutOfRange: return 1
-import {ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries} from "@std/collections.ms"
-import {ErrorCategory, TextError, category} from "@std/errors.ms"
+import ListBuilder, MapBuilder, SetBuilder, filled, map_from_entries from "@std/collections.ms"
+import ErrorCategory, TextError, category from "@std/errors.ms"
 import Bytes from "@std/bytes.ms"
 fn bytes() Bytes: Bytes([1])
 fn build() List[Int]: ListBuilder[Int]().freeze()
 fn text_error(message: String) TextError: TextError(message)
-resolution	2	9	106	unknown standard module @std/errors.ms
-resolution	2	24	121	unknown standard module @std/errors.ms
-resolution	2	35	132	unknown standard module @std/errors.ms
-resolution	6	32	308	unknown type TextError; add: import TextError from "@std/core.ms"
-resolution	5	42	268	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
-resolution	6	43	319	unknown binding TextError; did you mean 'text_error'?type Other:
+resolution	2	8	103	unknown standard module @std/errors.ms
+resolution	2	23	118	unknown standard module @std/errors.ms
+resolution	2	34	129	unknown standard module @std/errors.ms
+resolution	6	32	304	unknown type TextError; add: import TextError from "@std/core.ms"
+resolution	5	42	264	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, build
+resolution	6	43	315	unknown binding TextError; did you mean 'text_error'?type Other:
     case OutOfRange
 fn get() Other: OutOfRange
 resolution	3	17	48	ambiguous alternative case OutOfRange; qualify it with its type, e.g. Type.OutOfRangetype ListEntry[T]:
@@ -2020,11 +2020,11 @@ export type CollectionError:
     message: String
 resolution	1	8	7	declaration Map reuses a prelude name; rename it, because Map always refers to the standard declaration
 resolution	3	8	43	declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration
-resolution	5	8	84	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationimport {List, Map, Set} from "@std/collections.ms"
+resolution	5	8	84	declaration CollectionError reuses a prelude name; rename it, because CollectionError always refers to the standard declarationimport List, Map, Set from "@std/collections.ms"
 fn get() Int: List[Int]().length()+Map[Int,Int]().length()+Set[Int]().length()
-resolution	1	9	8	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	1	15	14	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
-resolution	1	20	19	redundant prelude import Set; remove Set from this import and use its prelude declaration directlyfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
+resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	1	14	13	redundant prelude import Map; remove Map from this import and use its prelude declaration directly
+resolution	1	19	18	redundant prelude import Set; remove Set from this import and use its prelude declaration directlyfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn message(values: List[Int]) String: first(values).err().message()
 fn widen(cause: MissingValue) Error: cause
 type Other:
@@ -2037,16 +2037,16 @@ fn read(value: Other) Int:
 type Other:
     case Missing(value: Int)
 fn get() Other: Missing(1)
-resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport {compress, CompressionFormat, CompressionError} from "@std/compress.ms"
+resolution	3	17	57	ambiguous alternative case Missing; qualify it with its type, e.g. Type.Missingimport compress, CompressionFormat, CompressionError from "@std/compress.ms"
 import Bytes from "@std/bytes.ms"
 fn forward[T](item: T) T: item
-resolution	1	9	8	unknown standard module @std/compress.ms
-resolution	1	19	18	unknown standard module @std/compress.ms
-resolution	1	38	37	unknown standard module @std/compress.mslet encode = forward(compress)
+resolution	1	8	7	unknown standard module @std/compress.ms
+resolution	1	18	17	unknown standard module @std/compress.ms
+resolution	1	37	36	unknown standard module @std/compress.mslet encode = forward(compress)
     encode("".to_bytes(), "gzip")parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, format: String, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = compress
     encode("".to_bytes(), "gzip")parse	2	5	129	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode = forward(CompressionFormat.Gzip.compress)
     encode("".to_bytes())parse	2	5	58	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet encode: fn(data: Bytes, level: Int, max_bytes: Optional[Int]) Result[Bytes, CompressionError] = CompressionFormat.Gzip.compress
-    encode("".to_bytes())parse	2	5	136	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport {compress, CompressionFormat} from "@std/compress.ms"
+    encode("".to_bytes())parse	2	5	136	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport compress, CompressionFormat from "@std/compress.ms"
 fn explicit() Unit:
     let data = "".to_bytes()
     compress(data, "gzip", 6)
@@ -2055,15 +2055,15 @@ fn explicit() Unit:
     CompressionFormat.Gzip.compress(data, 6)
     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
-resolution	1	9	8	unknown standard module @std/compress.ms
-resolution	1	19	18	unknown standard module @std/compress.ms
-resolution	4	5	114	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	5	5	144	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	6	5	191	unknown binding compress; add: import compress from "@std/archive.ms"
-resolution	7	5	240	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
-resolution	8	5	285	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
-type	8	57	337	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
-resolution	9	5	347	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"let initial = Mode.Idle
+resolution	1	8	7	unknown standard module @std/compress.ms
+resolution	1	18	17	unknown standard module @std/compress.ms
+resolution	4	5	112	unknown binding compress; add: import compress from "@std/archive.ms"
+resolution	5	5	142	unknown binding compress; add: import compress from "@std/archive.ms"
+resolution	6	5	189	unknown binding compress; add: import compress from "@std/archive.ms"
+resolution	7	5	238	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
+resolution	8	5	283	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"
+type	8	57	335	cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding
+resolution	9	5	345	unknown binding CompressionFormat; add: import CompressionFormat from "@std/archive.ms"let initial = Mode.Idle
 
 type Mode:
     case Idle
@@ -2541,7 +2541,7 @@ type	2	11	33	assignment requires a record field; only fields of a record value c
 resolution	1	12	11	unknown type File; add: import File from "@std/io.ms"import Network from "@std/net.ms"
 fn f(socket: Network) Unit:
     socket.clone()
-resolution	3	12	73	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
+resolution	3	12	73	unknown or ambiguous member clone on Network; did you mean 'close'?; available: bind_datagram, close, connect, connect_tls, connect_tls_config, connect_unix, http_client, listen, listen_tls, listen_unix, lookup, request, request_bytes, resolve, restrict, serve, serve_connections, web_socket, with_resolverfn f(queue: Queue[Int]) Unit:
     queue.clone()
 resolution	1	13	12	unknown type Queue; add: import Queue from "@std/queue.ms"fn f(queue: Queue[Int]) Unit:
     queue.capacity = 1
@@ -2715,7 +2715,7 @@ resolution	2	1	38	declaration Set reuses a prelude name; rename it, because Set 
         return line.is_some()
     return falseparse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn probe(input: ReadStream, visits: List[Int]) Bool: ...
     resolution	1	17	16	unknown type ReadStream; add: import ReadStream from "@std/io.ms"
-type	1	1	0	reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)import {read_line, ReadStream} from "@std/io.ms"
+type	1	1	0	reachable fallthrough in function returning Bool; end every path with 'return <Bool>' (or make the last branch return)import read_line, ReadStream from "@std/io.ms"
 fn probe(input: ReadStream) Bool:
     let next = read_line
     if let line = next(input):
@@ -3646,10 +3646,10 @@ fn valid() Int:
 export type [
 parse	2	1	14	unterminated delimiter '[' opened at line 1:13; add the matching ']' before the end of the filefn first() Int:
     return 1
-import {
+import (
 ListBuilder,
 MapBuilder,
-} from "@std/collections.ms"
+) from "@std/collections.ms"
 fn broken(
 fn later() Int:
     return 2
@@ -3855,11 +3855,11 @@ fn run() Unit:
     )
 type	10	9	241	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change it
 type	9	24	229	cannot change `values`: `values` is declared with let, which is immutable including its contents; declare it `var values` to change itimport network from "@std/net.ms"
-import {HttpResponse, HttpServerOptions} from "@std/http.ms"
+import HttpResponse, HttpServerOptions from "@std/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
     let values = [0]
-resolution	3	8	102	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
+resolution	3	8	100	unknown standard module @std/faults.ms    let _server = network().serve(address: "127.0.0.1:0", handler: fn(request) HttpResponse:
         values.append(1)
         return panic("not executed by lint")
     )
@@ -5095,10 +5095,10 @@ fn describe(cause: Error) String:
             return json.message()
         _:
             return cause.message()
-import {parse, TomlValue} from "@std/toml.ms"
+import parse, TomlValue from "@std/toml.ms"
 fn read() Unit:
     let result = parse(text: "a=1")
-type	3	9	70	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfn read() Int:
+type	3	9	68	local binding result is never read; remove it, use it, or name it with a leading '_' to ignore itfn read() Int:
     return 1
 fn named(value: Int = read()) Int:
     return value
@@ -5137,19 +5137,19 @@ fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 resolution	1	8	7	unknown standard module @std/errors.ms
 resolution	2	41	89	unknown type MissingValue; use the prelude MissingValue declaration directly; rename any shadowing binding or declarationimport List from "@std/collections.ms" # keep
 fn count() Int: List[Int]().length()
-resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport {ListBuilder, List} from "@std/collections.ms"
+resolution	1	8	7	redundant prelude import List; remove List from this import and use its prelude declaration directlyimport ListBuilder, List from "@std/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
-resolution	1	22	21	redundant prelude import List; remove List from this import and use its prelude declaration directly
-resolution	2	36	89	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, buildimport {
+resolution	1	21	20	redundant prelude import List; remove List from this import and use its prelude declaration directly
+resolution	2	36	87	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, buildimport (
     List, # keep
     ListBuilder,
-} from "@std/collections.ms"
+) from "@std/collections.ms"
 fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()
 resolution	2	5	13	redundant prelude import List; remove List from this import and use its prelude declaration directly
 resolution	5	36	107	unknown or ambiguous member freeze on ListBuilder[Int]; available: append, buildfn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 fn bad() Unit:
    unit
-import {ListBuilder, List} from "@std/collections.ms"
+import ListBuilder, List from "@std/collections.ms"
 parse	2	4	18	indentation must be a multiple of four spaces, found 3; use 0 or 4export type Row[T]:
     value: T
 fn use() Unit:
@@ -5533,7 +5533,7 @@ export fn main() Int:
 fn read_number() Int:
     let input = stdin().read(max_bytes: 1)
     return 41
-type	11	9	219	local binding input is never read; remove it, use it, or name it with a leading '_' to ignore itimport {stdout, stderr} from "@std/io.ms"
+type	11	9	219	local binding input is never read; remove it, use it, or name it with a leading '_' to ignore itimport stdout, stderr from "@std/io.ms"
 import panic from "@std/faults.ms"
 
 test "pass=a=b":
@@ -5545,8 +5545,8 @@ test "fails":
 
 test "after":
     return unit
-resolution	2	8	49	unknown standard module @std/faults.ms
-resolution	9	12	236	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
+resolution	2	8	47	unknown standard module @std/faults.ms
+resolution	9	12	234	unknown binding panic; add: import panic from "@std/core.ms"import panic from "@std/faults.ms"
 import filesystem from "@std/fs.ms"
 export fn other() Int: return 4
 test "source":
@@ -5558,11 +5558,11 @@ test "source":
 resolution	1	8	7	unknown standard module @std/faults.ms
 resolution	5	29	146	unknown binding panic; add: import panic from "@std/core.ms"
 resolution	7	39	283	unknown binding panic; add: import panic from "@std/core.ms"
-resolution	9	16	336	unknown binding panic; add: import panic from "@std/core.ms"import {parse, CsvOptions} from "@std/csv.ms"
-import {base64_encode, base64_decode} from "@std/encoding.ms"
+resolution	9	16	336	unknown binding panic; add: import panic from "@std/core.ms"import parse, CsvOptions from "@std/csv.ms"
+import base64_encode, base64_decode from "@std/encoding.ms"
 import commands from "@std/process.ms"
 import filesystem from "@std/fs.ms"
-import {compress, decompress, CompressionFormat} from "@std/compress.ms"
+import compress, decompress, CompressionFormat from "@std/compress.ms"
 import panic from "@std/faults.ms"
 test "copied native defaults":
     let first = CsvOptions()
@@ -5601,8 +5601,8 @@ test "copied native defaults":
     let encode = CompressionFormat.Gzip.compress
     if encode(data).get() != compressed: return panic("bound default compression level")
     if decompress(compressed, "gzip").get() != data: return panic("default compression round trip")
-parse	21	34	942	expected an expression, found '%'; write a value, name, call, or literal hereimport arguments from "@std/process.ms"
-import {stdout, stderr} from "@std/io.ms"
+parse	21	34	936	expected an expression, found '%'; write a value, name, call, or literal hereimport arguments from "@std/process.ms"
+import stdout, stderr from "@std/io.ms"
 export fn main() Int:
     let args = arguments()
     let _out = stdout().write(data: "out={args[0]}\n")
@@ -5729,7 +5729,7 @@ resolution	3	34	93	unknown binding Bytes; add: import Bytes from "@std/bytes.ms"
     return 1 + depth(n + 1)
 export fn main() Int:
     return depth(0)
-import {stdout, stderr} from "@std/io.ms"
+import stdout, stderr from "@std/io.ms"
 import fail from "@std/test.ms"
 
 test "first=pass":
@@ -5744,7 +5744,7 @@ test "third=after":
 export fn helper() Int: return 0
 test "bad":
     let x = unknown_name
-resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport {sleep, nanoseconds} from "@std/time.ms"
+resolution	2	13	24	unknown binding unknown_name; declare it with 'let unknown_name = ...' before use, define 'fn unknown_name(...) T:', or import it from a moduleimport sleep, nanoseconds from "@std/time.ms"
 
 test "timeout":
     sleep(nanoseconds(1000000000))
@@ -5758,7 +5758,7 @@ test "bytes":
     let data = "x".to_bytes().with_value(index: 0, value: 255)
     let _out = stdout().write_bytes(data: data)
 import arguments from "@std/process.ms"
-import {stdout, stderr} from "@std/io.ms"
+import stdout, stderr from "@std/io.ms"
 
 export fn main() Int:
     let args = arguments()
@@ -5977,7 +5977,7 @@ test "fault":
     return missing
 resolution	2	12	27	unknown binding missing; declare it with 'let missing = ...' before use, define 'fn missing(...) T:', or import it from a modulefn wrong():
   return
-parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4import {expect_true, fail} from "@std/test.ms"
+parse	2	3	14	indentation must be a multiple of four spaces, found 2; use 0 or 4import expect_true, fail from "@std/test.ms"
 
 interface Read:
     fn get() Int
@@ -5991,7 +5991,7 @@ test "encoded nominal identity":
     let view = Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-type	12	16	240	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io.ms"
+type	12	16	238	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io.ms"
 import clock from "@std/time.ms"
 import Instant from "@std/time.ms"
 
@@ -6054,7 +6054,7 @@ fn probe(value: Int) Int:
     return cell.total
 export fn main() Int:
     return probe(9223372036854775807)
-type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport {read_line, ReadStream, stdin} from "@std/io.ms"
+type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport read_line, ReadStream, stdin from "@std/io.ms"
 fn limit() Int:
     return 1 / 0
 fn probe(input: ReadStream) Bool:
@@ -6064,7 +6064,7 @@ fn probe(input: ReadStream) Bool:
 export fn main() Int:
     if probe(stdin()): return 1
     return 0
-type	3	14	85	division by zero always faults; guard the divisor or use a nonzero constantfn crash() Int:
+type	3	14	83	division by zero always faults; guard the divisor or use a nonzero constantfn crash() Int:
     return 1 / 0
 export fn main() Int:
     let values = Map[Int, Int]()
@@ -6177,7 +6177,7 @@ export fn main() Int:
 export fn main() Int:
     let [value] = empty()
     return value
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 
 export fn main() Int:
     let fs = filesystem()
@@ -6255,7 +6255,7 @@ test "return contracts":
     discard(value: 1) | try expect_equal(expected: unit)
 resolution	2	8	47	unknown standard module @std/faults.ms
 resolution	8	9	162	unknown binding panic; add: import panic from "@std/core.ms"
-type	4	1	76	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import {expect_contains, expect_fault} from "@std/test.ms"
+type	4	1	76	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_contains, expect_fault from "@std/test.ms"
 import panic from "@std/faults.ms"
 
 fn failed_initializer() Never:
@@ -6283,15 +6283,15 @@ test "Never faults propagate through initializers and returned values":
         ),
         "result cannot return"
     )
-resolution	2	8	66	unknown standard module @std/faults.ms
-resolution	5	27	152	unknown binding panic; add: import panic from "@std/core.ms"
-type	4	1	95	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
-resolution	8	12	235	unknown binding panic; add: import panic from "@std/core.ms"import {expect_contains, expect_fault} from "@std/test.ms"
+resolution	2	8	64	unknown standard module @std/faults.ms
+resolution	5	27	150	unknown binding panic; add: import panic from "@std/core.ms"
+type	4	1	93	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
+resolution	8	12	233	unknown binding panic; add: import panic from "@std/core.ms"import expect_contains, expect_fault from "@std/test.ms"
 import panic from "@std/faults.ms"
 test "expect_fault reports the injected fault":
     try expect_contains(try expect_fault(fn: panic("boom")), "boom")
-resolution	2	8	66	unknown standard module @std/faults.ms
-resolution	4	46	187	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
+resolution	2	8	64	unknown standard module @std/faults.ms
+resolution	4	46	185	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
     fn read() Int
 type Reader:
     operation: fn() Int
@@ -6502,13 +6502,13 @@ export fn main() Int:
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let builder = BytesBuilder()
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let empty: List[Int] = []
 parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with it    let big = from_int(1)
-parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {Queue, PriorityQueue} from "@std/queues.ms"
+parse	1	5	4	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport Bytes, BytesBuilder from "@std/bytes.ms"
+import Queue, PriorityQueue from "@std/queues.ms"
 import from_int from "@std/bigint.ms"
 fn compare(left: Int, right: Int) Int: left - right
-resolution	2	9	58	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	2	16	65	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
-resolution	3	8	109	unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
+resolution	2	8	55	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	2	15	62	unknown standard module @std/queues.ms; did you mean '@std/queue.ms'?
+resolution	3	8	105	unknown standard module @std/bigint.ms; did you mean '@std/bitset.ms'?test %q:
     let bytes = Bytes(values: [0, 255])
     let list = [0, 1]
 %sparse	1	6	5	expected text in double quotes, found '%'test "continues after preconditions":
@@ -6584,7 +6584,7 @@ resolution	4	9	88	unknown or ambiguous member replace_n on String; did you mean 
 resolution	6	23	157	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	9	8	223	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?
 resolution	11	26	289	unknown or ambiguous member replace_n on String; did you mean 'replace' or 'replace_first'?import filesystem from "@std/fs.ms"
-import {expect_true, fail} from "@std/test.ms"
+import expect_true, fail from "@std/test.ms"
 
 test "fixture next to the manifest":
     match filesystem().read_file(path: "golden/input.txt", max_bytes: 1024):
@@ -6593,7 +6593,7 @@ test "fixture next to the manifest":
                 return fail("wrong fixture size")
         error(_):
             return fail("fixture not found")
-import {TestHooks, expect_equal, fail, skip} from "@std/test.ms"
+import TestHooks, expect_equal, fail, skip from "@std/test.ms"
 import stdout from "@std/io.ms"
 import panic from "@std/faults.ms"
 fn println(message: String) Unit:
@@ -6618,7 +6618,7 @@ test "first":
     try expect_equal(fixture.value, 1)
 test "second":
     try expect_equal(fixture.value, 2)
-resolution	3	8	104	unknown standard module @std/faults.msimport {TestHooks, expect_equal} from "@std/test.ms"
+resolution	3	8	102	unknown standard module @std/faults.msimport TestHooks, expect_equal from "@std/test.ms"
 import stdout from "@std/io.ms"
 fn println(message: String) Unit:
     let written = stdout().write("{message}\n").get()
@@ -6633,8 +6633,8 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     try expect_equal(fixture.value, 7)
-type	13	17	323	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport {TestHooks, expect_equal, expect_ok} from "@std/test.ms"
-import {HttpServer, HttpRequest, HttpResponse, HttpMethod, headers} from "@std/http.ms"
+type	13	17	321	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport TestHooks, expect_equal, expect_ok from "@std/test.ms"
+import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers from "@std/http.ms"
 import network from "@std/net.ms"
 type ApiFixture:
     server: HttpServer
@@ -6651,7 +6651,7 @@ test "first request":
 test "second request uses same server":
     let response = try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
     try expect_equal(response.body, "shared".to_bytes())
-type	9	80	465	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)export fn helper() Unit:
+type	9	80	461	expected fn(HttpExchange) Result[Unit, HttpError], found fn(HttpRequest) HttpResponse (in argument 'handler' of serve)export fn helper() Unit:
     return
 test "interruptible":
     println("READY")
@@ -6661,7 +6661,7 @@ test "later":
     try fail("must not run")
 resolution	2	5	26	unknown binding println; there is no built-in print: import stdout from "@std/io.ms" and call stdout().write("text\\n")
 resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test.ms"
-resolution	6	9	112	unknown binding fail; add: import fail from "@std/test.ms"import {TestHooks, expect_equal} from "@std/test.ms"
+resolution	6	9	112	unknown binding fail; add: import fail from "@std/test.ms"import TestHooks, expect_equal from "@std/test.ms"
 import stdout from "@std/io.ms"
 type UnusedFixture:
     value: Int
@@ -6676,10 +6676,10 @@ impl TestHooks for UnusedFixture:
         let written = stdout().write("UNUSED after_all").get()
 test "plain test":
     try expect_equal(1 + 1, 2)
-type	7	13	192	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	9	13	283	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	11	13	374	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	13	13	463	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport {expect_equal, skip} from "@std/test.ms"
+type	7	13	190	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	9	13	281	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	11	13	372	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
+type	13	13	461	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal, skip from "@std/test.ms"
 test "passing":
     try expect_equal(2 + 2, 4)
 test "skipped":

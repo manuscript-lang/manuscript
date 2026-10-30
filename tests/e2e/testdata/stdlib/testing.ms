@@ -1,9 +1,19 @@
 import TextError from "@std/core.ms"
-import {
-    assert_equal, expect_close, expect_contains, expect_equal, expect_error,
-    expect_false, expect_fault, expect_none, expect_not_equal, expect_ok, expect_some,
-    expect_true, fail
-} from "@std/test.ms"
+import (
+    assert_equal,
+    expect_close,
+    expect_contains,
+    expect_equal,
+    expect_error,
+    expect_false,
+    expect_fault,
+    expect_none,
+    expect_not_equal,
+    expect_ok,
+    expect_some,
+    expect_true,
+    fail
+) from "@std/test.ms"
 
 fn identity[T](value: T) T:
     return value

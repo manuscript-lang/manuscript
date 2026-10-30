@@ -1,9 +1,9 @@
 # conform: tags=control-flow,faults,generics,interpolation,lists,maps,match,modules,numbers,optional,stdlib-errors,stdlib-testing,stdlib-toml,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/toml.ms
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
 import TextError from "@std/core.ms"
-import {parse, stringify, TomlValue, TomlError, TomlLimits} from "@std/toml.ms"
+import parse, stringify, TomlValue, TomlError, TomlLimits from "@std/toml.ms"
 
 fn entries(value: TomlValue) Result[Map[String, TomlValue], Error]:
     match value:

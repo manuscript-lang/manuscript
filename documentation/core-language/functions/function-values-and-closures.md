@@ -73,14 +73,14 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. Use `.clone()` before capturing to keep using the original. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure.
+A closure that is returned or stored owns what it captures instead, so it cannot change a captured variable. It moves a captured variable in when the closure is its last use; when the variable is used again, or is only borrowed (a parameter, a loop variable), bind a `.clone()` before the closure and capture that. A bound method keeps its receiver by the same rules: a method that changes its receiver (`let add = xs.append`) shares the variable like a closure that changes it, so `xs` must be a `var`, cannot be used while `add` is still used, and `add` cannot be returned or stored. Taking such a method from a field (`bag.items.append`) is an error; call it or write a closure.
 
 ## Resource captures
 
 Open a resource inside the callback that uses it:
 
 ```manuscript
-import {filesystem, FileSystemError} from "@std/fs.ms"
+import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Result[Bytes, FileSystemError]:

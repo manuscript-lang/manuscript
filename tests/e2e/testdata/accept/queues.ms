@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
 import Queue from "@std/queue.ms"
 
 test "omitted capacity creates an unbounded queue":

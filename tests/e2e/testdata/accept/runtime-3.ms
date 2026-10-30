@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import {expect_equal, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_true, fail from "@std/test.ms"
 
 fn identity[T](value: T) T:
     return value

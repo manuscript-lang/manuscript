@@ -14,7 +14,7 @@ cargo build --release --locked -p ms-cli
 sh bench/perf/web/run.sh 5
 ```
 
-`run.sh [seconds]` serves Manuscript from `MS_THREADS` workers (default 2, matching `SERVER_CPUS`), so every server gets the same two cores. It needs Go and, for the system-call rows, `strace`. On a machine with at least four CPUs it pins the server to `SERVER_CPUS` (default `0,1`) and the load generator to `LOAD_CPUS` (default `2,3`). It runs each server in turn and prints one line per measurement:
+`run.sh [seconds]` serves Manuscript from `MS_THREADS` workers (default 2, matching `SERVER_CPUS`; the main thread accepts and deals connections round robin), so every server gets the same two cores. It needs Go and, for the system-call rows, `strace`. On a machine with at least four CPUs it pins the server to `SERVER_CPUS` (default `0,1`) and the load generator to `LOAD_CPUS` (default `2,3`). It runs each server in turn and prints one line per measurement:
 
 - each endpoint twice, 64 connections: requests per second, p50, p99, failed requests;
 - `io`, then `health-during-io`: 32 connections on `/health` while 32 others run `/io`;

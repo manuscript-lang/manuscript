@@ -9,9 +9,9 @@ A `WorkerGroup[In, Out]` starts workers: functions that run on their own OS thre
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import {Channel, ChannelError} from "@std/channels.ms"
-import {expect_equal, expect_ok} from "@std/test.ms"
-import {WorkerGroup, worker_channel} from "@std/workers.ms"
+import Channel, ChannelError from "@std/channels.ms"
+import expect_equal, expect_ok from "@std/test.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 fn serve(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     while true:
@@ -55,18 +55,21 @@ Send plain serializable data. Messages reconstruct values through JSON; acceptan
 
 ## Serving on several cores
 
-Each worker can run its own HTTP server. Pass `HttpServerOptions(shared: true)` and every server of the process that serves the same address text accepts from one listening socket, so connections spread over the workers' threads. The first server binds the port and it closes with the last. This works the same on Linux, macOS and Windows.
+One thread accepts and deals each connection, round robin, to serving workers. `Listener.accept_raw` returns the accepted socket's handle (an `Int`) without wrapping it; the handle crosses a worker channel; `HttpServer.adopt` in the worker serves it. `Network.serve_connections` starts the listener-less server that takes the handles, with the options and handler of `serve`. The worker builds its own handler, so handler state is per worker. A connection stays on its worker for life.
+
+`serve_cores(listener, entry, cores)` starts `cores` workers on `entry` and deals accepted connections to them in turn. `entry` is a named top-level fn that ends in `serve_core(handler, options)`, which serves the connections dealt to that worker.
 
 ```manuscript
-fn serve_loop() Unit:
-    var ch = worker_channel[Int, Int]()
-    let options = HttpServerOptions(shared: true)
-    if let acquired = network().serve(address: "127.0.0.1:8080", handler: buffered(app), options: options):
-        let server = acquired
-        let _stopped = server.wait()
+fn serving_worker() Unit:
+    let _ = serve_core(buffered(app))
+
+fn main() Int:
+    let listener = network().listen("0.0.0.0:8080").get(none)
+    let _ = serve_cores(listener, serving_worker, 4)
+    return 0
 ```
 
-Start one worker per core with `group.spawn(serve_loop)`. Measured with a CPU-bound handler on two server cores: one thread 23k requests per second, two workers 45k. A handler runs on the worker that accepted the connection and shares no memory with the other workers.
+`serve_cores` returns the accept error (`Closed` after the listener was closed), or `Failed` when a worker's channel is closed, and cancels the workers on return. `WorkerGroup.spawn_many(entry, count)` starts several workers from one entry. A handle that is never adopted leaks its socket; `accept_raw` refuses a TLS listener, because the adopting server runs the handshake.
 
 ## Cost
 

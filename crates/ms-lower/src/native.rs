@@ -2364,6 +2364,8 @@ impl<'a> FnLower<'a> {
                 } else {
                     self.b.unop(ms_mir::ir::Op::Not, some)
                 };
+                // Only read: an owned optional of a resource (`open().is_some()`) closes it.
+                self.close_owned_temp(recv);
                 self.finish(recv);
                 Ok(Val { v, own: false })
             }
@@ -2391,6 +2393,10 @@ impl<'a> FnLower<'a> {
                         let o = s.owned(Val { v: p, own: false });
                         s.finish(recv);
                         if let Some(d) = default {
+                            // The default goes unused: an owned resource there closes now.
+                            if d.wrapped {
+                                s.close_owned_temp(d.val);
+                            }
                             s.finish(d.val);
                         }
                         Ok(Some(o))
@@ -2575,6 +2581,10 @@ impl<'a> FnLower<'a> {
                         let o = s.owned(Val { v: p, own: false });
                         s.finish(recv);
                         if let Some(d) = default {
+                            // The default goes unused: an owned resource there closes now.
+                            if d.wrapped {
+                                s.close_owned_temp(d.val);
+                            }
                             s.finish(d.val);
                         }
                         Ok(Some(o))

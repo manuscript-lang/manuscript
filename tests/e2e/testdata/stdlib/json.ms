@@ -1,10 +1,10 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
-import {parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode} from "@std/json.ms"
-import {timestamp, nanoseconds, clock, Timestamp, Duration, Instant} from "@std/time.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
+import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/json.ms"
+import timestamp, nanoseconds, clock, Timestamp, Duration, Instant from "@std/time.ms"
 import Url from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"
-import {Data, TextError} from "@std/core.ms"
+import Data, TextError from "@std/core.ms"
 import BigInt from "@std/math.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":

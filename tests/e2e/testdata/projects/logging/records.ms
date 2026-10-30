@@ -1,4 +1,4 @@
-import {Logger, LogError, LogLevel, record} from "@std/log.ms"
+import Logger, LogError, LogLevel, record from "@std/log.ms"
 
 type Request:
     request: String

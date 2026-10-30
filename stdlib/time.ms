@@ -1,4 +1,4 @@
-import {Data, panic} from "@std/core.ms"
+import Data, panic from "@std/core.ms"
 
 extern fn msstd_time_duration_to_nanoseconds(value: Duration) Int
 

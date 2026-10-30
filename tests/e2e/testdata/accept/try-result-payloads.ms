@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, expect_ok, expect_true} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true from "@std/test.ms"
 import TextError from "@std/core.ms"
 import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"

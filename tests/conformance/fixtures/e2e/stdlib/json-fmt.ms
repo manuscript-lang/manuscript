@@ -1,9 +1,9 @@
 # conform: tags=aliasing,alternatives,closures,control-flow,decimal,faults,formatter,generics,interfaces,interpolation,lists,maps,match,modules,mutation,numbers,optional,parser,records,sets,stdlib-bigint,stdlib-bytes,stdlib-collections,stdlib-decimal,stdlib-errors,stdlib-json,stdlib-testing,stdlib-time,stdlib-url,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/json.ms
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
-import {parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode} from "@std/json.ms"
-import {timestamp, nanoseconds, clock, Timestamp, Duration, Instant} from "@std/time.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
+import parse, stringify, JsonValue, JsonLimits, JsonError, JsonEncode from "@std/json.ms"
+import timestamp, nanoseconds, clock, Timestamp, Duration, Instant from "@std/time.ms"
 import Url from "@std/net.ms"
 import Bytes from "@std/bytes.ms"
 import Decimal from "@std/decimal.ms"

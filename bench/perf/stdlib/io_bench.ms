@@ -1,6 +1,6 @@
-import {keep, measure} from "@std/bench.ms"
+import keep, measure from "@std/bench.ms"
 import Bytes from "@std/bytes.ms"
-import {IoError, ReadStream, lines, read_line} from "@std/io.ms"
+import IoError, ReadStream, lines, read_line from "@std/io.ms"
 
 type MemoryStream:
     data: Bytes

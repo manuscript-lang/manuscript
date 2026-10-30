@@ -145,16 +145,16 @@ fn removing_the_last_unused_import_drops_the_separator() {
     let body = "\nfn root(value: Float) Float:\n    return sqrt(value)\n";
     for (source, expected) in [
         (
-            "import {sqrt, sin} from \"@std/math.ms\"\n",
-            "import {sqrt} from \"@std/math.ms\"\n",
+            "import sqrt, sin from \"@std/math.ms\"\n",
+            "import sqrt from \"@std/math.ms\"\n",
         ),
         (
-            "import {sqrt, sin,} from \"@std/math.ms\"\n",
-            "import {sqrt, } from \"@std/math.ms\"\n",
+            "import sqrt, sin from \"@std/math.ms\"\n",
+            "import sqrt from \"@std/math.ms\"\n",
         ),
         (
-            "import {sin, sqrt} from \"@std/math.ms\"\n",
-            "import {sqrt} from \"@std/math.ms\"\n",
+            "import sin, sqrt from \"@std/math.ms\"\n",
+            "import sqrt from \"@std/math.ms\"\n",
         ),
     ] {
         let source = format!("{source}{body}");
@@ -177,7 +177,7 @@ fn organize_imports_moves_whole_multiline_declarations() {
         let action = found.first().expect("organize imports");
         let organized = apply(&source, action);
         assert!(
-            organized.starts_with("import {") && organized.contains("sqrt,"),
+            organized.starts_with("import (") && organized.contains("leading_zeros"),
             "{organized}"
         );
         assert!(organized.find("@std/math").unwrap() < organized.find("@std/string").unwrap());

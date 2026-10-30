@@ -1,7 +1,7 @@
 # conform: tags=control-flow,faults,formatter,interfaces,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-io,strings,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/support/streams.ms
-import {ReadStream, WriteStream, IoError} from "@std/io.ms"
+import ReadStream, WriteStream, IoError from "@std/io.ms"
 import Bytes from "@std/bytes.ms"
 
 export type MemoryStream:

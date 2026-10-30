@@ -1,4 +1,4 @@
-import {stringify, CsvOptions} from "./csv.ms"
+import stringify, CsvOptions from "./csv.ms"
 import StringBuilder from "@std/string.ms"
 import arguments from "@std/process.ms"
 import stdout from "@std/io.ms"

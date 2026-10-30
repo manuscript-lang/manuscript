@@ -1,4 +1,4 @@
-import {Closeable, Data} from "@std/core.ms"
+import Closeable, Data from "@std/core.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/http.ms"
 import Duration from "@std/time.ms"
@@ -12,6 +12,7 @@ import HttpServer from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
+import WorkerGroup, worker_channel from "@std/workers.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
 
@@ -334,6 +335,11 @@ extern fn msrt_net_listener_accept(
     timeout: Optional[Duration]
 ) Result[Connection, NetworkError]
 
+extern fn msrt_net_listener_accept_raw(
+    handle: NativeListener,
+    timeout: Optional[Duration]
+) Result[Int, NetworkError]
+
 extern fn msrt_net_listener_address(handle: NativeListener) String
 
 extern fn msrt_net_listener_close(handle: NativeListener) Unit
@@ -355,6 +361,11 @@ impl Listener:
     # On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and returns Failed.
     fn accept(timeout: Optional[Duration] = none) Result[Connection, NetworkError]:
         return msrt_net_listener_accept(self.native, timeout)
+
+    # Waits for the next incoming connection and returns its socket handle without wrapping it, to give to `HttpServer.adopt` (on this or another thread). The caller owns the handle until then; one that is never adopted leaks its socket.
+    # A timeout returns Timeout and a closed listener returns Closed. A TLS listener returns InvalidInput: the adopting server performs the handshake.
+    fn accept_raw(timeout: Optional[Duration] = none) Result[Int, NetworkError]:
+        return msrt_net_listener_accept_raw(self.native, timeout)
 
     # Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
     fn address() String:
@@ -494,6 +505,12 @@ export interface Network:
         subprotocols: List[String],
         options: WebSocketOptions
     ) Result[WebSocket, WebSocketError]
+    # Starts an HTTP server that has no listener: it serves the connections handed to `HttpServer.adopt`, with the handler, limits, timeouts, and TLS of `serve`. Close the server to stop it.
+    # Returns InvalidInput for invalid options.
+    fn serve_connections(
+        handler: fn(HttpExchange) Result[Unit, HttpError],
+        options: HttpServerOptions = HttpServerOptions()
+    ) Result[HttpServer, HttpError]
     # Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
     # The address must be allowed by this network's restrictions, otherwise PermissionDenied is returned. An address that is not an IP literal with a port returns InvalidInput.
     fn with_resolver(address: String) Result[Network, NetworkError]
@@ -773,3 +790,52 @@ impl Error for WebSocketError:
             Closed: return "WebSocket: resource is closed"
             Timeout: return "WebSocket: operation timed out"
             Failed(message): return message.clone()
+
+# Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
+# Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
+# Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
+export fn serve_cores(
+    listener: Listener,
+    entry: fn() Unit,
+    cores: Int
+) Result[Unit, NetworkError]:
+    if cores < 1:
+        return error(NetworkError.InvalidInput)
+
+    let group = WorkerGroup[Int, Int]()
+    let started = group.spawn_many(entry, cores)
+    if started.is_error():
+        return error(NetworkError.Failed("could not start a serving worker"))
+
+    let workers = started.get()
+    var next = 0
+
+    while true:
+        let accepted = listener.accept_raw(none)
+        if accepted.is_error():
+            return error(accepted.err().clone())
+        if workers[next % cores].channel.send(accepted.get()).is_error():
+            return error(NetworkError.Failed("a serving worker ended"))
+
+        next += 1
+
+    return ok(unit)
+
+# Worker side of `serve_cores`: serves the connections dealt to this worker with
+# `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
+export fn serve_core(
+    handler: fn(HttpExchange) Result[Unit, HttpError],
+    options: HttpServerOptions = HttpServerOptions()
+) Result[Unit, HttpError]:
+    var ch = worker_channel[Int, Int]()
+    var server = try network().serve_connections(handler: handler, options: options)
+
+    while true:
+        if let connection = ch.receive().get(none):
+            server.adopt(connection)
+            continue
+
+        break
+
+    server.close()
+    return ok(unit)

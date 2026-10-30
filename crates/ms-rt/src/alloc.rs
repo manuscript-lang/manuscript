@@ -192,6 +192,9 @@ struct State {
     slot: usize,
     #[cfg(any(test, feature = "stats"))]
     live: isize,
+    /// Allocations requested and bytes asked for since start (`stats` builds).
+    #[cfg(feature = "stats")]
+    requested: [u64; 2],
 }
 
 /// One registered arena: what another thread needs to free a block into it.
@@ -248,6 +251,8 @@ static STATE: State = State {
     slot: 0,
     #[cfg(any(test, feature = "stats"))]
     live: 0,
+    #[cfg(feature = "stats")]
+    requested: [0; 2],
 };
 }
 
@@ -451,6 +456,11 @@ fn class_of(size: usize) -> usize {
 pub fn alloc(size: usize) -> *mut u8 {
     // SAFETY: single threaded access to the allocator state.
     let s = unsafe { &mut *STATE.ptr() };
+    #[cfg(feature = "stats")]
+    {
+        s.requested[0] += 1;
+        s.requested[1] += size as u64;
+    }
     if size <= MAX_SMALL && s.initialized {
         let class = class_of(size.max(1));
         let head = s.free[class];
@@ -572,6 +582,11 @@ pub fn alloc_zeroed_cached(size: usize) -> *mut u8 {
     let head = s.large_free[class];
     if head.is_null() {
         return head;
+    }
+    #[cfg(feature = "stats")]
+    {
+        s.requested[0] += 1;
+        s.requested[1] += size as u64;
     }
     // SAFETY: cached blocks store the next pointer in their first word and have at least
     // `large_size(class)` usable bytes, so `size` bytes are writable.
@@ -902,6 +917,13 @@ pub fn heap_stats() -> [i64; 2] {
         carved.saturating_sub(spare) as i64,
         (s.next_page * PAGE_SIZE) as i64,
     ]
+}
+
+/// `[allocations, bytes]` requested since start (the `stats` feature).
+#[cfg(feature = "stats")]
+pub fn requested() -> [u64; 2] {
+    // SAFETY: single threaded access to the allocator state.
+    unsafe { (*STATE.ptr()).requested }
 }
 
 /// Live allocation count (tests and the `stats` feature).

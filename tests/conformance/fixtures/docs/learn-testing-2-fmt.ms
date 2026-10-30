@@ -1,8 +1,8 @@
 # conform: tags=formatter,modules,optional,parser,stdlib-json,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=documentation/learn/testing.md:53
-import {parse, JsonError} from "@std/json.ms"
-import {expect_equal, expect_ok, expect_error, expect_some} from "@std/test.ms"
+import parse, JsonError from "@std/json.ms"
+import expect_equal, expect_ok, expect_error, expect_some from "@std/test.ms"
 
 test "typed JSON and Optional payloads":
     let number = try expect_ok(parse[Int]("3"))

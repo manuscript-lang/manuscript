@@ -1,4 +1,4 @@
-import {DomainFailure, BoxFailure} from "./domain.ms"
+import DomainFailure, BoxFailure from "./domain.ms"
 
 impl Error for DomainFailure:
     fn message() String:

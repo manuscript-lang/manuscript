@@ -21,7 +21,7 @@ fn misplaced_ref_names_where_ref_is_allowed() {
 #[test]
 fn punctuation_is_not_called_a_reserved_word() {
     let file = Arc::from("import.ms");
-    let error = ms_syntax::parser::parse(&file, "import {} from \"./x.ms\"\n").unwrap_err();
+    let error = ms_syntax::parser::parse(&file, "import () from \"./x.ms\"\n").unwrap_err();
     assert!(
         !error.message.contains("reserved word"),
         "{}",

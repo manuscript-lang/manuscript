@@ -1,5 +1,5 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {parse, stringify, CsvOptions, CsvError} from "@std/csv.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import parse, stringify, CsvOptions, CsvError from "@std/csv.ms"
 
 test "CSV retains single empty fields and distinguishes empty rows":
     for ending in ["\n", "\r\n"]:

@@ -2,8 +2,8 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/compress-archive.ms
 import expect_equal from "@std/test.ms"
-import {compress, decompress, CompressionError} from "@std/archive.ms"
-import {pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
+import compress, decompress, CompressionError from "@std/archive.ms"
+import pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 test "compression formats roundtrip and enforce expanded byte budgets":

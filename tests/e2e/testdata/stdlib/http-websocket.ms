@@ -1,10 +1,10 @@
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
 import http_result from "./support/http.ms"
-import {headers, HttpMethod, buffered} from "@std/http.ms"
-import {text_headers, list_headers} from "./support/http.ms"
+import headers, HttpMethod, buffered from "@std/http.ms"
+import text_headers, list_headers from "./support/http.ms"
 import network from "@std/net.ms"
-import {HttpExchange, HttpError, HttpServerOptions, HttpClientOptions} from "@std/http.ms"
-import {WebSocketOptions, WebSocketError} from "@std/net.ms"
+import HttpExchange, HttpError, HttpServerOptions, HttpClientOptions from "@std/http.ms"
+import WebSocketOptions, WebSocketError from "@std/net.ms"
 import TlsOptions from "@std/net.ms"
 
 fn tls_options() TlsOptions:

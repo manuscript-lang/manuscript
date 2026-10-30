@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=tests/e2e/testdata/projects/map_add_scope/second.ms
 import Key from "./domain.ms"
-import {insert, insert_bound} from "./helper.ms"
+import insert, insert_bound from "./helper.ms"
 import expect_equal from "@std/test.ms"
 
 impl Equal for Key:

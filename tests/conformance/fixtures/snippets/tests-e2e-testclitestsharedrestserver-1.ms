@@ -1,8 +1,8 @@
 # conform: tags=control-flow,faults,interfaces,interpolation,modules,records,stdlib-http,stdlib-net,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/test_fixture_test.go:140 TestCLITestSharedRESTServer
-import {TestHooks, expect_equal, expect_ok} from "@std/test.ms"
-import {HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered} from "@std/http.ms"
+import TestHooks, expect_equal, expect_ok from "@std/test.ms"
+import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers, buffered from "@std/http.ms"
 import network from "@std/net.ms"
 
 type ApiFixture:

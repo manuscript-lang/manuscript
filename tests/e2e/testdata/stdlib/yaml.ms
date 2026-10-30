@@ -1,7 +1,7 @@
-import {expect_equal, expect_error, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_error, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
 import from_scalars from "@std/string.ms"
 import TextError from "@std/core.ms"
-import {parse, stringify, YamlValue, YamlError, YamlLimits} from "@std/yaml.ms"
+import parse, stringify, YamlValue, YamlError, YamlLimits from "@std/yaml.ms"
 
 fn entries(value: YamlValue) Result[Map[String, YamlValue], Error]:
     match value:

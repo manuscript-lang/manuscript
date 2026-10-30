@@ -2,9 +2,9 @@
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/typed-codecs.ms
 import expect_equal from "@std/test.ms"
-import {HashAlgorithm, sha256, sha384, sha512, CryptoError} from "@std/crypto.ms"
-import {CompressionFormat, compress, decompress, CompressionError} from "@std/archive.ms"
-import {ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError} from "@std/archive.ms"
+import HashAlgorithm, sha256, sha384, sha512, CryptoError from "@std/crypto.ms"
+import CompressionFormat, compress, decompress, CompressionError from "@std/archive.ms"
+import ArchiveFormat, pack, unpack, ArchiveEntry, ArchiveLimits, ArchiveError from "@std/archive.ms"
 import Bytes from "@std/bytes.ms"
 
 fn digest(algorithm: HashAlgorithm, data: Bytes) Bytes:

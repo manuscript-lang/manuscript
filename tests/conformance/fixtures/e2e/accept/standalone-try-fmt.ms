@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,formatter,interfaces,match,modules,parser,records,stdlib-cleanup,stdlib-testing,strings,testing,tier-stdlib,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/standalone-try.ms
-import {expect_equal, expect_false, expect_ok, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test.ms"
 import Closeable from "@std/core.ms"
 import filesystem from "@std/fs.ms"
 

@@ -1,0 +1,6 @@
+{
+  "baseline": "/tmp/string-round2/normalization-factorial/baseline/program",
+  "normalize_only": "/tmp/string-round2/normalization-factorial/normalize_only/program",
+  "reverse_only": "/tmp/string-round2/normalization-factorial/reverse_only/program",
+  "combined": "/tmp/string-round2/normalization-factorial/combined/program"
+}

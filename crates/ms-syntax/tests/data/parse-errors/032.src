@@ -1,4 +1,4 @@
-import {expect_true} from "@std/test.ms"
+import expect_true from "@std/test.ms"
 
 test "primitive list loops":
     let ints = List[Int]()

@@ -3,7 +3,7 @@
 # conform: origin=tests/e2e/testdata/accept/successful-result-int-bounds.ms
 import Closeable from "@std/core.ms"
 import TextError from "@std/core.ms"
-import {expect_contains, expect_equal, expect_fault} from "@std/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test.ms"
 
 fn checked(n: Int) Result[Int, TextError]:
     if n < 0:

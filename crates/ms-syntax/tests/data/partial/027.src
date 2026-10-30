@@ -1,4 +1,4 @@
-import {expect_equal} from "@std/test.ms"
+import expect_equal from "@std/test.ms"
 
 fn identi(ty[T](value: T) T: value
 

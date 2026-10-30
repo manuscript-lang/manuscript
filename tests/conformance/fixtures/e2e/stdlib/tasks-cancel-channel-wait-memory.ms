@@ -3,8 +3,8 @@
 import Channel from "@std/channels.ms"
 import stdout from "@std/io.ms"
 import control from "@std/process.ms"
-import {TaskError, TaskGroup} from "@std/tasks.ms"
-import {expect_equal, expect_error, expect_ok} from "@std/test.ms"
+import TaskError, TaskGroup from "@std/tasks.ms"
+import expect_equal, expect_error, expect_ok from "@std/test.ms"
 
 # A task cancelled while parked in a channel receive must release the channel end it holds in a
 # stack slot while it waits. Debug builds keep that value in the slot, so the unwind pass has to

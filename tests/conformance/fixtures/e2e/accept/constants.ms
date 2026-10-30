@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,interpolation,lists,match,modules,mutation,optional,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/accept/constants.ms
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 let LIMIT = 10
 let DOUBLE = LIMIT * 2

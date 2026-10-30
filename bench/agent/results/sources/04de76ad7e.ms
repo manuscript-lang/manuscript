@@ -1,6 +1,6 @@
-import {read_line, stdin, stdout} from "@std/io.ms"
+import read_line, stdin, stdout from "@std/io.ms"
 import range from "@std/collections.ms"
-import {max, min} from "@std/math.ms"
+import max, min from "@std/math.ms"
 
 fn next_line() String:
     return read_line(stdin()).get().get("")

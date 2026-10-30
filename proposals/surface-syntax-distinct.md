@@ -29,7 +29,7 @@ Implemented on `claude/project-thread-1z7efx`, 2026-10-28. Direction (Chinmay): 
 | 6 | `elif c:` | `else if c:` |
 | 7 | `a if c else b` | `if c: a else: b` (chains with `else if`) |
 | 8 | `f"hi {name}"` | `"hi {name}"` (every string interpolates; literal braces are `\{` `\}`) |
-| 9 | `from "p" import A, B` | `import {A, B} from "p"` (`import A from "p"` for one name) |
+| 9 | `from "p" import A, B` | `import A, B from "p"` (`import A from "p"` for one name) |
 | 10 | `case P(a):` / `case _:` arms | `P(a):` / `_:` (alternatives in `type` keep `case`) |
 | 11 | `extern def` | `extern fn` |
 
@@ -41,7 +41,7 @@ Implemented on `claude/project-thread-1z7efx`, 2026-10-28. Direction (Chinmay): 
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `ms-syntax` token, lexer, parser, formatter | tokens `fn`/`unit`/`true`/`false`; one `fn` form; `import {..} from`; arms without `case`; interpolating strings; foreign-word diagnostics | `tests/corpus.rs`, `nested_text.rs`, `lambda_hints.rs`, conformance |
+| `ms-syntax` token, lexer, parser, formatter | tokens `fn`/`unit`/`true`/`false`; one `fn` form; `import .. from`; arms without `case`; interpolating strings; foreign-word diagnostics | `tests/corpus.rs`, `nested_text.rs`, `lambda_hints.rs`, conformance |
 | `ms-check` | type display, hints, import fixes, `import` suggestions | `golden.rs`, `callable_identity.rs`, conformance |
 | `ms-lsp`, `extensions/vscode` | completion, snippets, import actions, interpolation context, TextMate grammar | `ms-lsp` snapshots, `extensions/vscode/tests`, `tests/docs/highlighting.test.cjs` |
 | `ms-tooling` | `ms guide`, API pages, mistakes list | `guide_pages.rs`, `docs-check` |

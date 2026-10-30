@@ -231,10 +231,11 @@ fn element_wise_list_loops_use_neon() {
         assert!(
             asm.lines().any(|l| {
                 let l = l.trim_start();
-                ["fmul\tv", "fmla\tv", "fadd\tv"]
-                    .iter()
-                    .any(|op| l.starts_with(op))
-                    && l.contains(lane)
+                // ELF prints `fadd\tv0.2d`; Mach-O prints `fadd.2d\tv0`.
+                ["fmul", "fmla", "fadd"].iter().any(|op| {
+                    l.strip_prefix(op)
+                        .is_some_and(|rest| rest.starts_with("\tv") || rest.starts_with('.'))
+                }) && l.contains(lane)
             }),
             "no NEON {lane} arithmetic in:\n{asm}"
         );

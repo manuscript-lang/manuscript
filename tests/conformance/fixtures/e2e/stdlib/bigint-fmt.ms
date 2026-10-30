@@ -1,8 +1,8 @@
 # conform: tags=control-flow,formatter,interpolation,modules,optional,parser,stdlib-bigint,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/bigint.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {parse, from_int, BigInt, BigIntError} from "@std/math.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import parse, from_int, BigInt, BigIntError from "@std/math.ms"
 
 test "big integers exceed machine range without losing precision":
     let big = try parse("9223372036854775808", 10)

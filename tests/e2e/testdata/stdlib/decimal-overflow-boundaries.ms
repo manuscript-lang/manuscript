@@ -1,4 +1,4 @@
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 import Decimal from "@std/decimal.ms"
 
 test "Decimal magnitude rounding and underflow boundaries remain unchanged":

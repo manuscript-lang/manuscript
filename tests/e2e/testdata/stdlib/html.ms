@@ -1,6 +1,6 @@
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
 import clock from "@std/time.ms"
-import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
+import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError from "@std/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:

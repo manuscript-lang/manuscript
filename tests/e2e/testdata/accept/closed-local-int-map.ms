@@ -1,4 +1,4 @@
-import {expect_contains, expect_equal, expect_false, expect_fault, expect_true} from "@std/test.ms"
+import expect_contains, expect_equal, expect_false, expect_fault, expect_true from "@std/test.ms"
 
 fn effect(var visits: List[Int], value: Int) Int:
     visits.append(value)

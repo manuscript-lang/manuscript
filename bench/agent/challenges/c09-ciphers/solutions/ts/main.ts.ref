@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import readFileSync from "node:fs";
 
 function isUpper(c: number) { return c >= 65 && c <= 90; }
 function isLower(c: number) { return c >= 97 && c <= 122; }

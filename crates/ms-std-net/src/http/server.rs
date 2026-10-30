@@ -95,72 +95,6 @@ pub trait Dispatch {
 pub struct Options {
     pub limits: Limits,
     pub tls: Option<Arc<rustls::ServerConfig>>,
-    /// Share the listening socket with every other server of this process that serves the same
-    /// address text with `shared` set, so isolates on several threads accept from one port.
-    pub shared: bool,
-}
-
-/// Listening sockets shared between the servers (and so the threads) of the process, by address text:
-/// the first server binds, later ones duplicate the descriptor. Duplicating works the same on
-/// Linux, macOS and Windows, where `SO_REUSEPORT` is not available.
-static SHARED_LISTENERS: std::sync::Mutex<Vec<SharedListener>> = std::sync::Mutex::new(Vec::new());
-
-struct SharedListener {
-    address: String,
-    /// Keeps the port bound while any server uses it.
-    socket: socket2::Socket,
-    users: usize,
-}
-
-fn shared_listeners() -> std::sync::MutexGuard<'static, Vec<SharedListener>> {
-    SHARED_LISTENERS.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// A duplicate of `socket` that accepts without blocking. Windows gives a duplicated socket the
-/// default blocking mode, so it is set again.
-fn duplicate_listener(socket: &socket2::Socket) -> Result<socket2::Socket, NetErr> {
-    let copy = socket
-        .try_clone()
-        .map_err(|e| NetErr::failed(e.to_string()))?;
-    copy.set_nonblocking(true)
-        .map_err(|e| NetErr::failed(e.to_string()))?;
-    Ok(copy)
-}
-
-/// A duplicate of the shared listener for `address`, bound by `bind` when no server holds it.
-fn shared_listener(
-    address: &str,
-    bind: impl FnOnce() -> Result<socket2::Socket, NetErr>,
-) -> Result<socket2::Socket, NetErr> {
-    let mut all = shared_listeners();
-    if let Some(entry) = all.iter_mut().find(|e| e.address == address) {
-        let copy = duplicate_listener(&entry.socket)?;
-        entry.users += 1;
-        return Ok(copy);
-    }
-    let socket = bind()?;
-    let copy = duplicate_listener(&socket)?;
-    all.push(SharedListener {
-        address: address.to_string(),
-        socket,
-        users: 1,
-    });
-    Ok(copy)
-}
-
-/// Drops one user of the shared listener for `address`; true when it was the last, which
-/// owns shutting the port down.
-fn release_shared_listener(address: &str) -> bool {
-    let mut all = shared_listeners();
-    let Some(at) = all.iter().position(|e| e.address == address) else {
-        return true;
-    };
-    all[at].users -= 1;
-    if all[at].users == 0 {
-        all.remove(at);
-        return true;
-    }
-    false
 }
 
 // ---------------------------------------------------------------- connections
@@ -654,8 +588,6 @@ pub struct Server {
     /// Dropped on close: macOS keeps queueing connections on a shut-down listener until the
     /// descriptor itself closes.
     listener: RefCell<Option<socket2::Socket>>,
-    /// The address text under which the listener is shared with other servers, if it is.
-    shared_address: Option<String>,
     address: String,
     pub(super) limits: Limits,
     tls: Option<Arc<rustls::ServerConfig>>,
@@ -708,13 +640,32 @@ impl Server {
         if !owner.listen_allowed(address) {
             return Err(NetErr::PermissionDenied);
         }
-        let listener = if options.shared {
-            shared_listener(address, || owner.listen_tcp(address))?
-        } else {
-            owner.listen_tcp(address)?
-        };
+        let listener = owner.listen_tcp(address)?;
+        Self::create(owner, Some(listener), dispatch, options)
+    }
+
+    /// Starts a server without a listener: it serves the connections [`Server::adopt`] hands it,
+    /// accepted elsewhere (another thread's accept loop).
+    pub fn start_adopting(
+        owner: &Rc<Network>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
+        if owner.is_closed() {
+            return Err(NetErr::Closed);
+        }
+        Self::create(owner, None, dispatch, options)
+    }
+
+    fn create(
+        owner: &Rc<Network>,
+        listener: Option<socket2::Socket>,
+        dispatch: Box<dyn Dispatch>,
+        options: Options,
+    ) -> Result<Rc<Server>, NetErr> {
         let local = listener
-            .local_addr()
+            .as_ref()
+            .and_then(|l| l.local_addr().ok())
             .map(|a| crate::conn::socket_addr_text(&a))
             .unwrap_or_default();
         let reactor = Reactor::get();
@@ -729,8 +680,7 @@ impl Server {
             id,
             me: me.clone(),
             owner: owner.clone(),
-            listener: RefCell::new(Some(listener)),
-            shared_address: options.shared.then(|| address.to_string()),
+            listener: RefCell::new(listener),
             address: local,
             limits: options.limits,
             tls: options.tls,
@@ -755,7 +705,7 @@ impl Server {
             .listener
             .borrow()
             .as_ref()
-            .is_some_and(|l| reactor.add(l.as_sock(), token, Ev::IN));
+            .is_none_or(|l| reactor.add(l.as_sock(), token, Ev::IN));
         if !watched {
             reactor.targets.borrow_mut().remove(&token);
             return Err(NetErr::failed("cannot watch listener"));
@@ -767,6 +717,20 @@ impl Server {
             return Err(NetErr::Closed);
         }
         Ok(server)
+    }
+
+    /// Serves a connection accepted elsewhere. `raw` comes from `Listener::accept_raw` and is
+    /// consumed here; a closing server drops (closes) it, and a number that is not an outstanding
+    /// handle is ignored. Call it on the thread that owns the server.
+    pub fn adopt(&self, raw: i64) {
+        let Some(sock) = crate::conn::take_raw_handle(raw) else {
+            return;
+        };
+        if self.st.borrow().closing || sock.set_nonblocking(true).is_err() {
+            return;
+        }
+        let _ = sock.set_tcp_nodelay(true);
+        self.add_conn(sock, &Reactor::get());
     }
 
     pub fn id(&self) -> usize {
@@ -829,14 +793,7 @@ impl Server {
         }
         if let Some(listener) = self.listener.borrow_mut().take() {
             reactor.delete(listener.as_sock());
-            // Other servers still accept on a shared port: shut it down with the last one.
-            let last = self
-                .shared_address
-                .as_deref()
-                .is_none_or(release_shared_listener);
-            if last {
-                let _ = listener.shutdown(std::net::Shutdown::Both);
-            }
+            let _ = listener.shutdown(std::net::Shutdown::Both);
         }
         reactor.targets.borrow_mut().remove(&self.token);
         // Idle connections close now; the others after their current response.
@@ -1798,11 +1755,7 @@ pub(crate) mod tests {
     }
 
     pub fn opts(limits: Limits) -> Options {
-        Options {
-            limits,
-            tls: None,
-            shared: false,
-        }
+        Options { limits, tls: None }
     }
 
     fn get(path: &str) -> Vec<u8> {
@@ -1820,6 +1773,45 @@ pub(crate) mod tests {
         assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Date: "));
         assert!(text.ends_with("\r\n\r\nGET|/hello|x=1|HTTP/1.1"), "{text}");
+    }
+
+    #[test]
+    fn serves_connections_accepted_elsewhere() {
+        let net = Network::new_root();
+        let server =
+            Server::start_adopting(&net, Box::new(Buffered(App)), opts(Limits::default())).unwrap();
+        assert_eq!(server.address(), "");
+        let listener = crate::conn::Listener::new(
+            net.clone(),
+            net.listen_tcp("127.0.0.1:0").unwrap(),
+            None,
+            None,
+            None,
+        );
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/handed")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        // A plain listener hands the socket over; the server answers on it from here.
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        let text = client.join().unwrap();
+        assert!(text.starts_with("HTTP/1.1 200 OK\r\n"), "{text}");
+        assert!(text.ends_with("GET|/handed||HTTP/1.1"), "{text}");
+        // An invented or reused number is ignored, not closed as a descriptor.
+        server.adopt(-1);
+        server.adopt(raw);
+        // A closed adopting server closes what it is handed.
+        server.close().unwrap();
+        let addr = listener.address().to_string();
+        let client = std::thread::spawn(move || exchange(&addr, &get("/late")));
+        let raw = listener.accept_raw(Some(5_000_000_000)).unwrap();
+        server.adopt(raw);
+        while !client.is_finished() {
+            crate::wait::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(client.join().unwrap(), "");
     }
 
     #[test]

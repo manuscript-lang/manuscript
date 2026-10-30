@@ -1,1 +1,1 @@
-error parse 9:12:146 "a local fn cannot take type parameters; declare a generic function at module level"
+error parse 9:12:144 "a local fn cannot take type parameters; declare a generic function at module level"

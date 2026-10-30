@@ -1,4 +1,4 @@
-import {headers, HttpRequest, HttpResponse} from "@std/http.ms"
+import headers, HttpRequest, HttpResponse from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 

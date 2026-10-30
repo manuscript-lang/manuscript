@@ -966,7 +966,11 @@ impl Checker {
                 .data_blocker(t, &mut Vec::new(), &mut Vec::new())
                 .is_none();
         }
-        if property == "Hashable" && self.holds_resource(t, &mut Vec::new()) {
+        // A resource anywhere in the value (a field, an alternative case, a type argument) has
+        // one owner: it is never hashed as a key or duplicated.
+        if (property == "Hashable" || property == "Clonable")
+            && self.holds_resource(t, &mut Vec::new())
+        {
             return false;
         }
         let key = format!("{}{}", type_key(t), property);

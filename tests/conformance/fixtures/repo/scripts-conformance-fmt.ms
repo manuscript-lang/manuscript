@@ -1,7 +1,7 @@
 # conform: tags=closures,control-flow,faults,formatter,interpolation,lists,match,modules,mutation,parser,records,stdlib-fs,stdlib-io,stdlib-json,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=scripts/conformance.ms
-import {expect_equal, expect_false, expect_some, expect_true, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_some, expect_true, fail from "@std/test.ms"
 import stdout from "@std/io.ms"
 import arguments from "@std/process.ms"
 import filesystem from "@std/fs.ms"

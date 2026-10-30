@@ -1,15 +1,22 @@
 # Request routing and middleware over `HttpExchange`, implemented in Manuscript.
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {
-    headers, HttpError, HttpExchange, HttpHeaders, HttpMethod, HttpRequest,
-    HttpResponse, reply, text
-} from "@std/http.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import (
+    headers,
+    HttpError,
+    HttpExchange,
+    HttpHeaders,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    reply,
+    text
+) from "@std/http.ms"
 import IoError from "@std/io.ms"
-import {WebSocket, WebSocketError} from "@std/net.ms"
-import {Logger, LogLevel, record} from "@std/log.ms"
-import {entropy, uuid_v4} from "@std/random.ms"
+import WebSocket, WebSocketError from "@std/net.ms"
+import Logger, LogLevel, record from "@std/log.ms"
+import entropy, uuid_v4 from "@std/random.ms"
 import clock from "@std/time.ms"
-import {Shared, share} from "@std/shared.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 
 # Errors returned while registering a route.

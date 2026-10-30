@@ -1,6 +1,6 @@
 # Backtracking regular-expression engine and line-based command driver.
 # Strings are handled as lists of byte values (0-255); output is always ASCII.
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 let C_TAB = 9

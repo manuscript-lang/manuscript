@@ -1,5 +1,5 @@
 import TextError from "@std/core.ms"
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 

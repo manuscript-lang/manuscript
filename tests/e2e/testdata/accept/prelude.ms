@@ -1,4 +1,4 @@
-import {expect_equal, expect_false, fail} from "@std/test.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
 
 type Failure:
     message_text: String

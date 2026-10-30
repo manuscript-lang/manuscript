@@ -1,2 +1,2 @@
-import {expect_equal} from "@std/test.ms"
+import expect_equal from "@std/test.ms"
 import {Entropy, RandomError, secure_

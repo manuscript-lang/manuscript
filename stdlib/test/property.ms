@@ -1,11 +1,11 @@
 import Pair from "@std/collections.ms"
 import panic from "@std/core.ms"
 import stderr from "@std/io.ms"
-import {bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int} from "@std/math.ms"
+import bit_xor, shift_right_unsigned, wrapping_add, wrapping_multiply, max_int from "@std/math.ms"
 import control from "@std/process.ms"
-import {entropy, secure_int} from "@std/random.ms"
-import {expect_fault, fail} from "@std/test.ms"
-import {clock, milliseconds} from "@std/time.ms"
+import entropy, secure_int from "@std/random.ms"
+import expect_fault, fail from "@std/test.ms"
+import clock, milliseconds from "@std/time.ms"
 
 # Property-based testing for `test` blocks. A property is a function that must hold for every value a generator produces.
 # `check` runs it on many generated values and, on failure, shrinks the input to a small counterexample.

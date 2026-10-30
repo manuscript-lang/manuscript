@@ -111,7 +111,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "(" => "; a call or parameter list starts with '('".into(),
         "from" => {
             if found == Tok::Comma {
-                "; to import several names, write import {a, b} from \"path.ms\"".into()
+                "; to import several names, write import a, b from \"path.ms\"".into()
             } else {
                 "; imports read: import name from \"path.ms\"".into()
             }
@@ -177,10 +177,9 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("export"),
             "write 'export' before the declaration to make it visible to other modules",
         ),
-        "use" | "require" | "include" | "using" | "from" => (
-            Some("import"),
-            "imports read: import {name} from \"path.ms\"",
-        ),
+        "use" | "require" | "include" | "using" | "from" => {
+            (Some("import"), "imports read: import name from \"path.ms\"")
+        }
         "static" | "private" | "internal" | "async" | "extern" | "package" | "namespace"
         | "module" => (
             None,
@@ -511,7 +510,7 @@ impl<'a> Parser<'a> {
                 && self.ahead(1).kind == Tok::String
             {
                 let t = self.peek();
-                return self.fail(t, "imports read: import {name, other} from \"path.ms\"");
+                return self.fail(t, "imports read: import name, other from \"path.ms\"");
             }
             let exported = self.take(Tok::Export);
             let decls = self.declarations()?;
@@ -527,29 +526,33 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses the rest of `import {a, b} from "path"` after `import`.
+    /// Parses the rest of `import a, b from "path"` after `import`.
     fn import(&mut self, module: &mut Module) -> PResult<()> {
         let pos = self.previous().pos;
         let mut names: Vec<Token> = Vec::new();
         if self.kind() == Tok::Star {
             let t = self.peek();
-            return self.fail(t, "namespace and wildcard imports are unsupported; import individual exports with 'import { Name, OtherName } from \"./module.ms\"'");
+            return self.fail(t, "namespace and wildcard imports are unsupported; import individual exports with 'import Name, OtherName from \"./module.ms\"'");
         }
-        if self.take(Tok::LBrace) {
-            // A named import list is nonempty and permits a trailing comma.
-            loop {
-                names.push(self.need(Tok::Name)?);
-                if self.kind() == Tok::Name && self.text(self.peek()) == "as" {
-                    let t = self.peek();
-                    return self.fail(t, "imports cannot be renamed with 'as'; import the name as the module declares it");
-                }
-                if !self.take(Tok::Comma) || self.kind() == Tok::RBrace {
-                    break;
-                }
-            }
-            self.need(Tok::RBrace)?;
-        } else {
+        if self.kind() == Tok::LBrace {
+            let t = self.peek();
+            return self.fail(t, "imports take no braces; write 'import a, b from \"path.ms\"', or 'import (a, b) from \"path.ms\"' to wrap across lines");
+        }
+        // A bare list is comma-separated on one line; a parenthesized list
+        // wraps across lines and permits a trailing comma. Both are nonempty.
+        let wrapped = self.take(Tok::LParen);
+        loop {
             names.push(self.need(Tok::Name)?);
+            if self.kind() == Tok::Name && self.text(self.peek()) == "as" {
+                let t = self.peek();
+                return self.fail(t, "imports cannot be renamed with 'as'; import the name as the module declares it");
+            }
+            if !self.take(Tok::Comma) || (wrapped && self.kind() == Tok::RParen) {
+                break;
+            }
+        }
+        if wrapped {
+            self.need(Tok::RParen)?;
         }
         self.need_from()?;
         let token = self.need(Tok::String)?;
@@ -1511,6 +1514,9 @@ impl<'a> Parser<'a> {
                     let pat = self.pattern()?;
                     if !matches!(pat.kind, PatternKind::Name(_)) {
                         return self.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch");
+                    }
+                    if self.kind() == Tok::LParen {
+                        return self.fail(t, "if let unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if let value = optional:'");
                     }
                     binding = Some(pat);
                     self.need(Tok::Assign)?;

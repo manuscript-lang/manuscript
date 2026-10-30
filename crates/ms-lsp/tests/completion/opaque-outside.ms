@@ -1,4 +1,4 @@
-import {mk} from "./gate.ms"
+import mk from "./gate.ms"
 
 export fn main() Int:
     let t = mk()

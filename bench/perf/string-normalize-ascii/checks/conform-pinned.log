@@ -1,0 +1,6 @@
+4153 fixtures, 0 problems
+running 2393 of 4153 fixtures with /tmp/string-round2/ms
+2393 fixtures: 2393 pass, 0 fail, 0 expected fail, 0 unexpected pass, 0 unrecorded (100.0%)
+  check   1603/1603  100.0%
+  run      531/531   100.0%
+  test     259/259   100.0%

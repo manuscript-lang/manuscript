@@ -1,8 +1,8 @@
 # TOML 1.0 parser implemented in Manuscript.
-import {parse_int, parse_float} from "@std/math.ms"
-import {from_scalars, StringBuilder, Regex, compile} from "@std/string.ms"
+import parse_int, parse_float from "@std/math.ms"
+import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
 import Bytes from "@std/bytes.ms"
-import {log, sqrt} from "@std/math.ms"
+import log, sqrt from "@std/math.ms"
 
 # A TOML value. Date and time values retain their original TOML text.
 export type TomlValue:

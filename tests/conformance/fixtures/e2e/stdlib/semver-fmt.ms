@@ -1,9 +1,9 @@
 # conform: tags=control-flow,formatter,interpolation,match,modules,mutation,parser,stdlib-errors,stdlib-semver,stdlib-testing,testing,tier-stdlib,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/semver.ms
-import {expect_equal, expect_false, expect_ok, fail} from "@std/test.ms"
+import expect_equal, expect_false, expect_ok, fail from "@std/test.ms"
 import TextError from "@std/core.ms"
-import {parse, format, compare, Version, SemverError} from "@std/semver.ms"
+import parse, format, compare, Version, SemverError from "@std/semver.ms"
 
 fn failure(result: Result[Version, SemverError]) Result[SemverError, Error]:
     match result:

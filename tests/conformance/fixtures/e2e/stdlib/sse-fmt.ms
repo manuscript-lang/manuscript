@@ -1,10 +1,10 @@
 # conform: tags=closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-collections,stdlib-io,stdlib-sse,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/sse.ms
-import {expect_equal, expect_false, fail} from "@std/test.ms"
-import {decoder, reader, next_event, SseError, SseEvent, SseLimits} from "@std/sse.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
-import {IoError, ReadStream} from "@std/io.ms"
+import expect_equal, expect_false, fail from "@std/test.ms"
+import decoder, reader, next_event, SseError, SseEvent, SseLimits from "@std/sse.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
+import IoError, ReadStream from "@std/io.ms"
 
 type Chunks:
     parts: List[Bytes]

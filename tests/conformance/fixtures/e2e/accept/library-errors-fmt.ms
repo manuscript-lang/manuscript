@@ -1,9 +1,9 @@
 # conform: tags=aliasing,alternatives,control-flow,formatter,generics,interfaces,interpolation,lists,match,modules,parser,records,stdlib-encoding,stdlib-fs,stdlib-io,stdlib-json,stdlib-log,stdlib-process,stdlib-testing,strings,testing,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/library-errors.ms
-import {expect_equal, expect_false, expect_true, fail} from "@std/test.ms"
-import {parse, JsonError, JsonLimits} from "@std/json.ms"
-import {EncodingError, hex_decode} from "@std/encoding.ms"
+import expect_equal, expect_false, expect_true, fail from "@std/test.ms"
+import parse, JsonError, JsonLimits from "@std/json.ms"
+import EncodingError, hex_decode from "@std/encoding.ms"
 
 type ApplicationError:
     case Json(cause: JsonError)

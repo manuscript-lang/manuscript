@@ -1,11 +1,20 @@
 # conform: tags=closures,generics,lists,stdlib-property,stdlib-testing,testing,tier-io,try-result
 # conform: phase=test
-import {
-    check, ints, bools, lists, strings, optionals, pairs, floats, element_of, one_of,
+import (
+    check,
+    ints,
+    bools,
+    lists,
+    strings,
+    optionals,
+    pairs,
+    floats,
+    element_of,
+    one_of,
     constant
-} from "@std/test/property.ms"
+) from "@std/test/property.ms"
 import panic from "@std/core.ms"
-import {expect_equal, expect_true, expect_contains, expect_error} from "@std/test.ms"
+import expect_equal, expect_true, expect_contains, expect_error from "@std/test.ms"
 
 test "a true property passes":
     try check(

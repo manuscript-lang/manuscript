@@ -1,6 +1,6 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
-import {BigInt, from_int, floor, sqrt, pow} from "@std/math.ms"
+import BigInt, from_int, floor, sqrt, pow from "@std/math.ms"
 
 # ---------- Values, expressions and cells ----------
 

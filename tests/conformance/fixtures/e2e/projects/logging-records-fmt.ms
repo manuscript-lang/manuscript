@@ -1,7 +1,7 @@
 # conform: tags=formatter,lists,modules,optional,parser,records,stdlib-log,strings,tier-io,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/projects/logging/records.ms
-import {Logger, LogError, LogLevel, record, bind} from "@std/log.ms"
+import Logger, LogError, LogLevel, record, bind from "@std/log.ms"
 
 type Request:
     request: String

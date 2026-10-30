@@ -1,8 +1,8 @@
 # conform: tags=control-flow,faults,interpolation,lists,match,modules,mutation,stdlib-html,stdlib-testing,strings,testing,tier-stdlib,try-result
 # conform: phase=test
 # conform: origin=tests/e2e/testdata/stdlib/html.ms
-import {expect_equal, expect_false, expect_not_equal, fail} from "@std/test.ms"
-import {escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError} from "@std/html.ms"
+import expect_equal, expect_false, expect_not_equal, fail from "@std/test.ms"
+import escape, parse, HtmlNode, HtmlAttribute, HtmlLimits, HtmlError from "@std/html.ms"
 
 fn children(node: HtmlNode) List[HtmlNode]:
     match node:

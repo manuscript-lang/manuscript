@@ -313,7 +313,22 @@ impl Checker {
                 .any(|(p, q)| !mentions_variable(&p.ty, vars) && !same(&p.ty, &q.ty))
                 || (!mentions_variable(&substituted.result_ty(), vars)
                     && !same(&substituted.result_ty(), &actual_ty.result_ty())));
+        if mentions_variable(&pattern, vars)
+            && pattern.kind == Kind::Contract
+            && actual_ty.kind != Kind::Contract
+        {
+            self.type_error(
+                arg.pos,
+                format!(
+                    "cannot infer {pattern} from {actual_ty}; passing a value as an interface adds no inference evidence, so give type arguments explicitly, e.g. f[Int](...)"
+                ),
+            );
+            self.unknown_type = true;
+            self.label_mismatch = true;
+            return;
+        }
         if mentions_variable(&pattern, vars) && !concrete_callback_mismatch {
+            self.conflicted_arguments.insert(arg.value.id);
             self.type_error(arg.pos, CONFLICTING_INFERENCE);
         }
     }

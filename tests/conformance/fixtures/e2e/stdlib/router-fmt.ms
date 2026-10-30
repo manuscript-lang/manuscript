@@ -1,18 +1,28 @@
 # conform: tags=aliasing,closures,control-flow,faults,formatter,interfaces,interpolation,lists,modules,mutation,optional,parser,records,stdlib-bytes,stdlib-http,stdlib-io,stdlib-log,stdlib-net,stdlib-router,stdlib-shared,stdlib-sse,stdlib-sync,stdlib-testing,strings,testing,tier-io,try-result,scope-cleanup
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/router.ms
-import {expect_equal, expect_true} from "@std/test.ms"
-import {
-    headers, json, redirect, reply, text, HttpError, HttpExchange, HttpMethod,
-    HttpRequest, HttpResponse, HttpClientOptions, HttpServerOptions
-} from "@std/http.ms"
+import expect_equal, expect_true from "@std/test.ms"
+import (
+    headers,
+    json,
+    redirect,
+    reply,
+    text,
+    HttpError,
+    HttpExchange,
+    HttpMethod,
+    HttpRequest,
+    HttpResponse,
+    HttpClientOptions,
+    HttpServerOptions
+) from "@std/http.ms"
 import read_all from "@std/io.ms"
 import network from "@std/net.ms"
-import {create, LogError, Transport} from "@std/log.ms"
-import {Shared, share} from "@std/shared.ms"
+import create, LogError, Transport from "@std/log.ms"
+import Shared, share from "@std/shared.ms"
 import lock from "@std/sync.ms"
 import Bytes from "@std/bytes.ms"
-import {access_log, request_id, RouteParams, Router, RouterError} from "@std/router.ms"
+import access_log, request_id, RouteParams, Router, RouterError from "@std/router.ms"
 import body_stream from "@std/sse.ms"
 
 fn get(path: String) HttpRequest:

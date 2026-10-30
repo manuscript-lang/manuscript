@@ -1,7 +1,7 @@
 # conform: tags=control-flow,formatter,interpolation,modules,mutation,parser,stdlib-io,stdlib-time,tier-io
 # conform: phase=parse
 # conform: origin=bench/perf/results/2026-10-18-linux-amd64/dynamic-counter.ms
-import {clock, Instant} from "@std/time.ms"
+import clock, Instant from "@std/time.ms"
 import stdout from "@std/io.ms"
 
 fn measure(start: Int) Int:

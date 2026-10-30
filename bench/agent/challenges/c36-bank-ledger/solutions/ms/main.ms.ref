@@ -1,4 +1,4 @@
-import {stdin, stdout, read_line} from "@std/io.ms"
+import stdin, stdout, read_line from "@std/io.ms"
 import StringBuilder from "@std/string.ms"
 
 type Account:

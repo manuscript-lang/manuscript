@@ -37,6 +37,9 @@ pub unsafe fn cloned(s: &StrVal) -> StrVal {
 /// Writes an owned copy of `s` to `out` (what `.clone()` and every implicit copy of a string do).
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_clone(s: *const StrVal, out: *mut StrVal) {
+    #[cfg(feature = "stats")]
+    // SAFETY: caller passes a live string.
+    count_copy(1, unsafe { bytes(&*s) }.len());
     // SAFETY: caller passes a live string and a writable `out`.
     unsafe { cloned(&*s).write_to(out) }
 }
@@ -2359,6 +2362,20 @@ crate::isolate_static! {
 /// the program was compiled with `MS_COUNT_STR` set (see `ms-clif`); printed at exit by the `stats` runtime.
     pub static STR_COUNTS: [u64; 4] = [0; 4];
 }
+crate::isolate_static! {
+/// Deep copies the runtime performed, `[list copies, list bytes, string clones, string bytes]` (the `stats` runtime).
+    pub static COPY_COUNTS: [u64; 4] = [0; 4];
+}
+/// Records one deep copy of `kind` (0 list, 1 string) moving `bytes` bytes.
+#[cfg(feature = "stats")]
+pub fn count_copy(kind: usize, bytes: usize) {
+    // SAFETY: single threaded access to the counters.
+    unsafe {
+        let c = &mut *COPY_COUNTS.ptr();
+        c[kind * 2] += 1;
+        c[kind * 2 + 1] += bytes as u64;
+    }
+}
 /// Records one executed string drop (`kind` 0) or copy (1) of a string whose capacity word is `cap`.
 #[unsafe(no_mangle)]
 pub extern "C" fn msrt_str_count(kind: i64, cap: i64) {
@@ -2879,6 +2896,112 @@ mod tests {
             );
             assert_eq!(msrt_string_repeat(st(""), 3, 1, 0, &mut out), STATUS_OK);
             assert_eq!(txt(&out), "");
+        }
+    }
+
+    #[test]
+    fn normalization_preserves_valid_and_malformed_scalar_sequences_with_budgets() {
+        let _g = testutil::lock();
+        let ascii: S = (0u8..=127).map(char::from).collect();
+        let cases: &[(&[u8], [&str; 4])] = &[
+            (b"", [""; 4]),
+            (b"A\0z", ["A\0z"; 4]),
+            (ascii.as_bytes(), [ascii.as_str(); 4]),
+            ("e\u{301}".as_bytes(), ["é", "e\u{301}", "é", "e\u{301}"]),
+            ("ﬁ①".as_bytes(), ["ﬁ①", "ﬁ①", "fi1", "fi1"]),
+            (
+                "a\u{315}\u{300}".as_bytes(),
+                ["à\u{315}", "a\u{300}\u{315}", "à\u{315}", "a\u{300}\u{315}"],
+            ),
+            ("각".as_bytes(), ["각", "각", "각", "각"]),
+            ("\u{FFFD}".as_bytes(), ["\u{FFFD}"; 4]),
+            (&[0xff, 0, b'a'], ["\u{FFFD}\0a"; 4]),
+            (&[b'a', 0xff], ["a\u{FFFD}"; 4]),
+            (&[0xc0, 0xaf], ["\u{FFFD}\u{FFFD}"; 4]),
+            (&[0xf0, 0x9f, 0x98], ["\u{FFFD}\u{FFFD}\u{FFFD}"; 4]),
+            (&[0xed, 0xa0, 0x80], ["\u{FFFD}\u{FFFD}\u{FFFD}"; 4]),
+            (
+                &[0xf4, 0x90, 0x80, 0x80],
+                ["\u{FFFD}\u{FFFD}\u{FFFD}\u{FFFD}"; 4],
+            ),
+            (
+                &[0xff, b'e', 0xcc, 0x81],
+                [
+                    "\u{FFFD}é",
+                    "\u{FFFD}e\u{301}",
+                    "\u{FFFD}é",
+                    "\u{FFFD}e\u{301}",
+                ],
+            ),
+        ];
+        for &(data, forms) in cases {
+            let input = from_bytes(data);
+            for (kind, expected) in forms.into_iter().enumerate() {
+                for limit in [
+                    None,
+                    Some(0),
+                    Some(expected.len()),
+                    Some(expected.len().saturating_sub(1)),
+                    Some(expected.len() + 1),
+                ] {
+                    let mut actual = from_bytes(b"sentinel");
+                    let expected_status = if limit.is_some_and(|max| expected.len() > max) {
+                        STATUS_LIMIT_EXCEEDED
+                    } else {
+                        STATUS_OK
+                    };
+                    // SAFETY: input and actual are live, and kind is one of the four forms.
+                    unsafe {
+                        let status = msrt_string_normalize_kind(
+                            &input,
+                            kind as i64,
+                            u8::from(limit.is_some()),
+                            limit.unwrap_or(0) as i64,
+                            &mut actual,
+                        );
+                        assert_eq!(
+                            status, expected_status,
+                            "input {data:?}, form {kind}, limit {limit:?}"
+                        );
+                        let expected_bytes = if status == STATUS_OK {
+                            expected.as_bytes()
+                        } else {
+                            b"sentinel"
+                        };
+                        assert_eq!(
+                            bytes(&actual),
+                            expected_bytes,
+                            "input {data:?}, form {kind}, limit {limit:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn normalization_keeps_invalid_form_and_negative_budget_errors() {
+        let _g = testutil::lock();
+        // SAFETY: st creates live input strings and actual is a writable live output.
+        unsafe {
+            for form in ["", "nfc", "NFC\0", "UNKNOWN"] {
+                for (has_max, max) in [(0, 0), (1, -1)] {
+                    let mut actual = from_bytes(b"sentinel");
+                    assert_eq!(
+                        msrt_string_normalize(st("é"), st(form), has_max, max, &mut actual),
+                        STATUS_INVALID_INPUT
+                    );
+                    assert_eq!(bytes(&actual), b"sentinel");
+                }
+            }
+            for form in ["NFC", "NFD", "NFKC", "NFKD"] {
+                let mut actual = from_bytes(b"sentinel");
+                assert_eq!(
+                    msrt_string_normalize(st("é"), st(form), 1, -1, &mut actual),
+                    STATUS_INVALID_INPUT
+                );
+                assert_eq!(bytes(&actual), b"sentinel");
+            }
         }
     }
 

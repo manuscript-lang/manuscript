@@ -1,0 +1,23 @@
+{
+  "format": 1,
+  "command": "build",
+  "build_type": "Release",
+  "source_root": "/tmp/string-round2/integration-controls",
+  "output": "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget",
+  "completed": true,
+  "exit_code": 0,
+  "artifacts": [
+    {
+      "kind": "executable",
+      "path": "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget",
+      "state": "verified"
+    },
+    {
+      "kind": "build_metadata",
+      "path": "/tmp/string-round2/normalization-partial-revert/performance/lazy/budget.ms-build.json",
+      "state": "verified"
+    }
+  ],
+  "stdout": "",
+  "diagnostics": []
+}

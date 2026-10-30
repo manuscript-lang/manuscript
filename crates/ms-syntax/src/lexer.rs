@@ -78,6 +78,8 @@ struct Scanner<'a> {
     virtual_paren: bool,
 }
 
+const BIDI_COMMENT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in comments because they can make source display differently from how it is read; remove the character";
+const BIDI_TEXT: &str = "bidirectional text controls (U+202A..U+202E, U+2066..U+2069) are not allowed in text because they can make source display differently from how it is read; write the escape instead, e.g. \\u{202E}";
 const BRACE_HINT: &str = "'{' starts an interpolation; write \\{ and \\} for literal braces";
 const MAX_INTERPOLATION_DEPTH: usize = 1000;
 
@@ -709,11 +711,23 @@ impl Scanner<'_> {
         false
     }
 
+    /// Whether the UTF-8 sequence at `at` is a bidirectional text control (U+202A..U+202E,
+    /// U+2066..U+2069), which can make source display differently from how it is read.
+    fn bidi_control_at(&self, at: usize) -> bool {
+        matches!(
+            self.src.get(at..at + 3),
+            Some([0xE2, 0x80, 0xAA..=0xAE] | [0xE2, 0x81, 0xA6..=0xA9])
+        )
+    }
+
     /// Consumes a comment through the end of its physical line.
     fn skip_comment(&mut self) -> PResult<()> {
         while self.offset < self.src.len() && self.src[self.offset] != b'\n' {
             if self.src[self.offset] == b'\r' {
                 return self.fail("lone carriage returns are not allowed in comments; use line endings of LF or CRLF");
+            }
+            if self.bidi_control_at(self.offset) {
+                return self.fail(BIDI_COMMENT);
             }
             self.advance();
         }
@@ -857,6 +871,9 @@ impl Scanner<'_> {
             }
             if b < 32 {
                 return self.fail("literal control characters are not allowed in text; write an escape such as \\t, \\r, or \\u{H}");
+            }
+            if b == 0xE2 && self.bidi_control_at(self.offset - 1) {
+                return self.fail(BIDI_TEXT);
             }
             if b == b'\\' {
                 let mut backslash = self.pos();

@@ -119,6 +119,8 @@ pub struct Program {
     pub implicit_closes: Rc<HashSet<usize>>,
     /// The name expressions that move a closed resource binding, by binding.
     pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
+    /// Payload bindings of a consumed match scrutinee that some path moves out.
+    pub moved_payloads: Rc<HashSet<usize>>,
     /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
     /// file and node, with the fields. Filled together with `borrows`.
     pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
@@ -220,6 +222,8 @@ pub struct Checker {
     pub(crate) reported_bounds: HashSet<String>,
     pub(crate) in_declaration_checks: bool,
     pub(crate) label_mismatch: bool,
+    /// Arguments whose generic-inference conflict is already reported, so the final argument check stays quiet.
+    pub(crate) conflicted_arguments: HashSet<ms_syntax::ast::NodeId>,
     pub(crate) call_name: String,
     pub(crate) call_pos: Option<Pos>,
     pub(crate) captures: HashMap<usize, HashMap<usize, BindingRef>>,
@@ -263,6 +267,7 @@ impl Checker {
             reported_bounds: HashSet::new(),
             in_declaration_checks: false,
             label_mismatch: false,
+            conflicted_arguments: HashSet::new(),
             call_name: String::new(),
             call_pos: None,
             captures: HashMap::new(),
@@ -1119,6 +1124,18 @@ impl Checker {
         }
         for (i, p) in params.iter().enumerate() {
             for b in &p.bounds {
+                // A declaration's own parameters are not registered yet, so resolving it here would misreport its arity.
+                if let TypeKind::Named { name, .. } = &b.kind
+                    && !self.scope.types.borrow().contains_key(name)
+                    && let Some(s) = self.sym(*name).filter(|s| s.kind == SymKind::Type)
+                    && !matches!(s.ty().kind, Kind::Contract | Kind::Variable)
+                {
+                    self.type_error(
+                        b.pos,
+                        "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
+                    );
+                    continue;
+                }
                 let t = self.resolve(Some(b));
                 if t.kind != Kind::Contract {
                     if t.kind == Kind::Variable {

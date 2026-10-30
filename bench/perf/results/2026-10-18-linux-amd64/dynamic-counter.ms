@@ -1,4 +1,4 @@
-import {clock, Instant} from "@std/time.ms"
+import clock, Instant from "@std/time.ms"
 import stdout from "@std/io.ms"
 
 fn measure(start: Int) Int:

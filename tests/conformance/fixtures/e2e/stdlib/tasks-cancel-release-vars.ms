@@ -4,7 +4,7 @@
 # CI runs this program against the counting runtime (scripts/leak-check.sh): any live block fails.
 import stdout from "@std/io.ms"
 import TaskGroup from "@std/tasks.ms"
-import {nanoseconds, sleep} from "@std/time.ms"
+import nanoseconds, sleep from "@std/time.ms"
 import Channel from "@std/channels.ms"
 
 type Box:

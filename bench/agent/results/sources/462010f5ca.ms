@@ -1,4 +1,4 @@
-import {stdin, stdout} from "@std/io.ms"
+import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 # A calendar time to the minute; `year` is 0 when a parsed START was invalid.

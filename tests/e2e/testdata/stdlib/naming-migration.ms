@@ -1,6 +1,6 @@
-import {expect_equal, expect_false} from "@std/test.ms"
-import {MapBuilder, SetBuilder, ListBuilder} from "@std/collections.ms"
-import {Bytes, BytesBuilder} from "@std/bytes.ms"
+import expect_equal, expect_false from "@std/test.ms"
+import MapBuilder, SetBuilder, ListBuilder from "@std/collections.ms"
+import Bytes, BytesBuilder from "@std/bytes.ms"
 import StringBuilder from "@std/string.ms"
 
 type Counter:

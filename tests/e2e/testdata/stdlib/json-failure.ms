@@ -1,4 +1,4 @@
-import {parse, JsonValue, JsonError, JsonLimits} from "@std/json.ms"
+import parse, JsonValue, JsonError, JsonLimits from "@std/json.ms"
 import expect_equal from "@std/test.ms"
 
 test "JSON syntax errors keep their identity with unread Unicode suffixes":

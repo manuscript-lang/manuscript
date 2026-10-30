@@ -1,4 +1,4 @@
-import {expect_equal, expect_true} from "@std/test.ms"
+import expect_equal, expect_true from "@std/test.ms"
 import sqrt from "@std/math.ms"
 
 fn increment(value: Int) Int:

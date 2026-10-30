@@ -2,7 +2,7 @@
 # conform: phase=check
 # conform: origin=documentation/learn/common-tasks.md:240
 import arguments from "@std/process.ms"
-import {HttpError, HttpMethod, headers} from "@std/http.ms"
+import HttpError, HttpMethod, headers from "@std/http.ms"
 import network from "@std/net.ms"
 import stdout from "@std/io.ms"
 

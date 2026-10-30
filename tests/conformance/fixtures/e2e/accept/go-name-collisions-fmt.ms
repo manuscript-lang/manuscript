@@ -1,7 +1,7 @@
 # conform: tags=alternatives,control-flow,formatter,generics,interfaces,interpolation,match,modules,parser,records,stdlib-testing,strings,testing,tier-core,try-result
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/accept/go-name-collisions.ms
-import {expect_equal, expect_false} from "@std/test.ms"
+import expect_equal, expect_false from "@std/test.ms"
 
 type Spelled:
     x_: Int
