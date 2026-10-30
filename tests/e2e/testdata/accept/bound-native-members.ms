@@ -43,7 +43,6 @@ test "builder":
     append("é")
     (sb.build() == "aé") | try expect_true
 
-
 test "abs of the minimum overflows":
     let smallest = 0 - 9223372036854775807 - 1
     let message = try expect_fault(
