@@ -182,6 +182,11 @@ impl FnLower<'_> {
         close_call(&mut self.b, &kind, v, mt);
     }
 
+    /// Calls the close operation `kind` on `v` of MIR type `ty`.
+    pub(crate) fn close_with(&mut self, kind: &CloseKind, v: Value, ty: MTy) {
+        close_call(&mut self.b, kind, v, ty);
+    }
+
     /// Closes `x` when it is an owned temporary of a resource type that nothing takes.
     pub(crate) fn close_owned_temp(&mut self, x: crate::func::Val) {
         if !x.own || self.dead {
@@ -290,18 +295,25 @@ impl FnLower<'_> {
         let ty = ct::sub(ty, &self.subst);
         let mt = self.mty(&ty)?;
         if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
-            let k = self.b.m.ifaces[iface.index()]
-                .methods
-                .iter()
-                .position(|m| m.name == "close")
-                .ok_or_else(|| Error::new("interface without close"))?;
-            return Ok(Some(CloseKind::Iface(iface, k as u32)));
+            return self
+                .iface_closer(iface)
+                .map(Some)
+                .ok_or_else(|| Error::new("interface without close"));
         }
         let own = match cleanup {
             Some(c) => Some(self.own_closer(c, &ty)?),
             None => None,
         };
         self.close_with_parts(&ty, own)
+    }
+
+    /// The `close` entry of an interface value's vtable, if the interface declares one.
+    fn iface_closer(&self, iface: IfaceId) -> Option<CloseKind> {
+        let k = self.b.m.ifaces[iface.index()]
+            .methods
+            .iter()
+            .position(|m| m.name == "close")?;
+        Some(CloseKind::Iface(iface, k as u32))
     }
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.
@@ -388,6 +400,10 @@ impl FnLower<'_> {
     pub(crate) fn part_closer(&mut self, ty: &ct::Ty) -> Result<Option<CloseKind>, Error> {
         if self.cx.classes.class(ty) != ms_check::ownership::Class::Resource {
             return Ok(None);
+        }
+        let mt = self.mty(ty)?;
+        if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
+            return Ok(self.iface_closer(iface));
         }
         let own = match self.closeable_impl(ty) {
             Some(m) => Some(self.own_closer(&m, ty)?),
