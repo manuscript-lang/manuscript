@@ -18,6 +18,8 @@ extern fn msstd_io_read_line(
     max_bytes: Optional[Int]
 ) Result[Optional[String], IoError]
 
+extern fn msstd_io_redirect_null(which: Int) Result[Unit, IoError]
+
 extern fn msstd_io_stdin() ReadStream
 
 extern fn msstd_io_stdout() WriteStream
@@ -173,6 +175,27 @@ export fn stdout() WriteStream:
 # Returns the process standard-error stream.
 export fn stderr() WriteStream:
     return msstd_io_stderr()
+
+# One of this process's three standard streams.
+export type StdStream:
+    # Standard input; once redirected it reads as end of file.
+    case Input
+    # Standard output; once redirected its writes are discarded.
+    case Output
+    # Standard error; once redirected its writes are discarded.
+    case Error
+
+# Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
+# This replaces the descriptor itself, so it also affects children started afterwards that inherit it. Buffered standard output is written first. The change cannot be undone.
+export fn redirect_to_null(stream: StdStream) Result[Unit, IoError]:
+    var which = 2
+
+    match stream:
+        Input: which = 0
+        Output: which = 1
+        Error: which = 2
+
+    return msstd_io_redirect_null(which)
 
 # Returns file operations for the current host.
 export fn files() Files:
