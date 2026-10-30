@@ -193,8 +193,11 @@ pub fn call_modes(
                 }
                 None => {
                     // A native function keeps function arguments it is given, except the
-                    // testing helpers, which run them at once.
-                    let runs_now = s.module.as_str() == "@std/test.ms";
+                    // testing helpers, which run them at once, and the worker start, which
+                    // copies the code pointer of a capture-free entry and keeps nothing else.
+                    let runs_now = s.module.as_str() == "@std/test.ms"
+                        || (s.module.as_str() == "@std/workers.ms"
+                            && s.name.as_str() == "msrt_worker_start");
                     let params = s.ty().params.clone();
                     CallModes {
                         arguments: (0..args.len())

@@ -1,6 +1,5 @@
 import {HttpRequest, HttpResponse, buffered, headers} from "@std/http.ms"
-import {Listener, NetworkError, deal_connections, network, serve_core} from "@std/net.ms"
-import {Worker, WorkerGroup} from "@std/workers.ms"
+import {Listener, NetworkError, serve_cores, network, serve_core} from "@std/net.ms"
 import {TaskGroup} from "@std/tasks.ms"
 import {expect_true} from "@std/test.ms"
 
@@ -11,8 +10,8 @@ fn core() Unit:
     let served = serve_core(buffered(handler))
     let _ = served
 
-fn run(listener: Listener, workers: List[Worker[Int, Int]]) Result[Unit, NetworkError]:
-    return deal_connections(listener, workers)
+fn run(listener: Listener) Result[Unit, NetworkError]:
+    return serve_cores(listener, core, 3)
 
 fn get(address: String) String:
     let net = network()
@@ -33,31 +32,21 @@ fn get(address: String) String:
 
     return text
 
-test "deal_connections serves clients and fails when a worker ends":
+test "serve_cores serves clients across workers and fails when accepting fails":
     let net = network()
     let listener = try net.listen("127.0.0.1:0")
     let address = listener.address()
-    let cores = WorkerGroup[Int, Int]()
-    var workers: List[Worker[Int, Int]] = []
-    var kept: List[Worker[Int, Int]] = []
-
-    for i in 0..3:
-        var worker = try cores.spawn(core)
-        kept.append(worker.clone())
-        workers.append(worker)
-
-    let group = TaskGroup[Result[Unit, NetworkError]]()
-    let serving = group.spawn(fn ch: run(listener, workers))
+    var group = TaskGroup[Result[Unit, NetworkError]]()
+    group.spawn(fn ch: run(listener))
 
     for i in 0..5:
         let text = get(address)
         try expect_true(text.starts_with("HTTP/1.1 200 OK"))
         try expect_true(text.ends_with("hello"))
 
-    for i in 0..3:
-        kept[i].channel.close()
+    group.close()
 
-    # The next connection is dealt to a worker whose channel is closed.
-    let _ = get(address)
-    let outcome = try serving.result()
+test "serve_cores rejects fewer than one core":
+    let listener = try network().listen("127.0.0.1:0")
+    let outcome = serve_cores(listener, core, 0)
     try expect_true(outcome.is_error())

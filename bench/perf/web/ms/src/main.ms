@@ -2,9 +2,8 @@
 import Bytes from "@std/bytes.ms"
 import filesystem from "@std/fs.ms"
 import {headers, HttpError, HttpExchange, HttpRequest, HttpResponse, buffered} from "@std/http.ms"
-import {deal_connections, network, serve_core} from "@std/net.ms"
+import {network, serve_core, serve_cores} from "@std/net.ms"
 import arguments from "@std/process.ms"
-import {Worker, WorkerGroup} from "@std/workers.ms"
 
 fn score(id: Int) Int:
     return id * 7919 % 1000
@@ -129,15 +128,8 @@ fn serve_worker() Unit:
 
 # Accepts on the main thread and deals the connections to `threads` workers.
 fn serve_threads(port: String, threads: Int) Int:
-    let group = WorkerGroup[Int, Int]()
-    var workers: List[Worker[Int, Int]] = []
-
-    for i in 0..threads:
-        let worker = group.spawn(serve_worker).get(none)
-        workers.append(worker)
-
     if let bound = network().listen("127.0.0.1:{port}"):
-        let _ = deal_connections(bound, workers)
+        let _ = serve_cores(bound, serve_worker, threads)
     return 1
 
 export fn main() Int:

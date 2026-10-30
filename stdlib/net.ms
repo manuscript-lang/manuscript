@@ -12,7 +12,7 @@ import HttpServer from "@std/http.ms"
 import HttpServerOptions from "@std/http.ms"
 import IoError from "@std/io.ms"
 import Timestamp from "@std/time.ms"
-import {Worker, worker_channel} from "@std/workers.ms"
+import {WorkerGroup, worker_channel} from "@std/workers.ms"
 
 extern fn msrt_net_ip_address_text(value: IpAddress) String
 
@@ -791,33 +791,37 @@ impl Error for WebSocketError:
             Timeout: return "WebSocket: operation timed out"
             Failed(message): return message.clone()
 
-# Deals the connections `listener` accepts to `workers` in turn, so a multi-core server spreads
-# connections evenly; a connection, and every request on it, stays on its worker. Start each worker
-# with `WorkerGroup[Int, Int].spawn` on an entry fn that calls `serve_core`, and send it any
-# configuration before calling this.
-# Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`).
-# Returns InvalidInput without workers.
-export fn deal_connections(
+# Serves on `cores` threads: this thread accepts from `listener` and deals each connection, round robin, to one of `cores` workers that run `entry`, a named top-level fn that ends in `serve_core(handler, options)`. A connection, and every request on it, stays on its worker, and each worker builds its own handler, so no closure or other memory crosses threads.
+# Runs until accepting fails, returning that error (`Closed` after the listener was closed), or a worker's channel closes (returns `Failed`). Workers still running afterwards are cancelled.
+# Returns InvalidInput when `cores` is below 1, and `Failed` when a worker cannot start.
+export fn serve_cores(
     listener: Listener,
-    workers: List[Worker[Int, Int]]
+    entry: fn() Unit,
+    cores: Int
 ) Result[Unit, NetworkError]:
-    if workers.length() == 0:
+    if cores < 1:
         return error(NetworkError.InvalidInput)
 
+    let group = WorkerGroup[Int, Int]()
+    let started = group.spawn_many(entry, cores)
+    if started.is_error():
+        return error(NetworkError.Failed("could not start a serving worker"))
+
+    let workers = started.get()
     var next = 0
 
     while true:
         let accepted = listener.accept_raw(none)
         if accepted.is_error():
             return error(accepted.err().clone())
-        if workers[next % workers.length()].channel.send(accepted.get()).is_error():
+        if workers[next % cores].channel.send(accepted.get()).is_error():
             return error(NetworkError.Failed("a serving worker ended"))
 
         next += 1
 
     return ok(unit)
 
-# Worker side of `deal_connections`: serves the connections dealt to this worker with
+# Worker side of `serve_cores`: serves the connections dealt to this worker with
 # `handler` and `options`, until the acceptor ends. Returns InvalidInput for invalid options.
 export fn serve_core(
     handler: fn(HttpExchange) Result[Unit, HttpError],

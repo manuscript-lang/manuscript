@@ -512,15 +512,18 @@ impl Checker {
     }
 
     /// A worker runs on another thread with memory of its own, so its entry cannot be a closure
-    /// that captured anything: `WorkerGroup.spawn` takes the name of a top-level `def`.
+    /// that captured anything: `WorkerGroup.spawn` and `spawn_many` take the name of a top-level `def`.
     fn check_worker_entry(&mut self, callable: &Info, args: &[Arg]) {
         let is_spawn = callable.method.as_ref().is_some_and(|m| {
             m.receiver.is_source_type("@std/workers.ms", "WorkerGroup")
                 && m.decl
                     .as_ref()
-                    .is_some_and(|d| d.name().as_str() == "spawn")
+                    .is_some_and(|d| matches!(d.name().as_str(), "spawn" | "spawn_many" | "start"))
+        }) && !matches!(self.m().file.as_str(), "@std/workers.ms" | "@std/net.ms");
+        let is_serve_cores = callable.symbol.as_ref().is_some_and(|s| {
+            s.module.as_str() == "@std/net.ms" && s.name.as_str() == "serve_cores"
         });
-        if !is_spawn {
+        if !is_spawn && !is_serve_cores {
             return;
         }
         let Some(entry) = args.iter().find(|a| a.name.as_str() == "entry") else {
