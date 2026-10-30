@@ -178,8 +178,11 @@ export fn stderr() WriteStream:
 
 # One of this process's three standard streams.
 export type StdStream:
+    # Standard input; once redirected it reads as end of file.
     case Input
+    # Standard output; once redirected its writes are discarded.
     case Output
+    # Standard error; once redirected its writes are discarded.
     case Error
 
 # Points the process's own standard stream at the null device (`/dev/null`, or `NUL` on Windows): input reads as end of file and output is discarded.
