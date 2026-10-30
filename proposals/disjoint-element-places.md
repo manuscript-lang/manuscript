@@ -9,7 +9,9 @@
 
 ## Status
 
-- Proposal, 2026-10-30, checked against main f25da1e5 (per-field liveness #1997 landed).
+- Rejected (not built), 2026-10-30, checked against main f25da1e5 (per-field liveness #1997 landed). A skeptical review found no soundness hole but no need either; revisit if a real program needs two simultaneous `var` borrows of neighbouring elements.
+- Review evidence: no `.ms` file in the repo needs `var xs[i]` with `var xs[i + k]` (178 `xs[i]` uses checked, none needs it); `swap`, `copy_within` or a temporary cover the pattern; the new uid-keyed step makes place identity depend on binding identity and would feed borrow conflicts and liveness.
+- Soundness note for a future attempt: the claim that a borrow cannot outlive its loop iteration holds today only because carriers cannot be reassigned from a borrow and a change to the list while borrowed is rejected; any loosening of those rules makes an offset step unsound. Negative indexes are valid (`swap(-2, 1)`), so the non-negative proof is required, and `k` must be small.
 - Direction (Chinmay): "Allow provably disjoint accesses; conservatively reject unresolved overlap initially." "Model access to fields and elements uniformly."
 
 ## Problem
