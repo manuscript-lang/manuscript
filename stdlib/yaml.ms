@@ -60,11 +60,11 @@ export type YamlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 values; pass a `YamlLimits` to change that.
 export type YamlLimits:
     # Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-    max_bytes: Int? = none
+    max_bytes: Int?
     # Maximum value depth, including scalar leaves, with the root at one.
-    max_depth: Int? = none
+    max_depth: Int?
     # Maximum containers and leaves, excluding keys; aliases count at each checked occurrence.
-    max_values: Int? = none
+    max_values: Int?
 
 impl Error for YamlError:
     # Formats parser positions and reason text; match the typed fields for programmatic handling.
@@ -1550,7 +1550,7 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Result[Unit, Yam
     return ok(unit)
 
 # Parses a YAML document. Unsupported YAML features and invalid input include source locations.
-export fn parse(text: String, limits: YamlLimits? = none) Result[YamlValue, YamlError]:
+export fn parse(text: String, limits: YamlLimits?) Result[YamlValue, YamlError]:
     var options = default_limits()
     if let value = limits:
         options = value
@@ -1791,7 +1791,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
         _: return ok(unit)
 
 # Serializes a YAML value in block style with double-quoted strings.
-export fn stringify(value: YamlValue, max_bytes: Int? = none) Result[String, YamlError]:
+export fn stringify(value: YamlValue, max_bytes: Int?) Result[String, YamlError]:
     if let limit = max_bytes:
         if limit < 0: return error(YamlError.InvalidInput)
 

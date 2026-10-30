@@ -27,11 +27,11 @@ export type JsonError:
 # Optional bounds for JSON input bytes, nesting depth, and parsed values.
 export type JsonLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Int? = none
+    max_bytes: Int?
     # Maximum container nesting; a root scalar has depth zero, and a root container depth one.
-    max_depth: Int? = none
+    max_depth: Int?
     # Maximum parsed containers and scalar values, excluding object keys; none adds no count budget.
-    max_values: Int? = none
+    max_values: Int?
 
 # A JSON value. Number text is retained to avoid losing precision during parsing.
 #
@@ -174,7 +174,7 @@ impl JsonValue:
 # record and `parse[JsonValue]` keeps it as a document.
 export fn parse[T: Data = JsonValue](
     text: String,
-    limits: JsonLimits? = none,
+    limits: JsonLimits?,
     ignore_unknown_fields: Bool = true
 ) Result[T, JsonError]:
     return msrt_json_parse[T](text, limits, ignore_unknown_fields)
@@ -255,8 +255,8 @@ export interface JsonEncode:
 # ```
 export fn stringify[T: Data](
     value: T,
-    max_bytes: Int? = none,
-    indent: Int? = none,
+    max_bytes: Int?,
+    indent: Int?,
     strict: Bool = false
 ) Result[String, JsonError]:
     return msrt_json_stringify(value, max_bytes, indent, strict)

@@ -160,8 +160,8 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T](reserve: Int? = none)` | Empty `List[T]` with room for `reserve` items |
-| `List[T]` | `length() Int`; `get(index: Int, default: T? = none) T`; `[index] T` |
+| `List[T](reserve: Int?)` | Empty `List[T]` with room for `reserve` items |
+| `List[T]` | `length() Int`; `get(index: Int, default: T?) T`; `[index] T` |
 | `List[T]` | `append(value: T) Unit`; `concat(values: List[T]) List[T]` |
 | `List[T]` | `set(index: Int, value: T) Unit` (also `xs[index] = value`); `remove(index: Int) Unit` |
 | `List[T]` | `insert(index: Int, value: T) Unit`; `pop() T?` |

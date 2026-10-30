@@ -9,7 +9,7 @@ import Bytes from "@std/bytes.ms"
 type Chunks:
     parts: List[String]
     next: Int = 0
-    failure: String? = none
+    failure: String?
 
 impl ReadStream for Chunks:
     fn close() Unit:

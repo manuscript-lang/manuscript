@@ -528,7 +528,7 @@ impl HttpExchange for TestExchange:
     fn query() String:
         return self.request.query.clone()
 
-    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         let requested = max_bytes.get(65536)
         if requested <= 0: return error(IoError.InvalidInput)
 
@@ -579,7 +579,7 @@ impl HttpExchange for TestExchange:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Int? = none
+        max_message_bytes: Int?
     ) Result[WebSocket, WebSocketError]:
         return error(WebSocketError.Failed("router: WebSocket upgrades need a server"))
 
@@ -665,7 +665,7 @@ impl HttpExchange for Tap:
     fn query() String:
         return self.inner.query()
 
-    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
+    fn read(max_bytes: Int?) Result[Bytes?, IoError]:
         return self.inner.read(max_bytes)
 
     fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
@@ -681,7 +681,7 @@ impl HttpExchange for Tap:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Int? = none
+        max_message_bytes: Int?
     ) Result[WebSocket, WebSocketError]:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 

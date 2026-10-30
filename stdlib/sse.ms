@@ -32,9 +32,9 @@ export type SseEvent:
 # Optional byte budgets for one line and for one event.
 export type SseLimits:
     # Largest line in bytes, excluding its line ending; none adds no budget.
-    max_line_bytes: Int? = none
+    max_line_bytes: Int?
     # Largest total of all field lines in one event, excluding line endings and comments; none adds no budget.
-    max_event_bytes: Int? = none
+    max_event_bytes: Int?
 
 # Decodes a Server-Sent Events stream from byte chunks of any size.
 #
@@ -312,7 +312,7 @@ export type SseReader:
 export fn reader(
     input: ReadStream,
     limits: SseLimits = SseLimits(),
-    chunk_bytes: Int? = none
+    chunk_bytes: Int?
 ) Result[SseReader, SseError]:
     if not positive(chunk_bytes): return error(SseError.InvalidInput)
 

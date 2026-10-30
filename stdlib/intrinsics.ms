@@ -30,7 +30,7 @@ interface StringOperations:
     fn lines() List[String]
     # Normalizes using exactly NFC, NFD, NFKC, or NFKD (case-sensitive); max_bytes optionally bounds UTF-8 output.
     # Invalid forms or negative budgets return InvalidInput; exceeded budgets return LimitExceeded.
-    fn normalize(form: String, max_bytes: Int? = none) Result[String, StringError]
+    fn normalize(form: String, max_bytes: Int?) Result[String, StringError]
     # Concatenates text without changing either operand.
     fn concat(other: String) String
     # Tests whether the exact text occurs, without normalization.
@@ -40,7 +40,7 @@ interface StringOperations:
     # Returns locale-independent full Unicode lowercase mapping; the scalar length can change.
     fn lower() String
     # Repeats text count times; negative counts/budgets return InvalidInput, exceeded UTF-8 budgets return LimitExceeded.
-    fn repeat(count: Int, max_bytes: Int? = none) Result[String, StringError]
+    fn repeat(count: Int, max_bytes: Int?) Result[String, StringError]
     # Replaces the first occurrence of old; text without a match is unchanged.
     # An empty old matches at the first scalar boundary, so new is inserted at the start.
     fn replace_first(old: String, new: String) String
@@ -61,7 +61,7 @@ interface StringOperations:
     fn drop(count: Int) String
     # Splits exact separators, truncating parts to a supplied nonnegative cap; zero returns [], negatives fault.
     # Empty text with a nonempty separator yields [""]; an empty separator splits into scalars.
-    fn split(separator: String, max_parts: Int? = none) List[String]
+    fn split(separator: String, max_parts: Int?) List[String]
     # Tests whether the receiver begins with this exact prefix.
     fn starts_with(prefix: String) Bool
     # Removes Unicode whitespace at both ends; see the exact whitespace set in the text guide.
@@ -69,9 +69,9 @@ interface StringOperations:
     # Returns locale-independent full Unicode uppercase mapping; the scalar length can change.
     fn upper() String
     # Returns a one-scalar String; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
-    fn get(index: Int, default: String? = none) String
+    fn get(index: Int, default: String?) String
     # Returns an integer scalar code point; negative indexes are relative to the end. An invalid index returns `default`, and without one raises a fault.
-    fn scalar_at(index: Int, default: Int? = none) Int
+    fn scalar_at(index: Int, default: Int?) Int
     # Returns the first matching Unicode scalar index or none; empty value matches at zero.
     fn index_of(value: String) Int?
     # Returns the last matching Unicode scalar index or none; empty value matches at scalar_length().

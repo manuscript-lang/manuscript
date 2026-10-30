@@ -21,7 +21,7 @@ interface Read:
 impl Read for Box[Int]:
     fn get() Int: self.value
 
-fn invoke(transform: (fn(Int) Int)? = none) Int:
+fn invoke(transform: (fn(Int) Int)?) Int:
     if let callback = transform:
         return callback(4)
 

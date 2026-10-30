@@ -5,7 +5,7 @@ import Iterable from "@std/iterable.ms"
 # Omitted or none capacity grows as needed and adds no fixed queue limit.
 export type Queue[T]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
-    capacity: Int? = none
+    capacity: Int?
     # Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
     items: List[T?] = []
     # Index in `items` of the oldest value. Internal state.
@@ -98,7 +98,7 @@ fn order[T: Comparable](left: T, right: T) Int:
 # A priority queue is an owned value: a copy is an independent queue.
 export type PriorityQueue[T: Comparable]:
     # Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
-    capacity: Int? = none
+    capacity: Int?
     # Binary heap of waiting values. Internal state: use the operations, not this field.
     heap: List[T] = []
     # Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.

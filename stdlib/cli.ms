@@ -109,7 +109,7 @@ export type Flag:
     # One-letter alias used as `-p`; empty for none.
     short: String = ""
     # Text used when the flag is absent; none for no default. A Bool defaults to false.
-    default: String? = none
+    default: String?
     # One line shown in help.
     help: String = ""
     # Absence is an error when there is no default.

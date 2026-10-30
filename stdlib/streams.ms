@@ -182,10 +182,7 @@ export fn digest(var input: ReadStream, algorithm: HashAlgorithm) Result[Bytes, 
     return ok(hasher.finish())
 
 # Reads every remaining line from `input`, omitting line endings. `max_bytes` bounds each line, as in `read_line`.
-export fn read_lines(
-    input: ReadStream,
-    max_bytes: Int? = none
-) Result[List[String], IoError]:
+export fn read_lines(input: ReadStream, max_bytes: Int?) Result[List[String], IoError]:
     var lines = List[String]()
 
     while true:

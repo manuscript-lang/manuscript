@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 0.1.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3003",
-        "phase": "type",
-        "message": "missing argument value: Int? in call to f; add 'value: <Int?>'",
-        "position": {
-          "file": "pkg-compiler-testoptionalargumentboundaries-3.ms",
-          "line": 6,
-          "column": 17,
-          "offset": 200
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-3.ms:6:17: type: missing argument value: Int? in call to f; add 'value: <Int?>'\n   |\n 6 | fn call() Unit: f()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked pkg-compiler-testoptionalargumentboundaries-3.ms\n",
+      "stderr": ""
     }
   }
 }

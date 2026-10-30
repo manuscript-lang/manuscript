@@ -11,8 +11,8 @@ interface Runner:
         program: String,
         arguments: List[String],
         input: Bytes,
-        max_output_bytes: Int? = none,
-        timeout: Duration? = none
+        max_output_bytes: Int?,
+        timeout: Duration?
     ) Result[CommandOutput, CommandError]
     fn spawn(program: String, arguments: List[String]) Result[Subprocess, CommandError]
 

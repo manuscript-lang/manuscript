@@ -33,7 +33,7 @@ export interface File:
     fn close() Unit
     # Returns a byte chunk or none at EOF; max_bytes is a positive chunk size, not a total budget.
     # Omission/none uses the native 64 KiB chunk; source implementations define their own buffering.
-    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]
+    fn read(max_bytes: Int?) Result[Bytes?, IoError]
 
 # Opens read-only file resources using the current host's default filesystem.
 # Native open failures (including missing paths and permission denial) become IoError.Unavailable.
@@ -85,17 +85,17 @@ export interface WriteStream:
 export fn copy(
     input: ReadStream,
     output: WriteStream,
-    max_bytes: Int? = none
+    max_bytes: Int?
 ) Result[Int, IoError]:
     return msstd_io_copy(input, output, max_bytes)
 
 # Reads a stream completely into memory. Supply a limit for untrusted streams.
-export fn read_all(input: ReadStream, max_bytes: Int? = none) Result[Bytes, IoError]:
+export fn read_all(input: ReadStream, max_bytes: Int?) Result[Bytes, IoError]:
     return msstd_io_read_all(input, max_bytes)
 
 # Reads one line from a stream such as `stdin()`, omitting its line ending; returns `none` at end of stream.
 # `max_bytes` counts the terminator: a newline-ended line must be shorter than it, an unterminated last line may equal it. To read every line, iterate `lines(input)`.
-export fn read_line(input: ReadStream, max_bytes: Int? = none) Result[String?, IoError]:
+export fn read_line(input: ReadStream, max_bytes: Int?) Result[String?, IoError]:
     return msstd_io_read_line(input, max_bytes)
 
 # Lines of a stream, read on demand. `for line in reader:` walks the lines without their
@@ -141,7 +141,7 @@ impl Iterator[String] for LineReader:
 
 # Returns a reader over the lines of `input`, for `for line in reader:`. `max_bytes` bounds each
 # line, as in `read_line`.
-export fn lines(input: ReadStream, max_bytes: Int? = none) LineReader:
+export fn lines(input: ReadStream, max_bytes: Int?) LineReader:
     return LineReader(input, max_bytes, none, "")
 
 impl Error for IoError:
@@ -347,7 +347,7 @@ impl Closeable for RawTerminal:
 
 impl RawTerminal:
     # Waits for the next event; none means the timeout elapsed. Waits honor cancellation and concurrent callers are serialized.
-    fn next_event(timeout: Duration? = none) Result[TerminalEvent?, TerminalError]:
+    fn next_event(timeout: Duration?) Result[TerminalEvent?, TerminalError]:
         let ready = try msstd_terminal_raw_terminal_next_event(self.native, timeout)
         if ready.is_none(): return ok(none)
 

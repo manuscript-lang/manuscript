@@ -16,23 +16,12 @@
           "column": 19,
           "offset": 202
         }
-      },
-      {
-        "code": "MS3003",
-        "phase": "type",
-        "message": "missing argument value: Int? in call to f; add 'value: <Int?>'",
-        "position": {
-          "file": "pkg-compiler-testoptionalargumentboundaries-15.ms",
-          "line": 6,
-          "column": 17,
-          "offset": 200
-        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:19: type: unknown argument other; parameters of f: value\n   |\n 6 | fn call() Unit: f(other: 4)\n   |                   ^\n<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:17: type: missing argument value: Int? in call to f; add 'value: <Int?>'\n   |\n 6 | fn call() Unit: f(other: 4)\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/pkg-compiler-testoptionalargumentboundaries-15.ms:6:19: type: unknown argument other; parameters of f: value\n   |\n 6 | fn call() Unit: f(other: 4)\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

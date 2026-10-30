@@ -601,11 +601,7 @@ export fn from_int(value: Int) BigInt:
     return msstd_bigint_from_int(value)
 
 # Parses a base-2 through base-36 integer. `max_digits` bounds work when supplied.
-export fn parse(
-    text: String,
-    radix: Int,
-    max_digits: Int? = none
-) Result[BigInt, BigIntError]:
+export fn parse(text: String, radix: Int, max_digits: Int?) Result[BigInt, BigIntError]:
     return msstd_bigint_parse(text, radix, max_digits)
 
 impl Error for BigIntError:

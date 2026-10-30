@@ -26,7 +26,7 @@ impl ReadStream for MemoryStream:
 
     var fn close() Unit: self.closed = true
 
-fn present(input: ReadStream, max: Int? = none) Bool:
+fn present(input: ReadStream, max: Int?) Bool:
     if let line = read_line(input, max):
         return line.is_some()
 

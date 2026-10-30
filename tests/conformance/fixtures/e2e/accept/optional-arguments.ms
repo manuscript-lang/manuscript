@@ -5,7 +5,7 @@ import TextError from "@std/core.ms"
 import expect_equal, expect_false from "@std/test.ms"
 import Queue from "@std/queue.ms"
 
-fn number(value: Int? = none) Int: value.get(-1)
+fn number(value: Int?) Int: value.get(-1)
 
 fn present[T](value: T?) T?: value
 
@@ -37,7 +37,7 @@ type Box[T]:
     value: T?
 
 type DefaultBox:
-    value: Int? = none
+    value: Int?
 
 type Choice[T]:
     case chosen(value: T?)

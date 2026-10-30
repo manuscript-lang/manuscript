@@ -76,7 +76,7 @@ test "mutable defaults have fresh storage":
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false
 
 interface ReadWithDefault:
-    fn get(fallback: Int? = none) Int
+    fn get(fallback: Int?) Int
 
 type Reader:
     number: Int = 5

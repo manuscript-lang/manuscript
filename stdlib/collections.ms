@@ -13,7 +13,7 @@ export type CollectionError:
 # `List[T]()` creates an empty list; `List[T](reserve: n)` also preallocates room for `n` items without changing the length. A negative `n` reserves nothing.
 export type List[T]:
     # Constructor-only capacity hint in items: room for this many elements is allocated up front. The list starts empty; none or a negative value reserves nothing.
-    reserve: Int? = none
+    reserve: Int?
 
 impl List[T]:
     # Returns a deep copy with independent list and nested value storage.
@@ -21,7 +21,7 @@ impl List[T]:
 
     # Returns an element; negative indexes are relative to the end. An out-of-range index returns `default`; pass one for indexes that may miss, or use `first()` and `last()`.
     # Without a default, an out-of-range index raises a fault, as `xs[i]` does.
-    fn get(index: Int, default: T? = none) ref T: ...
+    fn get(index: Int, default: T?) ref T: ...
 
     # Returns the first element, or none when the list is empty.
     fn first() ref T?: ...
@@ -367,7 +367,7 @@ export type ListEntry[T]:
 export fn filled[T](
     value: T,
     count: Int,
-    max_items: Int? = none
+    max_items: Int?
 ) Result[List[T], CollectionError]: ...
 
 # Creates the integers from `start` up to but excluding `end`, counting by one. Written `start..end`; the name `range` is not importable. The list is empty when `end <= start`. `for index in 0..count:` runs as a counter loop without allocating the list. As a stored list, more than about 268 million items is a fault; use `range_by` to bound the size with an error value.
@@ -378,7 +378,7 @@ export fn range_by(
     start: Int,
     end: Int,
     step: Int,
-    max_items: Int? = none
+    max_items: Int?
 ) Result[List[Int], CollectionError]: ...
 
 # Builds a map from entries. Later entries replace earlier values for duplicate keys.
