@@ -139,7 +139,7 @@ Behavior notes:
 
 ## http
 
-`HttpHeaders` is a handle. `append(name, values)` validates tokens and values and
+`HttpHeaders` is an owned handle (moved, never copied implicitly); exchange and response accessors return fresh copies. `append(name, values)` validates tokens and values and
 returns `HttpError` status; `values(name)` returns an **owned copy** of the list (lists
 are values in the ownership model; Go shares them) and `present`; `text(name)` joins with
 `, `. Methods arrive as token strings; an invalid method is `InvalidInput`.

@@ -22,17 +22,17 @@ fn route(request: HttpRequest) HttpResponse:
 
     if request.path == "/old":
         var moved = headers()
-        try_append(moved, "Location", "/echo")
+        try_append(var moved, "Location", "/echo")
         return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
 
     if request.path == "/chain":
-        let moved = headers()
-        try_append(moved, "Location", "/preserve")
+        var moved = headers()
+        try_append(var moved, "Location", "/preserve")
         return HttpResponse(status: 302, headers: moved, body: "".to_bytes())
 
     if request.path == "/preserve":
-        let moved = headers()
-        try_append(moved, "Location", "/echo")
+        var moved = headers()
+        try_append(var moved, "Location", "/echo")
         return HttpResponse(status: 307, headers: moved, body: "".to_bytes())
 
     if request.path == "/slow":
@@ -53,7 +53,7 @@ fn route(request: HttpRequest) HttpResponse:
         )
     )
 
-fn try_append(fields: HttpHeaders, name: String, value: String) Unit:
+fn try_append(var fields: HttpHeaders, name: String, value: String) Unit:
     let _ignored = fields.append(name, value)
 
 test "fetch returns a buffered text response":
