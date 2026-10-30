@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "services.ms::sealed builders",
+          "name": "services.ms::builders",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN services.ms::sealed builders\nPASS services.ms::sealed builders\n1 tests, 0 failed\n",
+      "stdout": "RUN services.ms::builders\nPASS services.ms::builders\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

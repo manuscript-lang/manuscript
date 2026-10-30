@@ -3,10 +3,10 @@
 # expect-mir: "shared.addr"
 # expect-mir: "builder is sealed"
 
-import ListBuilder from "@std/collections.ms"
+import StringBuilder from "@std/string.ms"
 
 export fn main() Int:
-    var b = ListBuilder[Int]()
-    b.append(1)
-    b.append(2)
+    var b = StringBuilder()
+    b.append("a")
+    b.append("b")
     return b.build().length()

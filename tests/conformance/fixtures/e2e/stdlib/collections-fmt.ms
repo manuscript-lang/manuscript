@@ -2,15 +2,7 @@
 # conform: phase=parse
 # conform: origin=tests/e2e/testdata/stdlib/collections.ms
 import expect_equal, expect_false from "@std/test.ms"
-import (
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range_by,
-    filled,
-    map_from_entries,
-    flatten
-) from "@std/collections.ms"
+import (range_by, filled, map_from_entries, flatten) from "@std/collections.ms"
 
 fn positive(value: Int) Bool: value > 0
 
@@ -38,11 +30,37 @@ test "list search callbacks empty identities and folding":
     try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
 
     let empty: List[Int] = []
-    try expect_false(empty.some(positive) or not empty.every(positive))
+    try expect_false(empty.any(positive) or not empty.all(positive))
     try expect_false(not empty.first().is_none() or not empty.last().is_none())
 
     let groups = ([1, 2, 3]).group_by(parity)
     try expect_false(groups.get(1) != some([1, 3]) or groups.get(0) != some([2]))
+
+test "group_by keeps first-seen key order and element order across few and many buckets":
+    let values = 0..600
+    let few = values.group_by(fn(x: Int) Int: x % 3)
+    try expect_equal(few.keys(), [0, 1, 2])
+
+    var total = 0
+
+    for k in 0..3:
+        let group = few.get(k).get()
+        try expect_equal(group.length(), 200)
+
+        for j in 0..200:
+            try expect_equal(group[j], j * 3 + k)
+            total += group[j]
+
+    try expect_equal(total, 599 * 600 / 2)
+
+    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w)
+    try expect_equal(words.keys(), ["b", "a", "c"])
+    try expect_equal(words.get("b"), some(["b", "b", "b"]))
+    try expect_equal(words.get("c"), some(["c"]))
+
+    let unique = values.group_by(fn(x: Int) Int: x)
+    try expect_equal(unique.length(), 600)
+    try expect_equal(unique.get(599), some([599]))
 
 test "list mutation and clone keep separate storage":
     let original = [1, 2, 3]
@@ -163,22 +181,6 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
     try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
     try expect_equal(range_by(0, 9223372036854775807, 1), limited)
 
-test "collection builders freeze all accumulated values":
-    let list = ListBuilder[Int]()
-    list.append(1)
-    list.append(2)
-    try expect_false(list.build() != [1, 2] or list.build() != [1, 2])
-
-    let map = MapBuilder[String, Int]()
-    map.add("a", 1)
-    map.add("a", 2)
-    try expect_equal(map.build().get("a"), some(2))
-
-    let set = SetBuilder[Int]()
-    set.add(1)
-    set.add(1)
-    try expect_equal(set.build().values(), [1])
-
 test "imported map add interoperates with with_entry":
     var values = Map[String, Int]()
     values.add("a", 1)
@@ -192,3 +194,14 @@ test "imported map add interoperates with with_entry":
 test "flatten concatenates lists":
     try expect_equal(flatten([[1, 2], [], [3]]), [1, 2, 3])
     try expect_equal(flatten(List[List[Int]]()), List[Int]())
+
+type JoinPoint:
+    x: Int
+
+test "List join renders any element type":
+    try expect_equal([1.5, 2.5].join(","), "1.5,2.5")
+    try expect_equal([true, false].join("/"), "true/false")
+    try expect_equal(
+        [JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
+    )
+    try expect_equal(List[Int]().join(","), "")

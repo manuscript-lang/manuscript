@@ -1,13 +1,5 @@
 import expect_equal, expect_false from "@std/test.ms"
-import (
-    ListBuilder,
-    MapBuilder,
-    SetBuilder,
-    range_by,
-    filled,
-    map_from_entries,
-    flatten
-) from "@std/collections.ms"
+import (range_by, filled, map_from_entries, flatten) from "@std/collections.ms"
 
 fn positive(value: Int) Bool: value > 0
 
@@ -185,22 +177,6 @@ test "huge sizes return LimitExceeded instead of exhausting memory":
     try expect_equal(filled(1, 9223372036854775807), limited)
     try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
     try expect_equal(range_by(0, 9223372036854775807, 1), limited)
-
-test "collection builders freeze all accumulated values":
-    var list = ListBuilder[Int]()
-    list.append(1)
-    list.append(2)
-    try expect_false(list.build() != [1, 2] or list.build() != [1, 2])
-
-    var map = MapBuilder[String, Int]()
-    map.add("a", 1)
-    map.add("a", 2)
-    try expect_equal(map.build().get("a"), some(2))
-
-    var set = SetBuilder[Int]()
-    set.add(1)
-    set.add(1)
-    try expect_equal(set.build().values(), [1])
 
 test "imported map add interoperates with with_entry":
     var values = Map[String, Int]()
