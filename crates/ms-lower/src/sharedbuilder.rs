@@ -162,7 +162,12 @@ impl<'a> FnLower<'a> {
         }
         self.at(e.pos);
         let result = self.emty(e)?;
-        let buf = self.owned(recv);
+        // The checker moves the builder at this call, so its buffer is taken, not copied.
+        let buf = if recv.own {
+            recv.v
+        } else {
+            self.b.move_out(recv.v)
+        };
         if result == MTy::STR {
             let slot = self.put_slot(buf);
             let text = self.call_runtime("msrt_strbuilder_freeze", &[slot], MTy::STR)?;

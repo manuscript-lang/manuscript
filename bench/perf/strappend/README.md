@@ -2,6 +2,19 @@
 
 `StringBuilder.append` against Rust's `String::push_str` (glibc, `rustc -C opt-level=3`), building about 1 MB from pieces of 4 B to 8 KiB. Manuscript is the default Release build (LLVM). `MS=ms sh bench/perf/strappend/run.sh 5` prints the best of N runs (each the best of 40 builds) in microseconds. It also builds `List[Int]`s of 10K to 1M items with `append` in a `while` loop against `Vec::push`. The `Platform benchmarks` workflow (run it by hand on a branch) runs the allocator tests and this table on Linux, macOS and Windows.
 
+## 2026-10-30 (Linux): owned builders
+
+Same machine as 2026-10-27, release build of this branch against `main` (b7ee9710), `run.sh 7` twice, back to back. `StringBuilder` is an owned byte buffer with a consuming `build()` instead of a shared handle, so an append no longer loads a sealed flag or goes through the shared cell. Microseconds, Manuscript only; Rust is unchanged at 25-77 us for these sizes.
+
+| piece | main | owned builder |
+|---|---|---|
+| 4 B | 759-766 | 721-730 |
+| 16 B | 147-152 | 142-149 |
+| 64 B | 63-64 | 58-60 |
+| 256 B | 31-32 | 30 |
+
+Parity or better at every size; differences under about 10% are noise. The first run of the branch showed 16 B at 189 us because `build()` copied the buffer; it now moves it.
+
 ## 2026-10-27 (Linux)
 
 Linux x86-64, Intel Xeon 2.1 GHz (virtualized), rustc 1.99.1, median of two sets of 5 and 9 runs; differences under about 10% are noise. Ratio is Manuscript over Rust.
