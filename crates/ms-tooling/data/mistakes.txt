@@ -87,11 +87,11 @@ setup: fn f() Result[Int, Error]: ok(1)
 body: {}
 diag: try requires an enclosing Result
 
-wrong: names.append(u.name)
-right: names.append(u.name.clone())
+wrong: names.append(u.name);;names.append(u.name)
+right: names.append(u.name.clone());;names.append(u.name)
 setup: type User:;;    name: String
 body: let u = User(name: "a");;var names = ["b"];;{}
-diag: cannot move
+diag: is moved here but used again
 
 wrong: xs.append(s);;xs.append(s)
 right: xs.append(s.clone());;xs.append(s)
