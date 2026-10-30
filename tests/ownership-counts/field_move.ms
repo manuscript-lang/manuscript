@@ -1,8 +1,9 @@
-# expect-debug: allocs=16 alloc_bytes=803
-# expect-release: allocs=13 alloc_bytes=771
+# expect-debug: allocs=15 alloc_bytes=779
+# expect-release: allocs=12 alloc_bytes=747
 # expect-stdout: 6
 # expect-stdout: 3
 # expect-stdout: 2
+# One allocation fewer than a clone-based version: copyelim moves the field out of the dying record (rec.release).
 # A field of an owned record moves out at its last use; the rest of the record is still cleaned up exactly once.
 import stdout from "@std/io.ms"
 
