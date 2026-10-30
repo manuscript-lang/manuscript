@@ -72,9 +72,27 @@ impl Classifier {
             self.holds(t.args.get(1), visiting)
         } else if t.is_std("Bytes") {
             Class::Move
-        } else {
-            // Immutable value natives and shared handles.
+        } else if [
+            "Duration",
+            "Instant",
+            "Timestamp",
+            "Decimal",
+            "ListBuilder",
+            "MapBuilder",
+            "SetBuilder",
+            "StringBuilder",
+            "BytesBuilder",
+        ]
+        .iter()
+        .any(|n| t.is_std(n))
+        {
+            // Plain words in the runtime, so a copy is a bit copy: `Decimal` is `repr(C)` data and
+            // the time types stay `Copy` until they become records. The builders are shared
+            // handles until they become owned values.
             Class::Copy
+        } else {
+            // A native owns its storage; `.clone()` is its explicit duplicate.
+            Class::Move
         }
     }
 

@@ -508,13 +508,16 @@ fn finished(state: Shared[TestState]) Result[HttpResponse, HttpError]:
         )
     )
 
+# The exchange documents its headers as one shared object, so the handle is shared rather than copied.
+extern fn msrt_obj_share[T](value: T) T
+
 impl HttpExchange for TestExchange:
     fn close() Unit:
         var guard = lock(self.state)
         guard.value.closed = true
 
     fn headers() HttpHeaders:
-        return self.request.headers
+        return msrt_obj_share(self.request.headers)
 
     fn method() HttpMethod:
         return self.request.method.clone()

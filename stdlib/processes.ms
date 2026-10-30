@@ -18,8 +18,20 @@ import Duration from "@std/time.ms"
 # A running child, owned by its `Process`.
 export extern type NativeProcess
 
+impl NativeProcess:
+    # Another holder of the same child handle.
+    fn clone() NativeProcess:
+        return msrt_obj_share(self)
+
+extern fn msrt_obj_share[T](value: T) T
+
 # One end of a process's IPC pipe.
 export extern type NativeLink
+
+impl NativeLink:
+    # Another holder of the same pipe end; the pipe closes with `msstd_process_ipc_close`.
+    fn clone() NativeLink:
+        return msrt_obj_share(self)
 
 extern fn msstd_process_fork(
     runner: fn() Unit,
@@ -257,7 +269,9 @@ fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
     let inbox: Shared[Inbox] = share(Inbox())
     let value = entry(
         Channel[Out, In](
-            transport: ProcessTransport[Out, In](link: link, inbox: inbox)
+            transport: ProcessTransport[Out, In](
+                link: link.clone(), inbox: inbox
+            )
         )
     )
     close_end(link, inbox)
@@ -419,12 +433,12 @@ impl ProcessGroup[T, In, Out]:
         next.close()
 
         var all = lock(self.processes)
-        all.value.append(Open(id, native, link, inbox))
+        all.value.append(Open(id, native.clone(), link.clone(), inbox))
         all.close()
         return ok(
             Process[T, In, Out](
                 native: native,
-                link: link,
+                link: link.clone(),
                 inbox: inbox,
                 channel: Channel[In, Out](
                     transport: ProcessTransport[In, Out](

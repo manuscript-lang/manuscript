@@ -230,10 +230,8 @@ impl Logger for StdLogger:
         return self.emit_json(level_index(level), message, fields)
 
     fn child_json(fields: String) Result[Logger, LogError]:
-        let child = self.state.child(fields)
-        if child.is_error(): return error(core_error(child.err()))
-
-        return ok(StdLogger(child.get(), self.transport))
+        let child = try self.state.child(fields).map_error(core_error)
+        return ok(StdLogger(child, self.transport))
 
     fn enabled(level: LogLevel) Bool:
         return self.state.enabled(level_index(level))
@@ -285,10 +283,8 @@ export fn create(
     if let chosen = level:
         index = level_index(chosen)
 
-    let state = new_state(index, timestamp, max_bytes)
-    if state.is_error(): return error(core_error(state.err()))
-
-    return ok(StdLogger(state.get(), share(transport)))
+    let state = try new_state(index, timestamp, max_bytes).map_error(core_error)
+    return ok(StdLogger(state, share(transport)))
 
 # Writes log records to an existing byte stream.
 export fn stream_transport(output: WriteStream) Transport:

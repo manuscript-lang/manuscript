@@ -39,6 +39,13 @@ export extern type TaskChannels
 # Internal reference-counted lease; its final holder removes it from the group's tracker.
 extern type TaskChannelLease
 
+impl TaskChannelLease:
+    # Another holder of the same lease: the channel closes when the last holder is released.
+    fn clone() TaskChannelLease:
+        return msrt_obj_share(self)
+
+extern fn msrt_obj_share[T](value: T) T
+
 extern fn msrt_channel_group_new() TaskChannels
 
 extern fn msrt_channel_group_add(group: TaskChannels, close: fn() Unit) TaskChannelLease
@@ -394,7 +401,9 @@ impl TaskGroup[T, In, Out]:
 
         # The group keeps a second handle on its end, so closing the group closes it.
         var started = lock(self.tasks)
-        started.value[handle] = Entry(handle, values, group_end(down, up, lifetime))
+        started.value[handle] = Entry(
+            handle, values, group_end(down, up, lifetime.clone())
+        )
         started.close()
         return Task(
             self.scope, handle, self.tasks, values, group_end(down, up, lifetime)
