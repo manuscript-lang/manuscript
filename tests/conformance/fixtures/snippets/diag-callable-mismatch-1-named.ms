@@ -4,4 +4,4 @@
 fn source(value: Int) Int: value
 
 fn exercise() Unit:
-    let callback: fn(Optional[Int]) Int = source
+    let callback: fn(Int?) Int = source

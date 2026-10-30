@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Optional[T]:\n    case some(value: T)\n    case none\n\nfn f(value: Optional[Int]) Unit: return\n\nfn call() Unit: f(4)\n"
+    "fmt": "type Optional[T]:\n    case some(value: T)\n    case none\n\nfn f(value: Int?) Unit: return\n\nfn call() Unit: f(4)\n"
   }
 }

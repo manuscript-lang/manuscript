@@ -50,7 +50,7 @@ export type RouteParams:
 
 impl RouteParams:
     # Returns the text captured for `name`, or none when the pattern has no such parameter.
-    fn get(name: String) Optional[String]:
+    fn get(name: String) String?:
         if let index = self.names.index_of(name):
             return self.values[index].clone()
 
@@ -279,7 +279,7 @@ fn segment_of(part: String) Segment:
 
     return Segment.Literal(part.clone())
 
-fn segment_name(segment: Segment) Optional[String]:
+fn segment_name(segment: Segment) String?:
     match segment:
         Literal(_): return none
         Param(name): return name.clone()
@@ -304,14 +304,14 @@ fn shape_text(segment: Segment) String:
 # What the routes say about one request path.
 type Lookup:
     # The matching route for the method, if any.
-    found: Optional[Int]
+    found: Int?
     # Captures of that route.
     params: RouteParams
     # Methods that have a route for the path, for `Allow`.
     allow: List[String]
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
-    var found: Optional[Int] = none
+    var found: Int? = none
     var fallback = false
     var params = RouteParams(names: [], values: [])
     var allow: List[String] = []
@@ -351,7 +351,7 @@ fn name_list(segment: Segment) List[String]:
     return []
 
 # The captured values when `parts` match `segments`.
-fn capture(segments: List[Segment], parts: List[String]) Optional[List[String]]:
+fn capture(segments: List[Segment], parts: List[String]) List[String]?:
     var values: List[String] = []
 
     for entry in segments.entries():
@@ -490,7 +490,7 @@ type TestState:
     closed: Bool
     head: HttpHeaders
     body: BytesBuilder
-    unread: Optional[Bytes]
+    unread: Bytes?
 
 type TestExchange:
     request: HttpRequest
@@ -528,7 +528,7 @@ impl HttpExchange for TestExchange:
     fn query() String:
         return self.request.query.clone()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         let requested = max_bytes.get(65536)
         if requested <= 0: return error(IoError.InvalidInput)
 
@@ -579,7 +579,7 @@ impl HttpExchange for TestExchange:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Int? = none
     ) Result[WebSocket, WebSocketError]:
         return error(WebSocketError.Failed("router: WebSocket upgrades need a server"))
 
@@ -653,7 +653,7 @@ impl HttpExchange for Tap:
     fn query() String:
         return self.inner.query()
 
-    fn read(max_bytes: Optional[Int] = none) Result[Optional[Bytes], IoError]:
+    fn read(max_bytes: Int? = none) Result[Bytes?, IoError]:
         return self.inner.read(max_bytes)
 
     fn send_headers(status: Int, headers: HttpHeaders) Result[Unit, HttpError]:
@@ -669,7 +669,7 @@ impl HttpExchange for Tap:
     fn upgrade(
         allowed_origins: List[String],
         subprotocols: List[String],
-        max_message_bytes: Optional[Int] = none
+        max_message_bytes: Int? = none
     ) Result[WebSocket, WebSocketError]:
         return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 

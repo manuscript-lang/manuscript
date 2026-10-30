@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "--map\nclosed mapped\nclosed result\n--fallback\nend 2 mapped 6 fallback\nclosed fallback\nclosed first\nclosed inserted\n",
+    "stderr": ""
+  }
+}

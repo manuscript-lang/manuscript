@@ -84,7 +84,7 @@ test "list methods mutate explicit clones and remain typed":
     let alias = original.clone()
     original.get(index: -1) | try expect_equal(1)
 
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     original.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
     original.get(index: 9223372036854775807, default: -1) | try expect_equal(-1)
     original.first() | try expect_equal(some(3))
@@ -276,7 +276,7 @@ test "string methods use Unicode scalars":
     "é🙂é".get(index: -1) | try expect_equal("é")
     "é🙂é".scalar_at(index: 1) | try expect_equal(128578)
 
-    let _missing: Optional[String] = none
+    let _missing: String? = none
     "".get(index: 0, default: "?") | try expect_equal("?")
     "é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
     "é🙂é".index_of(value: "🙂") | try expect_equal(some(1))
@@ -284,7 +284,7 @@ test "string methods use Unicode scalars":
     "é🙂é".last_index_of(value: "") | try expect_equal(some(3))
     "é🙂é".index_of(value: "") | try expect_equal(some(0))
 
-    let absent: Optional[Int] = none
+    let absent: Int? = none
     "é🙂é".index_of(value: "z") | try expect_equal(absent)
     "é🙂é".last_index_of(value: "z") | try expect_equal(absent)
     "é🙂é".slice(start: -2, end: 3).get() | try expect_equal("🙂é")
@@ -316,7 +316,7 @@ test "bytes have analogous immutable operations":
     let data = Bytes([1, 2, 3, 2])
     data.get(index: -1) | try expect_equal(2)
 
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
     data.index_of(value: Bytes([2])) | try expect_equal(some(1))

@@ -627,7 +627,7 @@ pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *cons
     unsafe { bytes(a).ends_with(bytes(v)) as u8 }
 }
 
-/// Optional[Int] result: present flag, value through `out`.
+/// Int? result: present flag, value through `out`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_string_index_of(
     a: *const StrVal,

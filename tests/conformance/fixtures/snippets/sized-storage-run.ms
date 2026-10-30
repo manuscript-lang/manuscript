@@ -56,7 +56,7 @@ export fn main() Int:
     let _ = stdout().write(
         "{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
     )
-    let opts: List[Optional[Int8]] = [some(3), none, some(-1)]
+    let opts: List[Int8?] = [some(3), none, some(-1)]
     let _ = stdout().write("{opts} {opts[0] == opts[2]}\n")
     let ints: List[Int8] = [5, 3, -9, 1]
     let _ = stdout().write(

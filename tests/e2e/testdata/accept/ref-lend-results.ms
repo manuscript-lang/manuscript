@@ -16,25 +16,25 @@ impl Shelf:
 
         return self.spare
 
-    fn age(name: String) ref Optional[String]:
+    fn age(name: String) ref String?:
         if name == "":
             return none
 
         return self.ages.get(name)
 
-    fn name(index: Int) ref Optional[String]:
+    fn name(index: Int) ref String?:
         if index < 0 or index >= self.names.length():
             return none
 
         return some(self.names.get(index))
 
 impl Item:
-    fn text() ref Optional[String]:
+    fn text() ref String?:
         match self:
             Named(text, _): return some(text)
             _: return none
 
-    fn tags() ref Optional[List[String]]:
+    fn tags() ref List[String]?:
         match self:
             Named(_, tags): return some(tags)
             _: return none
@@ -59,7 +59,7 @@ impl Holder:
     fn listed() ref List[String]:
         return self.source.names()
 
-    fn maybe(flag: Bool) ref Optional[List[String]]:
+    fn maybe(flag: Bool) ref List[String]?:
         if flag:
             return some(self.inner.names)
 

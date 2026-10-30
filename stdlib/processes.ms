@@ -109,7 +109,7 @@ export type Inbox:
     # The other end sent `close` or its result: no more messages come.
     finished: Bool = false
     # The body of the result frame, once read.
-    result: Optional[String] = none
+    result: String? = none
     # This end sent `close`.
     closed: Bool = false
 
@@ -140,10 +140,7 @@ fn decode[T: Data](body: String) Result[T, ChannelError]:
 # The next whole frame, waiting for more bytes as needed; `none` once the other process closed
 # the pipe or is gone. One task reads the pipe at a time: another waits, then returns a `RETRY`
 # frame so its caller sees what the reader recorded (a `RESULT` or `CLOSE`) before reading again.
-fn next_frame(
-    link: NativeLink,
-    inbox: Shared[Inbox]
-) Result[Optional[Frame], ChannelError]:
+fn next_frame(link: NativeLink, inbox: Shared[Inbox]) Result[Frame?, ChannelError]:
     while true:
         var state = lock(inbox)
         let available = state.value.pending.length()
@@ -178,7 +175,7 @@ fn next_frame(
     return ok(none)
 
 # Marks that the other end sent no more messages, keeping the result body if this was it.
-fn finish(inbox: Shared[Inbox], result: Optional[String]) Unit:
+fn finish(inbox: Shared[Inbox], result: String?) Unit:
     var state = lock(inbox)
     state.value.finished = true
     if result.is_some():
@@ -212,7 +209,7 @@ impl Transport[In, Out] for ProcessTransport[In, Out]:
 
         return ok(unit)
 
-    fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Out?, ChannelError]:
         let state = self.inbox.get()
         if state.closed:
             return error(ChannelError.Closed)
@@ -268,7 +265,7 @@ fn serve[T: Data, In: Data, Out: Data](entry: fn(Channel[Out, In]) T) Unit:
 
     msstd_process_ipc_close(link)
 
-fn nanos(limit: Optional[Duration]) Int:
+fn nanos(limit: Duration?) Int:
     if let d = limit:
         return d.to_nanoseconds()
 
@@ -359,7 +356,7 @@ impl Process[T, In, Out]:
 
     # Waits for the child to exit and returns its exit status. Returns `Timeout` if `timeout`
     # elapses first, leaving the child running.
-    fn wait(timeout: Optional[Duration] = none) Result[Int, CommandError]:
+    fn wait(timeout: Duration? = none) Result[Int, CommandError]:
         return msstd_process_forked_wait(self.native, nanos(timeout))
 
     # Asks the child to stop (SIGTERM on Unix; Windows ends the whole tree). Does not wait.

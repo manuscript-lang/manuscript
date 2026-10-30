@@ -40,5 +40,5 @@ test "native line reads reject buffered lines after the shared file is closed":
     try expect_equal((try read_line(input)), some("first"))
     handle.close()
 
-    let closed: Result[Optional[String], IoError] = error(IoError.Closed)
+    let closed: Result[String?, IoError] = error(IoError.Closed)
     try expect_equal(read_line(input), closed)

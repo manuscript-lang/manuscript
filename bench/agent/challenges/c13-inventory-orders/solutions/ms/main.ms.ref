@@ -48,7 +48,7 @@ fn valid_oid(s: String) Bool:
     return true
 
 # 1 to 7 ASCII digits.
-fn number(s: String) Optional[Int]:
+fn number(s: String) Int?:
     let codes = s.scalar_values()
     if codes.length() < 1 or codes.length() > 7:
         return none
@@ -63,7 +63,7 @@ fn number(s: String) Optional[Int]:
 
     return some(n)
 
-fn quantity(s: String) Optional[Int]:
+fn quantity(s: String) Int?:
     let n = number(s)
     if n.is_none() or n.get() < 1 or n.get() > 100000:
         return none

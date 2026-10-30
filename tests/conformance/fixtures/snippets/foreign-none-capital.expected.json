@@ -14,20 +14,20 @@
           "file": "foreign-none-capital.ms",
           "line": 5,
           "column": 12,
-          "offset": 145
+          "offset": 136
         },
         "fix": {
           "position": {
             "file": "foreign-none-capital.ms",
             "line": 5,
             "column": 12,
-            "offset": 145
+            "offset": 136
           },
           "end": {
             "file": "foreign-none-capital.ms",
             "line": 5,
             "column": 16,
-            "offset": 149
+            "offset": 140
           },
           "replacement": "none"
         }

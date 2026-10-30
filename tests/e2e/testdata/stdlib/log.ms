@@ -15,7 +15,7 @@ import filesystem, FileSystemError from "@std/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 type Items:
-    items: List[Optional[Int]]
+    items: List[Int?]
 
 type Payload:
     count: Int
@@ -26,7 +26,7 @@ type Payload:
     time: Int
 
 # The text a test's file sink received so far.
-fn written(path: String) Result[Optional[String], Error]:
+fn written(path: String) Result[String?, Error]:
     let data = try filesystem().read_file(path)
     return ok(data.decode_utf8())
 

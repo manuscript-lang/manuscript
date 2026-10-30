@@ -7,6 +7,6 @@ fn crash() TextError:
     return TextError((1 / "".byte_length()).to_string())
 
 export fn main() Int:
-    let value: Optional[Int] = none
+    let value: Int? = none
     let _result = value.ok_or_else(crash)
     return 0

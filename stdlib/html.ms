@@ -2,10 +2,7 @@ extern fn msrt_html_escape(text: String) String
 
 extern fn msrt_html_unescape(text: String) String
 
-extern fn msrt_html_parse(
-    text: String,
-    limits: Optional[HtmlLimits]
-) Result[HtmlNode, HtmlError]
+extern fn msrt_html_parse(text: String, limits: HtmlLimits?) Result[HtmlNode, HtmlError]
 
 # Errors returned for malformed HTML or parser resource limits.
 export type HtmlError:
@@ -20,11 +17,11 @@ export type HtmlError:
 # Fields left none add no budget. Calling `parse` without any limits applies depth 10,000 and 1,000,000 nodes; pass an `HtmlLimits` to change that.
 export type HtmlLimits:
     # Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
     # Maximum normalized node depth; the document is depth zero and direct children depth one.
-    max_depth: Optional[Int] = none
+    max_depth: Int? = none
     # Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
-    max_nodes: Optional[Int] = none
+    max_nodes: Int? = none
 
 # An HTML attribute, including its namespace and decoded value.
 export type HtmlAttribute:
@@ -84,10 +81,7 @@ export fn unescape(text: String) String:
     return msrt_html_unescape(text)
 
 # Parses HTML into a normalized tree and applies the supplied resource limits.
-export fn parse(
-    text: String,
-    limits: Optional[HtmlLimits] = none
-) Result[HtmlNode, HtmlError]:
+export fn parse(text: String, limits: HtmlLimits? = none) Result[HtmlNode, HtmlError]:
     return msrt_html_parse(text, limits)
 
 impl Error for HtmlError:

@@ -16,7 +16,7 @@ fn stream() Unit:
     let got = ch.receive()
 
 fn plain() Unit:
-    var ch = worker_channel[Map[Int, List[String]], Optional[Float]]()
+    var ch = worker_channel[Map[Int, List[String]], Float?]()
     let got = ch.receive()
 
 export fn main() Int:

@@ -22,8 +22,8 @@ export type CsvOptions:
 export fn parse(
     text: String,
     options: CsvOptions = CsvOptions(),
-    max_rows: Optional[Int] = none,
-    max_cells: Optional[Int] = none
+    max_rows: Int? = none,
+    max_cells: Int? = none
 ) Result[List[List[String]], CsvError]:
     let rows_budget = budget(max_rows)
     let cells_budget = budget(max_cells)
@@ -61,7 +61,7 @@ export fn parse(
     return ok(rows)
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
-fn budget(limit: Optional[Int]) Int:
+fn budget(limit: Int?) Int:
     if let value = limit: return value
 
     return 9223372036854775807
@@ -132,7 +132,7 @@ fn line_end_after(reader: Reader, at: Int) Int:
     return at
 
 # Reads the next record, skipping empty lines; none at end of input.
-fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
+fn read_record(var reader: Reader) Result[List[String]?, CsvError]:
     while true:
         let skipped = line_end_after(reader, reader.at)
         if skipped == reader.at: break
@@ -214,7 +214,7 @@ fn read_record(var reader: Reader) Result[Optional[List[String]], CsvError]:
 export fn stringify(
     rows: List[List[String]],
     options: CsvOptions = CsvOptions(),
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[String, CsvError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(CsvError.InvalidInput)

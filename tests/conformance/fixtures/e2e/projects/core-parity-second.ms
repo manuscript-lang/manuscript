@@ -34,7 +34,7 @@ export fn second_queries() Bool:
     )
 
 export fn second_converted(cause: Cause) Result[Int, Error]:
-    let missing: Optional[Int] = none
+    let missing: Int? = none
     return convert(missing, fn() Error: cause)
 
 export fn second_folded(cause: Cause) Error:

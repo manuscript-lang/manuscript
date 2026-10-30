@@ -14,7 +14,7 @@ export type EncodingError:
 export fn base64_decode(
     text: String,
     url_safe: Bool = false,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
@@ -89,7 +89,7 @@ fn base64_table(url_safe: Bool) List[String]:
     return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".chars()
 
 # The budget as a count, with no budget as a very large one and a negative budget as -1.
-fn budget(max_bytes: Optional[Int]) Int:
+fn budget(max_bytes: Int?) Int:
     if let limit = max_bytes: return limit
 
     return 9223372036854775807
@@ -124,10 +124,7 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false) String:
     return out.build()
 
 # Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
-export fn hex_decode(
-    text: String,
-    max_bytes: Optional[Int] = none
-) Result[Bytes, EncodingError]:
+export fn hex_decode(text: String, max_bytes: Int? = none) Result[Bytes, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)
 
@@ -220,7 +217,7 @@ fn text_of(scalars: List[Int]) String:
 export fn utf16_decode(
     data: Bytes,
     little_endian: Bool = true,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[String, EncodingError]:
     let limit = budget(max_bytes)
     if limit < 0: return error(EncodingError.InvalidInput)

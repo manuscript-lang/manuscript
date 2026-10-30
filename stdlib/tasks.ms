@@ -95,7 +95,7 @@ fn new_scope(contain: Bool) Int:
     return scope
 
 # A limit in nanoseconds, or -1 for none.
-fn nanos(limit: Optional[Duration]) Int:
+fn nanos(limit: Duration?) Int:
     if let own = limit:
         if own.to_nanoseconds() < 0:
             panic("TaskGroup: a timeout must not be negative")
@@ -126,7 +126,7 @@ impl Lane[T]:
         return self.front.length() + self.back.length()
 
     # Takes the oldest value.
-    var fn pop() Optional[T]:
+    var fn pop() T?:
         if self.front.is_empty():
             let count = self.back.length()
             for index in 0..count:
@@ -186,7 +186,7 @@ type TaskTransport[In, Out]:
     # Values this end receives.
     incoming: Shared[Lane[Out]]
     # Only group ends hold a lease; copies share its lifetime without the group retaining them.
-    lifetime: Optional[TaskChannelLease] = none
+    lifetime: TaskChannelLease? = none
 
 # What one look at `outgoing` found: room to send, a closed lane, or the token to park on.
 type Reserved:
@@ -231,7 +231,7 @@ impl Transport[In, Out] for TaskTransport[In, Out]:
         lane.close()
         return ok(unit)
 
-    fn receive() Result[Optional[Out], ChannelError]:
+    fn receive() Result[Out?, ChannelError]:
         while true:
             var lane = lock(self.incoming)
             if lane.value.receiver_closed:
@@ -351,7 +351,7 @@ impl Task[T, In, Out]:
 # A fault in a task ends the program, unless `contain_faults` is set: then the task ends with the result `Faulted(report)`, its siblings keep running, and values its frames owned are not released. A task owns the values its closure captures; return results instead of sharing them.
 export type TaskGroup[T, In = Unit, Out = Unit]:
     # Limit for every task started in the group, counted from the group's creation; none for no limit.
-    timeout: Optional[Duration] = none
+    timeout: Duration? = none
     # Whether a fault in a task ends only that task (`Faulted`) instead of the program. A fault never collected is dropped by `close`.
     contain_faults: Bool = false
     # Internal state: the runtime scope that owns the tasks, set to contain faults when asked.
@@ -366,10 +366,7 @@ impl TaskGroup[T, In, Out]:
     # handle's `channel` is the group's end. The task's end closes when `entry` returns.
     # The task first runs when the caller waits.
     # `timeout` limits this task; the group's own limit still applies if it ends sooner.
-    fn spawn(
-        entry: fn(Channel[Out, In]) T,
-        timeout: Optional[Duration] = none
-    ) Task[T, In, Out]:
+    fn spawn(entry: fn(Channel[Out, In]) T, timeout: Duration? = none) Task[T, In, Out]:
         let down: Shared[Lane[In]] = share(Lane[In]())
         let up: Shared[Lane[Out]] = share(Lane[Out]())
         let values: Shared[List[T]] = share([])

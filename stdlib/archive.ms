@@ -4,20 +4,20 @@ import ReadStream from "@std/io.ms"
 extern fn msrt_archive_pack(
     entries: List[ArchiveEntry],
     format: String,
-    max_bytes: Optional[Int]
+    max_bytes: Int?
 ) Result[Bytes, ArchiveError]
 
 extern fn msrt_archive_unpack(
     data: Bytes,
     format: String,
-    limits: Optional[ArchiveLimits]
+    limits: ArchiveLimits?
 ) Result[List[ArchiveEntry], ArchiveError]
 
 extern fn msrt_compress_compress(
     data: Bytes,
     format: String,
     level: Int,
-    max_bytes: Optional[Int]
+    max_bytes: Int?
 ) Result[Bytes, CompressionError]
 
 extern fn msstd_archive_compress_stream(
@@ -29,13 +29,13 @@ extern fn msstd_archive_compress_stream(
 extern fn msstd_archive_decompress_stream(
     format: String,
     input: ReadStream,
-    max_bytes: Optional[Int]
+    max_bytes: Int?
 ) ReadStream
 
 extern fn msrt_compress_decompress(
     data: Bytes,
     format: String,
-    max_bytes: Optional[Int]
+    max_bytes: Int?
 ) Result[Bytes, CompressionError]
 
 # Errors returned when an archive cannot be read or written.
@@ -66,17 +66,17 @@ export type ArchiveEntry:
 # Optional limits applied while unpacking untrusted archive data.
 export type ArchiveLimits:
     # Maximum unpacked entries, including directories; none adds no entry-count budget.
-    max_entries: Optional[Int] = none
+    max_entries: Int? = none
     # Maximum unpacked bytes for each entry; zero admits only empty data.
-    max_entry_bytes: Optional[Int] = none
+    max_entry_bytes: Int? = none
     # Cumulative unpacked file bytes across all entries; none adds no total-output budget.
-    max_total_bytes: Optional[Int] = none
+    max_total_bytes: Int? = none
 
 # Encodes entries as exactly `zip` or `tar` bytes (case-sensitive); others return Unsupported. `max_bytes` bounds output when supplied.
 export fn pack(
     entries: List[ArchiveEntry],
     format: String,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[Bytes, ArchiveError]:
     return msrt_archive_pack(entries, format, max_bytes)
 
@@ -85,7 +85,7 @@ export fn pack(
 export fn unpack(
     data: Bytes,
     format: String,
-    limits: Optional[ArchiveLimits] = none
+    limits: ArchiveLimits? = none
 ) Result[List[ArchiveEntry], ArchiveError]:
     return msrt_archive_unpack(data, format, limits)
 
@@ -116,14 +116,14 @@ impl ArchiveFormat:
     # Packs entries with the same optional output budget and path validation as pack.
     fn pack(
         entries: List[ArchiveEntry],
-        max_bytes: Optional[Int] = none
+        max_bytes: Int? = none
     ) Result[Bytes, ArchiveError]:
         return pack(entries, archive_format_name(self), max_bytes)
 
     # Unpacks in memory with the same entry/byte limits and domain errors as unpack.
     fn unpack(
         data: Bytes,
-        limits: Optional[ArchiveLimits] = none
+        limits: ArchiveLimits? = none
     ) Result[List[ArchiveEntry], ArchiveError]:
         return unpack(data, archive_format_name(self), limits)
 
@@ -151,7 +151,7 @@ export fn compress(
     data: Bytes,
     format: String,
     level: Int = 6,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[Bytes, CompressionError]:
     return msrt_compress_compress(data, format, level, max_bytes)
 
@@ -160,7 +160,7 @@ export fn compress(
 export fn decompress(
     data: Bytes,
     format: String,
-    max_bytes: Optional[Int] = none
+    max_bytes: Int? = none
 ) Result[Bytes, CompressionError]:
     return msrt_compress_decompress(data, format, max_bytes)
 
@@ -196,15 +196,12 @@ impl CompressionFormat:
     fn compress(
         data: Bytes,
         level: Int = 6,
-        max_bytes: Optional[Int] = none
+        max_bytes: Int? = none
     ) Result[Bytes, CompressionError]:
         return compress(data, compression_format_name(self), level, max_bytes)
 
     # Decompresses with the same cumulative output limit and validation as decompress.
-    fn decompress(
-        data: Bytes,
-        max_bytes: Optional[Int] = none
-    ) Result[Bytes, CompressionError]:
+    fn decompress(data: Bytes, max_bytes: Int? = none) Result[Bytes, CompressionError]:
         return decompress(data, compression_format_name(self), max_bytes)
 
     # Returns a stream of this format's compressed bytes, reading `input` chunk by chunk.
@@ -218,7 +215,7 @@ impl CompressionFormat:
     # Returns a stream of decompressed bytes, reading `input` chunk by chunk.
     # Malformed data fails reads with InvalidData; `max_bytes` bounds total output and exceeding it fails with LimitExceeded.
     # Closing the result closes `input`.
-    fn decompress_stream(input: ReadStream, max_bytes: Optional[Int] = none) ReadStream:
+    fn decompress_stream(input: ReadStream, max_bytes: Int? = none) ReadStream:
         return msstd_archive_decompress_stream(
             compression_format_name(self), input, max_bytes
         )

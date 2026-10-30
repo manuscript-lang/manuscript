@@ -6,7 +6,7 @@ fn first[T](left: T, right: T) T: left
 
 fn size(values: Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Optional[Map[String, Int]]) Int: values.get().length()
+fn optional_size(values: Map[String, Int]?) Int: values.get().length()
 
 fn mark(var log: List[Int], value: Int) Int:
     log.append(value)
@@ -38,7 +38,7 @@ test "map literals and positional identifier arguments":
     let nested: Map[String, Map[String, Int]] = {"a": {}, "b": {"c": 1}}
     try expect_equal(nested["b"]["c"], 1)
 
-    let optional: Map[String, Optional[Int]] = {"a": none, "b": some(2)}
+    let optional: Map[String, Int?] = {"a": none, "b": some(2)}
     try expect_false(not optional["a"].is_none())
 
     let key = "c"

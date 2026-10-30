@@ -10,7 +10,7 @@ test "explicit byte conversion":
     if not ("é".to_bytes().decode_utf8() == some("é")):
         return panic("check failed")
 
-    let invalid: Optional[String] = none
+    let invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == some(-7)):

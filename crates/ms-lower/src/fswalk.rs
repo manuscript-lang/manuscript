@@ -102,7 +102,7 @@ impl FnLower<'_> {
         Ok(r)
     }
 
-    /// `(present, value)` of a borrowed `Optional[Int]`.
+    /// `(present, value)` of a borrowed `Int?`.
     fn present(&mut self, v: Value) -> (Value, Value) {
         (self.b.opt_is_some(v), self.b.opt_get(v))
     }

@@ -138,7 +138,7 @@ test "a receive from a task cancelled by its group ends with none":
     try expect_equal(r.get().is_none(), true)
 
 test "handles of a closed worker group answer instead of faulting":
-    var kept: Optional[Worker[Int, Int]] = none
+    var kept: Worker[Int, Int]? = none
     var group = WorkerGroup[Int, Int]()
     kept = some(group.spawn(waits).get())
     group.close()

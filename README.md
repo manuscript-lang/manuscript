@@ -63,7 +63,7 @@ import parse from "@std/json.ms"
 import expect_equal from "@std/test.ms"
 
 type Config:
-    port: Optional[Int]
+    port: Int?
 
 fn port_from(text: String) Result[Int, Error]:
     let config = try parse[Config](text)

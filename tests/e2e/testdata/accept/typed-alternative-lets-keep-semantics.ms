@@ -1,7 +1,7 @@
 import TextError from "@std/core.ms"
 import expect_true from "@std/test.ms"
 
-fn halve(n: Int) Optional[Int]:
+fn halve(n: Int) Int?:
     if n % 2 != 0:
         return none
 

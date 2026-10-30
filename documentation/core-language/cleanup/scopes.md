@@ -12,7 +12,7 @@ let file = try files.open("data.txt")
 let chunk = try file.read(max_bytes: 4096)
 ```
 
-This sits inside a function returning `Result[U, IoError]` that receives `files` as a capability. `Files.open` returns a shared File view; `read` returns `Optional[Bytes]`. The file closes when the function returns, whichever path it takes.
+This sits inside a function returning `Result[U, IoError]` that receives `files` as a capability. `Files.open` returns a shared File view; `read` returns `Bytes?`. The file closes when the function returns, whichever path it takes.
 
 ## What happens, step by step
 

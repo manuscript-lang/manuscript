@@ -60,7 +60,7 @@
     },
     {
       "name": "entity.name.function.manuscript",
-      "match": "\\b[a-z_][A-Za-z0-9_]*(?=[ \\t]*(?:\\[[A-Za-z0-9_.,\\[\\] \\t]+\\])?[ \\t]*\\()"
+      "match": "\\b[a-z_][A-Za-z0-9_]*(?=[ \\t]*(?:\\[[A-Za-z0-9_.,?\\[\\] \\t]+\\])?[ \\t]*\\()"
     },
     {
       "name": "constant.language.placeholder.manuscript",
@@ -68,7 +68,7 @@
     },
     {
       "name": "keyword.operator.manuscript",
-      "match": "\\.\\.\\.|\\.\\.|->|==|!=|<=|>=|[+*/%=-]=?|[<>&|]"
+      "match": "\\.\\.\\.|\\.\\.|->|==|!=|<=|>=|[+*/%=-]=?|[<>&|?]"
     },
     {
       "name": "punctuation.manuscript",

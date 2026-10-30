@@ -18,7 +18,7 @@ fn present(log: Shared[List[Int]]) Int:
     return door.id
 
 fn absent(log: Shared[List[Int]]) Int:
-    let held: Optional[Door] = none
+    let held: Door? = none
     let door = held.get(Door(3, log))
     return door.id
 

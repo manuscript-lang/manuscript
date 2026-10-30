@@ -293,9 +293,10 @@ impl Cx {
                 | ms_mir::types::TyKind::Alt(_)
                 | ms_mir::types::TyKind::Opt(_)
                 | ms_mir::types::TyKind::List(_)
+                | ms_mir::types::TyKind::Obj(..)
         ) {
             // The checker type behind a MIR type, so cleanup can ask for its class: an
-            // `Optional` or `List` of a resource is one too.
+            // `Optional`, `List` or `Map` of a resource is one too.
             self.source_tys.entry(out).or_insert_with(|| t.clone());
         }
         self.tycache.insert(key, out);

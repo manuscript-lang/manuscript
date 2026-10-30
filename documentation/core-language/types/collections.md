@@ -60,7 +60,7 @@ let mixed = [1, 2.0]
 let unknown = []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, some(value: 1)]` is `List[Optional[Int]]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so `[none, some(value: 1)]` is `List[Int?]` and `[none]` is rejected. Collections can hold [recursive data](records.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
@@ -94,7 +94,7 @@ Mutators update the receiver in place and return Unit; a `let` binding cannot be
 List details:
 
 - `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
-- `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both move elements without copying them, so they take an element out of a list of owned values (`items.replace(0, none)` on a `List[Optional[T]]`) and reorder it without `.clone()`. Both accept negative indexes and fault on invalid ones.
+- `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both move elements without copying them, so they take an element out of a list of owned values (`items.replace(0, none)` on a `List[T?]`) and reorder it without `.clone()`. Both accept negative indexes and fault on invalid ones.
 - `insert(index:, value:)` places before `index`, valid from `-length()` to `length()` (which appends).
 - `pop()` returns the last element as `some(value)`, or `none` when empty.
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
@@ -160,20 +160,20 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `List[T]()` | Empty `List[T]` |
-| `List[T](reserve: Optional[Int] = none)` | Empty `List[T]` with room for `reserve` items |
-| `List[T]` | `length() Int`; `get(index: Int, default: Optional[T] = none) T`; `[index] T` |
+| `List[T](reserve: Int? = none)` | Empty `List[T]` with room for `reserve` items |
+| `List[T]` | `length() Int`; `get(index: Int, default: T? = none) T`; `[index] T` |
 | `List[T]` | `append(value: T) Unit`; `concat(values: List[T]) List[T]` |
 | `List[T]` | `set(index: Int, value: T) Unit` (also `xs[index] = value`); `remove(index: Int) Unit` |
-| `List[T]` | `insert(index: Int, value: T) Unit`; `pop() Optional[T]` |
+| `List[T]` | `insert(index: Int, value: T) Unit`; `pop() T?` |
 | `Map[K, V]()` | Empty `Map[K, V]` |
-| `Map[K, V]` | `length() Int`; `get(key: K) Optional[V]`; `contains(key: K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
+| `Map[K, V]` | `length() Int`; `get(key: K) V?`; `contains(key: K) Bool`; `[key] V` faults with `map key not found: <key>` when absent |
 | `Map[K, V]` | `is_empty() Bool`; `get_or(key: K, fallback: V) V` |
 | `Map[K, V]` | `filter(predicate: fn(K, V) Bool) Map[K, V]` |
 | `Map[K, V]` | `map[W](transform: fn(K, V) W) Map[K, W]` |
 | `Map[K, V]` | `map_keys[W: Hashable](transform: fn(K, V) W) Map[W, V]` |
 | `Map[K, V]` | `fold[A](initial: A, step: fn(A, K, V) A) A` |
 | `Map[K, V]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Map[K, V]` | `find(predicate: fn(K, V) Bool) Optional[MapEntry[K, V]]` |
+| `Map[K, V]` | `find(predicate: fn(K, V) Bool) MapEntry[K, V]?` |
 | `Map[K, V]` | `find_last` uses the same predicate and entry result, searching from the end |
 | `Map[K, V]` | `any(predicate: fn(K, V) Bool) Bool`; `all` uses the same predicate |
 | `Map[K, V]` | `add(key: K, value: V) Unit`; `remove(key: K) Unit`; `m[key] = value` is `m.add(key, value)` and needs `var m` |
@@ -186,7 +186,7 @@ A List keeps its identity and backing kind through generics, records, Optional, 
 | `Set[T]` | `add(value: T) Unit`; `remove(value: T) Unit` |
 | `Set[T]` | `fold[A](initial: A, step: fn(A, T) A) A` |
 | `Set[T]` | `fold_right[A]` uses the same step in reverse insertion order |
-| `Set[T]` | `find(predicate: fn(T) Bool) Optional[T]` |
+| `Set[T]` | `find(predicate: fn(T) Bool) T?` |
 | `Set[T]` | `find_last` uses the same predicate and payload result, searching from the end |
 | `Set[T]` | `any(predicate: fn(T) Bool) Bool`; `all` uses the same predicate |
 

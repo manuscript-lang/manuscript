@@ -4,7 +4,7 @@
 import TomlValue from "@std/toml.ms"
 
 export fn main() Int:
-    let v: Optional[TomlValue] = none
+    let v: TomlValue? = none
     if v.is_some():
         return 1
 

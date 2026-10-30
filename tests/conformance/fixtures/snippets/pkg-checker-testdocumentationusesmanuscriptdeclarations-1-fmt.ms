@@ -5,16 +5,16 @@ interface DatagramSocket:
     fn address() String
     fn close() Unit
     fn receive(
-        max_bytes: Optional[Int] = none,
-        timeout: Optional[Duration] = none
+        max_bytes: Int? = none,
+        timeout: Duration? = none
     ) Result[Datagram, NetworkError]
     fn send(
         data: String,
         address: String,
-        timeout: Optional[Duration] = none
+        timeout: Duration? = none
     ) Result[Unit, NetworkError]
     fn send_bytes(
         data: Bytes,
         address: String,
-        timeout: Optional[Duration] = none
+        timeout: Duration? = none
     ) Result[Unit, NetworkError]

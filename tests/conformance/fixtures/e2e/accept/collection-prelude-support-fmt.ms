@@ -13,7 +13,7 @@ fn group[T, K: Hashable](values: List[T], key: fn(T) K) Map[K, List[T]]: values.
     key
 )
 
-fn index[T: Equal](values: List[T], value: T) Optional[Int]: values.index_of(value)
+fn index[T: Equal](values: List[T], value: T) Int?: values.index_of(value)
 
 fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()
 
@@ -34,7 +34,7 @@ test "public collection support types retain their standard runtime identities":
 
     let pairs: List[MapEntry[String, Int]] = map_entries(map)
     let pair: MapEntry[String, Int] = MapEntry("a", 3)
-    let found: Optional[MapEntry[String, Int]] = map.find(
+    let found: MapEntry[String, Int]? = map.find(
         fn(key: String, value: Int) Bool: (value == 3)
     )
     try expect_false(pairs[0] != pair or found.get() != pair)
