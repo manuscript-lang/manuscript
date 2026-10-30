@@ -125,10 +125,8 @@ These removed spellings looked like copies but mutated. Labels and return types 
 | Map | `with_entry`, `without` | `add`, `remove` | Same Map |
 | Map | `with_default`, `with_default_from` | `add_default`, `add_default_from` | Same Map |
 | Set | `with_value`, `without` | `add`, `remove` | Same Set |
-| MapBuilder | `with_entry` | `add` | Unit |
-| SetBuilder | `with_value` | `add` | Unit |
 | Bytes | `reverse` | `reversed` | Copy of byte storage |
-| StringBuilder, BytesBuilder, ListBuilder, MapBuilder, SetBuilder | `freeze` | `build` | The sealed value |
+| StringBuilder, BytesBuilder | `freeze` | `build` | The sealed value |
 
 `List.shift` is removed. Use `Queue` from `@std/queue.ms` (`enqueue`, `dequeue`, `peek`) for first-in, first-out work; like `Deque` and `List` it is an owned value, so a copy is independent (declare it with `var` to mutate). `dequeue` is O(1), where `shift` cost O(n) per call. Use `Deque` when values are pushed or popped at both ends.
 

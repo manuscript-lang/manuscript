@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "naming-migration.ms::all builders keep Unit mutation function types",
+          "name": "naming-migration.ms::text and byte builders keep Unit mutation function types",
           "status": "passed"
         },
         {
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nPASS naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nRUN naming-migration.ms::all builders keep Unit mutation function types\nPASS naming-migration.ms::all builders keep Unit mutation function types\nRUN naming-migration.ms::copy names preserve Bytes and collection storage\nPASS naming-migration.ms::copy names preserve Bytes and collection storage\n3 tests, 0 failed\n",
+      "stdout": "RUN naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nPASS naming-migration.ms::default insertion keeps eager and lazy calls and receiver identity\nRUN naming-migration.ms::text and byte builders keep Unit mutation function types\nPASS naming-migration.ms::text and byte builders keep Unit mutation function types\nRUN naming-migration.ms::copy names preserve Bytes and collection storage\nPASS naming-migration.ms::copy names preserve Bytes and collection storage\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
