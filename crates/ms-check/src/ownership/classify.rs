@@ -52,6 +52,9 @@ impl Classifier {
                     Class::Move
                 }
             }
+            // A `Closeable` value owns what it was made from and closes it. Other interfaces
+            // with a `close` (a channel's transport) are handles their holders close explicitly.
+            Kind::Contract if t.is_std("Closeable") => Class::Resource,
             Kind::Function | Kind::Contract => Class::Move,
             Kind::Native => self.native(t, visiting),
             Kind::Record | Kind::Alternative => self.nominal(t, visiting),
@@ -117,4 +120,14 @@ impl Classifier {
         // returned Move, which max propagates.
         class
     }
+}
+
+/// Whether the interface `t` declares a `close` operation.
+pub(crate) fn declares_close(t: &Ty) -> bool {
+    t.def.as_ref().is_some_and(|d| {
+        d.operations
+            .borrow()
+            .iter()
+            .any(|o| o.name.as_str() == "close")
+    })
 }

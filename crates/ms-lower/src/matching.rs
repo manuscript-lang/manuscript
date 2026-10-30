@@ -314,6 +314,13 @@ impl FnLower<'_> {
         let Some((rv, hidden)) = self.hold(operand)? else {
             return Ok(self.dummy(MTy::UNIT));
         };
+        // `try r` at the last use of a closing binding hands its payload on: the binding no
+        // longer closes it.
+        if let (ExprKind::Name(_), Resolution::Local(b)) =
+            (&operand.kind, self.hir.resolution(operand))
+        {
+            self.moved_closer(b.uid, operand);
+        }
         let r = self.b.use_var(rv);
         let rty = self.ty_of(r);
         let TyKind::Alt(a) = self.b.m.types.kind(rty).clone() else {
@@ -368,13 +375,19 @@ impl FnLower<'_> {
         self.enter(okb);
         let cur = self.b.use_var(rv);
         let payload = self.b.alt_get(a, ok as u32, 0, cur);
+        if !hidden {
+            // A part of a place: a consumer that keeps it takes its own copy, a reader reads
+            // it in place, so a resource payload is never duplicated.
+            return Ok(Val {
+                v: payload,
+                own: false,
+            });
+        }
         let po = self.owned(Val {
             v: payload,
             own: false,
         });
-        if hidden {
-            self.drop_value(cur);
-        }
+        self.drop_value(cur);
         Ok(self.val(po, true))
     }
 }

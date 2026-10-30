@@ -764,6 +764,20 @@ impl<'a> FnLower<'a> {
                     let r = self.order(want, &static_ty, a, b)?;
                     return Ok(Val { v: r, own: false });
                 }
+                // A resource closed through its parts (a record holding one) has no `close` of
+                // its own: closing it closes what it holds.
+                if m.name().is_some_and(|n| n.as_str() == "close")
+                    && contract.is_std("Closeable")
+                    && let Some(kind) = self.part_closer(&static_ty)?
+                {
+                    let recv = self.expr(recv_expr)?;
+                    if self.dead {
+                        return Ok(recv);
+                    }
+                    self.close_with(&kind, recv.v, want);
+                    let v = self.b.unit();
+                    return Ok(Val { v, own: false });
+                }
                 return Err(Error::new(format!(
                     "{static_ty} has no implementation of {}",
                     m.name().map(|n| n.to_string()).unwrap_or_default()

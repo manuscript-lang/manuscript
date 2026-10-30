@@ -1520,10 +1520,12 @@ impl<'a> FnLower<'a> {
             .iter()
             .position(|c| c.name == want)
             .ok_or_else(|| Error::new("Result without ok/error cases"))?;
-        let r = self.borrow(recv);
-        let tag = self.b.alt_tag(r);
+        let tag = self.b.alt_tag(recv.v);
         let k = self.b.iconst(case as i64);
         let v = self.b.icmp(ms_mir::ir::Cc::Eq, tag, k);
+        // Only read: an owned result holding a resource (`open().is_ok()`) closes it.
+        self.close_owned_temp(recv);
+        self.finish(recv);
         Ok(Val { v, own: false })
     }
 
